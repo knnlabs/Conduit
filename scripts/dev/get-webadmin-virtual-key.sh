@@ -101,7 +101,7 @@ STORE_PAYLOAD=$(cat <<EOF
 {
     "key": "WebAdmin_VirtualKey",
     "value": "$WEBADMIN_KEY",
-    "description": "Virtual key for WebAdmin Core API access"
+    "description": "Virtual key for WebAdmin Gateway API access"
 }
 EOF
 )

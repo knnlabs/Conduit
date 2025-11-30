@@ -1,6 +1,6 @@
-# Core API Reference
+# Gateway API Reference
 
-Complete endpoint documentation for the Conduit Core API.
+Complete endpoint documentation for the Conduit Gateway API.
 
 ## Table of Contents
 
@@ -104,7 +104,7 @@ Creates a chat completion for the provided conversation.
 
 **TypeScript:**
 ```typescript
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
 
 const client = new ConduitCoreClient({
   apiKey: 'condt_yourvirtualkey',

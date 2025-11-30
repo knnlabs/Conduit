@@ -12,7 +12,7 @@ namespace ConduitLLM.Gateway.Extensions
     public static class ServiceCollectionExtensions
     {
         /// <summary>
-        /// Adds Core API security services to the service collection
+        /// Adds Gateway API security services to the service collection
         /// </summary>
         public static IServiceCollection AddCoreApiSecurity(this IServiceCollection services, IConfiguration configuration)
         {

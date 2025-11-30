@@ -813,7 +813,7 @@ export interface paths {
     put?: never;
     /** Triggers immediate flushing of all pending batch spend updates.
      *
-     *     This endpoint publishes a BatchSpendFlushRequestedEvent which is consumed by the Core API
+     *     This endpoint publishes a BatchSpendFlushRequestedEvent which is consumed by the Gateway API
      *     to immediately process all queued spending charges instead of waiting for the scheduled
      *     batch interval. This is essential for:
      *
@@ -893,7 +893,7 @@ export interface paths {
      *     - Configuration details
      *
      *     Note: This endpoint checks the Admin API's ability to publish events,
-     *     not the Core API's batch spending service status (which is internal). */
+     *     not the Gateway API's batch spending service status (which is internal). */
     get: {
       parameters: {
         query?: never;
@@ -934,7 +934,7 @@ export interface paths {
     /** Gets operational information about the batch spending flush capability.
      *
      *     This endpoint provides documentation and operational guidance for administrators
-     *     without exposing internal Core API details. */
+     *     without exposing internal Gateway API details. */
     get: {
       parameters: {
         query?: never;

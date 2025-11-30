@@ -70,7 +70,7 @@ services:
       Conduit__PerformanceTracking__IncludeInResponse: "true"
       Conduit__PerformanceTracking__TrackStreamingMetrics: "true"
       # Media Lifecycle Configuration
-      MediaLifecycle__Enabled: "false"  # Cleanup runs on Admin API, not Core API
+      MediaLifecycle__Enabled: "false"  # Cleanup runs on Admin API, not Gateway API
       MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
       MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
       MediaLifecycle__EnableSoftDelete: "true"

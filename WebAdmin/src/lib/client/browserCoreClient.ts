@@ -1,6 +1,6 @@
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitGatewayClient } from '@knn_labs/conduit-gateway-client';
 
-let browserClient: InstanceType<typeof ConduitCoreClient> | null = null;
+let browserClient: InstanceType<typeof ConduitGatewayClient> | null = null;
 let ephemeralKey: string | null = null;
 let ephemeralKeyExpiry: Date | null = null;
 let coreApiUrl: string | null = null;
@@ -34,30 +34,30 @@ async function getEphemeralKey(): Promise<EphemeralKeyResponse> {
 }
 
 /**
- * Get or create a browser-compatible Core SDK client
+ * Get or create a browser-compatible Gateway SDK client
  * This client uses ephemeral keys for secure browser access
  */
-export async function getBrowserCoreClient(): Promise<InstanceType<typeof ConduitCoreClient>> {
+export async function getBrowserGatewayClient(): Promise<InstanceType<typeof ConduitGatewayClient>> {
   // Check if we need a new ephemeral key (expired or not set)
   const now = new Date();
-  const needNewKey = !ephemeralKey || 
-    !ephemeralKeyExpiry || 
+  const needNewKey = !ephemeralKey ||
+    !ephemeralKeyExpiry ||
     ephemeralKeyExpiry <= now;
-  
+
   if (needNewKey) {
     // Get new ephemeral key
     const keyResponse = await getEphemeralKey();
     ephemeralKey = keyResponse.ephemeralKey;
     ephemeralKeyExpiry = new Date(keyResponse.expiresAt);
     coreApiUrl = keyResponse.coreApiUrl;
-    
+
     // Clear existing client to force recreation with new key
     browserClient = null;
   }
-  
+
   // Create client if needed or if we just got a new key
   if (!browserClient && ephemeralKey && coreApiUrl) {
-    browserClient = new ConduitCoreClient({
+    browserClient = new ConduitGatewayClient({
       apiKey: ephemeralKey,
       baseURL: coreApiUrl,
       signalR: {
@@ -66,13 +66,16 @@ export async function getBrowserCoreClient(): Promise<InstanceType<typeof Condui
       }
     });
   }
-  
+
   if (!browserClient) {
     throw new Error('Failed to create browser client');
   }
-  
+
   return browserClient;
 }
+
+// Backward-compatible alias
+export const getBrowserCoreClient = getBrowserGatewayClient;
 
 /**
  * Clear the cached browser client

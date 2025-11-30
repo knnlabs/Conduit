@@ -6,7 +6,7 @@ namespace ConduitLLM.Gateway.EventHandlers
 {
     /// <summary>
     /// Handles DiscoveryCacheInvalidationRequested events from Admin API
-    /// Invalidates the discovery cache across all Core API instances
+    /// Invalidates the discovery cache across all Gateway API instances
     /// </summary>
     public class DiscoveryCacheInvalidationHandler : IConsumer<DiscoveryCacheInvalidationRequested>
     {

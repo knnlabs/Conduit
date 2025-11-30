@@ -105,7 +105,7 @@ namespace ConduitLLM.Core.Services
             switch (serviceType?.ToUpperInvariant())
             {
                 case "COREAPI":
-                    // Warm 10 connections for Core API (high traffic)
+                    // Warm 10 connections for Gateway API (high traffic)
                     return 10;
                 case "ADMINAPI":
                     // Warm 5 connections for Admin API (medium traffic)

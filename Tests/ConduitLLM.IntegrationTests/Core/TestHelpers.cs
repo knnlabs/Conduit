@@ -23,7 +23,7 @@ public static class TestHelpers
             {
                 var allHealthy = true;
                 
-                // Check Core API
+                // Check Gateway API
                 if (!await CheckHttpEndpoint($"{config.Environment.CoreApiUrl}/health", logger))
                     allHealthy = false;
                 

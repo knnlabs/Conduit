@@ -290,7 +290,7 @@ import {
   isReasoningEvent,
   isToolExecutingEvent,
   isToolResultEvent
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 
 // Process stream events
 for await (const event of stream) {
@@ -387,7 +387,7 @@ import {
   isFinalMetrics,
   isToolExecutingEvent,
   buildMessageContent
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 
 async function streamChatWithTools() {
   const client = await getBrowserCoreClient();
@@ -663,7 +663,7 @@ When using standard OpenAI clients with Conduit:
 ### Conduit-Specific Extensions
 
 To access Conduit extensions, use:
-- `@knn_labs/conduit-core-client` SDK (TypeScript/Node.js)
+- `@knn_labs/conduit-gateway-client` SDK (TypeScript/Node.js)
 - Custom SSE parsers that handle `event:` field
 - Type guards for discriminating event types
 
@@ -801,7 +801,7 @@ const finalContent = totalContent || totalReasoning;
 
 ```typescript
 // Standard OpenAI SDK won't see these events!
-// Use @knn_labs/conduit-core-client instead
+// Use @knn_labs/conduit-gateway-client instead
 ```
 
 ### Type Errors with Tool Calls
@@ -824,6 +824,6 @@ if (deltaToolCalls && Array.isArray(deltaToolCalls)) {
 ## Related Documentation
 
 - [Function Calling Guide](./functions/function-calling.md)
-- [Core API Getting Started](./core/getting-started.md)
+- [Gateway API Getting Started](./core/getting-started.md)
 - [SDK Best Practices](./sdk/best-practices.md)
 - [Real-time Streaming Architecture](../architecture/real-time/streaming-and-websockets.md)

@@ -136,7 +136,7 @@ export default function SystemInfoPage() {
               This will:
               <br />• Increase latency for repeated requests
               <br />• Increase provider API costs
-              <br />• Apply to all Core API instances immediately
+              <br />• Apply to all Gateway API instances immediately
             </>
           )}
         </Text>

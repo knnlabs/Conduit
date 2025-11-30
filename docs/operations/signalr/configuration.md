@@ -8,7 +8,7 @@ WebAdmin uses React Query for data fetching with automatic cache invalidation on
 
 ## SignalR Redis Backplane for Horizontal Scaling
 
-Conduit supports SignalR Redis backplane for horizontal scaling, enabling real-time updates across multiple Core API instances:
+Conduit supports SignalR Redis backplane for horizontal scaling, enabling real-time updates across multiple Gateway API instances:
 
 ### Configuration
 

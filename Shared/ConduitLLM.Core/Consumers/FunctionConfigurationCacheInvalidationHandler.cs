@@ -7,7 +7,7 @@ namespace ConduitLLM.Core.Consumers;
 
 /// <summary>
 /// Consumer that handles FunctionConfigurationChanged events to invalidate function discovery cache
-/// across all Core API instances in a distributed deployment.
+/// across all Gateway API instances in a distributed deployment.
 ///
 /// This ensures cache consistency when function configurations are modified via the Admin API.
 /// </summary>

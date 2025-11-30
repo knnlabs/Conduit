@@ -5,7 +5,7 @@ using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Gateway.EventHandlers
 {
     /// <summary>
-    /// Handles provider credential events in the Core API
+    /// Handles provider credential events in the Gateway API
     /// Invalidates cached credentials and triggers capability rediscovery
     /// </summary>
     public class ProviderEventHandler : 

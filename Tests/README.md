@@ -161,7 +161,7 @@ Tests/
 - .NET 10.0 SDK or later
 - Docker environment running (`./scripts/start-dev.sh`)
 - All services healthy:
-  - Core API (http://localhost:5000)
+  - Gateway API (http://localhost:5000)
   - Admin API (http://localhost:5002)
   - PostgreSQL
   - Redis

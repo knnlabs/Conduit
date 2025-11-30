@@ -112,7 +112,7 @@ Always use the provided helper functions:
 // For Admin API operations
 const adminClient = getServerAdminClient();
 
-// For Core API operations (chat, images, etc.)
+// For Gateway API operations (chat, images, etc.)
 const coreClient = getServerCoreClient();
 ```
 

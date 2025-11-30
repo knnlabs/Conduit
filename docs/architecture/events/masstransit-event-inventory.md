@@ -90,7 +90,7 @@ All events use `PartitionKey = ProviderId.ToString()`:
 - **ProviderDeleted** - Provider removal and cleanup
 
 **Consumers:**
-- `ProviderEventHandler` (Core API) - Cache invalidation
+- `ProviderEventHandler` (Gateway API) - Cache invalidation
 - `ProviderCacheInvalidationHandler` - Redis provider cache updates
 
 ---

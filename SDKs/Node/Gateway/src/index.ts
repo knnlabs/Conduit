@@ -1,6 +1,9 @@
 // Export only the fetch-based client as the main client
-export { FetchConduitCoreClient as ConduitCoreClient } from './FetchConduitCoreClient';
-export { FetchConduitCoreClient } from './FetchConduitCoreClient';
+export { FetchConduitGatewayClient as ConduitGatewayClient } from './FetchConduitGatewayClient';
+export { FetchConduitGatewayClient } from './FetchConduitGatewayClient';
+// Legacy alias for backward compatibility
+export { FetchConduitGatewayClient as ConduitCoreClient } from './FetchConduitGatewayClient';
+export { FetchConduitGatewayClient as FetchConduitCoreClient } from './FetchConduitGatewayClient';
 export type { ClientConfig, RequestOptions, SignalRConfig } from './client/types';
 export { HttpMethod } from './client/HttpMethod';
 export type { RequestOptions as CoreRequestOptions, ApiResponse } from './client/HttpMethod';

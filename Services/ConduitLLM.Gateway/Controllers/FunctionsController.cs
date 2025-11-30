@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ConduitLLM.Gateway.Controllers;
 
 /// <summary>
-/// Controller for executing functions (e.g., Exa search) through the Core API.
+/// Controller for executing functions (e.g., Exa search) through the Gateway API.
 /// </summary>
 [ApiController]
 [Route("v1/functions")]

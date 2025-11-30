@@ -74,7 +74,7 @@ export const generateServiceInfo = (systemInfo: SystemInfoDto | null): ServiceIn
   
   if (systemInfo) {
     services.push({
-      name: 'Conduit Core API',
+      name: 'Conduit Gateway API',
       version: systemInfo.version ?? 'Unknown',
       status: 'running',
       uptime: formatUptime(systemInfo.uptime ?? 0)

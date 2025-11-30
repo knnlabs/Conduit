@@ -193,7 +193,7 @@ Complete scaling architecture supporting 10,000+ concurrent sessions.
 - Performance benchmarks and monitoring
 
 ### [Cache Usage](infrastructure/cache-usage.md)
-Core API cache implementation analysis and patterns.
+Gateway API cache implementation analysis and patterns.
 
 **Topics Covered**:
 - IMemoryCache vs IDistributedCache usage

@@ -101,12 +101,12 @@ export class FetchSystemHealthService implements ISystemHealthService {
   /**
    * Get health status of individual services.
    * Retrieves detailed health information for each service component including
-   * Core API, Admin API, database, and cache services with latency and status details.
+   * Gateway API, Admin API, database, and cache services with latency and status details.
    * Uses dedicated services endpoint with fallback to health checks.
    * 
    * @param config - Optional request configuration for timeout, signal, headers
    * @returns Promise<ServiceStatusDto> - Individual service health status including:
-   *   - coreApi: Core API service health, latency, and endpoint
+   *   - coreApi: Gateway API service health, latency, and endpoint
    *   - adminApi: Admin API service health, latency, and endpoint
    *   - database: Database health, latency, and connection count
    *   - cache: Cache service health, latency, and hit rate

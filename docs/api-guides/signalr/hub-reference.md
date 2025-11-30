@@ -15,7 +15,7 @@ This document provides a comprehensive overview of all SignalR hubs in Conduit, 
 ┌─────────────────▼───────────────────────────────────────────┐
 │                    SignalR Hubs                             │
 ├─────────────────────────────────────────────────────────────┤
-│  Core API Hubs (Virtual Key Auth)    │  Admin Hubs (Master) │
+│  Gateway API Hubs (Virtual Key Auth)    │  Admin Hubs (Master) │
 ├──────────────────────────────────────┼──────────────────────┤
 │ • VideoGenerationHub                 │ • AdminNotificationHub│
 │ • ImageGenerationHub                 │                      │
@@ -253,7 +253,7 @@ This document provides a comprehensive overview of all SignalR hubs in Conduit, 
 
 ## Authentication Patterns
 
-### Virtual Key Authentication (Core API)
+### Virtual Key Authentication (Gateway API)
 
 ```csharp
 [Authorize]

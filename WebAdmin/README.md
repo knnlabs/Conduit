@@ -60,7 +60,7 @@ The WebAdmin uses SDK React Query hooks directly for all API operations:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_CONDUIT_ADMIN_API_URL` | Admin API endpoint | `http://localhost:5002` |
-| `NEXT_PUBLIC_CONDUIT_CORE_API_URL` | Core API endpoint | `http://localhost:5000` |
+| `NEXT_PUBLIC_CONDUIT_CORE_API_URL` | Gateway API endpoint | `http://localhost:5000` |
 | `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | Backend service authentication key | `alpha` |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key for authentication | Required |
 | `CLERK_SECRET_KEY` | Clerk secret key for authentication | Required |
@@ -112,7 +112,7 @@ The WebAdmin now uses SDK React Query hooks directly in components:
 
 ```typescript
 // Using Core SDK hooks
-import { useChatCompletion, useImageGeneration } from '@knn_labs/conduit-core-client/react-query';
+import { useChatCompletion, useImageGeneration } from '@knn_labs/conduit-gateway-client/react-query';
 
 function ChatComponent() {
   const { mutate: sendMessage } = useChatCompletion();
@@ -137,7 +137,7 @@ SDK providers are configured in the app layout:
 
 ```typescript
 // lib/providers/ConduitProviders.tsx
-import { ConduitProvider } from '@knn_labs/conduit-core-client/react-query';
+import { ConduitProvider } from '@knn_labs/conduit-gateway-client/react-query';
 import { ConduitAdminProvider } from '@knn_labs/conduit-admin-client/react-query';
 
 export function ConduitProviders({ children }) {
@@ -247,11 +247,11 @@ docker-compose up -d
 
 The following environment variables are configured in docker-compose.yml:
 
-- `NEXT_PUBLIC_CONDUIT_CORE_API_URL`: Public URL for Core API (browser access)
+- `NEXT_PUBLIC_CONDUIT_CORE_API_URL`: Public URL for Gateway API (browser access)
 - `NEXT_PUBLIC_CONDUIT_ADMIN_API_URL`: Public URL for Admin API (browser access)
-- `CONDUIT_API_BASE_URL`: Internal URL for Core API (server-side)
+- `CONDUIT_API_BASE_URL`: Internal URL for Gateway API (server-side)
 - `CONDUIT_ADMIN_API_BASE_URL`: Internal URL for Admin API (server-side)
-- `CONDUIT_API_EXTERNAL_URL`: External URL for SignalR Core API connections
+- `CONDUIT_API_EXTERNAL_URL`: External URL for SignalR Gateway API connections
 - `CONDUIT_ADMIN_API_EXTERNAL_URL`: External URL for SignalR Admin API connections
 - `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`: Master key for Admin API authentication
 - `SESSION_SECRET`: Secret key for session encryption

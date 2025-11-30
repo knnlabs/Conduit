@@ -18,7 +18,7 @@ import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
-import { ModelCapability } from '@knn_labs/conduit-core-client';
+import { ModelCapability } from '@knn_labs/conduit-gateway-client';
 import ImageSettings from './ImageSettings';
 import ImagePromptInput from './ImagePromptInput';
 import ImageGallery from './ImageGallery';

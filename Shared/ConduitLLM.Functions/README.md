@@ -31,7 +31,7 @@ The Functions module provides a unified framework for:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Conduit APIs                             │
-│                    (Core API / Admin API)                        │
+│                    (Gateway API / Admin API)                        │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ├──► REST Endpoints (enumerate/execute)
@@ -456,9 +456,9 @@ foreach (var execution in expiredLeases)
 ## Integration Points
 
 ### 1. REST APIs
-- **Core API**: `/api/functions/execute` - Execute functions
-- **Core API**: `/api/functions/available` - List available functions
-- **Core API**: `/api/functions/status/{id}` - Check execution status
+- **Gateway API**: `/api/functions/execute` - Execute functions
+- **Gateway API**: `/api/functions/available` - List available functions
+- **Gateway API**: `/api/functions/status/{id}` - Check execution status
 - **Admin API**: `/api/admin/functions` - Manage configurations
 - **Admin API**: `/api/admin/functions/{id}/credentials` - Manage credentials
 

@@ -1,5 +1,5 @@
 /**
- * Health check types for the Core API
+ * Health check types for the Gateway API
  */
 
 export interface HealthCheckResponse {

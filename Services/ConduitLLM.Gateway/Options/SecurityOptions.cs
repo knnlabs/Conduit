@@ -1,7 +1,7 @@
 namespace ConduitLLM.Gateway.Options
 {
     /// <summary>
-    /// Security configuration options for the Core API
+    /// Security configuration options for the Gateway API
     /// </summary>
     public class SecurityOptions
     {

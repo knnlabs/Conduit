@@ -73,7 +73,7 @@
 3. Check provider configuration:
    ```typescript
    // Ensure baseUrl is set correctly
-   console.log('Core API URL:', process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL);
+   console.log('Gateway API URL:', process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL);
    console.log('Admin API URL:', process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL);
    ```
 
@@ -85,7 +85,7 @@
 **Solutions:**
 1. Update to latest SDK versions:
    ```bash
-   npm update @knn_labs/conduit-core-client @knn_labs/conduit-admin-client
+   npm update @knn_labs/conduit-gateway-client @knn_labs/conduit-admin-client
    ```
 
 2. Check for breaking changes in SDK changelog

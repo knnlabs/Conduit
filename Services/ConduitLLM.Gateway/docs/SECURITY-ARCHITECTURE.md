@@ -1,14 +1,14 @@
-# Core API Security Architecture
+# Gateway API Security Architecture
 
 ## Overview
 
-The Core API has been enhanced with a comprehensive security architecture that provides multiple layers of protection including Virtual Key authentication, IP-based brute force protection, rate limiting, and security headers.
+The Gateway API has been enhanced with a comprehensive security architecture that provides multiple layers of protection including Virtual Key authentication, IP-based brute force protection, rate limiting, and security headers.
 
 ## Key Security Features
 
 ### 1. Virtual Key Authentication (URGENT FIX)
 
-Previously, the Core API endpoints were **completely unprotected**. The new architecture enforces Virtual Key authentication on all LLM endpoints.
+Previously, the Gateway API endpoints were **completely unprotected**. The new architecture enforces Virtual Key authentication on all LLM endpoints.
 
 **Middleware**: `VirtualKeyAuthenticationMiddleware`
 - Validates Virtual Keys from multiple headers (Authorization, api-key, X-API-Key, X-Virtual-Key)
@@ -105,7 +105,7 @@ CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING=true
 
 ## Shared Security Tracking
 
-The Core API shares security data with Admin API and WebAdmin through Redis:
+The Gateway API shares security data with Admin API and WebAdmin through Redis:
 
 ### Redis Key Structure
 ```

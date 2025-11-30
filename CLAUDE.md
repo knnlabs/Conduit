@@ -68,7 +68,7 @@ Use these instead:
 ## Available Services
 After startup, these services are available:
 - 🌐 **WebAdmin**: http://localhost:3000 (Next.js with hot reloading)
-- 📚 **Core API Swagger**: http://localhost:5000/swagger
+- 📚 **Gateway API Swagger**: http://localhost:5000/swagger
 - 🔧 **Admin API Swagger**: http://localhost:5002/swagger
 - 🐰 **RabbitMQ Management**: http://localhost:15672 (conduit/conduitpass)
 
@@ -209,7 +209,7 @@ dotnet test
 dotnet test --filter "FullyQualifiedName=ConduitLLM.Tests.TestClassName.TestMethodName"
 
 # Individual projects
-dotnet build ConduitLLM.Gateway    # Core API
+dotnet build ConduitLLM.Gateway    # Gateway API
 dotnet build ConduitLLM.Admin   # Admin API
 
 # SDKs
@@ -376,7 +376,7 @@ public enum ProviderType
 
 ### Backend Authentication Key
 **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**:
-- Used by WebAdmin backend to authenticate with Core API and Admin API
+- Used by WebAdmin backend to authenticate with Gateway API and Admin API
 - Server-to-server communication only
 - NOT for end-users or client applications
 - Configured on WebAdmin service
@@ -385,12 +385,12 @@ public enum ProviderType
 
 **The WebAdmin has only 3 API routes** - relies on client-side SDK usage with ephemeral keys:
 - `/api/health` - Health check endpoint
-- `/api/auth/ephemeral-key` - Generate virtual keys for Core API access
+- `/api/auth/ephemeral-key` - Generate virtual keys for Gateway API access
 - `/api/auth/ephemeral-master-key` - Generate master keys for Admin API access
 
 ### When Writing New API Routes
 - ✅ Use `getServerAdminClient()` for Admin API access
-- ✅ Use `await getServerCoreClient()` for Core API access (async!)
+- ✅ Use `await getServerCoreClient()` for Gateway API access (async!)
 - ✅ Wrap all SDK calls in `try/catch` with `handleSDKError(error)`
 - ✅ Return `NextResponse.json(data)` for responses
 - ✅ Validate request input before passing to SDK
@@ -481,7 +481,7 @@ public enum ProviderType
 
 ## API Integration Guides
 - **[API Guides Index](docs/api-guides/README.md)** - API integration documentation
-- **[Core API Getting Started](docs/api-guides/core/getting-started.md)** - Core API usage
+- **[Gateway API Getting Started](docs/api-guides/core/getting-started.md)** - Gateway API usage
 - **[Admin API Getting Started](docs/api-guides/admin/getting-started.md)** - Admin API usage
 - **[SignalR Getting Started](docs/api-guides/signalr/getting-started.md)** - Real-time integration
 - **[SDK Best Practices](docs/api-guides/sdk/best-practices.md)** - SDK usage patterns

@@ -6,7 +6,7 @@ import ImageSettings from '../ImageSettings';
 import { useImageStore } from '../../hooks/useImageStore';
 import { useModelMetadata } from '../../hooks/useModelMetadata';
 import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
-import { ProviderType } from '@knn_labs/conduit-core-client';
+import { ProviderType } from '@knn_labs/conduit-gateway-client';
 
 // Mock Mantine notifications first
 jest.mock('@mantine/notifications', () => ({

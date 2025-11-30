@@ -12,7 +12,7 @@ The Admin API's `MediaLifecycleService` is only registered when storage provider
 ## Solution
 
 ### 1. Configure Storage Provider in Admin API
-The Admin API needs the **SAME** storage configuration as the Core API.
+The Admin API needs the **SAME** storage configuration as the Gateway API.
 
 **See `.env.example` for complete configuration examples** including:
 - Simplified Docker format (recommended)

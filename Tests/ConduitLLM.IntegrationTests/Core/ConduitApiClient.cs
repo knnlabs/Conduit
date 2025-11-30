@@ -53,7 +53,7 @@ public class ConduitApiClient : IDisposable
         return await ExecuteAsync<T>(HttpMethod.Delete, _config.Environment.AdminApiUrl, endpoint, null, true);
     }
     
-    // Core API Methods
+    // Gateway API Methods
     
     public async Task<ApiResponse<T>> CoreGetAsync<T>(string endpoint, string? virtualKey = null)
     {

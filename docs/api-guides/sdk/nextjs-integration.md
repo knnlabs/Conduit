@@ -60,7 +60,7 @@ src/
 │   ├── api/                      # API routes
 │   │   ├── auth/                 # NextAuth configuration
 │   │   ├── admin/                # Admin API endpoints
-│   │   └── core/                 # Core API endpoints
+│   │   └── core/                 # Gateway API endpoints
 │   ├── chat/                     # Chat interface pages
 │   ├── images/                   # Image generation pages
 │   └── admin/                    # Admin dashboard pages
@@ -695,4 +695,4 @@ CMD ["npm", "start"]
 - **[SDK Troubleshooting](./troubleshooting.md)** - Common issues and solutions
 - **[Connection Management](./connection-management.md)** - SignalR connection management
 - **[Admin SDK TypeScript Guide](../admin-sdk-typescript.md)** - Complete Admin SDK guide
-- **[Core API Guide](../core-api-guide.md)** - Core API reference and examples
+- **[Gateway API Guide](../core-api-guide.md)** - Gateway API reference and examples

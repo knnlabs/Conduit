@@ -1,6 +1,6 @@
-# Core API Overview
+# Gateway API Overview
 
-The Conduit Core API provides an OpenAI-compatible interface for interacting with multiple LLM providers through a unified gateway. The API is designed to be drop-in compatible with existing OpenAI client libraries and code.
+The Conduit Gateway API provides an OpenAI-compatible interface for interacting with multiple LLM providers through a unified gateway. The API is designed to be drop-in compatible with existing OpenAI client libraries and code.
 
 ## Quick Navigation
 
@@ -23,7 +23,7 @@ The Conduit Core API provides an OpenAI-compatible interface for interacting wit
 
 ## OpenAI Compatibility
 
-The Core API is fully OpenAI-compatible, which means:
+The Gateway API is fully OpenAI-compatible, which means:
 
 - ✅ Use existing OpenAI client libraries (Python, Node.js, C#, Go)
 - ✅ Drop-in replacement in your existing code

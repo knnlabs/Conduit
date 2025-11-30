@@ -57,7 +57,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             {
                 _logger.LogWarning(
                     "Virtual key or group repository not available - cannot process spend update for key {KeyId}. " +
-                    "This is expected in Core API context where repositories are not registered.",
+                    "This is expected in Gateway API context where repositories are not registered.",
                     request.KeyId);
                 
                 // Still publish the event so other services can react

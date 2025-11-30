@@ -1,6 +1,6 @@
-# Conduit Core API Client for Node.js
+# Conduit Gateway API Client for Node.js
 
-Official Node.js client library for the Conduit Core API - an OpenAI-compatible multi-provider LLM gateway.
+Official Node.js client library for the Conduit Gateway API - an OpenAI-compatible multi-provider LLM gateway.
 
 ## Features
 

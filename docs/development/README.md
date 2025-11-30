@@ -98,7 +98,7 @@ When adding features to Admin/Core SDKs:
 1. **Provider ID is canonical** - Not ProviderType or ProviderName (see [Provider Multi-Instance](../architecture/provider-multi-instance.md))
 2. **Use DatabaseAwareLLMClientFactory** for production code (see [LLM Client Factory Guide](./llm-client-factory-guide.md))
 3. **Admin SDK server-side only** - Never expose master keys client-side
-4. **Virtual keys for Core API** - Use virtual keys, not master keys
+4. **Virtual keys for Gateway API** - Use virtual keys, not master keys
 
 ## Testing
 
@@ -144,7 +144,7 @@ dotnet build --configuration Release  # Production build
 
 ### Project-Specific Builds
 ```bash
-dotnet build ConduitLLM.Gateway           # Core API
+dotnet build ConduitLLM.Gateway           # Gateway API
 dotnet build ConduitLLM.Admin          # Admin API
 dotnet build WebAdmin          # WebAdmin backend
 ```
@@ -228,7 +228,7 @@ dotnet ef database update PreviousMigration --project ConduitLLM.Infrastructure
 - **[XML Documentation Standards](../claude/xml-documentation-standards.md)** - Documentation requirements
 
 ### API Documentation
-- **[Core API Guide](../api-guides/core-api-guide.md)** - Core API reference
+- **[Gateway API Guide](../api-guides/core-api-guide.md)** - Gateway API reference
 - **[Admin API Guide](../api-guides/admin-api-guide.md)** - Admin API overview
 - **[API Reference](../api-reference/)** - Complete endpoint specifications
 

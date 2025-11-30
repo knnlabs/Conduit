@@ -4,7 +4,7 @@
  */
 
 /**
- * SSE event types from Core API
+ * SSE event types from Gateway API
  * Combines OpenAI-compatible standard events with Conduit-specific extensions
  */
 export enum SSEEventType {

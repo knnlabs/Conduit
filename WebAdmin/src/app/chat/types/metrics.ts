@@ -1,5 +1,5 @@
 /**
- * Performance metrics received from the Core API
+ * Performance metrics received from the Gateway API
  */
 export interface StreamingPerformanceMetrics {
   ['tokens_per_second']?: number;
@@ -22,7 +22,7 @@ export interface UsageData {
 
 
 /**
- * SSE event types from Core API
+ * SSE event types from Gateway API
  */
 export enum SSEEventType {
   Content = 'content',

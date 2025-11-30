@@ -16,7 +16,7 @@ This guide shows you how to integrate and use the Functions API for executing ex
 
 ```bash
 npm install @knn_labs/conduit-admin-client
-npm install @knn_labs/conduit-core-client
+npm install @knn_labs/conduit-gateway-client
 ```
 
 ### 2. Configure Function Provider (Admin)
@@ -49,10 +49,10 @@ const credential = await adminClient.functionCredentials.create({
 });
 ```
 
-### 3. Execute Function (Core API)
+### 3. Execute Function (Gateway API)
 
 ```typescript
-import { FetchConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { FetchConduitCoreClient } from '@knn_labs/conduit-gateway-client';
 
 const coreClient = new FetchConduitCoreClient({
   baseUrl: 'https://core.conduit.ai',

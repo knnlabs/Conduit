@@ -21,7 +21,7 @@ export {
   PresetCategory,
   PRESET_CATEGORIES,
   getPresetsByCategory,
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 
 export const CONVERSATION_STARTERS: ConversationStarter[] = [
   {

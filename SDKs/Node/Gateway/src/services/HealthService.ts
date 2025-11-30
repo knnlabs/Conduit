@@ -26,7 +26,7 @@ export class HealthService extends BaseService {
           name: 'core-api',
           status: basicHealth.status,
           duration: 0,
-          description: 'Core API health check'
+          description: 'Gateway API health check'
         }],
         lastChecked: new Date().toISOString(),
         totalDuration: 0

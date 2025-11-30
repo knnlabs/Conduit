@@ -52,7 +52,7 @@ export function ProviderModelSelect({
 
     setIsLoading(true);
     try {
-      // Use ephemeral key to call Core API directly
+      // Use ephemeral key to call Gateway API directly
       const { ephemeralKeyClient } = await import('@/lib/client/ephemeralKeyClient');
       const response = await ephemeralKeyClient.makeDirectRequest(
         `/api/provider-models/${providerId}`,

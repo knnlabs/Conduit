@@ -65,7 +65,7 @@ The service uses existing provider health tables:
 ### Event Flow
 1. ProviderHealthMonitoringService performs health check
 2. If status changes, publishes ProviderHealthChanged event
-3. Core API's ProviderHealthChangedNotificationConsumer receives event
+3. Gateway API's ProviderHealthChangedNotificationConsumer receives event
 4. SignalR hub pushes update to connected WebAdmin clients
 5. Navigation state updates instantly without polling
 

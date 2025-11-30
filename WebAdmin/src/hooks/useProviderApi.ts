@@ -13,7 +13,7 @@ import type {
 } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getErrorMessage } from '@/lib/utils/error-utils';
-import { ProviderType } from '@knn_labs/conduit-core-client';
+import { ProviderType } from '@knn_labs/conduit-gateway-client';
 
 // Local type definition for provider health status (not available in SDK)
 interface ProviderHealthStatusDto {

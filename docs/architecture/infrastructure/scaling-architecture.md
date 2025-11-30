@@ -86,7 +86,7 @@ REDIS_URL_SIGNALR=redis://redis-signalr:6379/2
 - **Message Throughput**: 1,000+ RabbitMQ messages per minute
 - **Webhook Delivery**: 100+ webhooks per second burst capability
 - **Response Time**: Sub-second for chat completions under load
-- **Memory Usage**: <2GB per Core API instance at 10K sessions
+- **Memory Usage**: <2GB per Gateway API instance at 10K sessions
 
 ### Monitoring & Alerting
 - **Queue Depth**: Alerts when RabbitMQ queues exceed 1,000 messages

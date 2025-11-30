@@ -87,6 +87,6 @@ public partial class Program
 
         // Add controllers to the app
         app.MapControllers();
-        Console.WriteLine("[Conduit API] Controllers registered");
+        Console.WriteLine("[Gateway API] Controllers registered");
     }
 }

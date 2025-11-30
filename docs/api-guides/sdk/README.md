@@ -7,7 +7,7 @@ Complete guides for using the Conduit Node.js SDKs in your applications.
 Conduit provides TypeScript SDKs for both administrative and core API operations:
 
 - **Admin SDK** (`@knn_labs/conduit-admin-client`) - Administrative operations, virtual key management, provider configuration
-- **Core SDK** (`@knn_labs/conduit-core-client`) - LLM operations, chat completions, image generation, audio processing
+- **Core SDK** (`@knn_labs/conduit-gateway-client`) - LLM operations, chat completions, image generation, audio processing
 
 ## 📚 Getting Started
 
@@ -18,7 +18,7 @@ Conduit provides TypeScript SDKs for both administrative and core API operations
 npm install @knn_labs/conduit-admin-client
 
 # Install Core SDK (client or server)
-npm install @knn_labs/conduit-core-client
+npm install @knn_labs/conduit-gateway-client
 
 # Install Common types (shared between SDKs)
 npm install @knn_labs/conduit-common
@@ -38,7 +38,7 @@ const adminClient = new FetchConduitAdminClient({
 const keys = await adminClient.virtualKeys.list();
 
 // Core SDK - Client or server
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
 
 const coreClient = new ConduitCoreClient({
   baseURL: 'http://localhost:5000',
@@ -78,8 +78,8 @@ For detailed Admin SDK documentation, see:
 
 For detailed Core SDK documentation, see:
 
-- **[Core API Guide](../core-api-guide.md)** - Core API overview and SDK introduction
-- **[Core API Detailed](../core-api-detailed.md)** - Complete Core API documentation with examples
+- **[Gateway API Guide](../core-api-guide.md)** - Gateway API overview and SDK introduction
+- **[Gateway API Detailed](../core-api-detailed.md)** - Complete Gateway API documentation with examples
 - **[Function Calling](../function-calling.md)** - How to use function calling with LLMs
 - **[Multimodal Vision](../multimodal-vision.md)** - Vision and multimodal capabilities
 
@@ -98,7 +98,7 @@ See **[Next.js Integration Guide](./nextjs-integration.md)** for:
 ```typescript
 // Server-side Node.js application
 import { FetchConduitAdminClient } from '@knn_labs/conduit-admin-client';
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
 
 // Initialize clients
 const adminClient = new FetchConduitAdminClient({
@@ -124,7 +124,7 @@ app.post('/api/chat', async (req, res) => {
 ### Express.js
 ```typescript
 import express from 'express';
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
 
 const app = express();
 const coreClient = new ConduitCoreClient({

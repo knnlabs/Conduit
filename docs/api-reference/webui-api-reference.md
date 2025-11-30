@@ -8,7 +8,7 @@ The WebAdmin API reference has been organized into focused guides for easier nav
 
 ### 🔧 Core Documentation
 - **[WebAdmin Authentication](./webadmin-authentication.md)** - Authentication methods and session management
-- **[WebAdmin Core API](./webadmin-core-api.md)** - Chat, image, video, and audio endpoints
+- **[WebAdmin Gateway API](./webadmin-core-api.md)** - Chat, image, video, and audio endpoints
 - **[WebAdmin Admin API](./webadmin-admin-api.md)** - Administrative and management endpoints
 - **[WebAdmin Real-Time Features](./webadmin-realtime.md)** - SignalR integration and real-time updates
 
@@ -31,7 +31,7 @@ The WebAdmin API serves as a thin abstraction layer over the Node SDK, providing
 // SDK Client Architecture
 WebAdmin API → Node SDK → Backend Services
     ↓           ↓            ↓
-  Next.js   Admin/Core   Admin/Core APIs
+  Next.js   Admin/Core   Admin/Gateway APIs
 ```
 
 ## Quick Start Guide
@@ -79,7 +79,7 @@ const response = await fetch('/api/admin/virtual-keys', {
 
 ## API Categories
 
-### Core API Endpoints
+### Gateway API Endpoints
 Direct access to AI capabilities via the Core SDK:
 - **Chat Completions** - GPT, Claude, and other text models
 - **Image Generation** - DALL-E, Stable Diffusion, MiniMax

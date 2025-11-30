@@ -4,7 +4,7 @@ namespace ConduitLLM.Functions.DTOs;
 
 /// <summary>
 /// DTO for listing available functions to end users
-/// Simplified view suitable for Core API
+/// Simplified view suitable for Gateway API
 /// </summary>
 public class AvailableFunctionDto
 {

@@ -1,7 +1,7 @@
-# Core API Cache Usage Analysis
+# Gateway API Cache Usage Analysis
 
 ## Overview
-The Core API (ConduitLLM.Gateway) uses caching extensively for performance optimization and system efficiency. Here's a comprehensive analysis of actual cache implementations found in the codebase.
+The Gateway API (ConduitLLM.Gateway) uses caching extensively for performance optimization and system efficiency. Here's a comprehensive analysis of actual cache implementations found in the codebase.
 
 ## Cache Types Used
 

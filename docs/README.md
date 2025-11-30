@@ -76,7 +76,7 @@ Complete API references and SDK guides:
 
 - **[API Guides](./api-guides/)** - Feature guides and tutorials for using Conduit APIs
   - **[SDK Documentation](./api-guides/sdk/)** - Complete SDK integration guides (Next.js, best practices, troubleshooting)
-  - **[Core API Detailed](./api-guides/core-api-detailed.md)** - Chat, completions, embeddings
+  - **[Gateway API Detailed](./api-guides/core-api-detailed.md)** - Chat, completions, embeddings
   - **[Admin SDK TypeScript](./api-guides/admin-sdk-typescript.md)** - Complete TypeScript SDK guide
   - **[Function Calling](./api-guides/function-calling.md)** - Function calling with LLMs
   - **[Multimodal Vision](./api-guides/multimodal-vision.md)** - Vision capabilities

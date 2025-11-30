@@ -12,7 +12,7 @@ import { ConduitError } from '../utils/errors';
 import { API_ENDPOINTS } from '../constants';
 
 /**
- * Service for creating text embeddings using the Conduit Core API
+ * Service for creating text embeddings using the Conduit Gateway API
  */
 export class EmbeddingsService {
   private readonly clientAdapter: IFetchBasedClientAdapter;

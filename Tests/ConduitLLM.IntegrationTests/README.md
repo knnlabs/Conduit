@@ -19,7 +19,7 @@ These integration tests verify the complete functionality of Conduit by:
    ```
 
 2. **Services Health**: The tests will automatically wait for all services to be healthy:
-   - Core API (http://localhost:5000)
+   - Gateway API (http://localhost:5000)
    - Admin API (http://localhost:5002)
    - PostgreSQL
    - Redis

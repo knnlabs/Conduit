@@ -65,7 +65,7 @@ curl http://localhost:8080/api/modelprovidermapping/discover/capability/minimax-
   -H "X-API-Key: YOUR_MASTER_KEY"
 ```
 
-> **Note**: Model discovery is an administrative task performed through the Admin API using master key authentication. Core API focuses on serving requests with pre-configured model mappings.
+> **Note**: Model discovery is an administrative task performed through the Admin API using master key authentication. Gateway API focuses on serving requests with pre-configured model mappings.
 
 ## Video Generation Models (Future)
 

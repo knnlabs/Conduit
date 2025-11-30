@@ -383,7 +383,7 @@ NODE_ENV=production
 
 - **[TypeScript SDK Guide](./typescript-sdk.md)** - Complete SDK documentation with examples
 - **[API Reference](./api-reference.md)** - Detailed endpoint documentation
-- **[Core API](../core/)** - Learn about the user-facing LLM API
+- **[Gateway API](../core/)** - Learn about the user-facing LLM API
 - **[Architecture Docs](../../architecture/)** - Understand system design
 
 ## Support

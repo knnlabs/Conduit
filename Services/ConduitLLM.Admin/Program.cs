@@ -189,8 +189,8 @@ public partial class Program
                 
                 Console.WriteLine($"[ConduitLLM.Admin] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
                 Console.WriteLine("[ConduitLLM.Admin] Event publishing ENABLED - Admin services will publish:");
-                Console.WriteLine("  - VirtualKeyUpdated events (triggers cache invalidation in Core API)");
-                Console.WriteLine("  - VirtualKeyDeleted events (triggers cache cleanup in Core API)");
+                Console.WriteLine("  - VirtualKeyUpdated events (triggers cache invalidation in Gateway API)");
+                Console.WriteLine("  - VirtualKeyDeleted events (triggers cache cleanup in Gateway API)");
                 Console.WriteLine("  - ProviderUpdated events (triggers capability refresh)");
                 Console.WriteLine("  - ProviderDeleted events (triggers cache cleanup)");
                 Console.WriteLine("  - GlobalSettingChanged events (triggers cache invalidation in all instances)");
@@ -217,8 +217,8 @@ public partial class Program
                 Console.WriteLine("[ConduitLLM.Admin] Event bus configured with in-memory transport (single-instance mode)");
                 Console.WriteLine("[ConduitLLM.Admin] Event publishing and consuming ENABLED - Events will be processed locally");
                 Console.WriteLine("[ConduitLLM.Admin] WARNING: For production multi-instance deployments, configure RabbitMQ");
-                Console.WriteLine("  - This ensures Core API instances receive cache invalidation events");
-                Console.WriteLine("  - Without RabbitMQ, only the local Core API instance will be notified");
+                Console.WriteLine("  - This ensures Gateway API instances receive cache invalidation events");
+                Console.WriteLine("  - Without RabbitMQ, only the local Gateway API instance will be notified");
                 Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
                 Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
             }

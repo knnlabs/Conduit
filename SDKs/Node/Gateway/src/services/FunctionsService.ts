@@ -6,7 +6,7 @@ import type {
 } from '../models/functions';
 
 /**
- * Service for executing functions (e.g., Exa search) through the Core API
+ * Service for executing functions (e.g., Exa search) through the Gateway API
  */
 export class FunctionsService extends BaseService {
   /**

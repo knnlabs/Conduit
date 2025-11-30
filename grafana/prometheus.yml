@@ -5,7 +5,7 @@ global:
     monitor: 'conduit-monitor'
 
 scrape_configs:
-  # Scrape Core API metrics
+  # Scrape Gateway API metrics
   - job_name: 'conduit-api'
     static_configs:
       - targets: ['conduit-api:5000']

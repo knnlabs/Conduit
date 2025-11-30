@@ -9,7 +9,7 @@ import {
   ModelFamily,
   type TokenStats,
   type EstimatorMessage 
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 import type { ChatMessage } from '../types';
 
 interface TokenCounterProps {

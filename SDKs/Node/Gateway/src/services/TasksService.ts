@@ -6,7 +6,7 @@ import { ConduitError } from '../utils/errors';
 import { API_ENDPOINTS, TASK_STATUS } from '../constants';
 
 /**
- * Service for general task management operations using the Conduit Core API
+ * Service for general task management operations using the Conduit Gateway API
  */
 export class TasksService {
   private readonly clientAdapter: IFetchBasedClientAdapter;

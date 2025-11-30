@@ -1,6 +1,6 @@
 # Missing SDK Functionality
 
-This document lists the limited SDK functionality that is genuinely missing from the Admin and Core APIs.
+This document lists the limited SDK functionality that is genuinely missing from the Admin and Gateway APIs.
 
 ## Actually Missing Endpoints
 

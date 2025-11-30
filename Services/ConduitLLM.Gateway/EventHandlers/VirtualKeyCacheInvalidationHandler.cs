@@ -5,7 +5,7 @@ using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Gateway.EventHandlers
 {
     /// <summary>
-    /// Handles Virtual Key events for cache invalidation in the Core API
+    /// Handles Virtual Key events for cache invalidation in the Gateway API
     /// Critical for maintaining cache consistency across all services
     /// </summary>
     public class VirtualKeyCacheInvalidationHandler : 

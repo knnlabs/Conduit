@@ -26,7 +26,7 @@ export const API_ENDPOINTS = {
     IMAGES: {
       GENERATIONS: '/v1/images/generations',
       ASYNC_GENERATIONS: '/v1/images/generations/async',
-      // Note: The following endpoints are not yet implemented in Core API
+      // Note: The following endpoints are not yet implemented in Gateway API
       EDITS: '/v1/images/edits', // Not implemented
       VARIATIONS: '/v1/images/variations', // Not implemented
       TASK_STATUS: (taskId: string) => `/v1/images/generations/${encodeURIComponent(taskId)}/status`,

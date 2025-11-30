@@ -35,7 +35,7 @@ namespace ConduitLLM.Core.Data.Constants
         public const bool POOLING_ENABLED = true;
         
         // Service-specific pool settings for scaling
-        // Core API - High traffic
+        // Gateway API - High traffic
         public const int CORE_API_MIN_POOL_SIZE = 10;
         public const int CORE_API_MAX_POOL_SIZE = 150;
         

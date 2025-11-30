@@ -27,7 +27,7 @@
   - `defaultInferenceSteps?: number` - Default number of steps for estimation
 - Updated `ModelCostDto`, `CreateModelCostDto`, and `UpdateModelCostDto` with same fields
 
-### @knn_labs/conduit-core-client v0.3.0
+### @knn_labs/conduit-gateway-client v0.3.0
 - Updated to use enhanced `Usage` interface from common package
 - Full support for advanced pricing models including prompt caching, search units, and inference steps
 

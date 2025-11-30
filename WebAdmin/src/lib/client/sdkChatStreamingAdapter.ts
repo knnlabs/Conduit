@@ -10,7 +10,7 @@ import {
   type StreamingCallbacks,
   type StreamMessageOptions,
   type StreamingError
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 
 
 /**

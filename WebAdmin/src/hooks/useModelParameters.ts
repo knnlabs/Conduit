@@ -9,7 +9,7 @@ interface ModelParametersResponse {
 }
 
 /**
- * Hook to fetch model parameters from the Core API discovery endpoint
+ * Hook to fetch model parameters from the Gateway API discovery endpoint
  * @param modelAlias - The model alias or ID to fetch parameters for
  * @returns Query result with model parameters
  */

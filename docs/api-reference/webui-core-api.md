@@ -1,10 +1,10 @@
-# WebAdmin Core API Endpoints
+# WebAdmin Gateway API Endpoints
 
-Documentation for Core API endpoints provided by the Conduit WebAdmin that offer direct access to AI capabilities via the Core SDK.
+Documentation for Gateway API endpoints provided by the Conduit WebAdmin that offer direct access to AI capabilities via the Core SDK.
 
 ## Overview
 
-Core API endpoints provide direct access to AI capabilities through the Conduit WebAdmin, serving as abstractions for the Node SDK functions. These endpoints support multiple authentication methods and provide enhanced features like real-time metrics and streaming.
+Gateway API endpoints provide direct access to AI capabilities through the Conduit WebAdmin, serving as abstractions for the Node SDK functions. These endpoints support multiple authentication methods and provide enhanced features like real-time metrics and streaming.
 
 ## Related Documentation
 
@@ -15,7 +15,7 @@ Core API endpoints provide direct access to AI capabilities through the Conduit 
 
 ## Authentication
 
-Core API endpoints support multiple virtual key authentication methods:
+Gateway API endpoints support multiple virtual key authentication methods:
 
 ```typescript
 // 1. Request body
@@ -429,7 +429,7 @@ console.log('Transcription:', result.data.text);
 
 ### `GET /api/core/health`
 
-Check Core API health status.
+Check Gateway API health status.
 
 **Response:**
 ```typescript
@@ -473,7 +473,7 @@ X-Checked-At: 2024-01-01T12:00:00Z
 
 ## Error Handling
 
-All Core API endpoints use standardized error handling via the `handleSDKError` utility:
+All Gateway API endpoints use standardized error handling via the `handleSDKError` utility:
 
 ```typescript
 interface CoreAPIError {

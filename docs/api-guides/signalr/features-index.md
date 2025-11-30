@@ -83,7 +83,7 @@ Complete, production-ready client implementations with error handling and reconn
 
 ### 📖 API References
 
-- **[Core API Reference](./Core-API-Detailed-Reference.md)** - Complete API documentation
+- **[Gateway API Reference](./Core-API-Detailed-Reference.md)** - Complete API documentation
 - **[Async Image Generation](./Async-Image-Generation.md)** - Image generation endpoints
 - **[Video Generation](./VIDEO_ARCHITECTURE.md)** - Video generation details
 

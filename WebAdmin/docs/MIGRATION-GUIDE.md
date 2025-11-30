@@ -82,7 +82,7 @@ export function useChatCompletion() {
 #### After
 ```typescript
 // components/ChatComponent.tsx
-import { useChatCompletion } from '@knn_labs/conduit-core-client/react-query';
+import { useChatCompletion } from '@knn_labs/conduit-gateway-client/react-query';
 
 function ChatComponent() {
   const { mutate: sendMessage } = useChatCompletion();
@@ -138,13 +138,13 @@ function CreateKeyModal() {
 
 ### 1. Install SDK Packages
 ```bash
-npm install @knn_labs/conduit-core-client @knn_labs/conduit-admin-client
+npm install @knn_labs/conduit-gateway-client @knn_labs/conduit-admin-client
 ```
 
 ### 2. Configure Providers
 ```typescript
 // lib/providers/ConduitProviders.tsx
-import { ConduitProvider } from '@knn_labs/conduit-core-client/react-query';
+import { ConduitProvider } from '@knn_labs/conduit-gateway-client/react-query';
 import { ConduitAdminProvider } from '@knn_labs/conduit-admin-client/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
 

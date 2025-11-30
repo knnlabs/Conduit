@@ -163,7 +163,7 @@ Before marking migration as complete:
 
 ## 📝 Notes
 
-- SDK version used: `@knn_labs/conduit-admin-client@latest`, `@knn_labs/conduit-core-client@latest`
+- SDK version used: `@knn_labs/conduit-admin-client@latest`, `@knn_labs/conduit-gateway-client@latest`
 - Migration completed over 5 phases
 - Total code reduction: ~31% (19 routes removed)
 - No breaking changes to external APIs

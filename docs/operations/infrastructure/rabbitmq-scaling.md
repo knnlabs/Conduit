@@ -8,7 +8,7 @@ This guide provides production-ready configuration and operational procedures fo
 
 - **Async Tasks**: 1,000 tasks/minute (~17/second average)
 - **Webhook Bursts**: 50-100 webhooks/second (3,000-6,000/minute peak)
-- **Service Instances**: 3-5 Core API instances
+- **Service Instances**: 3-5 Gateway API instances
 - **Message Ordering**: Maintained per virtual key through partitioning
 
 ## Production Configuration
@@ -278,7 +278,7 @@ watch -n 1 'curl -s http://localhost:5000/health | jq ".checks[] | select(.name=
 
 ## Resource Requirements
 
-### Per Core API Instance
+### Per Gateway API Instance
 - **Memory**: 512MB-1GB application + prefetch buffer
 - **CPU**: 2-4 cores for optimal concurrency
 - **Network**: 10-20 Mbps sustained

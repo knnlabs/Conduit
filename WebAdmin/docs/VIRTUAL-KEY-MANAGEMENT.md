@@ -2,7 +2,7 @@
 
 ## Overview
 
-The WebAdmin automatically manages a virtual key for Core API operations. This key is created on first login and reused for all subsequent sessions.
+The WebAdmin automatically manages a virtual key for Gateway API operations. This key is created on first login and reused for all subsequent sessions.
 
 ## How It Works
 
@@ -17,7 +17,7 @@ The WebAdmin virtual key is configured with:
 ```typescript
 {
   name: "WebAdmin Admin Access",
-  description: "Automatically managed virtual key for WebAdmin Core API access",
+  description: "Automatically managed virtual key for WebAdmin Gateway API access",
   providers: ["*"], // Access to all providers
   rateLimits: {
     requestsPerMinute: 100,
@@ -68,7 +68,7 @@ export async function ensureWebAdminVirtualKey(adminClient: ConduitAdminClient) 
 ## Security Model
 
 ### Access Control
-- Virtual key only provides access to Core API operations
+- Virtual key only provides access to Gateway API operations
 - Cannot perform admin operations (provider management, etc.)
 - Rate limited to prevent abuse
 - Automatically cleared on logout
@@ -84,7 +84,7 @@ export async function ensureWebAdminVirtualKey(adminClient: ConduitAdminClient) 
 ### Direct SDK Usage
 ```typescript
 // Automatically uses virtual key from auth store
-import { useChatCompletion } from '@knn_labs/conduit-core-client/react-query';
+import { useChatCompletion } from '@knn_labs/conduit-gateway-client/react-query';
 
 function ChatComponent() {
   const { mutate } = useChatCompletion();

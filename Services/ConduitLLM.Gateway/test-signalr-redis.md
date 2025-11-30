@@ -5,7 +5,7 @@ This document provides instructions for testing the SignalR Redis backplane impl
 ## Prerequisites
 
 1. Redis instance running and accessible
-2. Multiple Core API instances running
+2. Multiple Gateway API instances running
 3. WebAdmin or test client with SignalR connection
 
 ## Test Scenarios
@@ -16,7 +16,7 @@ This document provides instructions for testing the SignalR Redis backplane impl
 # Start Redis
 docker run -d --name redis-signalr -p 6379:6379 redis:latest
 
-# Configure and start Core API
+# Configure and start Gateway API
 export ConnectionStrings__RedisSignalR=localhost:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000
 dotnet run --project ConduitLLM.Gateway
 
@@ -74,7 +74,7 @@ redis-cli
 ### SignalR Not Using Redis
 - Check ConnectionStrings__RedisSignalR environment variable
 - Verify Redis connectivity: `redis-cli ping`
-- Check Core API logs for backplane initialization
+- Check Gateway API logs for backplane initialization
 
 ### Messages Not Propagating
 - Verify Redis database 2 is being used: `redis-cli -n 2`

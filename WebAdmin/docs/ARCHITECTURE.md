@@ -23,7 +23,7 @@ graph LR
     end
     
     subgraph "External"
-        D[Core API<br/>Admin API]
+        D[Gateway API<br/>Admin API]
     end
 ```
 
@@ -104,7 +104,7 @@ graph LR
     C --> E[SDK Query]
     D --> F[SDK Mutation]
     
-    E --> G[Conduit API]
+    E --> G[Gateway API]
     F --> G
     
     G --> H[Response]
@@ -160,7 +160,7 @@ graph TB
 ```mermaid
 graph TB
     A[Docker Compose] --> B[WebAdmin Container<br/>Port 3000]
-    A --> C[Core API Container<br/>Port 5000]
+    A --> C[Gateway API Container<br/>Port 5000]
     A --> D[Admin API Container<br/>Port 5002]
     A --> E[Redis<br/>Session Storage]
     

@@ -3,12 +3,12 @@ using ConduitLLM.Gateway.Options;
 namespace ConduitLLM.Gateway.Extensions
 {
     /// <summary>
-    /// Extension methods for configuring Core API security options
+    /// Extension methods for configuring Gateway API security options
     /// </summary>
     public static class SecurityOptionsExtensions
     {
         /// <summary>
-        /// Configures Core API security options from configuration
+        /// Configures Gateway API security options from configuration
         /// </summary>
         public static IServiceCollection ConfigureCoreApiSecurityOptions(
             this IServiceCollection services, 

@@ -135,7 +135,7 @@ namespace ConduitLLM.Admin.Services
             // No longer need to initialize spend history - budget is tracked at group level
 
             // Publish VirtualKeyCreated event for cache synchronization
-            // This is critical for the Core API to recognize the new key
+            // This is critical for the Gateway API to recognize the new key
             await PublishEventAsync(
                 new VirtualKeyCreated
                 {

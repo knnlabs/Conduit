@@ -86,7 +86,7 @@ Real-time notifications for asynchronous operations like video generation, image
 
 ## Related Documentation
 
-- **[Core API](../core/)** - Main API documentation
+- **[Gateway API](../core/)** - Main API documentation
 - **[Admin API](../admin/)** - Configuration and management
 - **[SDK Documentation](../sdk/)** - SDK integration guides
 - **[SignalR](../signalr/)** - Real-time updates and connections

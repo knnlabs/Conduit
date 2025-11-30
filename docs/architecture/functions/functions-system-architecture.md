@@ -319,7 +319,7 @@ Orchestrates function execution with billing integration.
 - `GET /api/FunctionExecutions/ready-for-retry` - Get failed executions
 - `DELETE /api/FunctionExecutions/cleanup?olderThanDays=30` - Cleanup old
 
-### Core API (Execution)
+### Gateway API (Execution)
 
 **Function Execution:**
 - `POST /v1/functions/execute` - Execute function
@@ -524,7 +524,7 @@ No database migrations required! Just add configuration and costs via API/WebAdm
 
 ### Access Control
 - **Admin API:** Master key required
-- **Core API:** Virtual key authentication
+- **Gateway API:** Virtual key authentication
 - **Execution Ownership:** Verified before returning results
 
 ### Cost Protection

@@ -4,8 +4,8 @@ This directory contains documentation for the Conduit Node.js SDKs.
 
 ## SDK Packages
 
-### [@knn_labs/conduit-core-client](../Core/README.md)
-The Core API client for chat completions, embeddings, and other AI operations.
+### [@knn_labs/conduit-gateway-client](../Core/README.md)
+The Gateway API client for chat completions, embeddings, and other AI operations.
 
 ### [@knn_labs/conduit-admin-client](../Admin/README.md) 
 The Admin API client for managing virtual keys, providers, and system configuration.

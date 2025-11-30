@@ -1,11 +1,11 @@
 import { notifications } from '@mantine/notifications';
-import { 
+import {
   getErrorDisplayMessage,
   isNetworkError,
   isAuthError,
   isRateLimitError,
   ConduitError
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 
 /**
  * Global error handler for unhandled errors

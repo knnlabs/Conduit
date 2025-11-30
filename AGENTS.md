@@ -303,7 +303,7 @@ Provide functions that can recover from errors:
 Enable enhanced streaming for agent progress:
 
 ```typescript
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
 
 const client = new ConduitCoreClient({
   apiKey: 'condt_your_agent_key',
@@ -923,7 +923,7 @@ curl http://localhost:5000/metrics | grep agent_
 
 - [Function Calling Guide](docs/api-guides/features/function-calling.md) - Technical details for function calling
 - [Streaming with Tools](docs/api-guides/streaming-with-tools.md) - Real-time agent progress tracking
-- [Core API Reference](docs/api-reference/core-api-reference.md) - Complete API documentation
+- [Gateway API Reference](docs/api-reference/core-api-reference.md) - Complete API documentation
 - [Virtual Keys](docs/Virtual-Keys.md) - Authentication and cost tracking
 - [Provider Integration](docs/Provider-Integration.md) - Multi-provider configuration
 - [Architecture Overview](docs/architecture/README.md) - System design and patterns

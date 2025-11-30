@@ -5,8 +5,8 @@
   "description": "Workspace for Conduit SDK packages",
   "workspaces": [
     "Common",
-    "Admin", 
-    "Core"
+    "Admin",
+    "Gateway"
   ],
   "scripts": {
     "build": "npm run build --workspaces",

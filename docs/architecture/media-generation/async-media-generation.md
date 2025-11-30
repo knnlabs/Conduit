@@ -475,7 +475,7 @@ Media generation costs are automatically:
 
 ### Multi-Instance Deployment
 
-For production deployments with multiple Core API instances:
+For production deployments with multiple Gateway API instances:
 
 1. **Redis Required**: Redis must be configured for the task queue
 2. **Background Service**: Each instance runs its own background service

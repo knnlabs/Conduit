@@ -7,7 +7,7 @@ import type { ImageAttachment } from '../utils';
 import type { MessageContent } from '../../models/chat';
 
 /**
- * Performance metrics received from the Core API
+ * Performance metrics received from the Gateway API
  */
 export interface StreamingPerformanceMetrics {
   tokens_per_second?: number;

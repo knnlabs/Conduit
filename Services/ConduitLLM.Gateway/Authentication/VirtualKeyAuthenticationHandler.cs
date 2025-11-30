@@ -9,7 +9,7 @@ using ConduitLLM.Gateway.Services;
 namespace ConduitLLM.Gateway.Authentication
 {
     /// <summary>
-    /// Authentication handler for Virtual Key authentication in the Core API
+    /// Authentication handler for Virtual Key authentication in the Gateway API
     /// </summary>
     public class VirtualKeyAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {

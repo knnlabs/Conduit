@@ -7,7 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { ImagePreview } from './ImagePreview';
-import { processStructuredContent, getBlockQuoteMetadata, cleanBlockQuoteContent } from '@knn_labs/conduit-core-client';
+import { processStructuredContent, getBlockQuoteMetadata, cleanBlockQuoteContent } from '@knn_labs/conduit-gateway-client';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];

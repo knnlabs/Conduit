@@ -89,7 +89,7 @@ cd ../Core && npm run build
 - **State Management**: Zustand
 - **Authentication**: Clerk
 - **Real-time**: SignalR
-- **API Clients**: Generated SDKs (@knn_labs/conduit-core-client, @knn_labs/conduit-admin-client)
+- **API Clients**: Generated SDKs (@knn_labs/conduit-gateway-client, @knn_labs/conduit-admin-client)
 
 ### Key Directories
 

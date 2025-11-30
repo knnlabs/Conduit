@@ -83,7 +83,7 @@ public class SystemInfoController : ControllerBase
     }
 
     /// <summary>
-    /// Invalidates all discovery cache entries by publishing an event to all Core API instances
+    /// Invalidates all discovery cache entries by publishing an event to all Gateway API instances
     /// </summary>
     /// <returns>Success response with cache invalidation details</returns>
     [HttpPost("cache/invalidate-discovery")]
@@ -93,7 +93,7 @@ public class SystemInfoController : ControllerBase
     {
         try
         {
-            // Publish event to all Core API instances via MassTransit
+            // Publish event to all Gateway API instances via MassTransit
             await _publishEndpoint.Publish(new DiscoveryCacheInvalidationRequested
             {
                 Reason = "Manual invalidation via Admin API",
@@ -101,13 +101,13 @@ public class SystemInfoController : ControllerBase
                 CorrelationId = Guid.NewGuid().ToString()
             });
 
-            _logger.LogInformation("Published discovery cache invalidation event to all Core API instances");
+            _logger.LogInformation("Published discovery cache invalidation event to all Gateway API instances");
 
             return Ok(new
             {
                 message = "Discovery cache invalidation request published successfully",
                 timestamp = DateTime.UtcNow,
-                note = "Cache invalidation is being processed asynchronously across all Core API instances"
+                note = "Cache invalidation is being processed asynchronously across all Gateway API instances"
             });
         }
         catch (Exception ex)
@@ -157,7 +157,7 @@ public class SystemInfoController : ControllerBase
     }
 
     /// <summary>
-    /// Invalidates all function discovery cache entries by publishing an event to all Core API instances
+    /// Invalidates all function discovery cache entries by publishing an event to all Gateway API instances
     /// </summary>
     /// <returns>Success response with cache invalidation details</returns>
     [HttpPost("cache/invalidate-function-discovery")]
@@ -167,7 +167,7 @@ public class SystemInfoController : ControllerBase
     {
         try
         {
-            // Publish event to all Core API instances via MassTransit
+            // Publish event to all Gateway API instances via MassTransit
             await _publishEndpoint.Publish(new FunctionDiscoveryCacheInvalidationRequested
             {
                 Reason = "Manual invalidation via Admin API",
@@ -175,13 +175,13 @@ public class SystemInfoController : ControllerBase
                 CorrelationId = Guid.NewGuid().ToString()
             });
 
-            _logger.LogInformation("Published function discovery cache invalidation event to all Core API instances");
+            _logger.LogInformation("Published function discovery cache invalidation event to all Gateway API instances");
 
             return Ok(new
             {
                 message = "Function discovery cache invalidation request published successfully",
                 timestamp = DateTime.UtcNow,
-                note = "Cache invalidation is being processed asynchronously across all Core API instances"
+                note = "Cache invalidation is being processed asynchronously across all Gateway API instances"
             });
         }
         catch (Exception ex)

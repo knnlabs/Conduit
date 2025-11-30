@@ -15,7 +15,7 @@ import type {
 } from '../models/metrics';
 
 /**
- * Service for accessing system metrics and performance data from the Conduit Core API
+ * Service for accessing system metrics and performance data from the Conduit Gateway API
  */
 export class MetricsService {
   private readonly clientAdapter: IFetchBasedClientAdapter;

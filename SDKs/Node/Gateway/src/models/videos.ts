@@ -1,5 +1,5 @@
 /**
- * Video generation models and types for the Conduit Core API
+ * Video generation models and types for the Conduit Gateway API
  */
 
 import type { VideoWebhookMetadata } from './metadata';

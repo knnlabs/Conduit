@@ -4,7 +4,7 @@ using ConduitLLM.Gateway.Options;
 namespace ConduitLLM.Gateway.Middleware
 {
     /// <summary>
-    /// Middleware that adds security headers to HTTP responses for the Core API
+    /// Middleware that adds security headers to HTTP responses for the Gateway API
     /// </summary>
     public class SecurityHeadersMiddleware
     {

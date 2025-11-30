@@ -590,7 +590,7 @@ manageVirtualKey().catch(console.error);
 
 ## Related Documentation
 
-- **[Core API Guide](./core-api-guide.md)** - Using the Core LLM API
+- **[Gateway API Guide](./core-api-guide.md)** - Using the Core LLM API
 - **[Admin API Reference](../api-reference/admin-api-endpoints.md)** - Complete endpoint reference
 - **[Admin Architecture](../architecture/admin-api-integration.md)** - Integration patterns
 - **[SDK Documentation](../development/)** - SDK best practices

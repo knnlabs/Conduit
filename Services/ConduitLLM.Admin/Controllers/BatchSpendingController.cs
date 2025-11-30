@@ -40,7 +40,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Triggers immediate flushing of all pending batch spend updates.
         /// 
-        /// This endpoint publishes a BatchSpendFlushRequestedEvent which is consumed by the Core API
+        /// This endpoint publishes a BatchSpendFlushRequestedEvent which is consumed by the Gateway API
         /// to immediately process all queued spending charges instead of waiting for the scheduled
         /// batch interval. This is essential for:
         /// 
@@ -99,7 +99,7 @@ namespace ConduitLLM.Admin.Controllers
                     IncludeStatistics = includeStatistics
                 };
 
-                // Publish event to Core API for processing
+                // Publish event to Gateway API for processing
                 await _publishEndpoint.Publish(flushEvent);
 
                 _logger.LogInformation(
@@ -142,7 +142,7 @@ namespace ConduitLLM.Admin.Controllers
         /// - Configuration details
         /// 
         /// Note: This endpoint checks the Admin API's ability to publish events,
-        /// not the Core API's batch spending service status (which is internal).
+        /// not the Gateway API's batch spending service status (which is internal).
         /// </summary>
         /// <returns>System status and configuration information</returns>
         [HttpGet("status")]
@@ -169,7 +169,7 @@ namespace ConduitLLM.Admin.Controllers
                         pattern = "Event-driven with MassTransit",
                         adminRole = "Publishes BatchSpendFlushRequestedEvent",
                         coreRole = "Consumes events and performs actual flush operations",
-                        decoupling = "Admin and Core APIs communicate via events only"
+                        decoupling = "Admin and Gateway APIs communicate via events only"
                     },
                     timestamp = DateTime.UtcNow
                 });
@@ -191,7 +191,7 @@ namespace ConduitLLM.Admin.Controllers
         /// Gets operational information about the batch spending flush capability.
         /// 
         /// This endpoint provides documentation and operational guidance for administrators
-        /// without exposing internal Core API details.
+        /// without exposing internal Gateway API details.
         /// </summary>
         /// <returns>Operational information and usage guidance</returns>
         [HttpGet("info")]
@@ -244,7 +244,7 @@ namespace ConduitLLM.Admin.Controllers
                 operationalNotes = new[]
                 {
                     "All operations are asynchronous and event-driven",
-                    "Flush requests are processed by the Core API batch spending service",
+                    "Flush requests are processed by the Gateway API batch spending service",
                     "Monitor application logs for detailed operation results",
                     "High priority requests are processed with elevated logging",
                     "Failed operations include detailed error information in logs"

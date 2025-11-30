@@ -135,7 +135,7 @@ namespace ConduitLLM.Core.Extensions
 
         /// <summary>
         /// Adds media storage and lifecycle services to the service collection.
-        /// Shared configuration used by both Core API and Admin API.
+        /// Shared configuration used by both Gateway API and Admin API.
         /// </summary>
         /// <param name="services">The service collection to add services to.</param>
         /// <param name="configuration">The configuration instance.</param>

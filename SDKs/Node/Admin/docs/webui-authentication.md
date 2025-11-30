@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Conduit WebAdmin uses Clerk for user authentication. Human administrators authenticate through Clerk to access the WebAdmin dashboard. Server-to-server communication between the WebAdmin backend and other services (Core API, Admin API) uses the `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
+The Conduit WebAdmin uses Clerk for user authentication. Human administrators authenticate through Clerk to access the WebAdmin dashboard. Server-to-server communication between the WebAdmin backend and other services (Gateway API, Admin API) uses the `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
 
 ## Authentication Model
 

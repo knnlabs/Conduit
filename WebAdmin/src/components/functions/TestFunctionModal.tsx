@@ -127,7 +127,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
     setTestResult(null);
 
     try {
-      // Get the Core API client with ephemeral key
+      // Get the Gateway API client with ephemeral key
       const coreClient = await getBrowserCoreClient();
 
       // Parse parameters and metadata

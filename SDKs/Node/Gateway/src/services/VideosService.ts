@@ -36,7 +36,7 @@ export interface GenerateWithProgressResult {
 export type { VideoProgress, VideoProgressCallbacks };
 
 /**
- * Service for video generation operations using the Conduit Core API
+ * Service for video generation operations using the Conduit Gateway API
  */
 export class VideosService {
   // Note: /v1/videos/generations endpoint does not exist - only async generation is supported

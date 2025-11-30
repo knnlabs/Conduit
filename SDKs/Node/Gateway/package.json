@@ -1,7 +1,7 @@
 {
-  "name": "@knn_labs/conduit-core-client",
+  "name": "@knn_labs/conduit-gateway-client",
   "version": "0.2.1",
-  "description": "Official Node.js client library for Conduit Core API - OpenAI-compatible multi-provider LLM gateway",
+  "description": "Official Node.js client library for Conduit Gateway API - OpenAI-compatible multi-provider LLM gateway",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -49,7 +49,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/knnlabs/Conduit.git",
-    "directory": "SDKs/Node/Core"
+    "directory": "SDKs/Node/Gateway"
   },
   "bugs": {
     "url": "https://github.com/knnlabs/Conduit/issues"

@@ -70,7 +70,7 @@ echo "✅ Development environment started with Cloudflare R2!"
 echo
 echo "📌 Services:"
 echo "   - WebAdmin: http://localhost:3000"
-echo "   - Core API: http://localhost:5000/swagger"
+echo "   - Gateway API: http://localhost:5000/swagger"
 echo "   - Admin API: http://localhost:5002/swagger"
 echo "   - Media Storage: Cloudflare R2"
 echo

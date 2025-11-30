@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
 import * as browserClientModule from '@/lib/client/browserCoreClient';
-import type { VideoProgressCallbacks } from '@knn_labs/conduit-core-client';
+import type { VideoProgressCallbacks } from '@knn_labs/conduit-gateway-client';
 
 // Mock the browser client module
 jest.mock('@/lib/client/browserCoreClient');

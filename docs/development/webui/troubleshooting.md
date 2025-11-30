@@ -267,7 +267,7 @@ export function getPoolStats() {
 1. **Update SDK Types:**
 ```bash
 # Update to latest SDK version
-npm update @knn_labs/conduit-core-client @knn_labs/conduit-admin-client
+npm update @knn_labs/conduit-gateway-client @knn_labs/conduit-admin-client
 
 # Regenerate types
 npm run build
@@ -276,7 +276,7 @@ npm run build
 2. **Type Assertions:**
 ```typescript
 // Use type assertions when needed
-import type { VirtualKey, ChatCompletionRequest } from '@knn_labs/conduit-core-client';
+import type { VirtualKey, ChatCompletionRequest } from '@knn_labs/conduit-gateway-client';
 
 const request = body as ChatCompletionRequest;
 const key = result as VirtualKey;

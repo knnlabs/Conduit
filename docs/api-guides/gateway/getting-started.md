@@ -1,6 +1,6 @@
-# Core API - Getting Started
+# Gateway API - Getting Started
 
-This guide will help you get started with the Conduit Core API.
+This guide will help you get started with the Conduit Gateway API.
 
 ## Authentication
 
@@ -29,11 +29,11 @@ curl -X POST http://localhost:5002/v1/chat/completions \
 ### Node.js/TypeScript
 
 ```bash
-npm install @knn_labs/conduit-core-client
+npm install @knn_labs/conduit-gateway-client
 ```
 
 ```typescript
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
 
 const client = new ConduitCoreClient({
   apiKey: 'condt_yourvirtualkey',

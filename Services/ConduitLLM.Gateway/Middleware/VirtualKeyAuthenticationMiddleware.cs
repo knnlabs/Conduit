@@ -5,7 +5,7 @@ using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Gateway.Middleware
 {
     /// <summary>
-    /// Middleware that handles Virtual Key authentication for Core API endpoints
+    /// Middleware that handles Virtual Key authentication for Gateway API endpoints
     /// </summary>
     public class VirtualKeyAuthenticationMiddleware
     {

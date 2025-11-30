@@ -1,5 +1,5 @@
 import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitGatewayClient } from '@knn_labs/conduit-gateway-client';
 
 // Validate required environment variables at runtime
 function validateEnvironment() {
@@ -42,7 +42,7 @@ export const SDK_CONFIG = {
 
 // Singleton instances
 let adminClient: ConduitAdminClient | null = null;
-let coreClient: InstanceType<typeof ConduitCoreClient> | null = null;
+let gatewayClient: InstanceType<typeof ConduitGatewayClient> | null = null;
 let webAdminVirtualKey: string | null = null;
 
 export function getServerAdminClient(): ConduitAdminClient {
@@ -60,11 +60,11 @@ export function getServerAdminClient(): ConduitAdminClient {
   return adminClient;
 }
 
-export async function getServerCoreClient(): Promise<InstanceType<typeof ConduitCoreClient>> {
-  if (!coreClient || !webAdminVirtualKey) {
+export async function getServerGatewayClient(): Promise<InstanceType<typeof ConduitGatewayClient>> {
+  if (!gatewayClient || !webAdminVirtualKey) {
     // Validate environment at runtime
     validateEnvironment();
-    
+
     // Get the WebAdmin's virtual key - this will auto-create it with $1000 if it doesn't exist
     if (!webAdminVirtualKey) {
       try {
@@ -78,15 +78,18 @@ export async function getServerCoreClient(): Promise<InstanceType<typeof Conduit
         throw new Error('Failed to retrieve or create WebAdmin virtual key. Ensure the database is accessible and the Admin API is running.');
       }
     }
-    
-    coreClient = new ConduitCoreClient({
+
+    gatewayClient = new ConduitGatewayClient({
       apiKey: webAdminVirtualKey,
       baseURL: SDK_CONFIG.coreBaseURL,
       signalR: SDK_CONFIG.signalR,
     });
   }
-  return coreClient;
+  return gatewayClient;
 }
+
+// Backward-compatible alias
+export const getServerCoreClient = getServerGatewayClient;
 
 /**
  * Initialize SDK clients
@@ -95,7 +98,7 @@ export async function getServerCoreClient(): Promise<InstanceType<typeof Conduit
 export async function initializeSDKClients(): Promise<void> {
   try {
     getServerAdminClient();
-    await getServerCoreClient();
+    await getServerGatewayClient();
     console.error('[SDK] Clients initialized successfully');
   } catch (error) {
     console.error('[SDK] Failed to initialize clients:', error);
@@ -109,7 +112,7 @@ export async function initializeSDKClients(): Promise<void> {
  */
 export async function cleanupSDKClients(): Promise<void> {
   adminClient = null;
-  coreClient = null;
+  gatewayClient = null;
   webAdminVirtualKey = null;
   console.error('[SDK] Clients cleaned up successfully');
 }

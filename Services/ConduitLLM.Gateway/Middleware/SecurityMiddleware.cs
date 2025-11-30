@@ -5,7 +5,7 @@ using ConduitLLM.Security.Interfaces;
 namespace ConduitLLM.Gateway.Middleware
 {
     /// <summary>
-    /// Unified security middleware for Core API that handles IP filtering, rate limiting, and ban checks
+    /// Unified security middleware for Gateway API that handles IP filtering, rate limiting, and ban checks
     /// </summary>
     public class SecurityMiddleware
     {

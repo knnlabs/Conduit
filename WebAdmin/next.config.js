@@ -5,7 +5,7 @@ const nextConfig = {
   },
   transpilePackages: [
     '@knn_labs/conduit-admin-client',
-    '@knn_labs/conduit-core-client'
+    '@knn_labs/conduit-gateway-client'
   ],
   // Enable source maps for better debugging
   productionBrowserSourceMaps: true,

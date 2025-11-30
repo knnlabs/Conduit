@@ -79,7 +79,7 @@ namespace ConduitLLM.Admin.Controllers
                         host = builder.Host,
                         port = builder.Port,
                         database = builder.Database,
-                        applicationName = builder.ApplicationName ?? "Conduit Core API"
+                        applicationName = builder.ApplicationName ?? "Conduit Gateway API"
                     },
                     poolConfiguration = new
                     {
@@ -127,7 +127,7 @@ namespace ConduitLLM.Admin.Controllers
                     timestamp = DateTime.UtcNow,
                     application = new
                     {
-                        name = "Conduit Core API",
+                        name = "Conduit Gateway API",
                         version = typeof(MetricsController).Assembly.GetName().Version?.ToString() ?? "unknown",
                         environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
                     },

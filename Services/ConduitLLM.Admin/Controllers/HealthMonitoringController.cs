@@ -49,11 +49,11 @@ namespace ConduitLLM.Admin.Controllers
                 
                 var services = new List<object>();
 
-                // Core API Service
+                // Gateway API Service
                 services.Add(new
                 {
                     Id = "core-api",
-                    Name = "Core API",
+                    Name = "Gateway API",
                     Status = "healthy",
                     Uptime = GetProcessUptime(),
                     LastCheck = DateTime.UtcNow,

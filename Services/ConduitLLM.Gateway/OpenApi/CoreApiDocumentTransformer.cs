@@ -4,7 +4,7 @@ using System.Reflection;
 namespace ConduitLLM.Gateway.OpenApi;
 
 /// <summary>
-/// Transforms the OpenAPI document for the Core API
+/// Transforms the OpenAPI document for the Gateway API
 /// </summary>
 public class CoreApiDocumentTransformer : IOpenApiDocumentTransformer
 {
@@ -14,7 +14,7 @@ public class CoreApiDocumentTransformer : IOpenApiDocumentTransformer
     public Task TransformAsync(Microsoft.OpenApi.OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         // Set the API information
-        document.Info.Title = "Conduit Core API";
+        document.Info.Title = "Conduit Gateway API";
         document.Info.Version = "v1";
         document.Info.Description = "OpenAI-compatible API for multi-provider LLM access - Requires Bearer token authentication";
 

@@ -81,7 +81,7 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
 }));
 
 // Mock error handler
-jest.mock('@knn_labs/conduit-core-client', () => ({
+jest.mock('@knn_labs/conduit-gateway-client', () => ({
   createToastErrorHandler: jest.fn(() => jest.fn((error: { message?: string } | string) => {
     if (typeof error === 'object' && error?.message) return error.message;
     if (typeof error === 'string') return error;

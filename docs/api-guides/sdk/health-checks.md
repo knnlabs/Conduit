@@ -117,7 +117,7 @@ if ('connection' in coreClient && coreClient.connection && 'pingWithTimeout' in 
 1. Update SDK dependencies:
    ```json
    {
-     "@knn_labs/conduit-core-client": "^0.2.2",
+     "@knn_labs/conduit-gateway-client": "^0.2.2",
      "@knn_labs/conduit-admin-client": "^1.0.2"
    }
    ```

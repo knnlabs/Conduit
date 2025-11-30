@@ -42,7 +42,7 @@ export class VideoSignalRClient {
     }
 
     // Create a new connection to the public hub
-    // Connect directly to the Core API - CORS is properly configured
+    // Connect directly to the Gateway API - CORS is properly configured
     const hubUrl = `${coreApiUrl}/hubs/public/video-generation`;
     
     this.connection = new signalR.HubConnectionBuilder()

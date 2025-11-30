@@ -282,7 +282,7 @@ export class FetchSystemService implements ISystemService {
     await settingsService.createGlobalSetting({
       key: 'WebAdmin_VirtualKey',
       value: response.virtualKey,
-      description: 'Virtual key for WebAdmin Core API access'
+      description: 'Virtual key for WebAdmin Gateway API access'
     }, config);
     
     console.warn('[SDK] Created new WebAdmin virtual key and stored in GlobalSettings');

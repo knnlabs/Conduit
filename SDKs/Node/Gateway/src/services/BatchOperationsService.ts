@@ -16,7 +16,7 @@ import {
 } from '../models/batchOperations';
 
 /**
- * Service for performing batch operations on the Conduit Core API
+ * Service for performing batch operations on the Conduit Gateway API
  */
 export class BatchOperationsService {
   private readonly clientAdapter: IFetchBasedClientAdapter;

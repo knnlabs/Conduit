@@ -467,7 +467,7 @@ spec:
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `CONDUIT_API_BASE_URL` | Internal Core API URL | Yes | - |
+| `CONDUIT_API_BASE_URL` | Internal Gateway API URL | Yes | - |
 | `CONDUIT_ADMIN_API_BASE_URL` | Internal Admin API URL | Yes | - |
 | `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | Master API key | Yes | - |
 | `DATABASE_URL` | Database connection string | Yes | - |
@@ -478,7 +478,7 @@ spec:
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `NEXT_PUBLIC_CONDUIT_API_EXTERNAL_URL` | External Core API URL | Yes | - |
+| `NEXT_PUBLIC_CONDUIT_API_EXTERNAL_URL` | External Gateway API URL | Yes | - |
 | `NEXT_PUBLIC_CONDUIT_ADMIN_API_EXTERNAL_URL` | External Admin API URL | Yes | - |
 | `NEXT_PUBLIC_APP_NAME` | Application name | No | "Conduit" |
 | `NEXT_PUBLIC_ENABLE_ANALYTICS` | Enable analytics | No | "false" |

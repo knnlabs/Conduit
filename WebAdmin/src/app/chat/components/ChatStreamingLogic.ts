@@ -5,7 +5,7 @@ import {
   type ImageAttachment,
   type StreamingCallbacks,
   type StreamMessageOptions
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
 import { SDKChatStreamingAdapter } from '@/lib/client/sdkChatStreamingAdapter';
 import {

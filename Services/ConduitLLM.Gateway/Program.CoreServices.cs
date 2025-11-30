@@ -208,13 +208,13 @@ public partial class Program
 
         // 2. Register DbContext Factory (using connection string from environment variables)
         var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
-        // Pass "CoreAPI" to get Core API-specific connection pool settings
+        // Pass "CoreAPI" to get Gateway API-specific connection pool settings
         var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI", msg => Console.WriteLine(msg));
 
         // Log the connection pool settings for verification
         if (dbProvider == "postgres" && dbConnectionString.Contains("MaxPoolSize"))
         {
-            Console.WriteLine($"[Conduit] Core API database connection pool configured:");
+            Console.WriteLine($"[Conduit] Gateway API database connection pool configured:");
             var match = System.Text.RegularExpressions.Regex.Match(dbConnectionString, @"MinPoolSize=(\d+);MaxPoolSize=(\d+)");
             if (match.Success)
             {
@@ -248,7 +248,7 @@ public partial class Program
 
         // Authentication and authorization are configured later with policies
 
-        // Add Core API Security services
+        // Add Gateway API Security services
         builder.Services.AddCoreApiSecurity(builder.Configuration);
 
         // Add all the service registrations BEFORE calling builder.Build()
@@ -416,7 +416,7 @@ public partial class Program
         // Model Capability Service is registered via ServiceCollectionExtensions
 
         // Provider Discovery Service is only used in Admin API for dynamic model discovery
-        // Core API relies on configured model mappings only
+        // Gateway API relies on configured model mappings only
 
         // Register Video Generation Service with explicit dependencies
         builder.Services.AddScoped<IVideoGenerationService>(sp =>

@@ -10,7 +10,7 @@ namespace ConduitLLM.Core.Consumers
     /// across all instances in a distributed deployment.
     ///
     /// This ensures cache consistency when settings are modified via the Admin API.
-    /// Both Core API and Admin API register this consumer to keep their caches synchronized.
+    /// Both Gateway API and Admin API register this consumer to keep their caches synchronized.
     /// </summary>
     public class GlobalSettingCacheInvalidationHandler : IConsumer<GlobalSettingChanged>
     {

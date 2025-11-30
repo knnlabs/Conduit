@@ -17,7 +17,7 @@ Conduit uses a **single factory pattern** for creating LLM clients:
 **Characteristics:**
 - ✅ **Credentials Source:** Database (via `IProviderService`)
 - ✅ **Client Type:** Real production clients
-- ✅ **Used By:** Core API, Admin API
+- ✅ **Used By:** Gateway API, Admin API
 - ✅ **Decorators:** Context tracking, performance monitoring
 
 **Key Methods:**
@@ -32,7 +32,7 @@ Task<ILLMClient> CreateTestClient(...)                    // For credential test
 
 ## Current Service Registrations
 
-### **Core API**
+### **Gateway API**
 **File:** `ConduitLLM.Gateway/Program.CoreServices.cs` (Line 181)
 ```csharp
 builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
@@ -249,7 +249,7 @@ var testClient = await _factory.CreateTestClient(
 
 ### **Getting a Client by Model Alias**
 ```csharp
-// Most common pattern in Core API
+// Most common pattern in Gateway API
 var client = await _factory.GetClient("gpt-4");
 ```
 

@@ -649,5 +649,5 @@ All endpoints may return the following error responses:
 
 - **[Getting Started](./getting-started.md)** - Authentication and setup
 - **[TypeScript SDK](./typescript-sdk.md)** - Complete SDK guide with examples
-- **[Core API](../core/)** - User-facing LLM API documentation
+- **[Gateway API](../core/)** - User-facing LLM API documentation
 - **[Architecture Docs](../../architecture/)** - System design and patterns

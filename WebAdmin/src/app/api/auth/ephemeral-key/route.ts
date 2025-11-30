@@ -10,7 +10,7 @@ interface EphemeralKeyResponse {
   ephemeralKey: string;
   expiresAt: string;
   expiresInSeconds: number;
-  coreApiUrl: string; // Include the Core API URL for direct connection
+  coreApiUrl: string; // Include the Gateway API URL for direct connection
 }
 
 // POST /api/auth/ephemeral-key - Generate an ephemeral key for direct API access
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    // Return the ephemeral key with Core API URL
+    // Return the ephemeral key with Gateway API URL
     // Use the external URL that the browser can access
     const result: EphemeralKeyResponse = {
       ...response,

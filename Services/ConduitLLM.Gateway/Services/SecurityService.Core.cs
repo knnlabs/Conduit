@@ -8,7 +8,7 @@ using ConduitLLM.Security.Interfaces;
 namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
-    /// Unified security service for Core API
+    /// Unified security service for Gateway API
     /// </summary>
     public interface ISecurityService
     {
@@ -91,7 +91,7 @@ namespace ConduitLLM.Gateway.Services
     }
 
     /// <summary>
-    /// Implementation of unified security service for Core API
+    /// Implementation of unified security service for Gateway API
     /// </summary>
     public partial class SecurityService : ISecurityService
     {

@@ -29,7 +29,7 @@ export enum EnhancedSSEEventType {
 }
 
 /**
- * Performance metrics sent during streaming (matches Core API format).
+ * Performance metrics sent during streaming (matches Gateway API format).
  * These metrics provide real-time insights into the streaming performance.
  * 
  * @interface StreamingMetrics

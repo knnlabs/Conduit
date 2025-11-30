@@ -39,7 +39,7 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 ### 💡 **Recommended Integration**
 ```bash
 # Use SDKs for stable integration
-npm install @knn_labs/conduit-core-client
+npm install @knn_labs/conduit-gateway-client
 npm install @knn_labs/conduit-admin-client
 ```
 
@@ -297,7 +297,7 @@ When `REDIS_URL` is provided, cache is automatically enabled with type "Redis".
 
 #### Authentication Configuration
 ```bash
-# Core API Authentication (uses Virtual Keys)
+# Gateway API Authentication (uses Virtual Keys)
 # Virtual keys are created via Admin API and used for LLM access
 # Format: condt_your-virtual-key-here
 
@@ -313,7 +313,7 @@ AdminApi__MasterKey=your-secure-master-key
 - **WebAdmin Authentication**: Human administrators authenticate exclusively via Clerk (OAuth/SAML)
   - Users must have `siteadmin: true` in their Clerk public metadata to access the WebAdmin
   - Configure with `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`
-- **Virtual Keys**: Used by Core API for client LLM access (created via Admin API)
+- **Virtual Keys**: Used by Gateway API for client LLM access (created via Admin API)
 
 #### Next.js WebAdmin Configuration
 ```bash
@@ -410,12 +410,12 @@ For access to Conduit-specific features like real-time tool execution progress, 
 
 ```typescript
 // Node.js/TypeScript example with Conduit SDK
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
 import {
   isChatCompletionChunk,
   isToolExecutingEvent,
   isFinalMetrics
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 
 const client = new ConduitCoreClient({
   apiKey: 'condt_yourvirtualkey',

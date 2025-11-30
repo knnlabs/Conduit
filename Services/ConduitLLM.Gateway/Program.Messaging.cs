@@ -16,7 +16,7 @@ public partial class Program
         // Register MassTransit event bus
         builder.Services.AddMassTransit(x =>
         {
-            // Add event consumers for Core API
+            // Add event consumers for Gateway API
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ProviderEventHandler>();

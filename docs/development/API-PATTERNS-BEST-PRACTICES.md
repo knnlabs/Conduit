@@ -90,9 +90,9 @@ export async function GET() {
 }
 ```
 
-### 2. `/api/auth/ephemeral-key` - Core API Access
+### 2. `/api/auth/ephemeral-key` - Gateway API Access
 
-**Purpose**: Generate ephemeral keys for Core API access
+**Purpose**: Generate ephemeral keys for Gateway API access
 **Auth**: Clerk (via middleware)
 **Method**: POST
 
@@ -374,13 +374,13 @@ const details = getCombinedErrorDetails(error);
 ### Ephemeral Key Flow
 
 ```
-1. Browser needs to call Core API
+1. Browser needs to call Gateway API
 2. Request ephemeral key from /api/auth/ephemeral-key
 3. WebAdmin validates user via Clerk
 4. WebAdmin generates ephemeral key using its virtual key
-5. Returns ephemeral key + Core API URL to browser
+5. Returns ephemeral key + Gateway API URL to browser
 6. Browser stores key in memory (with expiration)
-7. Browser makes direct calls to Core API with ephemeral key
+7. Browser makes direct calls to Gateway API with ephemeral key
 8. When key expires or gets 401, browser requests new key
 ```
 
@@ -394,7 +394,7 @@ import { ephemeralKeyClient } from '@/lib/client/ephemeralKeyClient';
 // Get a valid ephemeral key (from cache or refreshed)
 const { key, coreApiUrl } = await ephemeralKeyClient.getKey();
 
-// Make a direct request to Core API
+// Make a direct request to Gateway API
 const response = await ephemeralKeyClient.makeDirectRequest('/api/chat/completions', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },

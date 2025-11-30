@@ -68,7 +68,7 @@ Use these commands instead to verify WebAdmin changes:
 ## Available Services
 After startup, these services are available:
 - 🌐 **WebAdmin**: http://localhost:3000 (Next.js with hot reloading)
-- 📚 **Core API Swagger**: http://localhost:5000/swagger
+- 📚 **Gateway API Swagger**: http://localhost:5000/swagger
 - 🔧 **Admin API Swagger**: http://localhost:5002/swagger
 - 🐰 **RabbitMQ Management**: http://localhost:15672 (user: `conduit`, pass: `conduitpass`)
 
@@ -136,7 +136,7 @@ dotnet build
 dotnet test
 
 # Build individual projects
-dotnet build ConduitLLM.Gateway    # Core API
+dotnet build ConduitLLM.Gateway    # Gateway API
 dotnet build ConduitLLM.Admin   # Admin API
 
 # Build SDKs

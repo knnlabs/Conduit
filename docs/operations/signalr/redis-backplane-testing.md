@@ -1,6 +1,6 @@
 # Comprehensive SignalR Redis Backplane Testing Guide
 
-This guide provides detailed instructions for testing the SignalR Redis backplane implementation to ensure it works correctly across multiple Core API instances.
+This guide provides detailed instructions for testing the SignalR Redis backplane implementation to ensure it works correctly across multiple Gateway API instances.
 
 ## Table of Contents
 1. [Environment Setup](#environment-setup)

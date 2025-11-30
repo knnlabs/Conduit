@@ -8,11 +8,11 @@ These guides provide **in-depth explanations**, **best practices**, and **practi
 
 ## 🎯 Quick Navigation
 
-### Core API (User-Facing LLM API)
+### Gateway API (User-Facing LLM API)
 
-The Core API provides an OpenAI-compatible interface for LLM interactions.
+The Gateway API provides an OpenAI-compatible interface for LLM interactions.
 
-- **[Core API Overview](./core/README.md)** - Introduction and capabilities
+- **[Gateway API Overview](./core/README.md)** - Introduction and capabilities
 - **[Getting Started](./core/getting-started.md)** - Authentication, quick start, basic usage
 - **[API Reference](./core/api-reference.md)** - Complete endpoint documentation
 
@@ -73,14 +73,14 @@ Real-time updates and WebSocket connections.
 
 **Example:**
 - **Want to learn about function calling?** → Read [Function Calling Guide](./features/function-calling.md)
-- **Need function calling endpoint details?** → Check [Core API Reference](./core/api-reference.md#function-calling)
+- **Need function calling endpoint details?** → Check [Gateway API Reference](./core/api-reference.md#function-calling)
 
 ## 🚀 Getting Started Paths
 
 ### For New Users
 
-1. Start with [Core API Getting Started](./core/getting-started.md) - understand the basics
-2. Review [Core API Reference](./core/api-reference.md) - see full capabilities
+1. Start with [Gateway API Getting Started](./core/getting-started.md) - understand the basics
+2. Review [Gateway API Reference](./core/api-reference.md) - see full capabilities
 3. Explore [Feature Guides](./features/) as needed
 
 ### For Administrators

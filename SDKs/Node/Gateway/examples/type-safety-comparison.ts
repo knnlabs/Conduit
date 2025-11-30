@@ -44,7 +44,7 @@ async function oldApproach() {
 // ============================================
 
 import { ConduitCoreClient } from '../src';
-import type { components } from '../src/generated/core-api';
+import type { components } from '../src/generated/gateway-api';
 
 // Type aliases for clarity
 type ChatRequest = components['schemas']['ChatCompletionRequest'];

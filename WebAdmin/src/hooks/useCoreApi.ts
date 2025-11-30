@@ -10,7 +10,7 @@ import type {
   AsyncVideoGenerationResponse,
   ChatCompletionRequest,
   ChatCompletionResponse
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 
 export function useCoreApi() {
   const [isLoading, setIsLoading] = useState(false);

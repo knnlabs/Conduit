@@ -13,7 +13,7 @@ The Conduit WebAdmin implements multiple security layers to protect administrati
 |-----|---------|------------|---------|
 | `CONDUIT_WEBADMIN_AUTH_KEY` | Admin login | Server-only | Login endpoint |
 | `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | Admin API access | Server-only | Admin SDK |
-| Virtual Key | Core API access | Client-side | Core SDK |
+| Virtual Key | Gateway API access | Client-side | Core SDK |
 
 **Security Rule**: Never use the same value for `CONDUIT_WEBADMIN_AUTH_KEY` and `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
 

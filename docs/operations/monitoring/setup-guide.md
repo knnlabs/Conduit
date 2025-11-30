@@ -13,7 +13,7 @@ Conduit implements comprehensive monitoring and observability for production dep
 
 ```
 ┌─────────────────┐     ┌─────────────────┐
-│   Core API      │     │   Admin API     │
+│   Gateway API      │     │   Admin API     │
 │                 │     │                 │
 │ - HTTP Metrics  │     │ - HTTP Metrics  │
 │ - Business      │     │ - Operations    │

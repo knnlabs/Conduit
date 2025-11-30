@@ -1,12 +1,12 @@
 # PostgreSQL Connection Pool Scaling Configuration
 
-This document describes the PostgreSQL configuration changes needed to support 10,000 concurrent customers across multiple Conduit Core API instances.
+This document describes the PostgreSQL configuration changes needed to support 10,000 concurrent customers across multiple Conduit Gateway API instances.
 
 ## Overview
 
 Conduit has been updated to support service-specific connection pool settings that optimize database connection usage based on traffic patterns:
 
-- **Core API**: High traffic (150 max connections per instance)
+- **Gateway API**: High traffic (150 max connections per instance)
 - **Admin API**: Medium traffic (75 max connections per instance)
 - **WebAdmin**: No direct database access (uses Admin API)
 
@@ -15,14 +15,14 @@ Conduit has been updated to support service-specific connection pool settings th
 ### Connection Requirements for 10,000 Concurrent Customers
 
 **Deployment Assumptions:**
-- 8 Core API instances (for redundancy and load distribution)
+- 8 Gateway API instances (for redundancy and load distribution)
 - 3 Admin API instances
 - 20% buffer for burst traffic
 - Maintenance connections for monitoring, backups, migrations
 
 **Connection Math:**
 ```
-Core APIs:      8 instances × 150 connections = 1,200
+Gateway APIs:      8 instances × 150 connections = 1,200
 Admin APIs:     3 instances × 75 connections  = 225
 Subtotal:                                      1,425
 Buffer (20%):                                  285
@@ -98,7 +98,7 @@ deadlock_timeout = 1s                  # Detect deadlocks quickly
 
 The application automatically applies optimized connection pool settings based on the service type:
 
-### Core API (High Traffic)
+### Gateway API (High Traffic)
 - Min Pool Size: 10
 - Max Pool Size: 150
 - Connection Lifetime: 300 seconds
@@ -116,7 +116,7 @@ The service type is propagated through the connection string itself:
 
 1. **Service Registration**: Each service passes its type to `ConnectionStringManager`:
    ```csharp
-   // Core API
+   // Gateway API
    var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI", ...);
    
    // Admin API
@@ -133,7 +133,7 @@ The service type is propagated through the connection string itself:
 
 4. **Verification**: On startup, services log their pool configuration:
    ```
-   [Conduit] Core API database connection pool configured:
+   [Conduit] Gateway API database connection pool configured:
    [Conduit]   Min Pool Size: 10
    [Conduit]   Max Pool Size: 150
    ```
@@ -201,7 +201,7 @@ Monitor connection pool configuration and performance via the metrics endpoint:
     "host": "postgres",
     "port": 5432,
     "database": "conduitdb",
-    "applicationName": "Conduit Core API"
+    "applicationName": "Conduit Gateway API"
   },
   "poolConfiguration": {
     "minPoolSize": 10,
@@ -251,9 +251,9 @@ ORDER BY idle_duration DESC;
 
 ## Connection Pool Warming
 
-Both Core API and Admin API implement connection pool warming on startup:
+Both Gateway API and Admin API implement connection pool warming on startup:
 
-- **Core API**: Warms 10 connections
+- **Gateway API**: Warms 10 connections
 - **Admin API**: Warms 5 connections
 
 This reduces latency for initial requests by pre-establishing database connections.
@@ -281,7 +281,7 @@ For 10,000 concurrent customers:
 #### 2. PostgreSQL Configuration
 ```ini
 # Essential settings for production scale
-max_connections = 2000           # Supports ~8 Core APIs + 3 Admin APIs with buffer
+max_connections = 2000           # Supports ~8 Gateway APIs + 3 Admin APIs with buffer
 shared_buffers = 16GB           # 25% of RAM
 effective_cache_size = 48GB     # 75% of RAM
 work_mem = 8MB                  # Conservative to prevent memory exhaustion
@@ -302,7 +302,7 @@ log_temp_files = 0
 
 #### 3. Application Deployment Strategy
 
-**Core API Instances**:
+**Gateway API Instances**:
 - **Count**: 8-10 instances for 10,000 concurrent customers
 - **Resources**: 4GB RAM, 2 vCPUs per instance
 - **Connection Pool**: 150 max connections per instance
@@ -312,7 +312,7 @@ log_temp_files = 0
 - **Count**: 3-4 instances
 - **Resources**: 2GB RAM, 1 vCPU per instance
 - **Connection Pool**: 75 max connections per instance
-- **Placement**: Separate from Core API for isolation
+- **Placement**: Separate from Gateway API for isolation
 
 **Load Balancing**:
 - Use connection-based (least connections) load balancing
@@ -366,7 +366,7 @@ curl http://api-instance:5000/metrics/database/pool
 
 **Connection Budget**:
 ```
-Core APIs:        8 × 150 = 1,200 connections
+Gateway APIs:        8 × 150 = 1,200 connections
 Admin APIs:       3 × 75  = 225 connections
 Monitoring:                 50 connections
 Maintenance:                50 connections
@@ -404,7 +404,7 @@ PostgreSQL max_connections: 2,000 (safe margin)
 - Implement network segmentation
 
 **Access Control**:
-- Separate credentials for Core API and Admin API
+- Separate credentials for Gateway API and Admin API
 - Read-only users for monitoring
 - Audit logging for compliance
 

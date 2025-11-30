@@ -3,7 +3,7 @@ import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
 import { setupMocks } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 import * as browserClientModule from '@/lib/client/browserCoreClient';
-import type { VideoProgressCallbacks } from '@knn_labs/conduit-core-client';
+import type { VideoProgressCallbacks } from '@knn_labs/conduit-gateway-client';
 import { MediaGenerationStatus } from '@/app/types/media';
 
 // Mock the browser client module

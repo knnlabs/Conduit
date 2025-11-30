@@ -11,7 +11,7 @@ import { STORAGE_CONFIG, IMAGE_CONFIG } from '@/app/config/mediaGeneration';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning
-} from '@knn_labs/conduit-core-client';
+} from '@knn_labs/conduit-gateway-client';
 import { notifications } from '@mantine/notifications';
 
 const LOCAL_STORAGE_KEY = 'conduit-image-generation';

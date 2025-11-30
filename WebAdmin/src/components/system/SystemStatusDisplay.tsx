@@ -166,7 +166,7 @@ export function SystemStatusDisplay({
               <Stack gap="md">
                 <CompositeStatusIndicator
                   primary={getComponentStatus('core').type}
-                  label="Core API"
+                  label="Gateway API"
                   description="Primary API services"
                   variant="horizontal"
                 />
@@ -273,7 +273,7 @@ export function SystemStatusDisplay({
               <Group justify="space-between">
                 <Group gap="xs">
                   <IconServer size={16} />
-                  <Text size="sm">Core API</Text>
+                  <Text size="sm">Gateway API</Text>
                 </Group>
                 <StatusIndicator
                   status={getComponentStatus('core').type}

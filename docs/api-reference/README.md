@@ -4,8 +4,8 @@ This directory contains the complete API documentation for Conduit.
 
 ## API Documentation Structure
 
-### Core APIs (OpenAI-Compatible)
-- **[Core API Reference](./core-api.md)** - Complete OpenAI-compatible API documentation
+### Gateway APIs (OpenAI-Compatible)
+- **[Gateway API Reference](./core-api.md)** - Complete OpenAI-compatible API documentation
   - Chat completions, embeddings, models, images
   - Streaming, function calling, multimodal support
   - Client libraries and examples
@@ -31,13 +31,13 @@ This directory contains the complete API documentation for Conduit.
 - **Error Handling**: [Error Codes](./core-api.md#error-handling)
 
 ### By User Type
-- **Application Developers**: Start with [Core API Reference](./core-api.md)
+- **Application Developers**: Start with [Gateway API Reference](./core-api.md)
 - **System Administrators**: See [Admin API Reference](./admin-api.md)
 - **Frontend Developers**: Check [WebAdmin API Reference](./webadmin-api.md)
 
 ## API Endpoints Overview
 
-### Core API (OpenAI-Compatible)
+### Gateway API (OpenAI-Compatible)
 - `POST /v1/chat/completions` - Chat completions
 - `POST /v1/embeddings` - Generate embeddings
 - `GET /v1/models` - List available models

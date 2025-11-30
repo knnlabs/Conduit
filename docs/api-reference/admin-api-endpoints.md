@@ -529,7 +529,7 @@ Performs maintenance tasks including disabling expired keys.
 [
   {
     "id": "core-api",
-    "name": "Core API",
+    "name": "Gateway API",
     "status": "healthy",
     "uptime": "P1DT2H30M",
     "lastCheck": "2024-05-08T10:30:00Z",

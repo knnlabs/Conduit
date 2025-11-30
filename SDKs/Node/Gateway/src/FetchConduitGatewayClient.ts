@@ -20,18 +20,18 @@ import {
 } from '@knn_labs/conduit-common';
 
 /**
- * Type-safe Conduit Core Client using native fetch
- * 
+ * Type-safe Conduit Gateway Client using native fetch
+ *
  * Provides full type safety for all operations with TypeScript generics
  * and OpenAPI-generated types, without the complexity of HTTP.
- * 
+ *
  * @example
  * ```typescript
- * const client = new FetchConduitCoreClient({
+ * const client = new FetchConduitGatewayClient({
  *   apiKey: 'your-api-key',
  *   baseURL: 'https://api.conduit.ai'
  * });
- * 
+ *
  * // All operations are fully typed
  * const response = await client.chat.create({
  *   model: 'gpt-4',
@@ -39,7 +39,7 @@ import {
  * });
  * ```
  */
-export class FetchConduitCoreClient extends FetchBasedClient {
+export class FetchConduitGatewayClient extends FetchBasedClient {
   public readonly chat: FetchChatService;
   public readonly auth: AuthService;
   public readonly health: HealthService;
@@ -109,7 +109,7 @@ export class FetchConduitCoreClient extends FetchBasedClient {
 }
 
 // Export the fetch-based client as the default
-export default FetchConduitCoreClient;
+export default FetchConduitGatewayClient;
 
 // Re-export types for convenience
 export type { 
@@ -119,7 +119,7 @@ export type {
 } from './client/types';
 
 // Re-export generated types
-export type { components, operations, paths } from './generated/core-api';
+export type { components, operations, paths } from './generated/gateway-api';
 
 // Re-export error types
 export { 

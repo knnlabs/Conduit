@@ -1,6 +1,6 @@
 # ConduitLLM.Security
 
-This project contains shared security services, interfaces, and middleware used by both the Core API (ConduitLLM.Gateway) and Admin API (ConduitLLM.Admin).
+This project contains shared security services, interfaces, and middleware used by both the Gateway API (ConduitLLM.Gateway) and Admin API (ConduitLLM.Admin).
 
 ## Overview
 
@@ -42,7 +42,7 @@ ConduitLLM.Security/
 
 ## Usage
 
-Both Core API and Admin API reference this project to access shared security functionality. The services are registered via dependency injection and can be used throughout the application.
+Both Gateway API and Admin API reference this project to access shared security functionality. The services are registered via dependency injection and can be used throughout the application.
 
 ## Dependencies
 

@@ -79,7 +79,7 @@ Browser → Next.js Route → Admin SDK → Admin API (port 5002) → Database
 
 - **WebAdmin**: http://localhost:3000 (Next.js)
 - **Admin API**: http://localhost:5002 (.NET)
-- **Core API**: http://localhost:5000 (.NET)
+- **Gateway API**: http://localhost:5000 (.NET)
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
 - **RabbitMQ**: localhost:5672 (AMQP), localhost:15672 (Management)

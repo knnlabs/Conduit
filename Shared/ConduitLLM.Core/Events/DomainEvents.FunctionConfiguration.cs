@@ -62,7 +62,7 @@ namespace ConduitLLM.Core.Events
 
     /// <summary>
     /// Raised when an admin explicitly requests invalidation of the function discovery cache
-    /// Triggers cache invalidation across all Core API and Admin API instances
+    /// Triggers cache invalidation across all Gateway API and Admin API instances
     /// </summary>
     public record FunctionDiscoveryCacheInvalidationRequested : DomainEvent
     {
