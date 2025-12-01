@@ -3,6 +3,7 @@ apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
+    uid: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true
@@ -12,6 +13,7 @@ datasources:
 
   - name: PostgreSQL
     type: postgres
+    uid: postgresql
     access: proxy
     url: postgres:5432
     user: conduit

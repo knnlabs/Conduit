@@ -19,7 +19,7 @@
       "title": "Total Requests (24h)",
       "targets": [
         {
-          "datasource": "Prometheus",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "expr": "sum(increase(conduit_usage_tracking_requests_total[24h]))",
           "refId": "A"
         }
@@ -47,7 +47,7 @@
       "title": "Total Cost Today ($)",
       "targets": [
         {
-          "datasource": "Prometheus",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "expr": "sum(increase(conduit_usage_tracking_cost_dollars[24h]))",
           "refId": "A"
         }
@@ -76,7 +76,7 @@
       "title": "Active Virtual Keys",
       "targets": [
         {
-          "datasource": "PostgreSQL",
+          "datasource": {"type": "postgres", "uid": "postgresql"},
           "rawSql": "SELECT COUNT(DISTINCT \"VirtualKeyId\") FROM \"RequestLogs\" WHERE \"Timestamp\" > NOW() - INTERVAL '24 hours'",
           "refId": "A",
           "format": "table"
@@ -103,7 +103,7 @@
       "title": "Error Rate",
       "targets": [
         {
-          "datasource": "Prometheus",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "expr": "sum(rate(conduit_usage_tracking_failures_total[5m])) / sum(rate(conduit_usage_tracking_requests_total[5m])) * 100",
           "refId": "A"
         }
@@ -132,7 +132,7 @@
       "title": "Request Rate",
       "targets": [
         {
-          "datasource": "Prometheus",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "expr": "sum(rate(conduit_usage_tracking_requests_total[5m])) by (endpoint_type)",
           "legendFormat": "{{endpoint_type}}",
           "refId": "A"
@@ -192,7 +192,7 @@
       "title": "Token Usage",
       "targets": [
         {
-          "datasource": "Prometheus",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "expr": "sum(rate(conduit_usage_tracking_tokens_total[5m])) by (token_type)",
           "legendFormat": "{{token_type}}",
           "refId": "A"
@@ -252,7 +252,7 @@
       "title": "Cost by Model",
       "targets": [
         {
-          "datasource": "Prometheus",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "expr": "sum(increase(conduit_usage_tracking_cost_dollars[24h])) by (model)",
           "legendFormat": "{{model}}",
           "refId": "A"
@@ -283,7 +283,7 @@
       "title": "Top Virtual Keys by Usage",
       "targets": [
         {
-          "datasource": "PostgreSQL",
+          "datasource": {"type": "postgres", "uid": "postgresql"},
           "rawSql": "SELECT \n  vk.\"Name\" as \"Key Name\",\n  COUNT(rl.\"Id\") as \"Requests\",\n  SUM(rl.\"Cost\") as \"Total Cost\",\n  SUM(rl.\"InputTokens\" + rl.\"OutputTokens\") as \"Total Tokens\",\n  MAX(rl.\"Timestamp\") as \"Last Used\"\nFROM \"RequestLogs\" rl\nJOIN \"VirtualKeys\" vk ON rl.\"VirtualKeyId\" = vk.\"Id\"\nWHERE rl.\"Timestamp\" > NOW() - INTERVAL '24 hours'\nGROUP BY vk.\"Name\"\nORDER BY SUM(rl.\"Cost\") DESC\nLIMIT 10",
           "refId": "A",
           "format": "table"

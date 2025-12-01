@@ -257,6 +257,36 @@ services:
       retries: 3
       start_period: 40s
 
+  # Redis Exporter for Prometheus metrics
+  # Note: No healthcheck - these are minimal scratch images without shell/wget
+  # Prometheus scrape failures will indicate if the exporter is down
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    restart: always
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # RabbitMQ Exporter for Prometheus metrics
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter:latest
+    restart: always
+    environment:
+      RABBIT_URL: "http://rabbitmq:15672"
+      RABBIT_USER: conduit
+      RABBIT_PASSWORD: conduitpass
+      PUBLISH_PORT: "9419"
+      OUTPUT_FORMAT: "prometheus"
+    ports:
+      - "9419:9419"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   # Prometheus for metrics collection
   prometheus:
     image: prom/prometheus:latest
@@ -288,11 +318,20 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=conduitadmin
       - GF_INSTALL_PLUGINS=
       - GF_USERS_ALLOW_SIGN_UP=false
+      # Enable unified alerting
+      - GF_UNIFIED_ALERTING_ENABLED=true
+      - GF_ALERTING_ENABLED=false
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning/datasources/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
       - ./grafana/provisioning/dashboards/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
       - ./grafana/provisioning/dashboards/grafana-conduit-overview-dashboard.json:/var/lib/grafana/dashboards/conduit-overview.json:ro
+      - ./grafana/provisioning/dashboards/grafana-provider-performance-dashboard.json:/var/lib/grafana/dashboards/provider-performance.json:ro
+      - ./grafana/provisioning/dashboards/grafana-virtual-key-analytics-dashboard.json:/var/lib/grafana/dashboards/virtual-key-analytics.json:ro
+      - ./grafana/provisioning/dashboards/grafana-request-pipeline-dashboard.json:/var/lib/grafana/dashboards/request-pipeline.json:ro
+      - ./grafana/provisioning/dashboards/grafana-infrastructure-dashboard.json:/var/lib/grafana/dashboards/infrastructure.json:ro
+      # Alerting rules - can be enabled once basic setup is verified
+      # - ./grafana/provisioning/alerting/alerting-rules.yml:/etc/grafana/provisioning/alerting/alerting-rules.yml:ro
     depends_on:
       prometheus:
         condition: service_healthy
