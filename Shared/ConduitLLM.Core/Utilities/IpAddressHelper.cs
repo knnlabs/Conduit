@@ -363,6 +363,29 @@ namespace ConduitLLM.Core.Utilities
 
         #endregion
 
+        #region Private Network Request Detection
+
+        /// <summary>
+        /// Checks if an HTTP request originates from a private/internal network.
+        /// Useful for allowing internal monitoring tools (e.g., Prometheus) to access
+        /// endpoints without authentication while still requiring auth for external requests.
+        /// </summary>
+        /// <param name="context">The HTTP context.</param>
+        /// <returns>True if the request comes from a private network, false otherwise.</returns>
+        public static bool IsPrivateNetworkRequest(Microsoft.AspNetCore.Http.HttpContext context)
+        {
+            // For internal Docker network requests, we check the direct connection IP
+            // rather than forwarded headers (which could be spoofed from external sources)
+            var remoteIp = context.Connection.RemoteIpAddress;
+
+            if (remoteIp == null)
+                return false;
+
+            return IsPrivateIp(remoteIp);
+        }
+
+        #endregion
+
         #region Address Family Detection
 
         /// <summary>

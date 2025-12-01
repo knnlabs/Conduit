@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Extensions;
 
 using MassTransit; // Added for event bus infrastructure
@@ -351,14 +352,13 @@ public partial class Program
             Predicate = check => check.Tags.Contains("ready") || check.Tags.Count == 0
         });
 
-        // Map Prometheus metrics endpoint - requires authentication
+        // Map Prometheus metrics endpoint
+        // Allow unauthenticated access from private networks (Docker internal, localhost)
+        // Require authentication for external/public network requests
         app.UseOpenTelemetryPrometheusScrapingEndpoint(
-            context => context.Request.Path == "/metrics" && 
-                      (context.User.Identity?.IsAuthenticated ?? false)
-        );
-
-        // Alternative: Map metrics endpoint without authentication (for monitoring systems)
-        // app.UseOpenTelemetryPrometheusScrapingEndpoint();
+            context => context.Request.Path == "/metrics" &&
+                      (IpAddressHelper.IsPrivateNetworkRequest(context) ||
+                       context.User.Identity?.IsAuthenticated == true));
 
         // For the prometheus-net library metrics
         app.UseHttpMetrics(options =>

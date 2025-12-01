@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ConduitLLM.Core.Utilities;
 
 public partial class Program
 {
@@ -85,8 +86,13 @@ public partial class Program
         });
 
         // Map Prometheus metrics endpoint for scraping
-        app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");
-        Console.WriteLine("[Gateway API] Prometheus metrics endpoint registered at /metrics");
+        // Allow unauthenticated access from private networks (Docker internal, localhost)
+        // Require authentication for external/public network requests
+        app.UseOpenTelemetryPrometheusScrapingEndpoint(
+            context => context.Request.Path == "/metrics" &&
+                      (IpAddressHelper.IsPrivateNetworkRequest(context) ||
+                       context.User.Identity?.IsAuthenticated == true));
+        Console.WriteLine("[Gateway API] Prometheus metrics endpoint registered at /metrics (private network or authenticated)");
 
         Console.WriteLine("[Gateway API] All API endpoints are now handled by controllers.");
     }
