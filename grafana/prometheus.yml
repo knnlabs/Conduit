@@ -4,6 +4,12 @@ global:
   external_labels:
     monitor: 'conduit-monitor'
 
+# Recording rules for pre-aggregated cost and performance metrics
+# These improve dashboard query performance and reduce cardinality
+rule_files:
+  - /etc/prometheus/rules/conduit_costs.yml
+  - /etc/prometheus/rules/conduit_performance.yml
+
 scrape_configs:
   # Scrape Gateway API metrics - DNS SD discovers all instances
   # When scaled (e.g., --scale api=3), Docker DNS returns all container IPs

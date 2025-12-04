@@ -1,0 +1,187 @@
+# Prometheus Recording Rules for Conduit Cost Analytics
+# These rules pre-aggregate expensive queries for improved Grafana dashboard performance
+#
+# Available source metrics:
+# - conduit_usage_tracking_cost_dollars{model, provider_type, endpoint_type}
+# - conduit_usage_tracking_tokens_total{model, provider_type, token_type}
+# - conduit_usage_tracking_requests_total{endpoint_type, status}
+# - conduit_billing_revenue_dollars_total{model, provider_type}
+# - conduit_billing_cost_dollars{model, provider_type} (histogram)
+
+groups:
+  # Hourly cost aggregations - evaluated every 5 minutes
+  - name: conduit_cost_hourly
+    interval: 5m
+    rules:
+      # Hourly cost rate by provider
+      - record: conduit:cost_rate_by_provider_1h
+        expr: |
+          sum by (provider_type) (
+            rate(conduit_usage_tracking_cost_dollars[1h])
+          )
+
+      # Hourly cost rate by model
+      - record: conduit:cost_rate_by_model_1h
+        expr: |
+          sum by (model) (
+            rate(conduit_usage_tracking_cost_dollars[1h])
+          )
+
+      # Hourly request rate by endpoint type
+      - record: conduit:request_rate_by_endpoint_1h
+        expr: |
+          sum by (endpoint_type) (
+            rate(conduit_usage_tracking_requests_total[1h])
+          )
+
+      # Hourly token consumption by model and type
+      - record: conduit:token_rate_by_model_1h
+        expr: |
+          sum by (model, token_type) (
+            rate(conduit_usage_tracking_tokens_total[1h])
+          )
+
+      # Average cost per request over 1h (by model)
+      - record: conduit:avg_cost_per_request_1h
+        expr: |
+          (
+            sum by (model) (
+              rate(conduit_usage_tracking_cost_dollars[1h])
+            )
+          )
+          /
+          (
+            sum by (model) (
+              rate(conduit_usage_tracking_requests_total{status="success"}[1h])
+            )
+          )
+
+      # Hourly revenue rate by provider
+      - record: conduit:revenue_rate_by_provider_1h
+        expr: |
+          sum by (provider_type) (
+            rate(conduit_billing_revenue_dollars_total[1h])
+          )
+
+  # Daily cost aggregations - evaluated every 15 minutes
+  - name: conduit_cost_daily
+    interval: 15m
+    rules:
+      # Daily total cost by provider
+      - record: conduit:daily_cost_by_provider
+        expr: |
+          sum by (provider_type) (
+            increase(conduit_usage_tracking_cost_dollars[1d])
+          )
+
+      # Daily total cost (all providers)
+      - record: conduit:daily_cost_total
+        expr: |
+          sum(
+            increase(conduit_usage_tracking_cost_dollars[1d])
+          )
+
+      # Daily cost by model
+      - record: conduit:daily_cost_by_model
+        expr: |
+          sum by (model) (
+            increase(conduit_usage_tracking_cost_dollars[1d])
+          )
+
+      # Daily cost by endpoint type
+      - record: conduit:daily_cost_by_endpoint
+        expr: |
+          sum by (endpoint_type) (
+            increase(conduit_usage_tracking_cost_dollars[1d])
+          )
+
+      # Daily token consumption by model
+      - record: conduit:daily_tokens_by_model
+        expr: |
+          sum by (model, token_type) (
+            increase(conduit_usage_tracking_tokens_total[1d])
+          )
+
+      # Daily revenue by provider
+      - record: conduit:daily_revenue_by_provider
+        expr: |
+          sum by (provider_type) (
+            increase(conduit_billing_revenue_dollars_total[1d])
+          )
+
+      # Daily revenue total
+      - record: conduit:daily_revenue_total
+        expr: |
+          sum(
+            increase(conduit_billing_revenue_dollars_total[1d])
+          )
+
+      # Daily cost trend (vs yesterday) - ratio
+      - record: conduit:daily_cost_trend_ratio
+        expr: |
+          (
+            sum(increase(conduit_usage_tracking_cost_dollars[1d]))
+            /
+            sum(increase(conduit_usage_tracking_cost_dollars[1d] offset 1d))
+          )
+
+      # Top models by daily cost (preserves all for dashboard filtering)
+      - record: conduit:top_models_by_cost_1d
+        expr: |
+          topk(10,
+            sum by (model) (
+              increase(conduit_usage_tracking_cost_dollars[1d])
+            )
+          )
+
+  # Monthly projections and budget tracking - evaluated every 30 minutes
+  - name: conduit_cost_projections
+    interval: 30m
+    rules:
+      # Projected monthly spend based on last 7 days
+      - record: conduit:projected_monthly_spend
+        expr: |
+          sum(increase(conduit_usage_tracking_cost_dollars[7d])) * (30.0/7.0)
+
+      # Projected monthly spend by provider
+      - record: conduit:projected_monthly_spend_by_provider
+        expr: |
+          sum by (provider_type) (
+            increase(conduit_usage_tracking_cost_dollars[7d])
+          ) * (30.0/7.0)
+
+      # Projected monthly revenue
+      - record: conduit:projected_monthly_revenue
+        expr: |
+          sum(increase(conduit_billing_revenue_dollars_total[7d])) * (30.0/7.0)
+
+      # 30-day rolling cost total
+      - record: conduit:rolling_30d_cost
+        expr: |
+          sum(increase(conduit_usage_tracking_cost_dollars[30d]))
+
+      # 30-day rolling revenue total
+      - record: conduit:rolling_30d_revenue
+        expr: |
+          sum(increase(conduit_billing_revenue_dollars_total[30d]))
+
+      # Profit margin (revenue - cost) / revenue over 30 days
+      - record: conduit:rolling_30d_profit_margin
+        expr: |
+          (
+            sum(increase(conduit_billing_revenue_dollars_total[30d]))
+            -
+            sum(increase(conduit_usage_tracking_cost_dollars[30d]))
+          )
+          /
+          sum(increase(conduit_billing_revenue_dollars_total[30d]))
+
+      # Average daily cost over 7 days
+      - record: conduit:avg_daily_cost_7d
+        expr: |
+          sum(increase(conduit_usage_tracking_cost_dollars[7d])) / 7
+
+      # Average daily cost over 30 days
+      - record: conduit:avg_daily_cost_30d
+        expr: |
+          sum(increase(conduit_usage_tracking_cost_dollars[30d])) / 30
