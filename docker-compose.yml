@@ -287,6 +287,18 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  # PostgreSQL Exporter for Prometheus metrics
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: always
+    environment:
+      DATA_SOURCE_NAME: "postgresql://conduit:conduitpass@postgres:5432/conduit?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # Prometheus for metrics collection
   prometheus:
     image: prom/prometheus:latest
@@ -330,6 +342,7 @@ services:
       - ./grafana/provisioning/dashboards/grafana-virtual-key-analytics-dashboard.json:/var/lib/grafana/dashboards/virtual-key-analytics.json:ro
       - ./grafana/provisioning/dashboards/grafana-request-pipeline-dashboard.json:/var/lib/grafana/dashboards/request-pipeline.json:ro
       - ./grafana/provisioning/dashboards/grafana-infrastructure-dashboard.json:/var/lib/grafana/dashboards/infrastructure.json:ro
+      - ./grafana/provisioning/dashboards/grafana-postgresql-dashboard.json:/var/lib/grafana/dashboards/postgresql.json:ro
       # Alerting rules - can be enabled once basic setup is verified
       # - ./grafana/provisioning/alerting/alerting-rules.yml:/etc/grafana/provisioning/alerting/alerting-rules.yml:ro
     depends_on:

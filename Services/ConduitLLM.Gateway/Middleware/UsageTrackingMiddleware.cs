@@ -280,6 +280,16 @@ namespace ConduitLLM.Gateway.Middleware
 
                 UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType).Inc(Convert.ToDouble(totalCost));
 
+                // Record business metrics for Grafana dashboards (real-time counters)
+                var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
+                BusinessMetricsService.RecordModelRequest(model, providerType, requestStatus);
+                BusinessMetricsService.RecordTokens(model, providerType, usage.PromptTokens ?? 0, usage.CompletionTokens ?? 0);
+                BusinessMetricsService.RecordResponseTime(model, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
+                if (totalCost > 0)
+                {
+                    BusinessMetricsService.RecordCost(providerType, model, endpointType, Convert.ToDouble(totalCost));
+                }
+
                 // Update spend using batch service only if there's a cost
                 if (totalCost > 0)
                 {
@@ -441,6 +451,16 @@ namespace ConduitLLM.Gateway.Middleware
 
             UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType + "_stream").Inc(Convert.ToDouble(cost));
 
+            // Record business metrics for Grafana dashboards (real-time counters)
+            var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
+            BusinessMetricsService.RecordModelRequest(model, providerType, requestStatus);
+            BusinessMetricsService.RecordTokens(model, providerType, usage.PromptTokens ?? 0, usage.CompletionTokens ?? 0);
+            BusinessMetricsService.RecordResponseTime(model, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
+            if (cost > 0)
+            {
+                BusinessMetricsService.RecordCost(providerType, model, endpointType, Convert.ToDouble(cost));
+            }
+
             // Update spend only if there's a cost
             if (cost > 0)
             {
@@ -473,10 +493,20 @@ namespace ConduitLLM.Gateway.Middleware
             {
                 var requestType = UsageExtractor.DetermineRequestType(context.Request.Path);
 
+                // Extract provider info from HttpContext.Items (set by controllers)
+                int? providerId = context.Items.TryGetValue("ProviderId", out var providerIdObj) && providerIdObj is int pid
+                    ? pid
+                    : null;
+                var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
+                    ? providerTypeObj?.ToString()
+                    : null;
+
                 var logRequest = new LogRequestDto
                 {
                     VirtualKeyId = virtualKeyId,
                     ModelName = model,
+                    ProviderId = providerId,
+                    ProviderType = providerType,
                     RequestType = requestType,
                     InputTokens = usage.PromptTokens ?? 0,
                     OutputTokens = usage.CompletionTokens ?? 0,
@@ -579,6 +609,15 @@ namespace ConduitLLM.Gateway.Middleware
                 // Update metrics
                 UsageMetrics.UsageTrackingRequests.WithLabels("function", "success").Inc();
                 UsageMetrics.UsageTrackingCosts.WithLabels(functionName, providerType, "function").Inc(Convert.ToDouble(cost));
+
+                // Record business metrics for Grafana dashboards (real-time counters)
+                var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
+                BusinessMetricsService.RecordModelRequest(functionName, providerType, requestStatus);
+                BusinessMetricsService.RecordResponseTime(functionName, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
+                if (cost > 0)
+                {
+                    BusinessMetricsService.RecordCost(providerType, functionName, "function", Convert.ToDouble(cost));
+                }
 
                 // Update spend if there's a cost
                 if (cost > 0)
@@ -725,6 +764,15 @@ namespace ConduitLLM.Gateway.Middleware
                 // Update metrics
                 UsageMetrics.UsageTrackingRequests.WithLabels("image", "success").Inc();
                 UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, "image").Inc(Convert.ToDouble(cost));
+
+                // Record business metrics for Grafana dashboards (real-time counters)
+                var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
+                BusinessMetricsService.RecordModelRequest(model, providerType, requestStatus);
+                BusinessMetricsService.RecordResponseTime(model, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
+                if (cost > 0)
+                {
+                    BusinessMetricsService.RecordCost(providerType, model, "image", Convert.ToDouble(cost));
+                }
 
                 // Update spend if there's a cost
                 if (cost > 0)
@@ -911,6 +959,15 @@ namespace ConduitLLM.Gateway.Middleware
                 // Update metrics
                 UsageMetrics.UsageTrackingRequests.WithLabels("video", "success").Inc();
                 UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, "video").Inc(Convert.ToDouble(cost));
+
+                // Record business metrics for Grafana dashboards (real-time counters)
+                var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
+                BusinessMetricsService.RecordModelRequest(model, providerType, requestStatus);
+                BusinessMetricsService.RecordResponseTime(model, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
+                if (cost > 0)
+                {
+                    BusinessMetricsService.RecordCost(providerType, model, "video", Convert.ToDouble(cost));
+                }
 
                 // Update spend if there's a cost
                 if (cost > 0)

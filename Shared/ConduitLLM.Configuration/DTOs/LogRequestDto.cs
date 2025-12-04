@@ -21,6 +21,16 @@ namespace ConduitLLM.Configuration.DTOs
         public string ModelName { get; set; } = string.Empty;
 
         /// <summary>
+        /// ID of the provider that processed the request.
+        /// </summary>
+        public int? ProviderId { get; set; }
+
+        /// <summary>
+        /// Type of the provider that processed the request (e.g., "OpenAI", "Anthropic").
+        /// </summary>
+        public string? ProviderType { get; set; }
+
+        /// <summary>
         /// Type of the request (chat, completion, embedding, etc.)
         /// </summary>
         public string RequestType { get; set; } = string.Empty;

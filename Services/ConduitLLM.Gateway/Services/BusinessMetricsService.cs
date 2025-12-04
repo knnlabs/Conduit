@@ -132,9 +132,6 @@ namespace ConduitLLM.Gateway.Services
                     LabelNames = new[] { "sla_type", "model" } // sla_type: latency, availability, error_rate
                 });
 
-        private readonly Dictionary<string, DateTime> _lastCostUpdate = new();
-        private readonly Dictionary<string, decimal> _lastCostValue = new();
-
         public BusinessMetricsService(
             IServiceScopeFactory serviceScopeFactory,
             ILogger<BusinessMetricsService> logger)
@@ -201,21 +198,28 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task CollectModelUsageMetrics(IServiceScope scope)
         {
+            // NOTE: Model/provider counters (conduit_model_requests_total, conduit_model_tokens_total)
+            // are updated in REAL-TIME via static methods called from UsageTrackingMiddleware.
+            // This background method only collects supplementary gauge metrics.
+            //
+            // DO NOT increment counters here - it would cause double-counting since the middleware
+            // already records each request as it happens.
+
             try
             {
                 var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
-                // Get model usage statistics for the last hour
-                var oneHourAgo = DateTime.UtcNow.AddHours(-1);
+                // Get model usage statistics for the last 5 minutes to calculate current rates
+                var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
 
-                // First get the data, then process in memory to avoid expression tree issues
                 var requestLogs = await context.RequestLogs
-                    .Where(r => r.Timestamp >= oneHourAgo)
+                    .Where(r => r.Timestamp >= fiveMinutesAgo)
                     .ToListAsync();
 
+                // Use the new ProviderType field directly instead of parsing model names
                 var modelStats = requestLogs
-                    .GroupBy(r => new { Model = r.ModelName, Provider = r.ModelName.Contains("/") ? r.ModelName.Split('/')[0] : "unknown" })
+                    .GroupBy(r => new { Model = r.ModelName, Provider = r.ProviderType ?? "unknown" })
                     .Select(g => new
                     {
                         g.Key.Model,
@@ -227,23 +231,15 @@ namespace ConduitLLM.Gateway.Services
                     })
                     .ToList();
 
+                _logger.LogDebug("Collected model usage metrics: {Count} model/provider combinations in last 5 minutes",
+                    modelStats.Count);
+
+                // Observe average response times (histograms are safe to update periodically)
                 foreach (var stat in modelStats)
                 {
-                    if (stat.TotalPromptTokens > 0)
-                    {
-                        ModelTokensProcessed.WithLabels(stat.Model ?? "unknown", stat.Provider ?? "unknown", "prompt")
-                            .Inc(stat.TotalPromptTokens);
-                    }
-
-                    if (stat.TotalCompletionTokens > 0)
-                    {
-                        ModelTokensProcessed.WithLabels(stat.Model ?? "unknown", stat.Provider ?? "unknown", "completion")
-                            .Inc(stat.TotalCompletionTokens);
-                    }
-
                     if (stat.AvgResponseTime > 0)
                     {
-                        ModelResponseTime.WithLabels(stat.Model ?? "unknown", stat.Provider ?? "unknown")
+                        ModelResponseTime.WithLabels(stat.Model ?? "unknown", stat.Provider)
                             .Observe(stat.AvgResponseTime / 1000.0); // Convert ms to seconds
                     }
                 }
@@ -256,21 +252,25 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task CollectCostMetrics(IServiceScope scope)
         {
+            // NOTE: Cost counters (conduit_cost_total_dollars) are updated in REAL-TIME via
+            // static methods called from UsageTrackingMiddleware.
+            // This background method only updates the CostRate gauge for rate calculations.
+
             try
             {
                 var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
-                // Calculate cost rate per provider
+                // Calculate cost rate per provider using the ProviderType field
                 var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
 
-                // First get the data, then process in memory to avoid expression tree issues
                 var costLogs = await context.RequestLogs
                     .Where(r => r.Timestamp >= fiveMinutesAgo && r.Cost > 0)
                     .ToListAsync();
 
+                // Use the new ProviderType field directly
                 var costByProvider = costLogs
-                    .GroupBy(r => r.ModelName.Contains("/") ? r.ModelName.Split('/')[0] : "unknown")
+                    .GroupBy(r => r.ProviderType ?? "unknown")
                     .Select(g => new
                     {
                         Provider = g.Key,
@@ -280,28 +280,15 @@ namespace ConduitLLM.Gateway.Services
 
                 foreach (var providerCost in costByProvider)
                 {
-                    var provider = providerCost.Provider ?? "unknown";
+                    var provider = providerCost.Provider;
                     var costPerMinute = (double)(providerCost.TotalCost / 5); // 5-minute window
 
+                    // Update the rate gauge (this is safe to update periodically)
                     CostRate.WithLabels(provider).Set(costPerMinute);
-
-                    // Track cost changes
-                    if (_lastCostUpdate.TryGetValue(provider, out var lastUpdate))
-                    {
-                        var timeDiff = (DateTime.UtcNow - lastUpdate).TotalMinutes;
-                        if (timeDiff > 0 && _lastCostValue.TryGetValue(provider, out var lastCost))
-                        {
-                            var costDiff = providerCost.TotalCost - lastCost;
-                            if (costDiff > 0)
-                            {
-                                CostTotal.WithLabels(provider, "all", "inference").Inc((double)costDiff);
-                            }
-                        }
-                    }
-
-                    _lastCostUpdate[provider] = DateTime.UtcNow;
-                    _lastCostValue[provider] = providerCost.TotalCost;
                 }
+
+                _logger.LogDebug("Collected cost metrics: {Count} providers with costs in last 5 minutes",
+                    costByProvider.Count);
             }
             catch (Exception ex)
             {
@@ -366,6 +353,26 @@ namespace ConduitLLM.Gateway.Services
         {
             CostTotal.WithLabels(provider, model, operationType).Inc(costDollars);
             CostPerRequest.WithLabels(model, provider).Observe(costDollars);
+        }
+
+        public static void RecordTokens(string model, string provider, int promptTokens, int completionTokens)
+        {
+            if (promptTokens > 0)
+            {
+                ModelTokensProcessed.WithLabels(model, provider, "prompt").Inc(promptTokens);
+            }
+            if (completionTokens > 0)
+            {
+                ModelTokensProcessed.WithLabels(model, provider, "completion").Inc(completionTokens);
+            }
+        }
+
+        public static void RecordResponseTime(string model, string provider, double responseTimeSeconds)
+        {
+            if (responseTimeSeconds > 0)
+            {
+                ModelResponseTime.WithLabels(model, provider).Observe(responseTimeSeconds);
+            }
         }
 
         public static void RecordSLAViolation(string slaType, string model)

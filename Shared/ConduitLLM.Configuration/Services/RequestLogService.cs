@@ -154,6 +154,8 @@ namespace ConduitLLM.Configuration.Services
                 {
                     VirtualKeyId = request.VirtualKeyId,
                     ModelName = request.ModelName,
+                    ProviderId = request.ProviderId,
+                    ProviderType = request.ProviderType,
                     RequestType = request.RequestType,
                     InputTokens = request.InputTokens,
                     OutputTokens = request.OutputTokens,
@@ -172,8 +174,8 @@ namespace ConduitLLM.Configuration.Services
 
                 // OPTIMIZATION: Use batch spend update service instead of immediate database write
                 // This reduces database load from O(n) writes per request to batch updates every 30 seconds
-                _logger.LogDebug("Request logged for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, queuing spend update",
-                    request.VirtualKeyId, request.Cost);
+                _logger.LogDebug("Request logged for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, ProviderId={ProviderId}, queuing spend update",
+                    request.VirtualKeyId, request.Cost, request.ProviderId);
             }
             catch (Exception ex)
             {
@@ -200,6 +202,8 @@ namespace ConduitLLM.Configuration.Services
                 {
                     VirtualKeyId = request.VirtualKeyId,
                     ModelName = request.ModelName,
+                    ProviderId = request.ProviderId,
+                    ProviderType = request.ProviderType,
                     RequestType = request.RequestType,
                     InputTokens = request.InputTokens,
                     OutputTokens = request.OutputTokens,
@@ -219,8 +223,8 @@ namespace ConduitLLM.Configuration.Services
                 // Queue spend update for batching instead of immediate database write
                 batchSpendService.QueueSpendUpdate(request.VirtualKeyId, request.Cost);
 
-                _logger.LogDebug("Request logged and spend update queued for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}",
-                    request.VirtualKeyId, request.Cost);
+                _logger.LogDebug("Request logged and spend update queued for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, ProviderId={ProviderId}",
+                    request.VirtualKeyId, request.Cost, request.ProviderId);
             }
             catch (Exception ex)
             {

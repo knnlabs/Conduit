@@ -1,0 +1,367 @@
+{
+  "id": null,
+  "uid": "conduit-postgresql",
+  "title": "PostgreSQL",
+  "tags": ["conduit", "infrastructure", "postgres", "database"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 100,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+      "type": "row",
+      "title": "Overview",
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 2},
+      "type": "stat",
+      "title": "PostgreSQL Status",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "pg_up",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}}},
+            {"type": "value", "options": {"1": {"text": "UP", "color": "green"}}}
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 2},
+      "type": "stat",
+      "title": "Active Connections",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(pg_stat_activity_count{datname=\"conduit\"})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 2},
+      "type": "stat",
+      "title": "Max Connections",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "pg_settings_max_connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 2},
+      "type": "stat",
+      "title": "Database Size",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "pg_database_size_bytes{datname=\"conduit\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1073741824},
+              {"color": "red", "value": 10737418240}
+            ]
+          },
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 2},
+      "type": "stat",
+      "title": "Connection Usage %",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "(sum(pg_stat_activity_count) / pg_settings_max_connections) * 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "decimals": 1
+        }
+      }
+    },
+    {
+      "id": 6,
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 2},
+      "type": "stat",
+      "title": "Deadlocks",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(pg_stat_database_deadlocks{datname=\"conduit\"})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 10}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 101,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 6},
+      "type": "row",
+      "title": "Transactions",
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 8},
+      "type": "timeseries",
+      "title": "Transactions per Second",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(pg_stat_database_xact_commit{datname=\"conduit\"}[1m])",
+          "legendFormat": "Commits",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(pg_stat_database_xact_rollback{datname=\"conduit\"}[1m])",
+          "legendFormat": "Rollbacks",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Rollbacks"},
+            "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+          }
+        ]
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 8,
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 8},
+      "type": "timeseries",
+      "title": "Connections Over Time",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(pg_stat_activity_count{datname=\"conduit\"}) by (state)",
+          "legendFormat": "{{state}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 102,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 14},
+      "type": "row",
+      "title": "Performance",
+      "collapsed": false
+    },
+    {
+      "id": 9,
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 16},
+      "type": "timeseries",
+      "title": "Row Operations per Second",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(pg_stat_database_tup_fetched{datname=\"conduit\"}[1m])",
+          "legendFormat": "Fetched",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(pg_stat_database_tup_inserted{datname=\"conduit\"}[1m])",
+          "legendFormat": "Inserted",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(pg_stat_database_tup_updated{datname=\"conduit\"}[1m])",
+          "legendFormat": "Updated",
+          "refId": "C"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(pg_stat_database_tup_deleted{datname=\"conduit\"}[1m])",
+          "legendFormat": "Deleted",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 10,
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 16},
+      "type": "timeseries",
+      "title": "Cache Hit Ratio",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "pg_stat_database_blks_hit{datname=\"conduit\"} / (pg_stat_database_blks_hit{datname=\"conduit\"} + pg_stat_database_blks_read{datname=\"conduit\"}) * 100",
+          "legendFormat": "Cache Hit %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 90},
+              {"color": "green", "value": 99}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 11,
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 16},
+      "type": "timeseries",
+      "title": "Block I/O",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(pg_stat_database_blks_hit{datname=\"conduit\"}[1m])",
+          "legendFormat": "Cache Hits",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(pg_stat_database_blks_read{datname=\"conduit\"}[1m])",
+          "legendFormat": "Disk Reads",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Disk Reads"},
+            "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+          }
+        ]
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      }
+    }
+  ]
+}

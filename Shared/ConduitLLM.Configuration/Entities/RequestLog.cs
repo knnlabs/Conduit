@@ -33,6 +33,19 @@ public class RequestLog
     public string ModelName { get; set; } = string.Empty;
 
     /// <summary>
+    /// ID of the provider that processed the request.
+    /// References the Provider entity for accurate provider tracking.
+    /// </summary>
+    public int? ProviderId { get; set; }
+
+    /// <summary>
+    /// Type of the provider that processed the request.
+    /// Stored as string for flexibility and query performance.
+    /// </summary>
+    [MaxLength(50)]
+    public string? ProviderType { get; set; }
+
+    /// <summary>
     /// Type of the request (chat, completion, embedding, etc.)
     /// </summary>
     [Required]
