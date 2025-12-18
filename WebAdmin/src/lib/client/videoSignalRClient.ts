@@ -38,7 +38,7 @@ export class VideoSignalRClient {
     if (!keyToUse) {
       const keyData = await ephemeralKeyClient.getKey('video-generation');
       keyToUse = keyData.key;
-      coreApiUrl = keyData.coreApiUrl;
+      coreApiUrl = keyData.gatewayApiUrl;
     }
 
     // Create a new connection to the public hub
