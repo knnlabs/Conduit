@@ -4,7 +4,6 @@
 
 export enum Feature {
   // Analytics & Monitoring
-  PROVIDER_HEALTH_DASHBOARD = 'provider_health_dashboard',
   VIRTUAL_KEYS_DASHBOARD = 'virtual_keys_dashboard',
   USAGE_ANALYTICS = 'usage_analytics',
   SYSTEM_PERFORMANCE_FULL = 'system_performance_full',
@@ -23,7 +22,6 @@ export enum Feature {
 // In production, these should come from environment variables or a config service
 const FEATURE_FLAGS: Record<Feature, boolean> = {
   // Disabled features (waiting for backend implementation)
-  [Feature.PROVIDER_HEALTH_DASHBOARD]: false,
   [Feature.VIRTUAL_KEYS_DASHBOARD]: false,
   [Feature.USAGE_ANALYTICS]: false,
   [Feature.SYSTEM_PERFORMANCE_FULL]: false,

@@ -54,7 +54,6 @@ Provider error tracking is essential for maintaining service reliability and und
 
 3. **Metrics Collection**
    - Business metrics service with Prometheus integration:
-     - `conduit_provider_health` - Provider health status (1=healthy, 0=unhealthy)
      - `conduit_provider_errors_total` - Total provider errors by type
      - `conduit_provider_latency_seconds` - Provider API latency
      - `conduit_model_requests_total` - Requests per model/provider with status

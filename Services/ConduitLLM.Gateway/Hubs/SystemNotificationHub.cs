@@ -54,7 +54,7 @@ namespace ConduitLLM.Gateway.Hubs
             // Initialize default preferences for the connection
             _connectionPreferences[Context.ConnectionId] = new NotificationPreferences
             {
-                EnabledTypes = new HashSet<string> { "provider_health", "rate_limit", "system_announcement", "service_degradation", "service_restoration" },
+                EnabledTypes = new HashSet<string> { "rate_limit", "system_announcement", "service_degradation", "service_restoration" },
                 MinimumPriority = NotificationPriority.Low
             };
             
@@ -110,30 +110,6 @@ namespace ConduitLLM.Gateway.Hubs
                     throw;
                 }
             }
-        }
-
-        /// <summary>
-        /// Notifies clients about provider health status changes.
-        /// </summary>
-        public async Task ProviderHealthChanged(int providerId, string providerName, HealthStatus status, TimeSpan? responseTime)
-        {
-            var notification = new ProviderHealthNotification
-            {
-                ProviderId = providerId,
-                ProviderName = providerName,
-                Status = status.ToString(),
-                ResponseTimeMs = responseTime?.TotalMilliseconds,
-                Priority = status == HealthStatus.Unhealthy ? NotificationPriority.High : NotificationPriority.Medium,
-                Details = status switch
-                {
-                    HealthStatus.Healthy => $"{providerName} is operating normally",
-                    HealthStatus.Degraded => $"{providerName} is experiencing performance issues",
-                    HealthStatus.Unhealthy => $"{providerName} is currently unavailable",
-                    _ => null
-                }
-            };
-
-            await BroadcastNotification(notification);
         }
 
         /// <summary>

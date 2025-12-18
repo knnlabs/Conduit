@@ -27,43 +27,6 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     }
 
     /// <summary>
-    /// Notification for provider health status changes.
-    /// </summary>
-    public class ProviderHealthNotification : SystemNotification
-    {
-        /// <summary>
-        /// Gets the notification type.
-        /// </summary>
-        public override string Type => "provider_health";
-
-        /// <summary>
-        /// Gets or sets the provider ID.
-        /// </summary>
-        public int ProviderId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the provider name.
-        /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
-
-
-        /// <summary>
-        /// Gets or sets the health status.
-        /// </summary>
-        public string Status { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets the response time in milliseconds.
-        /// </summary>
-        public double? ResponseTimeMs { get; set; }
-
-        /// <summary>
-        /// Gets or sets additional details about the health status.
-        /// </summary>
-        public string? Details { get; set; }
-    }
-
-    /// <summary>
     /// Notification for rate limit warnings.
     /// </summary>
     public class RateLimitNotification : SystemNotification
@@ -259,27 +222,6 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets whether the model is available.
         /// </summary>
         public bool IsAvailable { get; set; }
-    }
-
-    /// <summary>
-    /// Health status enumeration for provider health notifications.
-    /// </summary>
-    public enum HealthStatus
-    {
-        /// <summary>
-        /// Service is healthy and responding normally.
-        /// </summary>
-        Healthy,
-
-        /// <summary>
-        /// Service is experiencing degraded performance.
-        /// </summary>
-        Degraded,
-
-        /// <summary>
-        /// Service is unhealthy or not responding.
-        /// </summary>
-        Unhealthy
     }
 
     /// <summary>

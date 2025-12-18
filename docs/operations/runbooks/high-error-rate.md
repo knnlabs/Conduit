@@ -45,8 +45,8 @@ docker exec conduit-api dotnet exec ConduitLLM.Gateway.dll --test-db
 redis-cli ping
 redis-cli info stats | grep rejected_connections
 
-# Provider health
-curl -s http://localhost/metrics | grep conduit_provider_health
+# Provider errors
+curl -s http://localhost/metrics | grep conduit_provider_errors
 ```
 
 ### 4. Resource Utilization

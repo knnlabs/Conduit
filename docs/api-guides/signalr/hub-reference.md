@@ -141,7 +141,6 @@ This document provides a comprehensive overview of all SignalR hubs in Conduit, 
 - `UpdatePreferences(NotificationPreferences preferences)` - Update notification settings
 
 **Server Events** (ISystemNotificationHub interface):
-- `ProviderHealthChanged(string provider, HealthStatus status, string? message)`
 - `RateLimitWarning(string endpoint, int remaining, DateTime resetTime)`
 - `SystemAnnouncement(string title, string message, string severity)`
 - `ServiceDegraded(string service, string reason)`

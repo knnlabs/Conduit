@@ -66,9 +66,6 @@ This document provides step-by-step runbooks for responding to cost-related aler
    ```promql
    # Provider error rates
    sum by (provider) (rate(conduit_provider_errors_total[5m]))
-   
-   # Check if fallback to expensive providers
-   conduit_provider_health == 0
    ```
 
 4. **Review Recent Deployments**
@@ -378,9 +375,8 @@ This document provides step-by-step runbooks for responding to cost-related aler
    )
    ```
 
-2. **Check Provider Health**
+2. **Check Provider Errors**
    ```promql
-   conduit_provider_health{provider="$PROVIDER"}
    conduit_provider_errors_total{provider="$PROVIDER"}
    ```
 
@@ -728,8 +724,8 @@ curl -s http://prometheus:9090/api/v1/query?query=sum\(conduit_cost_rate_dollars
 echo -e "\nTop 5 Spending Keys:"
 curl -s http://prometheus:9090/api/v1/query?query=topk\(5,conduit_virtualkey_spend_total\) | jq '.data.result[].metric.virtual_key_id'
 
-echo -e "\nProvider Health:"
-curl -s http://prometheus:9090/api/v1/query?query=conduit_provider_health | jq '.data.result[] | {provider: .metric.provider, health: .value[1]}'
+echo -e "\nProvider Errors:"
+curl -s http://prometheus:9090/api/v1/query?query=conduit_provider_errors_total | jq '.data.result[] | {provider: .metric.provider, errors: .value[1]}'
 
 echo -e "\nCache Performance:"
 curl -s http://prometheus:9090/api/v1/query?query=sum\(rate\(conduit_cost_cache_hits_total[5m]\)\)/\(sum\(rate\(conduit_cost_cache_hits_total[5m]\)\)%2Bsum\(rate\(conduit_cost_cache_misses_total[5m]\)\)\) | jq '.data.result[0].value[1]'

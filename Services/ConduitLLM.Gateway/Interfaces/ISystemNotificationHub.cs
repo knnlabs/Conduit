@@ -8,16 +8,6 @@ namespace ConduitLLM.Gateway.Interfaces
     public interface ISystemNotificationHub
     {
         /// <summary>
-        /// Notifies clients about provider health status changes.
-        /// </summary>
-        /// <param name="providerId">The provider ID.</param>
-        /// <param name="providerName">The provider name.</param>
-        /// <param name="status">The health status.</param>
-        /// <param name="responseTime">The response time if available.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task ProviderHealthChanged(int providerId, string providerName, HealthStatus status, TimeSpan? responseTime);
-
-        /// <summary>
         /// Sends rate limit warnings to connected clients.
         /// </summary>
         /// <param name="remaining">Number of requests remaining.</param>
