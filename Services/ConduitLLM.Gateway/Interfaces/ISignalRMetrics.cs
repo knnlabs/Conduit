@@ -36,11 +36,11 @@ namespace ConduitLLM.Gateway.Interfaces
         /// <summary>
         /// Records a hub method invocation with timing.
         /// </summary>
-        IDisposable RecordHubMethodInvocation(string hubName, string methodName, int? virtualKeyId = null);
+        IDisposable RecordHubMethodInvocation(string hubName, string methodName, int? virtualKeyId = null, string? protocol = null);
 
         /// <summary>
         /// Records a message processing operation with timing.
         /// </summary>
-        IDisposable RecordMessageProcessing(string messageType, string direction);
+        IDisposable RecordMessageProcessing(string messageType, string direction, string? protocol = null);
     }
 }

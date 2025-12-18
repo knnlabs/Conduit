@@ -55,6 +55,7 @@ __export(index_exports, {
   ResponseParser: () => ResponseParser,
   ServerError: () => ServerError,
   SignalRLogLevel: () => SignalRLogLevel,
+  SignalRProtocolType: () => SignalRProtocolType,
   StreamError: () => StreamError,
   TIMEOUTS: () => TIMEOUTS,
   TimeoutError: () => TimeoutError,
@@ -610,9 +611,28 @@ var HttpTransportType = /* @__PURE__ */ ((HttpTransportType3) => {
   return HttpTransportType3;
 })(HttpTransportType || {});
 var DefaultTransports = 1 /* WebSockets */ | 2 /* ServerSentEvents */ | 4 /* LongPolling */;
+var SignalRProtocolType = /* @__PURE__ */ ((SignalRProtocolType2) => {
+  SignalRProtocolType2["Json"] = "json";
+  SignalRProtocolType2["MessagePack"] = "messagepack";
+  return SignalRProtocolType2;
+})(SignalRProtocolType || {});
 
 // src/signalr/BaseSignalRConnection.ts
 var signalR = __toESM(require("@microsoft/signalr"));
+var MessagePackHubProtocol;
+async function loadMessagePackProtocol() {
+  if (!MessagePackHubProtocol) {
+    try {
+      const msgpack = await import("@microsoft/signalr-protocol-msgpack");
+      MessagePackHubProtocol = msgpack.MessagePackHubProtocol;
+      return msgpack.MessagePackHubProtocol;
+    } catch (error) {
+      console.warn("MessagePack protocol not available, using JSON:", error);
+      return null;
+    }
+  }
+  return MessagePackHubProtocol;
+}
 var BaseSignalRConnection = class {
   connection;
   config;
@@ -688,6 +708,18 @@ var BaseSignalRConnection = class {
     }
     const logLevel = this.mapLogLevel(this.config.options?.logLevel || 2 /* Information */);
     builder.configureLogging(logLevel);
+    const protocolType = this.config.options?.protocol || "json" /* Json */;
+    if (protocolType === "messagepack" /* MessagePack */) {
+      try {
+        const MessagePackProtocol = await loadMessagePackProtocol();
+        if (MessagePackProtocol) {
+          builder.withHubProtocol(new MessagePackProtocol());
+          console.warn("Using MessagePack protocol for SignalR connection");
+        }
+      } catch (error) {
+        console.error("Failed to load MessagePack protocol, falling back to JSON:", error);
+      }
+    }
     this.connection = builder.build();
     this.connection.onclose(async (error) => {
       if (this.onDisconnected) {
@@ -872,6 +904,7 @@ var HttpError = class extends Error {
   ResponseParser,
   ServerError,
   SignalRLogLevel,
+  SignalRProtocolType,
   StreamError,
   TIMEOUTS,
   TimeoutError,

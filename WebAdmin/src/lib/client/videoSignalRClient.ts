@@ -1,6 +1,36 @@
 import * as signalR from '@microsoft/signalr';
 import { ephemeralKeyClient } from '@/lib/client/ephemeralKeyClient';
 
+// Lazy import for MessagePack protocol
+let MessagePackHubProtocol: any;
+
+/**
+ * Lazy loads the MessagePack protocol module
+ */
+async function loadMessagePackProtocol(): Promise<any> {
+  if (!MessagePackHubProtocol) {
+    try {
+      const msgpack = await import('@microsoft/signalr-protocol-msgpack');
+      MessagePackHubProtocol = msgpack.MessagePackHubProtocol;
+      return msgpack.MessagePackHubProtocol;
+    } catch (error) {
+      console.warn('MessagePack protocol not available, using JSON:', error);
+      return null;
+    }
+  }
+  return MessagePackHubProtocol;
+}
+
+/**
+ * Checks if MessagePack protocol should be used based on environment variable
+ */
+function shouldUseMessagePack(): boolean {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_SIGNALR_USE_MESSAGEPACK === 'true';
+  }
+  return (window as any).__SIGNALR_USE_MESSAGEPACK__ === true;
+}
+
 interface VideoProgressUpdate {
   taskId: string;
   status: string;
@@ -33,27 +63,37 @@ export class VideoSignalRClient {
 
     // Get ephemeral key if not provided
     let keyToUse = ephemeralKey;
-    let coreApiUrl = 'http://localhost:5000'; // default
-    
+    let gatewayApiUrl = 'http://localhost:5000'; // default
+
     if (!keyToUse) {
       const keyData = await ephemeralKeyClient.getKey('video-generation');
       keyToUse = keyData.key;
-      coreApiUrl = keyData.gatewayApiUrl;
+      gatewayApiUrl = keyData.gatewayApiUrl;
     }
 
     // Create a new connection to the public hub
     // Connect directly to the Gateway API - CORS is properly configured
-    const hubUrl = `${coreApiUrl}/hubs/public/video-generation`;
+    const hubUrl = `${gatewayApiUrl}/hubs/public/video-generation`;
     
-    this.connection = new signalR.HubConnectionBuilder()
+    const builder = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
         // Don't send auth headers, we'll use the token in the subscribe call
         skipNegotiation: false,
         transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000]) // Retry with exponential backoff
-      .configureLogging(signalR.LogLevel.Information)
-      .build();
+      .configureLogging(signalR.LogLevel.Information);
+
+    // Configure protocol (MessagePack if enabled, otherwise JSON)
+    if (shouldUseMessagePack()) {
+      const MessagePackProtocol = await loadMessagePackProtocol();
+      if (MessagePackProtocol) {
+        builder.withHubProtocol(new MessagePackProtocol());
+        console.warn('Using MessagePack protocol for video generation hub');
+      }
+    }
+
+    this.connection = builder.build();
 
     // Set up event handlers (only if callbacks provided)
     if (callbacks) {

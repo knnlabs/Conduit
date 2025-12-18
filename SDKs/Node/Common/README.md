@@ -75,6 +75,59 @@ const displayName = getCapabilityDisplayName(ModelCapability.IMAGE_GENERATION);
 // Returns: "Image Generation"
 ```
 
+## SignalR Protocol Support
+
+This package includes support for both JSON and MessagePack protocols for SignalR connections.
+
+### Protocol Types
+
+```typescript
+import { SignalRProtocolType } from '@knn_labs/conduit-common';
+
+// Available protocols
+SignalRProtocolType.Json        // Default JSON protocol
+SignalRProtocolType.MessagePack // Binary MessagePack protocol with LZ4 compression
+```
+
+### Using MessagePack Protocol
+
+MessagePack provides 30-50% bandwidth reduction compared to JSON:
+
+```typescript
+import { BaseSignalRConnection, SignalRProtocolType } from '@knn_labs/conduit-common';
+
+// Configure connection with MessagePack
+const config = {
+  baseUrl: 'https://api.example.com',
+  auth: { authToken: 'your-key', authType: 'virtual' },
+  options: {
+    protocol: SignalRProtocolType.MessagePack // Enable MessagePack
+  }
+};
+
+// Connection will use MessagePack protocol
+const connection = new YourHubConnection(config);
+await connection.connect();
+```
+
+### Protocol Features
+
+- **JSON Protocol (Default)**
+  - Text-based, human-readable
+  - Universal browser support
+  - Ideal for debugging and development
+
+- **MessagePack Protocol**
+  - Binary format with LZ4 compression
+  - 30-50% smaller payloads
+  - Automatic fallback to JSON if unavailable
+  - Lazy-loaded (only imported when needed)
+  - Recommended for production
+
+### Requirements
+
+MessagePack protocol requires the `@microsoft/signalr-protocol-msgpack` package (already included as a dependency).
+
 ## Development
 
 To build the package:

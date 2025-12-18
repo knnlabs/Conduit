@@ -484,6 +484,19 @@ declare enum HttpTransportType {
  */
 declare const DefaultTransports: number;
 /**
+ * SignalR protocol types
+ */
+declare enum SignalRProtocolType {
+    /**
+     * JSON protocol (default)
+     */
+    Json = "json",
+    /**
+     * MessagePack binary protocol with compression
+     */
+    MessagePack = "messagepack"
+}
+/**
  * Base SignalR connection options
  */
 interface SignalRConnectionOptions {
@@ -519,6 +532,11 @@ interface SignalRConnectionOptions {
      * Keep-alive interval in milliseconds
      */
     keepAliveInterval?: number;
+    /**
+     * Protocol to use for SignalR communication
+     * @default SignalRProtocolType.Json
+     */
+    protocol?: SignalRProtocolType;
 }
 /**
  * Authentication configuration for SignalR connections
@@ -828,4 +846,4 @@ interface SignalRConfig {
     connectionTimeout?: number;
 }
 
-export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, type BaseClientOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExtendedRequestInit, type FilterOptions, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, InsufficientBalanceError, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, handleApiError, isAuthError, isAuthorizationError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isInsufficientBalanceError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isServerError, isStreamError, isTimeoutError, isValidationError, serializeError };
+export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, type BaseClientOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExtendedRequestInit, type FilterOptions, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, InsufficientBalanceError, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, SignalRProtocolType, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, handleApiError, isAuthError, isAuthorizationError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isInsufficientBalanceError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isServerError, isStreamError, isTimeoutError, isValidationError, serializeError };

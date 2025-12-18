@@ -25,23 +25,33 @@ namespace ConduitLLM.Gateway.Filters
             var virtualKeyId = GetVirtualKeyId(context);
             var correlationId = GetOrCreateCorrelationId(context);
 
+            // TODO: Protocol detection - Hub filters don't have direct access to the negotiated protocol
+            // The protocol is determined during connection negotiation but isn't exposed through HubLifetimeContext
+            // For now, we default to "json" and rely on MessagePack being available for clients that request it
+            // Future enhancement: Track protocol through a custom connection tracking service
+            var protocol = "json";
+
+            // Store protocol in connection items for later retrieval
+            context.Context.Items["Protocol"] = protocol;
+
             using (_logger.BeginScope(new Dictionary<string, object>
             {
                 ["ConnectionId"] = connectionId,
                 ["HubName"] = hubName,
                 ["VirtualKeyId"] = virtualKeyId?.ToString() ?? "anonymous",
                 ["CorrelationId"] = correlationId,
+                ["Protocol"] = protocol,
                 ["Operation"] = "OnConnectedAsync"
             }))
             {
                 try
                 {
                     _logger.LogInformation(
-                        "SignalR connection established for hub {HubName} with connection {ConnectionId}",
-                        hubName, connectionId);
+                        "SignalR connection established for hub {HubName} with connection {ConnectionId} using {Protocol} protocol",
+                        hubName, connectionId, protocol);
 
-                    _metrics.ConnectionsTotal.Add(1, new TagList { { "hub", hubName } });
-                    _metrics.ActiveConnections.Add(1, new TagList { { "hub", hubName } });
+                    _metrics.ConnectionsTotal.Add(1, new TagList { { "hub", hubName }, { "protocol", protocol } });
+                    _metrics.ActiveConnections.Add(1, new TagList { { "hub", hubName }, { "protocol", protocol } });
 
                     await next(context);
                 }
@@ -50,24 +60,25 @@ namespace ConduitLLM.Gateway.Filters
                     _logger.LogError(ex,
                         "Error during SignalR connection for hub {HubName} with connection {ConnectionId}",
                         hubName, connectionId);
-                    
-                    _metrics.ConnectionErrors.Add(1, new TagList { { "hub", hubName }, { "error_type", ex.GetType().Name } });
-                    _metrics.ActiveConnections.Add(-1, new TagList { { "hub", hubName } });
-                    
+
+                    _metrics.ConnectionErrors.Add(1, new TagList { { "hub", hubName }, { "protocol", protocol }, { "error_type", ex.GetType().Name } });
+                    _metrics.ActiveConnections.Add(-1, new TagList { { "hub", hubName }, { "protocol", protocol } });
+
                     throw;
                 }
             }
         }
 
         public async Task OnDisconnectedAsync(
-            HubLifetimeContext context, 
-            Exception? exception, 
+            HubLifetimeContext context,
+            Exception? exception,
             Func<HubLifetimeContext, Exception?, Task> next)
         {
             var connectionId = context.Context.ConnectionId;
             var hubName = context.Hub.GetType().Name;
             var virtualKeyId = GetVirtualKeyId(context);
             var correlationId = GetOrCreateCorrelationId(context);
+            var protocol = GetProtocolName(context.Context);
 
             using (_logger.BeginScope(new Dictionary<string, object>
             {
@@ -75,6 +86,7 @@ namespace ConduitLLM.Gateway.Filters
                 ["HubName"] = hubName,
                 ["VirtualKeyId"] = virtualKeyId?.ToString() ?? "anonymous",
                 ["CorrelationId"] = correlationId,
+                ["Protocol"] = protocol,
                 ["Operation"] = "OnDisconnectedAsync"
             }))
             {
@@ -91,7 +103,7 @@ namespace ConduitLLM.Gateway.Filters
                         hubName, connectionId);
                 }
 
-                _metrics.ActiveConnections.Add(-1, new TagList { { "hub", hubName } });
+                _metrics.ActiveConnections.Add(-1, new TagList { { "hub", hubName }, { "protocol", protocol } });
 
                 await next(context, exception);
             }
@@ -106,6 +118,7 @@ namespace ConduitLLM.Gateway.Filters
             var connectionId = invocationContext.Context.ConnectionId;
             var virtualKeyId = GetVirtualKeyId(invocationContext.Context);
             var correlationId = GetOrCreateCorrelationId(invocationContext.Context);
+            var protocol = GetProtocolName(invocationContext.Context);
 
             using (_logger.BeginScope(new Dictionary<string, object>
             {
@@ -114,6 +127,7 @@ namespace ConduitLLM.Gateway.Filters
                 ["MethodName"] = methodName,
                 ["VirtualKeyId"] = virtualKeyId?.ToString() ?? "anonymous",
                 ["CorrelationId"] = correlationId,
+                ["Protocol"] = protocol,
                 ["Operation"] = "InvokeMethod"
             }))
             {
@@ -121,16 +135,16 @@ namespace ConduitLLM.Gateway.Filters
                     "Invoking SignalR hub method {MethodName} on hub {HubName} for connection {ConnectionId}",
                     methodName, hubName, connectionId);
 
-                using var timer = _metrics.RecordHubMethodInvocation(hubName, methodName, virtualKeyId);
-                
+                using var timer = _metrics.RecordHubMethodInvocation(hubName, methodName, virtualKeyId, protocol);
+
                 try
                 {
                     var result = await next(invocationContext);
-                    
+
                     _logger.LogDebug(
                         "Successfully invoked SignalR hub method {MethodName} on hub {HubName} for connection {ConnectionId}",
                         methodName, hubName, connectionId);
-                    
+
                     return result;
                 }
                 catch (HubException hubEx)
@@ -138,14 +152,15 @@ namespace ConduitLLM.Gateway.Filters
                     _logger.LogWarning(hubEx,
                         "Hub exception in method {MethodName} on hub {HubName} for connection {ConnectionId}: {Message}",
                         methodName, hubName, connectionId, hubEx.Message);
-                    
-                    _metrics.HubErrors.Add(1, new TagList 
-                    { 
-                        { "hub", hubName }, 
+
+                    _metrics.HubErrors.Add(1, new TagList
+                    {
+                        { "hub", hubName },
                         { "method", methodName },
+                        { "protocol", protocol },
                         { "error_type", "HubException" }
                     });
-                    
+
                     throw;
                 }
                 catch (Exception ex)
@@ -153,14 +168,15 @@ namespace ConduitLLM.Gateway.Filters
                     _logger.LogError(ex,
                         "Error invoking SignalR hub method {MethodName} on hub {HubName} for connection {ConnectionId}",
                         methodName, hubName, connectionId);
-                    
-                    _metrics.HubErrors.Add(1, new TagList 
-                    { 
-                        { "hub", hubName }, 
+
+                    _metrics.HubErrors.Add(1, new TagList
+                    {
+                        { "hub", hubName },
                         { "method", methodName },
+                        { "protocol", protocol },
                         { "error_type", ex.GetType().Name }
                     });
-                    
+
                     throw;
                 }
             }
@@ -220,6 +236,17 @@ namespace ConduitLLM.Gateway.Filters
             correlationId = Guid.NewGuid().ToString();
             context.Items["CorrelationId"] = correlationId;
             return correlationId;
+        }
+
+        private static string GetProtocolName(HubCallerContext context)
+        {
+            // Retrieve protocol from connection items (stored during OnConnectedAsync)
+            if (context.Items.TryGetValue("Protocol", out var value) && value is string protocol)
+            {
+                return protocol;
+            }
+
+            return "json"; // Default to JSON if protocol not stored
         }
     }
 }

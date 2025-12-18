@@ -1,12 +1,33 @@
 import * as signalR from '@microsoft/signalr';
-import { 
-  HubConnectionState, 
+import {
+  HubConnectionState,
   HttpTransportType,
   DefaultTransports,
   SignalRAuthConfig,
   SignalRConnectionOptions,
-  SignalRLogLevel
+  SignalRLogLevel,
+  SignalRProtocolType
 } from './types';
+
+// Lazy import for MessagePack protocol
+let MessagePackHubProtocol: any;
+
+/**
+ * Lazy loads the MessagePack protocol module
+ */
+async function loadMessagePackProtocol(): Promise<any> {
+  if (!MessagePackHubProtocol) {
+    try {
+      const msgpack = await import('@microsoft/signalr-protocol-msgpack');
+      MessagePackHubProtocol = msgpack.MessagePackHubProtocol;
+      return msgpack.MessagePackHubProtocol;
+    } catch (error) {
+      console.warn('MessagePack protocol not available, using JSON:', error);
+      return null;
+    }
+  }
+  return MessagePackHubProtocol;
+}
 
 /**
  * Base configuration for SignalR connections
@@ -137,6 +158,21 @@ export abstract class BaseSignalRConnection {
     // Configure logging
     const logLevel = this.mapLogLevel(this.config.options?.logLevel || SignalRLogLevel.Information);
     builder.configureLogging(logLevel);
+
+    // Configure protocol (JSON by default, MessagePack if specified)
+    const protocolType = this.config.options?.protocol || SignalRProtocolType.Json;
+    if (protocolType === SignalRProtocolType.MessagePack) {
+      try {
+        const MessagePackProtocol = await loadMessagePackProtocol();
+        if (MessagePackProtocol) {
+          builder.withHubProtocol(new MessagePackProtocol());
+          console.warn('Using MessagePack protocol for SignalR connection');
+        }
+      } catch (error) {
+        console.error('Failed to load MessagePack protocol, falling back to JSON:', error);
+        // Continue with JSON (default) - graceful degradation
+      }
+    }
 
     this.connection = builder.build();
 

@@ -246,29 +246,34 @@ namespace ConduitLLM.Gateway.Metrics
         /// <summary>
         /// Records a hub method invocation with timing.
         /// </summary>
-        public IDisposable RecordHubMethodInvocation(string hubName, string methodName, int? virtualKeyId = null)
+        public IDisposable RecordHubMethodInvocation(string hubName, string methodName, int? virtualKeyId = null, string? protocol = null)
         {
             var tags = new TagList
             {
                 { "hub", hubName },
                 { "method", methodName }
             };
-            
+
             if (virtualKeyId.HasValue)
             {
                 tags.Add("virtual_key_id", virtualKeyId.Value.ToString());
             }
 
+            if (!string.IsNullOrEmpty(protocol))
+            {
+                tags.Add("protocol", protocol);
+            }
+
             HubMethodInvocations.Add(1, tags);
-            
+
             var stopwatch = Stopwatch.StartNew();
-            return new MethodTimer(this, stopwatch, hubName, methodName);
+            return new MethodTimer(this, stopwatch, hubName, methodName, protocol);
         }
 
         /// <summary>
         /// Records a message processing operation with timing.
         /// </summary>
-        public IDisposable RecordMessageProcessing(string messageType, string direction)
+        public IDisposable RecordMessageProcessing(string messageType, string direction, string? protocol = null)
         {
             var tags = new TagList
             {
@@ -276,13 +281,18 @@ namespace ConduitLLM.Gateway.Metrics
                 { "direction", direction }
             };
 
+            if (!string.IsNullOrEmpty(protocol))
+            {
+                tags.Add("protocol", protocol);
+            }
+
             if (direction == "sent")
                 MessagesSent.Add(1, tags);
             else if (direction == "received")
                 MessagesReceived.Add(1, tags);
 
             var stopwatch = Stopwatch.StartNew();
-            return new MessageProcessingTimer(this, stopwatch, messageType, direction);
+            return new MessageProcessingTimer(this, stopwatch, messageType, direction, protocol);
         }
 
         // Additional methods from new implementation
@@ -456,23 +466,32 @@ namespace ConduitLLM.Gateway.Metrics
             private readonly Stopwatch _stopwatch;
             private readonly string _hubName;
             private readonly string _methodName;
+            private readonly string? _protocol;
 
-            public MethodTimer(SignalRMetrics metrics, Stopwatch stopwatch, string hubName, string methodName)
+            public MethodTimer(SignalRMetrics metrics, Stopwatch stopwatch, string hubName, string methodName, string? protocol = null)
             {
                 _metrics = metrics;
                 _stopwatch = stopwatch;
                 _hubName = hubName;
                 _methodName = methodName;
+                _protocol = protocol;
             }
 
             public void Dispose()
             {
                 _stopwatch.Stop();
-                _metrics.HubMethodDuration.Record(_stopwatch.ElapsedMilliseconds, new TagList
+                var tags = new TagList
                 {
                     { "hub", _hubName },
                     { "method", _methodName }
-                });
+                };
+
+                if (!string.IsNullOrEmpty(_protocol))
+                {
+                    tags.Add("protocol", _protocol);
+                }
+
+                _metrics.HubMethodDuration.Record(_stopwatch.ElapsedMilliseconds, tags);
             }
         }
 
@@ -482,23 +501,32 @@ namespace ConduitLLM.Gateway.Metrics
             private readonly Stopwatch _stopwatch;
             private readonly string _messageType;
             private readonly string _direction;
+            private readonly string? _protocol;
 
-            public MessageProcessingTimer(SignalRMetrics metrics, Stopwatch stopwatch, string messageType, string direction)
+            public MessageProcessingTimer(SignalRMetrics metrics, Stopwatch stopwatch, string messageType, string direction, string? protocol = null)
             {
                 _metrics = metrics;
                 _stopwatch = stopwatch;
                 _messageType = messageType;
                 _direction = direction;
+                _protocol = protocol;
             }
 
             public void Dispose()
             {
                 _stopwatch.Stop();
-                _metrics.MessageProcessingDuration.Record(_stopwatch.ElapsedMilliseconds, new TagList
+                var tags = new TagList
                 {
                     { "message_type", _messageType },
                     { "direction", _direction }
-                });
+                };
+
+                if (!string.IsNullOrEmpty(_protocol))
+                {
+                    tags.Add("protocol", _protocol);
+                }
+
+                _metrics.MessageProcessingDuration.Record(_stopwatch.ElapsedMilliseconds, tags);
             }
         }
     }

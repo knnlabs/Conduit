@@ -124,6 +124,28 @@ public partial class Program
             options.StreamBufferCapacity = 10;
         });
 
+        // Add MessagePack protocol support with LZ4 compression
+        // Enables both JSON (default) and MessagePack protocols for backward compatibility
+        var messagePackEnabled = Environment.GetEnvironmentVariable("SIGNALR_MESSAGEPACK_ENABLED")?.ToLowerInvariant() != "false";
+        if (messagePackEnabled)
+        {
+            signalRBuilder.AddMessagePackProtocol(options =>
+            {
+                // Configure MessagePack with security and compression
+                options.SerializerOptions = MessagePack.MessagePackSerializerOptions.Standard
+                    .WithResolver(MessagePack.Resolvers.StandardResolver.Instance)
+                    .WithSecurity(MessagePack.MessagePackSecurity.UntrustedData) // CVE-2020-5234 protection
+                    .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray) // Use Lz4BlockArray for GC optimization
+                    .WithCompressionMinLength(256); // Only compress messages > 256 bytes
+            });
+            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with MessagePack protocol (LZ4 compression enabled)");
+            Console.WriteLine("[ConduitLLM.Admin] SignalR supports both JSON and MessagePack protocols for backward compatibility");
+        }
+        else
+        {
+            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with JSON protocol only (MessagePack disabled)");
+        }
+
         // Configure SignalR Redis backplane for horizontal scaling if Redis is configured
         var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
         if (!string.IsNullOrEmpty(signalRRedisConnectionString))
