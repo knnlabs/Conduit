@@ -13,34 +13,6 @@ import type {
 } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getErrorMessage } from '@/lib/utils/error-utils';
-import { ProviderType } from '@knn_labs/conduit-gateway-client';
-
-// Local type definition for provider health status (not available in SDK)
-interface ProviderHealthStatusDto {
-  providerType: ProviderType;
-  isHealthy: boolean;
-  lastCheckTime: string;
-  consecutiveFailures: number;
-  consecutiveSuccesses: number;
-  averageResponseTimeMs: number;
-  uptime: number;
-}
-
-// Type guard for health data response
-interface HealthDataResponse {
-  providers?: Array<{
-    status?: string;
-    responseTime?: number;
-    uptime?: number | { percentage?: number };
-  }>;
-}
-
-function isHealthDataResponse(value: unknown): value is HealthDataResponse {
-  if (!value || typeof value !== 'object') return false;
-  const obj = value as Record<string, unknown>;
-  if (!obj.providers || !Array.isArray(obj.providers)) return false;
-  return true;
-}
 
 interface ProviderModel {
   id: string;
@@ -238,73 +210,6 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProviderHealth = useCallback(async (id: number): Promise<ProviderHealthStatusDto> => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // First get the provider details to get its ProviderType
-      const provider = await withAdminClient(client => 
-        client.providers.getById(id)
-      );
-      
-      if (!provider?.providerType) {
-        throw new Error('Provider not found or missing provider type');
-      }
-
-      // Note: The providers SDK doesn't currently have a getHealth method
-      // This is a placeholder implementation that returns mock data
-      // TODO: Implement actual health check once SDK supports it
-
-      // Mock health response for type safety
-      const mockHealthResponse: HealthDataResponse = {
-        providers: [{
-          status: 'healthy',
-          responseTime: 100,
-          uptime: 99.9
-        }]
-      };
-
-      // Validate response structure
-      if (!isHealthDataResponse(mockHealthResponse)) {
-        throw new Error('Invalid health response format');
-      }
-
-      // Transform the response to match ProviderHealthStatusDto
-      const healthData = mockHealthResponse.providers?.[0];
-      if (!healthData) {
-        throw new Error('No health data found for provider');
-      }
-
-      // Safely extract uptime value
-      let uptimeValue = 0;
-      if (typeof healthData.uptime === 'number') {
-        uptimeValue = healthData.uptime;
-      } else if (typeof healthData.uptime === 'object' && healthData.uptime?.percentage !== undefined) {
-        uptimeValue = healthData.uptime.percentage;
-      }
-
-      // Map to ProviderHealthStatusDto format with proper type narrowing
-      const result: ProviderHealthStatusDto = {
-        providerType: provider.providerType,
-        isHealthy: healthData.status === 'healthy',
-        lastCheckTime: new Date().toISOString(),
-        consecutiveFailures: healthData.status === 'healthy' ? 0 : 1,
-        consecutiveSuccesses: healthData.status === 'healthy' ? 1 : 0,
-        averageResponseTimeMs: healthData.responseTime ?? 0,
-        uptime: uptimeValue,
-      };
-
-      return result;
-    } catch (err) {
-      const message = getErrorMessage(err);
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   const getProviderModels = useCallback(async (): Promise<ProviderModel[]> => {
     setIsLoading(true);
     setError(null);
@@ -435,7 +340,6 @@ export function useProviderApi() {
     updateProvider,
     deleteProvider,
     testProvider,
-    getProviderHealth,
     getProviderModels,
     // API Key management
     getProviderKeys,
