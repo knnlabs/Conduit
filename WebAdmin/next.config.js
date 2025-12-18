@@ -11,12 +11,6 @@ const nextConfig = {
   productionBrowserSourceMaps: true,
   // Enable React strict mode for additional checks
   reactStrictMode: true,
-  // ESLint configuration
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
   // Image configuration to allow loading from API server
   images: {
     remotePatterns: [
