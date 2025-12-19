@@ -252,22 +252,6 @@ export const ENDPOINTS = {
     COMPLIANCE: '/api/security/compliance',
   },
 
-  // Provider Health
-  HEALTH: {
-    CONFIGURATIONS: '/api/ProviderHealth/configurations',
-    CONFIG_BY_PROVIDER: (providerId: number) => `/api/ProviderHealth/configurations/${providerId}`,
-    STATUS: '/api/ProviderHealth/status',
-    STATUS_BY_ID: (providerId: number) => `/api/ProviderHealth/status/${providerId}`,
-    STATUSES: '/api/ProviderHealth/statuses',
-    STATUSES_BY_ID: (providerId: number) => `/api/ProviderHealth/statuses/${providerId}`,
-    HISTORY_BY_PROVIDER: (providerId: number) => `/api/ProviderHealth/history/${providerId}`,
-    CHECK: (providerId: number) => `/api/ProviderHealth/check/${providerId}`,
-    SUMMARY: '/api/ProviderHealth/summary',
-    STATISTICS: '/api/ProviderHealth/statistics',
-    PURGE: '/api/ProviderHealth/purge',
-    RECORDS: '/api/ProviderHealth/records',
-  },
-
   // System
   SYSTEM: {
     INFO: '/api/SystemInfo/info',

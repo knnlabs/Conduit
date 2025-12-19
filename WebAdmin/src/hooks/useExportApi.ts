@@ -5,7 +5,7 @@ import { notifications } from '@mantine/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 export type ExportFormat = 'csv' | 'json' | 'excel';
-export type ExportType = 'analytics' | 'virtualKeys' | 'usage' | 'requestLogs' | 'systemPerformance' | 'providerHealth';
+export type ExportType = 'analytics' | 'virtualKeys' | 'usage' | 'requestLogs' | 'systemPerformance';
 
 interface ExportRequest {
   type: ExportType;
@@ -65,12 +65,7 @@ export function useExportApi() {
             // Note: export method doesn't exist in analytics service
             // Using placeholder implementation
             throw new Error('Virtual keys export not available in current Admin SDK version');
-          
-          case 'providerHealth':
-            // Note: exportHealthData method doesn't exist in providers service
-            // Using placeholder implementation
-            throw new Error('Provider health export not available in current Admin SDK version');
-          
+
           default:
             throw new Error(`Unknown export type: ${request.type as string}`);
         }

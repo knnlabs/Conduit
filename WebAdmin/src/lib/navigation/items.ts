@@ -6,7 +6,6 @@ import {
   IconPhoto,
   IconVideo,
   IconShield,
-  IconShield as IconHealth,
   IconRoute,
   IconActivity,
   IconCreditCard,
@@ -177,13 +176,6 @@ export const navigationSections: NavigationSection[] = [
         icon: IconDeviceDesktop,
         href: '/system-info',
         description: 'System status and information',
-      },
-      {
-        id: 'provider-health',
-        label: 'Provider Health',
-        icon: IconHealth,
-        href: '/provider-health',
-        description: 'Monitor provider status',
       },
       {
         id: 'provider-errors',
