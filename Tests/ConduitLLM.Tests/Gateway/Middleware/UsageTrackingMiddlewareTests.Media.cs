@@ -2,85 +2,60 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Constants;
+using ConduitLLM.Tests.Http.Middleware.Builders;
+using ConduitLLM.Tests.Http.Middleware.Assertions;
 using Moq;
+using Xunit;
 
 namespace ConduitLLM.Tests.Http.Middleware
 {
+    /// <summary>
+    /// Tests for UsageTrackingMiddleware image and media generation handling.
+    /// </summary>
     public partial class UsageTrackingMiddlewareTests
     {
         [Fact]
         public async Task OpenAI_ImageGeneration_Response_Tracks_Usage()
         {
             // Arrange
-            var context = CreateHttpContext("/v1/images/generations");
-            var virtualKeyId = 321;
-            var virtualKey = "test-key-321";
-            
-            context.Items["VirtualKeyId"] = virtualKeyId;
-            context.Items["VirtualKey"] = virtualKey;
-            context.Items["ProviderType"] = "OpenAI";
+            var context = new HttpContextBuilder()
+                .ForImageGenerations()
+                .WithVirtualKey(321)
+                .AsOpenAI()
+                .Build();
 
-            var imageResponse = new
-            {
-                created = 1677652288,
-                model = "dall-e-3",
-                data = new[]
-                {
-                    new
-                    {
-                        url = "https://example.com/image1.png",
-                        revised_prompt = "A futuristic city with flying cars"
-                    }
-                },
-                usage = new
-                {
-                    images = 1
-                }
-            };
-
-            SetupMockResponse(context, imageResponse);
-            
-            _mockCostService.Setup(x => x.CalculateCostAsync("dall-e-3", It.IsAny<Usage>(), default))
-                .ReturnsAsync(0.04m);
-            
-            _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
-
-            // Create a new middleware instance that uses our updated _next delegate
-            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+            Fixture.SetupCostForModel("dall-e-3", 0.04m);
 
             // Act
-            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object, _mockToolCostService.Object);
+            await Invoker
+                .WithResponse(ResponseBuilders.Image()
+                    .WithModel("dall-e-3")
+                    .WithImages(1)
+                    .WithUsage()
+                    .Build())
+                .InvokeAsync(context);
 
             // Assert
-            _mockCostService.Verify(x => x.CalculateCostAsync("dall-e-3", 
-                It.Is<Usage>(u => u.ImageCount == 1), 
-                default), Times.Once);
-            
-            _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(virtualKeyId, 0.04m), Times.Once);
-            
-            _mockRequestLogService.Verify(x => x.LogRequestAsync(It.Is<LogRequestDto>(dto =>
-                dto.RequestType == "image"
-            )), Times.Once);
+            UsageTrackingAssertions.VerifyImageUsage(Fixture.CostService, "dall-e-3", 1);
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 321, 0.04m);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal("image", dto.RequestType);
+            });
         }
 
         [Fact]
         public async Task ImageGeneration_Response_Without_Usage_Tracks_From_HttpContext()
         {
             // Arrange - This tests the real OpenAI response format which doesn't include usage data
-            var context = CreateHttpContext("/v1/images/generations");
-            var virtualKeyId = 456;
-            var virtualKey = "test-key-456";
+            var context = new HttpContextBuilder()
+                .ForImageGenerations()
+                .WithVirtualKey(456)
+                .AsOpenAI()
+                .WithImageRequest("dall-e-3", "hd", "1024x1024", 2)
+                .Build();
 
-            context.Items["VirtualKeyId"] = virtualKeyId;
-            context.Items["VirtualKey"] = virtualKey;
-            context.Items["ProviderType"] = "OpenAI";
-
-            // Set image request details (as the controller would)
-            context.Items[HttpContextKeys.ImageRequestModel] = "dall-e-3";
-            context.Items[HttpContextKeys.ImageRequestQuality] = "hd";
-            context.Items[HttpContextKeys.ImageRequestSize] = "1024x1024";
-            context.Items[HttpContextKeys.ImageRequestN] = 2;
+            Fixture.SetupCostForModel("dall-e-3", 0.08m);
 
             // Real OpenAI image response format - NO usage property
             var imageResponse = new
@@ -101,48 +76,39 @@ namespace ConduitLLM.Tests.Http.Middleware
                 }
             };
 
-            SetupMockResponse(context, imageResponse);
-
-            _mockCostService.Setup(x => x.CalculateCostAsync("dall-e-3", It.IsAny<Usage>(), default))
-                .ReturnsAsync(0.08m);
-
-            _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
-
-            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
-
             // Act
-            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object,
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object, _mockToolCostService.Object);
+            await Invoker
+                .WithResponse(imageResponse)
+                .InvokeAsync(context);
 
             // Assert - Verify usage was constructed from HttpContext.Items and data array
-            _mockCostService.Verify(x => x.CalculateCostAsync("dall-e-3",
-                It.Is<Usage>(u =>
-                    u.ImageCount == 2 &&
-                    u.ImageQuality == "hd" &&
-                    u.ImageResolution == "1024x1024"),
-                default), Times.Once);
-
-            _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(virtualKeyId, 0.08m), Times.Once);
-
-            _mockRequestLogService.Verify(x => x.LogRequestAsync(It.Is<LogRequestDto>(dto =>
-                dto.RequestType == "image" &&
-                dto.ModelName == "dall-e-3" &&
-                dto.VirtualKeyId == virtualKeyId
-            )), Times.Once);
+            UsageTrackingAssertions.VerifyImageUsage(
+                Fixture.CostService,
+                "dall-e-3",
+                expectedImageCount: 2,
+                expectedQuality: "hd",
+                expectedSize: "1024x1024");
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 456, 0.08m);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal("image", dto.RequestType);
+                Assert.Equal("dall-e-3", dto.ModelName);
+                Assert.Equal(456, dto.VirtualKeyId);
+            });
         }
 
         [Fact]
         public async Task ImageGeneration_Response_Falls_Back_To_Response_Model()
         {
             // Arrange - When HttpContext.Items doesn't have the model, fall back to response
-            var context = CreateHttpContext("/v1/images/generations");
-            var virtualKeyId = 789;
-            var virtualKey = "test-key-789";
+            var context = new HttpContextBuilder()
+                .ForImageGenerations()
+                .WithVirtualKey(789)
+                .AsOpenAI()
+                // Note: NOT setting image request metadata
+                .Build();
 
-            context.Items["VirtualKeyId"] = virtualKeyId;
-            context.Items["VirtualKey"] = virtualKey;
-            context.Items["ProviderType"] = "OpenAI";
-            // Note: NOT setting HttpContextKeys.ImageRequestModel
+            Fixture.SetupCostForModel("dall-e-2", 0.02m);
 
             // Response includes model (some providers might include it)
             var imageResponse = new
@@ -151,36 +117,22 @@ namespace ConduitLLM.Tests.Http.Middleware
                 model = "dall-e-2",
                 data = new[]
                 {
-                    new
-                    {
-                        url = "https://example.com/image1.png"
-                    }
+                    new { url = "https://example.com/image1.png" }
                 }
             };
 
-            SetupMockResponse(context, imageResponse);
-
-            _mockCostService.Setup(x => x.CalculateCostAsync("dall-e-2", It.IsAny<Usage>(), default))
-                .ReturnsAsync(0.02m);
-
-            _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
-
-            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
-
             // Act
-            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object,
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object, _mockToolCostService.Object);
+            await Invoker
+                .WithResponse(imageResponse)
+                .InvokeAsync(context);
 
             // Assert - Model should come from response
-            _mockCostService.Verify(x => x.CalculateCostAsync("dall-e-2",
-                It.Is<Usage>(u => u.ImageCount == 1),
-                default), Times.Once);
-
-            _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(virtualKeyId, 0.02m), Times.Once);
-
-            _mockRequestLogService.Verify(x => x.LogRequestAsync(It.Is<LogRequestDto>(dto =>
-                dto.ModelName == "dall-e-2"
-            )), Times.Once);
+            UsageTrackingAssertions.VerifyImageUsage(Fixture.CostService, "dall-e-2", 1);
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 789, 0.02m);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal("dall-e-2", dto.ModelName);
+            });
         }
     }
 }

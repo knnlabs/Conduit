@@ -1,6 +1,9 @@
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Middleware;
-using Microsoft.Extensions.Logging;
+using ConduitLLM.Tests.Http.Middleware.Builders;
+using ConduitLLM.Tests.Http.Middleware.Assertions;
 using Moq;
+using Xunit;
 
 namespace ConduitLLM.Tests.Http.Middleware
 {
@@ -19,37 +22,29 @@ namespace ConduitLLM.Tests.Http.Middleware
         [InlineData("/v1/embeddings", true)]
         [InlineData("/v1/audio/transcriptions", true)]
         [InlineData("/v1/audio/speech", true)]
-        // Note: /v1/functions/execute is handled differently by ProcessFunctionResponseAsync
-        // and doesn't use standard usage-based cost calculation
         public async Task ShouldTrackUsage_ForGenerationEndpoints_ReturnsTrue(string path, bool shouldTrack)
         {
             // Arrange
-            var context = CreateHttpContext(path);
-            context.Items["VirtualKeyId"] = 1;
-            context.Response.StatusCode = 200;
+            var context = new HttpContextBuilder()
+                .WithPath(path)
+                .WithVirtualKey(1)
+                .WithStatusCode(200)
+                .Build();
 
-            var response = new
-            {
-                model = "test-model",
-                usage = new { prompt_tokens = 10, completion_tokens = 20, total_tokens = 30 }
-            };
-
-            SetupMockResponse(context, response);
-            _mockCostService.Setup(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<ConduitLLM.Core.Models.Usage>(), default))
-                .ReturnsAsync(0.001m);
-            _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
-
-            // Create a new middleware instance with the updated _next delegate
-            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+            Fixture.SetupDefaultCost(0.001m);
 
             // Act
-            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object,
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object, _mockToolCostService.Object);
+            await Invoker
+                .WithResponse(ResponseBuilders.OpenAI()
+                    .WithModel("test-model")
+                    .WithUsage(10, 20)
+                    .Build())
+                .InvokeAsync(context);
 
             // Assert - Should track usage (call cost calculation)
             if (shouldTrack)
             {
-                _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<ConduitLLM.Core.Models.Usage>(), default), Times.AtLeastOnce);
+                UsageTrackingAssertions.VerifyCostCalculatedOnce(Fixture.CostService);
             }
         }
 
@@ -63,9 +58,13 @@ namespace ConduitLLM.Tests.Http.Middleware
         public async Task ShouldTrackUsage_ForPollingEndpoints_ReturnsFalse(string path)
         {
             // Arrange
-            var context = CreateHttpContext(path);
-            context.Items["VirtualKeyId"] = 1;
-            context.Response.StatusCode = 200;
+            var context = new HttpContextBuilder()
+                .WithPath(path)
+                .WithVirtualKey(1)
+                .WithStatusCode(200)
+                .Build();
+
+            Fixture.SetupDefaultCost(0.001m);
 
             var response = new
             {
@@ -74,48 +73,36 @@ namespace ConduitLLM.Tests.Http.Middleware
                 videoUrl = "https://example.com/video.mp4"
             };
 
-            SetupMockResponse(context, response);
-            _mockCostService.Setup(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<ConduitLLM.Core.Models.Usage>(), default))
-                .ReturnsAsync(0.001m);
-            _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
-
-            // Create a new middleware instance with the updated _next delegate
-            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
-
             // Act
-            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object,
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object, _mockToolCostService.Object);
+            await Invoker
+                .WithResponse(response)
+                .InvokeAsync(context);
 
             // Assert - Should NOT track usage for polling endpoints
-            _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<ConduitLLM.Core.Models.Usage>(), default), Times.Never);
-            _mockRequestLogService.Verify(x => x.LogRequestAsync(It.IsAny<ConduitLLM.Configuration.DTOs.LogRequestDto>()), Times.Never);
+            UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
+            UsageTrackingAssertions.VerifyNoRequestLogged(Fixture.RequestLogService);
         }
 
         [Fact]
         public async Task ShouldTrackUsage_WithoutVirtualKeyId_ReturnsFalse()
         {
-            // Arrange
-            var context = CreateHttpContext("/v1/chat/completions");
-            // Note: NOT setting context.Items["VirtualKeyId"]
-            context.Response.StatusCode = 200;
-
-            var response = new
-            {
-                model = "gpt-4",
-                usage = new { prompt_tokens = 10, completion_tokens = 20, total_tokens = 30 }
-            };
-
-            SetupMockResponse(context, response);
-
-            // Create a new middleware instance with the updated _next delegate
-            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+            // Arrange - No virtual key set
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithStatusCode(200)
+                // Note: NOT setting WithVirtualKey()
+                .Build();
 
             // Act
-            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object,
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object, _mockToolCostService.Object);
+            await Invoker
+                .WithResponse(ResponseBuilders.OpenAI()
+                    .WithModel("gpt-4")
+                    .WithUsage(10, 20)
+                    .Build())
+                .InvokeAsync(context);
 
             // Assert - Should NOT track usage without VirtualKeyId
-            _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<ConduitLLM.Core.Models.Usage>(), default), Times.Never);
+            UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
         }
 
         [Theory]
@@ -129,49 +116,45 @@ namespace ConduitLLM.Tests.Http.Middleware
         public async Task ShouldTrackUsage_WithErrorStatusCode_ReturnsFalse(int statusCode)
         {
             // Arrange
-            var context = CreateHttpContext("/v1/chat/completions");
-            context.Items["VirtualKeyId"] = 1;
-            context.Response.StatusCode = statusCode;
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(1)
+                .AsError(statusCode)
+                .Build();
 
             var response = new
             {
                 error = new { message = "An error occurred", type = "invalid_request_error" }
             };
 
-            SetupMockResponse(context, response);
-
-            // Create a new middleware instance with the updated _next delegate
-            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
-
             // Act
-            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object,
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object, _mockToolCostService.Object);
+            await Invoker
+                .WithResponse(response)
+                .InvokeAsync(context);
 
             // Assert - Should NOT track usage for error responses
-            _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<ConduitLLM.Core.Models.Usage>(), default), Times.Never);
+            UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
         }
 
         [Fact]
         public async Task ShouldTrackUsage_ForNonApiPath_ReturnsFalse()
         {
             // Arrange - Path doesn't start with /v1
-            var context = CreateHttpContext("/health");
-            context.Items["VirtualKeyId"] = 1;
-            context.Response.StatusCode = 200;
+            var context = new HttpContextBuilder()
+                .ForNonApiPath()
+                .WithVirtualKey(1)
+                .WithStatusCode(200)
+                .Build();
 
             var response = new { status = "healthy" };
 
-            SetupMockResponse(context, response);
-
-            // Create a new middleware instance with the updated _next delegate
-            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
-
             // Act
-            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object,
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object, _mockToolCostService.Object);
+            await Invoker
+                .WithResponse(response)
+                .InvokeAsync(context);
 
             // Assert - Should NOT track usage for non-API paths
-            _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<ConduitLLM.Core.Models.Usage>(), default), Times.Never);
+            UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
         }
     }
 }

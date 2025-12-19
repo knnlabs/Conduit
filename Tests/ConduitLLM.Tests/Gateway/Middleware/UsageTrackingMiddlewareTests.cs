@@ -1,68 +1,52 @@
-using System.Text;
-using System.Text.Json;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Moq;
-using ConduitLLM.Gateway.Middleware;
-using ConduitLLM.Gateway.Services;
-using ConduitLLM.Core.Interfaces;
-using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
-using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Tests.Http.Middleware.Fixtures;
+using ConduitLLM.Tests.Http.Middleware.Helpers;
 
 namespace ConduitLLM.Tests.Http.Middleware
 {
-    public partial class UsageTrackingMiddlewareTests
+    /// <summary>
+    /// Tests for UsageTrackingMiddleware.
+    /// Uses test infrastructure from Fixtures, Builders, Helpers, and Assertions namespaces.
+    /// </summary>
+    /// <remarks>
+    /// Test files are organized by concern:
+    /// - UsageTrackingMiddlewareTests.Providers.cs - Provider-specific behavior (OpenAI, Anthropic, etc.)
+    /// - UsageTrackingMiddlewareTests.Media.cs - Image and video generation handling
+    /// - UsageTrackingMiddlewareTests.PathFiltering.cs - Path-based filtering logic
+    /// - UsageTrackingMiddlewareTests.EdgeCases.cs - Streaming, fallback, billing policy, error handling
+    /// - UsageTrackingMiddlewareTests.ToolUsage.cs - Provider tool usage tracking
+    /// </remarks>
+    public partial class UsageTrackingMiddlewareTests : IDisposable
     {
-        private readonly Mock<ICostCalculationService> _mockCostService;
-        private readonly Mock<IBatchSpendUpdateService> _mockBatchSpendService;
-        private readonly Mock<IRequestLogService> _mockRequestLogService;
-        private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
-        private readonly Mock<IBillingAuditService> _mockBillingAuditService;
-        private readonly Mock<IToolCostCalculationService> _mockToolCostService;
-        private readonly Mock<ILogger<UsageTrackingMiddleware>> _mockLogger;
-        private readonly UsageTrackingMiddleware _middleware;
-        private RequestDelegate _next;
+        /// <summary>
+        /// The test fixture containing all mock dependencies.
+        /// Provides pre-configured mocks for ICostCalculationService, IBatchSpendUpdateService,
+        /// IRequestLogService, IVirtualKeyService, IBillingAuditService, IToolCostCalculationService,
+        /// and ILogger.
+        /// </summary>
+        protected readonly UsageTrackingMiddlewareTestFixture Fixture;
 
+        /// <summary>
+        /// The middleware invoker for simplified test execution.
+        /// Handles the 6-dependency parameter explosion and response configuration.
+        /// </summary>
+        protected readonly MiddlewareInvoker Invoker;
+
+        /// <summary>
+        /// Initializes a new test instance with fresh fixture and invoker.
+        /// </summary>
         public UsageTrackingMiddlewareTests()
         {
-            _mockCostService = new Mock<ICostCalculationService>();
-            _mockBatchSpendService = new Mock<IBatchSpendUpdateService>();
-            _mockRequestLogService = new Mock<IRequestLogService>();
-            _mockVirtualKeyService = new Mock<IVirtualKeyService>();
-            _mockBillingAuditService = new Mock<IBillingAuditService>();
-            _mockToolCostService = new Mock<IToolCostCalculationService>();
-            _mockLogger = new Mock<ILogger<UsageTrackingMiddleware>>();
-            
-            // Default _next delegate - will be replaced by SetupMockResponse
-            _next = (HttpContext ctx) => Task.CompletedTask;
-            _middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+            Fixture = new UsageTrackingMiddlewareTestFixture();
+            Invoker = new MiddlewareInvoker(Fixture);
         }
 
-        private HttpContext CreateHttpContext(string path, int statusCode = 200)
+        /// <summary>
+        /// Disposes of test resources including the database context.
+        /// </summary>
+        public void Dispose()
         {
-            var context = new DefaultHttpContext();
-            context.Request.Path = path;
-            context.Response.StatusCode = statusCode;
-            context.Response.Body = new MemoryStream();
-            return context;
-        }
-
-        private void SetupMockResponse(HttpContext context, object responseData)
-        {
-            var json = JsonSerializer.Serialize(responseData);
-            var bytes = Encoding.UTF8.GetBytes(json);
-            
-            // Replace the _next delegate to write the response
-            _next = async (HttpContext ctx) => 
-            {
-                // Set response properties first
-                ctx.Response.ContentType = "application/json";
-                ctx.Response.StatusCode = 200;
-                ctx.Response.ContentLength = bytes.Length;
-                
-                // Write the response data to the response body
-                await ctx.Response.Body.WriteAsync(bytes, 0, bytes.Length);
-            };
+            Fixture.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }
