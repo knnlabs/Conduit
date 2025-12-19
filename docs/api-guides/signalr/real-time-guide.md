@@ -220,7 +220,6 @@ await connection.invoke('SubscribeToTask', taskId);
 #### System Notification Hub (`/hubs/notifications`)
 ```javascript
 // Events
-- OnProviderHealth(notification)
 - OnRateLimit(notification)
 - OnSystemAnnouncement(notification)
 ```

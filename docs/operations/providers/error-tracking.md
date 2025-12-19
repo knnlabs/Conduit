@@ -47,7 +47,7 @@ Provider error tracking is essential for maintaining service reliability and und
      ```
 
 2. **Health Monitoring Infrastructure**
-   - `ProviderHealthMonitoringService` performs periodic health checks
+   - External monitoring tools can perform periodic health checks
    - Hysteresis prevents notification flapping (3 consecutive failures required)
    - Health status tracked: Online/Offline/Unknown
    - Error categories: Network, Timeout, Authentication, Unknown

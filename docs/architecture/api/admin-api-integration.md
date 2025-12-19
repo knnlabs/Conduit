@@ -43,7 +43,6 @@ These adapters implement existing WebAdmin service interfaces but delegate to th
 - `VirtualKeyServiceAdapter`: Implements `IVirtualKeyService` using Admin API
 - `GlobalSettingServiceAdapter`: Implements `IGlobalSettingService` using Admin API
 - `RequestLogServiceAdapter`: Implements `IRequestLogService` using Admin API
-- `ProviderHealthServiceAdapter`: Implements `IProviderHealthService` using Admin API
 - Additional adapters for all service interfaces
 
 **Configuration:**
@@ -56,7 +55,6 @@ The API client interface is organized by feature areas:
 
 - **Virtual Keys**: Management of API keys and usage tracking
 - **Global Settings**: Application-wide configuration settings
-- **Provider Health**: LLM provider health monitoring and configuration
 - **Model Costs**: Cost tracking and billing information
 - **Provider Credentials**: Secure management of API provider credentials
 - **IP Filters**: Network access control configuration
@@ -132,7 +130,6 @@ if (useAdminApi)
 {
     // Register adapters that use the Admin API client
     services.AddScoped<IGlobalSettingService, GlobalSettingServiceAdapter>();
-    services.AddScoped<IProviderHealthService, ProviderHealthServiceAdapter>();
     services.AddScoped<IVirtualKeyService, VirtualKeyServiceAdapter>();
     // ...
 }
@@ -140,7 +137,6 @@ else
 {
     // Register services that use direct repository access
     services.AddScoped<IGlobalSettingService, GlobalSettingService>();
-    services.AddScoped<IProviderHealthService, ProviderHealthService>();
     // ...
 }
 ```
@@ -201,7 +197,6 @@ The Admin API client provides access to the following features:
 
 - **Virtual Keys** - Management of API keys
 - **Global Settings** - Application configuration
-- **Provider Health** - LLM provider health monitoring
 - **Model Costs** - Cost tracking
 - **Provider Credentials** - API provider credentials
 - **IP Filters** - Network access control

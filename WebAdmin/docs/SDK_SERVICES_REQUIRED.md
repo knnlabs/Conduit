@@ -28,17 +28,11 @@ interface ProvidersService {
   // Testing
   testConnectionById(id: number): Promise<TestConnectionResult>;
   testConfig(config: ProviderConfig): Promise<TestConnectionResult>;
-  
-  // Health
-  getHealthStatus(params?: HealthStatusParams): Promise<ProviderHealthStatus>;
-  exportHealthData(params: ExportParams): Promise<ExportResult>;
 }
 ```
 
 **Used in API routes**:
 - `/api/providers/*` - All provider management endpoints
-- `/api/provider-health/*` - Provider health monitoring
-- `/api/health/providers/*` - Health check endpoints
 
 ### 2. Provider Models Service (`adminClient.providerModels`)
 
@@ -160,21 +154,6 @@ interface CostDashboardService {
 **Used in API routes**:
 - `/api/cost-analytics` - Cost dashboard data (uses real /api/costs endpoints)
 
-### 8. Provider Health Service (`adminClient.providerHealth`)
-
-**Priority**: 🟡 Important - Monitoring
-
-```typescript
-interface ProviderHealthService {
-  getHealthSummary(): Promise<HealthSummaryDto>;
-  getProviderHealth(providerId: string): Promise<ProviderHealthDto>;
-  getHealthHistory(providerId: string, params?: HistoryParams): Promise<HealthHistory>;
-}
-```
-
-**Used in API routes**:
-- `/api/health/providers/[id]` - Individual provider health
-
 ## Missing Services (Not Critical)
 
 These services are referenced in the code but not actively used:
@@ -205,12 +184,11 @@ These services are referenced in the code but not actively used:
 ### Phase 2: Important Services (Enhanced functionality)
 5. **Settings Service** - Configuration management
 6. **Analytics Service** - Usage tracking
-7. **Provider Health Service** - Health monitoring
 
 ### Phase 3: Nice-to-Have Services (Future enhancements)
-8. **Security Service** - Advanced security features
-9. **Configuration Service** - Advanced configuration
-10. **Monitoring Service** - Real-time monitoring
+7. **Security Service** - Advanced security features
+8. **Configuration Service** - Advanced configuration
+9. **Monitoring Service** - Real-time monitoring
 
 ## Type Definitions Needed
 

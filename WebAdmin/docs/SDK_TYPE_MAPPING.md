@@ -54,20 +54,6 @@ This document tracks the differences between SDK types and WebAdmin types that n
 | isDefault | (not used) | boolean | SDK only |
 | metadata | metadata | string vs Record<string,unknown> | Type differs |
 
-## ProviderHealth
-
-| SDK Field (ProviderHealthStatusDto) | WebAdmin Field (ProviderHealth) | Type | Notes |
-|-------------------------------------|------------------------------|------|-------|
-| providerId | providerId | number vs string | Type differs |
-| providerName | providerName | string | Same |
-| status | status | string | Same (but enum values may differ) |
-| lastCheckTime | lastChecked | string | Check timestamp |
-| responseTimeMs | responseTime | number | Same |
-| errorMessage | lastError | string | Error details |
-| (not present) | uptime | number | WebAdmin only |
-| (not present) | errorRate | number | WebAdmin only |
-| (not present) | incidents | ProviderIncident[] | WebAdmin only |
-
 ## SystemHealth
 
 | SDK Field (HealthStatusDto) | WebAdmin Field (SystemHealth) | Type | Notes |

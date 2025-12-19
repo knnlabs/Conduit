@@ -230,11 +230,8 @@ This document provides a comprehensive overview of all SignalR hubs in Conduit, 
 - `UnsubscribeFromVirtualKey(int virtualKeyId)` - Stop monitoring
 - `SubscribeToProvider(string providerName)` - Monitor provider
 - `UnsubscribeFromProvider(string providerName)` - Stop monitoring
-- `RefreshProviderHealth()` - Request health status update
 
 **Server Events**:
-- `InitialProviderHealth` - Initial health status on connection
-- `ProviderHealthStatus` - Provider health updates
 - `VirtualKeyCreated/Updated/Deleted` - Virtual key lifecycle
 - `SystemAlert` - Critical system notifications
 - `Error` - Error notifications
@@ -291,7 +288,7 @@ public class AdminNotificationHub : Hub
 ### Server-to-Client Events
 - Use past tense for completed actions: `TaskCompleted`, `DeliverySucceeded`
 - Use present continuous for ongoing: `TaskProgress`, `Reconnecting`
-- Use noun+verb for state changes: `ProviderHealthChanged`, `ModelMappingChanged`
+- Use noun+verb for state changes: `ModelMappingChanged`, `VirtualKeyUpdated`
 
 ### Event Payload Conventions
 - Include timestamps in UTC

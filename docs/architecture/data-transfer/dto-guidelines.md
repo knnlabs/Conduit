@@ -95,11 +95,11 @@ public class ProviderCredentialDto
 #### 3. Aggregated Data
 ```csharp
 // Combine data from multiple sources
-public class ProviderHealthDto
+public class DashboardStatsDto
 {
-    public string ProviderId { get; set; }
-    public HealthStatus Status { get; set; }
-    public List<HealthCheckResult> RecentChecks { get; set; }
+    public int TotalProviders { get; set; }
+    public int ActiveVirtualKeys { get; set; }
+    public List<RecentActivityDto> RecentActivity { get; set; }
 }
 ```
 
@@ -494,7 +494,7 @@ The key to good DTO design is intentionality. Every DTO should have a clear, doc
 ### Good Examples from Conduit
 
 ✅ `VirtualKeyDto` - Hides sensitive KeyHash
-✅ `ProviderHealthDto` - Aggregates health information
+✅ `DashboardStatsDto` - Aggregates dashboard information
 ✅ `BulkMappingRequest` - Special-purpose API operation
 
 ### Bad Examples (Now Fixed)

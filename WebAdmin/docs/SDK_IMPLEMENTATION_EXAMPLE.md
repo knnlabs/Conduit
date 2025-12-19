@@ -21,7 +21,6 @@ type ProviderDto = components['schemas']['ProviderDto'];
 type CreateProviderDto = components['schemas']['CreateProviderRequestDto'];
 type UpdateProviderDto = components['schemas']['UpdateProviderRequestDto'];
 type TestConnectionResult = components['schemas']['TestConnectionResultDto'];
-type ProviderHealthStatus = components['schemas']['ProviderHealthStatusDto'];
 
 // Response types
 interface ProviderListResponseDto {
@@ -139,25 +138,6 @@ export class FetchProvidersService {
       ...config,
     });
   }
-
-  /**
-   * Get health status for all providers
-   */
-  async getHealthStatus(
-    params?: { includeHistory?: boolean },
-    config?: RequestConfig
-  ): Promise<ProviderHealthStatus[]> {
-    const searchParams = new URLSearchParams();
-    if (params?.includeHistory) {
-      searchParams.set('includeHistory', 'true');
-    }
-
-    return this.client.request<ProviderHealthStatus[]>({
-      method: 'GET',
-      url: `${ENDPOINTS.PROVIDERS}/health${searchParams.toString() ? `?${searchParams}` : ''}`,
-      ...config,
-    });
-  }
 }
 ```
 
@@ -196,7 +176,6 @@ import { FetchModelMappingsService } from './services/FetchModelMappingsService'
 import { FetchSystemService } from './services/FetchSystemService';
 import { FetchSettingsService } from './services/FetchSettingsService';
 import { FetchAnalyticsService } from './services/FetchAnalyticsService';
-import { FetchProviderHealthService } from './services/FetchProviderHealthService';
 import type { ApiClientConfig } from './client/types';
 
 export class FetchConduitAdminClient extends FetchBaseApiClient {
@@ -211,7 +190,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly system: FetchSystemService;
   public readonly settings: FetchSettingsService;
   public readonly analytics: FetchAnalyticsService;
-  public readonly providerHealth: FetchProviderHealthService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -225,7 +203,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.system = new FetchSystemService(this);
     this.settings = new FetchSettingsService(this);
     this.analytics = new FetchAnalyticsService(this);
-    this.providerHealth = new FetchProviderHealthService(this);
   }
 }
 ```
@@ -243,7 +220,6 @@ export { FetchModelMappingsService as ModelMappingsService } from './services/Fe
 export { FetchSystemService as SystemService } from './services/FetchSystemService';
 export { FetchSettingsService as SettingsService } from './services/FetchSettingsService';
 export { FetchAnalyticsService as AnalyticsService } from './services/FetchAnalyticsService';
-export { FetchProviderHealthService as ProviderHealthService } from './services/FetchProviderHealthService';
 
 // Export provider-related types
 export type {
@@ -251,7 +227,6 @@ export type {
   CreateProviderRequestDto,
   UpdateProviderRequestDto,
   TestConnectionResultDto,
-  ProviderHealthStatusDto,
 } from './models/provider';
 ```
 

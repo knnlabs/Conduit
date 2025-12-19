@@ -84,7 +84,6 @@ Provider management:
 - `updateProvider(id, updates)` - Update provider
 - `deleteProvider(id)` - Delete provider
 - `testProvider(request)` - Test provider config
-- `getProviderHealth(id)` - Health status
 - `getProviderModels(id)` - Available models
 
 ## Key Features
