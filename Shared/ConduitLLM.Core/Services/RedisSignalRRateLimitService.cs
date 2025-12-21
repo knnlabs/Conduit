@@ -32,6 +32,11 @@ namespace ConduitLLM.Core.Services
         /// Cleans up stale connection data
         /// </summary>
         Task CleanupStaleConnectionsAsync(string virtualKeyHash);
+
+        /// <summary>
+        /// Checks if a connection would exceed the limit (without incrementing)
+        /// </summary>
+        Task<ConnectionLimitResult> CheckConnectionLimitAsync(string virtualKeyHash, int maxConnections);
     }
     
     /// <summary>
@@ -46,6 +51,17 @@ namespace ConduitLLM.Core.Services
         public DateTime ResetsAt { get; set; }
         public string LimitType { get; set; } = ""; // RPM or RPD
         public int ActiveConnections { get; set; }
+    }
+
+    /// <summary>
+    /// Result of a connection limit check
+    /// </summary>
+    public class ConnectionLimitResult
+    {
+        public bool IsAllowed { get; set; }
+        public int CurrentConnections { get; set; }
+        public int MaxConnections { get; set; }
+        public string DenialReason { get; set; } = "";
     }
     
     /// <summary>
@@ -330,7 +346,35 @@ namespace ConduitLLM.Core.Services
                 _logger.LogError(ex, "Error cleaning up stale connections for {KeyHash}", virtualKeyHash);
             }
         }
-        
+
+        public async Task<ConnectionLimitResult> CheckConnectionLimitAsync(string virtualKeyHash, int maxConnections)
+        {
+            if (string.IsNullOrEmpty(virtualKeyHash))
+            {
+                return new ConnectionLimitResult { IsAllowed = true, MaxConnections = maxConnections };
+            }
+
+            var currentCount = await GetConnectionCountAsync(virtualKeyHash);
+
+            if (currentCount >= maxConnections)
+            {
+                return new ConnectionLimitResult
+                {
+                    IsAllowed = false,
+                    CurrentConnections = currentCount,
+                    MaxConnections = maxConnections,
+                    DenialReason = $"Connection limit exceeded ({currentCount}/{maxConnections}). Please close existing connections before opening new ones."
+                };
+            }
+
+            return new ConnectionLimitResult
+            {
+                IsAllowed = true,
+                CurrentConnections = currentCount,
+                MaxConnections = maxConnections
+            };
+        }
+
         private class RateLimitResult
         {
             public bool IsAllowed { get; set; }

@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Extensions;
@@ -201,6 +202,10 @@ public partial class Program
         // Register Redis circuit breaker configuration
         builder.Services.Configure<ConduitLLM.Configuration.Options.RedisCircuitBreakerOptions>(
             builder.Configuration.GetSection("RedisCircuitBreaker"));
+
+        // Register SignalR connection limit configuration
+        builder.Services.Configure<SignalRConnectionOptions>(
+            builder.Configuration.GetSection(SignalRConnectionOptions.SectionName));
 
         // Register Redis circuit breaker service
         builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IRedisCircuitBreaker, ConduitLLM.Configuration.Services.RedisCircuitBreaker>();

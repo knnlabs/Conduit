@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using Prometheus;
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Gateway.Interfaces;
 
 namespace ConduitLLM.Gateway.Services
@@ -12,19 +14,16 @@ namespace ConduitLLM.Gateway.Services
     {
         private readonly IDatabase _database;
         private readonly ILogger<DistributedSignalRMetricsService> _logger;
-        
+        private readonly SignalRConnectionOptions _connectionOptions;
+
         public string InstanceId { get; }
-        
+
         // Redis keys
         private const string ActiveConnectionsPrefix = "signalr_connections";
         private const string InstancesSetKey = "signalr_metrics_instances";
         private const string ConnectionEventsStreamKey = "signalr_events_stream";
         private const string MetricsAggregatesKey = "signalr_metrics_aggregates";
         private const string VirtualKeyConnectionsPrefix = "signalr_vk_connections";
-        
-        // Connection limits
-        private const int MaxConnectionsPerVirtualKey = 100;
-        private const int MaxTotalConnections = 10000;
         
         private Timer? _heartbeatTimer;
         private Timer? _metricsTimer;
@@ -72,10 +71,12 @@ namespace ConduitLLM.Gateway.Services
 
         public DistributedSignalRMetricsService(
             IConnectionMultiplexer redis,
-            ILogger<DistributedSignalRMetricsService> logger)
+            ILogger<DistributedSignalRMetricsService> logger,
+            IOptions<SignalRConnectionOptions> connectionOptions)
         {
             _database = redis.GetDatabase();
             _logger = logger;
+            _connectionOptions = connectionOptions?.Value ?? new SignalRConnectionOptions();
             InstanceId = Environment.MachineName + "_" + Environment.ProcessId + "_" + Guid.NewGuid().ToString("N")[..8];
         }
 
@@ -352,13 +353,13 @@ namespace ConduitLLM.Gateway.Services
         public async Task<bool> IsConnectionLimitReachedAsync(string virtualKeyId)
         {
             var count = await GetConnectionCountForVirtualKeyAsync(virtualKeyId);
-            return count >= MaxConnectionsPerVirtualKey;
+            return count >= _connectionOptions.MaxConnectionsPerVirtualKey;
         }
 
         public async Task<bool> IsGlobalConnectionLimitReachedAsync()
         {
             var count = await GetGlobalConnectionCountAsync();
-            return count >= MaxTotalConnections;
+            return count >= _connectionOptions.MaxTotalConnections;
         }
 
         public async Task<Dictionary<string, object>> GetAggregatedMetricsAsync()
@@ -380,9 +381,9 @@ namespace ConduitLLM.Gateway.Services
                 ["recentEvents"] = recentEvents,
                 ["connectionLimits"] = new
                 {
-                    MaxPerVirtualKey = MaxConnectionsPerVirtualKey,
-                    MaxGlobal = MaxTotalConnections,
-                    GlobalUtilization = (double)globalConnections / MaxTotalConnections * 100
+                    MaxPerVirtualKey = _connectionOptions.MaxConnectionsPerVirtualKey,
+                    MaxGlobal = _connectionOptions.MaxTotalConnections,
+                    GlobalUtilization = (double)globalConnections / _connectionOptions.MaxTotalConnections * 100
                 },
                 ["timestamp"] = DateTime.UtcNow
             };
@@ -429,10 +430,10 @@ namespace ConduitLLM.Gateway.Services
                 await UpdateHubMetricsAsync();
 
                 // Log warnings if approaching limits
-                if (globalConnections > MaxTotalConnections * 0.8)
+                if (globalConnections > _connectionOptions.MaxTotalConnections * 0.8)
                 {
                     _logger.LogWarning("SignalR connections approaching global limit: {Count}/{Max} ({Percentage:F1}%)",
-                        globalConnections, MaxTotalConnections, (double)globalConnections / MaxTotalConnections * 100);
+                        globalConnections, _connectionOptions.MaxTotalConnections, (double)globalConnections / _connectionOptions.MaxTotalConnections * 100);
                 }
             }
             catch (Exception ex)
@@ -455,10 +456,10 @@ namespace ConduitLLM.Gateway.Services
                 VirtualKeyConnectionCount.WithLabels(virtualKeyId).Set(connectionCount);
 
                 // Log warning if virtual key is approaching limit
-                if (connectionCount > MaxConnectionsPerVirtualKey * 0.8)
+                if (connectionCount > _connectionOptions.MaxConnectionsPerVirtualKey * 0.8)
                 {
                     _logger.LogWarning("Virtual key {VirtualKeyId} approaching connection limit: {Count}/{Max}",
-                        virtualKeyId, connectionCount, MaxConnectionsPerVirtualKey);
+                        virtualKeyId, connectionCount, _connectionOptions.MaxConnectionsPerVirtualKey);
                 }
             }
         }

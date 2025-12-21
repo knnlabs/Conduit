@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
-
+using Microsoft.Extensions.Options;
 using Prometheus;
+using ConduitLLM.Configuration.Options;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -12,6 +13,7 @@ namespace ConduitLLM.Gateway.Services
     {
         private readonly ILogger<SignalRMetricsService> _logger;
         private readonly ConcurrentDictionary<string, ConnectionInfo> _activeConnections;
+        private readonly SignalRConnectionOptions _connectionOptions;
         private Timer? _metricsTimer;
 
         // Connection tracking
@@ -98,14 +100,13 @@ namespace ConduitLLM.Gateway.Services
                     LabelNames = new[] { "hub" }
                 });
 
-        // Connection limits from issue spec
-        private const int MaxConnectionsPerVirtualKey = 100;
-        private const int MaxTotalConnections = 10000;
-
-        public SignalRMetricsService(ILogger<SignalRMetricsService> logger)
+        public SignalRMetricsService(
+            ILogger<SignalRMetricsService> logger,
+            IOptions<SignalRConnectionOptions> connectionOptions)
         {
             _logger = logger;
             _activeConnections = new ConcurrentDictionary<string, ConnectionInfo>();
+            _connectionOptions = connectionOptions?.Value ?? new SignalRConnectionOptions();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -244,7 +245,7 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         public bool IsConnectionLimitReached(string virtualKeyId)
         {
-            return GetConnectionCountForVirtualKey(virtualKeyId) >= MaxConnectionsPerVirtualKey;
+            return GetConnectionCountForVirtualKey(virtualKeyId) >= _connectionOptions.MaxConnectionsPerVirtualKey;
         }
 
         /// <summary>
@@ -252,7 +253,7 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         public bool IsGlobalConnectionLimitReached()
         {
-            return _activeConnections.Count >= MaxTotalConnections;
+            return _activeConnections.Count >= _connectionOptions.MaxTotalConnections;
         }
 
         private void CalculateMetrics(object? state)
@@ -271,7 +272,7 @@ namespace ConduitLLM.Gateway.Services
                 // Update pool utilization metrics
                 foreach (var (hub, count) in hubConnections)
                 {
-                    var utilization = (double)count / MaxTotalConnections * 100;
+                    var utilization = (double)count / _connectionOptions.MaxTotalConnections * 100;
                     ConnectionPoolUtilization.WithLabels(hub).Set(utilization);
                 }
 
@@ -290,10 +291,10 @@ namespace ConduitLLM.Gateway.Services
 
                 // Log warning if approaching limits
                 var totalConnections = _activeConnections.Count;
-                if (totalConnections > MaxTotalConnections * 0.8)
+                if (totalConnections > _connectionOptions.MaxTotalConnections * 0.8)
                 {
                     _logger.LogWarning("SignalR connections approaching limit: {Count}/{Max} ({Percentage:F1}%)",
-                        totalConnections, MaxTotalConnections, (double)totalConnections / MaxTotalConnections * 100);
+                        totalConnections, _connectionOptions.MaxTotalConnections, (double)totalConnections / _connectionOptions.MaxTotalConnections * 100);
                 }
             }
             catch (Exception ex)
