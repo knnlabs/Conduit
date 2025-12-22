@@ -36,6 +36,20 @@ function getErrorTypeConfig(type: ChatErrorType) {
   }
 }
 
+// Helper function to get execution status color
+function getExecutionStatusColor(isFailed: boolean, isCompleted: boolean): string {
+  if (isFailed) return 'red';
+  if (isCompleted) return 'green';
+  return 'blue';
+}
+
+// Helper function to get execution status background color
+function getExecutionStatusBgColor(isFailed: boolean, isCompleted: boolean): string {
+  if (isFailed) return 'var(--mantine-color-red-light)';
+  if (isCompleted) return 'var(--mantine-color-green-light)';
+  return 'var(--mantine-color-blue-light)';
+}
+
 export function ChatMessages({ messages, isLoading, streamingContent, streamingChannel, tokensPerSecond, reasoningExpanded = true, onRetryMessage }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -423,11 +437,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                     radius="sm"
                     withBorder
                     style={{
-                      backgroundColor: isFailed
-                        ? 'var(--mantine-color-red-light)'
-                        : isCompleted
-                        ? 'var(--mantine-color-green-light)'
-                        : 'var(--mantine-color-blue-light)'
+                      backgroundColor: getExecutionStatusBgColor(isFailed, isCompleted)
                     }}
                   >
                     <Group justify="space-between" wrap="nowrap">
@@ -439,7 +449,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                       </Group>
                       <Badge
                         size="xs"
-                        color={isFailed ? 'red' : isCompleted ? 'green' : 'blue'}
+                        color={getExecutionStatusColor(isFailed, isCompleted)}
                         variant="light"
                       >
                         {execution.status}
@@ -684,7 +694,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                     // Type guard for React element
                     if (React.isValidElement(node)) {
                       const element = node as React.ReactElement<{children?: React.ReactNode}>;
-                      if (element.props && element.props.children !== undefined) {
+                      if (element.props?.children !== undefined) {
                         return getChildrenText(element.props.children);
                       }
                     }

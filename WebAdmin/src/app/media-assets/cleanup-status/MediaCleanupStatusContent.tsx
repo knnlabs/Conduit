@@ -56,6 +56,12 @@ function formatDuration(seconds: number | null): string {
   return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
 }
 
+function getBudgetColor(percent: number): string {
+  if (percent > 90) return 'red';
+  if (percent > 75) return 'yellow';
+  return 'green';
+}
+
 export default function MediaCleanupStatusContent() {
   const [status, setStatus] = useState<MediaCleanupStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,7 +196,7 @@ export default function MediaCleanupStatusContent() {
   }
 
   const budgetPercent = Math.min(status.monthlyBudgetUsedPercent, 100);
-  const budgetColor = budgetPercent > 90 ? 'red' : budgetPercent > 75 ? 'yellow' : 'green';
+  const budgetColor = getBudgetColor(budgetPercent);
 
   return (
     <Stack gap="lg">

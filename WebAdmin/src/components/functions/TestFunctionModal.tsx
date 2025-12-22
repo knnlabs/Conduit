@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Button,
@@ -75,6 +75,12 @@ const validateParameters = (value: string) => {
     return 'Must be valid JSON';
   }
 };
+
+function getStateIcon(state: string): React.ReactNode {
+  if (state === 'Completed') return <IconCheck size={16} />;
+  if (state === 'Failed') return <IconX size={16} />;
+  return null;
+}
 
 export function TestFunctionModal({ opened, onClose, configuration }: TestFunctionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -295,13 +301,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                     color={getStateColor(testResult.state)}
                     variant="filled"
                     size="lg"
-                    leftSection={
-                      testResult.state === 'Completed' ? (
-                        <IconCheck size={16} />
-                      ) : testResult.state === 'Failed' ? (
-                        <IconX size={16} />
-                      ) : null
-                    }
+                    leftSection={getStateIcon(testResult.state)}
                   >
                     {testResult.state}
                   </Badge>

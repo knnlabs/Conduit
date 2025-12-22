@@ -26,6 +26,12 @@ interface RequestLogsFiltersProps {
 
 type DatePreset = 'today' | '7days' | '30days' | 'custom';
 
+function getStatusFilterValue(status?: number): string | null {
+  if (status === 200) return 'success';
+  if (status === 500) return 'error';
+  return null;
+}
+
 export function RequestLogsFilters({
   filters,
   onFiltersChange,
@@ -236,13 +242,7 @@ export function RequestLogsFilters({
         {/* Status Filter */}
         <Select
           placeholder="All statuses"
-          value={
-            filters.status === 200
-              ? 'success'
-              : filters.status === 500
-                ? 'error'
-                : null
-          }
+          value={getStatusFilterValue(filters.status)}
           onChange={handleStatusChange}
           data={[
             { value: 'success', label: 'Success (2xx)' },
