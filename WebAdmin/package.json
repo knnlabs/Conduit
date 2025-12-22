@@ -7,9 +7,9 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src",
     "type-check": "tsc --noEmit",
-    "lint:fix": "next lint --fix",
+    "lint:fix": "eslint src --fix",
     "css:lint": "stylelint \"src/**/*.css\" --cache --cache-location .stylelintcache",
     "css:lint:fix": "stylelint \"src/**/*.css\" --fix --cache --cache-location .stylelintcache",
     "test": "jest",
@@ -71,6 +71,9 @@
   "author": "KNN Labs",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
+    "@next/eslint-plugin-next": "^16.1.0",
     "@playwright/test": "^1.54.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -79,6 +82,9 @@
     "@types/uuid": "^10.0.0",
     "eslint-config-next": "16.0.10",
     "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
     "husky": "^9.0.11",
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
@@ -90,7 +96,8 @@
     "stylelint-order": "^6.0.4",
     "stylelint-scss": "^6.1.0",
     "ts-jest": "^29.4.0",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript-eslint": "^8.50.0"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
