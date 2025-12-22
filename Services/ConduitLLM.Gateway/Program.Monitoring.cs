@@ -92,14 +92,9 @@ public partial class Program
         // Add database migration services
         builder.Services.AddDatabaseMigration();
 
-        // Add connection pool warmer for better startup performance - with leader election
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(
-            serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
-                return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "CoreAPI");
-            },
-            "ConnectionPoolWarmer");
+        // Add connection pool warmer with coordinated warming to prevent thundering herd during deployments
+        // Unlike leader election, ALL instances warm their pools, but in a staggered manner
+        builder.Services.AddCoordinatedConnectionPoolWarming(builder.Configuration, "CoreAPI");
 
         // Add cache statistics registration service
         builder.Services.AddHostedService<ConduitLLM.Gateway.Services.CacheStatisticsRegistrationService>();

@@ -7,10 +7,11 @@ This document describes the comprehensive background service patterns used in Co
 1. [Overview](#overview)
 2. [Background Service Worker Pattern](#background-service-worker-pattern)
 3. [Distributed Locking](#distributed-locking)
-4. [Eventual Consistency](#eventual-consistency)
-5. [Task Lifecycle](#task-lifecycle)
-6. [Best Practices](#best-practices)
-7. [Monitoring and Troubleshooting](#monitoring-and-troubleshooting)
+4. [Coordinated Startup Warming](#coordinated-startup-warming)
+5. [Eventual Consistency](#eventual-consistency)
+6. [Task Lifecycle](#task-lifecycle)
+7. [Best Practices](#best-practices)
+8. [Monitoring and Troubleshooting](#monitoring-and-troubleshooting)
 
 ---
 
@@ -304,6 +305,190 @@ while (!cancellationToken.IsCancellationRequested)
     if (leasedTask != null) { /* process with exclusive access */ }
 }
 ```
+
+---
+
+## Coordinated Startup Warming
+
+When multiple service instances start simultaneously (e.g., during deployment), resource-intensive initialization tasks can cause "thundering herd" problems. The coordinated warming pattern addresses this by ensuring orderly, staggered initialization across instances.
+
+### The Problem
+
+Without coordination, all instances warming resources at once can cause:
+- **Database connection spikes**: 10 instances × 50 connections = 500 simultaneous connections
+- **Connection pool exhaustion**: Exceeding database connection limits
+- **Startup delays**: All instances competing for resources
+- **Potential failures**: Cascading timeouts and crashes
+
+### The Solution: Coordinated Warming
+
+Unlike leader election where only one instance runs a service, coordinated warming ensures **all instances** complete initialization, but in a staggered manner:
+
+1. **One instance acquires a distributed lock** (becomes the "leader")
+2. **Leader warms its resources first** (e.g., database connection pool)
+3. **Leader publishes a signal** via Redis Pub/Sub when complete
+4. **Follower instances wait for the signal** (with timeout)
+5. **Followers warm their own resources** after receiving the signal
+
+```mermaid
+sequenceDiagram
+    participant I1 as Instance 1 (Leader)
+    participant I2 as Instance 2 (Follower)
+    participant I3 as Instance 3 (Follower)
+    participant Redis as Redis
+    participant DB as Database
+
+    I1->>Redis: Acquire lock (success)
+    I2->>Redis: Acquire lock (fail - subscribe)
+    I3->>Redis: Acquire lock (fail - subscribe)
+    I1->>DB: Warm connections (10 conns)
+    I1->>Redis: Publish "warming complete"
+    Redis-->>I2: Signal received
+    Redis-->>I3: Signal received
+    I2->>DB: Warm connections (10 conns)
+    I3->>DB: Warm connections (10 conns)
+```
+
+### Implementation: CoordinatedConnectionPoolWarmer
+
+The `CoordinatedConnectionPoolWarmer` implements this pattern for database connection pools:
+
+```csharp
+public class CoordinatedConnectionPoolWarmer : IHostedService
+{
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        // Try to acquire coordination lock (non-blocking)
+        var lockHandle = await _lockService.AcquireLockAsync(
+            $"connectionpool:warming:{_serviceType}",
+            _options.LockExpiry,
+            cancellationToken);
+
+        if (lockHandle != null)
+        {
+            // Leader path: warm first, then signal others
+            await WarmConnectionPoolAsync(cancellationToken);
+            await PublishWarmingSignalAsync();
+            await lockHandle.ReleaseAsync();
+        }
+        else
+        {
+            // Follower path: wait for signal, then warm
+            await WaitForSignalOrTimeoutAsync(cancellationToken);
+            await WarmConnectionPoolAsync(cancellationToken);
+        }
+    }
+}
+```
+
+### Key Design Decisions
+
+#### 1. Service-Type Isolation
+
+Gateway API and Admin API coordinate independently using separate lock keys:
+- `connectionpool:warming:CoreAPI`
+- `connectionpool:warming:AdminAPI`
+
+This prevents unnecessary delays when different service types deploy at different times.
+
+#### 2. Graceful Degradation
+
+When Redis is unavailable, instances fall back to immediate warming:
+
+```csharp
+if (_redis == null || _lockService == null)
+{
+    // No coordination available - warm immediately
+    await WarmConnectionPoolAsync(cancellationToken);
+    return;
+}
+```
+
+#### 3. Timeout-Based Safety
+
+Followers don't wait indefinitely. After `SignalTimeout` (default: 2 minutes):
+- If leader crashed mid-warming, followers proceed anyway
+- Lock auto-expires, allowing recovery on next deployment
+
+#### 4. Stagger Delay with Jitter
+
+After receiving the signal, followers add a small random delay to prevent a secondary thundering herd:
+
+```csharp
+if (signalReceived)
+{
+    var jitteredDelay = _options.StaggerDelay +
+        TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500));
+    await Task.Delay(jitteredDelay, cancellationToken);
+}
+```
+
+### Configuration
+
+Configure coordinated warming in `appsettings.json`:
+
+```json
+{
+  "ConduitLLM": {
+    "ConnectionPoolWarming": {
+      "EnableCoordinatedWarming": true,
+      "SignalTimeout": "00:02:00",
+      "LockExpiry": "00:05:00",
+      "StaggerDelay": "00:00:00.500",
+      "VerboseLogging": false
+    }
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `EnableCoordinatedWarming` | `true` | Enable/disable coordination |
+| `SignalTimeout` | 2 min | How long followers wait for signal |
+| `LockExpiry` | 5 min | Lock TTL (should exceed warming time) |
+| `StaggerDelay` | 500ms | Base delay after signal (jitter added) |
+| `VerboseLogging` | `false` | Enable debug-level logging |
+
+### Comparison: Leader Election vs Coordinated Warming
+
+| Aspect | Leader Election | Coordinated Warming |
+|--------|-----------------|---------------------|
+| **Instances that run** | Only leader | All instances |
+| **Use case** | Singleton work (metrics, cleanup) | Per-instance initialization |
+| **Non-leader behavior** | Waits/does nothing | Waits, then runs |
+| **Signal mechanism** | Leadership change | Pub/Sub completion signal |
+| **Example services** | `BusinessMetricsService` | `ConnectionPoolWarmer` |
+
+### Monitoring
+
+Key log messages to monitor:
+
+```
+# Leader acquired lock
+"Instance {InstanceId} acquired warming lock for {ServiceType}. Warming pool as leader."
+
+# Signal published
+"Published warming signal for {ServiceType} to {SubscriberCount} subscribers"
+
+# Follower received signal
+"Received warming signal for {ServiceType}. Proceeding with local pool warming."
+
+# Follower timeout (may indicate leader issues)
+"Warming signal timeout reached for {ServiceType}. Proceeding with local pool warming."
+
+# Graceful degradation
+"Redis unavailable. Warming pool immediately for {ServiceType}."
+```
+
+### Edge Cases Handled
+
+| Scenario | Behavior |
+|----------|----------|
+| Redis unavailable | Immediate warming (graceful degradation) |
+| Leader crashes mid-warming | Followers timeout and proceed |
+| Signal lost in transit | Followers timeout and proceed |
+| All instances start simultaneously | One becomes leader, others wait |
+| Lock service unavailable | Immediate warming |
 
 ---
 

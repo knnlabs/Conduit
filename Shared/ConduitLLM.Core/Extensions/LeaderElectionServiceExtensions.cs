@@ -1,10 +1,13 @@
 using System;
 using System.Linq;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Options;
 using ConduitLLM.Core.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace ConduitLLM.Core.Extensions
@@ -117,6 +120,45 @@ namespace ConduitLLM.Core.Extensions
 
             // Add it back with leader election
             return services.AddLeaderElectedHostedService<TService>(serviceName);
+        }
+
+        /// <summary>
+        /// Adds coordinated connection pool warming service.
+        /// Unlike leader election, coordinated warming ensures ALL instances warm their pools,
+        /// but in a staggered manner to prevent thundering herd effects.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configuration">Application configuration for options binding.</param>
+        /// <param name="serviceType">Service type (CoreAPI, AdminAPI) for isolation and logging.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCoordinatedConnectionPoolWarming(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            string serviceType)
+        {
+            // Register options from configuration
+            services.Configure<ConnectionPoolWarmingOptions>(
+                configuration.GetSection(ConnectionPoolWarmingOptions.SectionName));
+
+            // Register the coordinated warmer as a hosted service
+            services.AddSingleton<IHostedService>(serviceProvider =>
+            {
+                var lockService = serviceProvider.GetService<IDistributedLockService>();
+                var redis = serviceProvider.GetService<IConnectionMultiplexer>();
+                var logger = serviceProvider.GetRequiredService<ILogger<CoordinatedConnectionPoolWarmer>>();
+                var options = serviceProvider.GetService<IOptions<ConnectionPoolWarmingOptions>>()?.Value
+                    ?? new ConnectionPoolWarmingOptions();
+
+                return new CoordinatedConnectionPoolWarmer(
+                    serviceProvider,
+                    lockService,
+                    redis,
+                    logger,
+                    options,
+                    serviceType);
+            });
+
+            return services;
         }
     }
 }

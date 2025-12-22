@@ -250,14 +250,9 @@ public partial class Program
         // Add basic health checks
         builder.Services.AddHealthChecks();
         
-        // Add connection pool warmer for better startup performance - with leader election
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(
-            serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
-                return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "AdminAPI");
-            },
-            "ConnectionPoolWarmer");
+        // Add connection pool warmer with coordinated warming to prevent thundering herd during deployments
+        // Unlike leader election, ALL instances warm their pools, but in a staggered manner
+        builder.Services.AddCoordinatedConnectionPoolWarming(builder.Configuration, "AdminAPI");
 
         // Configure OpenTelemetry metrics and tracing
         var otlpEndpoint = builder.Configuration["Telemetry:OtlpEndpoint"] ?? "http://localhost:4317";
