@@ -1,5 +1,5 @@
 import type { RequestOptions } from '../client/types';
-import type { StreamingResponse } from '../models/streaming';
+import type { StreamingResponse, BaseStreamChunk } from '../models/streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
 import { createWebStream } from '../utils/web-streaming';
@@ -30,7 +30,7 @@ export abstract class BaseStreamingService {
    * @returns A streaming response
    * @protected
    */
-  protected async createStandardStream<T>(
+  protected async createStandardStream<T extends BaseStreamChunk>(
     request: unknown,
     options?: RequestOptions
   ): Promise<StreamingResponse<T>> {

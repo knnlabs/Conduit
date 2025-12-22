@@ -32,14 +32,16 @@ describe('VideoProgressTracker - Cleanup and Backoff', () => {
         task_id: 'task_123',
         status: VideoTaskStatus.Completed,
         progress: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         result: { created: Date.now(), data: [] },
       });
 
       const trackPromise = tracker.track();
-      
+
       // Advance timers to trigger polling
       await jest.advanceTimersByTimeAsync(100);
-      
+
       await trackPromise;
 
       expect(mocks.mockVideoHubClient.unsubscribeFromTask).toHaveBeenCalledWith('task_123');
@@ -56,11 +58,13 @@ describe('VideoProgressTracker - Cleanup and Backoff', () => {
       );
 
       mocks.mockVideoHubClient.unsubscribeFromTask.mockRejectedValue(new Error('Unsubscribe failed'));
-      
+
       mocks.mockVideosService.getTaskStatus.mockResolvedValue({
         task_id: 'task_123',
         status: VideoTaskStatus.Completed,
         progress: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         result: { created: Date.now(), data: [] },
       });
 
@@ -101,6 +105,8 @@ describe('VideoProgressTracker - Cleanup and Backoff', () => {
           task_id: 'task_123',
           status: VideoTaskStatus.Running,
           progress: callCount * 10,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
       });
 
@@ -114,9 +120,9 @@ describe('VideoProgressTracker - Cleanup and Backoff', () => {
       await jest.advanceTimersByTimeAsync(800); // Fourth poll at 800ms (capped at max)
 
       expect(callCount).toBeGreaterThanOrEqual(4);
-      
-      // Clean up
-      (tracker as VideoProgressTrackerTestable).cleanup();
+
+      // Clean up - use unknown cast to access private method in tests
+      (tracker as unknown as VideoProgressTrackerTestable).cleanup();
     });
   });
 });

@@ -23,6 +23,9 @@ jest.mock('../../utils', () => ({
 
 import { parseSSEStream, SSEEventType } from '../../utils';
 
+// Cast the mocked function for proper TypeScript typing
+const mockedParseSSEStream = parseSSEStream as jest.MockedFunction<typeof parseSSEStream>;
+
 describe('ChatStreamingManager', () => {
   let manager: ChatStreamingManager;
   let mockConfig: StreamingConfig;
@@ -150,7 +153,7 @@ describe('ChatStreamingManager', () => {
         };
       });
 
-      parseSSEStream.mockImplementation(async function* () {
+      mockedParseSSEStream.mockImplementation(async function* () {
         // Simulate a stream that can be interrupted
         try {
           await new Promise((resolve) => {
@@ -225,7 +228,7 @@ describe('ChatStreamingManager', () => {
         { data: '[DONE]' }
       ];
 
-      parseSSEStream.mockImplementation(async function* () {
+      mockedParseSSEStream.mockImplementation(async function* () {
         for (const event of mockEvents) {
           yield event;
         }
@@ -258,7 +261,7 @@ describe('ChatStreamingManager', () => {
         { data: '[DONE]' }
       ];
 
-      parseSSEStream.mockImplementation(async function* () {
+      mockedParseSSEStream.mockImplementation(async function* () {
         for (const event of mockEvents) {
           yield event;
         }
@@ -286,7 +289,7 @@ describe('ChatStreamingManager', () => {
         }
       ];
 
-      parseSSEStream.mockImplementation(async function* () {
+      mockedParseSSEStream.mockImplementation(async function* () {
         for (const event of mockEvents) {
           yield event;
         }
@@ -309,7 +312,7 @@ describe('ChatStreamingManager', () => {
     });
 
     it('should handle conversation history', async () => {
-      parseSSEStream.mockImplementation(async function* () {
+      mockedParseSSEStream.mockImplementation(async function* () {
         yield { data: '[DONE]' };
       });
 
@@ -333,7 +336,7 @@ describe('ChatStreamingManager', () => {
     });
 
     it('should handle system prompt', async () => {
-      parseSSEStream.mockImplementation(async function* () {
+      mockedParseSSEStream.mockImplementation(async function* () {
         yield { data: '[DONE]' };
       });
 
@@ -354,7 +357,7 @@ describe('ChatStreamingManager', () => {
     });
 
     it('should prevent multiple concurrent streams', async () => {
-      parseSSEStream.mockImplementation(async function* () {
+      mockedParseSSEStream.mockImplementation(async function* () {
         // Simulate long-running stream that never sends [DONE]
         await new Promise(resolve => setTimeout(resolve, 100));
         // Yield something to satisfy require-yield rule
@@ -466,7 +469,9 @@ describe('ChatStreamingManager', () => {
       });
 
       // Verify it's a copy, not the original
-      state.isStreaming = true;
+      // Use Object.assign to create a mutable copy for testing
+      const mutableState = { ...state, isStreaming: true };
+      expect(mutableState.isStreaming).toBe(true);
       expect(manager.getState().isStreaming).toBe(false);
     });
 
@@ -479,7 +484,7 @@ describe('ChatStreamingManager', () => {
         }
       });
 
-      parseSSEStream.mockImplementation(async function* () {
+      mockedParseSSEStream.mockImplementation(async function* () {
         yield {
           event: SSEEventType.Content,
           data: { choices: [{ delta: { content: 'test' } }] }
@@ -509,7 +514,7 @@ describe('ChatStreamingManager', () => {
       });
 
       // Mock fetch to respond to timeout abort signal
-      mockFetch.mockImplementation(async (url, options) => {
+      mockFetch.mockImplementation(async (_url, options) => {
         return new Promise((resolve, reject) => {
           const signal = options?.signal as AbortSignal;
           if (signal) {

@@ -20,7 +20,6 @@ import { MessageService } from '../services/MessageService';
 import { UsageService } from '../services/UsageService';
 import { MediaService } from '../services/MediaService';
 import { FunctionsService } from '../services/FunctionsService';
-import type { VideoGenerationHubClient } from '../signalr/VideoGenerationHubClient';
 
 export class ConduitCoreClient extends FetchBasedClient {
   public readonly chat: ChatService;
@@ -66,14 +65,13 @@ export class ConduitCoreClient extends FetchBasedClient {
         config.apiKey
       );
       // Update videos service with SignalR connections
+      // Use Object.assign to set private properties - this bypasses TypeScript's
+      // intersection type checking while maintaining runtime behavior
       if (this.videos instanceof VideosService) {
-        // TypeScript doesn't know about these internal properties, but they exist
-        const videosService = this.videos as VideosService & {
-          signalRService?: SignalRService;
-          videoHubClient?: VideoGenerationHubClient;
-        };
-        videosService.signalRService = this.signalr;
-        videosService.videoHubClient = videoHubClient;
+        Object.assign(this.videos, {
+          signalRService: this.signalr,
+          videoHubClient: videoHubClient
+        });
       }
     }).catch(error => {
       if (config.debug) {

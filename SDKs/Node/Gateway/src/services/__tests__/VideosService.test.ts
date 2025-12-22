@@ -23,6 +23,7 @@ jest.mock('../VideoProgressTracker', () => ({
 }));
 
 const mockClientAdapter: jest.Mocked<IFetchBasedClientAdapter> = {
+  request: jest.fn(),
   get: jest.fn(),
   post: jest.fn(),
   put: jest.fn(),

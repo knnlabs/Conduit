@@ -22,6 +22,8 @@ describe('VideoProgressTracker - SignalR event handling', () => {
         task_id: 'task_123',
         status: VideoTaskStatus.Completed,
         progress: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         result: { created: Date.now(), data: [] },
       });
 
@@ -56,9 +58,9 @@ describe('VideoProgressTracker - SignalR event handling', () => {
         });
       }
 
-      // Clean up
-      (tracker as VideoProgressTrackerTestable).cleanup();
-      
+      // Clean up - use unknown cast to access private method in tests
+      (tracker as unknown as VideoProgressTrackerTestable).cleanup();
+
       // Let the track promise complete
       await jest.runAllTimersAsync();
     });
@@ -81,6 +83,8 @@ describe('VideoProgressTracker - SignalR event handling', () => {
         task_id: 'task_123',
         status: VideoTaskStatus.Completed,
         progress: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         result: mockResult,
       });
 
@@ -118,6 +122,8 @@ describe('VideoProgressTracker - SignalR event handling', () => {
         status: VideoTaskStatus.Failed,
         progress: 0,
         error: 'Insufficient resources',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
       const tracker = new VideoProgressTracker(
@@ -176,8 +182,8 @@ describe('VideoProgressTracker - SignalR event handling', () => {
 
       expect(mocks.mockCallbacks.onProgress).not.toHaveBeenCalled();
 
-      // Clean up
-      (tracker as VideoProgressTrackerTestable).cleanup();
+      // Clean up - use unknown cast to access private method in tests
+      (tracker as unknown as VideoProgressTrackerTestable).cleanup();
     });
   });
 });

@@ -14,17 +14,19 @@ global.TextDecoder = jest.fn().mockImplementation(() => ({
 })) as unknown as typeof TextDecoder;
 
 describe('enhanced-web-streaming', () => {
+  let mockRead: jest.MockedFunction<() => Promise<ReadableStreamReadResult<Uint8Array>>>;
   let mockReader: ReadableStreamDefaultReader<Uint8Array>;
   let mockStream: ReadableStream<Uint8Array>;
 
   beforeEach(() => {
+    mockRead = jest.fn();
     mockReader = {
-      read: jest.fn(),
+      read: mockRead,
       releaseLock: jest.fn(),
       closed: Promise.resolve(undefined),
       cancel: jest.fn()
     } as unknown as ReadableStreamDefaultReader<Uint8Array>;
-    
+
     mockStream = {
       getReader: jest.fn().mockReturnValue(mockReader)
     } as unknown as ReadableStream<Uint8Array>;
@@ -66,11 +68,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream);
@@ -91,11 +93,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream);
@@ -115,11 +117,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream);
@@ -139,11 +141,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream);
@@ -160,11 +162,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream);
@@ -185,11 +187,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream);
@@ -211,11 +213,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream, { onError });
@@ -223,13 +225,13 @@ describe('enhanced-web-streaming', () => {
       
       expect(events).toHaveLength(0);
       expect(onError).toHaveBeenCalledWith(expect.any(StreamError));
-      expect(onError.mock.calls[0][0].message).toContain('Failed to parse SSE content event');
+      expect((onError.mock.calls[0][0] as Error).message).toContain('Failed to parse SSE content event');
     });
 
     it('should handle timeout', async () => {
       const timeout = 100; // 100ms timeout
       
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         // Simulate a hanging stream
         await new Promise(resolve => setTimeout(resolve, 200));
         return { done: false, value: new Uint8Array() };
@@ -246,11 +248,11 @@ describe('enhanced-web-streaming', () => {
       const chunks = [`data: "${largeData}"\n\n`];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream);
@@ -266,11 +268,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream, { onError });
@@ -278,8 +280,8 @@ describe('enhanced-web-streaming', () => {
       
       // The invalid line should trigger an error but not prevent other events
       expect(onError).toHaveBeenCalled();
-      const malformedErrors = onError.mock.calls.filter(call => 
-        call[0].message.includes('Malformed SSE line')
+      const malformedErrors = onError.mock.calls.filter(call =>
+        (call[0] as Error).message.includes('Malformed SSE line')
       );
       expect(malformedErrors.length).toBeGreaterThan(0);
       // Valid event should still be parsed
@@ -294,11 +296,11 @@ describe('enhanced-web-streaming', () => {
       ];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: encoder.encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream, { onError });
@@ -316,7 +318,7 @@ describe('enhanced-web-streaming', () => {
       const abortSpy = jest.fn();
       jest.spyOn(AbortController.prototype, 'abort').mockImplementation(abortSpy);
       
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         // Infinite stream
         return { done: false, value: new Uint8Array() };
       });
@@ -331,11 +333,11 @@ describe('enhanced-web-streaming', () => {
       const chunks = ['data: {"test": true}\n\n'];
       
       let readIndex = 0;
-      mockReader.read.mockImplementation(async () => {
+      mockRead.mockImplementation(async () => {
         if (readIndex < chunks.length) {
           return { done: false, value: new TextEncoder().encode(chunks[readIndex++]) };
         }
-        return { done: true };
+        return { done: true, value: undefined };
       });
 
       const stream = createEnhancedWebStream(mockStream);
@@ -345,7 +347,7 @@ describe('enhanced-web-streaming', () => {
     });
 
     it('should release reader lock on error', async () => {
-      mockReader.read.mockRejectedValue(new Error('Read error'));
+      mockRead.mockRejectedValueOnce(new Error('Read error'));
 
       const stream = createEnhancedWebStream(mockStream);
       

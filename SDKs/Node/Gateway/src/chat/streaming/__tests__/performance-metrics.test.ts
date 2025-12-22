@@ -94,7 +94,7 @@ describe('PerformanceMetricsCalculator', () => {
       
       calculator.startRequest();
       calculator.markFirstToken();
-      calculator.updateMetrics({ tokens: 50 });
+      calculator.updateMetrics({ tokens_generated: 50 });
 
       calculator.reset();
 
@@ -266,17 +266,18 @@ describe('MetricsUtils', () => {
 
   describe('mergeMetrics', () => {
     it('should merge multiple metric objects', () => {
-      const metrics1 = { provider: 'openai', tokens: 50 };
-      const metrics2 = { model: 'gpt-4', latency: 1000 };
-      const metrics3 = { provider: 'anthropic' }; // Should override
+      type MergedMetrics = Partial<StreamingPerformanceMetrics & MetricsEventData>;
+      const metrics1: MergedMetrics = { provider: 'openai', tokens_generated: 50 };
+      const metrics2: MergedMetrics = { model: 'gpt-4', total_latency_ms: 1000 };
+      const metrics3: MergedMetrics = { provider: 'anthropic' }; // Should override
 
       const merged = MetricsUtils.mergeMetrics(metrics1, metrics2, metrics3);
 
       expect(merged).toEqual({
         provider: 'anthropic', // Last one wins
-        tokens: 50,
+        tokens_generated: 50,
         model: 'gpt-4',
-        latency: 1000
+        total_latency_ms: 1000
       });
     });
 

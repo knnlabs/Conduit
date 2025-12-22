@@ -7,6 +7,17 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 
 /**
+ * Narrowed options type for GET requests
+ * Only includes fields that the get() method accepts as options
+ */
+interface GetRequestOptions {
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+  timeout?: number;
+  responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
+}
+
+/**
  * Helper interface for services that use FetchBaseApiClient
  */
 interface ServiceWithClient {
@@ -28,7 +39,7 @@ interface ServiceWithClient {
  * ```
  */
 export function createGetById<TResponse>(endpoint: (id: number) => string) {
-  return function(this: ServiceWithClient, id: number, config?: RequestConfig): Promise<TResponse> {
+  return function(this: ServiceWithClient, id: number, config?: GetRequestOptions): Promise<TResponse> {
     return this.client['get']<TResponse>(endpoint(id), config);
   };
 }
@@ -40,7 +51,7 @@ export function createGetById<TResponse>(endpoint: (id: number) => string) {
  * @returns Bound method that can be used in service classes
  */
 export function createGetByStringId<TResponse>(endpoint: (id: string) => string) {
-  return function(this: ServiceWithClient, id: string, config?: RequestConfig): Promise<TResponse> {
+  return function(this: ServiceWithClient, id: string, config?: GetRequestOptions): Promise<TResponse> {
     return this.client['get']<TResponse>(endpoint(id), config);
   };
 }
@@ -60,9 +71,13 @@ export function createGetByStringId<TResponse>(endpoint: (id: string) => string)
  * ```
  */
 export function createListMethod<TResponse>(endpoint: string) {
-  return function(this: ServiceWithClient, params?: unknown, config?: RequestConfig): Promise<TResponse> {
-    const mergedConfig = params ? { ...config, ...params } : config;
-    return this.client['get']<TResponse>(endpoint, mergedConfig);
+  return function(this: ServiceWithClient, params?: Record<string, unknown>, config?: GetRequestOptions): Promise<TResponse> {
+    // Use 3-arg signature when both params and config are provided
+    if (params && config) {
+      return this.client['get']<TResponse>(endpoint, params, config);
+    }
+    // Use 2-arg signature with just params or config
+    return this.client['get']<TResponse>(endpoint, params ?? config);
   };
 }
 

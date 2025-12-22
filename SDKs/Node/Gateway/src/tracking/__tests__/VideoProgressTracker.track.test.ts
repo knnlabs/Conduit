@@ -33,11 +33,11 @@ describe('VideoProgressTracker - track', () => {
       // Allow setup to complete
       await jest.runOnlyPendingTimersAsync();
 
-      expect(mocks.mockSignalRService.connect).toHaveBeenCalled();
+      expect(mocks.mockSignalRService.startAllConnections).toHaveBeenCalled();
       expect(mocks.mockVideoHubClient.subscribeToTask).toHaveBeenCalledWith('task_123');
 
-      // Clean up
-      (tracker as VideoProgressTrackerTestable).cleanup();
+      // Clean up - use unknown cast to access private method in tests
+      (tracker as unknown as VideoProgressTrackerTestable).cleanup();
     });
 
     it('should handle SignalR connection failure gracefully', async () => {
@@ -50,7 +50,7 @@ describe('VideoProgressTracker - track', () => {
         { initialPollIntervalMs: 100 }
       );
 
-      mocks.mockSignalRService.connect.mockRejectedValue(new Error('Connection failed'));
+      mocks.mockSignalRService.startAllConnections.mockRejectedValue(new Error('Connection failed'));
 
       // Mock task status for polling
       mocks.mockVideosService.getTaskStatus.mockResolvedValue({

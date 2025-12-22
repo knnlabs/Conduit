@@ -11,7 +11,6 @@
 
 import {
   BaseApiClient,
-  type BaseRequestOptions,
   type RetryStrategy,
   RetryStrategyType,
   handleApiError,
@@ -19,8 +18,6 @@ import {
 import type {
   ApiClientConfig,
   RetryConfig,
-  Logger,
-  CacheProvider,
   RequestConfigInfo,
   ResponseInfo
 } from './types';

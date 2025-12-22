@@ -49,7 +49,6 @@ export class VideoProgressTracker {
   private isCompleted = false;
   private isSignalRConnected = false;
   private pollingInterval?: NodeJS.Timeout;
-  private signalRReconnectAttempts = 0;
   private lastPolledProgress = 0;
   private cleanupHandlers: Array<() => void> = [];
 
@@ -111,7 +110,7 @@ export class VideoProgressTracker {
     try {
       // Ensure SignalR is connected
       if (!this.signalRService.isConnected()) {
-        await this.signalRService.connect();
+        await this.signalRService.startAllConnections();
       }
 
       // Subscribe to the task
@@ -303,27 +302,6 @@ export class VideoProgressTracker {
     // Notify callback
     if (this.callbacks.onProgress) {
       this.callbacks.onProgress(progress);
-    }
-  }
-
-  /**
-   * Fetch current state after reconnection
-   */
-  private async fetchCurrentState(): Promise<void> {
-    try {
-      const status = await this.videosService.getTaskStatus(this.taskId, {
-        signal: this.options.signal
-      });
-
-      const progress: VideoProgress = {
-        percentage: status.progress,
-        status: status.status,
-        message: status.message
-      };
-
-      this.handleProgressUpdate(progress, 'polling');
-    } catch (error) {
-      console.error('Failed to fetch current state:', error);
     }
   }
 

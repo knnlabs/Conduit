@@ -32,6 +32,8 @@ describe('VideoProgressTracker - Progress deduplication', () => {
         status: VideoTaskStatus.Running,
         progress: 50,
         message: 'Processing',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
       // Start tracking
@@ -50,8 +52,8 @@ describe('VideoProgressTracker - Progress deduplication', () => {
         message: 'Processing',
       });
 
-      // Clean up
-      (tracker as VideoProgressTrackerTestable).cleanup();
+      // Clean up - use unknown cast to access private method in tests
+      (tracker as unknown as VideoProgressTrackerTestable).cleanup();
     });
 
     it('should allow different progress updates', async () => {
@@ -64,10 +66,14 @@ describe('VideoProgressTracker - Progress deduplication', () => {
         { initialPollIntervalMs: 100 }
       );
 
+      const baseResponse = {
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
       const statusResponses = [
-        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 30 },
-        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 60 },
-        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 90 },
+        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 30, ...baseResponse },
+        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 60, ...baseResponse },
+        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 90, ...baseResponse },
       ];
 
       let callCount = 0;
@@ -103,8 +109,8 @@ describe('VideoProgressTracker - Progress deduplication', () => {
         message: undefined,
       });
 
-      // Clean up
-      (tracker as VideoProgressTrackerTestable).cleanup();
+      // Clean up - use unknown cast to access private method in tests
+      (tracker as unknown as VideoProgressTrackerTestable).cleanup();
     });
   });
 });

@@ -1,12 +1,15 @@
-import type { VideoProgressTracker } from '../VideoProgressTracker';
 import type { VideosService, VideoProgressCallbacks } from '../../services/VideosService';
 import type { SignalRService } from '../../services/SignalRService';
 import type { VideoGenerationHubClient } from '../../signalr/VideoGenerationHubClient';
 
-// Type for accessing private methods in tests
-type VideoProgressTrackerTestable = VideoProgressTracker & {
+/**
+ * Interface for accessing private methods in tests.
+ * Note: This uses a separate interface instead of intersection to avoid
+ * TypeScript's intersection collapse when accessing private members.
+ */
+interface VideoProgressTrackerTestable {
   cleanup(): void;
-};
+}
 
 export const createMocks = () => {
   const mockVideosService = {
@@ -15,7 +18,7 @@ export const createMocks = () => {
 
   const mockSignalRService = {
     isConnected: jest.fn().mockReturnValue(false),
-    connect: jest.fn().mockResolvedValue(undefined),
+    startAllConnections: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<SignalRService>;
 
   const mockVideoHubClient = {
