@@ -112,6 +112,7 @@ public class TestContext
     public decimal InitialCredit { get; set; }
     public decimal RemainingCredit { get; set; }
     public List<string> Errors { get; set; } = new();
+    public List<string> Observations { get; set; } = new();
     
     public void SaveToFile(string path = "test-context.json")
     {

@@ -183,7 +183,7 @@ public class StreamingWithToolCallsTest : ProviderIntegrationTestBase
     {
         var requestBody = new
         {
-            model = _modelAlias,
+            model = _context.ModelAlias,
             messages = new[]
             {
                 new { role = "user", content = "What's the weather like in San Francisco?" }
@@ -203,7 +203,7 @@ public class StreamingWithToolCallsTest : ProviderIntegrationTestBase
             )
         };
 
-        requestMessage.Headers.Add("Authorization", $"Bearer {_virtualKey}");
+        requestMessage.Headers.Add("Authorization", $"Bearer {_context.VirtualKey}");
 
         using var response = await _apiClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();

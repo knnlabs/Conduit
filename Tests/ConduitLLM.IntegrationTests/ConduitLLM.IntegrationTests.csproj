@@ -47,10 +47,4 @@
     <ProjectReference Include="..\..\Shared\ConduitLLM.Core\ConduitLLM.Core.csproj" />
   </ItemGroup>
 
-  <!-- Exclude broken test files that have pre-existing build errors (TODO: fix these in a separate PR) -->
-  <ItemGroup>
-    <Compile Remove="Tests/StreamingWithToolCallsTest.cs" />
-    <Compile Remove="Tests/StreamingWithReasoningTest.cs" />
-  </ItemGroup>
-
 </Project>

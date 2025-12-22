@@ -137,7 +137,7 @@ public class StreamingWithReasoningTest : ProviderIntegrationTestBase
     {
         var requestBody = new
         {
-            model = _modelAlias,
+            model = _context.ModelAlias,
             messages = new[]
             {
                 new { role = "user", content = "Explain step by step how photosynthesis works." }
@@ -156,7 +156,7 @@ public class StreamingWithReasoningTest : ProviderIntegrationTestBase
             )
         };
 
-        requestMessage.Headers.Add("Authorization", $"Bearer {_virtualKey}");
+        requestMessage.Headers.Add("Authorization", $"Bearer {_context.VirtualKey}");
 
         using var response = await _apiClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();

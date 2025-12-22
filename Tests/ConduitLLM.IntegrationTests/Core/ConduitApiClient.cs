@@ -171,6 +171,37 @@ public class ConduitApiClient : IDisposable
     {
         _httpClient.Timeout = timeout;
     }
+
+    /// <summary>
+    /// Generic POST method for Admin API (convenience wrapper around AdminPostAsync).
+    /// Returns the response data directly, throwing on failure.
+    /// </summary>
+    public async Task<T> PostAsync<T>(string endpoint, object? payload = null)
+    {
+        var response = await AdminPostAsync<T>(endpoint, payload);
+        if (!response.Success)
+        {
+            throw new HttpRequestException($"POST {endpoint} failed: {response.Error}");
+        }
+        return response.Data!;
+    }
+
+    /// <summary>
+    /// Send a raw HttpRequestMessage for streaming scenarios.
+    /// The request URL should be relative to the Core API URL.
+    /// </summary>
+    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, HttpCompletionOption completionOption)
+    {
+        // Ensure the request URL is absolute, using Core API as base
+        if (!request.RequestUri?.IsAbsoluteUri ?? true)
+        {
+            var relativePath = request.RequestUri?.ToString() ?? "";
+            request.RequestUri = new Uri($"{_config.Environment.CoreApiUrl}{relativePath}");
+        }
+
+        _logger.LogInformation("{Method} {Url}", request.Method, request.RequestUri);
+        return await _httpClient.SendAsync(request, completionOption);
+    }
     
     public void Dispose()
     {
