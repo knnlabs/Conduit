@@ -10,6 +10,7 @@ import {
   IconDatabase,
   IconBugOff,
   IconShield,
+  IconShieldCheck,
   IconPhoto,
   IconVideo,
   IconMessage,
@@ -57,6 +58,7 @@ const navigationSections = [
   {
     title: 'Security & Monitoring',
     items: [
+      { id: 'security', label: 'Security Dashboard', href: '/security', icon: IconShieldCheck },
       { id: 'ip-filtering', label: 'IP Filtering', href: '/ip-filtering', icon: IconShield },
       { id: 'system-info', label: 'System Info', href: '/system-info', icon: IconInfoCircle },
       { id: 'virtualkeys-discovery-preview', label: 'Discovery Preview', href: '/virtualkeys/discovery-preview', icon: IconEye },

@@ -3,13 +3,14 @@
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { 
+import type {
   IpFilterDto,
   CreateIpFilterDto,
   UpdateIpFilterDto,
   SecurityEvent,
   ThreatDetection,
   SecurityEventFilters,
+  ComplianceMetrics,
 } from '@knn_labs/conduit-admin-client';
 
 // Legacy interface for backward compatibility - maps to IpFilterDto
@@ -274,7 +275,7 @@ export function useSecurityApi() {
   const getIpStats = useCallback(async (): Promise<IpStats> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // The Admin SDK doesn't have a direct stats endpoint, so we'll compute stats from the filters
       const filters = await withAdminClient(client =>
@@ -287,14 +288,34 @@ export function useSecurityApi() {
         blockRules: filters.filter(f => f.filterType === 'blacklist').length,
         activeRules: filters.filter(f => f.isEnabled).length,
         blockedRequests24h: filters.reduce((sum, f) => sum + (f.matchCount ?? 0), 0),
-        lastRuleUpdate: filters.length > 0 ? 
-          Math.max(...filters.map(f => new Date(f.updatedAt).getTime())).toString() : 
+        lastRuleUpdate: filters.length > 0 ?
+          Math.max(...filters.map(f => new Date(f.updatedAt).getTime())).toString() :
           null,
       };
 
       return stats;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch IP stats';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getComplianceStatus = useCallback(async (): Promise<ComplianceMetrics> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await withAdminClient(client =>
+        client.security.getComplianceStatus()
+      );
+
+      // The SDK returns unknown, so we cast to ComplianceMetrics
+      return result as ComplianceMetrics;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch compliance status';
       setError(message);
       throw err;
     } finally {
@@ -310,6 +331,7 @@ export function useSecurityApi() {
     updateIpRule,
     deleteIpRule,
     getIpStats,
+    getComplianceStatus,
     isLoading,
     error,
   };
