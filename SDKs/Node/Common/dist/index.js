@@ -33,10 +33,12 @@ __export(index_exports, {
   AuthError: () => AuthError,
   AuthenticationError: () => AuthenticationError,
   AuthorizationError: () => AuthorizationError,
+  BaseApiClient: () => BaseApiClient,
   BaseSignalRConnection: () => BaseSignalRConnection,
   CONTENT_TYPES: () => CONTENT_TYPES,
   ConduitError: () => ConduitError,
   ConflictError: () => ConflictError,
+  DEFAULT_RETRY_STRATEGIES: () => DEFAULT_RETRY_STRATEGIES,
   DefaultTransports: () => DefaultTransports,
   ERROR_CODES: () => ERROR_CODES,
   HTTP_HEADERS: () => HTTP_HEADERS,
@@ -53,6 +55,7 @@ __export(index_exports, {
   RETRY_CONFIG: () => RETRY_CONFIG,
   RateLimitError: () => RateLimitError,
   ResponseParser: () => ResponseParser,
+  RetryStrategyType: () => RetryStrategyType,
   ServerError: () => ServerError,
   SignalRLogLevel: () => SignalRLogLevel,
   SignalRProtocolType: () => SignalRProtocolType,
@@ -60,12 +63,14 @@ __export(index_exports, {
   TIMEOUTS: () => TIMEOUTS,
   TimeoutError: () => TimeoutError,
   ValidationError: () => ValidationError,
+  calculateRetryDelay: () => calculateRetryDelay,
   createErrorFromResponse: () => createErrorFromResponse,
   deserializeError: () => deserializeError,
   getCapabilityCategory: () => getCapabilityCategory,
   getCapabilityDisplayName: () => getCapabilityDisplayName,
   getErrorMessage: () => getErrorMessage,
   getErrorStatusCode: () => getErrorStatusCode,
+  getMaxRetries: () => getMaxRetries,
   handleApiError: () => handleApiError,
   isAuthError: () => isAuthError,
   isAuthorizationError: () => isAuthorizationError,
@@ -84,7 +89,8 @@ __export(index_exports, {
   isStreamError: () => isStreamError,
   isTimeoutError: () => isTimeoutError,
   isValidationError: () => isValidationError,
-  serializeError: () => serializeError
+  serializeError: () => serializeError,
+  shouldRetryWithStrategy: () => shouldRetryWithStrategy
 });
 module.exports = __toCommonJS(index_exports);
 
@@ -877,15 +883,391 @@ var HttpError = class extends Error {
     this.code = code;
   }
 };
+
+// src/client/retry-strategy.ts
+var RetryStrategyType = /* @__PURE__ */ ((RetryStrategyType2) => {
+  RetryStrategyType2["FIXED_DELAY"] = "fixed_delay";
+  RetryStrategyType2["EXPONENTIAL_BACKOFF"] = "exponential_backoff";
+  RetryStrategyType2["CUSTOM_DELAYS"] = "custom_delays";
+  return RetryStrategyType2;
+})(RetryStrategyType || {});
+function calculateRetryDelay(strategy, attempt) {
+  switch (strategy.type) {
+    case "fixed_delay" /* FIXED_DELAY */:
+      return strategy.delayMs;
+    case "exponential_backoff" /* EXPONENTIAL_BACKOFF */: {
+      const delay = Math.min(
+        strategy.initialDelayMs * Math.pow(strategy.factor, attempt - 1),
+        strategy.maxDelayMs
+      );
+      if (strategy.jitter) {
+        return delay + Math.random() * 1e3;
+      }
+      return delay;
+    }
+    case "custom_delays" /* CUSTOM_DELAYS */: {
+      const index = Math.min(attempt - 1, strategy.delays.length - 1);
+      return strategy.delays[index];
+    }
+  }
+}
+function getMaxRetries(strategy) {
+  switch (strategy.type) {
+    case "fixed_delay" /* FIXED_DELAY */:
+    case "exponential_backoff" /* EXPONENTIAL_BACKOFF */:
+      return strategy.maxRetries;
+    case "custom_delays" /* CUSTOM_DELAYS */:
+      return strategy.delays.length;
+  }
+}
+function shouldRetryWithStrategy(strategy, error) {
+  if (strategy.retryCondition) {
+    return strategy.retryCondition(error);
+  }
+  return false;
+}
+var DEFAULT_RETRY_STRATEGIES = {
+  /** Gateway SDK default: exponential backoff with jitter */
+  gateway: {
+    type: "exponential_backoff" /* EXPONENTIAL_BACKOFF */,
+    maxRetries: 3,
+    initialDelayMs: 1e3,
+    maxDelayMs: 3e4,
+    factor: 2,
+    jitter: true
+  },
+  /** Admin SDK default: fixed delay */
+  admin: {
+    type: "fixed_delay" /* FIXED_DELAY */,
+    maxRetries: 3,
+    delayMs: 1e3
+  }
+};
+
+// src/client/BaseApiClient.ts
+var BaseApiClient = class {
+  /** Base URL for all requests (without trailing slash) */
+  baseUrl;
+  /** Default timeout in milliseconds */
+  timeout;
+  /** Default headers included with all requests */
+  defaultHeaders;
+  /** Retry strategy configuration */
+  retryStrategy;
+  /** Enable debug logging */
+  debug;
+  // Lifecycle callbacks
+  onError;
+  onRequest;
+  onResponse;
+  // Optional providers (Admin SDK uses these, Gateway SDK may not)
+  logger;
+  cache;
+  constructor(config) {
+    this.baseUrl = config.baseUrl.replace(/\/$/, "");
+    this.timeout = config.timeout ?? 6e4;
+    this.defaultHeaders = config.defaultHeaders ?? {};
+    this.retryStrategy = config.retryStrategy ?? this.getDefaultRetryStrategy();
+    this.debug = config.debug ?? false;
+    this.onError = config.onError;
+    this.onRequest = config.onRequest;
+    this.onResponse = config.onResponse;
+    this.logger = config.logger;
+    this.cache = config.cache;
+  }
+  // ============================================================================
+  // Template Methods - Can be overridden by SDK-specific clients
+  // ============================================================================
+  /**
+   * Transform error response into appropriate error type
+   * Subclasses can override for SDK-specific error handling
+   *
+   * @param response - The failed Response object
+   * @returns An Error to throw
+   */
+  async handleErrorResponse(response) {
+    let errorData;
+    try {
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
+        errorData = await response.json();
+      }
+    } catch {
+      errorData = {};
+    }
+    return new ConduitError(
+      `HTTP ${response.status}: ${response.statusText}`,
+      response.status,
+      `HTTP_${response.status}`,
+      { data: errorData }
+    );
+  }
+  /**
+   * Determine if an error should be retried
+   * Subclasses can override for SDK-specific retry logic
+   *
+   * @param error - The error that occurred
+   * @param attempt - Current attempt number (1-based)
+   * @returns Whether to retry the request
+   */
+  shouldRetry(error, attempt) {
+    const maxRetries = getMaxRetries(this.retryStrategy);
+    if (attempt > maxRetries) return false;
+    if (this.retryStrategy.retryCondition) {
+      return this.retryStrategy.retryCondition(error);
+    }
+    if (error instanceof ConduitError) {
+      return error.statusCode === 429 || error.statusCode >= 500;
+    }
+    if (error instanceof Error) {
+      return error.name === "AbortError" || error.message.includes("network") || error.message.includes("fetch");
+    }
+    return false;
+  }
+  /**
+   * Calculate delay for a retry attempt
+   * Subclasses can override for special cases (e.g., retry-after headers)
+   *
+   * @param error - The error that triggered the retry
+   * @param attempt - Current attempt number (1-based)
+   * @returns Delay in milliseconds before next retry
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getRetryDelay(_error, attempt) {
+    return calculateRetryDelay(this.retryStrategy, attempt);
+  }
+  // ============================================================================
+  // HTTP Methods
+  // ============================================================================
+  /**
+   * Main request method with retry logic
+   */
+  async request(url, options = {}) {
+    const fullUrl = this.buildUrl(url);
+    const controller = new AbortController();
+    const timeoutMs = options.timeout ?? this.timeout;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const requestInfo = {
+        method: options.method ?? "GET" /* GET */,
+        url: fullUrl,
+        headers: this.buildHeaders(options.headers),
+        data: options.body
+      };
+      if (this.onRequest) {
+        await this.onRequest(requestInfo);
+      }
+      this.log("debug", `API Request: ${requestInfo.method} ${requestInfo.url}`);
+      const response = await this.executeWithRetry(
+        fullUrl,
+        {
+          method: requestInfo.method,
+          headers: requestInfo.headers,
+          body: options.body ? JSON.stringify(options.body) : void 0,
+          signal: options.signal ?? controller.signal,
+          responseType: options.responseType,
+          timeout: timeoutMs
+        }
+      );
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+  /**
+   * Type-safe GET request
+   */
+  async get(url, options) {
+    return this.request(url, { ...options, method: "GET" /* GET */ });
+  }
+  /**
+   * Type-safe POST request
+   */
+  async post(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "POST" /* POST */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe PUT request
+   */
+  async put(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "PUT" /* PUT */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe PATCH request
+   */
+  async patch(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "PATCH" /* PATCH */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe DELETE request
+   */
+  async delete(url, options) {
+    return this.request(url, { ...options, method: "DELETE" /* DELETE */ });
+  }
+  // ============================================================================
+  // Internal Methods
+  // ============================================================================
+  /**
+   * Execute request with retry logic
+   */
+  async executeWithRetry(url, init, attempt = 1) {
+    try {
+      const response = await fetch(url, ResponseParser.cleanRequestInit(init));
+      this.log("debug", `API Response: ${response.status} ${response.statusText}`);
+      const headers = {};
+      response.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      if (this.onResponse) {
+        const responseInfo = {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+          data: void 0,
+          config: {
+            url,
+            method: init.method ?? "GET" /* GET */,
+            headers: init.headers ?? {}
+          }
+        };
+        await this.onResponse(responseInfo);
+      }
+      if (!response.ok) {
+        const error = await this.handleErrorResponse(response);
+        throw error;
+      }
+      const contentLength = response.headers.get("content-length");
+      if (contentLength === "0" || response.status === 204) {
+        return void 0;
+      }
+      return await ResponseParser.parse(response, init.responseType);
+    } catch (error) {
+      if (this.shouldRetry(error, attempt)) {
+        const delay = this.getRetryDelay(error, attempt);
+        this.log("debug", `Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
+        await this.sleep(delay);
+        return this.executeWithRetry(url, init, attempt + 1);
+      }
+      if (this.onError && error instanceof Error) {
+        this.onError(error);
+      }
+      throw error;
+    }
+  }
+  /**
+   * Build full URL from path
+   */
+  buildUrl(path) {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    return `${this.baseUrl}${cleanPath}`;
+  }
+  /**
+   * Build headers including auth, defaults, and additional headers
+   */
+  buildHeaders(additionalHeaders) {
+    return {
+      [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
+      ...this.getAuthHeaders(),
+      ...this.defaultHeaders,
+      ...additionalHeaders
+    };
+  }
+  /**
+   * Log a message using the configured logger or console in debug mode
+   */
+  log(level, message, ...args) {
+    if (this.logger?.[level]) {
+      this.logger[level](message, ...args);
+    } else if (this.debug && level === "debug") {
+      console.warn(`[SDK] ${message}`, ...args);
+    }
+  }
+  /**
+   * Sleep for a specified duration
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  // ============================================================================
+  // Caching Utilities (Optional - only active if cache provider is configured)
+  // ============================================================================
+  /**
+   * Get a value from cache
+   * Returns null if cache is not configured or key is not found
+   */
+  async getFromCache(key) {
+    if (!this.cache) return null;
+    try {
+      const cached = await this.cache.get(key);
+      if (cached) {
+        this.log("debug", `Cache hit for key: ${key}`);
+        return cached;
+      }
+    } catch (error) {
+      this.log("error", "Cache get error:", error);
+    }
+    return null;
+  }
+  /**
+   * Set a value in cache
+   * No-op if cache is not configured
+   */
+  async setCache(key, value, ttl) {
+    if (!this.cache) return;
+    try {
+      await this.cache.set(key, value, ttl);
+      this.log("debug", `Cache set for key: ${key}`);
+    } catch (error) {
+      this.log("error", "Cache set error:", error);
+    }
+  }
+  /**
+   * Execute a function with caching
+   * Returns cached value if available, otherwise executes function and caches result
+   */
+  async withCache(cacheKey, fn, ttl) {
+    const cached = await this.getFromCache(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+    const result = await fn();
+    await this.setCache(cacheKey, result, ttl);
+    return result;
+  }
+  /**
+   * Generate a cache key from resource and identifiers
+   */
+  getCacheKey(resource, ...identifiers) {
+    const parts = identifiers.filter((id) => id !== void 0).map((id) => typeof id === "object" ? JSON.stringify(id) : String(id));
+    return `${resource}:${parts.join(":")}`;
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AuthError,
   AuthenticationError,
   AuthorizationError,
+  BaseApiClient,
   BaseSignalRConnection,
   CONTENT_TYPES,
   ConduitError,
   ConflictError,
+  DEFAULT_RETRY_STRATEGIES,
   DefaultTransports,
   ERROR_CODES,
   HTTP_HEADERS,
@@ -902,6 +1284,7 @@ var HttpError = class extends Error {
   RETRY_CONFIG,
   RateLimitError,
   ResponseParser,
+  RetryStrategyType,
   ServerError,
   SignalRLogLevel,
   SignalRProtocolType,
@@ -909,12 +1292,14 @@ var HttpError = class extends Error {
   TIMEOUTS,
   TimeoutError,
   ValidationError,
+  calculateRetryDelay,
   createErrorFromResponse,
   deserializeError,
   getCapabilityCategory,
   getCapabilityDisplayName,
   getErrorMessage,
   getErrorStatusCode,
+  getMaxRetries,
   handleApiError,
   isAuthError,
   isAuthorizationError,
@@ -933,6 +1318,7 @@ var HttpError = class extends Error {
   isStreamError,
   isTimeoutError,
   isValidationError,
-  serializeError
+  serializeError,
+  shouldRetryWithStrategy
 });
 //# sourceMappingURL=index.js.map

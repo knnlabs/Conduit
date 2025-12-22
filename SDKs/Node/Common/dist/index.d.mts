@@ -846,4 +846,302 @@ interface SignalRConfig {
     connectionTimeout?: number;
 }
 
-export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, type BaseClientOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExtendedRequestInit, type FilterOptions, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, InsufficientBalanceError, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, SignalRProtocolType, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, handleApiError, isAuthError, isAuthorizationError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isInsufficientBalanceError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isServerError, isStreamError, isTimeoutError, isValidationError, serializeError };
+/**
+ * Retry strategy types and utilities for SDK HTTP clients
+ * Supports both fixed delay (Admin SDK) and exponential backoff (Gateway SDK) patterns
+ */
+/**
+ * Type of retry strategy to use
+ */
+declare enum RetryStrategyType {
+    /** Fixed delay between retries (Admin SDK pattern) */
+    FIXED_DELAY = "fixed_delay",
+    /** Exponential backoff with optional jitter (Gateway SDK pattern) */
+    EXPONENTIAL_BACKOFF = "exponential_backoff",
+    /** Custom array of delays */
+    CUSTOM_DELAYS = "custom_delays"
+}
+/**
+ * Fixed delay retry configuration
+ * Used by Admin SDK for simple retry patterns
+ */
+interface FixedDelayConfig {
+    type: RetryStrategyType.FIXED_DELAY;
+    /** Maximum number of retry attempts */
+    maxRetries: number;
+    /** Delay between retries in milliseconds */
+    delayMs: number;
+    /** Optional custom condition to determine if error is retryable */
+    retryCondition?: (error: unknown) => boolean;
+}
+/**
+ * Exponential backoff retry configuration
+ * Used by Gateway SDK for sophisticated retry patterns
+ */
+interface ExponentialBackoffConfig {
+    type: RetryStrategyType.EXPONENTIAL_BACKOFF;
+    /** Maximum number of retry attempts */
+    maxRetries: number;
+    /** Initial delay in milliseconds */
+    initialDelayMs: number;
+    /** Maximum delay cap in milliseconds */
+    maxDelayMs: number;
+    /** Multiplication factor for each retry */
+    factor: number;
+    /** Whether to add random jitter to prevent thundering herd */
+    jitter?: boolean;
+    /** Optional custom condition to determine if error is retryable */
+    retryCondition?: (error: unknown) => boolean;
+}
+/**
+ * Custom delays retry configuration
+ * Allows specifying exact delay for each retry attempt
+ */
+interface CustomDelaysConfig {
+    type: RetryStrategyType.CUSTOM_DELAYS;
+    /** Array of delays in milliseconds for each retry attempt */
+    delays: number[];
+    /** Optional custom condition to determine if error is retryable */
+    retryCondition?: (error: unknown) => boolean;
+}
+/**
+ * Union type for all retry strategy configurations
+ */
+type RetryStrategy = FixedDelayConfig | ExponentialBackoffConfig | CustomDelaysConfig;
+/**
+ * Calculate the delay for a retry attempt based on the strategy
+ * @param strategy - The retry strategy configuration
+ * @param attempt - The current attempt number (1-based)
+ * @returns Delay in milliseconds before the next retry
+ */
+declare function calculateRetryDelay(strategy: RetryStrategy, attempt: number): number;
+/**
+ * Get the maximum number of retries for a strategy
+ * @param strategy - The retry strategy configuration
+ * @returns Maximum number of retry attempts
+ */
+declare function getMaxRetries(strategy: RetryStrategy): number;
+/**
+ * Check if an error should be retried based on the strategy's condition
+ * @param strategy - The retry strategy configuration
+ * @param error - The error to check
+ * @returns Whether the error should trigger a retry
+ */
+declare function shouldRetryWithStrategy(strategy: RetryStrategy, error: unknown): boolean;
+/**
+ * Default retry strategies for each SDK type
+ */
+declare const DEFAULT_RETRY_STRATEGIES: {
+    /** Gateway SDK default: exponential backoff with jitter */
+    gateway: ExponentialBackoffConfig;
+    /** Admin SDK default: fixed delay */
+    admin: FixedDelayConfig;
+};
+
+/**
+ * Base client configuration types for SDK HTTP clients
+ */
+
+/**
+ * Base configuration shared by all API clients
+ */
+interface BaseApiClientConfig extends ClientLifecycleCallbacks {
+    /** Base URL for API requests (trailing slash will be removed) */
+    baseUrl: string;
+    /** Request timeout in milliseconds (default: 60000) */
+    timeout?: number;
+    /** Default headers included with all requests */
+    defaultHeaders?: Record<string, string>;
+    /** Retry strategy configuration */
+    retryStrategy?: RetryStrategy;
+    /** Enable debug logging (default: false) */
+    debug?: boolean;
+    /** Optional logger for structured logging */
+    logger?: Logger;
+    /** Optional cache provider for response caching */
+    cache?: CacheProvider;
+}
+/**
+ * Configuration for clients that support caching
+ * @deprecated Use BaseApiClientConfig with optional cache property
+ */
+interface CacheableClientConfig extends BaseApiClientConfig {
+    /** Cache provider for response caching */
+    cache?: CacheProvider;
+}
+/**
+ * Configuration for clients that support logging
+ * @deprecated Use BaseApiClientConfig with optional logger property
+ */
+interface LoggableClientConfig extends BaseApiClientConfig {
+    /** Logger instance for structured logging */
+    logger?: Logger;
+}
+/**
+ * Full-featured client configuration with all optional features
+ * Used by Admin SDK which supports both caching and logging
+ */
+interface FullFeaturedClientConfig extends BaseApiClientConfig {
+    /** Cache provider for response caching */
+    cache?: CacheProvider;
+    /** Logger instance for structured logging */
+    logger?: Logger;
+}
+
+/**
+ * Abstract base API client providing common HTTP functionality
+ *
+ * SDK-specific clients extend this class and implement:
+ * - getAuthHeaders(): Returns authentication headers
+ * - getDefaultRetryStrategy(): Returns default retry strategy
+ *
+ * Template methods that can be overridden:
+ * - handleErrorResponse(): SDK-specific error parsing
+ * - shouldRetry(): SDK-specific retry logic
+ * - getRetryDelay(): SDK-specific delay calculation
+ */
+
+/**
+ * Request options for individual requests
+ */
+interface BaseRequestOptions {
+    /** Additional headers for this request */
+    headers?: Record<string, string>;
+    /** AbortSignal for request cancellation */
+    signal?: AbortSignal;
+    /** Request timeout in milliseconds (overrides client default) */
+    timeout?: number;
+    /** Expected response type */
+    responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
+}
+/**
+ * Abstract base API client providing common HTTP functionality
+ *
+ * Both Gateway SDK and Admin SDK extend this class.
+ */
+declare abstract class BaseApiClient {
+    /** Base URL for all requests (without trailing slash) */
+    protected readonly baseUrl: string;
+    /** Default timeout in milliseconds */
+    protected readonly timeout: number;
+    /** Default headers included with all requests */
+    protected readonly defaultHeaders: Record<string, string>;
+    /** Retry strategy configuration */
+    protected readonly retryStrategy: RetryStrategy;
+    /** Enable debug logging */
+    protected readonly debug: boolean;
+    protected readonly onError?: (error: Error) => void;
+    protected readonly onRequest?: (config: RequestConfigInfo) => void | Promise<void>;
+    protected readonly onResponse?: (response: ResponseInfo) => void | Promise<void>;
+    protected readonly logger?: Logger;
+    protected readonly cache?: CacheProvider;
+    constructor(config: BaseApiClientConfig);
+    /**
+     * Returns authentication headers for this SDK
+     *
+     * Gateway SDK returns: { Authorization: 'Bearer ...' }
+     * Admin SDK returns: { 'X-Master-Key': '...' }
+     */
+    protected abstract getAuthHeaders(): Record<string, string>;
+    /**
+     * Returns default retry strategy for this SDK
+     *
+     * Gateway SDK uses exponential backoff with jitter
+     * Admin SDK uses fixed delay
+     */
+    protected abstract getDefaultRetryStrategy(): RetryStrategy;
+    /**
+     * Transform error response into appropriate error type
+     * Subclasses can override for SDK-specific error handling
+     *
+     * @param response - The failed Response object
+     * @returns An Error to throw
+     */
+    protected handleErrorResponse(response: Response): Promise<Error>;
+    /**
+     * Determine if an error should be retried
+     * Subclasses can override for SDK-specific retry logic
+     *
+     * @param error - The error that occurred
+     * @param attempt - Current attempt number (1-based)
+     * @returns Whether to retry the request
+     */
+    protected shouldRetry(error: unknown, attempt: number): boolean;
+    /**
+     * Calculate delay for a retry attempt
+     * Subclasses can override for special cases (e.g., retry-after headers)
+     *
+     * @param error - The error that triggered the retry
+     * @param attempt - Current attempt number (1-based)
+     * @returns Delay in milliseconds before next retry
+     */
+    protected getRetryDelay(_error: unknown, attempt: number): number;
+    /**
+     * Main request method with retry logic
+     */
+    protected request<TResponse = unknown, TRequest = unknown>(url: string, options?: BaseRequestOptions & {
+        method?: HttpMethod;
+        body?: TRequest;
+    }): Promise<TResponse>;
+    /**
+     * Type-safe GET request
+     */
+    protected get<TResponse = unknown>(url: string, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Type-safe POST request
+     */
+    protected post<TResponse = unknown, TRequest = unknown>(url: string, data?: TRequest, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Type-safe PUT request
+     */
+    protected put<TResponse = unknown, TRequest = unknown>(url: string, data?: TRequest, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Type-safe PATCH request
+     */
+    protected patch<TResponse = unknown, TRequest = unknown>(url: string, data?: TRequest, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Type-safe DELETE request
+     */
+    protected delete<TResponse = unknown>(url: string, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Execute request with retry logic
+     */
+    private executeWithRetry;
+    /**
+     * Build full URL from path
+     */
+    private buildUrl;
+    /**
+     * Build headers including auth, defaults, and additional headers
+     */
+    private buildHeaders;
+    /**
+     * Log a message using the configured logger or console in debug mode
+     */
+    protected log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void;
+    /**
+     * Sleep for a specified duration
+     */
+    private sleep;
+    /**
+     * Get a value from cache
+     * Returns null if cache is not configured or key is not found
+     */
+    protected getFromCache<T>(key: string): Promise<T | null>;
+    /**
+     * Set a value in cache
+     * No-op if cache is not configured
+     */
+    protected setCache(key: string, value: unknown, ttl?: number): Promise<void>;
+    /**
+     * Execute a function with caching
+     * Returns cached value if available, otherwise executes function and caches result
+     */
+    protected withCache<T>(cacheKey: string, fn: () => Promise<T>, ttl?: number): Promise<T>;
+    /**
+     * Generate a cache key from resource and identifiers
+     */
+    protected getCacheKey(resource: string, ...identifiers: (string | number | Record<string, unknown> | undefined)[]): string;
+}
+
+export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, BaseApiClient, type BaseApiClientConfig, type BaseClientOptions, type BaseRequestOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type CacheableClientConfig, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type CustomDelaysConfig, DEFAULT_RETRY_STRATEGIES, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExponentialBackoffConfig, type ExtendedRequestInit, type FilterOptions, type FixedDelayConfig, type FullFeaturedClientConfig, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, InsufficientBalanceError, type LoggableClientConfig, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type RetryStrategy, RetryStrategyType, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, SignalRProtocolType, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, calculateRetryDelay, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, getMaxRetries, handleApiError, isAuthError, isAuthorizationError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isInsufficientBalanceError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isServerError, isStreamError, isTimeoutError, isValidationError, serializeError, shouldRetryWithStrategy };
