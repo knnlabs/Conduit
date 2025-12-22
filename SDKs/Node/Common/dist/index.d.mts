@@ -1144,4 +1144,167 @@ declare abstract class BaseApiClient {
     protected getCacheKey(resource: string, ...identifiers: (string | number | Record<string, unknown> | undefined)[]): string;
 }
 
-export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, BaseApiClient, type BaseApiClientConfig, type BaseClientOptions, type BaseRequestOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type CacheableClientConfig, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type CustomDelaysConfig, DEFAULT_RETRY_STRATEGIES, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExponentialBackoffConfig, type ExtendedRequestInit, type FilterOptions, type FixedDelayConfig, type FullFeaturedClientConfig, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, InsufficientBalanceError, type LoggableClientConfig, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type RetryStrategy, RetryStrategyType, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, SignalRProtocolType, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, calculateRetryDelay, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, getMaxRetries, handleApiError, isAuthError, isAuthorizationError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isInsufficientBalanceError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isServerError, isStreamError, isTimeoutError, isValidationError, serializeError, shouldRetryWithStrategy };
+/**
+ * Circuit breaker types and interfaces
+ *
+ * Provides types for implementing the circuit breaker pattern to prevent
+ * cascading failures and protect against sustained service degradation.
+ */
+/**
+ * Circuit breaker states following the standard pattern
+ */
+declare enum CircuitState {
+    /** Normal operation - requests pass through, failures tracked */
+    CLOSED = "closed",
+    /** Circuit tripped - requests are blocked/rejected immediately */
+    OPEN = "open",
+    /** Testing recovery - limited requests allowed to test if service recovered */
+    HALF_OPEN = "half_open"
+}
+/**
+ * Configuration options for the circuit breaker
+ */
+interface CircuitBreakerConfig {
+    /** Number of consecutive failures to trip the circuit (default: 3) */
+    failureThreshold?: number;
+    /** Time window in milliseconds for counting failures (default: 60000) */
+    failureWindowMs?: number;
+    /** Time in milliseconds to wait before transitioning from OPEN to HALF_OPEN (default: 30000) */
+    resetTimeoutMs?: number;
+    /** Number of successful requests in HALF_OPEN to close circuit (default: 1) */
+    successThreshold?: number;
+    /** Enable debug logging (default: false) */
+    enableLogging?: boolean;
+    /** Custom function to determine if an error should count as a failure */
+    shouldCountAsFailure?: (error: unknown) => boolean;
+}
+/**
+ * Statistics about the circuit breaker state
+ */
+interface CircuitBreakerStats {
+    /** Current state of the circuit */
+    state: CircuitState;
+    /** Number of consecutive failures in current window */
+    consecutiveFailures: number;
+    /** Total failures since last reset */
+    totalFailures: number;
+    /** Total successes since last reset */
+    totalSuccesses: number;
+    /** Timestamp when circuit was opened (null if closed) */
+    circuitOpenedAt: number | null;
+    /** Time remaining until HALF_OPEN transition in ms (null if not OPEN) */
+    timeUntilHalfOpen: number | null;
+    /** Timestamp of last failure */
+    lastFailureAt: number | null;
+    /** Timestamp of last success */
+    lastSuccessAt: number | null;
+    /** Number of requests rejected while OPEN */
+    rejectedRequests: number;
+}
+/**
+ * Callbacks for circuit breaker state changes
+ */
+interface CircuitBreakerCallbacks {
+    /** Called when circuit transitions to OPEN state */
+    onOpen?: (stats: CircuitBreakerStats, error: unknown) => void;
+    /** Called when circuit transitions to HALF_OPEN state */
+    onHalfOpen?: (stats: CircuitBreakerStats) => void;
+    /** Called when circuit transitions to CLOSED state */
+    onClose?: (stats: CircuitBreakerStats) => void;
+    /** Called when a request is rejected due to OPEN circuit */
+    onRejected?: (stats: CircuitBreakerStats) => void;
+    /** Called on any state change */
+    onStateChange?: (oldState: CircuitState, newState: CircuitState, stats: CircuitBreakerStats) => void;
+}
+
+/**
+ * Circuit breaker error types
+ */
+
+/**
+ * Error thrown when circuit breaker is open and request is rejected
+ */
+declare class CircuitBreakerOpenError extends ConduitError {
+    /** Current circuit breaker state */
+    readonly circuitState: CircuitState;
+    /** Time until circuit transitions to HALF_OPEN (milliseconds) */
+    readonly timeUntilHalfOpen: number | null;
+    /** Circuit breaker statistics at time of rejection */
+    readonly stats: CircuitBreakerStats;
+    constructor(message: string, stats: CircuitBreakerStats, timeUntilHalfOpen: number | null);
+}
+/**
+ * Type guard for CircuitBreakerOpenError
+ */
+declare function isCircuitBreakerOpenError(error: unknown): error is CircuitBreakerOpenError;
+
+/**
+ * Circuit breaker implementation for preventing cascading failures
+ *
+ * Implements the circuit breaker pattern with three states:
+ * - CLOSED: Normal operation, counting failures
+ * - OPEN: Circuit tripped, rejecting requests
+ * - HALF_OPEN: Testing recovery with limited requests
+ */
+
+/**
+ * Circuit breaker implementation for preventing cascading failures
+ *
+ * State machine:
+ * - CLOSED: Normal operation, counting failures
+ * - OPEN: Circuit tripped, rejecting requests
+ * - HALF_OPEN: Testing recovery with limited requests
+ */
+declare class CircuitBreaker {
+    private readonly config;
+    private readonly callbacks;
+    private state;
+    private failures;
+    private halfOpenSuccesses;
+    private totalFailures;
+    private totalSuccesses;
+    private rejectedRequests;
+    private circuitOpenedAt;
+    private lastFailureAt;
+    private lastSuccessAt;
+    constructor(config?: CircuitBreakerConfig, callbacks?: CircuitBreakerCallbacks);
+    /**
+     * Get current state of the circuit
+     * Automatically transitions OPEN -> HALF_OPEN after timeout
+     */
+    getState(): CircuitState;
+    /**
+     * Get circuit breaker statistics
+     */
+    getStats(): CircuitBreakerStats;
+    /**
+     * Check if a request can proceed
+     * Returns true if circuit is CLOSED or HALF_OPEN
+     */
+    canExecute(): boolean;
+    /**
+     * Check if request should proceed, throwing if circuit is open
+     * @throws CircuitBreakerOpenError if circuit is OPEN
+     */
+    checkOpen(): void;
+    /**
+     * Record a successful request
+     */
+    recordSuccess(): void;
+    /**
+     * Record a failed request
+     */
+    recordFailure(error: unknown): void;
+    /**
+     * Manually reset the circuit to CLOSED state
+     * Use with caution - typically for testing or admin override
+     */
+    reset(): void;
+    private transitionTo;
+    private pruneOldFailures;
+    private getConsecutiveFailuresInWindow;
+    private calculateTimeUntilHalfOpen;
+    private log;
+}
+
+export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, BaseApiClient, type BaseApiClientConfig, type BaseClientOptions, type BaseRequestOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type CacheableClientConfig, CircuitBreaker, type CircuitBreakerCallbacks, type CircuitBreakerConfig, CircuitBreakerOpenError, type CircuitBreakerStats, CircuitState, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type CustomDelaysConfig, DEFAULT_RETRY_STRATEGIES, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExponentialBackoffConfig, type ExtendedRequestInit, type FilterOptions, type FixedDelayConfig, type FullFeaturedClientConfig, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, InsufficientBalanceError, type LoggableClientConfig, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type RetryStrategy, RetryStrategyType, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, SignalRProtocolType, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, calculateRetryDelay, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, getMaxRetries, handleApiError, isAuthError, isAuthorizationError, isCircuitBreakerOpenError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isInsufficientBalanceError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isServerError, isStreamError, isTimeoutError, isValidationError, serializeError, shouldRetryWithStrategy };

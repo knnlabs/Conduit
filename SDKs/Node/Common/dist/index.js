@@ -36,6 +36,9 @@ __export(index_exports, {
   BaseApiClient: () => BaseApiClient,
   BaseSignalRConnection: () => BaseSignalRConnection,
   CONTENT_TYPES: () => CONTENT_TYPES,
+  CircuitBreaker: () => CircuitBreaker,
+  CircuitBreakerOpenError: () => CircuitBreakerOpenError,
+  CircuitState: () => CircuitState,
   ConduitError: () => ConduitError,
   ConflictError: () => ConflictError,
   DEFAULT_RETRY_STRATEGIES: () => DEFAULT_RETRY_STRATEGIES,
@@ -74,6 +77,7 @@ __export(index_exports, {
   handleApiError: () => handleApiError,
   isAuthError: () => isAuthError,
   isAuthorizationError: () => isAuthorizationError,
+  isCircuitBreakerOpenError: () => isCircuitBreakerOpenError,
   isConduitError: () => isConduitError,
   isConflictError: () => isConflictError,
   isErrorLike: () => isErrorLike,
@@ -1257,6 +1261,229 @@ var BaseApiClient = class {
     return `${resource}:${parts.join(":")}`;
   }
 };
+
+// src/circuit-breaker/types.ts
+var CircuitState = /* @__PURE__ */ ((CircuitState2) => {
+  CircuitState2["CLOSED"] = "closed";
+  CircuitState2["OPEN"] = "open";
+  CircuitState2["HALF_OPEN"] = "half_open";
+  return CircuitState2;
+})(CircuitState || {});
+
+// src/circuit-breaker/errors.ts
+var CircuitBreakerOpenError = class extends ConduitError {
+  /** Current circuit breaker state */
+  circuitState;
+  /** Time until circuit transitions to HALF_OPEN (milliseconds) */
+  timeUntilHalfOpen;
+  /** Circuit breaker statistics at time of rejection */
+  stats;
+  constructor(message, stats, timeUntilHalfOpen) {
+    super(message, 503, "CIRCUIT_BREAKER_OPEN", {
+      circuitState: stats.state,
+      timeUntilHalfOpen,
+      consecutiveFailures: stats.consecutiveFailures,
+      totalFailures: stats.totalFailures
+    });
+    this.circuitState = stats.state;
+    this.timeUntilHalfOpen = timeUntilHalfOpen;
+    this.stats = stats;
+  }
+};
+function isCircuitBreakerOpenError(error) {
+  return error instanceof CircuitBreakerOpenError;
+}
+
+// src/circuit-breaker/CircuitBreaker.ts
+var DEFAULT_CONFIG = {
+  failureThreshold: 3,
+  failureWindowMs: 6e4,
+  // 60 seconds
+  resetTimeoutMs: 3e4,
+  // 30 seconds
+  successThreshold: 1,
+  enableLogging: false
+};
+var CircuitBreaker = class {
+  config;
+  callbacks;
+  // State tracking
+  state = "closed" /* CLOSED */;
+  failures = [];
+  halfOpenSuccesses = 0;
+  // Statistics
+  totalFailures = 0;
+  totalSuccesses = 0;
+  rejectedRequests = 0;
+  circuitOpenedAt = null;
+  lastFailureAt = null;
+  lastSuccessAt = null;
+  constructor(config = {}, callbacks = {}) {
+    this.config = {
+      ...DEFAULT_CONFIG,
+      ...config
+    };
+    this.callbacks = callbacks;
+  }
+  /**
+   * Get current state of the circuit
+   * Automatically transitions OPEN -> HALF_OPEN after timeout
+   */
+  getState() {
+    if (this.state === "open" /* OPEN */ && this.circuitOpenedAt !== null) {
+      const elapsed = Date.now() - this.circuitOpenedAt;
+      if (elapsed >= this.config.resetTimeoutMs) {
+        this.transitionTo("half_open" /* HALF_OPEN */);
+      }
+    }
+    return this.state;
+  }
+  /**
+   * Get circuit breaker statistics
+   */
+  getStats() {
+    const currentState = this.getState();
+    return {
+      state: currentState,
+      consecutiveFailures: this.getConsecutiveFailuresInWindow(),
+      totalFailures: this.totalFailures,
+      totalSuccesses: this.totalSuccesses,
+      circuitOpenedAt: this.circuitOpenedAt,
+      timeUntilHalfOpen: this.calculateTimeUntilHalfOpen(),
+      lastFailureAt: this.lastFailureAt,
+      lastSuccessAt: this.lastSuccessAt,
+      rejectedRequests: this.rejectedRequests
+    };
+  }
+  /**
+   * Check if a request can proceed
+   * Returns true if circuit is CLOSED or HALF_OPEN
+   */
+  canExecute() {
+    const state = this.getState();
+    return state !== "open" /* OPEN */;
+  }
+  /**
+   * Check if request should proceed, throwing if circuit is open
+   * @throws CircuitBreakerOpenError if circuit is OPEN
+   */
+  checkOpen() {
+    const state = this.getState();
+    if (state === "open" /* OPEN */) {
+      this.rejectedRequests++;
+      const stats = this.getStats();
+      this.callbacks.onRejected?.(stats);
+      throw new CircuitBreakerOpenError(
+        `Circuit breaker is open. Try again in ${Math.ceil((stats.timeUntilHalfOpen ?? 0) / 1e3)} seconds.`,
+        stats,
+        stats.timeUntilHalfOpen
+      );
+    }
+  }
+  /**
+   * Record a successful request
+   */
+  recordSuccess() {
+    this.totalSuccesses++;
+    this.lastSuccessAt = Date.now();
+    const currentState = this.getState();
+    if (currentState === "half_open" /* HALF_OPEN */) {
+      this.halfOpenSuccesses++;
+      this.log("debug", `Half-open success ${this.halfOpenSuccesses}/${this.config.successThreshold}`);
+      if (this.halfOpenSuccesses >= this.config.successThreshold) {
+        this.transitionTo("closed" /* CLOSED */);
+      }
+    } else if (currentState === "closed" /* CLOSED */) {
+      this.failures = [];
+    }
+  }
+  /**
+   * Record a failed request
+   */
+  recordFailure(error) {
+    if (this.config.shouldCountAsFailure && !this.config.shouldCountAsFailure(error)) {
+      this.log("debug", "Error not counted as failure by custom filter");
+      return;
+    }
+    const now = Date.now();
+    this.totalFailures++;
+    this.lastFailureAt = now;
+    const currentState = this.getState();
+    if (currentState === "half_open" /* HALF_OPEN */) {
+      this.log("warn", "Failure in half-open state, reopening circuit");
+      this.transitionTo("open" /* OPEN */, error);
+      return;
+    }
+    if (currentState === "closed" /* CLOSED */) {
+      this.failures.push({ timestamp: now, error });
+      this.pruneOldFailures();
+      const consecutiveFailures = this.getConsecutiveFailuresInWindow();
+      this.log("debug", `Consecutive failures: ${consecutiveFailures}/${this.config.failureThreshold}`);
+      if (consecutiveFailures >= this.config.failureThreshold) {
+        this.transitionTo("open" /* OPEN */, error);
+      }
+    }
+  }
+  /**
+   * Manually reset the circuit to CLOSED state
+   * Use with caution - typically for testing or admin override
+   */
+  reset() {
+    this.log("info", "Circuit manually reset");
+    this.transitionTo("closed" /* CLOSED */);
+    this.failures = [];
+    this.totalFailures = 0;
+    this.totalSuccesses = 0;
+    this.rejectedRequests = 0;
+  }
+  // Private methods
+  transitionTo(newState, triggerError) {
+    const oldState = this.state;
+    if (oldState === newState) return;
+    this.state = newState;
+    const stats = this.getStats();
+    this.log("info", `Circuit state change: ${oldState} -> ${newState}`);
+    switch (newState) {
+      case "open" /* OPEN */:
+        this.circuitOpenedAt = Date.now();
+        this.halfOpenSuccesses = 0;
+        this.callbacks.onOpen?.(stats, triggerError);
+        break;
+      case "half_open" /* HALF_OPEN */:
+        this.halfOpenSuccesses = 0;
+        this.callbacks.onHalfOpen?.(stats);
+        break;
+      case "closed" /* CLOSED */:
+        this.circuitOpenedAt = null;
+        this.failures = [];
+        this.halfOpenSuccesses = 0;
+        this.callbacks.onClose?.(stats);
+        break;
+    }
+    this.callbacks.onStateChange?.(oldState, newState, stats);
+  }
+  pruneOldFailures() {
+    const cutoff = Date.now() - this.config.failureWindowMs;
+    this.failures = this.failures.filter((f) => f.timestamp >= cutoff);
+  }
+  getConsecutiveFailuresInWindow() {
+    this.pruneOldFailures();
+    return this.failures.length;
+  }
+  calculateTimeUntilHalfOpen() {
+    if (this.state !== "open" /* OPEN */ || this.circuitOpenedAt === null) {
+      return null;
+    }
+    const elapsed = Date.now() - this.circuitOpenedAt;
+    const remaining = this.config.resetTimeoutMs - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+  log(_level, message) {
+    if (this.config.enableLogging) {
+      console.warn(`[CircuitBreaker] ${message}`);
+    }
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AuthError,
@@ -1265,6 +1492,9 @@ var BaseApiClient = class {
   BaseApiClient,
   BaseSignalRConnection,
   CONTENT_TYPES,
+  CircuitBreaker,
+  CircuitBreakerOpenError,
+  CircuitState,
   ConduitError,
   ConflictError,
   DEFAULT_RETRY_STRATEGIES,
@@ -1303,6 +1533,7 @@ var BaseApiClient = class {
   handleApiError,
   isAuthError,
   isAuthorizationError,
+  isCircuitBreakerOpenError,
   isConduitError,
   isConflictError,
   isErrorLike,
