@@ -21,9 +21,13 @@ import type {
   MetricsEventData,
   MessageMetadata,
   StreamingRetryConfig,
-  RetryInfo
+  RetryInfo,
+  StreamingCircuitBreakerConfig,
+  CircuitBreakerEvent
 } from './types';
 import type { MessageContent } from '../../models/chat';
+import { StreamingCircuitBreakerManager, isCircuitBreakerOpenError } from './streaming-circuit-breaker';
+import type { CircuitBreakerStats } from '@knn_labs/conduit-common';
 
 /**
  * ChatStreamingManager provides framework-agnostic chat streaming functionality
@@ -33,6 +37,7 @@ export class ChatStreamingManager {
   private state: StreamState & {
     totalReasoning: string;
   };
+  private circuitBreakerManager: StreamingCircuitBreakerManager | null = null;
 
   constructor(config: StreamingConfig) {
     this.config = {
@@ -52,6 +57,26 @@ export class ChatStreamingManager {
       metrics: {},
       abortController: null
     };
+  }
+
+  /**
+   * Configure circuit breaker (can be called after construction)
+   */
+  configureCircuitBreaker(
+    config: StreamingCircuitBreakerConfig,
+    callbacks?: {
+      onCircuitStateChange?: (event: CircuitBreakerEvent) => void;
+      onCircuitOpen?: (stats: CircuitBreakerStats) => void;
+    }
+  ): void {
+    this.circuitBreakerManager = new StreamingCircuitBreakerManager(config, callbacks);
+  }
+
+  /**
+   * Get circuit breaker manager for external access
+   */
+  getCircuitBreakerManager(): StreamingCircuitBreakerManager | null {
+    return this.circuitBreakerManager;
   }
 
   /**
@@ -98,11 +123,45 @@ export class ChatStreamingManager {
       shouldRetry: options.retry?.shouldRetry ?? (() => true),
     };
 
+    // Initialize circuit breaker from options if provided and not already configured
+    if (options.circuitBreaker && !this.circuitBreakerManager) {
+      this.circuitBreakerManager = new StreamingCircuitBreakerManager(
+        options.circuitBreaker,
+        {
+          onCircuitStateChange: callbacks.onCircuitStateChange,
+          onCircuitOpen: callbacks.onCircuitOpen
+        }
+      );
+    }
+
+    // Handle model change for circuit breaker reset
+    if (this.circuitBreakerManager) {
+      this.circuitBreakerManager.handleModelChange(options.model);
+    }
+
+    // Check circuit breaker before attempting
+    if (this.circuitBreakerManager) {
+      try {
+        this.circuitBreakerManager.checkOpen();
+      } catch (error) {
+        if (isCircuitBreakerOpenError(error)) {
+          // Notify via callback
+          callbacks.onCircuitOpen?.(error.stats);
+          callbacks.onError?.(this.convertCircuitBreakerError(error));
+          throw error;
+        }
+        throw error;
+      }
+    }
+
     let lastError: StreamingError | null = null;
 
     for (let attempt = 1; attempt <= retryConfig.maxAttempts; attempt++) {
       try {
         await this.streamMessageAttempt(message, options, callbacks);
+
+        // Record success on circuit breaker
+        this.circuitBreakerManager?.recordSuccess();
         return; // Success - exit retry loop
       } catch (error) {
         // Don't retry abort errors
@@ -114,8 +173,14 @@ export class ChatStreamingManager {
         const streamingError = this.enhanceError(error);
         lastError = streamingError;
 
+        // Record failure on circuit breaker
+        this.circuitBreakerManager?.recordFailure(streamingError);
+
+        // Check if circuit breaker now blocks retries
+        const circuitBlocksRetry = this.circuitBreakerManager?.shouldDisableRetry() ?? false;
+
         // Check if we should retry
-        const shouldRetry = this.shouldRetryStreaming(streamingError, attempt, retryConfig);
+        const shouldRetry = !circuitBlocksRetry && this.shouldRetryStreaming(streamingError, attempt, retryConfig);
 
         if (!shouldRetry || attempt >= retryConfig.maxAttempts) {
           // Don't call onError again - it was already called in streamMessageAttempt
@@ -610,6 +675,25 @@ export class ChatStreamingManager {
     error.partialContent = partialContent;
 
     return error;
+  }
+
+  /**
+   * Convert circuit breaker error to streaming error format
+   */
+  private convertCircuitBreakerError(error: { message: string; stats: CircuitBreakerStats; timeUntilHalfOpen: number | null }): StreamingError {
+    const streamingError = new Error(error.message) as StreamingError;
+    streamingError.status = 503;
+    streamingError.statusCode = 503;
+    streamingError.code = 'CIRCUIT_BREAKER_OPEN';
+    streamingError.retryable = false;
+    streamingError.recoverable = false;
+    streamingError.errorType = 'server_error';
+    streamingError.suggestions = [
+      `Service temporarily unavailable. Circuit will reset in ${Math.ceil((error.timeUntilHalfOpen ?? 0) / 1000)} seconds.`,
+      'Multiple consecutive failures detected.',
+      'Try switching to a different model or provider.'
+    ];
+    return streamingError;
   }
 
   /**

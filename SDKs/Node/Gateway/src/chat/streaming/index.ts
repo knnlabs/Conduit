@@ -9,6 +9,9 @@ export { ChatStreamingManager } from './chat-streaming-manager';
 // Performance metrics utilities
 export { PerformanceMetricsCalculator, MetricsUtils } from './performance-metrics';
 
+// Circuit breaker
+export { StreamingCircuitBreakerManager, isCircuitBreakerOpenError } from './streaming-circuit-breaker';
+
 // Types
 export type {
   StreamingConfig,
@@ -26,7 +29,9 @@ export type {
   MetricsEventData,
   MessageMetadata,
   StreamingRetryConfig,
-  RetryInfo
+  RetryInfo,
+  StreamingCircuitBreakerConfig,
+  CircuitBreakerEvent
 } from './types';
 
 // Re-export MessageContent from models for convenience

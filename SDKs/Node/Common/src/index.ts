@@ -51,3 +51,16 @@ export type {
   ExponentialBackoffConfig,
   CustomDelaysConfig
 } from './client/retry-strategy';
+
+// Circuit breaker types and classes
+export {
+  CircuitState,
+  CircuitBreaker,
+  CircuitBreakerOpenError,
+  isCircuitBreakerOpenError
+} from './circuit-breaker';
+export type {
+  CircuitBreakerConfig,
+  CircuitBreakerStats,
+  CircuitBreakerCallbacks
+} from './circuit-breaker';

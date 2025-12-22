@@ -3,6 +3,7 @@
  * Framework-agnostic types extracted from WebAdmin
  */
 
+import type { CircuitState, CircuitBreakerStats } from '@knn_labs/conduit-common';
 import type { ImageAttachment } from '../utils';
 import type { MessageContent } from '../../models/chat';
 
@@ -178,6 +179,34 @@ export interface RetryInfo {
 }
 
 /**
+ * Configuration for circuit breaker in streaming
+ */
+export interface StreamingCircuitBreakerConfig {
+  /** Enable circuit breaker (default: true) */
+  enabled?: boolean;
+  /** Number of consecutive failures to trip the circuit (default: 3) */
+  failureThreshold?: number;
+  /** Time window for counting failures in ms (default: 60000) */
+  failureWindowMs?: number;
+  /** Time to wait before half-open in ms (default: 30000) */
+  resetTimeoutMs?: number;
+  /** Enable logging (default: false) */
+  enableLogging?: boolean;
+}
+
+/**
+ * Circuit breaker state change event
+ */
+export interface CircuitBreakerEvent {
+  /** Previous state */
+  previousState: CircuitState;
+  /** New state */
+  newState: CircuitState;
+  /** Circuit breaker statistics */
+  stats: CircuitBreakerStats;
+}
+
+/**
  * Options for sending a message
  */
 export interface SendMessageOptions {
@@ -209,6 +238,8 @@ export interface StreamMessageOptions extends SendMessageOptions {
   functionConfigurationIds?: number[];
   /** Retry configuration for transient errors */
   retry?: StreamingRetryConfig;
+  /** Circuit breaker configuration */
+  circuitBreaker?: StreamingCircuitBreakerConfig;
 }
 
 /**
@@ -254,6 +285,10 @@ export interface StreamingCallbacks {
   onAbort?: () => void;
   /** Called when a retry attempt is about to be made */
   onRetrying?: (info: RetryInfo) => void;
+  /** Called when circuit breaker state changes */
+  onCircuitStateChange?: (event: CircuitBreakerEvent) => void;
+  /** Called when request is rejected due to open circuit */
+  onCircuitOpen?: (stats: CircuitBreakerStats) => void;
 }
 
 /**
