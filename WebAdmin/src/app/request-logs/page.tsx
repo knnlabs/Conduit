@@ -30,8 +30,7 @@ import { notifications } from '@mantine/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { RequestLogsTable } from '@/components/analytics/RequestLogsTable';
 import { RequestLogsFilters } from '@/components/analytics/RequestLogsFilters';
-import { useRequestLogs, useDistinctModels } from '@/hooks/useRequestLogs';
-import type { RequestLogFilters } from '@/hooks/useRequestLogs';
+import { useRequestLogs, useDistinctModels, type RequestLogFilters } from '@/hooks/useRequestLogs';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
@@ -51,7 +50,6 @@ export default function RequestLogsPage() {
   const {
     logs,
     totalCount,
-    totalPages,
     isLoading,
     error,
     stats,
@@ -293,7 +291,7 @@ export default function RequestLogsPage() {
             models={models}
             virtualKeys={virtualKeys}
             isLoading={isLoading}
-            onRefresh={refetch}
+            onRefresh={() => void refetch()}
           />
         </Card.Section>
       </Card>

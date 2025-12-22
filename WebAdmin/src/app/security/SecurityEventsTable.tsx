@@ -68,7 +68,7 @@ export function SecurityEventsTable({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {Array.from({ length: 5 }).map((_, index) => (
+            {[...Array(5).keys()].map((index) => (
               <Table.Tr key={index}>
                 <Table.Td><Skeleton height={20} width={120} /></Table.Td>
                 <Table.Td><Skeleton height={24} width={80} /></Table.Td>

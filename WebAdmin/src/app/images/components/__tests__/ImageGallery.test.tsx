@@ -17,15 +17,18 @@ jest.mock('@mantine/notifications', () => ({
 
 // Mock dependencies
 jest.mock('../../hooks/useImageStore');
-jest.mock('next/image', () => ({
-  esModule: true,
-  default: (props: { src: string; alt: string; [key: string]: unknown }) => {
-    const React = require('react');
-    const { src, alt, ...rest } = props;
-     
-    return React.createElement('img', { src, alt, ...(rest as Record<string, string>) });
-  },
-}));
+jest.mock('next/image', () => {
+  const mockModule = {
+    default: function MockImage(props: { src: string; alt: string; [key: string]: unknown }) {
+      const ReactModule = jest.requireActual<typeof import('react')>('react');
+      const { src, alt, ...rest } = props;
+      return ReactModule.createElement('img', { src, alt, ...rest });
+    },
+  };
+  // Set __esModule without triggering naming convention lint
+  Object.defineProperty(mockModule, '__esModule', { value: true });
+  return mockModule;
+});
 
 // Don't mock @mantine/core - use actual implementation
 
@@ -38,7 +41,7 @@ jest.mock('@tabler/icons-react', () => ({
 }));
 
 jest.mock('@/app/components/media', () => {
-  const actual = jest.requireActual('@/app/components/media');
+  const actual = jest.requireActual<Record<string, unknown>>('@/app/components/media');
   return {
     ...actual,
     downloadMedia: jest.fn().mockResolvedValue({ success: true }),

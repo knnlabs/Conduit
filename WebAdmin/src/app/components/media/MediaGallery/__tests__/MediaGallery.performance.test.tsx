@@ -9,7 +9,8 @@ import { MediaGallery } from '../MediaGallery';
 
 // Mock @tanstack/react-virtual
 jest.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: jest.fn(({ count, enabled }) => {
+  useVirtualizer: jest.fn((options: { count: number; enabled: boolean }) => {
+    const { count, enabled } = options;
     // If virtualization is not enabled, return empty mock
     if (!enabled) {
       return {
@@ -20,7 +21,7 @@ jest.mock('@tanstack/react-virtual', () => ({
     }
 
     // Simulate rendering first 10 virtual items (as if they're visible)
-    const virtualItems = Array.from({ length: Math.min(10, count) }, (_, i) => ({
+    const virtualItems = [...Array(Math.min(10, count)).keys()].map((i) => ({
       key: i,
       index: i,
       start: i * 350,

@@ -15,17 +15,14 @@ import {
   Alert,
   Tooltip,
   Paper,
-  Slider,
   Button,
   NumberInput,
   Divider,
 } from '@mantine/core';
 import {
-  IconRefresh,
   IconClock,
   IconTrash,
   IconDatabase,
-  IconCalendar,
   IconAlertCircle,
   IconCheck,
   IconX,

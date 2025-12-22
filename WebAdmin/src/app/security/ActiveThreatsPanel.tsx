@@ -50,7 +50,7 @@ export function ActiveThreatsPanel({
   if (isLoading) {
     return (
       <Stack gap="md">
-        {Array.from({ length: 3 }).map((_, index) => (
+        {[...Array(3).keys()].map((index) => (
           <Card key={index} padding="md" radius="md" withBorder>
             <Group justify="space-between" align="flex-start" mb="sm">
               <Group gap="sm">

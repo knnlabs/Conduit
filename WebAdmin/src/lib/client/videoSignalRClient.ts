@@ -1,13 +1,20 @@
 import * as signalR from '@microsoft/signalr';
+import type { IHubProtocol } from '@microsoft/signalr';
 import { ephemeralKeyClient } from '@/lib/client/ephemeralKeyClient';
 
+// Type for MessagePackHubProtocol constructor
+type MessagePackHubProtocolConstructor = new () => IHubProtocol;
+
+// Key for SignalR MessagePack config in window object
+const SIGNALR_MESSAGEPACK_KEY = '__SIGNALR_USE_MESSAGEPACK__';
+
 // Lazy import for MessagePack protocol
-let MessagePackHubProtocol: any;
+let MessagePackHubProtocol: MessagePackHubProtocolConstructor | null = null;
 
 /**
  * Lazy loads the MessagePack protocol module
  */
-async function loadMessagePackProtocol(): Promise<any> {
+async function loadMessagePackProtocol(): Promise<MessagePackHubProtocolConstructor | null> {
   if (!MessagePackHubProtocol) {
     try {
       const msgpack = await import('@microsoft/signalr-protocol-msgpack');
@@ -28,7 +35,7 @@ function shouldUseMessagePack(): boolean {
   if (typeof window === 'undefined') {
     return process.env.NEXT_PUBLIC_SIGNALR_USE_MESSAGEPACK === 'true';
   }
-  return (window as any).__SIGNALR_USE_MESSAGEPACK__ === true;
+  return (window as unknown as Record<string, unknown>)[SIGNALR_MESSAGEPACK_KEY] === true;
 }
 
 interface VideoProgressUpdate {

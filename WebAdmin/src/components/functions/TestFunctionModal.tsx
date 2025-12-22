@@ -66,7 +66,7 @@ const validateParameters = (value: string) => {
   }
 
   try {
-    const parsed = JSON.parse(value);
+    const parsed: unknown = JSON.parse(value);
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       return 'Parameters must be a JSON object';
     }
@@ -80,7 +80,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
   const [isLoading, setIsLoading] = useState(false);
   const [testResult, setTestResult] = useState<FunctionExecutionResponse | null>(null);
   const [activeTab, setActiveTab] = useState<string>('parameters');
-  const [loadingSchema, setLoadingSchema] = useState(false);
+  const [, setLoadingSchema] = useState(false);
 
   const form = useForm({
     initialValues: {
@@ -120,7 +120,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
           setLoadingSchema(false);
         });
     }
-  }, [opened, configuration]);
+  }, [opened, configuration, form]);
 
   const handleTest = async (values: typeof form.values) => {
     setIsLoading(true);

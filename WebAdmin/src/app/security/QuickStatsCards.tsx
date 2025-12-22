@@ -64,7 +64,7 @@ export function QuickStatsCards({ stats, isLoading = false }: QuickStatsCardsPro
   if (isLoading) {
     return (
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
-        {Array.from({ length: 4 }).map((_, index) => (
+        {[...Array(4).keys()].map((index) => (
           <Card key={index} padding="lg" radius="md" withBorder>
             <Stack gap="md">
               <Group justify="space-between" align="flex-start">

@@ -29,7 +29,7 @@ import { SecurityOverviewCard } from './SecurityOverviewCard';
 import { QuickStatsCards } from './QuickStatsCards';
 import { SecurityEventsTable } from './SecurityEventsTable';
 import { ActiveThreatsPanel } from './ActiveThreatsPanel';
-import type { SecurityEventFiltersState, SecurityEvent } from './types';
+import type { SecurityEventFiltersState } from './types';
 
 const SEVERITY_OPTIONS = [
   { value: 'all', label: 'All Severities' },
@@ -154,13 +154,13 @@ export default function SecurityDashboard() {
             <Menu.Dropdown>
               <Menu.Item
                 leftSection={<IconBraces style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => void handleExportEvents(displayedEvents as SecurityEvent[], 'json')}
+                onClick={() => void handleExportEvents(displayedEvents, 'json')}
               >
                 Export as JSON
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconFileTypeCsv style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => void handleExportEvents(displayedEvents as SecurityEvent[], 'csv')}
+                onClick={() => void handleExportEvents(displayedEvents, 'csv')}
               >
                 Export as CSV
               </Menu.Item>
@@ -194,7 +194,7 @@ export default function SecurityDashboard() {
                 overlayProps={{ blur: 2 }}
               />
               <SecurityEventsTable
-                events={paginatedEvents as SecurityEvent[]}
+                events={paginatedEvents}
                 isLoading={isLoading && !events.length}
               />
               {displayTotal > filters.pageSize && (

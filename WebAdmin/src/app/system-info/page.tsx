@@ -26,7 +26,7 @@ import {
   IconBolt,
   IconSettings,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
@@ -54,12 +54,7 @@ export default function SystemInfoPage() {
   const [functionDiscoveryCacheStats, setFunctionDiscoveryCacheStats] = useState<FunctionDiscoveryCacheStatistics | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
-  useEffect(() => {
-    void fetchSystemInfo();
-    void fetchGlobalSettings();
-  }, []);
-
-  const fetchSystemInfo = async () => {
+  const fetchSystemInfo = useCallback(async () => {
     try {
       setError(null);
 
@@ -70,9 +65,9 @@ export default function SystemInfoPage() {
       // Fetch cache status separately (optional, non-blocking)
       withAdminClient(client => client.configuration.getLLMCacheStatus())
         .then(setCacheStatus)
-        .catch((error) => {
+        .catch((err) => {
           // Silently fail for cache status - it's optional
-          console.warn('Failed to fetch LLM cache status:', error);
+          console.warn('Failed to fetch LLM cache status:', err);
           setCacheStatus(null);
         });
 
@@ -88,7 +83,43 @@ export default function SystemInfoPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  const fetchFunctionDiscoveryCache = useCallback(async () => {
+    // Function discovery cache stats endpoint doesn't exist in SDK yet
+    // Set to null until the backend endpoint is implemented
+    setFunctionDiscoveryCacheStats(null);
+  }, []);
+
+  const fetchGlobalSettings = useCallback(async () => {
+    setIsLoadingSettings(true);
+    try {
+      const result = await withAdminClient(client => client.settings.getGlobalSettings());
+      setGlobalSettings(result.settings);
+
+      // Fetch cache stats separately
+      const stats = await withAdminClient(client => client.settings.getCacheStats());
+      setGlobalSettingsCacheStats(stats);
+
+      // Fetch function discovery cache stats
+      await fetchFunctionDiscoveryCache();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error fetching global settings:', errorMessage);
+      notifications.show({
+        title: 'Error',
+        message: `Failed to load global settings: ${errorMessage}`,
+        color: 'red',
+      });
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  }, [fetchFunctionDiscoveryCache]);
+
+  useEffect(() => {
+    void fetchSystemInfo();
+    void fetchGlobalSettings();
+  }, [fetchSystemInfo, fetchGlobalSettings]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -173,31 +204,6 @@ export default function SystemInfoPage() {
         })();
       },
     });
-  };
-
-  const fetchGlobalSettings = async () => {
-    setIsLoadingSettings(true);
-    try {
-      const result = await withAdminClient(client => client.settings.getGlobalSettings());
-      setGlobalSettings(result.settings);
-
-      // Fetch cache stats separately
-      const stats = await withAdminClient(client => client.settings.getCacheStats());
-      setGlobalSettingsCacheStats(stats);
-
-      // Fetch function discovery cache stats
-      await fetchFunctionDiscoveryCache();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error fetching global settings:', errorMessage);
-      notifications.show({
-        title: 'Error',
-        message: `Failed to load global settings: ${errorMessage}`,
-        color: 'red',
-      });
-    } finally {
-      setIsLoadingSettings(false);
-    }
   };
 
   const handleUpdateSetting = async (id: number, value: string, description?: string) => {
@@ -316,12 +322,6 @@ export default function SystemInfoPage() {
       });
       throw error;
     }
-  };
-
-  const fetchFunctionDiscoveryCache = async () => {
-    // Function discovery cache stats endpoint doesn't exist in SDK yet
-    // Set to null until the backend endpoint is implemented
-    setFunctionDiscoveryCacheStats(null);
   };
 
   const handleInvalidateFunctionDiscoveryCache = async () => {

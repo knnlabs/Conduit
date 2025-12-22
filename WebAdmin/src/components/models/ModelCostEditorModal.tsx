@@ -398,7 +398,7 @@ export function ModelCostEditorModal({
                       />
                     </Group>
 
-                    {(inferredModelType === 'embedding' || form.values.embeddingCostPerMillionTokens > 0) && (
+                    {(inferredModelType === ModelType.Embedding || form.values.embeddingCostPerMillionTokens > 0) && (
                       <NumberInput
                         label="Embedding Cost"
                         placeholder="0.00"
