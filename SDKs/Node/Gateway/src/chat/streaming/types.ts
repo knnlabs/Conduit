@@ -150,6 +150,34 @@ export interface StreamingConfig {
 }
 
 /**
+ * Configuration for automatic retry on transient errors
+ */
+export interface StreamingRetryConfig {
+  /** Maximum number of retry attempts (default: 3) */
+  maxAttempts?: number;
+  /** Base delay in milliseconds for exponential backoff (default: 1000) */
+  baseDelayMs?: number;
+  /** Maximum delay in milliseconds (default: 16000) */
+  maxDelayMs?: number;
+  /** Custom function to determine if an error should be retried */
+  shouldRetry?: (error: StreamingError, attempt: number) => boolean;
+}
+
+/**
+ * Information passed to the onRetrying callback
+ */
+export interface RetryInfo {
+  /** The error that triggered the retry */
+  error: StreamingError;
+  /** Current attempt number (1-indexed) */
+  attempt: number;
+  /** Maximum number of attempts configured */
+  maxAttempts: number;
+  /** Delay in milliseconds before the retry will be attempted */
+  delayMs: number;
+}
+
+/**
  * Options for sending a message
  */
 export interface SendMessageOptions {
@@ -179,6 +207,8 @@ export interface StreamMessageOptions extends SendMessageOptions {
     images?: ImageAttachment[];
   }>;
   functionConfigurationIds?: number[];
+  /** Retry configuration for transient errors */
+  retry?: StreamingRetryConfig;
 }
 
 /**
@@ -222,6 +252,8 @@ export interface StreamingCallbacks {
   onStart?: () => void;
   /** Called when streaming is aborted */
   onAbort?: () => void;
+  /** Called when a retry attempt is about to be made */
+  onRetrying?: (info: RetryInfo) => void;
 }
 
 /**

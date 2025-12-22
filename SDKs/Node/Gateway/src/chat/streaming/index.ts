@@ -24,7 +24,9 @@ export type {
   StreamingPerformanceMetrics,
   UsageData,
   MetricsEventData,
-  MessageMetadata
+  MessageMetadata,
+  StreamingRetryConfig,
+  RetryInfo
 } from './types';
 
 // Re-export MessageContent from models for convenience

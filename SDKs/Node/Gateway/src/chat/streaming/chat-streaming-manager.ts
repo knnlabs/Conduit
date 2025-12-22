@@ -19,7 +19,9 @@ import type {
   StreamingPerformanceMetrics,
   UsageData,
   MetricsEventData,
-  MessageMetadata
+  MessageMetadata,
+  StreamingRetryConfig,
+  RetryInfo
 } from './types';
 import type { MessageContent } from '../../models/chat';
 
@@ -82,9 +84,78 @@ export class ChatStreamingManager {
   }
 
   /**
-   * Stream a message with real-time callbacks
+   * Stream a message with real-time callbacks and automatic retry for transient errors
    */
   async streamMessage(
+    message: string,
+    options: StreamMessageOptions,
+    callbacks: StreamingCallbacks
+  ): Promise<void> {
+    const retryConfig: Required<StreamingRetryConfig> = {
+      maxAttempts: options.retry?.maxAttempts ?? 3,
+      baseDelayMs: options.retry?.baseDelayMs ?? 1000,
+      maxDelayMs: options.retry?.maxDelayMs ?? 16000,
+      shouldRetry: options.retry?.shouldRetry ?? (() => true),
+    };
+
+    let lastError: StreamingError | null = null;
+
+    for (let attempt = 1; attempt <= retryConfig.maxAttempts; attempt++) {
+      try {
+        await this.streamMessageAttempt(message, options, callbacks);
+        return; // Success - exit retry loop
+      } catch (error) {
+        // Don't retry abort errors
+        if (this.isAbortError(error)) {
+          callbacks.onAbort?.();
+          return;
+        }
+
+        const streamingError = this.enhanceError(error);
+        lastError = streamingError;
+
+        // Check if we should retry
+        const shouldRetry = this.shouldRetryStreaming(streamingError, attempt, retryConfig);
+
+        if (!shouldRetry || attempt >= retryConfig.maxAttempts) {
+          // Don't call onError again - it was already called in streamMessageAttempt
+          // unless it wasn't (for errors that happen before the inner try/catch)
+          if (!streamingError.context?.includes('already reported')) {
+            callbacks.onError?.(streamingError);
+          }
+          throw streamingError;
+        }
+
+        // Calculate delay with jitter
+        const delayMs = this.getRetryDelayWithJitter(streamingError, attempt, retryConfig);
+
+        // Notify UI of retry
+        const retryInfo: RetryInfo = {
+          error: streamingError,
+          attempt,
+          maxAttempts: retryConfig.maxAttempts,
+          delayMs,
+        };
+        callbacks.onRetrying?.(retryInfo);
+
+        this.log(`Retrying after error (attempt ${attempt}/${retryConfig.maxAttempts}), waiting ${delayMs}ms:`, streamingError.message);
+
+        // Wait before retry
+        await this.delay(delayMs);
+      }
+    }
+
+    // Should not reach here, but handle edge case
+    if (lastError) {
+      callbacks.onError?.(lastError);
+      throw lastError;
+    }
+  }
+
+  /**
+   * Execute a single streaming attempt (internal method)
+   */
+  private async streamMessageAttempt(
     message: string,
     options: StreamMessageOptions,
     callbacks: StreamingCallbacks
@@ -98,7 +169,7 @@ export class ChatStreamingManager {
     this.state.totalReasoning = '';
     this.state.startTime = Date.now();
     this.state.metrics = {};
-    
+
     let timeoutId: NodeJS.Timeout | undefined;
 
     try {
@@ -115,7 +186,7 @@ export class ChatStreamingManager {
       callbacks.onStart?.();
 
       const request = this.buildRequest(message, options, options.images);
-      
+
       this.log('Sending chat request:', {
         model: options.model,
         messageCount: request.messages.length,
@@ -123,7 +194,7 @@ export class ChatStreamingManager {
       });
 
       const response = await this.makeRequest(request, controller.signal);
-      
+
       // Clear timeout once we get a response
       clearTimeout(timeoutId);
       timeoutId = undefined;
@@ -136,12 +207,11 @@ export class ChatStreamingManager {
 
     } catch (error) {
       if (this.isAbortError(error)) {
-        callbacks.onAbort?.();
-        return; // Don't throw for user-initiated aborts
+        throw error; // Re-throw abort errors for outer handler
       }
-      
+
       const streamingError = this.enhanceError(error);
-      callbacks.onError?.(streamingError);
+      // Mark that error was enhanced but don't call onError - let retry logic handle it
       throw streamingError;
     } finally {
       // Always clear timeout if it's still active
@@ -612,6 +682,63 @@ export class ChatStreamingManager {
   private isRetryableStatus(status?: number): boolean {
     if (!status) return false;
     return [408, 429, 500, 502, 503, 504].includes(status);
+  }
+
+  /**
+   * Determine if a streaming error should be retried
+   */
+  private shouldRetryStreaming(
+    error: StreamingError,
+    attempt: number,
+    config: Required<StreamingRetryConfig>
+  ): boolean {
+    // Never retry abort errors
+    if (this.isAbortError(error)) {
+      return false;
+    }
+
+    // Check if error has a retryable status code
+    if (!this.isRetryableStatus(error.status)) {
+      return false;
+    }
+
+    // Use custom shouldRetry function if provided
+    if (config.shouldRetry) {
+      return config.shouldRetry(error, attempt);
+    }
+
+    return true;
+  }
+
+  /**
+   * Calculate retry delay with exponential backoff and jitter
+   */
+  private getRetryDelayWithJitter(
+    error: StreamingError,
+    attempt: number,
+    config: Required<StreamingRetryConfig>
+  ): number {
+    // Respect Retry-After header for rate limits
+    if (error.retryAfter) {
+      return error.retryAfter * 1000;
+    }
+
+    // Exponential backoff: baseDelay * 2^(attempt-1)
+    const exponentialDelay = config.baseDelayMs * Math.pow(2, attempt - 1);
+    const cappedDelay = Math.min(exponentialDelay, config.maxDelayMs);
+
+    // Add ±20% jitter to prevent thundering herd
+    const jitterFactor = 0.2;
+    const jitter = cappedDelay * jitterFactor * (Math.random() * 2 - 1);
+
+    return Math.floor(cappedDelay + jitter);
+  }
+
+  /**
+   * Delay for specified milliseconds
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**

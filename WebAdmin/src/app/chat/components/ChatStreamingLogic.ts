@@ -4,7 +4,8 @@ import {
   createToastErrorHandler,
   type ImageAttachment,
   type StreamingCallbacks,
-  type StreamMessageOptions
+  type StreamMessageOptions,
+  type RetryInfo
 } from '@knn_labs/conduit-gateway-client';
 import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
 import { SDKChatStreamingAdapter } from '@/lib/client/sdkChatStreamingAdapter';
@@ -190,6 +191,8 @@ export function useChatStreamingLogic({
       // Create streaming callbacks
       const callbacks: StreamingCallbacks = {
         onStart: () => {
+          // Dismiss retry notification if shown (retry succeeded)
+          notifications.hide('chat-retry');
           if (process.env.NODE_ENV === 'development') {
             console.warn('Chat streaming started');
           }
@@ -338,6 +341,21 @@ export function useChatStreamingLogic({
           setStreamingChannel?.(null);
           setTokensPerSecond(null);
           setIsLoading(false);
+        },
+        onRetrying: (info: RetryInfo) => {
+          // Show retry notification
+          notifications.show({
+            id: 'chat-retry',
+            title: `Retrying... (${info.attempt}/${info.maxAttempts})`,
+            message: `${info.error.context ?? 'Connection issue'}. Retrying in ${Math.ceil(info.delayMs / 1000)}s`,
+            loading: true,
+            autoClose: info.delayMs + 500, // Close slightly after retry starts
+            withCloseButton: false,
+          });
+
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(`[Chat Retry] Attempt ${info.attempt}/${info.maxAttempts}, delay ${info.delayMs}ms:`, info.error.message);
+          }
         },
         onAbort: () => {
           if (process.env.NODE_ENV === 'development') {
