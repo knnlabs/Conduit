@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Container,
   Paper,
@@ -141,6 +141,25 @@ export function ChatInterface() {
     availableFunctions,
   });
 
+  // Handle retry for error messages
+  const handleRetryMessage = useCallback((errorMessageId: string) => {
+    // Find the error message index
+    const errorIndex = messages.findIndex(m => m.id === errorMessageId);
+    if (errorIndex <= 0) return;
+
+    // Find the preceding user message
+    for (let i = errorIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        const userMessage = messages[i];
+        // Remove the error message before retrying
+        setMessages(prev => prev.filter(m => m.id !== errorMessageId));
+        // Resend the user message
+        void sendMessage(userMessage.content, userMessage.images);
+        return;
+      }
+    }
+  }, [messages, setMessages, sendMessage]);
+
   // Cleanup on unmount - abort any pending requests
   useEffect(() => {
     return () => {
@@ -280,6 +299,7 @@ export function ChatInterface() {
             streamingChannel={isLoading ? streamingChannel : null}
             tokensPerSecond={performanceSettings.showTokensPerSecond ? tokensPerSecond : null}
             reasoningExpanded={reasoningExpanded}
+            onRetryMessage={handleRetryMessage}
           />
         </Paper>
 

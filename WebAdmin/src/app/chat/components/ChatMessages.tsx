@@ -1,5 +1,5 @@
-import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, Alert, HoverCard, CopyButton, Tooltip } from '@mantine/core';
-import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp, IconInfoCircle, IconCopy, IconCheck, IconCode, IconEye, IconTool, IconCircleCheck, IconCircleX, IconLoader } from '@tabler/icons-react';
+import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, Alert, HoverCard, CopyButton, Tooltip, Button } from '@mantine/core';
+import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp, IconInfoCircle, IconCopy, IconCheck, IconCode, IconEye, IconTool, IconCircleCheck, IconCircleX, IconLoader, IconRefresh } from '@tabler/icons-react';
 import { ChatMessage, ChatErrorType } from '../types';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -16,6 +16,7 @@ interface ChatMessagesProps {
   streamingChannel?: string | null;
   tokensPerSecond?: number | null;
   reasoningExpanded?: boolean;
+  onRetryMessage?: (messageId: string) => void;
 }
 
 // Helper function to get error type styling
@@ -35,7 +36,7 @@ function getErrorTypeConfig(type: ChatErrorType) {
   }
 }
 
-export function ChatMessages({ messages, isLoading, streamingContent, streamingChannel, tokensPerSecond, reasoningExpanded = true }: ChatMessagesProps) {
+export function ChatMessages({ messages, isLoading, streamingContent, streamingChannel, tokensPerSecond, reasoningExpanded = true, onRetryMessage }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
@@ -212,6 +213,22 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                   </Paper>
                 </Collapse>
               </>
+            )}
+
+            {/* Retry button for recoverable errors */}
+            {message.error.recoverable && onRetryMessage && (
+              <Group justify="flex-end">
+                <Button
+                  size="xs"
+                  variant="light"
+                  color={errorConfig.color}
+                  leftSection={<IconRefresh size={14} />}
+                  onClick={() => onRetryMessage(message.id)}
+                  disabled={isLoading}
+                >
+                  Retry
+                </Button>
+              </Group>
             )}
           </Stack>
         </Paper>
