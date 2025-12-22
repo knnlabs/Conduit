@@ -39,6 +39,16 @@ namespace ConduitLLM.Configuration
         MiniMax = 6,
 
         /// <summary>
+        /// Ultravox (voice AI models)
+        /// </summary>
+        Ultravox = 7,
+
+        /// <summary>
+        /// ElevenLabs (audio synthesis)
+        /// </summary>
+        ElevenLabs = 8,
+
+        /// <summary>
         /// Cerebras (high-performance inference)
         /// </summary>
         Cerebras = 9,
