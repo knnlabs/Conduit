@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # Combined script to fix ESLint errors and build SDK clients
-# Usage: 
+# Usage:
 #   ./scripts/fix-sdk-errors.sh           # Fix and build both SDKs
 #   ./scripts/fix-sdk-errors.sh admin     # Fix and build Admin SDK only
-#   ./scripts/fix-sdk-errors.sh core      # Fix and build Core SDK only
+#   ./scripts/fix-sdk-errors.sh gateway   # Fix and build Gateway SDK only
 
 set -e
 
 # SDK configuration: key -> "path:display_name"
 declare -A SDKS=(
     ["admin"]="SDKs/Node/Admin:Admin Client"
-    ["core"]="SDKs/Node/Core:Core Client"
+    ["gateway"]="SDKs/Node/Gateway:Gateway Client"
 )
 
 # Global statistics
@@ -20,7 +20,9 @@ TOTAL_FIXED_ERRORS=0
 TOTAL_REMAINING_ERRORS=0
 FAILED_SDKS=()
 BUILD_FAILED_SDKS=()
+TEST_FAILED_SDKS=()
 TOTAL_BUILD_ERRORS=0
+TOTAL_TEST_ERRORS=0
 
 # Print SDK section header
 print_sdk_header() {
@@ -47,22 +49,28 @@ print_sdk_header() {
 # Print final summary for multiple SDKs
 print_summary() {
     local num_sdks="$1"
-    
+
     if [ "$num_sdks" -gt 1 ]; then
         print_sdk_header "COMBINED SUMMARY"
         echo "📊 Total initial errors: $TOTAL_INITIAL_ERRORS"
         echo "✅ Total fixed errors: $TOTAL_FIXED_ERRORS"
         echo "❌ Total remaining errors: $TOTAL_REMAINING_ERRORS"
         echo "🔨 Total build errors: $TOTAL_BUILD_ERRORS"
-        
+        echo "🧪 Total test errors: $TOTAL_TEST_ERRORS"
+
         if [ ${#FAILED_SDKS[@]} -gt 0 ]; then
             echo ""
             echo "⚠️  Failed SDKs (lint): ${FAILED_SDKS[*]}"
         fi
-        
+
         if [ ${#BUILD_FAILED_SDKS[@]} -gt 0 ]; then
             echo ""
             echo "🚫 Failed SDKs (build): ${BUILD_FAILED_SDKS[*]}"
+        fi
+
+        if [ ${#TEST_FAILED_SDKS[@]} -gt 0 ]; then
+            echo ""
+            echo "🧪 Failed SDKs (test): ${TEST_FAILED_SDKS[*]}"
         fi
     fi
 }
@@ -82,7 +90,18 @@ fix_sdk_errors() {
         FAILED_SDKS+=("$display_name")
         return 1
     fi
-    
+
+    # Ensure dependencies are installed
+    if [ ! -d "node_modules" ]; then
+        echo "📦 Installing dependencies..."
+        if ! npm install; then
+            echo "❌ Failed to install dependencies"
+            FAILED_SDKS+=("$display_name")
+            cd - > /dev/null || return 1
+            return 1
+        fi
+    fi
+
     # Count initial errors
     local initial_errors
     initial_errors=$(npm run lint 2>&1 | grep -oE "[0-9]+ error" | grep -oE "[0-9]+" | head -1)
@@ -172,15 +191,38 @@ fix_sdk_errors() {
     fi
     
     rm -f /tmp/sdk_build_output_$$
-    
+
+    # Step 6: Run tests to verify SDK functionality
+    echo ""
+    echo "🧪 Step 6: Running tests to verify SDK functionality..."
+    local test_errors=0
+
+    if grep -q '"test"' package.json 2>/dev/null; then
+        if npm test 2>&1 | tee /tmp/sdk_test_output_$$; then
+            echo "✅ Tests passed"
+        else
+            test_errors=1
+            TOTAL_TEST_ERRORS=$((TOTAL_TEST_ERRORS + 1))
+            TEST_FAILED_SDKS+=("$display_name")
+            echo ""
+            echo "⚠️  Tests failed! SDK may have compatibility issues"
+            grep -E "(FAIL|Error|failed)" /tmp/sdk_test_output_$$ | head -10 || true
+            echo ""
+            echo "Consider fixing test failures before using this SDK"
+        fi
+        rm -f /tmp/sdk_test_output_$$
+    else
+        echo "⚠️  No test script found in package.json - skipping"
+    fi
+
     # Return to original directory
     cd - > /dev/null || return 1
-    
-    # Return error if either lint or build failed
-    if [ "$remaining_errors" -gt 0 ] || [ "$build_errors" -gt 0 ]; then
+
+    # Return error if lint, build, or tests failed
+    if [ "$remaining_errors" -gt 0 ] || [ "$build_errors" -gt 0 ] || [ "$test_errors" -gt 0 ]; then
         return 1
     fi
-    
+
     return 0
 }
 
@@ -190,15 +232,15 @@ parse_arguments() {
         "admin"|"--admin")
             echo "admin"
             ;;
-        "core"|"--core")
-            echo "core"
+        "gateway"|"--gateway")
+            echo "gateway"
             ;;
         ""|"--all"|"all")
-            echo "admin core"
+            echo "admin gateway"
             ;;
         "--help"|"-h"|"help")
             # This case is handled in main function
-            echo "admin core"
+            echo "admin gateway"
             ;;
         *)
             echo "❌ Error: Unknown argument '$1'" >&2
@@ -214,21 +256,23 @@ main() {
     case "${1:-}" in
         "--help"|"-h"|"help")
             cat << EOF
-Usage: $0 [admin|core|all]
+Usage: $0 [admin|gateway|all]
 
 This script fixes ESLint errors and builds SDK clients to catch API breakages early.
 
 Options:
   admin    Fix and build Admin Client SDK only
-  core     Fix and build Core Client SDK only
+  gateway  Fix and build Gateway Client SDK only
   all      Fix and build both SDKs (default)
   --help   Show this help message
 
 The script will:
-1. Fix unused catch variables
-2. Run ESLint auto-fix
-3. Convert console.log to console.warn
-4. Build the SDK to catch API compatibility issues
+1. Install missing dependencies
+2. Fix unused catch variables
+3. Run ESLint auto-fix
+4. Convert console.log to console.warn
+5. Build the SDK to catch API compatibility issues
+6. Run tests to verify SDK functionality
 EOF
             exit 0
             ;;
@@ -266,19 +310,19 @@ EOF
     print_summary "$sdk_count"
     
     # Exit with appropriate code
-    if [ $failed_count -gt 0 ] || [ $TOTAL_BUILD_ERRORS -gt 0 ]; then
+    if [ $failed_count -gt 0 ] || [ $TOTAL_BUILD_ERRORS -gt 0 ] || [ $TOTAL_TEST_ERRORS -gt 0 ]; then
         echo ""
-        if [ $failed_count -gt 0 ] && [ $TOTAL_BUILD_ERRORS -gt 0 ]; then
-            echo "❌ Script completed with $failed_count lint failures and $TOTAL_BUILD_ERRORS build failures"
-        elif [ $failed_count -gt 0 ]; then
-            echo "❌ Script completed with $failed_count lint failures"
-        else
-            echo "❌ Script completed with $TOTAL_BUILD_ERRORS build failures"
-        fi
+        local failure_parts=()
+        [ $failed_count -gt 0 ] && failure_parts+=("$failed_count lint")
+        [ $TOTAL_BUILD_ERRORS -gt 0 ] && failure_parts+=("$TOTAL_BUILD_ERRORS build")
+        [ $TOTAL_TEST_ERRORS -gt 0 ] && failure_parts+=("$TOTAL_TEST_ERRORS test")
+        local failures
+        failures=$(IFS=", "; echo "${failure_parts[*]}")
+        echo "❌ Script completed with failures: $failures"
         exit 1
     else
         echo ""
-        echo "✅ All SDKs linted and built successfully"
+        echo "✅ All SDKs linted, built, and tested successfully"
         exit 0
     fi
 }
