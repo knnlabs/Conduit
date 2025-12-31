@@ -179,8 +179,11 @@ function isNonTestableProvider(providerType?: ProviderType): boolean {
   }
 
   // List of providers that don't support simple API key testing
+  // Replicate: Requires real API calls that can incur costs
+  // SambaNova: /models endpoint is public and doesn't validate API keys
   const nonTestableProviders: ProviderType[] = [
     ProviderType.Replicate,
+    ProviderType.SambaNova,
   ];
 
   return nonTestableProviders.includes(providerType);

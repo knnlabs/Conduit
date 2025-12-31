@@ -28,3 +28,39 @@ export type { Logger, CacheProvider, RequestConfigInfo, ResponseInfo } from './c
 export { HttpError } from './client/types';
 export type { SignalRConfig } from './client/signalr-config';
 export type { SignalRConnectionOptions } from './signalr/types';
+
+// Explicit exports for BaseApiClient (may get tree-shaken)
+export { BaseApiClient } from './client/BaseApiClient';
+export type { BaseRequestOptions } from './client/BaseApiClient';
+export type {
+  BaseApiClientConfig,
+  CacheableClientConfig,
+  LoggableClientConfig,
+  FullFeaturedClientConfig
+} from './client/base-client-config';
+export {
+  RetryStrategyType,
+  calculateRetryDelay,
+  getMaxRetries,
+  shouldRetryWithStrategy,
+  DEFAULT_RETRY_STRATEGIES
+} from './client/retry-strategy';
+export type {
+  RetryStrategy,
+  FixedDelayConfig,
+  ExponentialBackoffConfig,
+  CustomDelaysConfig
+} from './client/retry-strategy';
+
+// Circuit breaker types and classes
+export {
+  CircuitState,
+  CircuitBreaker,
+  CircuitBreakerOpenError,
+  isCircuitBreakerOpenError
+} from './circuit-breaker';
+export type {
+  CircuitBreakerConfig,
+  CircuitBreakerStats,
+  CircuitBreakerCallbacks
+} from './circuit-breaker';

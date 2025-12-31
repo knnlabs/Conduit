@@ -1,6 +1,6 @@
 # Provider Model Discovery and Metadata API Research
 
-> **Architecture Update**: Model discovery functionality has been moved from Core API to Admin API. Discovery is now exclusively handled through Admin API endpoints at `/api/modelprovidermapping/discover/*`. This maintains proper separation where Admin API handles configuration tasks and Core API focuses on runtime operations.
+> **Architecture Update**: Model discovery functionality has been moved from Gateway API to Admin API. Discovery is now exclusively handled through Admin API endpoints at `/api/modelprovidermapping/discover/*`. This maintains proper separation where Admin API handles configuration tasks and Gateway API focuses on runtime operations.
 
 This document provides comprehensive research on model discovery and metadata APIs for all LLM providers supported by Conduit, based on codebase analysis and API documentation research.
 

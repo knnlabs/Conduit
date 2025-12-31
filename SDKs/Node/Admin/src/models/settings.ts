@@ -2,29 +2,44 @@ import { FilterOptions } from './common';
 import type { CustomSettings, ConfigValue } from './common-types';
 
 export interface GlobalSettingDto {
+  id: number;
   key: string;
   value: string;
   description?: string;
-  dataType: 'string' | 'number' | 'boolean' | 'json';
-  category?: string;
-  isSecret?: boolean;
   createdAt: string;
   updatedAt: string;
+  // Legacy fields for helper methods (not returned by API)
+  dataType?: 'string' | 'number' | 'boolean' | 'json';
+  category?: string;
+  isSecret?: boolean;
+}
+
+export interface GlobalSettingCacheStats {
+  cacheSize: number;
+  cacheHits: number;
+  cacheMisses: number;
+  invalidations: number;
+  hitRate: number;
+  lastLoadTime: string;
+  cachedKeys: string[];
 }
 
 export interface CreateGlobalSettingDto {
   key: string;
   value: string;
   description?: string;
-  dataType?: 'string' | 'number' | 'boolean' | 'json';
-  category?: string;
-  isSecret?: boolean;
 }
 
 export interface UpdateGlobalSettingDto {
+  id: number;
   value: string;
   description?: string;
-  category?: string;
+}
+
+export interface UpdateGlobalSettingByKeyDto {
+  key: string;
+  value: string;
+  description?: string;
 }
 
 export interface SettingCategory {

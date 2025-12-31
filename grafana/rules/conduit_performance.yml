@@ -1,0 +1,248 @@
+# Prometheus Recording Rules for Conduit Performance Metrics
+# Pre-aggregated metrics for latency, throughput, and error tracking
+#
+# Available source metrics:
+# - conduit_http_requests_total{method, endpoint, status_code, virtual_key_id}
+# - conduit_http_request_duration_seconds{method, endpoint, status_code} (histogram)
+# - conduit_http_requests_active{method, endpoint} (gauge)
+# - conduit_rate_limit_exceeded_total{endpoint, virtual_key_id}
+# - conduit_usage_tracking_failures_total{reason, endpoint_type}
+# - conduit_usage_extraction_time_seconds{endpoint_type} (histogram)
+
+groups:
+  # Real-time performance metrics - evaluated every 1 minute
+  - name: conduit_performance_realtime
+    interval: 1m
+    rules:
+      # Request rate by endpoint (5 minute window)
+      - record: conduit:request_rate_by_endpoint_5m
+        expr: |
+          sum by (endpoint) (
+            rate(conduit_http_requests_total[5m])
+          )
+
+      # Request rate by status code (5 minute window)
+      - record: conduit:request_rate_by_status_5m
+        expr: |
+          sum by (status_code) (
+            rate(conduit_http_requests_total[5m])
+          )
+
+      # Error rate (4xx + 5xx) percentage
+      - record: conduit:error_rate_percent_5m
+        expr: |
+          (
+            sum(rate(conduit_http_requests_total{status_code=~"4..|5.."}[5m]))
+            /
+            sum(rate(conduit_http_requests_total[5m]))
+          ) * 100
+
+      # Success rate percentage
+      - record: conduit:success_rate_percent_5m
+        expr: |
+          (
+            sum(rate(conduit_http_requests_total{status_code=~"2.."}[5m]))
+            /
+            sum(rate(conduit_http_requests_total[5m]))
+          ) * 100
+
+      # P50 latency by endpoint
+      - record: conduit:latency_p50_by_endpoint_5m
+        expr: |
+          histogram_quantile(0.50,
+            sum by (endpoint, le) (
+              rate(conduit_http_request_duration_seconds_bucket[5m])
+            )
+          )
+
+      # P90 latency by endpoint
+      - record: conduit:latency_p90_by_endpoint_5m
+        expr: |
+          histogram_quantile(0.90,
+            sum by (endpoint, le) (
+              rate(conduit_http_request_duration_seconds_bucket[5m])
+            )
+          )
+
+      # P95 latency by endpoint
+      - record: conduit:latency_p95_by_endpoint_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (endpoint, le) (
+              rate(conduit_http_request_duration_seconds_bucket[5m])
+            )
+          )
+
+      # P99 latency by endpoint
+      - record: conduit:latency_p99_by_endpoint_5m
+        expr: |
+          histogram_quantile(0.99,
+            sum by (endpoint, le) (
+              rate(conduit_http_request_duration_seconds_bucket[5m])
+            )
+          )
+
+      # Overall P95 latency (all endpoints)
+      - record: conduit:latency_p95_overall_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (
+              rate(conduit_http_request_duration_seconds_bucket[5m])
+            )
+          )
+
+      # Average latency by endpoint
+      - record: conduit:latency_avg_by_endpoint_5m
+        expr: |
+          (
+            sum by (endpoint) (
+              rate(conduit_http_request_duration_seconds_sum[5m])
+            )
+            /
+            sum by (endpoint) (
+              rate(conduit_http_request_duration_seconds_count[5m])
+            )
+          )
+
+      # Rate limit hit rate
+      - record: conduit:rate_limit_hit_rate_5m
+        expr: |
+          sum(rate(conduit_rate_limit_exceeded_total[5m]))
+
+      # Currently active requests (snapshot)
+      - record: conduit:active_requests_total
+        expr: |
+          sum(conduit_http_requests_active)
+
+  # Hourly performance aggregations - evaluated every 5 minutes
+  - name: conduit_performance_hourly
+    interval: 5m
+    rules:
+      # Hourly request volume by endpoint
+      - record: conduit:request_volume_by_endpoint_1h
+        expr: |
+          sum by (endpoint) (
+            increase(conduit_http_requests_total[1h])
+          )
+
+      # Hourly total request volume
+      - record: conduit:request_volume_total_1h
+        expr: |
+          sum(increase(conduit_http_requests_total[1h]))
+
+      # Hourly error count by status code
+      - record: conduit:error_count_by_status_1h
+        expr: |
+          sum by (status_code) (
+            increase(conduit_http_requests_total{status_code=~"4..|5.."}[1h])
+          )
+
+      # Hourly rate limit violations
+      - record: conduit:rate_limit_violations_1h
+        expr: |
+          sum(increase(conduit_rate_limit_exceeded_total[1h]))
+
+      # Hourly rate limit violations by endpoint
+      - record: conduit:rate_limit_violations_by_endpoint_1h
+        expr: |
+          sum by (endpoint) (
+            increase(conduit_rate_limit_exceeded_total[1h])
+          )
+
+      # Usage tracking failure rate
+      - record: conduit:usage_tracking_failure_rate_1h
+        expr: |
+          sum by (reason) (
+            rate(conduit_usage_tracking_failures_total[1h])
+          )
+
+      # P95 usage extraction time
+      - record: conduit:usage_extraction_p95_1h
+        expr: |
+          histogram_quantile(0.95,
+            sum by (endpoint_type, le) (
+              rate(conduit_usage_extraction_time_seconds_bucket[1h])
+            )
+          )
+
+  # Daily performance summaries - evaluated every 15 minutes
+  - name: conduit_performance_daily
+    interval: 15m
+    rules:
+      # Daily request volume
+      - record: conduit:daily_request_volume
+        expr: |
+          sum(increase(conduit_http_requests_total[1d]))
+
+      # Daily request volume by endpoint
+      - record: conduit:daily_request_volume_by_endpoint
+        expr: |
+          sum by (endpoint) (
+            increase(conduit_http_requests_total[1d])
+          )
+
+      # Daily error percentage
+      - record: conduit:daily_error_percent
+        expr: |
+          (
+            sum(increase(conduit_http_requests_total{status_code=~"4..|5.."}[1d]))
+            /
+            sum(increase(conduit_http_requests_total[1d]))
+          ) * 100
+
+      # Daily average latency
+      - record: conduit:daily_avg_latency
+        expr: |
+          (
+            sum(increase(conduit_http_request_duration_seconds_sum[1d]))
+            /
+            sum(increase(conduit_http_request_duration_seconds_count[1d]))
+          )
+
+      # Daily rate limit violations total
+      - record: conduit:daily_rate_limit_violations
+        expr: |
+          sum(increase(conduit_rate_limit_exceeded_total[1d]))
+
+      # Requests per second average over 24h
+      - record: conduit:daily_avg_rps
+        expr: |
+          sum(increase(conduit_http_requests_total[1d])) / 86400
+
+      # Peak hourly requests (approximation using max of 1h windows)
+      - record: conduit:peak_hourly_requests_24h
+        expr: |
+          max_over_time(conduit:request_volume_total_1h[1d])
+
+  # Virtual key performance metrics - evaluated every 5 minutes
+  - name: conduit_virtual_key_performance
+    interval: 5m
+    rules:
+      # Request rate by virtual key (top consumers)
+      - record: conduit:request_rate_by_virtual_key_1h
+        expr: |
+          topk(20,
+            sum by (virtual_key_id) (
+              rate(conduit_http_requests_total[1h])
+            )
+          )
+
+      # Rate limit hits by virtual key
+      - record: conduit:rate_limit_by_virtual_key_1h
+        expr: |
+          sum by (virtual_key_id) (
+            increase(conduit_rate_limit_exceeded_total[1h])
+          )
+
+      # Error rate by virtual key
+      - record: conduit:error_rate_by_virtual_key_1h
+        expr: |
+          (
+            sum by (virtual_key_id) (
+              rate(conduit_http_requests_total{status_code=~"4..|5.."}[1h])
+            )
+            /
+            sum by (virtual_key_id) (
+              rate(conduit_http_requests_total[1h])
+            )
+          ) * 100

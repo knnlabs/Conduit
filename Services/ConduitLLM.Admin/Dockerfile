@@ -1,0 +1,65 @@
+# Admin API Dockerfile - Optimized for selective cache invalidation
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# ===== CACHED LAYERS (Keep these fast) =====
+# Copy project files for dependency resolution
+COPY *.sln .
+COPY Directory.Build.props ./ 
+COPY */*.csproj ./
+RUN find . -name "*.csproj" -exec dirname {} \; | xargs -I {} mkdir -p {}
+
+# Copy project files to correct locations
+COPY Services/ConduitLLM.Gateway/*.csproj ./Services/ConduitLLM.Gateway/
+COPY Shared/ConduitLLM.Configuration/*.csproj ./Shared/ConduitLLM.Configuration/
+COPY Shared/ConduitLLM.Core/*.csproj ./Shared/ConduitLLM.Core/
+COPY Shared/ConduitLLM.Security/*.csproj ./Shared/ConduitLLM.Security/
+COPY Shared/ConduitLLM.Providers/*.csproj ./Shared/ConduitLLM.Providers/
+COPY Shared/ConduitLLM.Functions/*.csproj ./Shared/ConduitLLM.Functions/
+COPY Services/ConduitLLM.Admin/*.csproj ./Services/ConduitLLM.Admin/
+COPY Tests/ConduitLLM.Tests/*.csproj ./Tests/ConduitLLM.Tests/
+COPY Tests/ConduitLLM.IntegrationTests/*.csproj ./Tests/ConduitLLM.IntegrationTests/
+COPY Tests/ConduitLLM.Benchmarks/*.csproj ./Tests/ConduitLLM.Benchmarks/
+
+# Restore dependencies (cached unless project files change)
+RUN dotnet restore "Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj"
+
+# ===== CACHE INVALIDATION POINT =====
+# This argument forces rebuild from here down when .NET code changes
+ARG CACHEBUST=1
+
+# Copy all source code (this and everything after will rebuild)
+COPY . .
+
+# Build and publish
+RUN dotnet publish "Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj" \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# Runtime stage - Debian-based for reliability
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+WORKDIR /app
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy published application
+COPY --from=build /app/publish .
+
+# Use the existing non-root user (ubuntu with UID 1000 in .NET 10.0 images)
+RUN chown -R 1000:1000 /app
+USER 1000
+
+# Configure ASP.NET Core
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD curl -f http://localhost:8080/health/ready || exit 1
+
+ENTRYPOINT ["dotnet", "ConduitLLM.Admin.dll"]

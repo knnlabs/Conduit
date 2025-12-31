@@ -10,7 +10,13 @@ export * from './client/types';
 export { HttpMethod } from './client/HttpMethod';
 export type { RequestOptions, ApiResponse } from './client/HttpMethod';
 export * from './models/common';
-// discovery models removed - discovery types are in modelMapping
+
+// Provider types and validation
+export * from './types/providers';
+export * from './types/function-providers';
+export * from './types/models';
+export * from './validation/modelValidation';
+export * from './errors/modelErrors';
 export * from './models/virtualKey';
 export * from './models/provider';
 export * from './models/providerType';
@@ -20,6 +26,7 @@ export * from './models/providerModels';
 export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/media';
+export * from './models/functions';
 // Re-export model types except ModelCapabilities (conflicts with providerModels)
 export {
   ModelType,
@@ -34,10 +41,6 @@ export {
   ModelAuthorDto,
   CreateModelAuthorDto,
   UpdateModelAuthorDto,
-  ModelCapabilitiesDto,
-  CreateCapabilitiesDto,
-  UpdateCapabilitiesDto,
-  CapabilitiesSimpleModelDto,
   Model,
   ModelSeries,
   ModelAuthor
@@ -77,11 +80,10 @@ export {
   ExportStatus,
 } from './models/analyticsExport';
 export * from './models/system';
-export * from './models/audioConfiguration';
 export * from './models/metrics';
 export * from './models/databaseBackup';
 export * from './models/signalr';
-export * from './models/notifications';
+// notifications model removed - was only used by deleted SignalR services
 export * from './models/monitoring';
 export * from './models/security';
 // Re-export securityExtended types except ExportParams and ExportResult (conflicts with analytics)
@@ -122,6 +124,8 @@ export {
   CacheClearResult,
   CacheStatsDto,
   CacheKeyStats,
+  LLMCacheControlDto,
+  ToggleLLMCacheRequest,
   LoadBalancerConfigDto,
   UpdateLoadBalancerConfigDto,
   LoadBalancerHealthDto,
@@ -167,38 +171,34 @@ export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { FetchMediaService } from './services/FetchMediaService';
 export { FetchModelCostService } from './services/FetchModelCostService';
-// Cost types now exported from FetchAnalyticsService
+export { FetchMetricsService } from './services/FetchMetricsService';
+export { FetchNotificationsService } from './services/FetchNotificationsService';
 export type {
   CostDashboardDto,
   CostTrendDto,
   DetailedCostDataDto,
 } from './services/FetchAnalyticsService';
-// ProviderService removed - use FetchProvidersService instead which is exported via the client
-export { ProviderModelsService } from './services/ProviderModelsService';
-export { ModelMappingService } from './services/ModelMappingService';
-export { SettingsService } from './services/SettingsService';
-export { IpFilterService } from './services/IpFilterService';
-export { FetchModelCostService as ModelCostService } from './services/FetchModelCostService'; // Alias for backward compatibility
 export { FetchModelService } from './services/FetchModelService';
 export { FetchModelSeriesService } from './services/FetchModelSeriesService';
 export { FetchModelAuthorService } from './services/FetchModelAuthorService';
-export { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService';
-export { AnalyticsService } from './services/AnalyticsService';
-export { SystemService } from './services/SystemService';
-// DiscoveryService removed - use ModelMappingService.discoverProviderModels() instead
-export { AudioConfigurationService } from './services/AudioConfigurationService';
-export { MetricsService } from './services/MetricsService';
-export { NotificationsService } from './services/NotificationsService';
-// export { DatabaseBackupService } from './services/DatabaseBackupService'; // Removed
-export { SignalRService } from './services/SignalRService';
-// export { ConnectionService } from './services/ConnectionService'; // Removed
-export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
-export { FetchSecurityService as SecurityService } from './services/FetchSecurityService'; // Alias for backward compatibility
-export { FetchConfigurationService as ConfigurationService } from './services/FetchConfigurationService'; // Alias for backward compatibility
+export { ProviderToolsService } from './services/ProviderToolsService';
+export type {
+  ProviderTool,
+  CreateProviderTool,
+  UpdateProviderTool,
+  ProviderOption as ToolProviderOption
+} from './services/ProviderToolsService';
+// SignalR services removed - WebAdmin uses React Query instead of SignalR for data fetching
+export {
+  FetchFunctionConfigurationsService,
+  FetchFunctionCredentialsService,
+  FetchFunctionCostsService,
+  FetchFunctionExecutionsService
+} from './services/FetchFunctionsService';
+export { FetchPricingService } from './services/FetchPricingService';
+export * from './models/pricing';
 
-// SignalR Hub Clients
-export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';
-// AdminNotificationHubClient removed - AdminNotificationHub has been removed from the backend
+// SignalR Hub Clients removed - WebAdmin uses React Query instead of SignalR for data fetching
 
 // Utilities
 export * from './utils/errors';

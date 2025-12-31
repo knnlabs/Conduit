@@ -35,10 +35,24 @@ export enum HttpTransportType {
 /**
  * Default transport configuration
  */
-export const DefaultTransports = 
-  HttpTransportType.WebSockets | 
-  HttpTransportType.ServerSentEvents | 
+export const DefaultTransports =
+  HttpTransportType.WebSockets |
+  HttpTransportType.ServerSentEvents |
   HttpTransportType.LongPolling;
+
+/**
+ * SignalR protocol types
+ */
+export enum SignalRProtocolType {
+  /**
+   * JSON protocol (default)
+   */
+  Json = 'json',
+  /**
+   * MessagePack binary protocol with compression
+   */
+  MessagePack = 'messagepack',
+}
 
 /**
  * Base SignalR connection options
@@ -83,6 +97,12 @@ export interface SignalRConnectionOptions {
    * Keep-alive interval in milliseconds
    */
   keepAliveInterval?: number;
+
+  /**
+   * Protocol to use for SignalR communication
+   * @default SignalRProtocolType.Json
+   */
+  protocol?: SignalRProtocolType;
 }
 
 /**

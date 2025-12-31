@@ -4,6 +4,7 @@ export {
   SignalRLogLevel,
   HttpTransportType,
   DefaultTransports,
+  SignalRProtocolType,
   type SignalRConnectionOptions,
   type SignalRAuthConfig,
   type SignalRValue,

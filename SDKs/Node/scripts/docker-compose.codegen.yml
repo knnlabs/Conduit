@@ -13,10 +13,10 @@ services:
       timeout: 5s
       retries: 5
 
-  core-api:
+  gateway-api:
     build:
       context: ../../..
-      dockerfile: ConduitLLM.Http/Dockerfile
+      dockerfile: ConduitLLM.Gateway/Dockerfile
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Development
@@ -57,16 +57,16 @@ services:
     volumes:
       - ../..:/app
     environment:
-      CORE_API_URL: http://core-api:5000
+      GATEWAY_API_URL: http://gateway-api:5000
       ADMIN_API_URL: http://admin-api:5001
     depends_on:
-      core-api:
+      gateway-api:
         condition: service_healthy
       admin-api:
         condition: service_healthy
     command: |
       sh -c "
-        cd scripts && 
+        cd scripts &&
         npm install &&
         npm run generate:docker &&
         echo '✅ TypeScript types generated successfully!'

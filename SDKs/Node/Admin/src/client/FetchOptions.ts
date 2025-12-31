@@ -2,6 +2,6 @@
 
 // Re-export HTTP types from Common package
 export {
-  ExtendedRequestInit,
+  type ExtendedRequestInit,
   ResponseParser
 } from '@knn_labs/conduit-common';

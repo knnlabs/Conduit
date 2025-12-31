@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DOTNET_VERSION: '9.0.x'
+  DOTNET_VERSION: '10.0.x'
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
@@ -124,14 +124,14 @@ jobs:
       if: matrix.language == 'javascript'
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
         cache-dependency-path: |
           SDKs/Node/package-lock.json
           SDKs/Node/Admin/package-lock.json
           SDKs/Node/Core/package-lock.json
           SDKs/Node/Common/package-lock.json
-          ConduitLLM.WebUI/package-lock.json
+          WebAdmin/package-lock.json
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3

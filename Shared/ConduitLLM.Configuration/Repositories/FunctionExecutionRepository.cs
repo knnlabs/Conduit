@@ -1,0 +1,428 @@
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Utilities;
+using ConduitLLM.Functions.Entities;
+using ConduitLLM.Functions.Enums;
+using ConduitLLM.Functions.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace ConduitLLM.Configuration.Repositories;
+
+/// <summary>
+/// Repository implementation for function executions using Entity Framework Core.
+/// Includes distributed execution support via leasing mechanism.
+/// </summary>
+public class FunctionExecutionRepository : IFunctionExecutionRepository
+{
+    private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
+    private readonly ILogger<FunctionExecutionRepository> _logger;
+
+    public FunctionExecutionRepository(
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
+        ILogger<FunctionExecutionRepository> logger)
+    {
+        _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task<FunctionExecution?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            return await dbContext.FunctionExecutions
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                
+                .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting function execution with ID {ExecutionId}", LogSanitizer.SanitizeObject(id));
+            throw;
+        }
+    }
+
+    public async Task<List<FunctionExecution>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            return await dbContext.FunctionExecutions
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                .Where(e => e.VirtualKeyId == virtualKeyId)
+                .OrderByDescending(e => e.RequestedAt)
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting executions for virtual key {VirtualKeyId}",
+                LogSanitizer.SanitizeObject(virtualKeyId));
+            throw;
+        }
+    }
+
+    public async Task<List<FunctionExecution>> GetByFunctionConfigurationIdAsync(int functionConfigurationId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            return await dbContext.FunctionExecutions
+                .AsNoTracking()
+                
+                .Where(e => e.FunctionConfigurationId == functionConfigurationId)
+                .OrderByDescending(e => e.RequestedAt)
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting executions for function configuration {ConfigId}",
+                LogSanitizer.SanitizeObject(functionConfigurationId));
+            throw;
+        }
+    }
+
+    public async Task<List<FunctionExecution>> GetByStateAsync(ExecutionState state, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            return await dbContext.FunctionExecutions
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                
+                .Where(e => e.State == state)
+                .OrderBy(e => e.RequestedAt)
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting executions with state {State}", LogSanitizer.SanitizeObject(state));
+            throw;
+        }
+    }
+
+    public async Task<FunctionExecution?> LeaseNextPendingAsync(string workerId, TimeSpan leaseDuration, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(workerId))
+        {
+            throw new ArgumentException("Worker ID cannot be null or empty", nameof(workerId));
+        }
+
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                var now = DateTime.UtcNow;
+                var leaseExpiry = now.Add(leaseDuration);
+
+                // Find the next pending execution that is not leased or has an expired lease
+                var execution = await dbContext.FunctionExecutions
+                    .Where(e => e.State == ExecutionState.Pending
+                        && (e.LeasedBy == null || e.LeaseExpiryTime < now))
+                    .OrderBy(e => e.RequestedAt)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (execution == null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return null;
+                }
+
+                // Lease the execution
+                execution.LeasedBy = workerId;
+                execution.LeaseExpiryTime = leaseExpiry;
+                execution.Version++;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                _logger.LogInformation("Leased execution {ExecutionId} to worker {WorkerId} until {LeaseExpiry}",
+                    execution.Id, workerId, leaseExpiry);
+
+                return execution;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Another worker grabbed this execution, that's okay
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogDebug(ex, "Concurrency conflict while leasing execution (another worker may have claimed it)");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Error leasing next pending execution for worker {WorkerId}",
+                    LogSanitizer.SanitizeObject(workerId));
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in LeaseNextPendingAsync for worker {WorkerId}",
+                LogSanitizer.SanitizeObject(workerId));
+            throw;
+        }
+    }
+
+    public async Task<List<FunctionExecution>> GetExpiredLeasesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+
+            return await dbContext.FunctionExecutions
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                .Where(e => e.LeasedBy != null
+                    && e.LeaseExpiryTime < now
+                    && (e.State == ExecutionState.Pending || e.State == ExecutionState.Running))
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting executions with expired leases");
+            throw;
+        }
+    }
+
+    public async Task<List<FunctionExecution>> GetReadyForRetryAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+
+            return await dbContext.FunctionExecutions
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                .Where(e => e.State == ExecutionState.Failed
+                    && e.NextRetryAt != null
+                    && e.NextRetryAt <= now)
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting executions ready for retry");
+            throw;
+        }
+    }
+
+    public async Task<Guid> CreateAsync(FunctionExecution execution, CancellationToken cancellationToken = default)
+    {
+        if (execution == null)
+        {
+            throw new ArgumentNullException(nameof(execution));
+        }
+
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                if (execution.Id == Guid.Empty)
+                {
+                    execution.Id = Guid.NewGuid();
+                }
+
+                dbContext.FunctionExecutions.Add(execution);
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+
+                return execution.Id;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Transaction rolled back while creating function execution");
+                throw;
+            }
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error creating function execution");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating function execution");
+            throw;
+        }
+    }
+
+    public async Task<bool> UpdateAsync(FunctionExecution execution, CancellationToken cancellationToken = default)
+    {
+        if (execution == null)
+        {
+            throw new ArgumentNullException(nameof(execution));
+        }
+
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                // Increment version for optimistic concurrency
+                var originalVersion = execution.Version;
+                execution.Version++;
+
+                // Attach and update
+                dbContext.FunctionExecutions.Attach(execution);
+                dbContext.Entry(execution).State = EntityState.Modified;
+
+                // Set original version for concurrency check
+                dbContext.Entry(execution).Property(e => e.Version).OriginalValue = originalVersion;
+
+                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                return rowsAffected > 0;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogWarning(ex, "Concurrency conflict updating execution {ExecutionId}",
+                    execution.Id);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Transaction rolled back while updating function execution {ExecutionId}",
+                    LogSanitizer.SanitizeObject(execution.Id));
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating function execution {ExecutionId}",
+                LogSanitizer.SanitizeObject(execution.Id));
+            throw;
+        }
+    }
+
+    public async Task UpdateStateAsync(Guid executionId, ExecutionState state, string? errorMessage = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                var execution = await dbContext.FunctionExecutions
+                    .FirstOrDefaultAsync(e => e.Id == executionId, cancellationToken);
+
+                if (execution != null)
+                {
+                    execution.State = state;
+                    execution.ErrorMessage = errorMessage;
+                    execution.Version++;
+
+                    if (state == ExecutionState.Running && !execution.StartedAt.HasValue)
+                    {
+                        execution.StartedAt = DateTime.UtcNow;
+                    }
+                    else if (state == ExecutionState.Completed || state == ExecutionState.Failed || state == ExecutionState.Cancelled)
+                    {
+                        execution.CompletedAt = DateTime.UtcNow;
+                        if (execution.StartedAt.HasValue)
+                        {
+                            execution.Duration = execution.CompletedAt.Value - execution.StartedAt.Value;
+                        }
+                    }
+
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Transaction rolled back while updating state for execution {ExecutionId}",
+                    LogSanitizer.SanitizeObject(executionId));
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating state for execution {ExecutionId}",
+                LogSanitizer.SanitizeObject(executionId));
+            throw;
+        }
+    }
+
+    public async Task UpdateProgressAsync(Guid executionId, int progressPercentage, string? statusMessage = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var execution = await dbContext.FunctionExecutions
+                .FirstOrDefaultAsync(e => e.Id == executionId, cancellationToken);
+
+            if (execution != null)
+            {
+                execution.ProgressPercentage = progressPercentage;
+                execution.StatusMessage = statusMessage;
+                execution.Version++;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating progress for execution {ExecutionId}",
+                LogSanitizer.SanitizeObject(executionId));
+            // Don't throw - progress updates are non-critical
+        }
+    }
+
+    public async Task<int> DeleteOldExecutionsAsync(DateTime olderThan, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                var oldExecutions = await dbContext.FunctionExecutions
+                    .Where(e => e.RequestedAt < olderThan)
+                    .ToListAsync(cancellationToken);
+
+                dbContext.FunctionExecutions.RemoveRange(oldExecutions);
+                int count = await dbContext.SaveChangesAsync(cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+
+                _logger.LogInformation("Deleted {Count} old function executions older than {OlderThan}",
+                    count, olderThan);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Transaction rolled back while deleting old executions");
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting old executions");
+            throw;
+        }
+    }
+}

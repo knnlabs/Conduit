@@ -277,9 +277,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - service: webui
-            image: ghcr.io/knnlabs/conduit-webui
-            dockerfile: ./ConduitLLM.WebUI/Dockerfile
+          - service: webadmin
+            image: ghcr.io/knnlabs/conduit-webadmin
+            dockerfile: ./ConduitLLM.WebAdmin/Dockerfile
           - service: http
             image: ghcr.io/knnlabs/conduit-http
             dockerfile: ./ConduitLLM.Http/Dockerfile
@@ -363,8 +363,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - service: webui
-            image: ghcr.io/knnlabs/conduit-webui
+          - service: webadmin
+            image: ghcr.io/knnlabs/conduit-webadmin
           - service: http
             image: ghcr.io/knnlabs/conduit-http
           - service: admin
@@ -450,6 +450,6 @@ jobs:
           echo "Docker images have been successfully built:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Images are available at:" >> $GITHUB_STEP_SUMMARY
-          echo "- 🌐 `ghcr.io/knnlabs/conduit-webui` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 `ghcr.io/knnlabs/conduit-webadmin` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
           echo "- 🔌 `ghcr.io/knnlabs/conduit-http` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
           echo "- 🛠️ `ghcr.io/knnlabs/conduit-admin` (linux/amd64)" >> $GITHUB_STEP_SUMMARY

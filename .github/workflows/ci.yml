@@ -8,8 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  DOTNET_VERSION: '9.0.x'
-  NODE_VERSION: '20'
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '22'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,6 +20,29 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduitpass
+          POSTGRES_DB: conduitdb
+        options: >-
+          --health-cmd "pg_isready -U conduit -d conduitdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       
@@ -38,31 +61,32 @@ jobs:
             SDKs/Node/Admin/package-lock.json
             SDKs/Node/Core/package-lock.json
             SDKs/Node/Common/package-lock.json
-            ConduitLLM.WebUI/package-lock.json
+            WebAdmin/package-lock.json
       
-      - name: Validate PostgreSQL migrations
-        run: ./scripts/migrations/validate-postgresql-syntax.sh
-        
       - name: .NET Build & Test
         run: |
           dotnet restore
           dotnet build --no-restore
           # Run tests but exclude integration tests and timing-sensitive tests
           dotnet test --no-build --verbosity normal --filter "FullyQualifiedName!~IntegrationTests&Category!=TimingSensitive"
+        env:
+          TEST_REDIS_CONNECTION: localhost:6379
+          DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
       
       - name: NPM Build
         run: |
           cd SDKs/Node
           npm ci
           npm run build
-          npm test -- --silent
+          npm run test:ci
       
-      - name: WebUI Type Check
+      - name: WebAdmin Lint & Type Check
         run: |
-          cd ConduitLLM.WebUI
+          cd WebAdmin
           npm ci
           # Clean any stale .next directory before type checking
           rm -rf .next
+          npm run lint
           npm run type-check
 
   # Build Docker images (push only from master)
@@ -76,15 +100,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - service: webui
+          - service: webadmin
             context: .
-            dockerfile: ConduitLLM.WebUI/Dockerfile
+            dockerfile: WebAdmin/Dockerfile
           - service: http
             context: .
-            dockerfile: ConduitLLM.Http/Dockerfile
+            dockerfile: Services/ConduitLLM.Gateway/Dockerfile
           - service: admin
             context: .
-            dockerfile: ConduitLLM.Admin/Dockerfile
+            dockerfile: Services/ConduitLLM.Admin/Dockerfile
     
     steps:
       - uses: actions/checkout@v4
@@ -150,10 +174,25 @@ jobs:
           npm ci
           npm run build
           
-          # Publish with 'next' tag for continuous releases from master
-          # Fail fast if any publish fails
-          cd Common && npm publish --tag next --access public
-          cd ../Admin && npm publish --tag next --access public
-          cd ../Core && npm publish --tag next --access public
+          # Generate unique timestamp suffix for continuous releases
+          TIMESTAMP=$(date +%s)
+          
+          # Update version and publish Common first (others depend on it)
+          cd Common
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
+          npm publish --tag next --access public
+          
+          # Update version and publish Admin
+          cd ../Admin
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
+          npm publish --tag next --access public
+          
+          # Update version and publish Core
+          cd ../Core
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
+          npm publish --tag next --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

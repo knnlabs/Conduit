@@ -1,58 +1,146 @@
-import type { 
-  ApiClientConfig, 
-  RetryConfig, 
-  Logger, 
-  CacheProvider, 
-  RequestConfigInfo, 
-  ResponseInfo 
+/**
+ * Admin SDK HTTP client extending the common BaseApiClient
+ *
+ * Features:
+ * - X-Master-Key authentication
+ * - Fixed delay retry strategy
+ * - Built-in caching support
+ * - Structured logging support
+ * - Extended GET with query parameter support
+ */
+
+import {
+  BaseApiClient,
+  type RetryStrategy,
+  RetryStrategyType,
+  handleApiError,
+} from '@knn_labs/conduit-common';
+import type {
+  ApiClientConfig,
+  RetryConfig,
+  RequestConfigInfo,
+  ResponseInfo
 } from './types';
-import { handleApiError } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO } from '../constants';
 import { ExtendedRequestInit, ResponseParser } from './FetchOptions';
 import { HttpMethod, RequestOptions } from './HttpMethod';
 
 /**
- * Type-safe base API client for Conduit Admin using native fetch
- * Provides all functionality without HTTP complexity
+ * Admin SDK client extending the common BaseApiClient
+ * Uses X-Master-Key authentication and fixed delay retry with caching support
  */
-export abstract class FetchBaseApiClient {
-  protected readonly logger?: Logger;
-  protected readonly cache?: CacheProvider;
+export abstract class FetchBaseApiClient extends BaseApiClient {
+  /**
+   * Master key for authentication
+   */
+  protected readonly masterKey: string;
+
+  /**
+   * Legacy retry config for backward compatibility
+   */
   protected readonly retryConfig: RetryConfig;
+
+  /**
+   * Custom retry delays array
+   */
   protected readonly retryDelays?: number[];
+
+  /**
+   * Legacy callback references for backward compatibility
+   */
   protected readonly onError?: (error: Error) => void;
   protected readonly onRequest?: (config: RequestConfigInfo) => void | Promise<void>;
   protected readonly onResponse?: (response: ResponseInfo) => void | Promise<void>;
-  protected readonly baseUrl: string;
-  protected readonly masterKey: string;
-  protected readonly timeout: number;
-  protected readonly defaultHeaders: Record<string, string>;
 
   constructor(config: ApiClientConfig) {
-    this.logger = config.logger;
-    this.cache = config.cache;
+    // Build retry strategy from config
+    const retryStrategy = config.retryDelay
+      ? ({
+          type: RetryStrategyType.CUSTOM_DELAYS,
+          delays: config.retryDelay,
+        } as RetryStrategy)
+      : FetchBaseApiClient.normalizeRetryConfig(config.retries);
+
+    super({
+      baseUrl: config.baseUrl,
+      timeout: config.timeout ?? 30000,
+      defaultHeaders: {
+        [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
+        ...config.defaultHeaders,
+      },
+      retryStrategy,
+      debug: false,
+      onError: config.onError,
+      onRequest: config.onRequest as ((config: { method: string; url: string; headers: Record<string, string>; data?: unknown }) => void | Promise<void>) | undefined,
+      onResponse: config.onResponse as ((response: { status: number; statusText: string; headers: Record<string, string>; data: unknown; config: { method: string; url: string; headers: Record<string, string>; data?: unknown } }) => void | Promise<void>) | undefined,
+      logger: config.logger,
+      cache: config.cache,
+    });
+
+    this.masterKey = config.masterKey;
     this.retryDelays = config.retryDelay;
+
+    // Store callbacks for backward compatibility
     this.onError = config.onError;
     this.onRequest = config.onRequest;
     this.onResponse = config.onResponse;
-    this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
-    this.masterKey = config.masterKey;
-    this.timeout = config.timeout ?? 30000;
-    this.defaultHeaders = config.defaultHeaders ?? {};
-    
-    this.retryConfig = this.normalizeRetryConfig(config.retries);
+
+    // Legacy retry config for backward compatibility
+    this.retryConfig = this.normalizeRetryConfigInstance(config.retries);
   }
 
-  private normalizeRetryConfig(retries?: number | RetryConfig): RetryConfig {
+  /**
+   * Static method to normalize retry config for super() call
+   */
+  private static normalizeRetryConfig(retries?: number | RetryConfig): RetryStrategy {
+    if (typeof retries === 'number') {
+      return {
+        type: RetryStrategyType.FIXED_DELAY,
+        maxRetries: retries,
+        delayMs: 1000,
+        retryCondition: (error: unknown): boolean => {
+          if (error instanceof Error) {
+            return (
+              error.name === 'AbortError' ||
+              error.message.includes('network') ||
+              error.message.includes('fetch')
+            );
+          }
+          return false;
+        },
+      };
+    }
+    if (retries) {
+      return {
+        type: RetryStrategyType.FIXED_DELAY,
+        maxRetries: retries.maxRetries,
+        delayMs: retries.retryDelay ?? 1000,
+        retryCondition: retries.retryCondition,
+      };
+    }
+    // Default
+    return {
+      type: RetryStrategyType.FIXED_DELAY,
+      maxRetries: 3,
+      delayMs: 1000,
+    };
+  }
+
+  /**
+   * Instance method to normalize retry config
+   */
+  private normalizeRetryConfigInstance(retries?: number | RetryConfig): RetryConfig {
     if (typeof retries === 'number') {
       return {
         maxRetries: retries,
         retryDelay: 1000,
         retryCondition: (error: unknown): boolean => {
           if (error instanceof Error) {
-            return error.name === 'AbortError' || 
-                   error.message.includes('network') ||
-                   error.message.includes('fetch');
+            return (
+              error.name === 'AbortError' ||
+              error.message.includes('network') ||
+              error.message.includes('fetch')
+            );
           }
           return false;
         },
@@ -62,25 +150,116 @@ export abstract class FetchBaseApiClient {
   }
 
   /**
-   * Type-safe request method with proper request/response typing
+   * Returns X-Master-Key authentication headers
+   */
+  protected getAuthHeaders(): Record<string, string> {
+    return {
+      'X-Master-Key': this.masterKey,
+    };
+  }
+
+  /**
+   * Returns default fixed delay retry strategy
+   */
+  protected getDefaultRetryStrategy(): RetryStrategy {
+    return {
+      type: RetryStrategyType.FIXED_DELAY,
+      maxRetries: 3,
+      delayMs: 1000,
+      retryCondition: (error: unknown): boolean => {
+        if (error instanceof Error) {
+          return (
+            error.name === 'AbortError' ||
+            error.message.includes('network') ||
+            error.message.includes('fetch')
+          );
+        }
+        return false;
+      },
+    };
+  }
+
+  /**
+   * Override to use Admin SDK error handling pattern
+   */
+  protected async handleErrorResponse(response: Response): Promise<Error> {
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+
+    let data: unknown;
+    try {
+      data = await this.parseErrorResponseBody(response);
+    } catch {
+      data = null;
+    }
+
+    console.error('[SDK] API Error Response:', {
+      url: response.url,
+      status: response.status,
+      statusText: response.statusText,
+    });
+
+    // Use handleApiError which throws the appropriate error type
+    try {
+      handleApiError({
+        response: {
+          status: response.status,
+          data,
+          headers,
+        },
+        config: { url: response.url, method: 'unknown' },
+        isHttpError: false,
+        message: `HTTP ${response.status}: ${response.statusText}`,
+      });
+    } catch (error) {
+      return error as Error;
+    }
+
+    // Fallback (shouldn't reach here as handleApiError throws)
+    return new Error(`HTTP ${response.status}`);
+  }
+
+  /**
+   * Parse error response body
+   */
+  private async parseErrorResponseBody(response: Response): Promise<unknown> {
+    try {
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        return await response.json() as unknown;
+      }
+      return await response.text();
+    } catch {
+      return null;
+    }
+  }
+
+  // ============================================================================
+  // Override HTTP methods to maintain Admin SDK's RequestOptions interface
+  // ============================================================================
+
+  /**
+   * Type-safe request method with Admin SDK options
    */
   protected async request<TResponse = unknown, TRequest = unknown>(
     url: string,
     options: RequestOptions<TRequest> & { method?: HttpMethod } = {}
   ): Promise<TResponse> {
-    const fullUrl = this.buildUrl(url);
+    const fullUrl = this.adminBuildUrl(url);
     const controller = new AbortController();
-    
+
     // Set up timeout
-    const timeoutId = options.timeout ?? this.timeout
-      ? setTimeout(() => controller.abort(), options.timeout ?? this.timeout)
+    const timeoutId = options.timeout ?? (this as unknown as { timeout: number }).timeout
+      ? setTimeout(() => controller.abort(), options.timeout ?? (this as unknown as { timeout: number }).timeout)
       : undefined;
 
     try {
       const requestInfo: RequestConfigInfo = {
         method: options.method ?? 'GET',
         url: fullUrl,
-        headers: this.buildHeaders(options.headers),
+        headers: this.adminBuildHeaders(options.headers),
         data: options.body,
       };
 
@@ -92,7 +271,7 @@ export abstract class FetchBaseApiClient {
       console.warn('[SDK] API Request:', requestInfo.method, requestInfo.url);
       this.log('debug', `API Request: ${requestInfo.method} ${requestInfo.url}`);
 
-      const response = await this.executeWithRetry<TResponse, TRequest>(
+      const response = await this.executeRequestWithRetry<TResponse, TRequest>(
         fullUrl,
         {
           method: requestInfo.method,
@@ -100,7 +279,7 @@ export abstract class FetchBaseApiClient {
           body: options.body ? JSON.stringify(options.body) : undefined,
           signal: options.signal ?? controller.signal,
           responseType: options.responseType,
-          timeout: options.timeout ?? this.timeout,
+          timeout: options.timeout ?? (this as unknown as { timeout: number }).timeout,
         }
       );
 
@@ -113,7 +292,129 @@ export abstract class FetchBaseApiClient {
   }
 
   /**
-   * Type-safe GET request
+   * Execute request with retry logic
+   */
+  private async executeRequestWithRetry<TResponse, TRequest = unknown>(
+    url: string,
+    init: ExtendedRequestInit,
+    attempt: number = 1
+  ): Promise<TResponse> {
+    try {
+      const response = await fetch(url, ResponseParser.cleanRequestInit(init));
+
+      this.log('debug', `API Response: ${response.status} ${response.statusText}`);
+
+      // Convert headers to object (needed for both onResponse and error handling)
+      const headers: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+
+      // Call onResponse hook if provided
+      if (this.onResponse) {
+        const responseInfo: ResponseInfo = {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+          data: undefined, // Will be populated after parsing
+          config: { url, method: init?.method ?? HttpMethod.GET } as RequestConfigInfo,
+        };
+        await this.onResponse(responseInfo);
+      }
+
+      if (!response.ok) {
+        const apiError = await this.handleErrorResponse(response);
+        throw apiError;
+      }
+
+      // Handle empty responses
+      const contentLength = response.headers.get('content-length');
+
+      if (contentLength === '0' || response.status === 204) {
+        return undefined as TResponse;
+      }
+
+      // Parse response using ResponseParser
+      return await ResponseParser.parse<TResponse>(response, init.responseType);
+    } catch (error) {
+      if (attempt > this.retryConfig.maxRetries) {
+        if (this.onError && error instanceof Error) {
+          this.onError(error);
+        }
+        throw error;
+      }
+
+      const shouldRetry =
+        this.retryConfig.retryCondition &&
+        error instanceof Error &&
+        this.retryConfig.retryCondition(error as unknown as Error);
+
+      if (shouldRetry) {
+        const delay = this.calculateRetryDelay(attempt);
+        this.log('debug', `Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
+
+        await this.adminSleep(delay);
+        return this.executeRequestWithRetry<TResponse, TRequest>(url, init, attempt + 1);
+      }
+
+      if (this.onError && error instanceof Error) {
+        this.onError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate retry delay
+   */
+  private calculateRetryDelay(attempt: number): number {
+    if (this.retryDelays && this.retryDelays.length > 0) {
+      const index = Math.min(attempt - 1, this.retryDelays.length - 1);
+      return this.retryDelays[index];
+    }
+
+    const baseDelay = this.retryConfig.retryDelay ?? 1000;
+    return baseDelay * Math.pow(2, attempt - 1);
+  }
+
+  /**
+   * Sleep for a specified duration
+   */
+  private adminSleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Build full URL from path
+   */
+  private adminBuildUrl(path: string): string {
+    // If path is already a full URL, return it
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+
+    // Ensure path starts with /
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+
+    return `${(this as unknown as { baseUrl: string }).baseUrl}${cleanPath}`;
+  }
+
+  /**
+   * Build headers including auth, defaults, and additional headers
+   */
+  private adminBuildHeaders(additionalHeaders?: Record<string, string>): Record<string, string> {
+    return {
+      [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
+      'X-Master-Key': this.masterKey,
+      [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
+      ...(this as unknown as { defaultHeaders: Record<string, string> }).defaultHeaders,
+      ...additionalHeaders,
+    };
+  }
+
+  /**
+   * Type-safe GET request with query parameter support
+   * Supports both 2-argument and 3-argument patterns for backward compatibility
    */
   protected async get<TResponse = unknown>(
     url: string,
@@ -132,23 +433,35 @@ export abstract class FetchBaseApiClient {
   ): Promise<TResponse> {
     // Handle 3-argument case (url, params, options)
     if (extraOptions) {
-      const urlWithParams = optionsOrParams ? this.buildUrlWithParams(url, optionsOrParams as Record<string, unknown>) : url;
+      const urlWithParams = optionsOrParams
+        ? this.buildUrlWithParams(url, optionsOrParams as Record<string, unknown>)
+        : url;
       return this.request<TResponse>(urlWithParams, { ...extraOptions, method: HttpMethod.GET });
     }
-    
+
     // Check if it's options (has headers/signal/timeout/responseType) or params
-    const isOptions = optionsOrParams && 
-      ('headers' in optionsOrParams || 'signal' in optionsOrParams || 
-       'timeout' in optionsOrParams || 'responseType' in optionsOrParams);
-    
+    const isOptions =
+      optionsOrParams &&
+      ('headers' in optionsOrParams ||
+        'signal' in optionsOrParams ||
+        'timeout' in optionsOrParams ||
+        'responseType' in optionsOrParams);
+
     if (isOptions) {
-      return this.request<TResponse>(url, { 
-        ...(optionsOrParams as { headers?: Record<string, string>; signal?: AbortSignal; timeout?: number; responseType?: 'json' | 'text' | 'blob' | 'arraybuffer'; }), 
-        method: HttpMethod.GET 
+      return this.request<TResponse>(url, {
+        ...(optionsOrParams as {
+          headers?: Record<string, string>;
+          signal?: AbortSignal;
+          timeout?: number;
+          responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
+        }),
+        method: HttpMethod.GET,
       });
     } else {
       // It's params - add them to the URL
-      const urlWithParams = optionsOrParams ? this.buildUrlWithParams(url, optionsOrParams) : url;
+      const urlWithParams = optionsOrParams
+        ? this.buildUrlWithParams(url, optionsOrParams)
+        : url;
       return this.request<TResponse>(urlWithParams, { method: HttpMethod.GET });
     }
   }
@@ -165,10 +478,10 @@ export abstract class FetchBaseApiClient {
       timeout?: number;
     }
   ): Promise<TResponse> {
-    return this.request<TResponse, TRequest>(url, { 
-      ...options, 
-      method: HttpMethod.POST, 
-      body: data 
+    return this.request<TResponse, TRequest>(url, {
+      ...options,
+      method: HttpMethod.POST,
+      body: data,
     });
   }
 
@@ -184,10 +497,10 @@ export abstract class FetchBaseApiClient {
       timeout?: number;
     }
   ): Promise<TResponse> {
-    return this.request<TResponse, TRequest>(url, { 
-      ...options, 
-      method: HttpMethod.PUT, 
-      body: data 
+    return this.request<TResponse, TRequest>(url, {
+      ...options,
+      method: HttpMethod.PUT,
+      body: data,
     });
   }
 
@@ -203,10 +516,10 @@ export abstract class FetchBaseApiClient {
       timeout?: number;
     }
   ): Promise<TResponse> {
-    return this.request<TResponse, TRequest>(url, { 
-      ...options, 
-      method: HttpMethod.PATCH, 
-      body: data 
+    return this.request<TResponse, TRequest>(url, {
+      ...options,
+      method: HttpMethod.PATCH,
+      body: data,
     });
   }
 
@@ -224,150 +537,37 @@ export abstract class FetchBaseApiClient {
     return this.request<TResponse>(url, { ...options, method: HttpMethod.DELETE });
   }
 
-  private buildUrl(path: string): string {
-    // If path is already a full URL, return it
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
-    }
-    
-    // Ensure path starts with /
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    
-    return `${this.baseUrl}${cleanPath}`;
-  }
+  /**
+   * Build URL with query parameters
+   */
+  private buildUrlWithParams(url: string, params: Record<string, unknown>): string {
+    const searchParams = new URLSearchParams();
 
-  private buildHeaders(additionalHeaders?: Record<string, string>): Record<string, string> {
-    return {
-      [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
-      'X-Master-Key': this.masterKey,
-      [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
-      ...this.defaultHeaders,
-      ...additionalHeaders,
-    };
-  }
-
-  private async executeWithRetry<TResponse, TRequest = unknown>(
-    url: string,
-    init: ExtendedRequestInit,
-    attempt: number = 1
-  ): Promise<TResponse> {
-    try {
-      const response = await fetch(url, ResponseParser.cleanRequestInit(init));
-      
-      this.log('debug', `API Response: ${response.status} ${response.statusText}`);
-      
-      // Convert headers to object (needed for both onResponse and error handling)
-      const headers: Record<string, string> = {};
-      response.headers.forEach((value, key) => {
-        headers[key] = value;
-      });
-      
-      // Call onResponse hook if provided
-      if (this.onResponse) {
-        const responseInfo: ResponseInfo = {
-          status: response.status,
-          statusText: response.statusText,
-          headers,
-          data: undefined, // Will be populated after parsing
-          config: { url, method: init?.method ?? HttpMethod.GET } as RequestConfigInfo,
-        };
-        await this.onResponse(responseInfo);
-      }
-
-      if (!response.ok) {
-        console.error('[SDK] API Error Response:', {
-          url,
-          status: response.status,
-          statusText: response.statusText,
-          method: init.method ?? HttpMethod.GET
-        });
-        
-        const apiError = handleApiError({
-          response: {
-            status: response.status,
-            data: await this.parseErrorResponse(response),
-            headers,
-          },
-          config: { url, method: init.method ?? HttpMethod.GET },
-          isHttpError: false,
-          message: `HTTP ${response.status}: ${response.statusText}`,
-        });
-        
-        throw apiError;
-      }
-
-      // Handle empty responses
-      const contentLength = response.headers.get('content-length');
-      // Content type checked but not used for empty responses
-      
-      if (contentLength === '0' || response.status === 204) {
-        return undefined as TResponse;
-      }
-
-      // Parse response using ResponseParser
-      return await ResponseParser.parse<TResponse>(response, init.responseType);
-    } catch (error) {
-      if (attempt > this.retryConfig.maxRetries) {
-        if (this.onError && error instanceof Error) {
-          this.onError(error);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => searchParams.append(key, String(v)));
+        } else {
+          searchParams.append(key, String(value));
         }
-        throw error;
       }
+    });
 
-      const shouldRetry = this.retryConfig.retryCondition && 
-                         error instanceof Error &&
-                         this.retryConfig.retryCondition(error as unknown as Error);
-
-      if (shouldRetry) {
-        const delay = this.calculateRetryDelay(attempt);
-        this.log('debug', `Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
-        
-        await this.sleep(delay);
-        return this.executeWithRetry<TResponse, TRequest>(url, init, attempt + 1);
-      }
-
-      if (this.onError && error instanceof Error) {
-        this.onError(error);
-      }
-      throw error;
-    }
+    const queryString = searchParams.toString();
+    return queryString ? `${url}?${queryString}` : url;
   }
 
-  private async parseErrorResponse(response: Response): Promise<unknown> {
-    try {
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        return await response.json() as unknown;
-      }
-      return await response.text();
-    } catch {
-      return null;
-    }
-  }
+  // ============================================================================
+  // Caching Utilities (inherited from BaseApiClient, re-exposed for compatibility)
+  // ============================================================================
 
-  private calculateRetryDelay(attempt: number): number {
-    if (this.retryDelays && this.retryDelays.length > 0) {
-      const index = Math.min(attempt - 1, this.retryDelays.length - 1);
-      return this.retryDelays[index];
-    }
-    
-    const baseDelay = this.retryConfig.retryDelay ?? 1000;
-    return baseDelay * Math.pow(2, attempt - 1);
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  protected log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
-    if (this.logger?.[level]) {
-      this.logger[level](message, ...args);
-    }
-  }
-
+  /**
+   * Generate a cache key from resource and identifiers
+   * @override Extended signature for Admin SDK compatibility
+   */
   protected getCacheKey(
-    methodOrResource: string, 
-    urlOrId?: unknown, 
+    methodOrResource: string,
+    urlOrId?: unknown,
     paramsOrId2?: Record<string, unknown> | string
   ): string {
     // Handle different signatures
@@ -383,72 +583,5 @@ export abstract class FetchBaseApiClient {
       const idStr = urlOrId ? JSON.stringify(urlOrId) : '';
       return `${methodOrResource}:${idStr}`;
     }
-  }
-
-  protected async getFromCache<T>(key: string): Promise<T | null> {
-    if (!this.cache) return null;
-    
-    try {
-      const cached = await this.cache.get<T>(key);
-      if (cached) {
-        this.log('debug', `Cache hit for key: ${key}`);
-        return cached;
-      }
-    } catch (error) {
-      this.log('error', 'Cache get error:', error);
-    }
-    
-    return null;
-  }
-
-  protected async setCache(key: string, value: unknown, ttl?: number): Promise<void> {
-    if (!this.cache) return;
-    
-    try {
-      await this.cache.set(key, value, ttl);
-      this.log('debug', `Cache set for key: ${key}`);
-    } catch (error) {
-      this.log('error', 'Cache set error:', error);
-    }
-  }
-
-  /**
-   * Execute a function with caching
-   */
-  protected async withCache<T>(
-    cacheKey: string,
-    fn: () => Promise<T>,
-    ttl?: number
-  ): Promise<T> {
-    // Try to get from cache first
-    const cached = await this.getFromCache<T>(cacheKey);
-    if (cached !== null) {
-      return cached;
-    }
-
-    // Execute the function
-    const result = await fn();
-
-    // Cache the result
-    await this.setCache(cacheKey, result, ttl);
-
-    return result;
-  }
-
-  private buildUrlWithParams(url: string, params: Record<string, unknown>): string {
-    const searchParams = new URLSearchParams();
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (Array.isArray(value)) {
-          value.forEach(v => searchParams.append(key, String(v)));
-        } else {
-          searchParams.append(key, String(value));
-        }
-      }
-    });
-    
-    const queryString = searchParams.toString();
-    return queryString ? `${url}?${queryString}` : url;
   }
 }

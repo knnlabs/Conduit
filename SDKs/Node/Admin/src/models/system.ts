@@ -9,7 +9,6 @@ export interface SystemInfoDto {
   systemTime: string;
   features: {
     ipFiltering: boolean;
-    providerHealth: boolean;
     costTracking: boolean;
     audioSupport: boolean;
   };

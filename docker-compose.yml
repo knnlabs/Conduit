@@ -52,7 +52,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: ConduitLLM.Http/Dockerfile
+      dockerfile: Services/ConduitLLM.Gateway/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,7 +70,7 @@ services:
       Conduit__PerformanceTracking__IncludeInResponse: "true"
       Conduit__PerformanceTracking__TrackStreamingMetrics: "true"
       # Media Lifecycle Configuration
-      MediaLifecycle__SchedulerMode: "CoreApi"  # Options: Disabled, CoreApi, AdminApi, Any
+      MediaLifecycle__Enabled: "false"  # Cleanup runs on Admin API, not Gateway API
       MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
       MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
       MediaLifecycle__EnableSoftDelete: "true"
@@ -144,7 +144,7 @@ services:
   admin:
     build:
       context: .
-      dockerfile: ConduitLLM.Admin/Dockerfile
+      dockerfile: Services/ConduitLLM.Admin/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -172,6 +172,15 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
+      # Media Lifecycle Configuration (Admin API runs the cleanup service)
+      MediaLifecycle__Enabled: "true"  # Enable cleanup on Admin API
+      MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
+      MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
+      MediaLifecycle__EnableSoftDelete: "true"
+      MediaLifecycle__SoftDeleteGracePeriodDays: "7"
+      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
+      MediaLifecycle__MaxBatchSize: "50"
+      MediaLifecycle__MonthlyDeleteBudget: "500000"
       # Discovery Cache configuration
       Discovery__CacheDurationMinutes: "360"  # 6 hours
       Discovery__EnableCaching: "true"
@@ -206,10 +215,10 @@ services:
       retries: 3
       start_period: 60s
 
-  webui:
+  webadmin:
     build:
       context: .
-      dockerfile: ConduitLLM.WebUI/Dockerfile
+      dockerfile: WebAdmin/Dockerfile
     depends_on:
       admin:
         condition: service_healthy
@@ -226,9 +235,9 @@ services:
       # External URLs for SignalR connections from browser
       CONDUIT_API_EXTERNAL_URL: http://localhost:5000
       CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
-      # Clerk authentication for WebUI access (Required)
+      # Clerk authentication for WebAdmin access (Required)
       # Get these values from your Clerk dashboard at https://dashboard.clerk.com
-      # Users must have siteadmin: true in their public metadata to access the WebUI
+      # Users must have siteadmin: true in their public metadata to access the WebAdmin
       
       # Optional: Configure a redirect URL for users without admin access
       # If set, users without proper permissions will be redirected to this URL
@@ -237,7 +246,7 @@ services:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
       # Disable Clerk authentication for development
-      DISABLE_CLERK_AUTH: "true"
+      CLERK_AUTH_ENABLED: "false"
     ports:
       - "3000:3000"
     restart: on-failure
@@ -248,7 +257,109 @@ services:
       retries: 3
       start_period: 40s
 
+  # Redis Exporter for Prometheus metrics
+  # Note: No healthcheck - these are minimal scratch images without shell/wget
+  # Prometheus scrape failures will indicate if the exporter is down
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    restart: always
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # RabbitMQ Exporter for Prometheus metrics
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter:latest
+    restart: always
+    environment:
+      RABBIT_URL: "http://rabbitmq:15672"
+      RABBIT_USER: conduit
+      RABBIT_PASSWORD: conduitpass
+      PUBLISH_PORT: "9419"
+      OUTPUT_FORMAT: "prometheus"
+    ports:
+      - "9419:9419"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  # PostgreSQL Exporter for Prometheus metrics
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: always
+    environment:
+      DATA_SOURCE_NAME: "postgresql://conduit:conduitpass@postgres:5432/conduit?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./grafana/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=conduitadmin
+      - GF_INSTALL_PLUGINS=
+      - GF_USERS_ALLOW_SIGN_UP=false
+      # Enable unified alerting
+      - GF_UNIFIED_ALERTING_ENABLED=true
+      - GF_ALERTING_ENABLED=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning/datasources/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./grafana/provisioning/dashboards/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
+      - ./grafana/provisioning/dashboards/grafana-conduit-overview-dashboard.json:/var/lib/grafana/dashboards/conduit-overview.json:ro
+      - ./grafana/provisioning/dashboards/grafana-provider-performance-dashboard.json:/var/lib/grafana/dashboards/provider-performance.json:ro
+      - ./grafana/provisioning/dashboards/grafana-virtual-key-analytics-dashboard.json:/var/lib/grafana/dashboards/virtual-key-analytics.json:ro
+      - ./grafana/provisioning/dashboards/grafana-request-pipeline-dashboard.json:/var/lib/grafana/dashboards/request-pipeline.json:ro
+      - ./grafana/provisioning/dashboards/grafana-infrastructure-dashboard.json:/var/lib/grafana/dashboards/infrastructure.json:ro
+      - ./grafana/provisioning/dashboards/grafana-postgresql-dashboard.json:/var/lib/grafana/dashboards/postgresql.json:ro
+      # Alerting rules - can be enabled once basic setup is verified
+      # - ./grafana/provisioning/alerting/alerting-rules.yml:/etc/grafana/provisioning/alerting/alerting-rules.yml:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
   redis-data:
   rabbitmq-data:
+  prometheus-data:
+  grafana-data:

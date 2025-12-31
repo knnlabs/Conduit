@@ -44,7 +44,7 @@ The workflow automatically runs when:
 ✅ **ConduitLLM.Core** - Core interfaces and models  
 ✅ **ConduitLLM.Providers** - LLM provider implementations  
 
-❌ **Applications not packaged**: Http, WebUI, Admin, Examples, Tests
+❌ **Applications not packaged**: Http, WebAdmin, Admin, Examples, Tests
 
 #### Version Strategy
 

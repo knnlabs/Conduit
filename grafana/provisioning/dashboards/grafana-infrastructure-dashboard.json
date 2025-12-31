@@ -1,0 +1,715 @@
+{
+  "id": null,
+  "uid": "conduit-infrastructure",
+  "title": "Infrastructure",
+  "tags": ["conduit", "infrastructure", "redis", "rabbitmq", "postgres"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 100,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+      "type": "row",
+      "title": "Redis",
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 2},
+      "type": "stat",
+      "title": "Redis Uptime",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "redis_uptime_in_seconds",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 3600},
+              {"color": "green", "value": 86400}
+            ]
+          },
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 2},
+      "type": "stat",
+      "title": "Redis Memory Used",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "redis_memory_used_bytes",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 536870912},
+              {"color": "red", "value": 1073741824}
+            ]
+          },
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 2},
+      "type": "stat",
+      "title": "Connected Clients",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "redis_connected_clients",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 100}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 2},
+      "type": "stat",
+      "title": "Cache Hit Rate",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total) * 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 80},
+              {"color": "green", "value": 95}
+            ]
+          },
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "N/A"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 2},
+      "type": "stat",
+      "title": "Total Keys",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(redis_db_keys)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 2},
+      "type": "stat",
+      "title": "Evicted Keys",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "increase(redis_evicted_keys_total[1h])",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 100},
+              {"color": "red", "value": 1000}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6},
+      "type": "timeseries",
+      "title": "Redis Commands/sec",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(redis_commands_processed_total[5m])",
+          "legendFormat": "Commands/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 8,
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6},
+      "type": "timeseries",
+      "title": "Redis Memory Usage",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "redis_memory_used_bytes",
+          "legendFormat": "Used",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "redis_memory_max_bytes",
+          "legendFormat": "Max",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "bytes"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 200,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 12},
+      "type": "row",
+      "title": "RabbitMQ",
+      "collapsed": false
+    },
+    {
+      "id": 9,
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 14},
+      "type": "stat",
+      "title": "Total Queues",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rabbitmq_queues",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 14},
+      "type": "stat",
+      "title": "Total Messages",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rabbitmq_queue_messages)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1000},
+              {"color": "red", "value": 10000}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 14},
+      "type": "stat",
+      "title": "Messages Ready",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rabbitmq_queue_messages_ready)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 500},
+              {"color": "red", "value": 2000}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 14},
+      "type": "stat",
+      "title": "Consumers",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rabbitmq_queue_consumers)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "green", "value": 5}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 14},
+      "type": "stat",
+      "title": "Connections",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rabbitmq_connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 100}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 14},
+      "type": "stat",
+      "title": "Channels",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rabbitmq_channels",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 18},
+      "type": "timeseries",
+      "title": "Message Rate",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(rabbitmq_queue_messages_published_total[5m])",
+          "legendFormat": "Published",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(rabbitmq_queue_messages_delivered_total[5m])",
+          "legendFormat": "Delivered",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(rabbitmq_queue_messages_acked_total[5m])",
+          "legendFormat": "Acknowledged",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 16,
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 18},
+      "type": "timeseries",
+      "title": "Queue Depth by Queue",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "topk(10, rabbitmq_queue_messages)",
+          "legendFormat": "{{queue}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 300,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 24},
+      "type": "row",
+      "title": "PostgreSQL",
+      "collapsed": false
+    },
+    {
+      "id": 17,
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 26},
+      "type": "stat",
+      "title": "Active Connections",
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgresql"},
+          "rawSql": "SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active'",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 80}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 26},
+      "type": "stat",
+      "title": "Total Connections",
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgresql"},
+          "rawSql": "SELECT COUNT(*) FROM pg_stat_activity",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 80},
+              {"color": "red", "value": 95}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 19,
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 26},
+      "type": "stat",
+      "title": "Database Size",
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgresql"},
+          "rawSql": "SELECT pg_database_size('conduitdb')",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null}
+            ]
+          },
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 26},
+      "type": "stat",
+      "title": "Cache Hit Ratio",
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgresql"},
+          "rawSql": "SELECT ROUND(100.0 * sum(blks_hit) / nullif(sum(blks_hit) + sum(blks_read), 0), 2) FROM pg_stat_database WHERE datname = 'conduitdb'",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 90},
+              {"color": "green", "value": 98}
+            ]
+          },
+          "unit": "percent",
+          "decimals": 2
+        }
+      }
+    },
+    {
+      "id": 21,
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
+      "type": "table",
+      "title": "Table Sizes",
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgresql"},
+          "rawSql": "SELECT \n  relname as \"Table\",\n  pg_size_pretty(pg_total_relation_size(relid)) as \"Total Size\",\n  pg_size_pretty(pg_relation_size(relid)) as \"Data Size\",\n  pg_size_pretty(pg_indexes_size(relid)) as \"Index Size\",\n  n_live_tup as \"Row Count\"\nFROM pg_stat_user_tables\nORDER BY pg_total_relation_size(relid) DESC\nLIMIT 15",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"align": "auto", "filterable": true}
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Row Count"},
+            "properties": [{"id": "unit", "value": "locale"}]
+          }
+        ]
+      }
+    },
+    {
+      "id": 400,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 38},
+      "type": "row",
+      "title": "Application Metrics",
+      "collapsed": false
+    },
+    {
+      "id": 22,
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 40},
+      "type": "timeseries",
+      "title": "Process Memory",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "process_working_set_bytes{job=\"conduit-api\"}",
+          "legendFormat": "Gateway API",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "process_working_set_bytes{job=\"conduit-admin\"}",
+          "legendFormat": "Admin API",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "bytes"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 23,
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 40},
+      "type": "timeseries",
+      "title": "GC Collections",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(dotnet_gc_collection_count_total{job=\"conduit-api\"}[5m])",
+          "legendFormat": "Gateway Gen {{generation}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(dotnet_gc_collection_count_total{job=\"conduit-admin\"}[5m])",
+          "legendFormat": "Admin Gen {{generation}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    }
+  ]
+}

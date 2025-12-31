@@ -66,6 +66,9 @@ export const ENDPOINTS = {
     BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
     PROVIDERS: '/api/ModelProviderMapping/providers',
     BULK: '/api/ModelProviderMapping/bulk',
+    BULK_DELETE: '/api/ModelProviderMapping/bulk/delete',
+    BULK_ENABLE: '/api/ModelProviderMapping/bulk/enable',
+    BULK_DISABLE: '/api/ModelProviderMapping/bulk/disable',
   },
 
   // IP Filters
@@ -185,6 +188,18 @@ export const ENDPOINTS = {
       ORPHANED: '/api/admin/Media/cleanup/orphaned',
       PRUNE: '/api/admin/Media/cleanup/prune',
     },
+    // Media Cleanup Service Status endpoints
+    CLEANUP_SERVICE: {
+      STATUS: '/api/admin/media-cleanup/status',
+      ENABLED: '/api/admin/media-cleanup/enabled',
+      SIMPLE_RETENTION: '/api/admin/media-cleanup/simple-retention',
+    },
+    // Media Retention Policy endpoints
+    RETENTION_POLICIES: {
+      BASE: '/api/admin/media-retention/policies',
+      BY_ID: (id: number) => `/api/admin/media-retention/policies/${id}`,
+      SET_DEFAULT: (id: number) => `/api/admin/media-retention/policies/${id}/set-default`,
+    },
   },
 
   // Database Management
@@ -206,6 +221,8 @@ export const ENDPOINTS = {
       ENTRIES: (regionId: string) => `/api/config/caching/${regionId}/entries`,
       REFRESH: (regionId: string) => `/api/config/caching/${regionId}/refresh`,
       POLICY: (regionId: string) => `/api/config/caching/${regionId}/policy`,
+      LLM_STATUS: '/api/config/caching/llm-status',
+      LLM_TOGGLE: '/api/config/caching/llm-toggle',
     },
   },
 
@@ -235,22 +252,6 @@ export const ENDPOINTS = {
     COMPLIANCE: '/api/security/compliance',
   },
 
-  // Provider Health
-  HEALTH: {
-    CONFIGURATIONS: '/api/ProviderHealth/configurations',
-    CONFIG_BY_PROVIDER: (providerId: number) => `/api/ProviderHealth/configurations/${providerId}`,
-    STATUS: '/api/ProviderHealth/status',
-    STATUS_BY_ID: (providerId: number) => `/api/ProviderHealth/status/${providerId}`,
-    STATUSES: '/api/ProviderHealth/statuses',
-    STATUSES_BY_ID: (providerId: number) => `/api/ProviderHealth/statuses/${providerId}`,
-    HISTORY_BY_PROVIDER: (providerId: number) => `/api/ProviderHealth/history/${providerId}`,
-    CHECK: (providerId: number) => `/api/ProviderHealth/check/${providerId}`,
-    SUMMARY: '/api/ProviderHealth/summary',
-    STATISTICS: '/api/ProviderHealth/statistics',
-    PURGE: '/api/ProviderHealth/purge',
-    RECORDS: '/api/ProviderHealth/records',
-  },
-
   // System
   SYSTEM: {
     INFO: '/api/SystemInfo/info',
@@ -278,12 +279,54 @@ export const ENDPOINTS = {
     REPLAY: (queueName: string) => `/api/admin/error-queues/${queueName}/replay`,
   },
 
+  // Functions
+  FUNCTION_CONFIGURATIONS: {
+    BASE: '/api/FunctionConfigurations',
+    BY_ID: (id: number) => `/api/FunctionConfigurations/${id}`,
+    BY_PROVIDER: (providerType: string) => `/api/FunctionConfigurations/provider/${providerType}`,
+    BY_PURPOSE: (purpose: string) => `/api/FunctionConfigurations/purpose/${purpose}`,
+  },
+
+  FUNCTION_CREDENTIALS: {
+    BASE: '/api/FunctionCredentials',
+    BY_ID: (id: number) => `/api/FunctionCredentials/${id}`,
+    BY_CONFIGURATION: (configId: number) => `/api/FunctionCredentials/configuration/${configId}`,
+    TEST: '/api/FunctionCredentials/test',
+  },
+
+  FUNCTION_COSTS: {
+    BASE: '/api/FunctionCosts',
+    BY_ID: (id: number) => `/api/FunctionCosts/${id}`,
+    BY_CONFIGURATION: (configId: number) => `/api/FunctionCosts/configuration/${configId}`,
+    CLEAR_CACHE: '/api/FunctionCosts/cache/clear',
+  },
+
+  FUNCTION_COST_MAPPINGS: {
+    BASE: '/api/FunctionCostMappings',
+    BY_ID: (id: number) => `/api/FunctionCostMappings/${id}`,
+    BY_CONFIGURATION: (configId: number) => `/api/FunctionCostMappings/configuration/${configId}`,
+  },
+
+  FUNCTION_EXECUTIONS: {
+    BASE: '/api/FunctionExecutions',
+    BY_ID: (id: string) => `/api/FunctionExecutions/${id}`,
+    BY_VIRTUAL_KEY: (virtualKeyId: number) => `/api/FunctionExecutions/virtualkey/${virtualKeyId}`,
+    BY_CONFIGURATION: (configId: number) => `/api/FunctionExecutions/configuration/${configId}`,
+    BY_STATE: (state: string) => `/api/FunctionExecutions/state/${state}`,
+    EXPIRED_LEASES: '/api/FunctionExecutions/expired-leases',
+    READY_FOR_RETRY: '/api/FunctionExecutions/ready-for-retry',
+    CLEANUP: '/api/FunctionExecutions/cleanup',
+  },
+
   // Settings
   SETTINGS: {
     GLOBAL: '/api/GlobalSettings',
     GLOBAL_BY_ID: (id: number) => `/api/GlobalSettings/${id}`,
     GLOBAL_BY_KEY: (key: string) => `/api/GlobalSettings/by-key/${key}`,
     GLOBAL_BY_KEY_SIMPLE: '/api/GlobalSettings/by-key',
+    CACHE_STATS: '/api/GlobalSettings/cache/stats',
+    CACHE_RELOAD: '/api/GlobalSettings/cache/reload',
+    CACHE_INVALIDATE: (key: string) => `/api/GlobalSettings/cache/invalidate/${encodeURIComponent(key)}`,
     ROUTER: '/api/Router/config',
   },
 

@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-CORE_API_PORT=5000
+GATEWAY_API_PORT=5000
 ADMIN_API_PORT=5002
 MAX_WAIT_TIME=120  # seconds
 RETRY_INTERVAL=5   # seconds
@@ -84,8 +84,8 @@ ensure_services_running() {
     local admin_ready=false
     
     # Quick check if services are already running
-    if check_service_health $CORE_API_PORT; then
-        log "${GREEN}✅ Core API already running on port $CORE_API_PORT${NC}"
+    if check_service_health $GATEWAY_API_PORT; then
+        log "${GREEN}✅ Gateway API already running on port $GATEWAY_API_PORT${NC}"
         core_ready=true
     fi
     
@@ -118,7 +118,7 @@ ensure_services_running() {
         local services_ready=true
         
         if ! $core_ready; then
-            if ! wait_for_service "Core API" $CORE_API_PORT $MAX_WAIT_TIME; then
+            if ! wait_for_service "Gateway API" $GATEWAY_API_PORT $MAX_WAIT_TIME; then
                 services_ready=false
             fi
         fi
@@ -178,12 +178,12 @@ generate_openapi_cli() {
     
     # Build the projects
     log "${BLUE}🔨 Building .NET projects...${NC}"
-    if ! dotnet build ConduitLLM.Http/ConduitLLM.Http.csproj --verbosity quiet; then
-        log "${RED}❌ Failed to build Core API project${NC}"
+    if ! dotnet build Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj --verbosity quiet; then
+        log "${RED}❌ Failed to build Gateway API project${NC}"
         return 1
     fi
-    
-    if ! dotnet build ConduitLLM.Admin/ConduitLLM.Admin.csproj --verbosity quiet; then
+
+    if ! dotnet build Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj --verbosity quiet; then
         log "${RED}❌ Failed to build Admin API project${NC}"
         return 1
     fi
@@ -192,14 +192,14 @@ generate_openapi_cli() {
     log "${BLUE}🔧 Ensuring Swashbuckle CLI is available...${NC}"
     dotnet tool install -g Swashbuckle.AspNetCore.Cli --version 8.1.1 > /dev/null 2>&1 || true
     
-    # Generate Admin API spec (Core API spec should exist)
+    # Generate Admin API spec (Gateway API spec should exist)
     local swagger_tool="$HOME/.dotnet/tools/swagger"
     if [[ ! -x "$swagger_tool" ]]; then
         swagger_tool="swagger"  # Try global path
     fi
     
     log "${BLUE}📄 Generating Admin API OpenAPI spec...${NC}"
-    if $swagger_tool tofile --output ConduitLLM.Admin/openapi-admin.json ConduitLLM.Admin/bin/Debug/net9.0/ConduitLLM.Admin.dll v1 2>/dev/null; then
+    if $swagger_tool tofile --output Services/ConduitLLM.Admin/openapi-admin.json Services/ConduitLLM.Admin/bin/Debug/net9.0/ConduitLLM.Admin.dll v1 2>/dev/null; then
         log "${GREEN}✅ Generated Admin API spec using CLI${NC}"
     else
         log "${YELLOW}⚠️  CLI generation failed, but continuing...${NC}"
@@ -208,14 +208,14 @@ generate_openapi_cli() {
 
 # Function to check if existing OpenAPI files are usable
 check_existing_files() {
-    local core_file="$PROJECT_ROOT/ConduitLLM.Http/openapi-core.json"
-    local admin_file="$PROJECT_ROOT/ConduitLLM.Admin/openapi-admin.json"
+    local core_file="$PROJECT_ROOT/Services/ConduitLLM.Gateway/openapi-gateway.json"
+    local admin_file="$PROJECT_ROOT/Services/ConduitLLM.Admin/openapi-admin.json"
     
     local core_valid=false
     local admin_valid=false
     
     if [[ -f "$core_file" ]] && jq empty "$core_file" 2>/dev/null; then
-        log "${GREEN}✅ Found valid existing Core API spec${NC}"
+        log "${GREEN}✅ Found valid existing Gateway API spec${NC}"
         core_valid=true
     fi
     
@@ -285,14 +285,14 @@ main() {
         
         local core_success=false
         local admin_success=false
-        
-        # Download Core API spec
-        if download_openapi_spec "Core API" $CORE_API_PORT "$PROJECT_ROOT/ConduitLLM.Http/openapi-core.json"; then
+
+        # Download Gateway API spec
+        if download_openapi_spec "Gateway API" $GATEWAY_API_PORT "$PROJECT_ROOT/Services/ConduitLLM.Gateway/openapi-gateway.json"; then
             core_success=true
         fi
-        
+
         # Download Admin API spec
-        if download_openapi_spec "Admin API" $ADMIN_API_PORT "$PROJECT_ROOT/ConduitLLM.Admin/openapi-admin.json"; then
+        if download_openapi_spec "Admin API" $ADMIN_API_PORT "$PROJECT_ROOT/Services/ConduitLLM.Admin/openapi-admin.json"; then
             admin_success=true
         fi
         
@@ -335,9 +335,9 @@ main() {
         # Show summary
         echo
         log "${GREEN}📋 Summary:${NC}"
-        log "${GREEN}   - Core API: ConduitLLM.Http/openapi-core.json${NC}"
-        log "${GREEN}   - Admin API: ConduitLLM.Admin/openapi-admin.json${NC}"
-        log "${GREEN}   - Core SDK: SDKs/Node/Core/src/generated/core-api.ts${NC}"
+        log "${GREEN}   - Gateway API: Services/ConduitLLM.Gateway/openapi-gateway.json${NC}"
+        log "${GREEN}   - Admin API: Services/ConduitLLM.Admin/openapi-admin.json${NC}"
+        log "${GREEN}   - Core SDK: SDKs/Node/Core/src/generated/gateway-api.ts${NC}"
         log "${GREEN}   - Admin SDK: SDKs/Node/Admin/src/generated/admin-api.ts${NC}"
         
         exit 0

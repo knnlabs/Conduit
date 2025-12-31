@@ -14,10 +14,10 @@ public class Program
     {
         var basePath = Path.GetFullPath("../../..");
         
-        // Extract Core API spec
-        Console.WriteLine("Extracting Core API OpenAPI spec...");
-        await ExtractOpenApiSpec<ConduitLLM.Http.Program>(
-            Path.Combine(basePath, "ConduitLLM.Http/openapi-generated.json"),
+        // Extract Gateway API spec
+        Console.WriteLine("Extracting Gateway API OpenAPI spec...");
+        await ExtractOpenApiSpec<ConduitLLM.Gateway.Program>(
+            Path.Combine(basePath, "ConduitLLM.Gateway/openapi-generated.json"),
             "v1"
         );
         

@@ -1,6 +1,6 @@
 # ConduitLLM Admin API Endpoints
 
-This document describes the current endpoints for the ConduitLLM Admin API. The Admin API provides a centralized interface for administrative operations, replacing direct database access from the WebUI.
+This document describes the current endpoints for the ConduitLLM Admin API. The Admin API provides a centralized interface for administrative operations, replacing direct database access from the WebAdmin.
 
 ## Authentication
 
@@ -529,7 +529,7 @@ Performs maintenance tasks including disabling expired keys.
 [
   {
     "id": "core-api",
-    "name": "Core API",
+    "name": "Gateway API",
     "status": "healthy",
     "uptime": "P1DT2H30M",
     "lastCheck": "2024-05-08T10:30:00Z",

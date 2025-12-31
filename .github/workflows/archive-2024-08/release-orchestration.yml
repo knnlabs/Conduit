@@ -127,7 +127,7 @@ jobs:
           EOF
           
           if [[ "${{ steps.parse.outputs.release_docker }}" == "true" ]]; then
-            echo "- ✅ Docker Images (WebUI, HTTP API, Admin API)" >> release-notes.md
+            echo "- ✅ Docker Images (WebAdmin, HTTP API, Admin API)" >> release-notes.md
           fi
           
           echo "- ℹ️ NPM SDKs: Published separately via automated workflow" >> release-notes.md
@@ -142,7 +142,7 @@ jobs:
           
           ### Docker
           \`\`\`bash
-          docker pull ghcr.io/knnlabs/conduit-webui:v$VERSION
+          docker pull ghcr.io/knnlabs/conduit-webadmin:v$VERSION
           docker pull ghcr.io/knnlabs/conduit-http:v$VERSION
           docker pull ghcr.io/knnlabs/conduit-admin:v$VERSION
           \`\`\`

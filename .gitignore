@@ -436,3 +436,15 @@ codeql-results/
 *.sarif
 qlconfig.yml
 .codeql-build.sh
+
+# CSS linting cache
+.stylelintcache
+
+# SQL seed and model files
+db-seed.sql
+functions-seed.sql
+replicate-images-models.sql
+replicate-text-models.sql
+replicate-video-models.sql
+scripts/db/replicate/replicate-text-models.sql
+scripts/db/replicate/replicate-video-models.sql

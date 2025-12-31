@@ -18,7 +18,7 @@ Perfect starting point for developers and administrators:
 - **[Configuration](./user-guides/configuration.md)** - System configuration
 - **[Virtual Keys](./user-guides/virtual-keys.md)** - API key management
 - **[Budget Management](./user-guides/budget-management.md)** - Cost control and limits
-- **[WebUI Guide](./user-guides/webui-guide.md)** - Admin dashboard usage
+- **[WebAdmin Guide](./user-guides/webadmin-guide.md)** - Admin dashboard usage
 
 ## 🎯 Features
 
@@ -54,9 +54,10 @@ System design and development resources:
 - **[Repository Pattern](./architecture/Repository-Pattern.md)** - Data access patterns
 
 ### Development
-- **[Development Guide](./development/README.md)** - Developer setup and workflows
-- **[API Patterns](./development/API-PATTERNS-BEST-PRACTICES.md)** - Best practices
-- **[SDK Integration](./development/sdk-integration.md)** - Client SDK usage
+- **[Development Guide](./development/README.md)** - Developer setup and workflows for contributing to Conduit
+- **[API Patterns](./development/API-PATTERNS-BEST-PRACTICES.md)** - Backend API development best practices
+- **[LLM Client Factory Guide](./development/llm-client-factory-guide.md)** - Critical guide for adding LLM providers
+- **[Provider API Research](./development/provider-api-research.md)** - Provider integration research
 
 ### Claude-Specific Documentation
 High-quality technical documentation for AI assistant context:
@@ -71,31 +72,55 @@ High-quality technical documentation for AI assistant context:
 
 ## 📚 API Documentation
 
-Complete API references:
+Complete API references and SDK guides:
 
-- **[Core API Reference](./core-api-detailed-reference.md)** - Chat, completions, embeddings
-- **[Admin API](./admin-api/)** - Administrative operations
-- **[Webhook API](./webhook-api.md)** - Event notifications
+- **[API Guides](./api-guides/)** - Feature guides and tutorials for using Conduit APIs
+  - **[SDK Documentation](./api-guides/sdk/)** - Complete SDK integration guides (Next.js, best practices, troubleshooting)
+  - **[Gateway API Detailed](./api-guides/core-api-detailed.md)** - Chat, completions, embeddings
+  - **[Admin SDK TypeScript](./api-guides/admin-sdk-typescript.md)** - Complete TypeScript SDK guide
+  - **[Function Calling](./api-guides/function-calling.md)** - Function calling with LLMs
+  - **[Multimodal Vision](./api-guides/multimodal-vision.md)** - Vision capabilities
+  - **[Webhooks](./api-guides/webhooks.md)** - Event notifications
+- **[API Reference](./api-reference/)** - Endpoint specifications and parameters
 - **[Real-Time API Guide](./real-time-api-guide.md)** - WebSocket/SignalR integration
 
 ## 🔧 Operations
 
-Production deployment and monitoring:
+Production deployment, monitoring, and incident response:
+
+### Operations Hub
+- **[Operations Guide](./operations/README.md)** - Complete operational documentation hub with monitoring, scaling, and runbooks
+
+### Monitoring & Observability
+- **[Monitoring Guide](./operations/monitoring.md)** - Prometheus/Grafana setup, metrics catalog, and dashboards
+- **[Health Monitoring](./operations/health-monitoring.md)** - Real-time health checks and alerting
+- **[Cost Observability](./operations/cost-observability.md)** - Cost tracking, budget management, and financial metrics
+- **[Performance Metrics](./operations/performance-metrics.md)** - Performance tracking architecture (tokens/sec, latency, TTFT)
+
+### Infrastructure Scaling
+- **[PostgreSQL Connection Pool Scaling](./operations/PostgreSQL-Connection-Pool-Scaling.md)** - Database optimization for high concurrency
+- **[RabbitMQ Scaling Guide](./operations/RabbitMQ-Scaling-Guide.md)** - High-throughput message queue configuration
+- **[Redis Resilience](./operations/Redis-Resilience-Improvements.md)** - Cache clustering and high availability
+- **[HTTP Connection Pooling](./operations/HTTP-Connection-Pooling-Guide.md)** - Provider API connection optimization
+
+### Security
+- **[Security Guidelines](./operations/security/Security-Guidelines.md)** - Log injection prevention, API key security, authentication
+- **[Secret Detection](./operations/security/Security-Pre-commit-Hooks.md)** - Pre-commit hooks to prevent credential leaks
+- **[CodeQL Suppressions](./operations/security/CodeQL-Suppressions.md)** - Security scan false positive tracking
+
+### Incident Response (Runbooks)
+- **[Runbooks Overview](./operations/runbooks/README.md)** - Complete alert catalog and response procedures
+- **[High Error Rate](./operations/runbooks/high-error-rate.md)** - Error rate spike response
+- **[High Response Time](./operations/runbooks/high-response-time.md)** - Latency incident response
+- **[Cost Observability Alerts](./operations/runbooks/cost-observability-alerts.md)** - Budget and cost alert handling
 
 ### Deployment
 - **[Deployment Configuration](./deployment/DEPLOYMENT-CONFIGURATION.md)** - Production setup
 - **[Docker Optimization](./deployment/docker-optimization.md)** - Container best practices
 - **[Environment Variables](./environment-variables.md)** - Configuration options
 
-### Monitoring & Performance
-- **[Health Monitoring Guide](./Health-Monitoring-Guide.md)** - System health checks
-- **[Performance Metrics](./performance-metrics.md)** - Tracking and optimization
-- **[Grafana Dashboards](./grafana-dashboards/README.md)** - Monitoring setup
-- **[Prometheus Setup](./prometheus-metrics-setup.md)** - Metrics collection
-
-### Runbooks
-- **[Runbooks Overview](./runbooks/README.md)** - Operational procedures
-- **[Troubleshooting Guide](./troubleshooting/TROUBLESHOOTING-GUIDE.md)** - Common issues
+### General Troubleshooting
+- **[Troubleshooting Guide](./troubleshooting/TROUBLESHOOTING-GUIDE.md)** - Common issues and solutions
 
 ## 💰 Pricing & Models
 
@@ -132,10 +157,11 @@ Historical and reference material:
 ## 🔍 Finding Information
 
 ### By User Role
-- **Developers**: Start with [User Guides](./user-guides/) and [Features](./features/)
-- **Administrators**: See [WebUI Guide](./user-guides/webui-guide.md) and [Operations](#operations)
+- **SDK Users**: Start with [SDK Documentation](./api-guides/sdk/) for integration guides
+- **API Users**: See [API Guides](./api-guides/) for tutorials and [API Reference](./api-reference/) for specs
+- **Administrators**: Check [WebAdmin Guide](./user-guides/webadmin-guide.md) and [Operations](#operations)
+- **Contributors**: Reference [Development](./development/) for codebase development
 - **DevOps**: Check [Deployment](./deployment/) and [Runbooks](./runbooks/)
-- **AI Assistants**: Reference [Claude Documentation](./claude/) for technical context
 
 ### By Feature Area
 - **Authentication & Security**: [Security Features](./features/security.md) | [Virtual Keys](./user-guides/virtual-keys.md)
@@ -145,11 +171,13 @@ Historical and reference material:
 - **Cost Management**: [Model Costs](./model-costs.md) | [Budget Management](./user-guides/budget-management.md)
 
 ### By Task
+- **Using SDKs**: [SDK Documentation](./api-guides/sdk/) → [Next.js Integration](./api-guides/sdk/nextjs-integration.md) → [Best Practices](./api-guides/sdk/best-practices.md)
 - **Getting Started**: [Installation](./user-guides/getting-started.md) → [Configuration](./user-guides/configuration.md) → [First API Call](./user-guides/getting-started.md#first-api-call)
-- **Adding a Provider**: [Provider Integration](./features/providers.md#adding-a-new-provider-instance)
+- **Adding LLM Provider**: [LLM Client Factory Guide](./development/llm-client-factory-guide.md) → [Provider API Research](./development/provider-api-research.md)
 - **Setting Up Audio**: [Audio Quick Start](./features/audio/README.md#quick-start)
 - **Implementing Real-Time**: [SignalR Quick Reference](./features/signalr/quick-reference.md)
-- **Troubleshooting**: [General Troubleshooting](./troubleshooting/TROUBLESHOOTING-GUIDE.md) | [SignalR Issues](./features/signalr/troubleshooting.md)
+- **Troubleshooting SDKs**: [SDK Troubleshooting](./api-guides/sdk/troubleshooting.md)
+- **Troubleshooting System**: [General Troubleshooting](./troubleshooting/TROUBLESHOOTING-GUIDE.md) | [SignalR Issues](./features/signalr/troubleshooting.md)
 
 ## 📝 Contributing to Documentation
 

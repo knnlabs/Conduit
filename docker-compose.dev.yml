@@ -6,6 +6,9 @@ services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # OpenTelemetry tracing configuration
+      Telemetry__OtlpEndpoint: "http://jaeger:4317"
+      Telemetry__TracingEnabled: "true"
       # Batch Cache Invalidation configuration (development settings)
       CacheInvalidation__BatchingEnabled: "true"
       CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
@@ -34,6 +37,9 @@ services:
   admin:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # OpenTelemetry tracing configuration
+      Telemetry__OtlpEndpoint: "http://jaeger:4317"
+      Telemetry__TracingEnabled: "true"
       # Batch Cache Invalidation configuration (development settings)
       CacheInvalidation__BatchingEnabled: "true"
       CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
@@ -54,15 +60,17 @@ services:
       # Public URL for R2 bucket (either public dev URL or custom domain)
       CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL}"
 
-  webui:
+  webadmin:
     # Use Node 22 to match host environment
     image: node:22-alpine
     # Start as root to fix volume ownership, then switch to user
     user: root
     volumes:
-      # Mount everything - no anonymous volumes so host can access node_modules
-      - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
+      # Mount source code for hot reloading
+      - ./WebAdmin:/app/WebAdmin
       - ./SDKs:/app/SDKs
+      # Isolate .next directory so host and container builds don't conflict
+      - /app/WebAdmin/.next
     environment:
       # Next.js development settings
       NODE_ENV: development
@@ -82,8 +90,10 @@ services:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
       # Development authentication bypass
-      DISABLE_CLERK_AUTH: "true"
-    working_dir: /app/ConduitLLM.WebUI
+      CLERK_AUTH_ENABLED: "false"
+      # Official Next.js Docker configuration from docs
+      HOSTNAME: "0.0.0.0"
+    working_dir: /app/WebAdmin
     # Smarter startup that handles both fresh installs and fast restarts
     command: |
       sh -c "
@@ -92,7 +102,7 @@ services:
         
         echo 'Fixing directory ownership...'
         # Fix ownership of all mounted directories
-        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/ConduitLLM.WebUI || true
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/WebAdmin || true
         chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/SDKs || true
         
         # Check if we should skip dependency installation (fast mode)
@@ -100,13 +110,13 @@ services:
           echo 'FAST MODE: Skipping dependency installation'
         else
           # Check if node_modules exists
-          if [ ! -d /app/ConduitLLM.WebUI/node_modules ] || [ \"\${FORCE_NPM_INSTALL:-false}\" = \"true\" ]; then
+          if [ ! -d /app/WebAdmin/node_modules ] || [ \"\${FORCE_NPM_INSTALL:-false}\" = \"true\" ]; then
             echo 'Installing dependencies (this will be visible on host)...'
             su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
               cd /app/SDKs/Node/Common && npm install && npm run build
               cd /app/SDKs/Node/Admin && npm install && npm run build
               cd /app/SDKs/Node/Core && npm install && npm run build
-              cd /app/ConduitLLM.WebUI && npm install
+              cd /app/WebAdmin && npm install
             '
           else
             echo 'Dependencies already installed, checking for updates...'
@@ -114,13 +124,13 @@ services:
               cd /app/SDKs/Node/Common && npm install
               cd /app/SDKs/Node/Admin && npm install
               cd /app/SDKs/Node/Core && npm install
-              cd /app/ConduitLLM.WebUI && npm install
+              cd /app/WebAdmin && npm install
             '
           fi
         fi
         
         echo 'Starting development server...'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/ConduitLLM.WebUI && npm run dev'
+        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/WebAdmin && npm run dev'
       "
     ports:
       - "3000:3000"
@@ -129,6 +139,21 @@ services:
         condition: service_healthy
       api:
         condition: service_healthy
+
+  # Jaeger for distributed tracing visualization
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC receiver
+      - "4318:4318"     # OTLP HTTP receiver
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 # MinIO services removed - using Cloudflare R2 instead
 # To use MinIO instead of R2, see docker-compose.minio.yml

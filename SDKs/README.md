@@ -8,7 +8,7 @@ This directory contains SDKs for the Conduit API across multiple programming lan
 SDKs/
 ├── Node/                   # Node.js/TypeScript SDKs
 │   ├── Admin/             # Admin API SDK
-│   ├── Core/              # Core API SDK (planned)
+│   ├── Core/              # Gateway API SDK (planned)
 │   └── Realtime/          # Realtime/WebSocket SDK (planned)
 ├── Python/                # Python SDKs (planned)
 │   ├── Admin/
@@ -38,17 +38,17 @@ SDKs/
 
 ### Python (Planned)
 - **Admin API SDK** - 🔄 Coming Soon
-- **Core API SDK** - 🔄 Coming Soon
+- **Gateway API SDK** - 🔄 Coming Soon
 - **Realtime SDK** - 🔄 Coming Soon
 
 ### Go (Planned)
 - **Admin API SDK** - 🔄 Coming Soon
-- **Core API SDK** - 🔄 Coming Soon
+- **Gateway API SDK** - 🔄 Coming Soon
 - **Realtime SDK** - 🔄 Coming Soon
 
 ### .NET (Planned)
 - **Admin API SDK** - 🔄 Coming Soon
-- **Core API SDK** - 🔄 Coming Soon
+- **Gateway API SDK** - 🔄 Coming Soon
 - **Realtime SDK** - 🔄 Coming Soon
 
 ## 🎯 API Types
@@ -59,7 +59,7 @@ SDKs/
 - Monitor usage and costs
 - System administration and health checks
 
-### Core API (Planned)
+### Gateway API (Planned)
 - Chat completions and text generation
 - Embeddings and vector operations
 - Image generation and vision

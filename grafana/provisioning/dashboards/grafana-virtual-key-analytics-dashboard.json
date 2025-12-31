@@ -1,0 +1,314 @@
+{
+  "id": null,
+  "uid": "conduit-virtual-keys",
+  "title": "Virtual Key Analytics",
+  "tags": ["conduit", "virtual-keys", "billing", "usage"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "virtual_key",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(conduit_virtualkey_requests_total, virtual_key_id)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "type": "stat",
+      "title": "Active Virtual Keys",
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgresql"},
+          "rawSql": "SELECT COUNT(*) FROM \"VirtualKeys\" WHERE \"IsEnabled\" = true",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "type": "stat",
+      "title": "Total Spend (24h)",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(increase(conduit_virtualkey_spend_total[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 100},
+              {"color": "red", "value": 500}
+            ]
+          },
+          "unit": "currencyUSD",
+          "decimals": 2
+        }
+      }
+    },
+    {
+      "id": 3,
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "type": "stat",
+      "title": "Budget Exceeded Events",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(increase(conduit_virtualkey_budget_exceeded_total[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 5}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "type": "stat",
+      "title": "Avg Budget Utilization",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "avg(conduit_virtualkey_budget_utilization_percent)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "0%"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "type": "timeseries",
+      "title": "Request Rate by Virtual Key",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "topk(10, sum(rate(conduit_virtualkey_requests_total{virtual_key_id=~\"$virtual_key\"}[5m])) by (virtual_key_id))",
+          "legendFormat": "Key: {{virtual_key_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "reqps"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      }
+    },
+    {
+      "id": 6,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "type": "timeseries",
+      "title": "Spend Rate by Virtual Key",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "topk(10, sum(rate(conduit_virtualkey_spend_total{virtual_key_id=~\"$virtual_key\"}[5m])) by (virtual_key_id)) * 60",
+          "legendFormat": "Key: {{virtual_key_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "currencyUSD"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      }
+    },
+    {
+      "id": 7,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "type": "gauge",
+      "title": "Budget Utilization by Key (Top 10)",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "topk(10, conduit_virtualkey_budget_utilization_percent{virtual_key_id=~\"$virtual_key\"})",
+          "legendFormat": "{{virtual_key_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "orange", "value": 85},
+              {"color": "red", "value": 95}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "options": {
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]},
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 8,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "type": "piechart",
+      "title": "Spend Distribution by Virtual Key",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "topk(10, sum(increase(conduit_virtualkey_spend_total{virtual_key_id=~\"$virtual_key\"}[24h])) by (virtual_key_id))",
+          "legendFormat": "{{virtual_key_id}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]},
+        "pieType": "donut",
+        "displayLabels": ["name", "percent"],
+        "legendDisplayMode": "list",
+        "legendPlacement": "right"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        }
+      }
+    },
+    {
+      "id": 9,
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 20},
+      "type": "table",
+      "title": "Virtual Key Details",
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgresql"},
+          "rawSql": "SELECT \n  vk.\"Name\" as \"Key Name\",\n  vk.\"IsEnabled\" as \"Enabled\",\n  COALESCE(vk.\"MaxBudget\", 0) as \"Budget\",\n  COALESCE(vk.\"CurrentSpend\", 0) as \"Current Spend\",\n  CASE WHEN vk.\"MaxBudget\" > 0 \n    THEN ROUND((vk.\"CurrentSpend\" / vk.\"MaxBudget\") * 100, 2) \n    ELSE 0 \n  END as \"Utilization %\",\n  vk.\"RateLimitRpm\" as \"Rate Limit (RPM)\",\n  vk.\"UpdatedAt\" as \"Last Updated\"\nFROM \"VirtualKeys\" vk\nORDER BY vk.\"CurrentSpend\" DESC NULLS LAST\nLIMIT 20",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"align": "auto", "filterable": true}
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Budget"},
+            "properties": [{"id": "unit", "value": "currencyUSD"}, {"id": "decimals", "value": 2}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Current Spend"},
+            "properties": [{"id": "unit", "value": "currencyUSD"}, {"id": "decimals", "value": 2}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Utilization %"},
+            "properties": [
+              {"id": "unit", "value": "percent"},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Enabled"},
+            "properties": [
+              {"id": "mappings", "value": [{"type": "value", "options": {"true": {"text": "Yes", "color": "green"}, "false": {"text": "No", "color": "red"}}}]}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Last Updated"},
+            "properties": [{"id": "unit", "value": "dateTimeFromNow"}]
+          }
+        ]
+      }
+    }
+  ]
+}

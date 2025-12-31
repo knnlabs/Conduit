@@ -92,6 +92,23 @@ export class FetchSystemService implements ISystemService {
   }
 
   /**
+   * Invalidates all discovery cache entries
+   * @returns Promise with cache invalidation result
+   */
+  async invalidateDiscoveryCache(config?: RequestConfig): Promise<{ message: string; timestamp: string; note?: string }> {
+    const response = await this.client['post']<{ message: string; timestamp: string; note?: string }>(
+      '/api/SystemInfo/cache/invalidate-discovery',
+      {},
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+    return response;
+  }
+
+  /**
    * Get comprehensive system health status and metrics.
    * Delegates to FetchSystemHealthService
    */
@@ -183,11 +200,11 @@ export class FetchSystemService implements ISystemService {
   }
 
   /**
-   * Gets or creates the special WebUI virtual key.
-   * This key is stored unencrypted in GlobalSettings for WebUI/TUI access.
+   * Gets or creates the special WebAdmin virtual key.
+   * This key is stored unencrypted in GlobalSettings for WebAdmin/TUI access.
    * @returns The actual (unhashed) virtual key value
    */
-  async getWebUIVirtualKey(config?: RequestConfig): Promise<string> {
+  async getWebAdminVirtualKey(config?: RequestConfig): Promise<string> {
     // Import services we need
     const { FetchSettingsService } = await import('./FetchSettingsService');
     const { FetchVirtualKeyService } = await import('./FetchVirtualKeyService');
@@ -200,10 +217,10 @@ export class FetchSystemService implements ISystemService {
     
     try {
       // First try to get existing key from GlobalSettings
-      const setting = await settingsService.getGlobalSetting('WebUI_VirtualKey', config);
+      const setting = await settingsService.getGlobalSetting('WebAdmin_VirtualKey', config);
       if (setting?.value) {
         existingKey = setting.value;
-        console.warn('[SDK] Found WebUI virtual key in GlobalSettings, validating...');
+        console.warn('[SDK] Found WebAdmin virtual key in GlobalSettings, validating...');
         
         // Validate that the key exists in VirtualKeys table
         try {
@@ -211,34 +228,34 @@ export class FetchSystemService implements ISystemService {
           const validationResult = await virtualKeyService.validate(existingKey, config);
           
           if (!validationResult?.isValid) {
-            console.warn('[SDK] WebUI virtual key from GlobalSettings is not valid');
+            console.warn('[SDK] WebAdmin virtual key from GlobalSettings is not valid');
             existingKey = null;
           } else {
-            console.warn('[SDK] WebUI virtual key validated successfully');
+            console.warn('[SDK] WebAdmin virtual key validated successfully');
             return existingKey;
           }
         } catch (validationError) {
-          console.error('[SDK] Failed to validate WebUI virtual key', validationError);
+          console.error('[SDK] Failed to validate WebAdmin virtual key', validationError);
           existingKey = null;
         }
       }
     } catch {
       // Key doesn't exist in GlobalSettings
-      console.warn('[SDK] WebUI virtual key not found in GlobalSettings');
+      console.warn('[SDK] WebAdmin virtual key not found in GlobalSettings');
     }
 
     // If we don't have a valid key, create a new one
-    console.warn('[SDK] Creating new WebUI virtual key with group and $1000 balance');
+    console.warn('[SDK] Creating new WebAdmin virtual key with group and $1000 balance');
     
     // First, create a virtual key group with $1000 initial balance
     const virtualKeyGroupService = new FetchVirtualKeyGroupService(this.client);
     const group = await virtualKeyGroupService.create({
-      groupName: 'WebUI Internal Group',
-      externalGroupId: 'webui-internal',
+      groupName: 'WebAdmin Internal Group',
+      externalGroupId: 'webadmin-internal',
       initialBalance: 1000.00
     }, config);
     
-    console.warn(`[SDK] Created WebUI virtual key group with ID ${group.id} and $1000 balance`);
+    console.warn(`[SDK] Created WebAdmin virtual key group with ID ${group.id} and $1000 balance`);
     
     // Create metadata
     const metadata = {
@@ -250,7 +267,7 @@ export class FetchSystemService implements ISystemService {
 
     // Create the virtual key and associate it with the group
     const virtualKeyRequest = {
-      keyName: 'WebUI Internal Key',
+      keyName: 'WebAdmin Internal Key',
       metadata: JSON.stringify(metadata),
       virtualKeyGroupId: group.id
     } as components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto'];
@@ -263,14 +280,12 @@ export class FetchSystemService implements ISystemService {
 
     // Store the unhashed key in GlobalSettings
     await settingsService.createGlobalSetting({
-      key: 'WebUI_VirtualKey',
+      key: 'WebAdmin_VirtualKey',
       value: response.virtualKey,
-      isSecret: true,
-      category: 'WebUI',
-      description: 'Virtual key for WebUI Core API access'
+      description: 'Virtual key for WebAdmin Gateway API access'
     }, config);
     
-    console.warn('[SDK] Created new WebUI virtual key and stored in GlobalSettings');
+    console.warn('[SDK] Created new WebAdmin virtual key and stored in GlobalSettings');
     return response.virtualKey;
   }
 }

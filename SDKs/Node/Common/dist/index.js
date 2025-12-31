@@ -33,10 +33,15 @@ __export(index_exports, {
   AuthError: () => AuthError,
   AuthenticationError: () => AuthenticationError,
   AuthorizationError: () => AuthorizationError,
+  BaseApiClient: () => BaseApiClient,
   BaseSignalRConnection: () => BaseSignalRConnection,
   CONTENT_TYPES: () => CONTENT_TYPES,
+  CircuitBreaker: () => CircuitBreaker,
+  CircuitBreakerOpenError: () => CircuitBreakerOpenError,
+  CircuitState: () => CircuitState,
   ConduitError: () => ConduitError,
   ConflictError: () => ConflictError,
+  DEFAULT_RETRY_STRATEGIES: () => DEFAULT_RETRY_STRATEGIES,
   DefaultTransports: () => DefaultTransports,
   ERROR_CODES: () => ERROR_CODES,
   HTTP_HEADERS: () => HTTP_HEADERS,
@@ -53,21 +58,26 @@ __export(index_exports, {
   RETRY_CONFIG: () => RETRY_CONFIG,
   RateLimitError: () => RateLimitError,
   ResponseParser: () => ResponseParser,
+  RetryStrategyType: () => RetryStrategyType,
   ServerError: () => ServerError,
   SignalRLogLevel: () => SignalRLogLevel,
+  SignalRProtocolType: () => SignalRProtocolType,
   StreamError: () => StreamError,
   TIMEOUTS: () => TIMEOUTS,
   TimeoutError: () => TimeoutError,
   ValidationError: () => ValidationError,
+  calculateRetryDelay: () => calculateRetryDelay,
   createErrorFromResponse: () => createErrorFromResponse,
   deserializeError: () => deserializeError,
   getCapabilityCategory: () => getCapabilityCategory,
   getCapabilityDisplayName: () => getCapabilityDisplayName,
   getErrorMessage: () => getErrorMessage,
   getErrorStatusCode: () => getErrorStatusCode,
+  getMaxRetries: () => getMaxRetries,
   handleApiError: () => handleApiError,
   isAuthError: () => isAuthError,
   isAuthorizationError: () => isAuthorizationError,
+  isCircuitBreakerOpenError: () => isCircuitBreakerOpenError,
   isConduitError: () => isConduitError,
   isConflictError: () => isConflictError,
   isErrorLike: () => isErrorLike,
@@ -79,10 +89,12 @@ __export(index_exports, {
   isNotFoundError: () => isNotFoundError,
   isRateLimitError: () => isRateLimitError,
   isSerializedConduitError: () => isSerializedConduitError,
+  isServerError: () => isServerError,
   isStreamError: () => isStreamError,
   isTimeoutError: () => isTimeoutError,
   isValidationError: () => isValidationError,
-  serializeError: () => serializeError
+  serializeError: () => serializeError,
+  shouldRetryWithStrategy: () => shouldRetryWithStrategy
 });
 module.exports = __toCommonJS(index_exports);
 
@@ -321,6 +333,9 @@ function isStreamError(error) {
 }
 function isTimeoutError(error) {
   return error instanceof TimeoutError;
+}
+function isServerError(error) {
+  return isConduitError(error) && error.statusCode !== void 0 && error.statusCode >= 500;
 }
 function isSerializedConduitError(data) {
   return typeof data === "object" && data !== null && "isConduitError" in data && data.isConduitError === true;
@@ -606,9 +621,28 @@ var HttpTransportType = /* @__PURE__ */ ((HttpTransportType3) => {
   return HttpTransportType3;
 })(HttpTransportType || {});
 var DefaultTransports = 1 /* WebSockets */ | 2 /* ServerSentEvents */ | 4 /* LongPolling */;
+var SignalRProtocolType = /* @__PURE__ */ ((SignalRProtocolType2) => {
+  SignalRProtocolType2["Json"] = "json";
+  SignalRProtocolType2["MessagePack"] = "messagepack";
+  return SignalRProtocolType2;
+})(SignalRProtocolType || {});
 
 // src/signalr/BaseSignalRConnection.ts
 var signalR = __toESM(require("@microsoft/signalr"));
+var MessagePackHubProtocol;
+async function loadMessagePackProtocol() {
+  if (!MessagePackHubProtocol) {
+    try {
+      const msgpack = await import("@microsoft/signalr-protocol-msgpack");
+      MessagePackHubProtocol = msgpack.MessagePackHubProtocol;
+      return msgpack.MessagePackHubProtocol;
+    } catch (error) {
+      console.warn("MessagePack protocol not available, using JSON:", error);
+      return null;
+    }
+  }
+  return MessagePackHubProtocol;
+}
 var BaseSignalRConnection = class {
   connection;
   config;
@@ -684,6 +718,18 @@ var BaseSignalRConnection = class {
     }
     const logLevel = this.mapLogLevel(this.config.options?.logLevel || 2 /* Information */);
     builder.configureLogging(logLevel);
+    const protocolType = this.config.options?.protocol || "json" /* Json */;
+    if (protocolType === "messagepack" /* MessagePack */) {
+      try {
+        const MessagePackProtocol = await loadMessagePackProtocol();
+        if (MessagePackProtocol) {
+          builder.withHubProtocol(new MessagePackProtocol());
+          console.warn("Using MessagePack protocol for SignalR connection");
+        }
+      } catch (error) {
+        console.error("Failed to load MessagePack protocol, falling back to JSON:", error);
+      }
+    }
     this.connection = builder.build();
     this.connection.onclose(async (error) => {
       if (this.onDisconnected) {
@@ -841,15 +887,617 @@ var HttpError = class extends Error {
     this.code = code;
   }
 };
+
+// src/client/retry-strategy.ts
+var RetryStrategyType = /* @__PURE__ */ ((RetryStrategyType2) => {
+  RetryStrategyType2["FIXED_DELAY"] = "fixed_delay";
+  RetryStrategyType2["EXPONENTIAL_BACKOFF"] = "exponential_backoff";
+  RetryStrategyType2["CUSTOM_DELAYS"] = "custom_delays";
+  return RetryStrategyType2;
+})(RetryStrategyType || {});
+function calculateRetryDelay(strategy, attempt) {
+  switch (strategy.type) {
+    case "fixed_delay" /* FIXED_DELAY */:
+      return strategy.delayMs;
+    case "exponential_backoff" /* EXPONENTIAL_BACKOFF */: {
+      const delay = Math.min(
+        strategy.initialDelayMs * Math.pow(strategy.factor, attempt - 1),
+        strategy.maxDelayMs
+      );
+      if (strategy.jitter) {
+        return delay + Math.random() * 1e3;
+      }
+      return delay;
+    }
+    case "custom_delays" /* CUSTOM_DELAYS */: {
+      const index = Math.min(attempt - 1, strategy.delays.length - 1);
+      return strategy.delays[index];
+    }
+  }
+}
+function getMaxRetries(strategy) {
+  switch (strategy.type) {
+    case "fixed_delay" /* FIXED_DELAY */:
+    case "exponential_backoff" /* EXPONENTIAL_BACKOFF */:
+      return strategy.maxRetries;
+    case "custom_delays" /* CUSTOM_DELAYS */:
+      return strategy.delays.length;
+  }
+}
+function shouldRetryWithStrategy(strategy, error) {
+  if (strategy.retryCondition) {
+    return strategy.retryCondition(error);
+  }
+  return false;
+}
+var DEFAULT_RETRY_STRATEGIES = {
+  /** Gateway SDK default: exponential backoff with jitter */
+  gateway: {
+    type: "exponential_backoff" /* EXPONENTIAL_BACKOFF */,
+    maxRetries: 3,
+    initialDelayMs: 1e3,
+    maxDelayMs: 3e4,
+    factor: 2,
+    jitter: true
+  },
+  /** Admin SDK default: fixed delay */
+  admin: {
+    type: "fixed_delay" /* FIXED_DELAY */,
+    maxRetries: 3,
+    delayMs: 1e3
+  }
+};
+
+// src/client/BaseApiClient.ts
+var BaseApiClient = class {
+  /** Base URL for all requests (without trailing slash) */
+  baseUrl;
+  /** Default timeout in milliseconds */
+  timeout;
+  /** Default headers included with all requests */
+  defaultHeaders;
+  /** Retry strategy configuration */
+  retryStrategy;
+  /** Enable debug logging */
+  debug;
+  // Lifecycle callbacks
+  onError;
+  onRequest;
+  onResponse;
+  // Optional providers (Admin SDK uses these, Gateway SDK may not)
+  logger;
+  cache;
+  constructor(config) {
+    this.baseUrl = config.baseUrl.replace(/\/$/, "");
+    this.timeout = config.timeout ?? 6e4;
+    this.defaultHeaders = config.defaultHeaders ?? {};
+    this.retryStrategy = config.retryStrategy ?? this.getDefaultRetryStrategy();
+    this.debug = config.debug ?? false;
+    this.onError = config.onError;
+    this.onRequest = config.onRequest;
+    this.onResponse = config.onResponse;
+    this.logger = config.logger;
+    this.cache = config.cache;
+  }
+  // ============================================================================
+  // Template Methods - Can be overridden by SDK-specific clients
+  // ============================================================================
+  /**
+   * Transform error response into appropriate error type
+   * Subclasses can override for SDK-specific error handling
+   *
+   * @param response - The failed Response object
+   * @returns An Error to throw
+   */
+  async handleErrorResponse(response) {
+    let errorData;
+    try {
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
+        errorData = await response.json();
+      }
+    } catch {
+      errorData = {};
+    }
+    return new ConduitError(
+      `HTTP ${response.status}: ${response.statusText}`,
+      response.status,
+      `HTTP_${response.status}`,
+      { data: errorData }
+    );
+  }
+  /**
+   * Determine if an error should be retried
+   * Subclasses can override for SDK-specific retry logic
+   *
+   * @param error - The error that occurred
+   * @param attempt - Current attempt number (1-based)
+   * @returns Whether to retry the request
+   */
+  shouldRetry(error, attempt) {
+    const maxRetries = getMaxRetries(this.retryStrategy);
+    if (attempt > maxRetries) return false;
+    if (this.retryStrategy.retryCondition) {
+      return this.retryStrategy.retryCondition(error);
+    }
+    if (error instanceof ConduitError) {
+      return error.statusCode === 429 || error.statusCode >= 500;
+    }
+    if (error instanceof Error) {
+      return error.name === "AbortError" || error.message.includes("network") || error.message.includes("fetch");
+    }
+    return false;
+  }
+  /**
+   * Calculate delay for a retry attempt
+   * Subclasses can override for special cases (e.g., retry-after headers)
+   *
+   * @param error - The error that triggered the retry
+   * @param attempt - Current attempt number (1-based)
+   * @returns Delay in milliseconds before next retry
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getRetryDelay(_error, attempt) {
+    return calculateRetryDelay(this.retryStrategy, attempt);
+  }
+  // ============================================================================
+  // HTTP Methods
+  // ============================================================================
+  /**
+   * Main request method with retry logic
+   */
+  async request(url, options = {}) {
+    const fullUrl = this.buildUrl(url);
+    const controller = new AbortController();
+    const timeoutMs = options.timeout ?? this.timeout;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const requestInfo = {
+        method: options.method ?? "GET" /* GET */,
+        url: fullUrl,
+        headers: this.buildHeaders(options.headers),
+        data: options.body
+      };
+      if (this.onRequest) {
+        await this.onRequest(requestInfo);
+      }
+      this.log("debug", `API Request: ${requestInfo.method} ${requestInfo.url}`);
+      const response = await this.executeWithRetry(
+        fullUrl,
+        {
+          method: requestInfo.method,
+          headers: requestInfo.headers,
+          body: options.body ? JSON.stringify(options.body) : void 0,
+          signal: options.signal ?? controller.signal,
+          responseType: options.responseType,
+          timeout: timeoutMs
+        }
+      );
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+  /**
+   * Type-safe GET request
+   */
+  async get(url, options) {
+    return this.request(url, { ...options, method: "GET" /* GET */ });
+  }
+  /**
+   * Type-safe POST request
+   */
+  async post(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "POST" /* POST */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe PUT request
+   */
+  async put(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "PUT" /* PUT */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe PATCH request
+   */
+  async patch(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "PATCH" /* PATCH */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe DELETE request
+   */
+  async delete(url, options) {
+    return this.request(url, { ...options, method: "DELETE" /* DELETE */ });
+  }
+  // ============================================================================
+  // Internal Methods
+  // ============================================================================
+  /**
+   * Execute request with retry logic
+   */
+  async executeWithRetry(url, init, attempt = 1) {
+    try {
+      const response = await fetch(url, ResponseParser.cleanRequestInit(init));
+      this.log("debug", `API Response: ${response.status} ${response.statusText}`);
+      const headers = {};
+      response.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      if (this.onResponse) {
+        const responseInfo = {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+          data: void 0,
+          config: {
+            url,
+            method: init.method ?? "GET" /* GET */,
+            headers: init.headers ?? {}
+          }
+        };
+        await this.onResponse(responseInfo);
+      }
+      if (!response.ok) {
+        const error = await this.handleErrorResponse(response);
+        throw error;
+      }
+      const contentLength = response.headers.get("content-length");
+      if (contentLength === "0" || response.status === 204) {
+        return void 0;
+      }
+      return await ResponseParser.parse(response, init.responseType);
+    } catch (error) {
+      if (this.shouldRetry(error, attempt)) {
+        const delay = this.getRetryDelay(error, attempt);
+        this.log("debug", `Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
+        await this.sleep(delay);
+        return this.executeWithRetry(url, init, attempt + 1);
+      }
+      if (this.onError && error instanceof Error) {
+        this.onError(error);
+      }
+      throw error;
+    }
+  }
+  /**
+   * Build full URL from path
+   */
+  buildUrl(path) {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    return `${this.baseUrl}${cleanPath}`;
+  }
+  /**
+   * Build headers including auth, defaults, and additional headers
+   */
+  buildHeaders(additionalHeaders) {
+    return {
+      [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
+      ...this.getAuthHeaders(),
+      ...this.defaultHeaders,
+      ...additionalHeaders
+    };
+  }
+  /**
+   * Log a message using the configured logger or console in debug mode
+   */
+  log(level, message, ...args) {
+    if (this.logger?.[level]) {
+      this.logger[level](message, ...args);
+    } else if (this.debug && level === "debug") {
+      console.warn(`[SDK] ${message}`, ...args);
+    }
+  }
+  /**
+   * Sleep for a specified duration
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  // ============================================================================
+  // Caching Utilities (Optional - only active if cache provider is configured)
+  // ============================================================================
+  /**
+   * Get a value from cache
+   * Returns null if cache is not configured or key is not found
+   */
+  async getFromCache(key) {
+    if (!this.cache) return null;
+    try {
+      const cached = await this.cache.get(key);
+      if (cached) {
+        this.log("debug", `Cache hit for key: ${key}`);
+        return cached;
+      }
+    } catch (error) {
+      this.log("error", "Cache get error:", error);
+    }
+    return null;
+  }
+  /**
+   * Set a value in cache
+   * No-op if cache is not configured
+   */
+  async setCache(key, value, ttl) {
+    if (!this.cache) return;
+    try {
+      await this.cache.set(key, value, ttl);
+      this.log("debug", `Cache set for key: ${key}`);
+    } catch (error) {
+      this.log("error", "Cache set error:", error);
+    }
+  }
+  /**
+   * Execute a function with caching
+   * Returns cached value if available, otherwise executes function and caches result
+   */
+  async withCache(cacheKey, fn, ttl) {
+    const cached = await this.getFromCache(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+    const result = await fn();
+    await this.setCache(cacheKey, result, ttl);
+    return result;
+  }
+  /**
+   * Generate a cache key from resource and identifiers
+   */
+  getCacheKey(resource, ...identifiers) {
+    const parts = identifiers.filter((id) => id !== void 0).map((id) => typeof id === "object" ? JSON.stringify(id) : String(id));
+    return `${resource}:${parts.join(":")}`;
+  }
+};
+
+// src/circuit-breaker/types.ts
+var CircuitState = /* @__PURE__ */ ((CircuitState2) => {
+  CircuitState2["CLOSED"] = "closed";
+  CircuitState2["OPEN"] = "open";
+  CircuitState2["HALF_OPEN"] = "half_open";
+  return CircuitState2;
+})(CircuitState || {});
+
+// src/circuit-breaker/errors.ts
+var CircuitBreakerOpenError = class extends ConduitError {
+  /** Current circuit breaker state */
+  circuitState;
+  /** Time until circuit transitions to HALF_OPEN (milliseconds) */
+  timeUntilHalfOpen;
+  /** Circuit breaker statistics at time of rejection */
+  stats;
+  constructor(message, stats, timeUntilHalfOpen) {
+    super(message, 503, "CIRCUIT_BREAKER_OPEN", {
+      circuitState: stats.state,
+      timeUntilHalfOpen,
+      consecutiveFailures: stats.consecutiveFailures,
+      totalFailures: stats.totalFailures
+    });
+    this.circuitState = stats.state;
+    this.timeUntilHalfOpen = timeUntilHalfOpen;
+    this.stats = stats;
+  }
+};
+function isCircuitBreakerOpenError(error) {
+  return error instanceof CircuitBreakerOpenError;
+}
+
+// src/circuit-breaker/CircuitBreaker.ts
+var DEFAULT_CONFIG = {
+  failureThreshold: 3,
+  failureWindowMs: 6e4,
+  // 60 seconds
+  resetTimeoutMs: 3e4,
+  // 30 seconds
+  successThreshold: 1,
+  enableLogging: false
+};
+var CircuitBreaker = class {
+  config;
+  callbacks;
+  // State tracking
+  state = "closed" /* CLOSED */;
+  failures = [];
+  halfOpenSuccesses = 0;
+  // Statistics
+  totalFailures = 0;
+  totalSuccesses = 0;
+  rejectedRequests = 0;
+  circuitOpenedAt = null;
+  lastFailureAt = null;
+  lastSuccessAt = null;
+  constructor(config = {}, callbacks = {}) {
+    this.config = {
+      ...DEFAULT_CONFIG,
+      ...config
+    };
+    this.callbacks = callbacks;
+  }
+  /**
+   * Get current state of the circuit
+   * Automatically transitions OPEN -> HALF_OPEN after timeout
+   */
+  getState() {
+    if (this.state === "open" /* OPEN */ && this.circuitOpenedAt !== null) {
+      const elapsed = Date.now() - this.circuitOpenedAt;
+      if (elapsed >= this.config.resetTimeoutMs) {
+        this.transitionTo("half_open" /* HALF_OPEN */);
+      }
+    }
+    return this.state;
+  }
+  /**
+   * Get circuit breaker statistics
+   */
+  getStats() {
+    const currentState = this.getState();
+    return {
+      state: currentState,
+      consecutiveFailures: this.getConsecutiveFailuresInWindow(),
+      totalFailures: this.totalFailures,
+      totalSuccesses: this.totalSuccesses,
+      circuitOpenedAt: this.circuitOpenedAt,
+      timeUntilHalfOpen: this.calculateTimeUntilHalfOpen(),
+      lastFailureAt: this.lastFailureAt,
+      lastSuccessAt: this.lastSuccessAt,
+      rejectedRequests: this.rejectedRequests
+    };
+  }
+  /**
+   * Check if a request can proceed
+   * Returns true if circuit is CLOSED or HALF_OPEN
+   */
+  canExecute() {
+    const state = this.getState();
+    return state !== "open" /* OPEN */;
+  }
+  /**
+   * Check if request should proceed, throwing if circuit is open
+   * @throws CircuitBreakerOpenError if circuit is OPEN
+   */
+  checkOpen() {
+    const state = this.getState();
+    if (state === "open" /* OPEN */) {
+      this.rejectedRequests++;
+      const stats = this.getStats();
+      this.callbacks.onRejected?.(stats);
+      throw new CircuitBreakerOpenError(
+        `Circuit breaker is open. Try again in ${Math.ceil((stats.timeUntilHalfOpen ?? 0) / 1e3)} seconds.`,
+        stats,
+        stats.timeUntilHalfOpen
+      );
+    }
+  }
+  /**
+   * Record a successful request
+   */
+  recordSuccess() {
+    this.totalSuccesses++;
+    this.lastSuccessAt = Date.now();
+    const currentState = this.getState();
+    if (currentState === "half_open" /* HALF_OPEN */) {
+      this.halfOpenSuccesses++;
+      this.log("debug", `Half-open success ${this.halfOpenSuccesses}/${this.config.successThreshold}`);
+      if (this.halfOpenSuccesses >= this.config.successThreshold) {
+        this.transitionTo("closed" /* CLOSED */);
+      }
+    } else if (currentState === "closed" /* CLOSED */) {
+      this.failures = [];
+    }
+  }
+  /**
+   * Record a failed request
+   */
+  recordFailure(error) {
+    if (this.config.shouldCountAsFailure && !this.config.shouldCountAsFailure(error)) {
+      this.log("debug", "Error not counted as failure by custom filter");
+      return;
+    }
+    const now = Date.now();
+    this.totalFailures++;
+    this.lastFailureAt = now;
+    const currentState = this.getState();
+    if (currentState === "half_open" /* HALF_OPEN */) {
+      this.log("warn", "Failure in half-open state, reopening circuit");
+      this.transitionTo("open" /* OPEN */, error);
+      return;
+    }
+    if (currentState === "closed" /* CLOSED */) {
+      this.failures.push({ timestamp: now, error });
+      this.pruneOldFailures();
+      const consecutiveFailures = this.getConsecutiveFailuresInWindow();
+      this.log("debug", `Consecutive failures: ${consecutiveFailures}/${this.config.failureThreshold}`);
+      if (consecutiveFailures >= this.config.failureThreshold) {
+        this.transitionTo("open" /* OPEN */, error);
+      }
+    }
+  }
+  /**
+   * Manually reset the circuit to CLOSED state
+   * Use with caution - typically for testing or admin override
+   */
+  reset() {
+    this.log("info", "Circuit manually reset");
+    this.transitionTo("closed" /* CLOSED */);
+    this.failures = [];
+    this.totalFailures = 0;
+    this.totalSuccesses = 0;
+    this.rejectedRequests = 0;
+  }
+  // Private methods
+  transitionTo(newState, triggerError) {
+    const oldState = this.state;
+    if (oldState === newState) return;
+    this.state = newState;
+    const stats = this.getStats();
+    this.log("info", `Circuit state change: ${oldState} -> ${newState}`);
+    switch (newState) {
+      case "open" /* OPEN */:
+        this.circuitOpenedAt = Date.now();
+        this.halfOpenSuccesses = 0;
+        this.callbacks.onOpen?.(stats, triggerError);
+        break;
+      case "half_open" /* HALF_OPEN */:
+        this.halfOpenSuccesses = 0;
+        this.callbacks.onHalfOpen?.(stats);
+        break;
+      case "closed" /* CLOSED */:
+        this.circuitOpenedAt = null;
+        this.failures = [];
+        this.halfOpenSuccesses = 0;
+        this.callbacks.onClose?.(stats);
+        break;
+    }
+    this.callbacks.onStateChange?.(oldState, newState, stats);
+  }
+  pruneOldFailures() {
+    const cutoff = Date.now() - this.config.failureWindowMs;
+    this.failures = this.failures.filter((f) => f.timestamp >= cutoff);
+  }
+  getConsecutiveFailuresInWindow() {
+    this.pruneOldFailures();
+    return this.failures.length;
+  }
+  calculateTimeUntilHalfOpen() {
+    if (this.state !== "open" /* OPEN */ || this.circuitOpenedAt === null) {
+      return null;
+    }
+    const elapsed = Date.now() - this.circuitOpenedAt;
+    const remaining = this.config.resetTimeoutMs - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+  log(_level, message) {
+    if (this.config.enableLogging) {
+      console.warn(`[CircuitBreaker] ${message}`);
+    }
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AuthError,
   AuthenticationError,
   AuthorizationError,
+  BaseApiClient,
   BaseSignalRConnection,
   CONTENT_TYPES,
+  CircuitBreaker,
+  CircuitBreakerOpenError,
+  CircuitState,
   ConduitError,
   ConflictError,
+  DEFAULT_RETRY_STRATEGIES,
   DefaultTransports,
   ERROR_CODES,
   HTTP_HEADERS,
@@ -866,21 +1514,26 @@ var HttpError = class extends Error {
   RETRY_CONFIG,
   RateLimitError,
   ResponseParser,
+  RetryStrategyType,
   ServerError,
   SignalRLogLevel,
+  SignalRProtocolType,
   StreamError,
   TIMEOUTS,
   TimeoutError,
   ValidationError,
+  calculateRetryDelay,
   createErrorFromResponse,
   deserializeError,
   getCapabilityCategory,
   getCapabilityDisplayName,
   getErrorMessage,
   getErrorStatusCode,
+  getMaxRetries,
   handleApiError,
   isAuthError,
   isAuthorizationError,
+  isCircuitBreakerOpenError,
   isConduitError,
   isConflictError,
   isErrorLike,
@@ -892,9 +1545,11 @@ var HttpError = class extends Error {
   isNotFoundError,
   isRateLimitError,
   isSerializedConduitError,
+  isServerError,
   isStreamError,
   isTimeoutError,
   isValidationError,
-  serializeError
+  serializeError,
+  shouldRetryWithStrategy
 });
 //# sourceMappingURL=index.js.map

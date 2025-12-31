@@ -36,13 +36,13 @@ The workflow automatically runs when:
 - **Versions**: `1.1.0-dev.1`, `1.1.0-dev.2`, `1.1.0-dev.3`, etc.
 - **NPM Tag**: `@dev`
 - **Behavior**: Auto-increments prerelease number, no commits back to repo
-- **Install**: `npm install @knn_labs/conduit-core-client@dev`
+- **Install**: `npm install @knn_labs/conduit-gateway-client@dev`
 
 #### Master Branch (`origin/master`)
 - **Versions**: `1.1.0` → `1.1.1` → `1.1.2` (patch increments by default)
 - **NPM Tag**: `@latest`
 - **Behavior**: Commits version changes back to repo, publishes to NPM
-- **Install**: `npm install @knn_labs/conduit-core-client@latest`
+- **Install**: `npm install @knn_labs/conduit-gateway-client@latest`
 
 ### Smart Version Detection
 The workflow automatically detects version type from commit messages:
@@ -103,16 +103,16 @@ You can also trigger versioning manually:
 ### NPM Package Status
 ```bash
 # Check latest dev versions
-npm view @knn_labs/conduit-core-client versions --json | jq '.[] | select(test("dev"))'
+npm view @knn_labs/conduit-gateway-client versions --json | jq '.[] | select(test("dev"))'
 
 # Check latest stable versions  
-npm view @knn_labs/conduit-core-client versions --json | jq '.[] | select(test("dev") | not)'
+npm view @knn_labs/conduit-gateway-client versions --json | jq '.[] | select(test("dev") | not)'
 ```
 
 ### Installation Commands
 The workflow provides installation commands in its output:
-- Dev: `npm install @knn_labs/conduit-core-client@dev`
-- Stable: `npm install @knn_labs/conduit-core-client@latest`
+- Dev: `npm install @knn_labs/conduit-gateway-client@dev`
+- Stable: `npm install @knn_labs/conduit-gateway-client@latest`
 
 ## 🛠️ Troubleshooting
 

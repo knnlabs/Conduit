@@ -1,0 +1,37 @@
+using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Core.Services;
+
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
+using Xunit.Abstractions;
+
+namespace ConduitLLM.Tests.Admin.Controllers
+{
+    /// <summary>
+    /// Unit tests for the ModelCostsController class.
+    /// </summary>
+    [Trait("Category", "Unit")]
+    [Trait("Component", "AdminController")]
+    public partial class ModelCostsControllerTests
+    {
+        private readonly Mock<IAdminModelCostService> _mockService;
+        private readonly Mock<IPricingRulesValidator> _mockValidator;
+        private readonly Mock<ILogger<ModelCostsController>> _mockLogger;
+        private readonly ModelCostsController _controller;
+        private readonly ITestOutputHelper _output;
+
+        public ModelCostsControllerTests(ITestOutputHelper output)
+        {
+            _output = output;
+            _mockService = new Mock<IAdminModelCostService>();
+            _mockValidator = new Mock<IPricingRulesValidator>();
+            _mockLogger = new Mock<ILogger<ModelCostsController>>();
+            _controller = new ModelCostsController(_mockService.Object, _mockValidator.Object, _mockLogger.Object);
+        }
+
+    }
+
+}

@@ -1,21 +1,21 @@
-# WebUI Core API Endpoints
+# WebAdmin Gateway API Endpoints
 
-Documentation for Core API endpoints provided by the Conduit WebUI that offer direct access to AI capabilities via the Core SDK.
+Documentation for Gateway API endpoints provided by the Conduit WebAdmin that offer direct access to AI capabilities via the Core SDK.
 
 ## Overview
 
-Core API endpoints provide direct access to AI capabilities through the Conduit WebUI, serving as abstractions for the Node SDK functions. These endpoints support multiple authentication methods and provide enhanced features like real-time metrics and streaming.
+Gateway API endpoints provide direct access to AI capabilities through the Conduit WebAdmin, serving as abstractions for the Node SDK functions. These endpoints support multiple authentication methods and provide enhanced features like real-time metrics and streaming.
 
 ## Related Documentation
 
-- [WebUI API Reference](./webui-api-reference.md) - Main API reference and overview
-- [WebUI Admin API](./webui-admin-api.md) - Administrative endpoints
-- [WebUI Authentication](./webui-authentication.md) - Authentication methods and setup
+- [WebAdmin API Reference](./webadmin-api-reference.md) - Main API reference and overview
+- [WebAdmin Admin API](./webadmin-admin-api.md) - Administrative endpoints
+- [WebAdmin Authentication](./webadmin-authentication.md) - Authentication methods and setup
 - [Real-Time API Guide](../real-time-api-guide.md) - Real-time features and SignalR
 
 ## Authentication
 
-Core API endpoints support multiple virtual key authentication methods:
+Gateway API endpoints support multiple virtual key authentication methods:
 
 ```typescript
 // 1. Request body
@@ -126,7 +126,7 @@ interface ChatCompletionResponse {
 
 **Response (Enhanced Streaming):**
 
-The WebUI provides enhanced streaming with multiple event types:
+The WebAdmin provides enhanced streaming with multiple event types:
 
 ```typescript
 // Content events (standard chat completion chunks)
@@ -429,7 +429,7 @@ console.log('Transcription:', result.data.text);
 
 ### `GET /api/core/health`
 
-Check Core API health status.
+Check Gateway API health status.
 
 **Response:**
 ```typescript
@@ -473,7 +473,7 @@ X-Checked-At: 2024-01-01T12:00:00Z
 
 ## Error Handling
 
-All Core API endpoints use standardized error handling via the `handleSDKError` utility:
+All Gateway API endpoints use standardized error handling via the `handleSDKError` utility:
 
 ```typescript
 interface CoreAPIError {
@@ -504,7 +504,7 @@ interface CoreAPIError {
 
 ### Authentication
 - Always include virtual key via one of the supported methods
-- Use session authentication for WebUI frontend requests
+- Use session authentication for WebAdmin frontend requests
 - Include error handling for authentication failures
 
 ### Streaming
@@ -524,6 +524,6 @@ interface CoreAPIError {
 
 ## Next Steps
 
-- [WebUI Admin API](./webui-admin-api.md) - Administrative endpoint documentation
-- [WebUI Authentication](./webui-authentication.md) - Authentication setup and methods
+- [WebAdmin Admin API](./webadmin-admin-api.md) - Administrative endpoint documentation
+- [WebAdmin Authentication](./webadmin-authentication.md) - Authentication setup and methods
 - [Real-Time API Guide](../real-time-api-guide.md) - Real-time features and SignalR integration

@@ -1,37 +1,37 @@
-# Conduit WebUI API Reference
+# Conduit WebAdmin API Reference
 
-This reference documents all API endpoints exposed by the Conduit WebUI. The WebUI is a Next.js administrative project that provides API endpoints serving as abstractions for the Node SDK functions, enabling seamless integration between the frontend and the Conduit backend services.
+This reference documents all API endpoints exposed by the Conduit WebAdmin. The WebAdmin is a Next.js administrative project that provides API endpoints serving as abstractions for the Node SDK functions, enabling seamless integration between the frontend and the Conduit backend services.
 
 ## Documentation Structure
 
-The WebUI API reference has been organized into focused guides for easier navigation and maintenance:
+The WebAdmin API reference has been organized into focused guides for easier navigation and maintenance:
 
 ### 🔧 Core Documentation
-- **[WebUI Authentication](./webui-authentication.md)** - Authentication methods and session management
-- **[WebUI Core API](./webui-core-api.md)** - Chat, image, video, and audio endpoints
-- **[WebUI Admin API](./webui-admin-api.md)** - Administrative and management endpoints
-- **[WebUI Real-Time Features](./webui-realtime.md)** - SignalR integration and real-time updates
+- **[WebAdmin Authentication](./webadmin-authentication.md)** - Authentication methods and session management
+- **[WebAdmin Gateway API](./webadmin-core-api.md)** - Chat, image, video, and audio endpoints
+- **[WebAdmin Admin API](./webadmin-admin-api.md)** - Administrative and management endpoints
+- **[WebAdmin Real-Time Features](./webadmin-realtime.md)** - SignalR integration and real-time updates
 
 ### 📊 Advanced Topics
-- **[WebUI Error Handling](./webui-error-handling.md)** - Error handling patterns and responses
-- **[WebUI Types & Interfaces](./webui-types.md)** - TypeScript type definitions
-- **[WebUI Rate Limiting](./webui-rate-limiting.md)** - Rate limiting and quota management
+- **[WebAdmin Error Handling](./webadmin-error-handling.md)** - Error handling patterns and responses
+- **[WebAdmin Types & Interfaces](./webadmin-types.md)** - TypeScript type definitions
+- **[WebAdmin Rate Limiting](./webadmin-rate-limiting.md)** - Rate limiting and quota management
 
 ## Architecture Overview
 
-The WebUI API serves as a thin abstraction layer over the Node SDK, providing:
+The WebAdmin API serves as a thin abstraction layer over the Node SDK, providing:
 
 - **Centralized SDK Management**: Singleton pattern for Admin and Core clients
-- **Automatic Authentication**: WebUI virtual key auto-creation and management
+- **Automatic Authentication**: WebAdmin virtual key auto-creation and management
 - **Enhanced Error Handling**: Standardized error responses via `handleSDKError`
 - **Session Integration**: NextAuth session management
 - **Real-time Updates**: SignalR integration for live data
 
 ```typescript
 // SDK Client Architecture
-WebUI API → Node SDK → Backend Services
+WebAdmin API → Node SDK → Backend Services
     ↓           ↓            ↓
-  Next.js   Admin/Core   Admin/Core APIs
+  Next.js   Admin/Core   Admin/Gateway APIs
 ```
 
 ## Quick Start Guide
@@ -79,7 +79,7 @@ const response = await fetch('/api/admin/virtual-keys', {
 
 ## API Categories
 
-### Core API Endpoints
+### Gateway API Endpoints
 Direct access to AI capabilities via the Core SDK:
 - **Chat Completions** - GPT, Claude, and other text models
 - **Image Generation** - DALL-E, Stable Diffusion, MiniMax
@@ -105,7 +105,7 @@ System management capabilities via the Admin SDK:
 
 ### Session Authentication (Default)
 ```typescript
-// Automatic session validation for WebUI requests
+// Automatic session validation for WebAdmin requests
 export async function GET(request: NextRequest) {
   const adminClient = getServerAdminClient();
   // Session automatically validated
@@ -135,10 +135,10 @@ const adminClient = getServerAdminClient(); // Uses CONDUIT_API_TO_API_BACKEND_A
 
 ## Error Handling
 
-All WebUI API endpoints use standardized error handling:
+All WebAdmin API endpoints use standardized error handling:
 
 ```typescript
-interface WebUIAPIError {
+interface WebAdminAPIError {
   error: {
     type: string;
     message: string;
@@ -180,10 +180,10 @@ Common error types include authentication errors, rate limiting, validation erro
 
 ## Response Format
 
-All WebUI API responses follow a consistent format:
+All WebAdmin API responses follow a consistent format:
 
 ```typescript
-interface WebUIAPIResponse<T> {
+interface WebAdminAPIResponse<T> {
   data: T;
   meta: {
     timestamp: string;
@@ -199,7 +199,7 @@ This provides consistent metadata across all endpoints while maintaining flexibi
 ## Best Practices
 
 ### Authentication
-- Use session authentication for WebUI frontend requests
+- Use session authentication for WebAdmin frontend requests
 - Include virtual keys via headers for external API calls
 - Implement proper error handling for authentication failures
 
@@ -220,7 +220,7 @@ This provides consistent metadata across all endpoints while maintaining flexibi
 
 ## Support
 
-For questions or issues with WebUI API:
+For questions or issues with WebAdmin API:
 - Check the specific endpoint guide for detailed documentation
 - Review error handling patterns for troubleshooting
 - See real-time features guide for SignalR integration

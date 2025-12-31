@@ -1,0 +1,129 @@
+'use client';
+
+import { useState } from 'react';
+import { Container, Title, Text, Button, Group, Stack, Tooltip } from '@mantine/core';
+import { IconPlus, IconRefresh, IconFileImport, IconTrash } from '@tabler/icons-react';
+import { ModelMappingsTable } from '@/components/modelmappings/ModelMappingsTableWithHooks';
+import { CreateModelMappingModal } from '@/components/modelmappings/CreateModelMappingModal';
+import { BulkMappingModal } from '@/components/modelmappings/BulkMappingModal';
+import { notifications } from '@mantine/notifications';
+import { useAdminClient } from '@/lib/client/adminClient';
+
+export default function ModelMappingsPage() {
+  const { executeWithAdmin } = useAdminClient();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleInvalidateCache = async () => {
+    try {
+      notifications.show({
+        id: 'invalidating-cache',
+        title: 'Invalidating Discovery Cache',
+        message: 'Please wait...',
+        loading: true,
+        autoClose: false,
+      });
+
+      const result = await executeWithAdmin(client =>
+        client.system.invalidateDiscoveryCache()
+      );
+
+      notifications.update({
+        id: 'invalidating-cache',
+        title: 'Cache Invalidated',
+        message: (result as { message?: string })?.message ?? 'Discovery cache has been successfully cleared',
+        color: 'green',
+        loading: false,
+        autoClose: 5000,
+      });
+
+      // Refresh the table after cache invalidation
+      handleRefresh();
+    } catch (error) {
+      console.error('Failed to invalidate cache:', error);
+      notifications.update({
+        id: 'invalidating-cache',
+        title: 'Failed to Invalidate Cache',
+        message: error instanceof Error ? error.message : 'An error occurred while invalidating the cache',
+        color: 'red',
+        loading: false,
+        autoClose: 5000,
+      });
+    }
+  };
+
+  return (
+    <Container size="xl">
+      <Stack gap="md">
+        <Group justify="space-between" align="flex-end">
+          <div>
+            <Title order={2}>Model Mappings</Title>
+            <Text c="dimmed" size="sm" mt={4}>
+              Configure how models are routed to different providers
+            </Text>
+          </div>
+          <Group>
+            <Tooltip label="Clear the discovery cache to force reload of model mappings">
+              <Button
+                leftSection={<IconTrash size={16} />}
+                variant="subtle"
+                color="orange"
+                onClick={() => void handleInvalidateCache()}
+              >
+                Clear Cache
+              </Button>
+            </Tooltip>
+            <Button
+              leftSection={<IconFileImport size={16} />}
+              variant="light"
+              onClick={() => setBulkModalOpen(true)}
+            >
+              Bulk Import
+            </Button>
+            <Button
+              leftSection={<IconRefresh size={16} />}
+              variant="subtle"
+              onClick={handleRefresh}
+            >
+              Refresh
+            </Button>
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => setCreateModalOpen(true)}
+            >
+              Add Mapping
+            </Button>
+          </Group>
+        </Group>
+
+        <ModelMappingsTable 
+          key={refreshKey} 
+          onRefresh={handleRefresh}
+        />
+      </Stack>
+
+      <CreateModelMappingModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          setCreateModalOpen(false);
+          handleRefresh();
+        }}
+      />
+      
+      <BulkMappingModal
+        isOpen={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        onSuccess={() => {
+          setBulkModalOpen(false);
+          handleRefresh();
+        }}
+      />
+    </Container>
+  );
+}

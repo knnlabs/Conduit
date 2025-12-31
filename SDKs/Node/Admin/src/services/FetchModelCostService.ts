@@ -13,7 +13,7 @@ import {
 } from '../models/modelCost';
 import { PagedResult } from '../models/security';
 import { ValidationError } from '../utils/errors';
-import { z } from 'zod';
+import { validateRequired, validateStringLength, validateNonEmptyArray, validateNumberRange } from '../utils/validation';
 
 // Type aliases for better readability
 interface ModelCostListParams {
@@ -21,6 +21,8 @@ interface ModelCostListParams {
   pageSize?: number;
   provider?: string;
   isActive?: boolean;
+  /** Filter by model type (chat, image, video, embedding, audio) */
+  modelType?: string;
 }
 
 interface ModelCostOverviewParams {
@@ -29,36 +31,55 @@ interface ModelCostOverviewParams {
   groupBy?: 'provider' | 'model';
 }
 
+/**
+ * Validates create model cost request
+ */
+function validateCreateModelCostRequest(data: CreateModelCostDto): void {
+  // Validate required fields
+  validateRequired(data, ['costName', 'modelProviderMappingIds', 'inputCostPerMillionTokens', 'outputCostPerMillionTokens']);
+  validateStringLength(data.costName, 1, 255, 'costName');
+  validateNonEmptyArray(data.modelProviderMappingIds, 'modelProviderMappingIds');
 
-// Validation schemas
-const createCostSchema = z.object({
-  costName: z.string().min(1).max(255),
-  modelProviderMappingIds: z.array(z.number()),
-  pricingModel: z.number().optional(), // PricingModel enum
-  pricingConfiguration: z.string().optional(), // JSON configuration
-  modelType: z.string().default('chat'),
-  inputCostPerMillionTokens: z.number().min(0),
-  outputCostPerMillionTokens: z.number().min(0),
-  embeddingCostPerMillionTokens: z.number().min(0).optional(),
-  imageCostPerImage: z.number().min(0).optional(),
-  audioCostPerMinute: z.number().min(0).optional(),
-  audioCostPerKCharacters: z.number().min(0).optional(),
-  audioInputCostPerMinute: z.number().min(0).optional(),
-  audioOutputCostPerMinute: z.number().min(0).optional(),
-  videoCostPerSecond: z.number().min(0).optional(),
-  videoResolutionMultipliers: z.string().optional(), // JSON string
-  imageResolutionMultipliers: z.string().optional(), // JSON string
-  imageQualityMultipliers: z.string().optional(), // JSON string
-  description: z.string().optional(),
-  priority: z.number().optional(),
-  batchProcessingMultiplier: z.number().min(0).max(1).optional(),
-  supportsBatchProcessing: z.boolean().optional(),
-  cachedInputCostPerMillionTokens: z.number().min(0).optional(),
-  cachedInputWriteCostPerMillionTokens: z.number().min(0).optional(),
-  costPerSearchUnit: z.number().min(0).optional(),
-  costPerInferenceStep: z.number().min(0).optional(),
-  defaultInferenceSteps: z.number().min(1).optional(),
-});
+  // Validate cost values are non-negative
+  if (data.inputCostPerMillionTokens < 0) {
+    throw new ValidationError('inputCostPerMillionTokens must be non-negative');
+  }
+  if (data.outputCostPerMillionTokens < 0) {
+    throw new ValidationError('outputCostPerMillionTokens must be non-negative');
+  }
+
+  // Validate optional number fields if provided
+  const optionalNumberFields = [
+    'embeddingCostPerMillionTokens',
+    'imageCostPerImage',
+    'audioCostPerMinute',
+    'audioCostPerKCharacters',
+    'audioInputCostPerMinute',
+    'audioOutputCostPerMinute',
+    'videoCostPerSecond',
+    'cachedInputCostPerMillionTokens',
+    'cachedInputWriteCostPerMillionTokens',
+    'costPerSearchUnit',
+    'costPerInferenceStep',
+  ] as const;
+
+  for (const field of optionalNumberFields) {
+    const value = data[field as keyof CreateModelCostDto];
+    if (value !== undefined && value !== null && typeof value === 'number' && value < 0) {
+      throw new ValidationError(`${field} must be non-negative`);
+    }
+  }
+
+  // Validate batch processing multiplier is between 0 and 1
+  if (data.batchProcessingMultiplier !== undefined && data.batchProcessingMultiplier !== null) {
+    validateNumberRange(data.batchProcessingMultiplier, 0, 1, 'batchProcessingMultiplier');
+  }
+
+  // Validate default inference steps is at least 1
+  if (data.defaultInferenceSteps !== undefined && data.defaultInferenceSteps !== null && data.defaultInferenceSteps < 1) {
+    throw new ValidationError('defaultInferenceSteps must be at least 1');
+  }
+}
 
 /**
  * Type-safe Model Cost service using native fetch
@@ -115,11 +136,7 @@ export class FetchModelCostService {
     data: CreateModelCostDto,
     config?: RequestConfig
   ): Promise<ModelCostDto> {
-    try {
-      createCostSchema.parse(data);
-    } catch (error) {
-      throw new ValidationError('Invalid model cost data', { validationError: error });
-    }
+    validateCreateModelCostRequest(data);
 
     return this.client['post']<ModelCostDto, CreateModelCostDto>(
       ENDPOINTS.MODEL_COSTS.BASE,
