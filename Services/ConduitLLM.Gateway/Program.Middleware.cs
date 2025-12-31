@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Middleware;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Security.Middleware;
 using Scalar.AspNetCore;
 
 public partial class Program
@@ -29,6 +30,11 @@ public partial class Program
         // Enable CORS
         app.UseCors();
         Console.WriteLine("[Conduit] CORS configured");
+
+        // Add health endpoint authorization (early in pipeline, before authentication)
+        // This protects health endpoints from external access without valid key
+        app.UseHealthEndpointAuthorization();
+        Console.WriteLine("[Conduit] Health endpoint authorization configured");
 
         // Enable Scalar API documentation in development
         if (app.Environment.IsDevelopment())

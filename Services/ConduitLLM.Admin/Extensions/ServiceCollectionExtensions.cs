@@ -5,9 +5,10 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration; // For ConduitDbContext
 using ConduitLLM.Core.Extensions; // For AddMediaServices extension method
 using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
-using ConduitLLM.Configuration.Interfaces; // For repository interfaces  
+using ConduitLLM.Configuration.Interfaces; // For repository interfaces
 using ConduitLLM.Configuration.Repositories; // For repository interfaces
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Security.Authorization; // For health key authorization
 
 using MassTransit; // For IPublishEndpoint
 using Microsoft.AspNetCore.Authorization;
@@ -60,17 +61,27 @@ public static class ServiceCollectionExtensions
 
         // Register authorization policy for master key
         services.AddSingleton<IAuthorizationHandler, MasterKeyAuthorizationHandler>();
+
+        // Register health key authorization handler (shared from ConduitLLM.Security)
+        services.AddSingleton<IAuthorizationHandler, HealthKeyAuthorizationHandler>();
+
         services.AddAuthorization(options =>
         {
             // Define the MasterKeyPolicy
             options.AddPolicy("MasterKeyPolicy", policy =>
                 policy.Requirements.Add(new MasterKeyRequirement()));
-            
+
             // Set MasterKeyPolicy as the default policy for all controllers
             // This ensures any controller with [Authorize] will use MasterKeyPolicy by default
             options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
                 .AddRequirements(new MasterKeyRequirement())
                 .Build();
+
+            // Add policy for health endpoint access - allows private network OR valid health key
+            options.AddPolicy("HealthMonitoring", policy =>
+            {
+                policy.Requirements.Add(new HealthKeyRequirement());
+            });
         });
 
         // Register AdminVirtualKeyService with optional cache and event publishing dependencies

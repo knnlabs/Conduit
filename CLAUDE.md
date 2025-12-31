@@ -381,6 +381,14 @@ public enum ProviderType
 - NOT for end-users or client applications
 - Configured on WebAdmin service
 
+### Health Monitoring Key
+**CONDUIT_HEALTH_MONITORING_KEY**:
+- Used by external monitoring services (BetterStack, Pingdom, etc.) to access health endpoints
+- Passed via `X-Conduit-Health-Key` header
+- Private network requests (10.x, 172.16-31.x, 192.168.x, 127.x) don't require this key
+- External requests without valid key receive `404 Not Found`
+- See `docs/operations/monitoring/health-checks.md` for configuration details
+
 ## WebAdmin API Architecture
 
 **The WebAdmin has only 3 API routes** - relies on client-side SDK usage with ephemeral keys:

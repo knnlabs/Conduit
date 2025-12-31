@@ -7,6 +7,7 @@ using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Extensions;
+using ConduitLLM.Security.Middleware;
 
 using MassTransit; // Added for event bus infrastructure
 
@@ -343,6 +344,10 @@ public partial class Program
         {
             app.UseHttpsRedirection();
         }
+
+        // Add health endpoint authorization (early in pipeline, before authentication)
+        // This protects health endpoints from external access without valid key
+        app.UseHealthEndpointAuthorization();
 
         // Add middleware for authentication and request tracking
         app.UseAdminMiddleware();
