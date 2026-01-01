@@ -1,13 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
 import { Stack, Paper, LoadingOverlay, Text } from '@mantine/core';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
-import { useParameterState } from '@/components/parameters/hooks/useParameterState';
-import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
+import { useMediaInterface } from '@/app/hooks/useMediaInterface';
 import { ModelCapability } from '@knn_labs/conduit-gateway-client';
 import EnhancedVideoPromptInput from './EnhancedVideoPromptInput';
 import VideoGallery from './VideoGallery';
@@ -22,31 +20,20 @@ export default function VideoInterface() {
     currentTask,
   } = useVideoStore();
 
-  // Fetch models with video generation capability from discovery endpoint
-  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels(ModelCapability.VideoGeneration);
-  
-  // Find the currently selected model to get its parameters
-  const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);
-  
-  // Initialize parameter state with the model's parameters
-  const parameterState = useParameterState({
-    parameters: selectedDiscoveryModel?.parameters ?? '{}',
-    persistKey: `video-params-${settings.model}`,
+  // Use shared media interface hook for model discovery and parameter management
+  const {
+    discoveryData,
+    modelsLoading,
+    modelsError,
+    selectedDiscoveryModel,
+    parameterState,
+  } = useMediaInterface({
+    capability: ModelCapability.VideoGeneration,
+    currentModel: settings.model,
+    onModelChange: (model) => updateSettings({ model }),
+    onError: setError,
+    parameterPersistPrefix: 'video',
   });
-
-  // Auto-select first available model
-  useEffect(() => {
-    if (discoveryData?.data && discoveryData.data.length > 0 && !settings.model) {
-      updateSettings({ model: discoveryData.data[0].id });
-    }
-  }, [discoveryData, settings.model, updateSettings]);
-
-  // Handle models loading error
-  useEffect(() => {
-    if (modelsError) {
-      setError(`Failed to load models: ${modelsError.message}`);
-    }
-  }, [modelsError, setError]);
 
   if (modelsLoading) {
     return (

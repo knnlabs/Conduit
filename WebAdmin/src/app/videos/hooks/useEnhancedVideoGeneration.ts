@@ -137,21 +137,16 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
         },
         onFailed: (error) => {
           console.error('Video generation failed:', error);
-          
-          const errorMessage = typeof error === 'string' ? error : 'Video generation failed';
+
+          // Use SDK error handler for consistent error extraction and toast display
+          const errorMessage = handleError(error, 'video generation');
           setError(errorMessage);
-          
+
           // Update task status
           updateTask(currentTaskId, {
             status: MediaGenerationStatus.Failed,
             error: errorMessage,
             updatedAt: new Date().toISOString(),
-          });
-          
-          notifications.show({
-            title: 'Video Generation Failed',
-            message: errorMessage,
-            color: 'red',
           });
         },
       };

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import {
   Stack,
   Title,
@@ -16,8 +15,7 @@ import { useImageStore } from '../hooks/useImageStore';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
-import { useParameterState } from '@/components/parameters/hooks/useParameterState';
-import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
+import { useMediaInterface } from '@/app/hooks/useMediaInterface';
 import { ModelCapability } from '@knn_labs/conduit-gateway-client';
 import ImageSettings from './ImageSettings';
 import ImagePromptInput from './ImagePromptInput';
@@ -35,31 +33,20 @@ export default function ImageInterface() {
     setError,
   } = useImageStore();
 
-  // Fetch models with image generation capability from discovery endpoint
-  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels(ModelCapability.ImageGeneration);
-  
-  // Find the selected model with parameters
-  const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);
-  
-  // Initialize parameter state with the model's parameters
-  const parameterState = useParameterState({
-    parameters: selectedDiscoveryModel?.parameters ?? '{}',
-    persistKey: `image-params-${settings.model ?? 'default'}`,
+  // Use shared media interface hook for model discovery and parameter management
+  const {
+    discoveryData,
+    modelsLoading,
+    modelsError,
+    selectedDiscoveryModel,
+    parameterState,
+  } = useMediaInterface({
+    capability: ModelCapability.ImageGeneration,
+    currentModel: settings.model,
+    onModelChange: (model) => updateSettings({ model }),
+    onError: setError,
+    parameterPersistPrefix: 'image',
   });
-
-  // Auto-select first available model
-  useEffect(() => {
-    if (discoveryData?.data && discoveryData.data.length > 0 && !settings.model) {
-      updateSettings({ model: discoveryData.data[0].id });
-    }
-  }, [discoveryData, settings.model, updateSettings]);
-
-  // Handle models loading error
-  useEffect(() => {
-    if (modelsError) {
-      setError(`Failed to load models: ${modelsError.message}`);
-    }
-  }, [modelsError, setError]);
 
   if (modelsLoading) {
     return (
