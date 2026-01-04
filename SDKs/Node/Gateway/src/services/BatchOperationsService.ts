@@ -351,7 +351,7 @@ export class BatchOperationsService {
           }
         }
 
-        if (update.allowedModels && update.allowedModels.length === 0) {
+        if (update.allowedModels?.length === 0) {
           warnings.push(`Empty allowedModels array at index ${index}. This will remove all model restrictions`);
         }
       });
