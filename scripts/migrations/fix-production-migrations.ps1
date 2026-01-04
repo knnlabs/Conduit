@@ -1,42 +1,67 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env pwsh
+#Requires -Version 7.0
+<#
+.SYNOPSIS
+    Fix production database migration issues.
 
-# Script: fix-production-migrations.sh
-# Purpose: Fix production database migration issues
-# WARNING: This script should be run with extreme caution in production
+.DESCRIPTION
+    WARNING: This script should be run with extreme caution in production.
+    Diagnoses and fixes common migration problems without deleting data.
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+.EXAMPLE
+    ./scripts/migrations/fix-production-migrations.ps1
+#>
 
-print_status() {
-    local status=$1
-    local message=$2
-    case $status in
-        "error")   echo -e "${RED}✗ ERROR:${NC} $message" >&2 ;;
-        "success") echo -e "${GREEN}✓${NC} $message" ;;
-        "warning") echo -e "${YELLOW}⚠${NC} $message" ;;
-        "info")    echo -e "${BLUE}ℹ${NC} $message" ;;
-    esac
+[CmdletBinding()]
+param()
+
+$ErrorActionPreference = 'Stop'
+
+# Import common utilities
+$scriptDir = $PSScriptRoot
+$devLibPath = Join-Path $scriptDir '..' 'dev' 'lib' 'Common.psm1'
+if (Test-Path $devLibPath) {
+    Import-Module $devLibPath -Force
+}
+
+# Helper functions for colored output
+function Write-MigrationStatus {
+    param(
+        [ValidateSet('error', 'success', 'warning', 'info')]
+        [string]$Status,
+        [string]$Message
+    )
+
+    switch ($Status) {
+        'error'   { Write-Host "X ERROR: $Message" -ForegroundColor Red }
+        'success' { Write-Host "[OK] $Message" -ForegroundColor Green }
+        'warning' { Write-Host "[!] $Message" -ForegroundColor Yellow }
+        'info'    { Write-Host "[i] $Message" -ForegroundColor Blue }
+    }
 }
 
 # Validate environment
-if [ -z "$DATABASE_URL" ]; then
-    print_status "error" "DATABASE_URL environment variable is not set"
+$databaseUrl = $env:DATABASE_URL
+if ([string]::IsNullOrWhiteSpace($databaseUrl)) {
+    Write-MigrationStatus 'error' "DATABASE_URL environment variable is not set"
     exit 1
-fi
+}
 
 # Extract database name from DATABASE_URL
-DB_NAME=$(echo $DATABASE_URL | sed -n 's/.*\/\([^?]*\).*/\1/p')
-print_status "info" "Working with database: $DB_NAME"
+if ($databaseUrl -match '/([^/?]+)(\?|$)') {
+    $dbName = $Matches[1]
+    Write-MigrationStatus 'info' "Working with database: $dbName"
+} else {
+    Write-MigrationStatus 'warning' "Could not extract database name from URL"
+}
 
-# Create a temporary SQL file
-TEMP_SQL=$(mktemp /tmp/fix-migrations-XXXXXX.sql)
-trap "rm -f $TEMP_SQL" EXIT
+# Create temporary SQL file
+$tempSql = [System.IO.Path]::GetTempFileName()
+$tempSql = [System.IO.Path]::ChangeExtension($tempSql, '.sql')
 
-cat > $TEMP_SQL << 'EOF'
+try {
+    # Write the SQL script
+    $sqlScript = @'
 -- Fix Production Migration Issues
 -- This script diagnoses and fixes common migration problems
 
@@ -47,10 +72,10 @@ cat > $TEMP_SQL << 'EOF'
 
 -- 1. Check if migrations table exists
 \echo '1. Checking for migrations history table...'
-SELECT CASE 
+SELECT CASE
     WHEN EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
         AND table_name = '__EFMigrationsHistory'
     ) THEN 'FOUND: Migrations history table exists'
     ELSE 'MISSING: No migrations history table'
@@ -59,22 +84,22 @@ END AS migration_table_status;
 -- 2. Check what migrations are recorded
 \echo ''
 \echo '2. Recorded migrations:'
-SELECT "MigrationId", "ProductVersion" 
-FROM "__EFMigrationsHistory" 
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
 ORDER BY "MigrationId";
 
 -- 3. Check if problematic tables exist
 \echo ''
 \echo '3. Checking for existing tables that might conflict:'
 WITH table_checks AS (
-    SELECT 
+    SELECT
         table_name,
         CASE WHEN EXISTS (
             SELECT FROM information_schema.tables t
-            WHERE t.table_schema = 'public' 
+            WHERE t.table_schema = 'public'
             AND t.table_name = tc.table_name
         ) THEN 'EXISTS' ELSE 'NOT FOUND' END AS status
-    FROM (VALUES 
+    FROM (VALUES
         ('BatchOperationHistory'),
         ('MediaLifecycleRecords'),
         ('VirtualKeys'),
@@ -96,28 +121,28 @@ DECLARE
 BEGIN
     -- Check migration table
     SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
         AND table_name = '__EFMigrationsHistory'
     ) INTO has_migration_table;
-    
+
     -- Check if any application tables exist
     SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
         AND table_name IN ('VirtualKeys', 'BatchOperationHistory', 'MediaLifecycleRecords')
     ) INTO has_tables;
-    
+
     -- Check if migration is recorded
     IF has_migration_table THEN
         SELECT EXISTS (
-            SELECT FROM "__EFMigrationsHistory" 
+            SELECT FROM "__EFMigrationsHistory"
             WHERE "MigrationId" = '20250723043111_InitialCreate'
         ) INTO has_migration_entry;
     ELSE
         has_migration_entry := false;
     END IF;
-    
+
     -- Diagnose the issue
     IF NOT has_migration_table AND has_tables THEN
         RAISE NOTICE 'ISSUE: Database was created with EnsureCreated (not migrations)';
@@ -140,8 +165,8 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
         AND table_name = '__EFMigrationsHistory'
     ) THEN
         CREATE TABLE "__EFMigrationsHistory" (
@@ -161,20 +186,20 @@ DECLARE
 BEGIN
     -- Check if our tables exist
     SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
         AND table_name IN ('BatchOperationHistory', 'MediaLifecycleRecords')
     ) INTO tables_exist;
-    
+
     -- Check if migration is recorded
     SELECT EXISTS (
-        SELECT FROM "__EFMigrationsHistory" 
+        SELECT FROM "__EFMigrationsHistory"
         WHERE "MigrationId" = '20250723043111_InitialCreate'
     ) INTO migration_exists;
-    
+
     -- If tables exist but migration isn't recorded, record it
     IF tables_exist AND NOT migration_exists THEN
-        INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion") 
+        INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
         VALUES ('20250723043111_InitialCreate', '9.0.0')
         ON CONFLICT ("MigrationId") DO NOTHING;
         RAISE NOTICE 'Marked InitialCreate migration as applied';
@@ -190,42 +215,56 @@ END $$;
 \echo '6. Final verification:'
 \echo ''
 \echo 'Migration history:'
-SELECT "MigrationId", "ProductVersion" 
-FROM "__EFMigrationsHistory" 
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
 ORDER BY "MigrationId";
 
 \echo ''
 \echo 'Table count:'
-SELECT COUNT(*) as table_count 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
+SELECT COUNT(*) as table_count
+FROM information_schema.tables
+WHERE table_schema = 'public'
 AND table_name != '__EFMigrationsHistory';
 
 \echo ''
 \echo '================================================'
 \echo 'Fix completed. Please restart your application.'
 \echo '================================================'
-EOF
+'@
 
-# Show what we're about to do
-print_status "warning" "This script will fix migration issues in your production database"
-print_status "warning" "It will NOT delete any data, but will modify migration history"
-echo ""
-read -p "Do you want to continue? (yes/no): " confirm
+    Set-Content -Path $tempSql -Value $sqlScript -Encoding UTF8
 
-if [ "$confirm" != "yes" ]; then
-    print_status "info" "Operation cancelled"
-    exit 0
-fi
+    # Show what we're about to do
+    Write-MigrationStatus 'warning' "This script will fix migration issues in your production database"
+    Write-MigrationStatus 'warning' "It will NOT delete any data, but will modify migration history"
+    Write-Host ""
 
-# Run the fix
-print_status "info" "Running migration fix..."
-psql $DATABASE_URL -f $TEMP_SQL
+    $confirm = Read-Host "Do you want to continue? (yes/no)"
+    if ($confirm -ne 'yes') {
+        Write-MigrationStatus 'info' "Operation cancelled"
+        exit 0
+    }
 
-if [ $? -eq 0 ]; then
-    print_status "success" "Migration fix completed successfully"
-    print_status "info" "Please restart your application now"
-else
-    print_status "error" "Migration fix failed"
-    exit 1
-fi
+    # Run the fix
+    Write-MigrationStatus 'info' "Running migration fix..."
+
+    # Execute psql with the script
+    $psqlResult = & psql $databaseUrl -f $tempSql 2>&1
+    $exitCode = $LASTEXITCODE
+
+    # Display output
+    $psqlResult | ForEach-Object { Write-Host $_ }
+
+    if ($exitCode -eq 0) {
+        Write-MigrationStatus 'success' "Migration fix completed successfully"
+        Write-MigrationStatus 'info' "Please restart your application now"
+    } else {
+        Write-MigrationStatus 'error' "Migration fix failed"
+        exit 1
+    }
+} finally {
+    # Clean up temp file
+    if (Test-Path $tempSql) {
+        Remove-Item $tempSql -Force -ErrorAction SilentlyContinue
+    }
+}

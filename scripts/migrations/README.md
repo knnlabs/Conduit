@@ -18,18 +18,18 @@ We've created a robust, maintainable solution using the existing .NET toolchain:
 - Added pre-flight validation step to catch missing configuration early
 - Removed duplicate environment variable declarations from individual steps
 
-### 2. **EF Wrapper Script** (`ef-wrapper.sh`)
+### 2. **EF Wrapper Script** (`ef-wrapper.ps1`)
 - Validates environment before running EF commands
 - Provides clear, colored output with detailed error messages
 - Tests database connectivity
 - Analyzes common error patterns and suggests fixes
 
-### 3. **Enhanced Validation Script** (`validate-migrations.sh`)
+### 3. **Enhanced Validation Script** (`validate-migrations.ps1`)
 - Already worked well, now integrates with ef-wrapper for better error handling
 - Validates migration files, checks for duplicates, and detects pending changes
 - Falls back gracefully when database is unavailable
 
-### 4. **Comprehensive Test Suite** (`test-migration-tools.sh`)
+### 4. **Comprehensive Test Suite** (`test-migration-tools.ps1`)
 - Tests all components in various scenarios
 - Validates error handling and edge cases
 - Ensures scripts provide helpful feedback
@@ -37,35 +37,35 @@ We've created a robust, maintainable solution using the existing .NET toolchain:
 ## Usage
 
 ### Running Migration Validation
-```bash
+```powershell
 # Basic validation
-./scripts/migrations/validate-migrations.sh
+./scripts/migrations/validate-migrations.ps1
 
 # Check for pending model changes (CI mode)
-./scripts/migrations/validate-migrations.sh --check-pending
+./scripts/migrations/validate-migrations.ps1 -CheckPending
 
 # Generate migration script
-./scripts/migrations/validate-migrations.sh --generate-script
+./scripts/migrations/validate-migrations.ps1 -GenerateScript
 ```
 
 ### Using the EF Wrapper
-```bash
+```powershell
 cd ConduitLLM.Configuration
 
 # List migrations with enhanced error handling
-../scripts/migrations/ef-wrapper.sh migrations list
+../scripts/migrations/ef-wrapper.ps1 migrations list
 
 # Generate migration script
-../scripts/migrations/ef-wrapper.sh migrations script -o output.sql
+../scripts/migrations/ef-wrapper.ps1 migrations script -o output.sql
 
 # Add a new migration
-../scripts/migrations/ef-wrapper.sh migrations add MigrationName
+../scripts/migrations/ef-wrapper.ps1 migrations add MigrationName
 ```
 
 ### Testing the Tools
-```bash
+```powershell
 # Run comprehensive test suite
-./scripts/migrations/test-migration-tools.sh
+./scripts/migrations/test-migration-tools.ps1
 ```
 
 ## Environment Requirements
@@ -74,12 +74,13 @@ cd ConduitLLM.Configuration
   - Format: `postgresql://user:password@host:port/database`
 - .NET 9.0 SDK
 - EF Core tools: `dotnet tool install --global dotnet-ef`
+- PowerShell Core 7+ (cross-platform)
 
 ## Why Not Python?
 
 When challenged to think critically about the solution, we determined that Python would be overengineering because:
 
-1. **Existing Tools Work Well**: The bash scripts and dotnet-ef tools are sufficient
+1. **Existing Tools Work Well**: The PowerShell scripts and dotnet-ef tools are sufficient
 2. **Root Cause Was Simple**: Missing environment variable in one workflow step
 3. **Stay in Ecosystem**: Adding Python introduces unnecessary complexity to a .NET project
 4. **Better Error Handling**: We can enhance existing tools rather than rewrite them
@@ -91,24 +92,25 @@ When challenged to think critically about the solution, we determined that Pytho
 3. **Graceful Degradation**: Scripts work even when database is unavailable
 4. **Comprehensive Testing**: Test suite validates all components
 5. **No Over-Engineering**: Simple, maintainable solution using existing tools
+6. **Cross-Platform**: PowerShell Core works on Windows, Linux, and macOS
 
 ## Troubleshooting
 
 ### "DATABASE_URL environment variable is not set"
 Set the DATABASE_URL:
-```bash
-export DATABASE_URL="postgresql://user:password@localhost:5432/conduitdb"
+```powershell
+$env:DATABASE_URL = "postgresql://user:password@localhost:5432/conduitdb"
 ```
 
 ### "Not in ConduitLLM.Configuration directory"
 Navigate to the correct directory:
-```bash
+```powershell
 cd ConduitLLM.Configuration
 ```
 
 ### "EF Core tools not installed"
 Install the tools:
-```bash
+```powershell
 dotnet tool install --global dotnet-ef
 ```
 
