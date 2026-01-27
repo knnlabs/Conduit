@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Gateway.Options;
+using ConduitLLM.Security.Options;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Security.Interfaces;
 
@@ -95,7 +95,7 @@ namespace ConduitLLM.Gateway.Services
     /// </summary>
     public partial class SecurityService : ISecurityService
     {
-        private readonly SecurityOptions _options;
+        private readonly GatewaySecurityOptions _options;
         private readonly IConfiguration _configuration;
         private readonly ILogger<SecurityService> _logger;
         private readonly IMemoryCache _memoryCache;
@@ -116,7 +116,7 @@ namespace ConduitLLM.Gateway.Services
         /// Initializes a new instance of the SecurityService
         /// </summary>
         public SecurityService(
-            IOptions<SecurityOptions> options,
+            IOptions<GatewaySecurityOptions> options,
             IConfiguration configuration,
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,

@@ -1,24 +1,25 @@
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Security.Interfaces;
+using ConduitLLM.Security.Middleware;
+using SecurityModels = ConduitLLM.Security.Models;
 
 namespace ConduitLLM.Gateway.Middleware
 {
     /// <summary>
-    /// Unified security middleware for Gateway API that handles IP filtering, rate limiting, and ban checks
+    /// Unified security middleware for Gateway API that handles IP filtering, rate limiting, and ban checks.
+    /// Inherits from SecurityMiddlewareBase and adds event monitoring functionality.
     /// </summary>
-    public class SecurityMiddleware
+    public class SecurityMiddleware : SecurityMiddlewareBase
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<SecurityMiddleware> _logger;
+        private ISecurityEventMonitoringService? _securityEventMonitoring;
 
         /// <summary>
         /// Initializes a new instance of the SecurityMiddleware
         /// </summary>
         public SecurityMiddleware(RequestDelegate next, ILogger<SecurityMiddleware> logger)
+            : base(next, logger)
         {
-            _next = next;
-            _logger = logger;
         }
 
         /// <summary>
@@ -26,65 +27,48 @@ namespace ConduitLLM.Gateway.Middleware
         /// </summary>
         public async Task InvokeAsync(HttpContext context, ISecurityService securityService, ISecurityEventMonitoringService? securityEventMonitoring = null)
         {
-            var clientIp = IpAddressHelper.GetClientIpAddress(context);
+            _securityEventMonitoring = securityEventMonitoring;
+
+            await ProcessRequestAsync(context, async ctx =>
+            {
+                var result = await securityService.IsRequestAllowedAsync(ctx);
+
+                // Gateway SecurityCheckResult already has Headers, convert to shared type
+                return new SecurityModels.SecurityCheckResult
+                {
+                    IsAllowed = result.IsAllowed,
+                    Reason = result.Reason,
+                    StatusCode = result.StatusCode,
+                    Headers = result.Headers
+                };
+            });
+        }
+
+        /// <summary>
+        /// Records security events when a violation occurs (Gateway-specific).
+        /// </summary>
+        protected override Task OnSecurityViolationAsync(HttpContext context, SecurityModels.SecurityCheckResult result, string clientIp)
+        {
+            if (_securityEventMonitoring == null)
+                return Task.CompletedTask;
+
             var endpoint = context.Request.Path.Value ?? "";
+            var virtualKey = context.Items["AttemptedKey"] as string ?? "";
 
-            // Pass along any authentication failure info from VirtualKeyAuthenticationMiddleware
-            if (context.Response.StatusCode == 401)
+            if (result.Reason.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
             {
-                // Authentication already failed, don't continue
-                return;
+                var limitType = result.Headers.ContainsKey("X-RateLimit-Scope")
+                    ? result.Headers["X-RateLimit-Scope"]
+                    : "general";
+                _securityEventMonitoring.RecordRateLimitViolation(clientIp, virtualKey, endpoint, limitType);
+            }
+            else if (!result.Reason.Contains("banned", StringComparison.OrdinalIgnoreCase))
+            {
+                // IP bans are already recorded by SecurityService
+                _securityEventMonitoring.RecordSuspiciousActivity(clientIp, "Access Denied", result.Reason);
             }
 
-            var result = await securityService.IsRequestAllowedAsync(context);
-
-            if (!result.IsAllowed)
-            {
-                _logger.LogWarning("Request blocked: {Reason} for path {Path} from IP {IP}",
-                    result.Reason,
-                    context.Request.Path,
-                    clientIp);
-
-                // Record security events based on the reason
-                if (securityEventMonitoring != null)
-                {
-                    var virtualKey = context.Items["AttemptedKey"] as string ?? "";
-
-                    if (result.Reason.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var limitType = result.Headers.ContainsKey("X-RateLimit-Scope")
-                            ? result.Headers["X-RateLimit-Scope"]
-                            : "general";
-                        securityEventMonitoring.RecordRateLimitViolation(clientIp, virtualKey, endpoint, limitType);
-                    }
-                    else if (result.Reason.Contains("banned", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // IP ban is already recorded by SecurityService
-                    }
-                    else
-                    {
-                        securityEventMonitoring.RecordSuspiciousActivity(clientIp, "Access Denied", result.Reason);
-                    }
-                }
-
-                context.Response.StatusCode = result.StatusCode ?? 403;
-
-                // Add any response headers
-                foreach (var header in result.Headers)
-                {
-                    context.Response.Headers.Append(header.Key, header.Value);
-                }
-
-                // Return JSON error response
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    error = result.Reason,
-                    code = result.StatusCode
-                });
-                return;
-            }
-
-            await _next(context);
+            return Task.CompletedTask;
         }
     }
 

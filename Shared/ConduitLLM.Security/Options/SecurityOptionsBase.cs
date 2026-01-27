@@ -1,9 +1,9 @@
-namespace ConduitLLM.Admin.Options
+namespace ConduitLLM.Security.Options
 {
     /// <summary>
-    /// Security configuration options for the Admin API
+    /// Base security configuration options shared between Admin and Gateway APIs
     /// </summary>
-    public class SecurityOptions
+    public class SecurityOptionsBase
     {
         /// <summary>
         /// IP filtering configuration
@@ -13,12 +13,12 @@ namespace ConduitLLM.Admin.Options
         /// <summary>
         /// Rate limiting configuration
         /// </summary>
-        public RateLimitingOptions RateLimiting { get; set; } = new();
+        public RateLimitingOptionsBase RateLimiting { get; set; } = new();
 
         /// <summary>
         /// Failed authentication protection configuration
         /// </summary>
-        public FailedAuthOptions FailedAuth { get; set; } = new();
+        public FailedAuthOptionsBase FailedAuth { get; set; } = new();
 
         /// <summary>
         /// Security headers configuration
@@ -29,15 +29,10 @@ namespace ConduitLLM.Admin.Options
         /// Whether to use distributed (Redis) tracking for security features
         /// </summary>
         public bool UseDistributedTracking { get; set; } = true;
-
-        /// <summary>
-        /// API authentication configuration
-        /// </summary>
-        public ApiAuthOptions ApiAuth { get; set; } = new();
     }
 
     /// <summary>
-    /// IP filtering options
+    /// IP filtering options - identical for both APIs
     /// </summary>
     public class IpFilteringOptions
     {
@@ -69,17 +64,13 @@ namespace ConduitLLM.Admin.Options
         /// <summary>
         /// Paths excluded from IP filtering
         /// </summary>
-        public List<string> ExcludedPaths { get; set; } = new()
-        {
-            "/health",
-            "/swagger"
-        };
+        public List<string> ExcludedPaths { get; set; } = new() { "/health" };
     }
 
     /// <summary>
-    /// Rate limiting options
+    /// Base rate limiting options - shared properties
     /// </summary>
-    public class RateLimitingOptions
+    public class RateLimitingOptionsBase
     {
         /// <summary>
         /// Whether rate limiting is enabled
@@ -99,20 +90,16 @@ namespace ConduitLLM.Admin.Options
         /// <summary>
         /// Paths excluded from rate limiting
         /// </summary>
-        public List<string> ExcludedPaths { get; set; } = new()
-        {
-            "/health",
-            "/swagger"
-        };
+        public List<string> ExcludedPaths { get; set; } = new() { "/health" };
     }
 
     /// <summary>
-    /// Failed authentication protection options
+    /// Base failed authentication protection options
     /// </summary>
-    public class FailedAuthOptions
+    public class FailedAuthOptionsBase
     {
         /// <summary>
-        /// Whether IP banning is enabled
+        /// Whether failed auth protection is enabled
         /// </summary>
         public bool Enabled { get; set; } = true;
 
@@ -125,10 +112,15 @@ namespace ConduitLLM.Admin.Options
         /// Duration in minutes for which an IP is banned
         /// </summary>
         public int BanDurationMinutes { get; set; } = 30;
+
+        /// <summary>
+        /// Whether to track failed attempts across all keys (Gateway-specific, but safe to include in base)
+        /// </summary>
+        public bool TrackAcrossKeys { get; set; } = true;
     }
 
     /// <summary>
-    /// Security headers options
+    /// Security headers options - identical for both APIs
     /// </summary>
     public class SecurityHeadersOptions
     {
@@ -167,24 +159,5 @@ namespace ConduitLLM.Admin.Options
         /// Max age in seconds
         /// </summary>
         public int MaxAge { get; set; } = 31536000; // 1 year
-    }
-
-    /// <summary>
-    /// API authentication options
-    /// </summary>
-    public class ApiAuthOptions
-    {
-        /// <summary>
-        /// Header name for API key
-        /// </summary>
-        public string ApiKeyHeader { get; set; } = "X-API-Key";
-
-        /// <summary>
-        /// Alternative header names for backward compatibility
-        /// </summary>
-        public List<string> AlternativeHeaders { get; set; } = new()
-        {
-            "X-Master-Key"
-        };
     }
 }

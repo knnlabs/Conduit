@@ -1,5 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Admin.Options;
+using ConduitLLM.Security.Options;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration; // For ConduitDbContext
@@ -39,7 +39,7 @@ public static class ServiceCollectionExtensions
         // Register security service as singleton with factory to handle scoped dependencies
         services.AddSingleton<ISecurityService>(serviceProvider =>
         {
-            var options = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>();
+            var options = serviceProvider.GetRequiredService<IOptions<AdminSecurityOptions>>();
             var config = serviceProvider.GetRequiredService<IConfiguration>();
             var logger = serviceProvider.GetRequiredService<ILogger<SecurityService>>();
             var memoryCache = serviceProvider.GetRequiredService<IMemoryCache>();

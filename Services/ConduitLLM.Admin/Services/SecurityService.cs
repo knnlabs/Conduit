@@ -3,7 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Admin.Options;
+using ConduitLLM.Security.Options;
 using ConduitLLM.Admin.Interfaces;
 
 namespace ConduitLLM.Admin.Services
@@ -13,7 +13,7 @@ namespace ConduitLLM.Admin.Services
     /// </summary>
     public class SecurityService : ISecurityService
     {
-        private readonly SecurityOptions _options;
+        private readonly AdminSecurityOptions _options;
         private readonly IConfiguration _configuration;
         private readonly ILogger<SecurityService> _logger;
         private readonly IMemoryCache _memoryCache;
@@ -32,7 +32,7 @@ namespace ConduitLLM.Admin.Services
         /// Initializes a new instance of the SecurityService
         /// </summary>
         public SecurityService(
-            IOptions<SecurityOptions> options,
+            IOptions<AdminSecurityOptions> options,
             IConfiguration configuration,
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
