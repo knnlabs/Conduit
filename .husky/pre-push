@@ -9,7 +9,15 @@ if [ "$CI" = "true" ]; then
 fi
 
 # Run the STRICT validation script (same as CI/CD)
-pwsh -NoProfile -Command "& ./scripts/test/validate-eslint-strict.ps1"
+# Check which PowerShell command is available
+if command -v pwsh &> /dev/null; then
+  pwsh -NoProfile -Command "& ./scripts/test/validate-eslint-strict.ps1"
+elif command -v powershell.exe &> /dev/null; then
+  powershell.exe -NoProfile -Command "& ./scripts/test/validate-eslint-strict.ps1"
+else
+  echo "⚠️  PowerShell not found, skipping lint check"
+  exit 0
+fi
 
 if [ $? -ne 0 ]; then
   echo ""
