@@ -117,11 +117,49 @@ public static class ImageUrlExtensions
     }
 
     /// <summary>
-    /// Creates an ImageUrl by downloading an image from an external URL and converting it to a base64 data URL
+    /// Creates an ImageUrl by downloading an image from an external URL and converting it to a base64 data URL.
+    /// </summary>
+    /// <param name="url">The HTTP URL of the image</param>
+    /// <param name="httpClient">The HttpClient instance to use for downloading (should be from IHttpClientFactory)</param>
+    /// <param name="detail">Optional detail level for vision models</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
+    /// <returns>An ImageUrl object with the image as a base64 data URL</returns>
+    public static async Task<ImageUrl> FromExternalUrlAsync(string url, HttpClient httpClient, string? detail = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(url))
+            throw new ArgumentException("URL cannot be null or empty", nameof(url));
+
+        if (httpClient == null)
+            throw new ArgumentNullException(nameof(httpClient));
+
+        if (url.StartsWith("data:"))
+            return new ImageUrl { Url = url, Detail = detail };
+
+        byte[] imageBytes = await httpClient.GetByteArrayAsync(url, cancellationToken);
+
+        // Try to determine MIME type from content or fall back to a default
+        string mimeType = DetectMimeTypeFromBytes(imageBytes);
+
+        string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
+
+        return new ImageUrl
+        {
+            Url = dataUrl,
+            Detail = detail
+        };
+    }
+
+    /// <summary>
+    /// Creates an ImageUrl by downloading an image from an external URL and converting it to a base64 data URL.
     /// </summary>
     /// <param name="url">The HTTP URL of the image</param>
     /// <param name="detail">Optional detail level for vision models</param>
     /// <returns>An ImageUrl object with the image as a base64 data URL</returns>
+    /// <remarks>
+    /// This method creates a new HttpClient for each call, which can cause socket exhaustion under load.
+    /// Prefer using the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService.
+    /// </remarks>
+    [Obsolete("Use the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService. This method may cause socket exhaustion under high load.")]
     public static async Task<ImageUrl> FromExternalUrlAsync(string url, string? detail = null)
     {
         if (string.IsNullOrEmpty(url))
@@ -134,6 +172,24 @@ public static class ImageUrlExtensions
         byte[] imageBytes = await httpClient.GetByteArrayAsync(url);
 
         // Try to determine MIME type from content or fall back to a default
+        string mimeType = DetectMimeTypeFromBytes(imageBytes);
+
+        string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
+
+        return new ImageUrl
+        {
+            Url = dataUrl,
+            Detail = detail
+        };
+    }
+
+    /// <summary>
+    /// Detects the MIME type from image bytes by examining magic numbers.
+    /// </summary>
+    /// <param name="imageBytes">The image data bytes.</param>
+    /// <returns>The detected MIME type, or "image/jpeg" as fallback.</returns>
+    private static string DetectMimeTypeFromBytes(byte[] imageBytes)
+    {
         string mimeType = "image/jpeg"; // Default fallback
 
         // Check magic numbers for common image formats
@@ -154,13 +210,7 @@ public static class ImageUrlExtensions
                 mimeType = "image/bmp";
         }
 
-        string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
-
-        return new ImageUrl
-        {
-            Url = dataUrl,
-            Detail = detail
-        };
+        return mimeType;
     }
 
     /// <summary>

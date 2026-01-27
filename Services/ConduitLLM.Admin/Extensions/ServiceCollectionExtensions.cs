@@ -183,6 +183,53 @@ public static class ServiceCollectionExtensions
             client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
         });
 
+        // Register HTTP client for external image fetching (used by IImageDownloadService)
+        services.AddHttpClient(ConduitLLM.Core.Services.ImageDownloadService.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "image/*");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 20,
+            EnableMultipleHttp2Connections = true
+        });
+
+        // Register IImageDownloadService for DI-friendly image downloading
+        services.AddScoped<ConduitLLM.Core.Interfaces.IImageDownloadService, ConduitLLM.Core.Services.ImageDownloadService>();
+
+        // Register HTTP clients for function providers (Exa and Tavily)
+        services.AddHttpClient("ExaFunctionClient", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 10,
+            EnableMultipleHttp2Connections = true
+        });
+
+        services.AddHttpClient("TavilyFunctionClient", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 10,
+            EnableMultipleHttp2Connections = true
+        });
+
         // Model discovery providers have been removed - capabilities now come from ModelProviderMapping
 
         // Register Media Services using shared configuration from Core

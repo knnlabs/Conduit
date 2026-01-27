@@ -102,6 +102,10 @@ public partial class ExaClient : IFunctionClient
         }
         else
         {
+            _logger.LogWarning(
+                "Creating HttpClient without IHttpClientFactory for {ProviderName}. " +
+                "This may cause socket exhaustion under high load. Ensure IHttpClientFactory is injected.",
+                ProviderName);
             client = new HttpClient();
         }
 

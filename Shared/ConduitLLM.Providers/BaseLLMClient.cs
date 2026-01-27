@@ -91,6 +91,10 @@ namespace ConduitLLM.Providers
             }
             else
             {
+                Logger.LogWarning(
+                    "Creating HttpClient without IHttpClientFactory for {ProviderName}. " +
+                    "This may cause socket exhaustion under high load. Ensure IHttpClientFactory is injected.",
+                    ProviderName);
                 client = new HttpClient();
             }
 
@@ -150,6 +154,10 @@ namespace ConduitLLM.Providers
             }
             else
             {
+                Logger.LogWarning(
+                    "Creating HttpClient for authentication verification without IHttpClientFactory for {ProviderName}. " +
+                    "This may cause socket exhaustion under high load. Ensure IHttpClientFactory is injected.",
+                    ProviderName);
                 client = new HttpClient();
             }
 

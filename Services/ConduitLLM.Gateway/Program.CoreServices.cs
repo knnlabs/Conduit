@@ -455,6 +455,58 @@ public partial class Program
             options.RetryCheckIntervalSeconds = builder.Configuration.GetValue<int>("VideoGeneration:RetryCheckIntervalSeconds", 30);
         });
 
+        // Register HTTP client for external image fetching (used by IImageDownloadService)
+        builder.Services.AddHttpClient(ConduitLLM.Core.Services.ImageDownloadService.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "image/*");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 20,
+            EnableMultipleHttp2Connections = true
+        })
+        .AddPolicyHandler(GetImageDownloadRetryPolicy());
+
+        // Register IImageDownloadService for DI-friendly image downloading
+        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IImageDownloadService, ConduitLLM.Core.Services.ImageDownloadService>();
+        Console.WriteLine("[Conduit] Image download service registered with connection pooling");
+
+        // Register HTTP clients for function providers (Exa and Tavily)
+        builder.Services.AddHttpClient("ExaFunctionClient", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 10,
+            EnableMultipleHttp2Connections = true
+        })
+        .AddPolicyHandler(GetRetryPolicy());
+
+        builder.Services.AddHttpClient("TavilyFunctionClient", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 10,
+            EnableMultipleHttp2Connections = true
+        })
+        .AddPolicyHandler(GetRetryPolicy());
+        Console.WriteLine("[Conduit] Function provider HTTP clients registered (Exa, Tavily)");
+
         // Register HTTP client for image downloads with retry policies
         builder.Services.AddHttpClient("ImageDownload", client =>
         {
