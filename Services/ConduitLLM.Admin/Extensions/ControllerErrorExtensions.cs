@@ -1,5 +1,8 @@
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Exceptions;
+
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Extensions
 {
@@ -124,6 +127,7 @@ namespace ConduitLLM.Admin.Extensions
 
         /// <summary>
         /// Creates an appropriate error response from an exception.
+        /// Uses <see cref="ExceptionToResponseMapper"/> for consistent exception-to-response mapping.
         /// </summary>
         /// <param name="controller">The controller instance.</param>
         /// <param name="ex">The exception that occurred.</param>
@@ -137,65 +141,27 @@ namespace ConduitLLM.Admin.Extensions
             string? contextMessage = null)
         {
             var logMessage = contextMessage ?? "An error occurred";
+            var mapping = ExceptionToResponseMapper.Map(ex);
 
-            return ex switch
+            // Log at appropriate level with context
+            if (mapping.IncludeExceptionMessageInLog)
             {
-                ArgumentNullException argEx => HandleArgumentException(controller, argEx, logger, logMessage),
-                ArgumentException argEx => HandleArgumentException(controller, argEx, logger, logMessage),
-                InvalidOperationException invEx => HandleInvalidOperationException(controller, invEx, logger, logMessage),
-                KeyNotFoundException => HandleKeyNotFoundException(controller, logger, logMessage),
-                UnauthorizedAccessException => HandleUnauthorizedAccessException(controller, logger, logMessage),
-                _ => HandleGenericException(controller, ex, logger, logMessage)
+                logger?.Log(mapping.LogLevel, ex, "{LogMessage}: {ExceptionMessage}", logMessage, ex.Message);
+            }
+            else if (mapping.LogLevel == LogLevel.Error)
+            {
+                logger?.LogError(ex, "{LogMessage}", logMessage);
+            }
+            else
+            {
+                logger?.LogWarning("{LogMessage}: {LogPrefix}", logMessage, mapping.LogPrefix);
+            }
+
+            // Return standardized response
+            return new ObjectResult(new ErrorResponseDto(mapping.ResponseMessage) { Code = mapping.ErrorCode })
+            {
+                StatusCode = mapping.StatusCode
             };
-        }
-
-        private static IActionResult HandleArgumentException(
-            ControllerBase controller,
-            ArgumentException ex,
-            ILogger? logger,
-            string logMessage)
-        {
-            logger?.LogWarning(ex, "{LogMessage}: {ExceptionMessage}", logMessage, ex.Message);
-            return controller.BadRequestError(ex.Message, "invalid_argument");
-        }
-
-        private static IActionResult HandleInvalidOperationException(
-            ControllerBase controller,
-            InvalidOperationException ex,
-            ILogger? logger,
-            string logMessage)
-        {
-            logger?.LogWarning(ex, "{LogMessage}: {ExceptionMessage}", logMessage, ex.Message);
-            return controller.BadRequestError(ex.Message, "invalid_operation");
-        }
-
-        private static IActionResult HandleKeyNotFoundException(
-            ControllerBase controller,
-            ILogger? logger,
-            string logMessage)
-        {
-            logger?.LogWarning("{LogMessage}: Resource not found", logMessage);
-            return controller.NotFoundError("The requested resource was not found", "not_found");
-        }
-
-        private static IActionResult HandleUnauthorizedAccessException(
-            ControllerBase controller,
-            ILogger? logger,
-            string logMessage)
-        {
-            logger?.LogWarning("{LogMessage}: Unauthorized access attempt", logMessage);
-            return controller.StatusCode(StatusCodes.Status403Forbidden,
-                new ErrorResponseDto("Access denied") { Code = "forbidden" });
-        }
-
-        private static IActionResult HandleGenericException(
-            ControllerBase controller,
-            Exception ex,
-            ILogger? logger,
-            string logMessage)
-        {
-            logger?.LogError(ex, "{LogMessage}", logMessage);
-            return controller.InternalServerError();
         }
     }
 }

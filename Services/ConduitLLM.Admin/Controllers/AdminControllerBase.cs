@@ -1,9 +1,12 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Exceptions;
 
 using MassTransit;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -181,6 +184,7 @@ namespace ConduitLLM.Admin.Controllers
 
         /// <summary>
         /// Handles exceptions from operations with standardized logging and response formatting.
+        /// Uses <see cref="ExceptionToResponseMapper"/> for consistent exception-to-response mapping.
         /// </summary>
         /// <param name="ex">The exception that occurred.</param>
         /// <param name="operationName">Name of the operation for logging purposes.</param>
@@ -195,46 +199,40 @@ namespace ConduitLLM.Admin.Controllers
                 ? $"{operationName} with context {contextData}"
                 : operationName;
 
-            return ex switch
+            var mapping = ExceptionToResponseMapper.Map(ex);
+
+            // Log at appropriate level with operation context
+            if (mapping.IncludeExceptionMessageInLog)
             {
-                ArgumentNullException argEx => HandleArgumentException(argEx, logMessage),
-                ArgumentException argEx => HandleArgumentException(argEx, logMessage),
-                InvalidOperationException invEx => HandleInvalidOperationException(invEx, logMessage),
-                KeyNotFoundException => HandleKeyNotFoundException(logMessage),
-                UnauthorizedAccessException => HandleUnauthorizedAccessException(logMessage),
-                _ => HandleGenericException(ex, logMessage)
+                Logger.Log(mapping.LogLevel, ex, "{LogPrefix} in {LogMessage}: {ExceptionMessage}",
+                    mapping.LogPrefix, logMessage, ex.Message);
+            }
+            else if (mapping.LogLevel == LogLevel.Error)
+            {
+                Logger.LogError(ex, "{LogPrefix} in {LogMessage}", mapping.LogPrefix, logMessage);
+            }
+            else
+            {
+                Logger.LogWarning("{LogPrefix} in {LogMessage}", mapping.LogPrefix, logMessage);
+            }
+
+            // Return appropriate result type based on status code
+            var errorResponse = new ErrorResponseDto(mapping.ResponseMessage) { Code = mapping.ErrorCode };
+            return CreateErrorResult(mapping.StatusCode, errorResponse);
+        }
+
+        /// <summary>
+        /// Creates an appropriate IActionResult based on the HTTP status code.
+        /// Returns semantically correct result types (BadRequestObjectResult, NotFoundObjectResult, etc.)
+        /// </summary>
+        private IActionResult CreateErrorResult(int statusCode, ErrorResponseDto errorResponse)
+        {
+            return statusCode switch
+            {
+                400 => new BadRequestObjectResult(errorResponse),
+                404 => new NotFoundObjectResult(errorResponse),
+                _ => new ObjectResult(errorResponse) { StatusCode = statusCode }
             };
-        }
-
-        private IActionResult HandleArgumentException(ArgumentException ex, string logMessage)
-        {
-            Logger.LogWarning(ex, "Argument error in {LogMessage}: {ExceptionMessage}", logMessage, ex.Message);
-            return this.BadRequestError(ex.Message, "invalid_argument");
-        }
-
-        private IActionResult HandleInvalidOperationException(InvalidOperationException ex, string logMessage)
-        {
-            Logger.LogWarning(ex, "Invalid operation in {LogMessage}: {ExceptionMessage}", logMessage, ex.Message);
-            return this.BadRequestError(ex.Message, "invalid_operation");
-        }
-
-        private IActionResult HandleKeyNotFoundException(string logMessage)
-        {
-            Logger.LogWarning("Resource not found in {LogMessage}", logMessage);
-            return this.NotFoundError("The requested resource was not found", "not_found");
-        }
-
-        private IActionResult HandleUnauthorizedAccessException(string logMessage)
-        {
-            Logger.LogWarning("Unauthorized access attempt in {LogMessage}", logMessage);
-            return StatusCode(StatusCodes.Status403Forbidden,
-                new Configuration.DTOs.ErrorResponseDto("Access denied") { Code = "forbidden" });
-        }
-
-        private IActionResult HandleGenericException(Exception ex, string logMessage)
-        {
-            Logger.LogError(ex, "Unexpected error in {LogMessage}", logMessage);
-            return this.InternalServerError();
         }
     }
 }
