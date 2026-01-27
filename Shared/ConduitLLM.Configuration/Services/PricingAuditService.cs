@@ -1,10 +1,8 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services;
@@ -12,57 +10,48 @@ namespace ConduitLLM.Configuration.Services;
 /// <summary>
 /// Service for auditing pricing rule evaluations with batch writing and async processing.
 /// </summary>
-public class PricingAuditService : IPricingAuditService, IHostedService, IDisposable
+public class PricingAuditService : BatchAuditServiceBase<PricingAuditEvent>, IPricingAuditService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<PricingAuditService> _logger;
-    private readonly ConcurrentQueue<PricingAuditEvent> _eventQueue;
-    private readonly Timer _flushTimer;
-    private readonly SemaphoreSlim _flushSemaphore;
-    private bool _disposed;
-
-    private const int BatchSize = 100;
-    private const int FlushIntervalSeconds = 10;
-    private const int RetentionDays = 90;
-
+    /// <summary>
+    /// Creates a new instance of the PricingAuditService.
+    /// </summary>
+    /// <param name="serviceProvider">Service provider for creating scoped DbContexts</param>
+    /// <param name="logger">Logger instance</param>
     public PricingAuditService(
         IServiceProvider serviceProvider,
         ILogger<PricingAuditService> logger)
+        : base(serviceProvider, logger)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _eventQueue = new ConcurrentQueue<PricingAuditEvent>();
-        _flushSemaphore = new SemaphoreSlim(1, 1);
-        _flushTimer = new Timer(FlushEvents, null, Timeout.Infinite, Timeout.Infinite);
     }
+
+    #region Template Method Implementations
 
     /// <inheritdoc/>
-    public async Task LogAsync(PricingAuditEvent auditEvent)
-    {
-        if (auditEvent == null)
-            throw new ArgumentNullException(nameof(auditEvent));
+    protected override DbSet<PricingAuditEvent> GetDbSet(ConduitDbContext context)
+        => context.PricingAuditEvents;
 
-        _eventQueue.Enqueue(auditEvent);
+    /// <inheritdoc/>
+    protected override string EntityName => "Pricing";
 
-        if (_eventQueue.Count >= BatchSize)
-        {
-            await FlushEventsAsync(wait: true);
-        }
-    }
+    #endregion
+
+    #region IPricingAuditService Implementation (Wrapper Methods)
+
+    /// <inheritdoc/>
+    public Task LogAsync(PricingAuditEvent auditEvent)
+        => LogEventAsync(auditEvent);
 
     /// <inheritdoc/>
     public void Log(PricingAuditEvent auditEvent)
-    {
-        if (auditEvent == null)
-            return;
+        => LogEvent(auditEvent);
 
-        _eventQueue.Enqueue(auditEvent);
+    /// <inheritdoc/>
+    public Task CleanupOldAuditEventsAsync()
+        => CleanupOldEventsAsync();
 
-        if (_eventQueue.Count >= BatchSize)
-        {
-            _ = Task.Run(async () => await FlushEventsAsync());
-        }
-    }
+    #endregion
+
+    #region Domain-Specific Query Methods
 
     /// <inheritdoc/>
     public async Task<(List<PricingAuditEvent> Events, int TotalCount)> GetAuditEventsAsync(
@@ -74,7 +63,7 @@ public class PricingAuditService : IPricingAuditService, IHostedService, IDispos
         int pageNumber = 1,
         int pageSize = 100)
     {
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = ServiceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
 
         var query = context.PricingAuditEvents
@@ -107,7 +96,7 @@ public class PricingAuditService : IPricingAuditService, IHostedService, IDispos
         if (string.IsNullOrEmpty(requestId))
             return new List<PricingAuditEvent>();
 
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = ServiceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
 
         return await context.PricingAuditEvents
@@ -123,7 +112,7 @@ public class PricingAuditService : IPricingAuditService, IHostedService, IDispos
         DateTime to,
         int? virtualKeyId = null)
     {
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = ServiceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
 
         var query = context.PricingAuditEvents
@@ -172,189 +161,9 @@ public class PricingAuditService : IPricingAuditService, IHostedService, IDispos
         return summary;
     }
 
-    /// <inheritdoc/>
-    public async Task CleanupOldAuditEventsAsync()
-    {
-        const int DeleteBatchSize = 1000;
+    #endregion
 
-        _logger.LogInformation("Starting cleanup of pricing audit events older than {RetentionDays} days", RetentionDays);
-
-        try
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-            var cutoffDate = DateTime.UtcNow.AddDays(-RetentionDays);
-            int totalDeleted = 0;
-            int batchDeleted;
-
-            do
-            {
-                var oldEvents = await context.PricingAuditEvents
-                    .Where(e => e.Timestamp < cutoffDate)
-                    .OrderBy(e => e.Timestamp)
-                    .Take(DeleteBatchSize)
-                    .ToListAsync();
-
-                if (oldEvents.Count == 0)
-                    break;
-
-                context.PricingAuditEvents.RemoveRange(oldEvents);
-                await context.SaveChangesAsync();
-
-                batchDeleted = oldEvents.Count;
-                totalDeleted += batchDeleted;
-
-                _logger.LogDebug("Deleted {BatchCount} old pricing audit events", batchDeleted);
-
-                if (batchDeleted == DeleteBatchSize)
-                    await Task.Delay(100);
-
-            } while (batchDeleted == DeleteBatchSize);
-
-            if (totalDeleted > 0)
-            {
-                _logger.LogInformation("Cleanup completed: Deleted {TotalDeleted} pricing audit events older than {CutoffDate}",
-                    totalDeleted, cutoffDate);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to cleanup old pricing audit events");
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Flushes queued events to the database.
-    /// </summary>
-    private async Task FlushEventsAsync(bool wait = false)
-    {
-        var timeout = wait ? Timeout.InfiniteTimeSpan : TimeSpan.Zero;
-        if (!await _flushSemaphore.WaitAsync(timeout))
-            return;
-
-        try
-        {
-            var events = new List<PricingAuditEvent>();
-
-            while (events.Count < BatchSize && _eventQueue.TryDequeue(out var auditEvent))
-            {
-                events.Add(auditEvent);
-            }
-
-            if (events.Count == 0)
-                return;
-
-            using var scope = _serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-            await context.PricingAuditEvents.AddRangeAsync(events);
-            await context.SaveChangesAsync();
-
-            _logger.LogDebug("Flushed {Count} pricing audit events to database", events.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to flush pricing audit events to database");
-        }
-        finally
-        {
-            _flushSemaphore.Release();
-        }
-    }
-
-    /// <summary>
-    /// Timer callback for periodic flushing.
-    /// </summary>
-    private void FlushEvents(object? state)
-    {
-        _ = Task.Run(async () => await FlushEventsAsync());
-    }
-
-    /// <inheritdoc/>
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Starting PricingAuditService with batch size {BatchSize} and flush interval {FlushInterval}s",
-            BatchSize, FlushIntervalSeconds);
-
-        _flushTimer.Change(TimeSpan.FromSeconds(FlushIntervalSeconds), TimeSpan.FromSeconds(FlushIntervalSeconds));
-
-        _ = Task.Run(async () => await ScheduleDataRetentionAsync(cancellationToken), cancellationToken);
-
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc/>
-    public async Task StopAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Stopping PricingAuditService, flushing remaining events...");
-
-        _flushTimer?.Change(Timeout.Infinite, 0);
-
-        await _flushSemaphore.WaitAsync(cancellationToken);
-        try
-        {
-            var events = new List<PricingAuditEvent>();
-
-            while (_eventQueue.TryDequeue(out var auditEvent))
-            {
-                events.Add(auditEvent);
-            }
-
-            if (events.Count > 0)
-            {
-                using var scope = _serviceProvider.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-                await context.PricingAuditEvents.AddRangeAsync(events);
-                await context.SaveChangesAsync();
-
-                _logger.LogDebug("Final flush of {Count} pricing audit events to database", events.Count);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to flush remaining pricing audit events to database");
-        }
-        finally
-        {
-            _flushSemaphore.Release();
-        }
-    }
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _flushTimer?.Dispose();
-        _flushSemaphore?.Dispose();
-        _disposed = true;
-    }
-
-    /// <summary>
-    /// Schedules periodic data retention cleanup.
-    /// </summary>
-    private async Task ScheduleDataRetentionAsync(CancellationToken cancellationToken)
-    {
-        await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                await CleanupOldAuditEventsAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during pricing audit event cleanup");
-            }
-
-            await Task.Delay(TimeSpan.FromDays(1), cancellationToken);
-        }
-    }
+    #region Private Helpers
 
     /// <summary>
     /// Extracts the rule description from serialized rule JSON.
@@ -380,4 +189,6 @@ public class PricingAuditService : IPricingAuditService, IHostedService, IDispos
 
         return "Unnamed Rule";
     }
+
+    #endregion
 }

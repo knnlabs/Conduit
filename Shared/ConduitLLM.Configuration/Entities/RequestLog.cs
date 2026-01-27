@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ConduitLLM.Functions.Interfaces;
 
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
 /// Represents a log of API requests made using a virtual key
 /// </summary>
-public class RequestLog
+public class RequestLog : IAuditEvent
 {
     /// <summary>
     /// Unique identifier for the request log

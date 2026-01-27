@@ -297,7 +297,27 @@ public partial class Program
         Console.WriteLine("[Conduit] Model provider mapping service registered with caching - reduces database queries by 80-95%");
 
         builder.Services.AddScoped<IProviderService, ConduitLLM.Configuration.ProviderService>();
-        builder.Services.AddScoped<IRequestLogService, ConduitLLM.Configuration.Services.RequestLogService>();
+
+        // Request Log Service - now uses batch processing like other audit services
+        builder.Services.AddSingleton<IRequestLogService, ConduitLLM.Configuration.Services.RequestLogService>();
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.RequestLogService>(
+            provider =>
+            {
+                try
+                {
+                    Console.WriteLine("[Leader Election] Resolving RequestLogService...");
+                    var service = provider.GetRequiredService<IRequestLogService>() as ConduitLLM.Configuration.Services.RequestLogService
+                        ?? throw new InvalidOperationException("RequestLogService must implement IHostedService");
+                    Console.WriteLine("[Leader Election] ✓ Successfully resolved RequestLogService");
+                    return service;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve RequestLogService: {ex.GetType().Name}: {ex.Message}");
+                    throw;
+                }
+            },
+            "RequestLogService");
 
         // Register System Notification Service
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISystemNotificationService, ConduitLLM.Gateway.Services.SystemNotificationService>();
