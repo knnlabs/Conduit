@@ -25,7 +25,13 @@ namespace ConduitLLM.Gateway.Services
                 var invalidations = await _database.StringGetAsync(STATS_INVALIDATION_KEY);
                 var patternMatches = await _database.StringGetAsync(STATS_PATTERN_MATCH_KEY);
                 var resetTime = await _database.StringGetAsync(STATS_RESET_TIME_KEY);
-                
+
+                // Include pending buffered stats that haven't been flushed yet
+                var pendingHits = Interlocked.Read(ref _statsBuffer.Hits);
+                var pendingMisses = Interlocked.Read(ref _statsBuffer.Misses);
+                var pendingPatternMatches = Interlocked.Read(ref _statsBuffer.PatternMatches);
+                var pendingInvalidations = Interlocked.Read(ref _statsBuffer.Invalidations);
+
                 // Count entries
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
                 var keys = server.Keys(pattern: KeyPrefix + "*");
@@ -34,13 +40,13 @@ namespace ConduitLLM.Gateway.Services
                 {
                     entryCount++;
                 }
-                
+
                 return new ModelCostCacheStats
                 {
-                    HitCount = hits.HasValue ? (long)hits : 0,
-                    MissCount = misses.HasValue ? (long)misses : 0,
-                    InvalidationCount = invalidations.HasValue ? (long)invalidations : 0,
-                    PatternMatchCount = patternMatches.HasValue ? (long)patternMatches : 0,
+                    HitCount = (hits.HasValue ? (long)hits : 0) + pendingHits,
+                    MissCount = (misses.HasValue ? (long)misses : 0) + pendingMisses,
+                    InvalidationCount = (invalidations.HasValue ? (long)invalidations : 0) + pendingInvalidations,
+                    PatternMatchCount = (patternMatches.HasValue ? (long)patternMatches : 0) + pendingPatternMatches,
                     LastResetTime = resetTime.HasValue && DateTime.TryParse(resetTime, out var time) ? time : DateTime.UtcNow,
                     EntryCount = entryCount
                 };

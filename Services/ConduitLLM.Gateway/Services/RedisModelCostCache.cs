@@ -8,7 +8,7 @@ namespace ConduitLLM.Gateway.Services
     /// <summary>
     /// Redis-based Model Cost cache with event-driven invalidation
     /// </summary>
-    public partial class RedisModelCostCache : IModelCostCache, IBatchInvalidatable
+    public partial class RedisModelCostCache : IModelCostCache, IBatchInvalidatable, IDisposable
     {
         private readonly IDatabase _database;
         private readonly ILogger<RedisModelCostCache> _logger;
@@ -16,14 +16,14 @@ namespace ConduitLLM.Gateway.Services
         private const string KeyPrefix = "modelcost:";
         private const string PatternKeyPrefix = "modelcost:pattern:";
         private const string ProviderKeyPrefix = "modelcost:provider:";
-        
+
         // Statistics tracking keys
         private const string STATS_HIT_KEY = "conduit:cache:modelcost:stats:hits";
         private const string STATS_MISS_KEY = "conduit:cache:modelcost:stats:misses";
         private const string STATS_INVALIDATION_KEY = "conduit:cache:modelcost:stats:invalidations";
         private const string STATS_RESET_TIME_KEY = "conduit:cache:modelcost:stats:reset_time";
         private const string STATS_PATTERN_MATCH_KEY = "conduit:cache:modelcost:stats:pattern_matches";
-        
+
         private const string InvalidationChannel = "mcost_invalidated";
         private const string BatchInvalidationChannel = "mcost_batch_invalidated";
         private readonly ISubscriber _subscriber;
@@ -32,6 +32,33 @@ namespace ConduitLLM.Gateway.Services
         {
             PropertyNameCaseInsensitive = true
         };
+
+        // Statistics batching - buffer locally and flush periodically to reduce Redis round-trips
+        private readonly StatisticsBuffer _statsBuffer = new();
+        private readonly Timer _flushTimer;
+        private readonly TimeSpan _flushInterval = TimeSpan.FromSeconds(5);
+        private readonly SemaphoreSlim _flushLock = new(1, 1);
+        private bool _disposed;
+
+        /// <summary>
+        /// Thread-safe buffer for statistics counters
+        /// </summary>
+        private class StatisticsBuffer
+        {
+            public long Hits;
+            public long Misses;
+            public long PatternMatches;
+            public long Invalidations;
+
+            public (long hits, long misses, long patternMatches, long invalidations) GetAndReset()
+            {
+                var hits = Interlocked.Exchange(ref Hits, 0);
+                var misses = Interlocked.Exchange(ref Misses, 0);
+                var patternMatches = Interlocked.Exchange(ref PatternMatches, 0);
+                var invalidations = Interlocked.Exchange(ref Invalidations, 0);
+                return (hits, misses, patternMatches, invalidations);
+            }
+        }
 
         public RedisModelCostCache(
             IConnectionMultiplexer redis,
@@ -47,6 +74,9 @@ namespace ConduitLLM.Gateway.Services
             // Subscribe to invalidation messages
             _subscriber.Subscribe(RedisChannel.Literal(InvalidationChannel), OnCostInvalidated);
             _subscriber.Subscribe(RedisChannel.Literal(BatchInvalidationChannel), OnBatchInvalidated);
+
+            // Initialize statistics flush timer
+            _flushTimer = new Timer(FlushStatisticsCallback, null, _flushInterval, _flushInterval);
         }
 
         /// <summary>
@@ -72,7 +102,7 @@ namespace ConduitLLM.Gateway.Services
                         if (cost != null)
                         {
                             _logger.LogDebug("Model cost cache hit for pattern: {Pattern}", modelIdPattern);
-                            await _database.StringIncrementAsync(STATS_HIT_KEY);
+                            Interlocked.Increment(ref _statsBuffer.Hits);
                             return cost;
                         }
                     }
@@ -80,7 +110,7 @@ namespace ConduitLLM.Gateway.Services
                 
                 // Cache miss - fallback to database
                 _logger.LogDebug("Model cost cache miss for pattern, querying database: {Pattern}", modelIdPattern);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                Interlocked.Increment(ref _statsBuffer.Misses);
                 
                 var dbCost = await databaseFallback(modelIdPattern);
                 
@@ -96,7 +126,7 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error accessing Model Cost cache for pattern, falling back to database: {Pattern}", modelIdPattern);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                Interlocked.Increment(ref _statsBuffer.Misses);
                 return await databaseFallback(modelIdPattern);
             }
         }
@@ -185,8 +215,8 @@ namespace ConduitLLM.Gateway.Services
                         if (cost != null)
                         {
                             _logger.LogDebug("Model cost cache hit for exact model ID: {ModelId}", modelId);
-                            await _database.StringIncrementAsync(STATS_HIT_KEY);
-                            await _database.StringIncrementAsync(STATS_PATTERN_MATCH_KEY);
+                            Interlocked.Increment(ref _statsBuffer.Hits);
+                            Interlocked.Increment(ref _statsBuffer.PatternMatches);
                             return cost;
                         }
                     }
@@ -194,7 +224,7 @@ namespace ConduitLLM.Gateway.Services
                 
                 // If no exact match, fall back to database for pattern matching
                 _logger.LogDebug("Model cost cache miss for model ID, querying database for pattern match: {ModelId}", modelId);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                Interlocked.Increment(ref _statsBuffer.Misses);
                 
                 var dbCost = await databaseFallback(modelId);
                 
@@ -203,8 +233,8 @@ namespace ConduitLLM.Gateway.Services
                     // Cache the result with the exact model ID for faster future lookups
                     var serialized = JsonSerializer.Serialize(dbCost, _jsonOptions);
                     await _database.StringSetAsync(exactKey, serialized, _defaultExpiry);
-                    await _database.StringIncrementAsync(STATS_PATTERN_MATCH_KEY);
-                    
+                    Interlocked.Increment(ref _statsBuffer.PatternMatches);
+
                     return dbCost;
                 }
                 
@@ -213,12 +243,95 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error accessing Model Cost cache for model ID, falling back to database: {ModelId}", modelId);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                Interlocked.Increment(ref _statsBuffer.Misses);
                 return await databaseFallback(modelId);
             }
         }
 
+        /// <summary>
+        /// Timer callback for periodic statistics flush
+        /// </summary>
+        private void FlushStatisticsCallback(object? state) => _ = FlushStatisticsAsync();
 
+        /// <summary>
+        /// Flush buffered statistics to Redis
+        /// </summary>
+        private async Task FlushStatisticsAsync()
+        {
+            if (_disposed) return;
+            if (!await _flushLock.WaitAsync(0)) return;
 
+            try
+            {
+                var (hits, misses, patternMatches, invalidations) = _statsBuffer.GetAndReset();
+                if (hits == 0 && misses == 0 && patternMatches == 0 && invalidations == 0) return;
+
+                var batch = _database.CreateBatch();
+                var tasks = new List<Task>();
+
+                if (hits > 0) tasks.Add(batch.StringIncrementAsync(STATS_HIT_KEY, hits));
+                if (misses > 0) tasks.Add(batch.StringIncrementAsync(STATS_MISS_KEY, misses));
+                if (patternMatches > 0) tasks.Add(batch.StringIncrementAsync(STATS_PATTERN_MATCH_KEY, patternMatches));
+                if (invalidations > 0) tasks.Add(batch.StringIncrementAsync(STATS_INVALIDATION_KEY, invalidations));
+
+                batch.Execute();
+                await Task.WhenAll(tasks);
+
+                _logger.LogDebug("Flushed model cost cache stats: Hits={Hits}, Misses={Misses}, Patterns={Patterns}, Invalidations={Invalidations}",
+                    hits, misses, patternMatches, invalidations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error flushing model cost cache statistics");
+            }
+            finally
+            {
+                _flushLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Dispose resources and flush remaining statistics
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            _flushTimer.Change(Timeout.Infinite, 0);
+            _flushTimer.Dispose();
+
+            // Final synchronous flush
+            try
+            {
+                _flushLock.Wait(TimeSpan.FromSeconds(5));
+                try
+                {
+                    var (hits, misses, patternMatches, invalidations) = _statsBuffer.GetAndReset();
+                    if (hits > 0 || misses > 0 || patternMatches > 0 || invalidations > 0)
+                    {
+                        var tasks = new List<Task>();
+                        if (hits > 0) tasks.Add(_database.StringIncrementAsync(STATS_HIT_KEY, hits));
+                        if (misses > 0) tasks.Add(_database.StringIncrementAsync(STATS_MISS_KEY, misses));
+                        if (patternMatches > 0) tasks.Add(_database.StringIncrementAsync(STATS_PATTERN_MATCH_KEY, patternMatches));
+                        if (invalidations > 0) tasks.Add(_database.StringIncrementAsync(STATS_INVALIDATION_KEY, invalidations));
+                        Task.WaitAll(tasks.ToArray(), TimeSpan.FromSeconds(5));
+
+                        _logger.LogDebug("Final flush of model cost cache stats on dispose: Hits={Hits}, Misses={Misses}, Patterns={Patterns}, Invalidations={Invalidations}",
+                            hits, misses, patternMatches, invalidations);
+                    }
+                }
+                finally
+                {
+                    _flushLock.Release();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error during final statistics flush on dispose");
+            }
+
+            _flushLock.Dispose();
+        }
     }
 }

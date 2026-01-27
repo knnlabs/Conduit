@@ -36,7 +36,7 @@ namespace ConduitLLM.Gateway.Services
                                 if (cost?.Id == modelCostId)
                                 {
                                     await _database.KeyDeleteAsync(key);
-                                    
+
                                     // Note: Provider information is not stored in ModelCost entity
                                     // Provider-specific invalidation would require additional context
                                 }
@@ -48,8 +48,8 @@ namespace ConduitLLM.Gateway.Services
                         }
                     }
                 }
-                
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
+
+                Interlocked.Increment(ref _statsBuffer.Invalidations);
                 _logger.LogInformation("Model cost cache invalidated for ID: {ModelCostId}", modelCostId);
             }
             catch (Exception ex)
@@ -125,8 +125,8 @@ namespace ConduitLLM.Gateway.Services
                         await _database.KeyDeleteAsync(key);
                     }
                 }
-                
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
+
+                Interlocked.Increment(ref _statsBuffer.Invalidations);
                 _logger.LogInformation("Model cost cache invalidated for pattern: {Pattern}", modelIdPattern);
             }
             catch (Exception ex)
@@ -240,10 +240,10 @@ namespace ConduitLLM.Gateway.Services
                 // Execute batch
                 batch.Execute();
                 await Task.WhenAll(deleteTasks);
-                
+
                 // Update invalidation statistics
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY, keysToDelete.Count());
-                
+                Interlocked.Add(ref _statsBuffer.Invalidations, keysToDelete.Count);
+
                 // Publish batch invalidation message to other instances
                 var batchMessage = new ModelCostBatchInvalidation
                 {
