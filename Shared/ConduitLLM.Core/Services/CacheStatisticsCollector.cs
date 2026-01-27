@@ -433,7 +433,13 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async void PersistStatistics(object? state)
+        private void PersistStatistics(object? state)
+        {
+            // Fire-and-forget with proper exception handling - don't use async void
+            _ = PersistStatisticsAsync();
+        }
+
+        private async Task PersistStatisticsAsync()
         {
             if (_store == null)
                 return;

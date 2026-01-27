@@ -66,85 +66,93 @@ namespace ConduitLLM.Providers
         /// <inheritdoc />
         public ILLMClient GetClient(string modelName)
         {
-            _logger.LogDebug("DatabaseAwareLLMClientFactory.GetClient called for model: {ModelName}", modelName);
-            
+            // Delegate to async version - avoids Task.Run().Result pattern
+            return GetClientAsync(modelName).GetAwaiter().GetResult();
+        }
+
+        /// <inheritdoc />
+        public async Task<ILLMClient> GetClientAsync(string modelName, CancellationToken cancellationToken = default)
+        {
+            _logger.LogDebug("DatabaseAwareLLMClientFactory.GetClientAsync called for model: {ModelName}", modelName);
+
             // Get model mapping from database
-            var mapping = Task.Run(async () => 
-                await _mappingService.GetMappingByModelAliasAsync(modelName)).Result;
-            
+            var mapping = await _mappingService.GetMappingByModelAliasAsync(modelName);
+
             if (mapping == null)
             {
                 _logger.LogWarning("No model mapping found in database for alias: {ModelAlias}", modelName);
                 throw new ModelNotFoundException(modelName, $"Model '{modelName}' not found. Please check your model configuration.");
             }
-            
-            _logger.LogDebug("Found mapping in database: {ModelAlias} -> ProviderId:{ProviderId}/{ProviderModelId}", 
+
+            _logger.LogDebug("Found mapping in database: {ModelAlias} -> ProviderId:{ProviderId}/{ProviderModelId}",
                 mapping.ModelAlias, mapping.ProviderId, mapping.ProviderModelId);
-            
+
             // Get the provider from database
-            var provider = Task.Run(async () => 
-                await _credentialService.GetProviderByIdAsync(mapping.ProviderId)).Result;
-            
+            var provider = await _credentialService.GetProviderByIdAsync(mapping.ProviderId);
+
             if (provider == null)
             {
                 _logger.LogWarning("Provider {ProviderId} not found", mapping.ProviderId);
                 throw new ServiceUnavailableException($"Provider for model '{modelName}' is not available.", "Provider");
             }
-            
+
             if (!provider.IsEnabled)
             {
                 _logger.LogWarning("Provider {ProviderId} is disabled", mapping.ProviderId);
                 throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
             }
-            
+
             // Get key credentials for this provider
-            var keyCredentials = Task.Run(async () => 
-                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
-            
+            var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
+
             // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
+            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)
                 ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-            
+
             if (primaryKey == null)
             {
                 _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
                 throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
             }
-            
+
             // Create the appropriate client based on provider type
             return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId);
         }
 
-        
         /// <inheritdoc />
         public ILLMClient GetClientByProviderId(int providerId)
+        {
+            // Delegate to async version - avoids Task.Run().Result pattern
+            return GetClientByProviderIdAsync(providerId).GetAwaiter().GetResult();
+        }
+
+        /// <inheritdoc />
+        public async Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Getting client for provider ID {ProviderId} using database credentials", providerId);
 
             // Get provider from database
-            var provider = Task.Run(async () => 
-                await _credentialService.GetProviderByIdAsync(providerId)).Result;
+            var provider = await _credentialService.GetProviderByIdAsync(providerId);
 
             if (provider == null)
             {
                 _logger.LogWarning("No provider found for provider ID {ProviderId} in database", providerId);
                 throw new InvalidRequestException($"Provider with ID '{providerId}' not found.", "provider_not_found", "providerId");
             }
-            
+
             if (!provider.IsEnabled)
             {
                 _logger.LogWarning("Provider {ProviderId} is disabled", providerId);
                 throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
             }
-            
+
             // Get key credentials for this provider
-            var keyCredentials = Task.Run(async () => 
-                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
-            
+            var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
+
             // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
+            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)
                 ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-            
+
             if (primaryKey == null)
             {
                 _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
@@ -166,35 +174,38 @@ namespace ConduitLLM.Providers
         /// <inheritdoc />
         public ILLMClient GetClientByProviderType(ProviderType providerType)
         {
+            // Delegate to async version - avoids Task.Run().Result pattern
+            return GetClientByProviderTypeAsync(providerType).GetAwaiter().GetResult();
+        }
+
+        /// <inheritdoc />
+        public async Task<ILLMClient> GetClientByProviderTypeAsync(ProviderType providerType, CancellationToken cancellationToken = default)
+        {
             _logger.LogDebug("Getting client for provider type {ProviderType} using database credentials", providerType);
 
             // Get first enabled provider of this type from database
-            var provider = Task.Run(async () => 
-            {
-                var allProviders = await _credentialService.GetAllProvidersAsync();
-                return allProviders.FirstOrDefault(p => p.ProviderType == providerType);
-            }).Result;
+            var allProviders = await _credentialService.GetAllProvidersAsync();
+            var provider = allProviders.FirstOrDefault(p => p.ProviderType == providerType);
 
             if (provider == null)
             {
                 _logger.LogWarning("No provider found for provider type {ProviderType} in database", providerType);
                 throw new InvalidRequestException($"No provider configured for type '{providerType}'.", "provider_type_not_found", "providerType");
             }
-            
+
             if (!provider.IsEnabled)
             {
                 _logger.LogWarning("Provider {ProviderId} of type {ProviderType} is disabled", provider.Id, providerType);
                 throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' of type '{providerType}' is currently disabled.", provider.ProviderName);
             }
-            
+
             // Get key credentials for this provider
-            var keyCredentials = Task.Run(async () => 
-                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
-            
+            var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
+
             // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
+            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)
                 ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-            
+
             if (primaryKey == null)
             {
                 _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);

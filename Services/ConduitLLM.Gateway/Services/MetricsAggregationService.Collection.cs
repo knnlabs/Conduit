@@ -139,7 +139,7 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Collect business-related metrics
         /// </summary>
-        private async void CollectBusinessMetrics(MetricsSnapshot snapshot)
+        private async Task CollectBusinessMetricsAsync(MetricsSnapshot snapshot)
         {
             try
             {
@@ -182,11 +182,10 @@ namespace ConduitLLM.Gateway.Services
 
                 // Top virtual keys by spend
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var allKeys = await virtualKeyRepo.GetAllAsync();
+                // Use optimized query that filters and limits at database level
+                var topKeys = await virtualKeyRepo.GetTopEnabledAsync(5);
                 // Note: Spend tracking is now at the group level
-                snapshot.Business.TopVirtualKeys = allKeys
-                    .Where(k => k.IsEnabled)
-                    .Take(5)
+                snapshot.Business.TopVirtualKeys = topKeys
                     .Select(k => new VirtualKeyStats
                     {
                         KeyId = k.Id.ToString(),

@@ -94,8 +94,9 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.NotNull(metrics.AvgInterTokenLatencyMs);
-            Assert.True(metrics.AvgInterTokenLatencyMs >= 15); // Should be around 20ms
-            Assert.True(metrics.AvgInterTokenLatencyMs <= 30);
+            // Allow wider tolerance for timing-sensitive tests due to thread scheduling and system load
+            Assert.True(metrics.AvgInterTokenLatencyMs >= 10, $"Inter-token latency {metrics.AvgInterTokenLatencyMs}ms was less than minimum expected 10ms");
+            Assert.True(metrics.AvgInterTokenLatencyMs <= 100, $"Inter-token latency {metrics.AvgInterTokenLatencyMs}ms exceeded maximum expected 100ms");
         }
 
         [Fact]

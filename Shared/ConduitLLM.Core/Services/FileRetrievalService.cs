@@ -6,22 +6,30 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Service for retrieving and downloading generated content files.
     /// </summary>
+    /// <remarks>
+    /// This service uses a typed HttpClient configured with retry policies for resilience
+    /// when fetching files from external URLs. The retry policy handles transient HTTP errors
+    /// and rate limiting (HTTP 429) with exponential backoff.
+    /// </remarks>
     public class FileRetrievalService : IFileRetrievalService
     {
         private readonly IMediaStorageService _storageService;
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly HttpClient _httpClient;
         private readonly ILogger<FileRetrievalService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileRetrievalService"/> class.
         /// </summary>
+        /// <param name="storageService">The media storage service for local storage operations.</param>
+        /// <param name="httpClient">The typed HTTP client configured with retry policies.</param>
+        /// <param name="logger">The logger instance.</param>
         public FileRetrievalService(
             IMediaStorageService storageService,
-            IHttpClientFactory httpClientFactory,
+            HttpClient httpClient,
             ILogger<FileRetrievalService> logger)
         {
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -224,9 +232,7 @@ namespace ConduitLLM.Core.Services
 
         private async Task<FileRetrievalResult?> RetrieveFromUrlAsync(string url, CancellationToken cancellationToken)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            
-            var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to retrieve URL {Url}: {StatusCode}", url, response.StatusCode);
@@ -271,10 +277,8 @@ namespace ConduitLLM.Core.Services
 
         private async Task<FileMetadata?> GetUrlMetadataAsync(string url, CancellationToken cancellationToken)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
-            using var response = await httpClient.SendAsync(request, cancellationToken);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -310,16 +314,15 @@ namespace ConduitLLM.Core.Services
 
         private async Task<bool> CheckUrlExistsAsync(string url, CancellationToken cancellationToken)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Head, url);
-                using var response = await httpClient.SendAsync(request, cancellationToken);
+                using var response = await _httpClient.SendAsync(request, cancellationToken);
                 return response.IsSuccessStatusCode;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogDebug(ex, "URL existence check failed for {Url}", url);
                 return false;
             }
         }

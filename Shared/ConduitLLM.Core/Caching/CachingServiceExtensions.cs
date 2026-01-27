@@ -208,5 +208,71 @@ namespace ConduitLLM.Core.Caching
             // Test clients are used for authentication verification and should always hit the actual provider
             return _innerFactory.CreateTestClient(provider, keyCredential);
         }
+
+        /// <inheritdoc />
+        public async Task<ILLMClient> GetClientAsync(string modelAlias, CancellationToken cancellationToken = default)
+        {
+            // Get the original client from the inner factory
+            var client = await _innerFactory.GetClientAsync(modelAlias, cancellationToken);
+
+            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
+            if (_cacheOptions.CurrentValue.IsEnabled)
+            {
+                var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
+                return new CachingLLMClient(
+                    client,
+                    _cacheManager,
+                    _metricsService,
+                    _globalSettingsCache,
+                    _cacheOptions,
+                    logger);
+            }
+
+            return client;
+        }
+
+        /// <inheritdoc />
+        public async Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default)
+        {
+            // Get the original client from the inner factory
+            var client = await _innerFactory.GetClientByProviderIdAsync(providerId, cancellationToken);
+
+            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
+            if (_cacheOptions.CurrentValue.IsEnabled)
+            {
+                var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
+                return new CachingLLMClient(
+                    client,
+                    _cacheManager,
+                    _metricsService,
+                    _globalSettingsCache,
+                    _cacheOptions,
+                    logger);
+            }
+
+            return client;
+        }
+
+        /// <inheritdoc />
+        public async Task<ILLMClient> GetClientByProviderTypeAsync(ConduitLLM.Configuration.ProviderType providerType, CancellationToken cancellationToken = default)
+        {
+            // Get the original client from the inner factory
+            var client = await _innerFactory.GetClientByProviderTypeAsync(providerType, cancellationToken);
+
+            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
+            if (_cacheOptions.CurrentValue.IsEnabled)
+            {
+                var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
+                return new CachingLLMClient(
+                    client,
+                    _cacheManager,
+                    _metricsService,
+                    _globalSettingsCache,
+                    _cacheOptions,
+                    logger);
+            }
+
+            return client;
+        }
     }
 }

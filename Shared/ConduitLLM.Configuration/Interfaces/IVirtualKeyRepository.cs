@@ -209,5 +209,26 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </remarks>
         Task<bool> DeleteAsync(string keyHash, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Retrieves a limited number of enabled virtual key entities, ordered by key name.
+        /// </summary>
+        /// <param name="count">The maximum number of virtual keys to retrieve.</param>
+        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// a list of up to <paramref name="count"/> enabled virtual key entities.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This method is optimized for scenarios where only a small subset of enabled keys is needed,
+        /// such as dashboard displays or metrics collection. Unlike <see cref="GetAllAsync"/>, it applies
+        /// filtering and limiting at the database level to avoid loading unnecessary data.
+        /// </para>
+        /// <para>
+        /// The method performs a non-tracking query for optimal read performance.
+        /// </para>
+        /// </remarks>
+        Task<List<VirtualKey>> GetTopEnabledAsync(int count, CancellationToken cancellationToken = default);
+
     }
 }

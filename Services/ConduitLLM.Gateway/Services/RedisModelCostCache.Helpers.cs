@@ -80,7 +80,13 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Handle single invalidation messages from other instances
         /// </summary>
-        private async void OnCostInvalidated(RedisChannel channel, RedisValue costId)
+        private void OnCostInvalidated(RedisChannel channel, RedisValue costId)
+        {
+            // Fire-and-forget with proper exception handling - don't use async void
+            _ = OnCostInvalidatedAsync(costId);
+        }
+
+        private async Task OnCostInvalidatedAsync(RedisValue costId)
         {
             try
             {
@@ -99,7 +105,13 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Handle batch invalidation messages from other instances
         /// </summary>
-        private async void OnBatchInvalidated(RedisChannel channel, RedisValue message)
+        private void OnBatchInvalidated(RedisChannel channel, RedisValue message)
+        {
+            // Fire-and-forget with proper exception handling - don't use async void
+            _ = OnBatchInvalidatedAsync(message);
+        }
+
+        private async Task OnBatchInvalidatedAsync(RedisValue message)
         {
             try
             {
@@ -112,9 +124,9 @@ namespace ConduitLLM.Gateway.Services
                         EntityId = id,
                         Reason = "Batch invalidation from pub/sub"
                     });
-                    
+
                     await InvalidateBatchAsync(requests);
-                    
+
                     _logger.LogDebug(
                         "Batch invalidated {Count} model costs from pub/sub",
                         batchMessage.CostIds.Length);

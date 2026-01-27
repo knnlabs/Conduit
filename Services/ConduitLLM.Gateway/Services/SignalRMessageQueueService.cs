@@ -414,7 +414,13 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
-        private async void ProcessMessages(object? state)
+        private void ProcessMessages(object? state)
+        {
+            // Fire-and-forget with proper exception handling - don't use async void
+            _ = ProcessMessagesAsync();
+        }
+
+        private async Task ProcessMessagesAsync()
         {
             if (_redis == null || _currentCircuitState == CircuitState.Open)
             {

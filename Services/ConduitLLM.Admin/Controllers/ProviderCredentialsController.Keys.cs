@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Admin.Extensions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
@@ -38,8 +39,8 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting key credentials for provider {ProviderId}", providerId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                Logger.LogError(ex, "Error getting key credentials for provider {ProviderId}", providerId);
+                return this.InternalServerError();
             }
         }
 
@@ -58,11 +59,11 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var key = await _keyRepository.GetByIdAsync(keyId);
-                
+
                 if (key == null || key.ProviderId != providerId)
                 {
-                    _logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
-                    return NotFound(new ErrorResponseDto("Key credential not found"));
+                    Logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
+                    return this.NotFoundEntity("Key credential", keyId);
                 }
 
                 return Ok(new
@@ -82,8 +83,8 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting key credential {KeyId} for provider {ProviderId}", keyId, providerId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                Logger.LogError(ex, "Error getting key credential {KeyId} for provider {ProviderId}", keyId, providerId);
+                return this.InternalServerError();
             }
         }
 
@@ -111,7 +112,7 @@ namespace ConduitLLM.Admin.Controllers
                 var provider = await _providerRepository.GetByIdAsync(providerId);
                 if (provider == null)
                 {
-                    return NotFound(new ErrorResponseDto("Provider not found"));
+                    return this.NotFoundEntity("Provider", providerId);
                 }
 
                 var keyCredential = new ProviderKeyCredential
@@ -160,15 +161,15 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning("Controller caught InvalidOperationException of type {ExceptionType} for provider {ProviderId}: {Message}", 
+                Logger.LogWarning("Controller caught InvalidOperationException of type {ExceptionType} for provider {ProviderId}: {Message}",
                     ex.GetType().FullName, providerId, ex.Message);
-                return BadRequest(new { error = ex.Message });
+                return this.BadRequestError(ex.Message, "invalid_operation");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Controller caught general Exception of type {ExceptionType} for provider {ProviderId}: {Message}", 
+                Logger.LogError(ex, "Controller caught general Exception of type {ExceptionType} for provider {ProviderId}: {Message}",
                     ex.GetType().FullName, providerId, ex.Message);
-                return StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponseDto("An unexpected error occurred."));
+                return this.InternalServerError();
             }
         }
 
@@ -196,8 +197,8 @@ namespace ConduitLLM.Admin.Controllers
                 var key = await _keyRepository.GetByIdAsync(keyId);
                 if (key == null || key.ProviderId != providerId)
                 {
-                    _logger.LogWarning("Key credential not found for update {KeyId}", keyId);
-                    return NotFound(new ErrorResponseDto("Key credential not found"));
+                    Logger.LogWarning("Key credential not found for update {KeyId}", keyId);
+                    return this.NotFoundEntity("Key credential", keyId);
                 }
 
                 // Update fields
@@ -233,13 +234,13 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation when updating key credential {KeyId}", keyId);
-                return BadRequest(new { error = ex.Message });
+                Logger.LogWarning(ex, "Invalid operation when updating key credential {KeyId}", keyId);
+                return this.BadRequestError(ex.Message, "invalid_operation");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating key credential {KeyId}", keyId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                Logger.LogError(ex, "Error updating key credential {KeyId}", keyId);
+                return this.InternalServerError();
             }
         }
 
@@ -260,8 +261,8 @@ namespace ConduitLLM.Admin.Controllers
                 var key = await _keyRepository.GetByIdAsync(keyId);
                 if (key == null || key.ProviderId != providerId)
                 {
-                    _logger.LogWarning("Key credential not found for deletion {KeyId}", keyId);
-                    return NotFound(new ErrorResponseDto("Key credential not found"));
+                    Logger.LogWarning("Key credential not found for deletion {KeyId}", keyId);
+                    return this.NotFoundEntity("Key credential", keyId);
                 }
 
                 await _keyRepository.DeleteAsync(keyId);
@@ -278,13 +279,13 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation when deleting key credential {KeyId}", keyId);
-                return BadRequest(new { error = ex.Message });
+                Logger.LogWarning(ex, "Invalid operation when deleting key credential {KeyId}", keyId);
+                return this.BadRequestError(ex.Message, "invalid_operation");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting key credential {KeyId}", keyId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                Logger.LogError(ex, "Error deleting key credential {KeyId}", keyId);
+                return this.InternalServerError();
             }
         }
 
@@ -306,8 +307,8 @@ namespace ConduitLLM.Admin.Controllers
                 var key = await _keyRepository.GetByIdAsync(keyId);
                 if (key == null || key.ProviderId != providerId)
                 {
-                    _logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
-                    return NotFound(new ErrorResponseDto("Key credential not found"));
+                    Logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
+                    return this.NotFoundEntity("Key credential", keyId);
                 }
 
                 // Unset all other primary keys for this provider
@@ -337,13 +338,13 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation when setting primary key {KeyId} for provider {ProviderId}", keyId, providerId);
-                return BadRequest(new { error = ex.Message });
+                Logger.LogWarning(ex, "Invalid operation when setting primary key {KeyId} for provider {ProviderId}", keyId, providerId);
+                return this.BadRequestError(ex.Message, "invalid_operation");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting primary key {KeyId} for provider {ProviderId}", keyId, providerId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                Logger.LogError(ex, "Error setting primary key {KeyId} for provider {ProviderId}", keyId, providerId);
+                return this.InternalServerError();
             }
         }
     }

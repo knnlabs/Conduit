@@ -438,9 +438,10 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
-        private async void ProcessBatches(object? state)
+        private void ProcessBatches(object? state)
         {
-            await ProcessBatchesAsync();
+            // Fire-and-forget with proper exception handling - don't use async void
+            _ = ProcessBatchesAsync();
         }
 
         private async Task ProcessBatchesAsync()

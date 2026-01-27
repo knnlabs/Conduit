@@ -270,13 +270,33 @@ _logger.LogError(ex, "Error creating virtual key '{KeyName}'", LoggingSanitizer.
 
                 dbContext.VirtualKeys.Remove(virtualKey);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                
+
                 _logger.LogInformation("Deleted virtual key with hash {KeyHash}", LogSanitizer.SanitizeObject(keyHash));
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting virtual key with hash {KeyHash}", LogSanitizer.SanitizeObject(keyHash));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<VirtualKey>> GetTopEnabledAsync(int count, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.IsEnabled)
+                    .OrderBy(vk => vk.KeyName)
+                    .Take(count)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting top {Count} enabled virtual keys", count);
                 throw;
             }
         }

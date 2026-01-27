@@ -14,9 +14,21 @@ public interface ILLMClientFactory
     /// <returns>An instance of ILLMClient capable of handling the request for the specified model.</returns>
     /// <exception cref="ConfigurationException">Thrown if the configuration for the model alias or its provider is invalid or missing.</exception>
     /// <exception cref="UnsupportedProviderException">Thrown if the provider specified in the configuration is not supported by this factory.</exception>
+    /// <remarks>
+    /// Prefer using <see cref="GetClientAsync"/> to avoid blocking calls in async contexts.
+    /// </remarks>
     ILLMClient GetClient(string modelAlias);
 
-    
+    /// <summary>
+    /// Asynchronously gets an appropriate ILLMClient instance for the specified model alias.
+    /// </summary>
+    /// <param name="modelAlias">The model alias specified in the request (e.g., "gpt-4-turbo").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>An instance of ILLMClient capable of handling the request for the specified model.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the configuration for the model alias or its provider is invalid or missing.</exception>
+    /// <exception cref="UnsupportedProviderException">Thrown if the provider specified in the configuration is not supported by this factory.</exception>
+    Task<ILLMClient> GetClientAsync(string modelAlias, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets an ILLMClient instance for the specified provider ID directly.
     /// </summary>
@@ -24,7 +36,20 @@ public interface ILLMClientFactory
     /// <returns>An instance of ILLMClient for the specified provider.</returns>
     /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
     /// <exception cref="UnsupportedProviderException">Thrown if the specified provider is not supported by this factory.</exception>
+    /// <remarks>
+    /// Prefer using <see cref="GetClientByProviderIdAsync"/> to avoid blocking calls in async contexts.
+    /// </remarks>
     ILLMClient GetClientByProviderId(int providerId);
+
+    /// <summary>
+    /// Asynchronously gets an ILLMClient instance for the specified provider ID directly.
+    /// </summary>
+    /// <param name="providerId">The ID of the provider.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>An instance of ILLMClient for the specified provider.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
+    /// <exception cref="UnsupportedProviderException">Thrown if the specified provider is not supported by this factory.</exception>
+    Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets provider metadata for the specified provider type without requiring credentials.
@@ -41,7 +66,20 @@ public interface ILLMClientFactory
     /// <returns>An instance of ILLMClient for the specified provider type.</returns>
     /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
     /// <exception cref="UnsupportedProviderException">Thrown if the specified provider type is not supported by this factory.</exception>
+    /// <remarks>
+    /// Prefer using <see cref="GetClientByProviderTypeAsync"/> to avoid blocking calls in async contexts.
+    /// </remarks>
     ILLMClient GetClientByProviderType(ConduitLLM.Configuration.ProviderType providerType);
+
+    /// <summary>
+    /// Asynchronously gets an ILLMClient instance for the specified provider type directly.
+    /// </summary>
+    /// <param name="providerType">The provider type enum value.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>An instance of ILLMClient for the specified provider type.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
+    /// <exception cref="UnsupportedProviderException">Thrown if the specified provider type is not supported by this factory.</exception>
+    Task<ILLMClient> GetClientByProviderTypeAsync(ConduitLLM.Configuration.ProviderType providerType, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a lightweight ILLMClient instance for testing provider credentials.

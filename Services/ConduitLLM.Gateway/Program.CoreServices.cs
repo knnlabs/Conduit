@@ -595,8 +595,13 @@ public partial class Program
         // Register Conduit service
         builder.Services.AddScoped<Conduit>();
 
-        // Register File Retrieval Service
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IFileRetrievalService, ConduitLLM.Core.Services.FileRetrievalService>();
+        // Register File Retrieval Service with retry-enabled HttpClient for resilient URL fetching
+        builder.Services.AddHttpClient<ConduitLLM.Core.Interfaces.IFileRetrievalService, ConduitLLM.Core.Services.FileRetrievalService>()
+            .AddPolicyHandler(GetRetryPolicy())
+            .ConfigureHttpClient(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(60); // Longer timeout for file downloads
+            });
 
         // Register Model Capability services (capability detection and caching)
         builder.Services.AddModelCapabilityServices(builder.Configuration);
@@ -737,5 +742,22 @@ public partial class Program
                     // Circuit breaker closed
                     Console.WriteLine("[Webhook Circuit Breaker] Reset");
                 });
+    }
+
+    /// <summary>
+    /// Creates a standard retry policy for HTTP requests.
+    /// Uses exponential backoff with jitter to handle transient failures.
+    /// </summary>
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError() // Handles 5xx status codes and connection failures
+            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            .WaitAndRetryAsync(
+                retryCount: 3,
+                sleepDurationProvider: retryAttempt =>
+                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) + // Exponential backoff
+                    TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000)) // Jitter
+            );
     }
 }

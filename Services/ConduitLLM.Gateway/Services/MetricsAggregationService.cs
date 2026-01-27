@@ -93,7 +93,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 Task.Run(() => CollectHttpMetrics(snapshot)),
                 Task.Run(() => CollectInfrastructureMetrics(snapshot)),
-                Task.Run(() => CollectBusinessMetrics(snapshot)),
+                CollectBusinessMetricsAsync(snapshot),
                 Task.Run(() => CollectSystemMetrics(snapshot))
             };
 

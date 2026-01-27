@@ -759,7 +759,13 @@ namespace ConduitLLM.Gateway.Services
             return 0;
         }
 
-        private async void CleanupStaleConnections(object? state)
+        private void CleanupStaleConnections(object? state)
+        {
+            // Fire-and-forget with proper exception handling - don't use async void
+            _ = CleanupStaleConnectionsAsync();
+        }
+
+        private async Task CleanupStaleConnectionsAsync()
         {
             if (_redis == null)
             {

@@ -9,6 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using ConduitLLM.Configuration.Interfaces;
+using Polly;
+using Polly.Extensions.Http;
 namespace ConduitLLM.Core.Extensions
 {
     /// <summary>
@@ -34,8 +36,13 @@ namespace ConduitLLM.Core.Extensions
             // Register token counter - changed to Scoped to match IModelCapabilityService lifetime
             services.AddScoped<ITokenCounter, TiktokenCounter>();
             
-            // Register image token calculator for accurate vision model billing
-            services.AddScoped<IImageTokenCalculator, ImageTokenCalculator>();
+            // Register image token calculator with retry-enabled HttpClient for accurate vision model billing
+            services.AddHttpClient<IImageTokenCalculator, ImageTokenCalculator>()
+                .AddPolicyHandler(GetRetryPolicy())
+                .ConfigureHttpClient(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30); // Reasonable timeout for image dimension checks
+                });
             
             // Register usage estimation service for streaming responses without usage data
             services.AddScoped<IUsageEstimationService, UsageEstimationService>();
@@ -228,12 +235,29 @@ namespace ConduitLLM.Core.Extensions
             
             // Register media lifecycle service
             services.AddScoped<IMediaLifecycleService, MediaLifecycleService>();
-            
+
             // Register media lifecycle repository
             // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
             // Migration: 20250827194408_ConsolidateMediaTables.cs
-            
+
             return services;
+        }
+
+        /// <summary>
+        /// Creates a standard retry policy for HTTP requests.
+        /// Uses exponential backoff with jitter to handle transient failures.
+        /// </summary>
+        private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+        {
+            return HttpPolicyExtensions
+                .HandleTransientHttpError() // Handles 5xx status codes and connection failures
+                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                .WaitAndRetryAsync(
+                    retryCount: 3,
+                    sleepDurationProvider: retryAttempt =>
+                        TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) + // Exponential backoff
+                        TimeSpan.FromMilliseconds(new Random().Next(0, 1000)) // Jitter
+                );
         }
     }
 }
