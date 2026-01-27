@@ -5,6 +5,7 @@ using ConduitLLM.Gateway.Services;
 using StackExchange.Redis;
 using MassTransit;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Services;
 
 public partial class Program
 {
@@ -92,16 +93,19 @@ public partial class Program
             // IConnectionMultiplexer and RedisConnectionFactory are already registered above
 
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
-            
+
+            // Register distributed lock service - prefer PostgreSQL for better consistency
+            // PostgreSQL advisory locks are more reliable for cache warming coordination
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, PostgresDistributedLockService>();
+
+            // Register cache stampede prevention service (must be registered before caches that depend on it)
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedCachePopulator, DistributedCachePopulator>();
+
             // Register additional Redis cache services
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderCache, RedisProviderCache>();
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IGlobalSettingCache, RedisGlobalSettingCache>();
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IModelCostCache, RedisModelCostCache>();
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IIpFilterCache, RedisIpFilterCache>();
-            
-            // Register distributed lock service - prefer PostgreSQL for better consistency
-            // PostgreSQL advisory locks are more reliable for cache warming coordination
-            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.PostgresDistributedLockService>();
             
             // Register CachedApiVirtualKeyService with event publishing dependency
             builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(serviceProvider =>

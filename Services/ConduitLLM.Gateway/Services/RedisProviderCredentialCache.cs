@@ -13,6 +13,7 @@ namespace ConduitLLM.Gateway.Services
     {
         private readonly IDatabase _database;
         private readonly ILogger<RedisProviderCache> _logger;
+        private readonly IDistributedCachePopulator _cachePopulator;
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromHours(1);
         private const string KeyPrefix = "provider:";
         private const string NameKeyPrefix = "provider:name:"; // DEPRECATED - only for cleanup
@@ -30,11 +31,13 @@ namespace ConduitLLM.Gateway.Services
 
         public RedisProviderCache(
             IConnectionMultiplexer redis,
-            ILogger<RedisProviderCache> logger)
+            ILogger<RedisProviderCache> logger,
+            IDistributedCachePopulator cachePopulator)
         {
             _database = redis.GetDatabase();
             _logger = logger;
-            
+            _cachePopulator = cachePopulator;
+
             // Initialize stats reset time if not exists
             _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
         }
@@ -68,19 +71,35 @@ namespace ConduitLLM.Gateway.Services
                     }
                 }
                 
-                // Cache miss - fallback to database
+                // Cache miss - use stampede prevention to avoid multiple concurrent DB queries
                 _logger.LogDebug("Provider credential cache miss, querying database: {ProviderId}", providerId);
                 await _database.StringIncrementAsync(STATS_MISS_KEY);
-                
-                var dbCredential = await databaseFallback(providerId);
-                
+
+                var dbCredential = await _cachePopulator.GetOrPopulateAsync(
+                    lockKey: $"populate:provider:{providerId}",
+                    cacheCheck: async () =>
+                    {
+                        // Re-check cache in case another instance populated it
+                        var cached = await _database.StringGetAsync(cacheKey);
+                        if (cached.HasValue)
+                        {
+                            var jsonStr = (string?)cached;
+                            if (jsonStr is not null)
+                            {
+                                return JsonSerializer.Deserialize<CachedProvider>(jsonStr, _jsonOptions);
+                            }
+                        }
+                        return null;
+                    },
+                    factory: () => databaseFallback(providerId));
+
                 if (dbCredential != null)
                 {
                     // Cache the credential
                     await SetProviderAsync(providerId, dbCredential);
                     return dbCredential;
                 }
-                
+
                 return null;
             }
             catch (Exception ex)

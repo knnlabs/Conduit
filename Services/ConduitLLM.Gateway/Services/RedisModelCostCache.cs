@@ -12,6 +12,7 @@ namespace ConduitLLM.Gateway.Services
     {
         private readonly IDatabase _database;
         private readonly ILogger<RedisModelCostCache> _logger;
+        private readonly IDistributedCachePopulator _cachePopulator;
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromHours(6); // Model costs change infrequently
         private const string KeyPrefix = "modelcost:";
         private const string PatternKeyPrefix = "modelcost:pattern:";
@@ -62,11 +63,13 @@ namespace ConduitLLM.Gateway.Services
 
         public RedisModelCostCache(
             IConnectionMultiplexer redis,
-            ILogger<RedisModelCostCache> logger)
+            ILogger<RedisModelCostCache> logger,
+            IDistributedCachePopulator cachePopulator)
         {
             _database = redis.GetDatabase();
             _subscriber = redis.GetSubscriber();
             _logger = logger;
+            _cachePopulator = cachePopulator;
             
             // Initialize stats reset time if not exists
             _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
@@ -108,19 +111,35 @@ namespace ConduitLLM.Gateway.Services
                     }
                 }
                 
-                // Cache miss - fallback to database
+                // Cache miss - use stampede prevention to avoid multiple concurrent DB queries
                 _logger.LogDebug("Model cost cache miss for pattern, querying database: {Pattern}", modelIdPattern);
                 Interlocked.Increment(ref _statsBuffer.Misses);
-                
-                var dbCost = await databaseFallback(modelIdPattern);
-                
+
+                var dbCost = await _cachePopulator.GetOrPopulateAsync(
+                    lockKey: $"populate:modelcost:pattern:{modelIdPattern.ToLowerInvariant()}",
+                    cacheCheck: async () =>
+                    {
+                        // Re-check cache in case another instance populated it
+                        var cached = await _database.StringGetAsync(cacheKey);
+                        if (cached.HasValue)
+                        {
+                            var jsonStr = (string?)cached;
+                            if (jsonStr is not null)
+                            {
+                                return JsonSerializer.Deserialize<ModelCost>(jsonStr, _jsonOptions);
+                            }
+                        }
+                        return null;
+                    },
+                    factory: () => databaseFallback(modelIdPattern));
+
                 if (dbCost != null)
                 {
                     // Cache the cost
                     await SetModelCostAsync(dbCost);
                     return dbCost;
                 }
-                
+
                 return null;
             }
             catch (Exception ex)
@@ -222,12 +241,28 @@ namespace ConduitLLM.Gateway.Services
                     }
                 }
                 
-                // If no exact match, fall back to database for pattern matching
+                // If no exact match, use stampede prevention to avoid multiple concurrent DB queries
                 _logger.LogDebug("Model cost cache miss for model ID, querying database for pattern match: {ModelId}", modelId);
                 Interlocked.Increment(ref _statsBuffer.Misses);
-                
-                var dbCost = await databaseFallback(modelId);
-                
+
+                var dbCost = await _cachePopulator.GetOrPopulateAsync(
+                    lockKey: $"populate:modelcost:modelid:{modelId.ToLowerInvariant()}",
+                    cacheCheck: async () =>
+                    {
+                        // Re-check cache in case another instance populated it
+                        var cached = await _database.StringGetAsync(exactKey);
+                        if (cached.HasValue)
+                        {
+                            var jsonStr = (string?)cached;
+                            if (jsonStr is not null)
+                            {
+                                return JsonSerializer.Deserialize<ModelCost>(jsonStr, _jsonOptions);
+                            }
+                        }
+                        return null;
+                    },
+                    factory: () => databaseFallback(modelId));
+
                 if (dbCost != null)
                 {
                     // Cache the result with the exact model ID for faster future lookups
@@ -237,7 +272,7 @@ namespace ConduitLLM.Gateway.Services
 
                     return dbCost;
                 }
-                
+
                 return null;
             }
             catch (Exception ex)
