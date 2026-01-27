@@ -45,7 +45,7 @@ namespace ConduitLLM.Core.Services
             }
 
             // Get the appropriate client for the model
-            var client = _clientFactory.GetClient(request.Model);
+            var client = await _clientFactory.GetClientAsync(request.Model);
             if (client == null)
             {
                 throw new NotSupportedException($"No provider available for model {request.Model}");

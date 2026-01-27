@@ -22,7 +22,7 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Gets current batching statistics
         /// </summary>
-        BatchingStatistics GetStatistics();
+        Task<BatchingStatistics> GetStatisticsAsync();
 
         /// <summary>
         /// Forces immediate sending of all pending batches
@@ -273,12 +273,6 @@ namespace ConduitLLM.Gateway.Services
                 _logger.LogError(ex, "Failed to add message to batch, sending directly");
                 await SendMessageDirectlyAsync(hubName, methodName, message, connectionId, groupName);
             }
-        }
-
-        public BatchingStatistics GetStatistics()
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetStatisticsAsync().GetAwaiter().GetResult();
         }
 
         public async Task<BatchingStatistics> GetStatisticsAsync()

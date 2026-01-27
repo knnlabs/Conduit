@@ -63,10 +63,11 @@ namespace ConduitLLM.Core.Interfaces
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets an LLM client for the specified model.
+        /// Asynchronously gets an LLM client for the specified model.
         /// </summary>
         /// <param name="modelAlias">The model alias to get a client for.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>The LLM client for the specified model.</returns>
-        ILLMClient GetClient(string modelAlias);
+        Task<ILLMClient> GetClientAsync(string modelAlias, CancellationToken cancellationToken = default);
     }
 }

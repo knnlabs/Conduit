@@ -87,7 +87,7 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken)
         {
             // Get the client for the model
-            var client = _clientFactory.GetClient(modelInfo.ModelAlias);
+            var client = await _clientFactory.GetClientAsync(modelInfo.ModelAlias, cancellationToken);
             if (client == null)
             {
                 throw new NotSupportedException($"No provider available for model {modelInfo.ModelAlias}");

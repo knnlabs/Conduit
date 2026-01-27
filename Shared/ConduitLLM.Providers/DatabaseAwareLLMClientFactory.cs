@@ -64,13 +64,6 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public ILLMClient GetClient(string modelName)
-        {
-            // Delegate to async version - avoids Task.Run().Result pattern
-            return GetClientAsync(modelName).GetAwaiter().GetResult();
-        }
-
-        /// <inheritdoc />
         public async Task<ILLMClient> GetClientAsync(string modelName, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("DatabaseAwareLLMClientFactory.GetClientAsync called for model: {ModelName}", modelName);
@@ -120,13 +113,6 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public ILLMClient GetClientByProviderId(int providerId)
-        {
-            // Delegate to async version - avoids Task.Run().Result pattern
-            return GetClientByProviderIdAsync(providerId).GetAwaiter().GetResult();
-        }
-
-        /// <inheritdoc />
         public async Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Getting client for provider ID {ProviderId} using database credentials", providerId);
@@ -169,13 +155,6 @@ namespace ConduitLLM.Providers
             // This factory doesn't have access to provider metadata
             // Return null to indicate metadata is not available through this factory
             return null;
-        }
-
-        /// <inheritdoc />
-        public ILLMClient GetClientByProviderType(ProviderType providerType)
-        {
-            // Delegate to async version - avoids Task.Run().Result pattern
-            return GetClientByProviderTypeAsync(providerType).GetAwaiter().GetResult();
         }
 
         /// <inheritdoc />

@@ -81,7 +81,7 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken)
         {
             // Get the client for the model
-            var client = _clientFactory.GetClient(modelInfo.ModelId);
+            var client = await _clientFactory.GetClientAsync(modelInfo.ModelId, cancellationToken);
             
             // Generate images
             return await client.CreateImageAsync(request, cancellationToken: cancellationToken);

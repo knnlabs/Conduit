@@ -29,9 +29,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("statistics")]
         [AllowAnonymous]
-        public ActionResult<BatchingStatistics> GetStatistics()
+        public async Task<ActionResult<BatchingStatistics>> GetStatistics()
         {
-            var stats = _messageBatcher.GetStatistics();
+            var stats = await _messageBatcher.GetStatisticsAsync();
             return Ok(stats);
         }
 
@@ -73,9 +73,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("efficiency")]
         [AllowAnonymous]
-        public ActionResult GetEfficiencyMetrics()
+        public async Task<ActionResult> GetEfficiencyMetrics()
         {
-            var stats = _messageBatcher.GetStatistics();
+            var stats = await _messageBatcher.GetStatisticsAsync();
             
             return Ok(new
             {

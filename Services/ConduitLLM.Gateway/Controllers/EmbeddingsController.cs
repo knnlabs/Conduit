@@ -83,7 +83,7 @@ namespace ConduitLLM.Gateway.Controllers
                 }
                 
                 // Get the client for the specified model and create embeddings
-                var client = _conduit.GetClient(request.Model);
+                var client = await _conduit.GetClientAsync(request.Model, cancellationToken);
                 var response = await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
                 return Ok(response);
             }

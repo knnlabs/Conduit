@@ -39,22 +39,28 @@ namespace ConduitLLM.Gateway.Services
 
         private void CollectMetrics(object? state)
         {
+            // Fire-and-forget async metrics collection with proper exception handling
+            _ = CollectMetricsAsync();
+        }
+
+        private async Task CollectMetricsAsync()
+        {
             try
             {
                 using var scope = _serviceProvider.CreateScope();
-                
+
                 // Collect connection metrics
                 var connectionMonitor = scope.ServiceProvider.GetService<ISignalRConnectionMonitor>();
                 if (connectionMonitor != null)
                 {
                     var stats = connectionMonitor.GetStatistics();
-                    
+
                     // Update gauge metrics
                     foreach (var hub in stats.ConnectionsByHub)
                     {
                         _metrics.UpdateActiveConnections(hub.Key, 0); // Reset to current value
                     }
-                    
+
                     // Record acknowledgment rate
                     if (stats.TotalMessagesSent > 0)
                     {
@@ -76,9 +82,9 @@ namespace ConduitLLM.Gateway.Services
                 var batchingService = scope.ServiceProvider.GetService<ISignalRMessageBatcher>();
                 if (batchingService != null)
                 {
-                    var stats = batchingService.GetStatistics();
+                    var stats = await batchingService.GetStatisticsAsync();
                     _metrics.UpdatePendingBatches((int)stats.CurrentPendingMessages);
-                    
+
                     if (stats.BatchEfficiencyPercentage > 0)
                     {
                         _logger.LogDebug("Batch efficiency: {Efficiency}%", stats.BatchEfficiencyPercentage);

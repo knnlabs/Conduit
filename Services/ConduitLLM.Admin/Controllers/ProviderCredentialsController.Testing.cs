@@ -38,7 +38,7 @@ namespace ConduitLLM.Admin.Controllers
                 }
 
                 // Get a client for this provider to test
-                var client = _clientFactory.GetClientByProviderId(id);
+                var client = await _clientFactory.GetClientByProviderIdAsync(id);
                 
                 // Perform a simple test - list models
                 var startTime = DateTime.UtcNow;

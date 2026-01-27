@@ -97,8 +97,8 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(response);
             
-            ClientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Returns(mockClient.Object);
+            ClientFactoryMock.Setup(x => x.GetClientAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockClient.Object);
             
             StorageServiceMock.Setup(x => x.StoreAsync(
                 It.IsAny<Stream>(),
@@ -115,8 +115,8 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected override void SetupFailedGeneration(Exception exception)
         {
             // Setup to simulate failure during orchestration
-            ClientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Throws(exception);
+            ClientFactoryMock.Setup(x => x.GetClientAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(exception);
         }
 
         [Fact]

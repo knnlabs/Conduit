@@ -109,7 +109,7 @@ namespace ConduitLLM.Gateway.Controllers
                 }
 
                 // Create client for the model
-                var client = _clientFactory.GetClient(modelName);
+                var client = await _clientFactory.GetClientAsync(modelName);
                 
                 // Update request with the provider's model ID if we have a mapping
                 if (mapping != null)
