@@ -9,7 +9,7 @@ if [ "$CI" = "true" ]; then
 fi
 
 # Run the STRICT validation script (same as CI/CD)
-./scripts/test/validate-eslint-strict.sh
+pwsh -NoProfile -Command "& ./scripts/test/validate-eslint-strict.ps1"
 
 if [ $? -ne 0 ]; then
   echo ""
