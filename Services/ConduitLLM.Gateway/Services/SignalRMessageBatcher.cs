@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Threading.Channels;
 
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Gateway.Models;
@@ -58,7 +59,9 @@ namespace ConduitLLM.Gateway.Services
     }
 
     /// <summary>
-    /// Implementation of SignalR message batcher
+    /// Implementation of SignalR message batcher.
+    /// Uses Channel-based signaling for batch processing to ensure proper error handling
+    /// and graceful shutdown instead of fire-and-forget Task.Run patterns.
     /// </summary>
     public class SignalRMessageBatcher : ISignalRMessageBatcher, IHostedService, IDisposable
     {
@@ -66,29 +69,35 @@ namespace ConduitLLM.Gateway.Services
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
         private readonly RedisConnectionFactory _redisConnectionFactory;
-        
+
         // Redis connection
         private IDatabase? _redis;
-        
+
         // Redis keys
         private readonly string _activeBatchesKey;
         private readonly string _batchQueueKey;
         private readonly string _messagesByMethodKey;
         private readonly string _statisticsKey;
-        
+
         // Synchronization
         private readonly SemaphoreSlim _batchProcessingLock;
-        
+
         // Timers
         private Timer? _batchTimer;
         private readonly object _timerLock = new();
-        
+
+        // Channel-based signal processing - replaces fire-and-forget Task.Run
+        private enum BatchSignal { ProcessBatches, FlushAll }
+        private readonly Channel<BatchSignal> _signalChannel;
+        private Task? _signalProcessingTask;
+        private CancellationTokenSource? _shutdownCts;
+
         // Configuration
         private readonly TimeSpan _batchWindow;
         private readonly int _maxBatchSize;
         private readonly long _maxBatchSizeBytes;
         private readonly bool _groupByMethod;
-        
+
         // State
         private bool _isBatchingEnabled = true;
         private readonly object _stateLock = new();
@@ -117,6 +126,14 @@ namespace ConduitLLM.Gateway.Services
             _groupByMethod = configuration.GetValue<bool>("SignalR:Batching:GroupByMethod", true);
 
             _batchProcessingLock = new SemaphoreSlim(1, 1);
+
+            // Bounded channel to prevent unbounded memory growth
+            _signalChannel = Channel.CreateBounded<BatchSignal>(new BoundedChannelOptions(100)
+            {
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = true,
+                SingleWriter = false
+            });
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -133,6 +150,10 @@ namespace ConduitLLM.Gateway.Services
                 // Initialize statistics in Redis if they don't exist
                 await InitializeStatisticsAsync();
 
+                // Start signal processing task for handling batch operations
+                _shutdownCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                _signalProcessingTask = ProcessSignalsAsync(_shutdownCts.Token);
+
                 _batchTimer = new Timer(
                     ProcessBatches,
                     null,
@@ -146,6 +167,48 @@ namespace ConduitLLM.Gateway.Services
                 _logger.LogError(ex, "Failed to start SignalR Message Batcher");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Processes batch signals from the channel with proper error handling.
+        /// This replaces fire-and-forget Task.Run patterns.
+        /// </summary>
+        private async Task ProcessSignalsAsync(CancellationToken ct)
+        {
+            _logger.LogDebug("Signal processing task started");
+
+            try
+            {
+                await foreach (var signal in _signalChannel.Reader.ReadAllAsync(ct))
+                {
+                    try
+                    {
+                        switch (signal)
+                        {
+                            case BatchSignal.ProcessBatches:
+                                await ProcessBatchesAsync();
+                                break;
+                            case BatchSignal.FlushAll:
+                                await FlushAllBatchesAsync();
+                                break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing batch signal {Signal}", signal);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                _logger.LogDebug("Signal processing task cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in signal processing task");
+            }
+
+            _logger.LogDebug("Signal processing task completed");
         }
 
         private async Task InitializeStatisticsAsync()
@@ -183,7 +246,10 @@ namespace ConduitLLM.Gateway.Services
                 _batchTimer?.Change(Timeout.Infinite, 0);
             }
 
-            // Flush remaining batches
+            // Complete the signal channel to stop accepting new signals
+            _signalChannel.Writer.Complete();
+
+            // Flush remaining batches directly (don't go through channel since it's completed)
             try
             {
                 await FlushAllBatchesAsync().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
@@ -195,6 +261,24 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error flushing batches during shutdown");
+            }
+
+            // Wait for signal processing task to complete
+            if (_signalProcessingTask != null)
+            {
+                try
+                {
+                    _shutdownCts?.Cancel();
+                    await _signalProcessingTask.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning("Signal processing task did not complete in time during shutdown");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error waiting for signal processing task during shutdown");
+                }
             }
         }
 
@@ -229,7 +313,7 @@ namespace ConduitLLM.Gateway.Services
                 var batch = await GetOrCreateBatchAsync(batchKeyString, batchKey);
 
                 // Check if adding this message would exceed limits
-                if (batch.Messages.Count >= _maxBatchSize || 
+                if (batch.Messages.Count >= _maxBatchSize ||
                     batch.TotalSizeBytes + messageSize > _maxBatchSizeBytes)
                 {
                     // Queue this batch for immediate sending
@@ -237,9 +321,9 @@ namespace ConduitLLM.Gateway.Services
                     {
                         batch.IsQueued = true;
                         await _redis.ListRightPushAsync(_batchQueueKey, batchKeyString);
-                        
-                        // Trigger immediate processing
-                        _ = Task.Run(async () => await ProcessBatchesAsync());
+
+                        // Signal for immediate processing via channel (replaces Task.Run)
+                        _signalChannel.Writer.TryWrite(BatchSignal.ProcessBatches);
                     }
 
                     // Create a new batch for this message
@@ -419,8 +503,8 @@ namespace ConduitLLM.Gateway.Services
                 _logger.LogInformation("Message batching paused");
             }
 
-            // Flush pending batches
-            _ = Task.Run(async () => await FlushAllBatchesAsync());
+            // Signal to flush pending batches via channel (replaces Task.Run)
+            _signalChannel.Writer.TryWrite(BatchSignal.FlushAll);
         }
 
         public void ResumeBatching()
@@ -434,8 +518,9 @@ namespace ConduitLLM.Gateway.Services
 
         private void ProcessBatches(object? state)
         {
-            // Fire-and-forget with proper exception handling - don't use async void
-            _ = ProcessBatchesAsync();
+            // Signal to process batches via channel (replaces fire-and-forget Task.Run)
+            // The signal processing task handles this with proper error handling
+            _signalChannel.Writer.TryWrite(BatchSignal.ProcessBatches);
         }
 
         private async Task ProcessBatchesAsync()
@@ -711,6 +796,7 @@ namespace ConduitLLM.Gateway.Services
         {
             _batchTimer?.Dispose();
             _batchProcessingLock?.Dispose();
+            _shutdownCts?.Dispose();
         }
 
         /// <summary>
