@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Models.SignalR;
 using ConduitLLM.Gateway.Models;
 
 using StackExchange.Redis;

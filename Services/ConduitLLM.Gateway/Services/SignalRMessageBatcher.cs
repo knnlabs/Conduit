@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Models.SignalR;
 using ConduitLLM.Gateway.Models;
 
 using Microsoft.AspNetCore.SignalR;

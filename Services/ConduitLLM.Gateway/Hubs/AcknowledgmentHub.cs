@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Models.SignalR;
 using ConduitLLM.Gateway.Models;
 using ConduitLLM.Gateway.Services;
 
