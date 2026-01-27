@@ -25,6 +25,7 @@ namespace ConduitLLM.Configuration.Repositories
         {
             return await _context.ProviderKeyCredentials
                 .Include(k => k.Provider)
+                .AsNoTracking()
                 .OrderBy(k => k.ProviderId)
                 .ThenByDescending(k => k.IsPrimary)
                 .ThenBy(k => k.ProviderAccountGroup)
@@ -34,6 +35,7 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int ProviderId)
         {
             return await _context.ProviderKeyCredentials
+                .AsNoTracking()
                 .Where(k => k.ProviderId == ProviderId)
                 .OrderByDescending(k => k.IsPrimary)
                 .ThenBy(k => k.ProviderAccountGroup)
@@ -44,20 +46,23 @@ namespace ConduitLLM.Configuration.Repositories
         {
             return await _context.ProviderKeyCredentials
                 .Include(k => k.Provider)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(k => k.Id == id);
         }
 
         public async Task<ProviderKeyCredential?> GetPrimaryKeyAsync(int ProviderId)
         {
             return await _context.ProviderKeyCredentials
-                .FirstOrDefaultAsync(k => k.ProviderId == ProviderId 
-                    && k.IsPrimary 
+                .AsNoTracking()
+                .FirstOrDefaultAsync(k => k.ProviderId == ProviderId
+                    && k.IsPrimary
                     && k.IsEnabled);
         }
 
         public async Task<List<ProviderKeyCredential>> GetEnabledKeysByProviderIdAsync(int ProviderId)
         {
             return await _context.ProviderKeyCredentials
+                .AsNoTracking()
                 .Where(k => k.ProviderId == ProviderId && k.IsEnabled)
                 .OrderByDescending(k => k.IsPrimary)
                 .ThenBy(k => k.ProviderAccountGroup)

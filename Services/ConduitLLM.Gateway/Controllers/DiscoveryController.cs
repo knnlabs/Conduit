@@ -87,6 +87,7 @@ namespace ConduitLLM.Gateway.Controllers
                     .Include(m => m.ModelProviderTypeAssociation)
                         .ThenInclude(mpta => mpta.Model)
                             .ThenInclude(m => m.Series)
+                    .AsNoTracking()
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
                 
@@ -296,6 +297,7 @@ namespace ConduitLLM.Gateway.Controllers
                     .Include(m => m.ModelProviderTypeAssociation)
                         .ThenInclude(mpta => mpta.Model)
                             .ThenInclude(m => m!.Series)
+                    .AsNoTracking()
                     .Where(m => m.ModelAlias == model && m.IsEnabled)
                     .FirstOrDefaultAsync();
 
@@ -308,6 +310,7 @@ namespace ConduitLLM.Gateway.Controllers
                             .Include(m => m.ModelProviderTypeAssociation)
                                 .ThenInclude(mpta => mpta.Model)
                                     .ThenInclude(m => m!.Series)
+                            .AsNoTracking()
                             .Where(m => m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.ModelId == modelId && m.IsEnabled)
                             .FirstOrDefaultAsync();
                     }
@@ -412,7 +415,7 @@ namespace ConduitLLM.Gateway.Controllers
                     }
                 }
 
-                var configurations = await query.ToListAsync();
+                var configurations = await query.AsNoTracking().ToListAsync();
 
                 var result = new ConduitLLM.Functions.DTOs.FunctionDiscoveryResponse
                 {
@@ -491,6 +494,7 @@ namespace ConduitLLM.Gateway.Controllers
 
                 // Find the function configuration
                 var configuration = await context.FunctionConfigurations
+                    .AsNoTracking()
                     .Where(fc => fc.Id == functionConfigurationId && fc.IsEnabled)
                     .FirstOrDefaultAsync();
 

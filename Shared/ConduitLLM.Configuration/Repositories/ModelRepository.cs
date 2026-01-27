@@ -19,6 +19,7 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<Model>()
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
         }
 
@@ -29,6 +30,7 @@ namespace ConduitLLM.Configuration.Repositories
                 .Include(m => m.Series)
                     .ThenInclude(s => s.Author)
                 .Include(m => m.Identifiers)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
         }
 
@@ -36,6 +38,7 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<Model>()
+                .AsNoTracking()
                 .OrderBy(m => m.Name)
                 .ToListAsync();
         }
@@ -46,6 +49,7 @@ namespace ConduitLLM.Configuration.Repositories
             return await context.Set<Model>()
                 .Include(m => m.Series)
                     .ThenInclude(s => s.Author)
+                .AsNoTracking()
                 .OrderBy(m => m.Name)
                 .ToListAsync();
         }
@@ -57,6 +61,7 @@ namespace ConduitLLM.Configuration.Repositories
             var modelIdentifier = await context.Set<ModelProviderTypeAssociation>()
                 .Include(mi => mi.Model)
                     .ThenInclude(m => m.Series)
+                .AsNoTracking()
                 .Where(mi => mi.Identifier == identifier)
                 .OrderBy(mi => mi.IsPrimary ? 0 : 1) // Prefer primary identifier
                 .FirstOrDefaultAsync();
@@ -67,6 +72,7 @@ namespace ConduitLLM.Configuration.Repositories
             // Fallback: Check by model name
             return await context.Set<Model>()
                 .Include(m => m.Series)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Name == identifier);
         }
 
@@ -74,6 +80,7 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<Model>()
+                .AsNoTracking()
                 .Where(m => m.ModelSeriesId == seriesId)
                 .OrderBy(m => m.Name)
                 .ToListAsync();
@@ -106,6 +113,7 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<Model>()
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Name == name);
         }
 
@@ -114,6 +122,7 @@ namespace ConduitLLM.Configuration.Repositories
             using var context = await _dbContextFactory.CreateDbContextAsync();
             var lowerQuery = query.ToLower();
             return await context.Set<Model>()
+                .AsNoTracking()
                 .Where(m => m.Name.ToLower().Contains(lowerQuery) && m.IsActive)
                 .OrderBy(m => m.Name)
                 .ToListAsync();
@@ -142,9 +151,10 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<List<Model>> GetByProviderAsync(ProviderType providerType)
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
-            
+
             // Get model IDs that have identifiers for this provider
             var modelIds = await context.Set<ModelProviderTypeAssociation>()
+                .AsNoTracking()
                 .Where(mi => mi.Provider == providerType)
                 .Select(mi => mi.ModelId)
                 .Distinct()
@@ -155,6 +165,7 @@ namespace ConduitLLM.Configuration.Repositories
                 .Include(m => m.Series)
                     .ThenInclude(s => s.Author)
                 .Include(m => m.Identifiers)
+                .AsNoTracking()
                 .Where(m => modelIds.Contains(m.Id))
                 .OrderBy(m => m.Name)
                 .ToListAsync();

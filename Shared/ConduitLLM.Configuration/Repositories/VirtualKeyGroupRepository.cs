@@ -36,6 +36,7 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     {
         return await _context.VirtualKeyGroups
             .Include(g => g.VirtualKeys)
+            .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == id);
     }
 
@@ -44,8 +45,9 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     {
         var key = await _context.VirtualKeys
             .Include(k => k.VirtualKeyGroup)
+            .AsNoTracking()
             .FirstOrDefaultAsync(k => k.Id == virtualKeyId);
-        
+
         return key?.VirtualKeyGroup;
     }
 
@@ -54,6 +56,7 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     {
         return await _context.VirtualKeyGroups
             .Include(g => g.VirtualKeys)
+            .AsNoTracking()
             .OrderBy(g => g.GroupName)
             .ToListAsync();
     }
@@ -186,6 +189,7 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     public async Task<List<VirtualKeyGroup>> GetLowBalanceGroupsAsync(decimal threshold)
     {
         return await _context.VirtualKeyGroups
+            .AsNoTracking()
             .Where(g => g.Balance < threshold)
             .OrderBy(g => g.Balance)
             .ToListAsync();

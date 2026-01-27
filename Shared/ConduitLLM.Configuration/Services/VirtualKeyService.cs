@@ -76,7 +76,7 @@ namespace ConduitLLM.Configuration.Services
         /// <inheritdoc/>
         public async Task<List<VirtualKey>> GetAllVirtualKeysAsync()
         {
-            return await _context.VirtualKeys.ToListAsync();
+            return await _context.VirtualKeys.AsNoTracking().ToListAsync();
         }
 
         /// <inheritdoc/>
@@ -89,6 +89,7 @@ namespace ConduitLLM.Configuration.Services
         public async Task<VirtualKey?> GetVirtualKeyByKeyValueAsync(string keyValue)
         {
             return await _context.VirtualKeys
+                .AsNoTracking()
                 .FirstOrDefaultAsync(k => k.KeyHash == keyValue);
         }
 
@@ -127,6 +128,7 @@ namespace ConduitLLM.Configuration.Services
         {
             var virtualKey = await _context.VirtualKeys
                 .Include(k => k.VirtualKeyGroup)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(k => k.KeyHash == keyValue);
 
             if (virtualKey == null)
@@ -153,6 +155,7 @@ namespace ConduitLLM.Configuration.Services
         {
             var virtualKey = await _context.VirtualKeys
                 .Include(k => k.VirtualKeyGroup)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(k => k.KeyHash == keyValue);
 
             if (virtualKey == null)

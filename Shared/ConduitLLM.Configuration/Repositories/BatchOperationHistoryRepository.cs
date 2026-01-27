@@ -87,12 +87,14 @@ namespace ConduitLLM.Configuration.Repositories
         {
             return await _context.BatchOperationHistory
                 .Include(h => h.VirtualKey)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(h => h.OperationId == operationId);
         }
 
         public async Task<List<BatchOperationHistory>> GetByVirtualKeyIdAsync(int virtualKeyId, int skip = 0, int take = 20)
         {
             return await _context.BatchOperationHistory
+                .AsNoTracking()
                 .Where(h => h.VirtualKeyId == virtualKeyId)
                 .OrderByDescending(h => h.StartedAt)
                 .Skip(skip)
@@ -103,17 +105,19 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<List<BatchOperationHistory>> GetRecentOperationsAsync(int take = 20)
         {
             return await _context.BatchOperationHistory
+                .Include(h => h.VirtualKey)
+                .AsNoTracking()
                 .OrderByDescending(h => h.StartedAt)
                 .Take(take)
-                .Include(h => h.VirtualKey)
                 .ToListAsync();
         }
 
         public async Task<List<BatchOperationHistory>> GetResumableOperationsAsync(int virtualKeyId)
         {
             return await _context.BatchOperationHistory
-                .Where(h => h.VirtualKeyId == virtualKeyId && 
-                           h.CanResume && 
+                .AsNoTracking()
+                .Where(h => h.VirtualKeyId == virtualKeyId &&
+                           h.CanResume &&
                            (h.Status == "Cancelled" || h.Status == "Failed" || h.Status == "PartiallyCompleted"))
                 .OrderByDescending(h => h.StartedAt)
                 .ToListAsync();
