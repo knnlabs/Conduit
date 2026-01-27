@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Middleware;
+using ConduitLLM.Security.Middleware;
 
 namespace ConduitLLM.Admin.Extensions;
 

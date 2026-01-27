@@ -49,7 +49,7 @@ public partial class Program
         }
 
         // Add security headers
-        app.UseCoreApiSecurityHeaders();
+        app.UseGatewaySecurityHeaders();
 
         // Add Redis availability check middleware (must be early in pipeline)
         app.UseRedisAvailability();
