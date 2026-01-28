@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,7 +23,7 @@ namespace ConduitLLM.Gateway.Controllers
         private readonly IPerformanceMonitoringService _performanceMonitoring;
         private readonly ISecurityEventMonitoringService _securityEventMonitoring;
         private readonly IMemoryCache _memoryCache;
-        private static readonly Dictionary<string, CancellationTokenSource> _activeSimulations = new();
+        private static readonly ConcurrentDictionary<string, CancellationTokenSource> _activeSimulations = new();
 
         public HealthMonitoringTestController(
             ILogger<HealthMonitoringTestController> logger,
@@ -67,13 +68,14 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpPost("start/{scenario}")]
         public Task<IActionResult> StartScenario(string scenario, [FromQuery] int durationSeconds = 60)
         {
-            if (_activeSimulations.ContainsKey(scenario))
+            var cts = new CancellationTokenSource();
+
+            // Atomically add if not already running
+            if (!_activeSimulations.TryAdd(scenario, cts))
             {
+                cts.Dispose();
                 return Task.FromResult<IActionResult>(BadRequest($"Scenario '{scenario}' is already running"));
             }
-
-            var cts = new CancellationTokenSource();
-            _activeSimulations[scenario] = cts;
 
             _logger.LogWarning("Starting test scenario: {Scenario} for {Duration} seconds", scenario, durationSeconds);
 
@@ -90,7 +92,7 @@ namespace ConduitLLM.Gateway.Controllers
                 }
                 finally
                 {
-                    _activeSimulations.Remove(scenario);
+                    _activeSimulations.TryRemove(scenario, out _);
                 }
             });
 
@@ -103,10 +105,9 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpPost("stop/{scenario}")]
         public IActionResult StopScenario(string scenario)
         {
-            if (_activeSimulations.TryGetValue(scenario, out var cts))
+            if (_activeSimulations.TryRemove(scenario, out var cts))
             {
                 cts.Cancel();
-                _activeSimulations.Remove(scenario);
                 _logger.LogInformation("Stopped test scenario: {Scenario}", scenario);
                 return Ok(new { message = $"Stopped scenario '{scenario}'" });
             }
