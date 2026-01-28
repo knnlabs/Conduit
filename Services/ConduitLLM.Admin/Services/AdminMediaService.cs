@@ -194,16 +194,10 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 _logger.LogInformation("Searching media by storage key pattern: {Pattern}", storageKeyPattern);
-                
-                // Get all media records and filter by pattern
-                // Note: This is not efficient for large datasets. In production, consider adding a repository method for pattern matching
-                var allMedia = await _mediaRepository.GetMediaOlderThanAsync(DateTime.UtcNow.AddYears(10)); // Get all
-                
-                var matchingMedia = allMedia
-                    .Where(m => m.StorageKey.Contains(storageKeyPattern, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(m => m.CreatedAt)
-                    .ToList();
-                
+
+                // Use database-level filtering for efficient pattern matching
+                var matchingMedia = await _mediaRepository.SearchByStorageKeyPatternAsync(storageKeyPattern);
+
                 _logger.LogInformation("Found {Count} media records matching pattern", matchingMedia.Count);
                 return matchingMedia;
             }

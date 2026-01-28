@@ -92,5 +92,14 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Count of media records.</returns>
         Task<int> GetCountByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Searches for media records by storage key pattern using database-level filtering.
+        /// </summary>
+        /// <param name="storageKeyPattern">The pattern to match against storage keys (case-insensitive contains).</param>
+        /// <param name="maxResults">Maximum number of results to return. Defaults to 100.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>List of matching media records ordered by created date descending.</returns>
+        Task<List<MediaRecord>> SearchByStorageKeyPatternAsync(string storageKeyPattern, int maxResults = 100, CancellationToken cancellationToken = default);
     }
 }

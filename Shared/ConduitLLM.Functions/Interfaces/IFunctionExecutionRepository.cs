@@ -4,10 +4,13 @@ using ConduitLLM.Functions.Enums;
 namespace ConduitLLM.Functions.Interfaces;
 
 /// <summary>
-/// Repository interface for managing function executions
+/// Repository interface for managing function executions.
+/// Provides standard CRUD operations plus domain-specific methods for execution management.
 /// </summary>
 public interface IFunctionExecutionRepository
 {
+    #region Standard CRUD Operations
+
     /// <summary>
     /// Gets a function execution by ID
     /// </summary>
@@ -15,6 +18,45 @@ public interface IFunctionExecutionRepository
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The function execution or null if not found</returns>
     Task<FunctionExecution?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a paginated list of function executions.
+    /// </summary>
+    /// <param name="page">Page number (1-based)</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A tuple containing the items and total count</returns>
+    Task<(List<FunctionExecution> Items, int TotalCount)> GetPaginatedAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a function execution with the given ID exists.
+    /// </summary>
+    /// <param name="id">The execution ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if the execution exists, false otherwise</returns>
+    Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the total count of function executions.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The total count of executions</returns>
+    Task<int> CountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a function execution by ID.
+    /// </summary>
+    /// <param name="id">The execution ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if deleted, false if not found</returns>
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    #endregion
+
+    #region Query Methods
 
     /// <summary>
     /// Gets all executions for a specific virtual key
@@ -64,6 +106,10 @@ public interface IFunctionExecutionRepository
     /// <returns>List of executions ready for retry</returns>
     Task<List<FunctionExecution>> GetReadyForRetryAsync(CancellationToken cancellationToken = default);
 
+    #endregion
+
+    #region Create/Update Operations
+
     /// <summary>
     /// Creates a new function execution
     /// </summary>
@@ -106,4 +152,6 @@ public interface IFunctionExecutionRepository
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Number of executions deleted</returns>
     Task<int> DeleteOldExecutionsAsync(DateTime olderThan, CancellationToken cancellationToken = default);
+
+    #endregion
 }

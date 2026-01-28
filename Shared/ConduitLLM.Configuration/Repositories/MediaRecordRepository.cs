@@ -291,4 +291,49 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
             throw;
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<List<MediaRecord>> SearchByStorageKeyPatternAsync(string storageKeyPattern, int maxResults = 100, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(storageKeyPattern))
+        {
+            return new List<MediaRecord>();
+        }
+
+        // Ensure maxResults is within reasonable bounds
+        if (maxResults <= 0)
+        {
+            maxResults = 100;
+        }
+        else if (maxResults > 1000)
+        {
+            maxResults = 1000;
+        }
+
+        try
+        {
+            // Escape special characters in the pattern for LIKE/ILIKE
+            var escapedPattern = storageKeyPattern
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_");
+
+            // Use ILIKE for case-insensitive pattern matching in PostgreSQL
+            var likePattern = $"%{escapedPattern}%";
+
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .AsNoTracking()
+                    .Where(m => EF.Functions.ILike(m.StorageKey, likePattern))
+                    .OrderByDescending(m => m.CreatedAt)
+                    .Take(maxResults)
+                    .ToListAsync(cancellationToken),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching media records by storage key pattern");
+            throw;
+        }
+    }
 }
