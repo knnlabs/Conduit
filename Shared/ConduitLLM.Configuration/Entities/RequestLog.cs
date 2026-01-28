@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+using ConduitLLM.Configuration.Entities.Interfaces;
 using ConduitLLM.Functions.Interfaces;
 
 namespace ConduitLLM.Configuration.Entities;
@@ -7,7 +9,7 @@ namespace ConduitLLM.Configuration.Entities;
 /// <summary>
 /// Represents a log of API requests made using a virtual key
 /// </summary>
-public class RequestLog : IAuditEvent
+public class RequestLog : IEntity<int>, IAuditEvent
 {
     /// <summary>
     /// Unique identifier for the request log

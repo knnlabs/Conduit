@@ -360,7 +360,7 @@ namespace ConduitLLM.Admin.Controllers
                 };
 
                 model.Identifiers.Add(identifier);
-                await _modelRepository.UpdateAsync(model);
+                await _modelRepository.UpdateModelAsync(model);
 
                 return CreatedAtAction(nameof(GetModelIdentifiers), new { id }, new
                 {
@@ -437,7 +437,7 @@ namespace ConduitLLM.Admin.Controllers
                 identifier.QualityScore = dto.QualityScore;
                 identifier.ProviderVariation = dto.ProviderVariation;
 
-                await _modelRepository.UpdateAsync(model);
+                await _modelRepository.UpdateModelAsync(model);
 
                 return NoContent();
             }
@@ -535,7 +535,7 @@ namespace ConduitLLM.Admin.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                await _modelRepository.CreateAsync(model);
+                await _modelRepository.CreateModelAsync(model);
 
                 // Reload with capabilities
                 model = await _modelRepository.GetByIdWithDetailsAsync(model.Id);
@@ -632,7 +632,7 @@ namespace ConduitLLM.Admin.Controllers
                 // Track if parameters were changed
                 bool parametersChanged = dto.ModelParameters != null;
                 
-                var updatedModel = await _modelRepository.UpdateAsync(model);
+                var updatedModel = await _modelRepository.UpdateModelAsync(model);
 
                 // Publish ModelUpdated event for cache invalidation
                 await _publishEndpoint.Publish(new ModelUpdated
@@ -644,8 +644,8 @@ namespace ConduitLLM.Admin.Controllers
                     ParametersChanged = parametersChanged,
                     ChangedProperties = GetChangedProperties(dto)
                 });
-                
-                _logger.LogInformation("Published ModelUpdated event for model {ModelId} ({ModelName})", 
+
+                _logger.LogInformation("Published ModelUpdated event for model {ModelId} ({ModelName})",
                     updatedModel.Id, updatedModel.Name);
 
                 return Ok(MapToDto(updatedModel));

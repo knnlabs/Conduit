@@ -70,8 +70,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByNameAsync(createDto.Name))
                 .ReturnsAsync((Model?)null);
-            _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Model>()))
-                .ReturnsAsync((Model m) => {
+            _mockRepository.Setup(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Model m, CancellationToken _) => {
                     m.Id = 1; // Simulate the database setting the ID
                     return m;
                 });
@@ -92,7 +92,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             dto.Name.Should().Be("new-test-model");
             dto.IsActive.Should().BeTrue();
 
-            _mockRepository.Verify(r => r.CreateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.CreateModelAsync(It.Is<Model>(m => 
                 m.Name == createDto.Name &&
                 m.ModelSeriesId == createDto.ModelSeriesId &&
                 m.IsActive == createDto.IsActive)), Times.Once);
@@ -128,8 +128,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByNameAsync(createDto.Name))
                 .ReturnsAsync((Model?)null);
-            _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Model>()))
-                .ReturnsAsync((Model m) => {
+            _mockRepository.Setup(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Model m, CancellationToken _) => {
                     m.Id = 1;
                     return m;
                 });
@@ -144,7 +144,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var dto = Assert.IsType<ModelDto>(createdResult.Value);
             dto.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 1.5}}");
 
-            _mockRepository.Verify(r => r.CreateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.CreateModelAsync(It.Is<Model>(m => 
                 m.ModelParameters == createDto.ModelParameters)), Times.Once);
         }
 
@@ -161,7 +161,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
             badRequestResult.Value.Should().Be("Model data is required");
 
-            _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -183,7 +183,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
             badRequestResult.Value.Should().Be("Model name is required");
 
-            _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -214,7 +214,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var conflictResult = Assert.IsType<ConflictObjectResult>(result);
             conflictResult.Value.Should().Be("A model with name 'existing-model' already exists");
 
-            _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -230,7 +230,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             };
 
             var exception = new Exception("Database connection failed");
-            _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Model>()))
+            _mockRepository.Setup(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(exception);
 
             // Act
@@ -293,7 +293,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ReturnsAsync(existingModel);
-            _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+            _mockRepository.Setup(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(updatedModel);
 
             // Act
@@ -307,7 +307,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             dto.IsActive.Should().BeFalse();
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
-            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.Is<Model>(m => 
                 m.Id == modelId &&
                 m.Name == updateDto.Name &&
                 m.IsActive == updateDto.IsActive)), Times.Once);
@@ -335,7 +335,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
-            _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -377,7 +377,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ReturnsAsync(existingModel);
-            _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+            _mockRepository.Setup(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(updatedModel);
 
             // Act
@@ -388,7 +388,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var dto = Assert.IsType<ModelDto>(okResult.Value);
             dto.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 2}}");
 
-            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.Is<Model>(m => 
                 m.ModelParameters == updateDto.ModelParameters)), Times.Once);
         }
 
@@ -431,7 +431,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ReturnsAsync(existingModel);
-            _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+            _mockRepository.Setup(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(updatedModel);
 
             // Act
@@ -442,7 +442,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var dto = Assert.IsType<ModelDto>(okResult.Value);
             dto.ModelParameters.Should().BeNull();
 
-            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.Is<Model>(m => 
                 m.ModelParameters == null)), Times.Once);
         }
 
@@ -461,7 +461,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             badRequestResult.Value.Should().Be("Update data is required");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(It.IsAny<int>()), Times.Never);
-            _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -487,7 +487,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while updating the model");
 
-            _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

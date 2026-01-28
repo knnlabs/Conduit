@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
     /// Represents an asynchronous task with persistent storage.
     /// </summary>
-    public class AsyncTask
+    public class AsyncTask : IEntity<string>, IAuditableEntity
     {
         /// <summary>
         /// Gets or sets the unique identifier for the task.

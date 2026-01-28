@@ -1,86 +1,102 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Configuration.Repositories
+namespace ConduitLLM.Configuration.Repositories;
+
+/// <summary>
+/// Repository implementation for model authors using Entity Framework Core.
+/// Inherits common CRUD operations from RepositoryBase.
+/// </summary>
+public class ModelAuthorRepository : RepositoryBase<ModelAuthor, int>, IModelAuthorRepository
 {
     /// <summary>
-    /// Repository for ModelAuthor entity operations.
+    /// Creates a new instance of the repository.
     /// </summary>
-    public class ModelAuthorRepository : IModelAuthorRepository
+    /// <param name="dbContextFactory">The database context factory</param>
+    /// <param name="logger">The logger</param>
+    public ModelAuthorRepository(
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
+        ILogger<ModelAuthorRepository> logger)
+        : base(dbContextFactory, logger)
     {
-        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
+    }
 
-        public ModelAuthorRepository(IDbContextFactory<ConduitDbContext> dbContextFactory)
+    /// <inheritdoc/>
+    protected override DbSet<ModelAuthor> GetDbSet(ConduitDbContext context) => context.ModelAuthors;
+
+    /// <inheritdoc/>
+    protected override IQueryable<ModelAuthor> ApplyDefaultOrdering(IQueryable<ModelAuthor> query)
+    {
+        return query.OrderBy(a => a.Name);
+    }
+
+    /// <inheritdoc/>
+    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
+    public async Task<List<ModelAuthor>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        try
         {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+            return await ExecuteAsync(async context =>
+            {
+                return await GetDbSet(context)
+                    .AsNoTracking()
+                    .OrderBy(a => a.Name)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken);
         }
-
-        public async Task<ModelAuthor?> GetByIdAsync(int id)
+        catch (Exception ex)
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<ModelAuthor>()
-                .FirstOrDefaultAsync(a => a.Id == id);
+            Logger.LogError(ex, "Error getting all model authors");
+            throw;
         }
+    }
 
-        public async Task<List<ModelAuthor>> GetAllAsync()
+    /// <inheritdoc/>
+    public async Task<ModelAuthor?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<ModelAuthor>()
-                .OrderBy(a => a.Name)
-                .ToListAsync();
+            return await ExecuteAsync(async context =>
+            {
+                return await GetDbSet(context)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Name == name, cancellationToken);
+            }, cancellationToken);
         }
-
-        public async Task<ModelAuthor?> GetByNameAsync(string name)
+        catch (Exception ex)
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<ModelAuthor>()
-                .FirstOrDefaultAsync(a => a.Name == name);
+            Logger.LogError(ex, "Error getting model author by name: {Name}", name);
+            throw;
         }
+    }
 
-        public async Task<List<ModelSeries>?> GetSeriesByAuthorAsync(int authorId)
+    /// <inheritdoc/>
+    public async Task<List<ModelSeries>?> GetSeriesByAuthorAsync(int authorId, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            var exists = await context.Set<ModelAuthor>()
-                .AnyAsync(a => a.Id == authorId);
-            
-            if (!exists)
-                return null;
+            return await ExecuteAsync(async context =>
+            {
+                var exists = await GetDbSet(context)
+                    .AnyAsync(a => a.Id == authorId, cancellationToken);
 
-            return await context.Set<ModelSeries>()
-                .Where(s => s.AuthorId == authorId)
-                .OrderBy(s => s.Name)
-                .ToListAsync();
+                if (!exists)
+                    return null;
+
+                return await context.ModelSeries
+                    .AsNoTracking()
+                    .Where(s => s.AuthorId == authorId)
+                    .OrderBy(s => s.Name)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken);
         }
-
-        public async Task<ModelAuthor> CreateAsync(ModelAuthor author)
+        catch (Exception ex)
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            context.Set<ModelAuthor>().Add(author);
-            await context.SaveChangesAsync();
-            return author;
-        }
-
-        public async Task<ModelAuthor> UpdateAsync(ModelAuthor author)
-        {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            context.Set<ModelAuthor>().Update(author);
-            await context.SaveChangesAsync();
-            return author;
-        }
-
-        public async Task<bool> DeleteAsync(int id)
-        {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            var author = await context.Set<ModelAuthor>()
-                .FirstOrDefaultAsync(a => a.Id == id);
-            
-            if (author == null)
-                return false;
-
-            context.Set<ModelAuthor>().Remove(author);
-            await context.SaveChangesAsync();
-            return true;
+            Logger.LogError(ex, "Error getting series for author ID: {AuthorId}", authorId);
+            throw;
         }
     }
 }

@@ -129,34 +129,35 @@ namespace ConduitLLM.Admin.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                var createdKey = await _keyRepository.CreateAsync(keyCredential);
+                var createdKeyId = await _keyRepository.CreateAsync(keyCredential);
 
+                // After CreateAsync, keyCredential has its Id populated and IsPrimary potentially modified
                 // Publish key created event
                 PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialCreated
                 {
-                    KeyId = createdKey.Id,
+                    KeyId = createdKeyId,
                     ProviderId = providerId,
                     IsPrimary = keyCredential.IsPrimary,
                     IsEnabled = keyCredential.IsEnabled,
                     CorrelationId = Guid.NewGuid()
-                }, "create provider key", new { ProviderId = providerId, KeyId = createdKey.Id });
+                }, "create provider key", new { ProviderId = providerId, KeyId = createdKeyId });
 
                 return CreatedAtAction(
-                    nameof(GetProviderKeyCredential), 
-                    new { providerId = providerId, keyId = createdKey.Id }, 
+                    nameof(GetProviderKeyCredential),
+                    new { providerId = providerId, keyId = createdKeyId },
                     new
                     {
-                        createdKey.Id,
-                        createdKey.ProviderId,
-                        createdKey.KeyName,
-                        createdKey.IsPrimary,
-                        createdKey.IsEnabled,
-                        createdKey.ProviderAccountGroup,
-                        ApiKey = createdKey.ApiKey != null ? "***" + createdKey.ApiKey.Substring(Math.Max(0, createdKey.ApiKey.Length - 4)) : "***",
-                        createdKey.Organization,
-                        createdKey.BaseUrl,
-                        createdKey.CreatedAt,
-                        createdKey.UpdatedAt
+                        Id = createdKeyId,
+                        keyCredential.ProviderId,
+                        keyCredential.KeyName,
+                        keyCredential.IsPrimary,
+                        keyCredential.IsEnabled,
+                        keyCredential.ProviderAccountGroup,
+                        ApiKey = keyCredential.ApiKey != null ? "***" + keyCredential.ApiKey.Substring(Math.Max(0, keyCredential.ApiKey.Length - 4)) : "***",
+                        keyCredential.Organization,
+                        keyCredential.BaseUrl,
+                        keyCredential.CreatedAt,
+                        keyCredential.UpdatedAt
                     });
             }
             catch (InvalidOperationException ex)

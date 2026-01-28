@@ -4,18 +4,11 @@ using ConduitLLM.Configuration.Entities;
 namespace ConduitLLM.Configuration.Interfaces
 {
     /// <summary>
-    /// Repository interface for managing request logs
+    /// Repository interface for managing request logs.
+    /// Extends IRepositoryBase for standard CRUD operations.
     /// </summary>
-    public interface IRequestLogRepository
+    public interface IRequestLogRepository : IRepositoryBase<RequestLog, int>
     {
-        /// <summary>
-        /// Gets a request log by ID
-        /// </summary>
-        /// <param name="id">The request log ID</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The request log entity or null if not found</returns>
-        Task<RequestLog?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Gets all request logs
         /// </summary>
@@ -68,10 +61,10 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A paginated list of request logs within the specified date range</returns>
         Task<(List<RequestLog> Logs, int TotalCount)> GetByDateRangePaginatedAsync(
-            DateTime startDate, 
-            DateTime endDate, 
-            int pageNumber, 
-            int pageSize, 
+            DateTime startDate,
+            DateTime endDate,
+            int pageNumber,
+            int pageSize,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -104,39 +97,6 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of distinct model names used in request logs</returns>
         Task<List<string>> GetDistinctModelsAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Gets paginated request logs
-        /// </summary>
-        /// <param name="pageNumber">The page number (1-based)</param>
-        /// <param name="pageSize">The page size</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A paginated list of request logs</returns>
-        Task<(List<RequestLog> Logs, int TotalCount)> GetPaginatedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Creates a new request log
-        /// </summary>
-        /// <param name="requestLog">The request log to create</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The ID of the created request log</returns>
-        Task<int> CreateAsync(RequestLog requestLog, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Updates a request log
-        /// </summary>
-        /// <param name="requestLog">The request log to update</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if the update was successful, false otherwise</returns>
-        Task<bool> UpdateAsync(RequestLog requestLog, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Deletes a request log
-        /// </summary>
-        /// <param name="id">The ID of the request log to delete</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if the deletion was successful, false otherwise</returns>
-        Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets usage statistics

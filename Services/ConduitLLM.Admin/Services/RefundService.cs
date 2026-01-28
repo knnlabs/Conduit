@@ -88,6 +88,8 @@ public class RefundService : IRefundService
             CreatedAt = DateTime.UtcNow
         };
 
+        // Attach and update the group entity (it was fetched with AsNoTracking)
+        _context.VirtualKeyGroups.Update(group);
         _context.VirtualKeyGroupTransactions.Add(transaction);
         await _context.SaveChangesAsync(cancellationToken);
 

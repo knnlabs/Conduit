@@ -3,18 +3,11 @@ using ConduitLLM.Configuration.Entities;
 namespace ConduitLLM.Configuration.Interfaces
 {
     /// <summary>
-    /// Repository interface for managing model costs
+    /// Repository interface for managing model costs.
+    /// Extends IRepositoryBase for standard CRUD operations.
     /// </summary>
-    public interface IModelCostRepository
+    public interface IModelCostRepository : IRepositoryBase<ModelCost, int>
     {
-        /// <summary>
-        /// Gets a model cost by ID
-        /// </summary>
-        /// <param name="id">The model cost ID</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The model cost entity or null if not found</returns>
-        Task<ModelCost?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Gets a model cost by cost name
         /// </summary>
@@ -22,7 +15,6 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model cost entity or null if not found</returns>
         Task<ModelCost?> GetByCostNameAsync(string costName, CancellationToken cancellationToken = default);
-
 
         /// <summary>
         /// Gets all model costs
@@ -32,18 +24,6 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
         [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         Task<List<ModelCost>> GetAllAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Gets model costs with pagination
-        /// </summary>
-        /// <param name="pageNumber">The page number (1-based)</param>
-        /// <param name="pageSize">The number of items per page</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A tuple with the list of model costs and the total count</returns>
-        Task<(List<ModelCost> Items, int TotalCount)> GetPaginatedAsync(
-            int pageNumber,
-            int pageSize,
-            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets all model costs associated with a specific provider
@@ -68,29 +48,5 @@ namespace ConduitLLM.Configuration.Interfaces
             int pageNumber,
             int pageSize,
             CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Creates a new model cost
-        /// </summary>
-        /// <param name="modelCost">The model cost to create</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The ID of the created model cost</returns>
-        Task<int> CreateAsync(ModelCost modelCost, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Updates a model cost
-        /// </summary>
-        /// <param name="modelCost">The model cost to update</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if the update was successful, false otherwise</returns>
-        Task<bool> UpdateAsync(ModelCost modelCost, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Deletes a model cost
-        /// </summary>
-        /// <param name="id">The ID of the model cost to delete</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if the deletion was successful, false otherwise</returns>
-        Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
     }
 }

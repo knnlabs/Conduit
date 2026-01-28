@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
@@ -14,7 +16,7 @@ namespace ConduitLLM.Configuration.Entities;
 /// The pricing information is used to calculate costs for each request processed through the system,
 /// enabling detailed cost reporting and budget management.
 /// </remarks>
-public class ModelCost
+public class ModelCost : IEntity<int>, IAuditableEntity
 {
     /// <summary>
     /// Gets or sets the unique identifier for the model cost entry.

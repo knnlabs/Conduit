@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace ConduitLLM.Configuration.Entities
     /// Multiple key credentials can be associated with a single provider for load balancing,
     /// failover, and account-based organization.
     /// </summary>
-    public class ProviderKeyCredential
+    public class ProviderKeyCredential : IEntity<int>, IAuditableEntity
     {
         /// <summary>
         /// Gets or sets the unique identifier for this provider key credential.

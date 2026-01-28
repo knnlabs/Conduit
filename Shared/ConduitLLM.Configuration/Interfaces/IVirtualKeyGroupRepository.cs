@@ -4,17 +4,11 @@ using ConduitLLM.Configuration.Enums;
 namespace ConduitLLM.Configuration.Interfaces;
 
 /// <summary>
-/// Repository interface for managing virtual key groups
+/// Repository interface for managing virtual key groups.
+/// Extends IRepositoryBase for standard CRUD operations and adds domain-specific methods.
 /// </summary>
-public interface IVirtualKeyGroupRepository
+public interface IVirtualKeyGroupRepository : IRepositoryBase<VirtualKeyGroup, int>
 {
-    /// <summary>
-    /// Gets a virtual key group by ID
-    /// </summary>
-    /// <param name="id">The group ID</param>
-    /// <returns>The virtual key group or null if not found</returns>
-    Task<VirtualKeyGroup?> GetByIdAsync(int id);
-
     /// <summary>
     /// Gets a virtual key group by ID with its associated keys
     /// </summary>
@@ -36,39 +30,6 @@ public interface IVirtualKeyGroupRepository
     /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
     [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     Task<List<VirtualKeyGroup>> GetAllAsync();
-
-    /// <summary>
-    /// Gets virtual key groups with pagination
-    /// </summary>
-    /// <param name="pageNumber">The page number (1-based)</param>
-    /// <param name="pageSize">The number of items per page</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>A tuple with the list of groups and the total count</returns>
-    Task<(List<VirtualKeyGroup> Items, int TotalCount)> GetPaginatedAsync(
-        int pageNumber,
-        int pageSize,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Creates a new virtual key group
-    /// </summary>
-    /// <param name="group">The group to create</param>
-    /// <returns>The ID of the created group</returns>
-    Task<int> CreateAsync(VirtualKeyGroup group);
-
-    /// <summary>
-    /// Updates an existing virtual key group
-    /// </summary>
-    /// <param name="group">The group to update</param>
-    /// <returns>True if updated successfully</returns>
-    Task<bool> UpdateAsync(VirtualKeyGroup group);
-
-    /// <summary>
-    /// Deletes a virtual key group
-    /// </summary>
-    /// <param name="id">The group ID to delete</param>
-    /// <returns>True if deleted successfully</returns>
-    Task<bool> DeleteAsync(int id);
 
     /// <summary>
     /// Adjusts the balance of a virtual key group

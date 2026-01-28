@@ -1,217 +1,294 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using ConduitLLM.Configuration.Interfaces;
-namespace ConduitLLM.Configuration.Repositories
+namespace ConduitLLM.Configuration.Repositories;
+
+/// <summary>
+/// Repository implementation for media record operations.
+/// Extends RepositoryBase for standard CRUD operations and implements domain-specific methods.
+/// </summary>
+public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRecordRepository
 {
     /// <summary>
-    /// Repository implementation for media record operations.
+    /// Creates a new instance of the repository.
     /// </summary>
-    public class MediaRecordRepository : IMediaRecordRepository
+    /// <param name="dbContextFactory">The database context factory.</param>
+    /// <param name="logger">The logger instance.</param>
+    public MediaRecordRepository(
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
+        ILogger<MediaRecordRepository> logger)
+        : base(dbContextFactory, logger)
     {
-        private readonly IDbContextFactory<ConduitDbContext> _contextFactory;
-        private readonly ILogger<MediaRecordRepository> _logger;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the MediaRecordRepository class.
-        /// </summary>
-        /// <param name="contextFactory">The database context factory.</param>
-        /// <param name="logger">The logger instance.</param>
-        public MediaRecordRepository(
-            IDbContextFactory<ConduitDbContext> contextFactory,
-            ILogger<MediaRecordRepository> logger)
+    /// <inheritdoc/>
+    protected override DbSet<MediaRecord> GetDbSet(ConduitDbContext context)
+        => context.MediaRecords;
+
+    /// <inheritdoc/>
+    protected override IQueryable<MediaRecord> ApplyDefaultIncludes(IQueryable<MediaRecord> query)
+    {
+        return query.Include(m => m.VirtualKey);
+    }
+
+    /// <inheritdoc/>
+    protected override IQueryable<MediaRecord> ApplyDefaultOrdering(IQueryable<MediaRecord> query)
+    {
+        return query.OrderByDescending(m => m.CreatedAt);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnBeforeCreate(MediaRecord entity)
+    {
+        base.OnBeforeCreate(entity);
+
+        // Set CreatedAt if not provided
+        if (entity.CreatedAt == default)
         {
-            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            entity.CreatedAt = DateTime.UtcNow;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<MediaRecord?> GetByStorageKeyAsync(string storageKey, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(storageKey))
+        {
+            return null;
         }
 
-        /// <inheritdoc/>
-        public async Task<MediaRecord> CreateAsync(MediaRecord mediaRecord)
+        try
         {
-            ArgumentNullException.ThrowIfNull(mediaRecord);
-
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            context.MediaRecords.Add(mediaRecord);
-            await context.SaveChangesAsync();
-            
-            _logger.LogInformation("Created media record {Id} for virtual key {VirtualKeyId}", 
-                mediaRecord.Id, mediaRecord.VirtualKeyId);
-            
-            return mediaRecord;
+            return await ExecuteAsync(async context =>
+                await ApplyDefaultIncludes(GetDbSet(context).AsNoTracking())
+                    .FirstOrDefaultAsync(m => m.StorageKey == storageKey, cancellationToken),
+                cancellationToken);
         }
-
-        /// <inheritdoc/>
-        public async Task<MediaRecord?> GetByIdAsync(Guid id)
+        catch (Exception ex)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            return await context.MediaRecords
-                .Include(m => m.VirtualKey)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            Logger.LogError(ex, "Error getting media record by storage key {StorageKey}", storageKey);
+            throw;
         }
+    }
 
-        /// <inheritdoc/>
-        public async Task<MediaRecord?> GetByStorageKeyAsync(string storageKey)
+    /// <inheritdoc/>
+    public async Task<List<MediaRecord>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            if (string.IsNullOrWhiteSpace(storageKey))
-                return null;
-
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            return await context.MediaRecords
-                .Include(m => m.VirtualKey)
-                .FirstOrDefaultAsync(m => m.StorageKey == storageKey);
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .AsNoTracking()
+                    .Where(m => m.VirtualKeyId == virtualKeyId)
+                    .OrderByDescending(m => m.CreatedAt)
+                    .ToListAsync(cancellationToken),
+                cancellationToken);
         }
-
-        /// <inheritdoc/>
-        public async Task<List<MediaRecord>> GetByVirtualKeyIdAsync(int virtualKeyId)
+        catch (Exception ex)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            return await context.MediaRecords
-                .Where(m => m.VirtualKeyId == virtualKeyId)
-                .OrderByDescending(m => m.CreatedAt)
-                .ToListAsync();
+            Logger.LogError(ex, "Error getting media records for virtual key {VirtualKeyId}", virtualKeyId);
+            throw;
         }
+    }
 
-        /// <inheritdoc/>
-        public async Task<List<MediaRecord>> GetExpiredMediaAsync(DateTime currentTime)
+    /// <inheritdoc/>
+    public async Task<List<MediaRecord>> GetExpiredMediaAsync(DateTime currentTime, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            return await context.MediaRecords
-                .Where(m => m.ExpiresAt != null && m.ExpiresAt <= currentTime)
-                .ToListAsync();
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .AsNoTracking()
+                    .Where(m => m.ExpiresAt != null && m.ExpiresAt <= currentTime)
+                    .ToListAsync(cancellationToken),
+                cancellationToken);
         }
-
-        /// <inheritdoc/>
-        public async Task<List<MediaRecord>> GetMediaOlderThanAsync(DateTime cutoffDate)
+        catch (Exception ex)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            return await context.MediaRecords
-                .Where(m => m.CreatedAt < cutoffDate)
-                .ToListAsync();
+            Logger.LogError(ex, "Error getting expired media records (currentTime: {CurrentTime})", currentTime);
+            throw;
         }
+    }
 
-        /// <inheritdoc/>
-        public async Task<List<MediaRecord>> GetOrphanedMediaAsync()
+    /// <inheritdoc/>
+    public async Task<List<MediaRecord>> GetMediaOlderThanAsync(DateTime cutoffDate, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            // Find media records where the virtual key no longer exists
-            var orphanedMedia = await context.MediaRecords
-                .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
-                .ToListAsync();
-            
-            if (orphanedMedia.Any())
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .AsNoTracking()
+                    .Where(m => m.CreatedAt < cutoffDate)
+                    .ToListAsync(cancellationToken),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting media records older than {CutoffDate}", cutoffDate);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<MediaRecord>> GetOrphanedMediaAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await ExecuteAsync(async context =>
             {
-                _logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
-            }
-            
-            return orphanedMedia;
-        }
+                // Find media records where the virtual key no longer exists
+                var orphanedMedia = await GetDbSet(context)
+                    .AsNoTracking()
+                    .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
+                    .ToListAsync(cancellationToken);
 
-        /// <inheritdoc/>
-        public async Task<bool> UpdateAccessStatsAsync(Guid id)
-        {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            var mediaRecord = await context.MediaRecords.FindAsync(id);
-            if (mediaRecord == null)
-                return false;
-            
-            mediaRecord.AccessCount++;
-            mediaRecord.LastAccessedAt = DateTime.UtcNow;
-            
-            await context.SaveChangesAsync();
-            return true;
-        }
+                if (orphanedMedia.Count > 0)
+                {
+                    Logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
+                }
 
-        /// <inheritdoc/>
-        public async Task<bool> DeleteAsync(Guid id)
-        {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            var mediaRecord = await context.MediaRecords.FindAsync(id);
-            if (mediaRecord == null)
-                return false;
-            
-            context.MediaRecords.Remove(mediaRecord);
-            await context.SaveChangesAsync();
-            
-            _logger.LogInformation("Deleted media record {Id}", id);
-            return true;
+                return orphanedMedia;
+            }, cancellationToken);
         }
-
-        /// <inheritdoc/>
-        public async Task<int> DeleteManyAsync(IEnumerable<Guid> ids)
+        catch (Exception ex)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            var idList = ids.ToList();
-            var mediaRecords = await context.MediaRecords
-                .Where(m => idList.Contains(m.Id))
-                .ToListAsync();
-            
-            if (mediaRecords.Any())
+            Logger.LogError(ex, "Error getting orphaned media records");
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> UpdateAccessStatsAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await ExecuteAsync(async context =>
             {
-                context.MediaRecords.RemoveRange(mediaRecords);
-                await context.SaveChangesAsync();
+                var mediaRecord = await GetDbSet(context).FindAsync(new object[] { id }, cancellationToken);
+                if (mediaRecord == null)
+                {
+                    return false;
+                }
 
-                _logger.LogInformation("Deleted {Count} media records", mediaRecords.Count);
-            }
-            
-            return mediaRecords.Count;
+                mediaRecord.AccessCount++;
+                mediaRecord.LastAccessedAt = DateTime.UtcNow;
+
+                await context.SaveChangesAsync(cancellationToken);
+                return true;
+            }, cancellationToken);
         }
-
-        /// <inheritdoc/>
-        public async Task<long> GetTotalStorageSizeByVirtualKeyAsync(int virtualKeyId)
+        catch (Exception ex)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            return await context.MediaRecords
-                .Where(m => m.VirtualKeyId == virtualKeyId && m.SizeBytes.HasValue)
-                .SumAsync(m => m.SizeBytes ?? 0);
+            Logger.LogError(ex, "Error updating access stats for media record {Id}", id);
+            throw;
         }
+    }
 
-        /// <inheritdoc/>
-        public async Task<Dictionary<string, long>> GetStorageStatsByProviderAsync()
+    /// <inheritdoc/>
+    public async Task<int> DeleteManyAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            var stats = await context.MediaRecords
-                .Where(m => m.Provider != null && m.SizeBytes.HasValue)
-                .GroupBy(m => m.Provider!)
-                .Select(g => new { Provider = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
-                .ToDictionaryAsync(x => x.Provider, x => x.TotalSize);
-            
-            return stats;
+            return await ExecuteAsync(async context =>
+            {
+                var idList = ids.ToList();
+                var mediaRecords = await GetDbSet(context)
+                    .Where(m => idList.Contains(m.Id))
+                    .ToListAsync(cancellationToken);
+
+                if (mediaRecords.Count > 0)
+                {
+                    GetDbSet(context).RemoveRange(mediaRecords);
+                    await context.SaveChangesAsync(cancellationToken);
+
+                    Logger.LogInformation("Deleted {Count} media records", mediaRecords.Count);
+                }
+
+                return mediaRecords.Count;
+            }, cancellationToken);
         }
-
-        /// <inheritdoc/>
-        public async Task<Dictionary<string, long>> GetStorageStatsByMediaTypeAsync()
+        catch (Exception ex)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            var stats = await context.MediaRecords
-                .Where(m => m.SizeBytes.HasValue)
-                .GroupBy(m => m.MediaType)
-                .Select(g => new { MediaType = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
-                .ToDictionaryAsync(x => x.MediaType, x => x.TotalSize);
-            
-            return stats;
+            Logger.LogError(ex, "Error deleting multiple media records");
+            throw;
         }
+    }
 
-        /// <inheritdoc/>
-        public async Task<int> GetCountByVirtualKeyAsync(int virtualKeyId)
+    /// <inheritdoc/>
+    public async Task<long> GetTotalStorageSizeByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            return await context.MediaRecords
-                .CountAsync(m => m.VirtualKeyId == virtualKeyId);
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .Where(m => m.VirtualKeyId == virtualKeyId && m.SizeBytes.HasValue)
+                    .SumAsync(m => m.SizeBytes ?? 0, cancellationToken),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting total storage size for virtual key {VirtualKeyId}", virtualKeyId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<Dictionary<string, long>> GetStorageStatsByProviderAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .Where(m => m.Provider != null && m.SizeBytes.HasValue)
+                    .GroupBy(m => m.Provider!)
+                    .Select(g => new { Provider = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
+                    .ToDictionaryAsync(x => x.Provider, x => x.TotalSize, cancellationToken),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting storage stats by provider");
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<Dictionary<string, long>> GetStorageStatsByMediaTypeAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .Where(m => m.SizeBytes.HasValue)
+                    .GroupBy(m => m.MediaType)
+                    .Select(g => new { MediaType = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
+                    .ToDictionaryAsync(x => x.MediaType, x => x.TotalSize, cancellationToken),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting storage stats by media type");
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> GetCountByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .CountAsync(m => m.VirtualKeyId == virtualKeyId, cancellationToken),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting media count for virtual key {VirtualKeyId}", virtualKeyId);
+            throw;
         }
     }
 }

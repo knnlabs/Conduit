@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
 using ConduitLLM.Configuration.Enums;
 
 namespace ConduitLLM.Configuration.Entities
@@ -8,7 +9,7 @@ namespace ConduitLLM.Configuration.Entities
     /// <summary>
     /// Represents a transaction that modifies a virtual key group's balance
     /// </summary>
-    public class VirtualKeyGroupTransaction
+    public class VirtualKeyGroupTransaction : IEntity<long>, ISoftDeletable
     {
         /// <summary>
         /// Primary key

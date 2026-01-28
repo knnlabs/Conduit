@@ -1,6 +1,6 @@
 using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

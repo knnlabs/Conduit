@@ -75,13 +75,13 @@ namespace ConduitLLM.Core.Services
                 AccessCount = 0
             };
 
-            var created = await _mediaRepository.CreateAsync(mediaRecord);
-            
+            await _mediaRepository.CreateAsync(mediaRecord);
+
             _logger.LogInformation(
                 "Tracked media {StorageKey} of type {MediaType} for virtual key {VirtualKeyId}",
                 storageKey, mediaType, virtualKeyId);
-            
-            return created;
+
+            return mediaRecord;
         }
 
         /// <inheritdoc/>

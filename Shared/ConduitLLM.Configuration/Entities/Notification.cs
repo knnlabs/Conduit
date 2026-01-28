@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
@@ -48,7 +50,7 @@ namespace ConduitLLM.Configuration.Entities
     /// <summary>
     /// Represents a notification related to virtual keys
     /// </summary>
-    public class Notification
+    public class Notification : IEntity<int>
     {
         /// <summary>
         /// Unique identifier for the notification

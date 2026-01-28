@@ -71,7 +71,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockModelRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ReturnsAsync(existingModel);
-            _mockModelRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+            _mockModelRepository.Setup(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<System.Threading.CancellationToken>()))
                 .ReturnsAsync(updatedModel);
 
             ModelUpdated? capturedEvent = null;
@@ -128,7 +128,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockModelRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ReturnsAsync(existingModel);
-            _mockModelRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+            _mockModelRepository.Setup(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<System.Threading.CancellationToken>()))
                 .ReturnsAsync(updatedModel);
 
             ModelUpdated? capturedEvent = null;

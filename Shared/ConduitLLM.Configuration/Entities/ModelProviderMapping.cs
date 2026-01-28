@@ -2,14 +2,16 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
-    /// Maps a generic model alias (e.g., "gpt-4-turbo") to a specific provider's model name 
-    /// and associates it with provider credentials. This entity enables routing requests to 
+    /// Maps a generic model alias (e.g., "gpt-4-turbo") to a specific provider's model name
+    /// and associates it with provider credentials. This entity enables routing requests to
     /// specific provider models regardless of the model name used in the request.
     /// </summary>
-    public class ModelProviderMapping
+    public class ModelProviderMapping : IEntity<int>, IAuditableEntity
     {
         /// <summary>
         /// Unique identifier for the model-provider mapping.

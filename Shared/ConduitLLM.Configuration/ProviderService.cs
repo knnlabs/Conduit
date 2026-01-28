@@ -275,23 +275,25 @@ namespace ConduitLLM.Configuration
                 
                 try
                 {
-                    var created = await _keyRepository.CreateAsync(keyCredential);
-                    
-                    _logger.LogInformation("Successfully added key credential {KeyId} for provider {ProviderId}", 
-                        created.Id, providerId);
-                
+                    var createdId = await _keyRepository.CreateAsync(keyCredential);
+
+                    // After CreateAsync, the keyCredential entity has its Id populated
+                    // and any auto-set properties (like IsPrimary) are updated
+                    _logger.LogInformation("Successfully added key credential {KeyId} for provider {ProviderId}",
+                        createdId, providerId);
+
                 // Publish domain event
                 await _publishEndpoint.Publish(new ProviderKeyCredentialCreated
                 {
-                    KeyId = created.Id,
+                    KeyId = createdId,
                     ProviderId = providerId,
-                    IsPrimary = created.IsPrimary,
-                    IsEnabled = created.IsEnabled,
+                    IsPrimary = keyCredential.IsPrimary,
+                    IsEnabled = keyCredential.IsEnabled,
                     Timestamp = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid()
                 });
-                    
-                    return created;
+
+                    return keyCredential;
                 }
                 catch (DbUpdateException dbEx)
                 {
