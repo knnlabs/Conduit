@@ -78,7 +78,7 @@ namespace ConduitLLM.Core.Services
         /// <returns>True if the request contains image content, false otherwise</returns>
         public bool ContainsImageContent(ChatCompletionRequest request)
         {
-            if (request?.Messages == null || request.Messages.Count() == 0)
+            if (request?.Messages == null || !request.Messages.Any())
                 return false;
 
             foreach (var message in request.Messages)

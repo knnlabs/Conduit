@@ -34,7 +34,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             {
                 var requests = ExtractInvalidationRequests(context.Message);
                 
-                if (requests.Count() > 0)
+                if (requests.Any())
                 {
                     // Group by cache type for efficient processing
                     var groupedRequests = requests.GroupBy(r => GetCacheType(r));

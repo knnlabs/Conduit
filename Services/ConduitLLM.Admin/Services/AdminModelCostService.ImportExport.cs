@@ -20,7 +20,7 @@ namespace ConduitLLM.Admin.Services
                 throw new ArgumentNullException(nameof(modelCosts));
             }
 
-            if (modelCosts.Count() == 0)
+            if (!modelCosts.Any())
             {
                 return 0;
             }

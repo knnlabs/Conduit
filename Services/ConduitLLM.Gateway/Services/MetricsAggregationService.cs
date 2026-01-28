@@ -132,7 +132,7 @@ namespace ConduitLLM.Gateway.Services
                             ]
                         };
 
-                        if (filteredSeries.DataPoints.Count() > 0)
+                        if (filteredSeries.DataPoints.Any())
                         {
                             response.Series.Add(filteredSeries);
                         }

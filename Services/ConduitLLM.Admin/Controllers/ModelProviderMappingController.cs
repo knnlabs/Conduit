@@ -256,7 +256,7 @@ public class ModelProviderMappingController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            if (mappingDtos == null || mappingDtos.Count() == 0)
+            if (mappingDtos == null || !mappingDtos.Any())
             {
                 return BadRequest(new ErrorResponseDto("No mappings provided"));
             }

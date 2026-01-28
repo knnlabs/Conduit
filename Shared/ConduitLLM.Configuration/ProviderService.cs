@@ -244,7 +244,7 @@ namespace ConduitLLM.Configuration
 
                 // If this is the first key or marked as primary, ensure it's the only primary
                 var existingKeys = await _keyRepository.GetByProviderIdAsync(providerId);
-                if (existingKeys.Count() == 0 || keyCredential.IsPrimary)
+                if (!existingKeys.Any() || keyCredential.IsPrimary)
                 {
                     // Unset any existing primary keys
                     foreach (var existingKey in existingKeys.Where(k => k.IsPrimary))

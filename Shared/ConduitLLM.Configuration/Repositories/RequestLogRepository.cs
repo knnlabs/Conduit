@@ -388,7 +388,7 @@ namespace ConduitLLM.Configuration.Repositories
                 {
                     TotalRequests = totalRequests,
                     TotalCost = totalCost,
-                    AverageResponseTimeMs = logs.Count() > 0 ? logs.Average(r => r.ResponseTimeMs) : 0,
+                    AverageResponseTimeMs = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
                     TotalInputTokens = logs.Sum(r => r.InputTokens),
                     TotalOutputTokens = logs.Sum(r => r.OutputTokens),
                     ModelUsage = modelUsageDict

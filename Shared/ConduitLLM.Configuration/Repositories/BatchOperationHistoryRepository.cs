@@ -129,7 +129,7 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(h => h.StartedAt < olderThan)
                 .ToListAsync();
             
-            if (toDelete.Count() > 0)
+            if (toDelete.Any())
             {
                 _context.BatchOperationHistory.RemoveRange(toDelete);
                 await _context.SaveChangesAsync();
@@ -154,7 +154,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             var operations = await query.ToListAsync();
             
-            if (operations.Count() == 0)
+            if (!operations.Any())
             {
                 return new BatchOperationStatistics();
             }
@@ -172,7 +172,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             // Calculate averages only for completed operations
             var completedOps = operations.Where(h => h.DurationSeconds.HasValue && h.ItemsPerSecond.HasValue).ToList();
-            if (completedOps.Count() > 0)
+            if (completedOps.Any())
             {
                 stats.AverageDurationSeconds = completedOps.Average(h => h.DurationSeconds!.Value);
                 stats.AverageItemsPerSecond = completedOps.Average(h => h.ItemsPerSecond!.Value);

@@ -220,7 +220,7 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
                 TotalCost = g.Sum(r => r.Cost),
                 TotalInputTokens = g.Sum(r => r.InputTokens),
                 TotalOutputTokens = g.Sum(r => r.OutputTokens),
-                AverageResponseTime = g.Count() > 0 ? g.Average(r => r.ResponseTimeMs) : 0
+                AverageResponseTime = g.Any() ? g.Average(r => r.ResponseTimeMs) : 0
             })
             .FirstOrDefaultAsync();
 

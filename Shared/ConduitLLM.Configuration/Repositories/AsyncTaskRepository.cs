@@ -284,7 +284,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
 
             var taskIdList = taskIds.ToList();
-            if (taskIdList.Count() == 0)
+            if (!taskIdList.Any())
             {
                 return 0;
             }

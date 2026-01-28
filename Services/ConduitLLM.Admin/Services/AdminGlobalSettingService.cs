@@ -168,7 +168,7 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Only proceed if there are actual changes
-                if (changedProperties.Count() == 0)
+                if (!changedProperties.Any())
                 {
                     _logger.LogDebug("No changes detected for global setting {Id} - skipping update", setting.Id);
                     return true;

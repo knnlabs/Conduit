@@ -328,7 +328,7 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportModelCosts([FromBody] IEnumerable<CreateModelCostDto> modelCosts)
         {
-            if (modelCosts == null || modelCosts.Count() == 0)
+            if (modelCosts == null || !modelCosts.Any())
             {
                 return BadRequest("No model costs provided for import");
             }

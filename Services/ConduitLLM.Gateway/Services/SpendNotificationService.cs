@@ -228,7 +228,7 @@ namespace ConduitLLM.Gateway.Services
                 }
 
                 // Reset sent alerts if spending goes back down (e.g., new month)
-                if (percentageUsed < 50 && sentAlerts.Count() > 0)
+                if (percentageUsed < 50 && sentAlerts.Any())
                 {
                     sentAlerts.Clear();
                     _logger.LogInformation("Budget alerts reset for VirtualKey {VirtualKeyId} as usage dropped below 50%", virtualKeyId);
@@ -329,7 +329,7 @@ namespace ConduitLLM.Gateway.Services
                     
                     // Keep only last hour of data
                     var cutoff = DateTime.UtcNow.AddHours(-1);
-                    while (_recentSpends.Count() > 0 && _recentSpends.Peek().Timestamp < cutoff)
+                    while (_recentSpends.Any() && _recentSpends.Peek().Timestamp < cutoff)
                     {
                         _recentSpends.Dequeue();
                     }
@@ -349,7 +349,7 @@ namespace ConduitLLM.Gateway.Services
                     List<SpendRecord> lastHour = [.._recentSpends.Where(s => s.Timestamp > now.AddHours(-1))];
                     List<SpendRecord> previousHour = [.._recentSpends.Where(s => s.Timestamp <= now.AddHours(-1) && s.Timestamp > now.AddHours(-2))];
 
-                    if (lastHour.Count() == 0 || previousHour.Count() == 0)
+                    if (!lastHour.Any() || !previousHour.Any())
                     {
                         return new PatternAnalysis { IsUnusual = false };
                     }

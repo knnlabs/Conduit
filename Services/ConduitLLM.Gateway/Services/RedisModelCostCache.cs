@@ -194,7 +194,7 @@ namespace ConduitLLM.Gateway.Services
                 
                 var dbCosts = await databaseFallback(providerName);
                 
-                if (dbCosts != null && dbCosts.Count() > 0)
+                if (dbCosts != null && dbCosts.Any())
                 {
                     // NOTE: Provider-based caching disabled as ModelCost doesn't contain provider info
                     // await SetProviderModelCostsAsync(providerName, dbCosts);

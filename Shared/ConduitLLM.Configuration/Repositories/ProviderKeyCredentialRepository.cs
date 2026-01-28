@@ -178,7 +178,7 @@ namespace ConduitLLM.Configuration.Repositories
                 }
 
                 // Save changes to unset primary keys first to avoid constraint violation
-                if (existingPrimaryKeys.Count() > 0)
+                if (existingPrimaryKeys.Any())
                 {
                     await _context.SaveChangesAsync();
                 }

@@ -119,7 +119,7 @@ namespace ConduitLLM.Providers
             // Add common validation for CustomProviderClient
             if (request is ChatCompletionRequest chatRequest)
             {
-                if (chatRequest.Messages == null || chatRequest.Messages.Count() == 0)
+                if (chatRequest.Messages == null || !chatRequest.Messages.Any())
                 {
                     throw new ValidationException($"{operationName}: Messages cannot be null or empty");
                 }

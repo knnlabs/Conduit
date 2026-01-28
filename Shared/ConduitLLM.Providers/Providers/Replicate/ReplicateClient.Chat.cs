@@ -203,7 +203,7 @@ namespace ConduitLLM.Providers.Replicate
                 input["top_p"] = request.TopP.Value;
             }
 
-            if (request.Stop != null && request.Stop.Count() > 0)
+            if (request.Stop != null && request.Stop.Any())
             {
                 input["stop_sequences"] = request.Stop;
             }

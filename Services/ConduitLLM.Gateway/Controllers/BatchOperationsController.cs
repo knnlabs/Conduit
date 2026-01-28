@@ -59,7 +59,7 @@ namespace ConduitLLM.Gateway.Controllers
             var virtualKeyId = GetVirtualKeyId();
 
             // Validate request
-            if (request.Updates == null || request.Updates.Count() == 0)
+            if (request.Updates == null || !request.Updates.Any())
             {
                 return BadRequest(new ErrorResponseDto("No updates provided"));
             }
@@ -144,7 +144,7 @@ namespace ConduitLLM.Gateway.Controllers
             }
 
             // Validate request
-            if (request.Updates == null || request.Updates.Count() == 0)
+            if (request.Updates == null || !request.Updates.Any())
             {
                 return BadRequest(new ErrorResponseDto("No updates provided"));
             }
@@ -201,7 +201,7 @@ namespace ConduitLLM.Gateway.Controllers
             var virtualKeyId = GetVirtualKeyId();
             
             // Validate request
-            if (request.Webhooks == null || request.Webhooks.Count() == 0)
+            if (request.Webhooks == null || !request.Webhooks.Any())
             {
                 return BadRequest(new ErrorResponseDto("No webhooks provided"));
             }

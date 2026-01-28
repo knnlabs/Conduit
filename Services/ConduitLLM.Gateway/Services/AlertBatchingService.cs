@@ -176,9 +176,9 @@ namespace ConduitLLM.Gateway.Services
                     alerts.Add(alert);
                 }
 
-                if (alerts.Count() > 0)
+                if (alerts.Any())
                 {
-                    _logger.LogInformation("Processing batch of {Count} alerts", alerts.Count());
+                    _logger.LogInformation("Processing batch of {Count} alerts", alerts.Count);
                     
                     try
                     {

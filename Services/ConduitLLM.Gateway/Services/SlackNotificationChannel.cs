@@ -54,7 +54,7 @@ namespace ConduitLLM.Gateway.Services
             };
 
             // Add suggested actions if any
-            if (alert.SuggestedActions.Count() > 0)
+            if (alert.SuggestedActions.Any())
             {
                 attachments.Add(new
                 {

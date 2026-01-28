@@ -205,7 +205,7 @@ namespace ConduitLLM.Gateway.Services
                     ActiveRequests = 0 // Would need to track this separately
                 };
 
-                if (responseTimes.Count() > 0)
+                if (responseTimes.Any())
                 {
                     metrics.AverageResponseTimeMs = responseTimes.Average();
                     metrics.P95ResponseTimeMs = GetPercentile(responseTimes, 0.95);
@@ -352,7 +352,7 @@ namespace ConduitLLM.Gateway.Services
                 .Where(q => q.Timestamp > recentWindow)
                 .ToList();
 
-            if (recentQueries.Count() == 0) return;
+            if (!recentQueries.Any()) return;
 
             var slowQueries = recentQueries
                 .Where(q => q.ExecutionTimeMs > _options.DatabaseSlowQueryThresholdMs)
@@ -508,7 +508,7 @@ namespace ConduitLLM.Gateway.Services
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (sortedValues.Count() == 0) return 0;
+            if (!sortedValues.Any()) return 0;
             
             var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
             return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];

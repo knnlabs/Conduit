@@ -170,7 +170,7 @@ namespace ConduitLLM.Core.Services
                     batch.Add(webhook);
                 }
 
-                if (batch.Count() == 0)
+                if (!batch.Any())
                 {
                     return;
                 }

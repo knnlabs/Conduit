@@ -55,7 +55,7 @@ namespace ConduitLLM.Configuration.Services
                     .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt.Value < now)
                     .ToList();
 
-                if (expiredKeys.Count() == 0)
+                if (!expiredKeys.Any())
                 {
                     return;
                 }

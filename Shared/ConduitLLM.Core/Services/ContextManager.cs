@@ -93,7 +93,7 @@ namespace ConduitLLM.Core.Services
             }
 
             // Early exit conditions
-            if (maxContextTokens == null || maxContextTokens <= 0 || request.Messages == null || request.Messages.Count() == 0)
+            if (maxContextTokens == null || maxContextTokens <= 0 || request.Messages == null || !request.Messages.Any())
             {
                 return request; // Nothing to do if no limit or no messages
             }

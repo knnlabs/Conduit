@@ -64,7 +64,7 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc />
         public Task<int> EstimateTokenCountAsync(string modelName, List<Message> messages)
         {
-            if (messages == null || messages.Count() == 0)
+            if (messages == null || !messages.Any())
             {
                 return Task.FromResult(0);
             }

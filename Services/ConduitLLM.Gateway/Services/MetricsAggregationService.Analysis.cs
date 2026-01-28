@@ -81,7 +81,7 @@ namespace ConduitLLM.Gateway.Services
                 });
             }
 
-            if (alerts.Count() > 0)
+            if (alerts.Any())
             {
                 await _hubContext.Clients.Group("metrics-subscribers")
                     .SendAsync("MetricAlerts", alerts, cancellationToken);

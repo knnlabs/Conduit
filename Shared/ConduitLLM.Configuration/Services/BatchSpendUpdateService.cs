@@ -228,7 +228,7 @@ namespace ConduitLLM.Configuration.Services
                 var pattern = $"{_redisKeyPrefix}*";
                 var keys = server.Keys(pattern: pattern).ToList();
                 
-                if (keys.Count() == 0)
+                if (!keys.Any())
                 {
                     return 0;
                 }
@@ -270,7 +270,7 @@ namespace ConduitLLM.Configuration.Services
                     }
                 }
                 
-                if (groupUpdates.Count() == 0)
+                if (!groupUpdates.Any())
                 {
                     return 0;
                 }
@@ -325,7 +325,7 @@ namespace ConduitLLM.Configuration.Services
                 _logger.LogInformation("Batch updated spend for {Count} groups", groupUpdates.Count());
 
                 // Raise event for cache invalidation (if any subscribers)
-                if (updatedKeyHashes.Count() > 0 && SpendUpdatesCompleted != null)
+                if (updatedKeyHashes.Any() && SpendUpdatesCompleted != null)
                 {
                     try
                     {

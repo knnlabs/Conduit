@@ -131,7 +131,7 @@ namespace ConduitLLM.Gateway.Services
                 }
                 
                 // Fetch missing settings from database
-                if (missingKeys.Count() > 0)
+                if (missingKeys.Any())
                 {
                     _logger.LogDebug("Global settings cache miss for {Count} keys, querying database", missingKeys.Count);
                     var dbSettings = await databaseFallback(missingKeys.ToArray());

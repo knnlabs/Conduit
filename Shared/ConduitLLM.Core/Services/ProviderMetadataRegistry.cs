@@ -180,7 +180,7 @@ namespace ConduitLLM.Core.Services
                     .Where(pt => !_providers.ContainsKey(pt))
                     .ToList();
 
-                if (missingProviders.Count() > 0)
+                if (missingProviders.Any())
                 {
                     var missing = string.Join(", ", missingProviders);
                     var error = $"Missing provider implementations for: {missing}";
@@ -210,7 +210,7 @@ namespace ConduitLLM.Core.Services
                 .OrderBy(n => n)
                 .ToList();
 
-            if (providers.Count() > 0)
+            if (providers.Any())
             {
                 groups[capability] = providers;
             }

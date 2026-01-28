@@ -66,7 +66,7 @@ namespace ConduitLLM.Providers.Helpers
                     }
                 }
 
-                if (textParts.Count() > 0)
+                if (textParts.Any())
                 {
                     return textParts;
                 }
@@ -314,7 +314,7 @@ namespace ConduitLLM.Providers.Helpers
                     }
                 }
 
-                if (imageUrls.Count() > 0)
+                if (imageUrls.Any())
                 {
                     return imageUrls;
                 }
@@ -403,13 +403,13 @@ namespace ConduitLLM.Providers.Helpers
 
             var sb = new StringBuilder();
 
-            if (textParts.Count() > 0)
+            if (textParts.Any())
             {
                 var combinedText = string.Join(" ", textParts);
                 sb.Append($"Text parts: {textParts.Count} ({(combinedText.Length > 50 ? combinedText.Substring(0, 47) + "..." : combinedText)})");
             }
 
-            if (imageUrls.Count() > 0)
+            if (imageUrls.Any())
             {
                 if (sb.Length > 0)
                     sb.Append(", ");

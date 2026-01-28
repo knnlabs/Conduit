@@ -149,7 +149,7 @@ namespace ConduitLLM.Core.Services
                     .Cast<CacheStatistics>()
                     .ToList();
 
-                if (validStats.Count() > 0)
+                if (validStats.Any())
                 {
                     // Aggregate statistics
                     aggregated.HitCount = validStats.Sum(s => s.HitCount);
@@ -165,7 +165,7 @@ namespace ConduitLLM.Core.Services
                         .Select(s => s.AverageGetTime.TotalMilliseconds)
                         .ToList();
 
-                    if (avgGetTimes.Count() > 0)
+                    if (avgGetTimes.Any())
                     {
                         aggregated.AverageGetTime = TimeSpan.FromMilliseconds(avgGetTimes.Average());
                     }
@@ -177,7 +177,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 _logger.LogDebug("Aggregated {DataPoints} data points for region {Region} window {StartTime} to {EndTime}",
-                    validStats.Count() == 0, region, startTime, endTime);
+                    !validStats.Any(), region, startTime, endTime);
             }
             catch (Exception ex)
             {

@@ -354,16 +354,16 @@ namespace ConduitLLM.Core.Services
             };
 
             // Calculate response times
-            if (stats.ResponseTimes.Count() > 0)
+            if (stats.ResponseTimes.Any())
             {
                 var getTimes = stats.ResponseTimes
-                    .Where(rt => rt.Operation == CacheOperationType.Get || 
-                                 rt.Operation == CacheOperationType.Hit || 
+                    .Where(rt => rt.Operation == CacheOperationType.Get ||
+                                 rt.Operation == CacheOperationType.Hit ||
                                  rt.Operation == CacheOperationType.Miss)
                     .Select(rt => rt.Duration)
                     .ToList();
 
-                if (getTimes.Count() > 0)
+                if (getTimes.Any())
                 {
                     publicStats.AverageGetTime = TimeSpan.FromMilliseconds(getTimes.Average(t => t.TotalMilliseconds));
                     publicStats.P95GetTime = CalculatePercentile(getTimes, 95);
@@ -377,7 +377,7 @@ namespace ConduitLLM.Core.Services
 
         private TimeSpan CalculatePercentile(List<TimeSpan> values, int percentile)
         {
-            if (values.Count() == 0)
+            if (!values.Any())
                 return TimeSpan.Zero;
 
             var sorted = values.OrderBy(v => v).ToList();

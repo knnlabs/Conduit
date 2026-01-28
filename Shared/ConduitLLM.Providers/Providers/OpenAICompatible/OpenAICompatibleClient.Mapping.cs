@@ -24,7 +24,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
         {
             // Map tools if present
             List<object>? openAiTools = null;
-            if (request.Tools != null && request.Tools.Count() > 0)
+            if (request.Tools != null && request.Tools.Any())
             {
                 openAiTools = request.Tools.Select(t => new
                 {

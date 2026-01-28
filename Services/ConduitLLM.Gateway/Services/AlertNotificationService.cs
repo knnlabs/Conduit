@@ -62,7 +62,7 @@ namespace ConduitLLM.Gateway.Services
         {
             var filteredAlerts = alerts.Where(ShouldSendAlert).ToList();
             
-            if (filteredAlerts.Count() == 0)
+            if (!filteredAlerts.Any())
             {
                 _logger.LogDebug("All alerts filtered out by severity threshold");
                 return;
@@ -297,7 +297,7 @@ namespace ConduitLLM.Gateway.Services
             sb.AppendLine($"<p><strong>Time:</strong> {alert.TriggeredAt:yyyy-MM-dd HH:mm:ss} UTC</p>");
             sb.AppendLine($"<p><strong>Message:</strong> {alert.Message}</p>");
 
-            if (alert.SuggestedActions.Count() > 0)
+            if (alert.SuggestedActions.Any())
             {
                 sb.AppendLine("<h3>Suggested Actions:</h3>");
                 sb.AppendLine("<ul>");
@@ -308,7 +308,7 @@ namespace ConduitLLM.Gateway.Services
                 sb.AppendLine("</ul>");
             }
 
-            if (alert.Context.Count() > 0)
+            if (alert.Context.Any())
             {
                 sb.AppendLine("<h3>Additional Context:</h3>");
                 sb.AppendLine("<pre style='background-color: #f5f5f5; padding: 10px;'>");

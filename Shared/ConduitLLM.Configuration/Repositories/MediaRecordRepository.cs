@@ -106,7 +106,7 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
                 .ToListAsync();
             
-            if (orphanedMedia.Count() > 0)
+            if (orphanedMedia.Any())
             {
                 _logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
             }
@@ -156,11 +156,11 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(m => idList.Contains(m.Id))
                 .ToListAsync();
             
-            if (mediaRecords.Count() > 0)
+            if (mediaRecords.Any())
             {
                 context.MediaRecords.RemoveRange(mediaRecords);
                 await context.SaveChangesAsync();
-                
+
                 _logger.LogInformation("Deleted {Count} media records", mediaRecords.Count);
             }
             
