@@ -98,9 +98,10 @@ namespace ConduitLLM.Providers.MiniMax
                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
                     };
-                    response = JsonSerializer.Deserialize<MiniMaxVideoGenerationResponse>(rawContent, options)!;
+                    response = JsonSerializer.Deserialize<MiniMaxVideoGenerationResponse>(rawContent, options)
+                        ?? throw new LLMCommunicationException("MiniMax returned null response");
                 }
-                catch (Exception ex)
+                catch (JsonException ex)
                 {
                     Logger.LogError(ex, "Error deserializing MiniMax video response: {Response}", rawContent);
                     throw new LLMCommunicationException("Failed to deserialize MiniMax video response", ex);
