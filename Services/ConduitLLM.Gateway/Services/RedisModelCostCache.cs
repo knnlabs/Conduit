@@ -70,10 +70,17 @@ namespace ConduitLLM.Gateway.Services
             _subscriber = redis.GetSubscriber();
             _logger = logger;
             _cachePopulator = cachePopulator;
-            
-            // Initialize stats reset time if not exists
-            _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
-            
+
+            // Initialize stats reset time if not exists (fire-and-forget, non-blocking)
+            _ = _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.ToString("O"), when: When.NotExists)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        _logger.LogWarning(t.Exception, "Failed to initialize stats reset time");
+                    }
+                }, TaskContinuationOptions.OnlyOnFaulted);
+
             // Subscribe to invalidation messages
             _subscriber.Subscribe(RedisChannel.Literal(InvalidationChannel), OnCostInvalidated);
             _subscriber.Subscribe(RedisChannel.Literal(BatchInvalidationChannel), OnBatchInvalidated);

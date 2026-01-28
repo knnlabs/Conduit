@@ -461,6 +461,7 @@ namespace ConduitLLM.Gateway.Services
             return null;
         }
 
+        [Obsolete("Use GetConnectionAsync instead. This synchronous method may cause thread pool starvation.")]
         public SignalRConnectionInfo? GetConnection(string connectionId)
         {
             // Synchronous wrapper for backward compatibility
@@ -504,12 +505,14 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
+        [Obsolete("Use GetActiveConnectionsAsync instead. This synchronous method may cause thread pool starvation.")]
         public IEnumerable<SignalRConnectionInfo> GetActiveConnections()
         {
             // Synchronous wrapper for backward compatibility
             return GetActiveConnectionsAsync().GetAwaiter().GetResult();
         }
 
+        [Obsolete("Use GetHubConnectionsAsync instead. This synchronous method may cause thread pool starvation.")]
         public IEnumerable<SignalRConnectionInfo> GetHubConnections(string hubName)
         {
             // Synchronous wrapper for backward compatibility
@@ -553,6 +556,7 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
+        [Obsolete("Use GetVirtualKeyConnectionsAsync instead. This synchronous method may cause thread pool starvation.")]
         public IEnumerable<SignalRConnectionInfo> GetVirtualKeyConnections(int virtualKeyId)
         {
             // Synchronous wrapper for backward compatibility
@@ -596,6 +600,7 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
+        [Obsolete("Use GetGroupConnectionsAsync instead. This synchronous method may cause thread pool starvation.")]
         public IEnumerable<SignalRConnectionInfo> GetGroupConnections(string groupName)
         {
             // Synchronous wrapper for backward compatibility
@@ -646,6 +651,7 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
+        [Obsolete("Use GetStatisticsAsync instead. This synchronous method may cause thread pool starvation.")]
         public ConnectionStatistics GetStatistics()
         {
             // Synchronous wrapper for backward compatibility

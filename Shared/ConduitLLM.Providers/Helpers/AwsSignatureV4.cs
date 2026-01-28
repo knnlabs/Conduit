@@ -14,7 +14,35 @@ namespace ConduitLLM.Providers.Helpers
         private const string DateTimeFormat = "yyyyMMddTHHmmssZ";
         
         /// <summary>
+        /// Signs an HTTP request with AWS Signature V4 asynchronously.
+        /// </summary>
+        /// <param name="request">The HTTP request to sign.</param>
+        /// <param name="accessKey">AWS Access Key ID.</param>
+        /// <param name="secretKey">AWS Secret Access Key.</param>
+        /// <param name="region">AWS region (e.g., "us-east-1").</param>
+        /// <param name="service">AWS service name (e.g., "bedrock").</param>
+        public static async Task SignRequestAsync(HttpRequestMessage request, string accessKey, string secretKey, string region, string service)
+        {
+            var now = DateTime.UtcNow;
+            var dateStamp = now.ToString(DateFormat, CultureInfo.InvariantCulture);
+            var dateTimeStamp = now.ToString(DateTimeFormat, CultureInfo.InvariantCulture);
+
+            // Add required headers
+            request.Headers.Add("X-Amz-Date", dateTimeStamp);
+
+            // Get the request body
+            string bodyContent = "";
+            if (request.Content != null)
+            {
+                bodyContent = await request.Content.ReadAsStringAsync();
+            }
+
+            SignRequestInternal(request, accessKey, secretKey, region, service, bodyContent, dateTimeStamp, dateStamp);
+        }
+
+        /// <summary>
         /// Signs an HTTP request with AWS Signature V4.
+        /// For better performance in async contexts, prefer using SignRequestAsync.
         /// </summary>
         /// <param name="request">The HTTP request to sign.</param>
         /// <param name="accessKey">AWS Access Key ID.</param>
@@ -26,35 +54,49 @@ namespace ConduitLLM.Providers.Helpers
             var now = DateTime.UtcNow;
             var dateStamp = now.ToString(DateFormat, CultureInfo.InvariantCulture);
             var dateTimeStamp = now.ToString(DateTimeFormat, CultureInfo.InvariantCulture);
-            
+
             // Add required headers
             request.Headers.Add("X-Amz-Date", dateTimeStamp);
-            
-            // Get the request body
+
+            // Get the request body - use synchronous read for compatibility
             string bodyContent = "";
             if (request.Content != null)
             {
-                bodyContent = request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                // Read content synchronously - prefer SignRequestAsync for async contexts
+                bodyContent = request.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
             }
-            
+
+            SignRequestInternal(request, accessKey, secretKey, region, service, bodyContent, dateTimeStamp, dateStamp);
+        }
+
+        private static void SignRequestInternal(
+            HttpRequestMessage request,
+            string accessKey,
+            string secretKey,
+            string region,
+            string service,
+            string bodyContent,
+            string dateTimeStamp,
+            string dateStamp)
+        {
             // Create canonical request
             var canonicalRequest = CreateCanonicalRequest(request, bodyContent);
-            
+
             // Create string to sign
             var stringToSign = CreateStringToSign(canonicalRequest, dateTimeStamp, dateStamp, region, service);
-            
+
             // Calculate signature
             var signature = CalculateSignature(stringToSign, secretKey, dateStamp, region, service);
-            
+
             // Create authorization header
             var authorizationHeader = CreateAuthorizationHeader(
-                accessKey, 
-                signature, 
-                dateStamp, 
-                region, 
-                service, 
+                accessKey,
+                signature,
+                dateStamp,
+                region,
+                service,
                 GetSignedHeaders(request));
-            
+
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(Algorithm, authorizationHeader);
         }
         
