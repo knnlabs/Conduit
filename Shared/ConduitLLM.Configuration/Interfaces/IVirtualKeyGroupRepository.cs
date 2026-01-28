@@ -33,7 +33,21 @@ public interface IVirtualKeyGroupRepository
     /// Gets all virtual key groups
     /// </summary>
     /// <returns>List of all virtual key groups</returns>
+    /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
+    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     Task<List<VirtualKeyGroup>> GetAllAsync();
+
+    /// <summary>
+    /// Gets virtual key groups with pagination
+    /// </summary>
+    /// <param name="pageNumber">The page number (1-based)</param>
+    /// <param name="pageSize">The number of items per page</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A tuple with the list of groups and the total count</returns>
+    Task<(List<VirtualKeyGroup> Items, int TotalCount)> GetPaginatedAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new virtual key group
@@ -91,5 +105,21 @@ public interface IVirtualKeyGroupRepository
     /// </summary>
     /// <param name="threshold">The balance threshold</param>
     /// <returns>List of groups with balance below threshold</returns>
+    /// <remarks>This method is obsolete. Use GetLowBalanceGroupsPaginatedAsync instead for better performance.</remarks>
+    [Obsolete("Use GetLowBalanceGroupsPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     Task<List<VirtualKeyGroup>> GetLowBalanceGroupsAsync(decimal threshold);
+
+    /// <summary>
+    /// Gets groups with low balance (below threshold) with pagination
+    /// </summary>
+    /// <param name="threshold">The balance threshold</param>
+    /// <param name="pageNumber">The page number (1-based)</param>
+    /// <param name="pageSize">The number of items per page</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A tuple with the list of groups and the total count</returns>
+    Task<(List<VirtualKeyGroup> Items, int TotalCount)> GetLowBalanceGroupsPaginatedAsync(
+        decimal threshold,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }

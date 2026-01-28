@@ -180,15 +180,12 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var spendHistoryRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
-
-                // Get all virtual keys and filter for active ones
-                var allKeys = await virtualKeyRepo.GetAllAsync();
-                var activeKeys = allKeys.Where(k => k.IsEnabled && (k.ExpiresAt == null || k.ExpiresAt > DateTime.UtcNow)).ToList();
-
                 // Note: Budget tracking is now at the group level
                 // Individual key metrics are no longer tracked for budget/spend
+                // No need to load all virtual keys - just count active ones if needed
+                var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
+                var activeKeyCount = await virtualKeyRepo.CountActiveAsync();
+                // activeKeyCount is available for metrics if needed in the future
             }
             catch (Exception ex)
             {
@@ -303,9 +300,8 @@ namespace ConduitLLM.Gateway.Services
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
                 var modelMappingService = scope.ServiceProvider.GetRequiredService<IModelProviderMappingService>();
 
-                // Count active virtual keys
-                var allKeys = await virtualKeyRepo.GetAllAsync();
-                var activeKeyCount = allKeys.Count(k => k.IsEnabled && (k.ExpiresAt == null || k.ExpiresAt > DateTime.UtcNow));
+                // Count active virtual keys using database-level count
+                var activeKeyCount = await virtualKeyRepo.CountActiveAsync();
                 ActiveVirtualKeys.Set(activeKeyCount);
 
                 // Count active model mappings by provider

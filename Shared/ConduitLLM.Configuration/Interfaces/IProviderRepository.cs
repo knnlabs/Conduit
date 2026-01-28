@@ -21,7 +21,40 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of all providers</returns>
+        /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         Task<List<Provider>> GetAllAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets providers with pagination
+        /// </summary>
+        /// <param name="pageNumber">The page number (1-based)</param>
+        /// <param name="pageSize">The number of items per page</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A tuple with the list of providers and the total count</returns>
+        Task<(List<Provider> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets a dictionary mapping provider IDs to their names
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A dictionary of provider ID to name mappings</returns>
+        /// <remarks>
+        /// This method is optimized for lookups when only the name is needed,
+        /// avoiding the need to load full entities.
+        /// </remarks>
+        Task<Dictionary<int, string>> GetProviderNameMapAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Counts providers with optional filtering
+        /// </summary>
+        /// <param name="enabledOnly">If true, only counts enabled providers. If false, only counts disabled. If null, counts all.</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>The count of providers matching the criteria</returns>
+        Task<int> CountAsync(bool? enabledOnly = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Creates a new provider

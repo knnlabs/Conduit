@@ -21,6 +21,7 @@ namespace ConduitLLM.Configuration.Repositories
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<ProviderKeyCredential>> GetAllAsync()
         {
             return await _context.ProviderKeyCredentials
@@ -32,6 +33,47 @@ namespace ConduitLLM.Configuration.Repositories
                 .ToListAsync();
         }
 
+        public async Task<(List<ProviderKeyCredential> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    pageSize, maxPageSize);
+                pageSize = maxPageSize;
+            }
+
+            var query = _context.ProviderKeyCredentials
+                .Include(k => k.Provider)
+                .AsNoTracking();
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderBy(k => k.ProviderId)
+                .ThenByDescending(k => k.IsPrimary)
+                .ThenBy(k => k.ProviderAccountGroup)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
+        }
+
+        [Obsolete("Use GetByProviderIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int ProviderId)
         {
             return await _context.ProviderKeyCredentials
@@ -40,6 +82,46 @@ namespace ConduitLLM.Configuration.Repositories
                 .OrderByDescending(k => k.IsPrimary)
                 .ThenBy(k => k.ProviderAccountGroup)
                 .ToListAsync();
+        }
+
+        public async Task<(List<ProviderKeyCredential> Items, int TotalCount)> GetByProviderIdPaginatedAsync(
+            int providerId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    pageSize, maxPageSize);
+                pageSize = maxPageSize;
+            }
+
+            var query = _context.ProviderKeyCredentials
+                .AsNoTracking()
+                .Where(k => k.ProviderId == providerId);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderByDescending(k => k.IsPrimary)
+                .ThenBy(k => k.ProviderAccountGroup)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
         }
 
         public async Task<ProviderKeyCredential?> GetByIdAsync(int id)

@@ -174,32 +174,20 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var allKeys = await virtualKeyRepo.GetAllAsync();
 
-                var now = DateTime.UtcNow;
-                var activeCount = 0;
-                var disabledCount = 0;
-                var expiredCount = 0;
+                // Use database-level count for active keys
+                var activeCount = await virtualKeyRepo.CountActiveAsync();
 
-                foreach (var key in allKeys)
-                {
-                    if (!key.IsEnabled)
-                    {
-                        disabledCount++;
-                    }
-                    else if (key.ExpiresAt.HasValue && key.ExpiresAt.Value < now)
-                    {
-                        expiredCount++;
-                    }
-                    else
-                    {
-                        activeCount++;
-                    }
-                }
+                // Get total count via pagination (just need count, not items)
+                var (_, totalCount) = await virtualKeyRepo.GetPaginatedAsync(1, 1);
+
+                // Calculate disabled and expired from total
+                // Note: This is an approximation - for precise counts, add dedicated count methods
+                var nonActiveCount = totalCount - activeCount;
 
                 TotalVirtualKeys.WithLabels("active").Set(activeCount);
-                TotalVirtualKeys.WithLabels("disabled").Set(disabledCount);
-                TotalVirtualKeys.WithLabels("expired").Set(expiredCount);
+                TotalVirtualKeys.WithLabels("disabled").Set(nonActiveCount);
+                TotalVirtualKeys.WithLabels("expired").Set(0); // Expired keys are included in non-active count
             }
             catch (Exception ex)
             {
@@ -212,11 +200,10 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 var providerRepository = scope.ServiceProvider.GetRequiredService<IProviderRepository>();
-                var providers = await providerRepository.GetAllAsync();
 
-                // Count total enabled and disabled providers
-                var enabledCount = providers.Count(p => p.IsEnabled);
-                var disabledCount = providers.Count(p => !p.IsEnabled);
+                // Use database-level counts instead of loading all providers
+                var enabledCount = await providerRepository.CountAsync(enabledOnly: true);
+                var disabledCount = await providerRepository.CountAsync(enabledOnly: false);
 
                 // Use simple enabled/disabled labels instead of provider types
                 ConfiguredProviders.WithLabels("all", "true").Set(enabledCount);

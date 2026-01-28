@@ -79,10 +79,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
       
       try {
         setIsLoadingGroups(true);
-        const data = await withAdminClient(client => 
+        const data = await withAdminClient(client =>
           client.virtualKeyGroups.list()
         );
-        setGroups(data);
+        setGroups(data.items);
       } catch (error) {
         console.warn('Failed to fetch virtual key groups:', error);
       } finally {

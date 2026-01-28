@@ -44,15 +44,10 @@ namespace ConduitLLM.Admin.Services
                     .Distinct()
                     .ToList();
 
-                // Get virtual key names for the notifications
-                var virtualKeys = new Dictionary<int, string>();
-                if (virtualKeyIds.Any())
-                {
-                    var keys = await _virtualKeyRepository.GetAllAsync();
-                    virtualKeys = keys
-                        .Where(k => virtualKeyIds.Contains(k.Id))
-                        .ToDictionary(k => k.Id, k => k.KeyName);
-                }
+                // Get virtual key names for the notifications using efficient lookup
+                var virtualKeys = virtualKeyIds.Count != 0
+                    ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
+                    : new Dictionary<int, string>();
 
                 // Map to DTOs with virtual key names
                 var result = notifications
@@ -92,15 +87,10 @@ namespace ConduitLLM.Admin.Services
                     .Distinct()
                     .ToList();
 
-                // Get virtual key names for the notifications
-                var virtualKeys = new Dictionary<int, string>();
-                if (virtualKeyIds.Any())
-                {
-                    var keys = await _virtualKeyRepository.GetAllAsync();
-                    virtualKeys = keys
-                        .Where(k => virtualKeyIds.Contains(k.Id))
-                        .ToDictionary(k => k.Id, k => k.KeyName);
-                }
+                // Get virtual key names for the notifications using efficient lookup
+                var virtualKeys = virtualKeyIds.Count != 0
+                    ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
+                    : new Dictionary<int, string>();
 
                 // Map to DTOs with virtual key names
                 var result = notifications

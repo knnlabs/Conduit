@@ -109,6 +109,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<VirtualKey>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             try
@@ -127,6 +128,54 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<(List<VirtualKey> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.VirtualKeys.AsNoTracking();
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderBy(vk => vk.KeyName)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated virtual keys for page {PageNumber}, size {PageSize}",
+                    LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        [Obsolete("Use GetByVirtualKeyGroupIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<VirtualKey>> GetByVirtualKeyGroupIdAsync(int virtualKeyGroupId, CancellationToken cancellationToken = default)
         {
             try
@@ -141,6 +190,107 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting virtual keys for group {GroupId}", virtualKeyGroupId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<VirtualKey> Items, int TotalCount)> GetByVirtualKeyGroupIdPaginatedAsync(
+            int virtualKeyGroupId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.VirtualKeyGroupId == virtualKeyGroupId);
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderBy(vk => vk.KeyName)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated virtual keys for group {GroupId}, page {PageNumber}, size {PageSize}",
+                    virtualKeyGroupId, LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<Dictionary<int, string>> GetKeyNamesByIdsAsync(
+            IEnumerable<int> ids,
+            CancellationToken cancellationToken = default)
+        {
+            if (ids == null)
+            {
+                throw new ArgumentNullException(nameof(ids));
+            }
+
+            var idList = ids.ToList();
+            if (idList.Count == 0)
+            {
+                return new Dictionary<int, string>();
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => idList.Contains(vk.Id))
+                    .ToDictionaryAsync(vk => vk.Id, vk => vk.KeyName ?? "", cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting key names for {Count} IDs", idList.Count);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<int> CountActiveAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.IsEnabled &&
+                        (vk.ExpiresAt == null || vk.ExpiresAt > DateTime.UtcNow))
+                    .CountAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error counting active virtual keys");
                 throw;
             }
         }

@@ -42,36 +42,55 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Get all virtual key groups
+        /// Get all virtual key groups with pagination
         /// </summary>
+        /// <param name="page">Page number (1-based, default: 1)</param>
+        /// <param name="pageSize">Number of items per page (default: 50, max: 100)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         [HttpGet]
-        public async Task<ActionResult<List<VirtualKeyGroupDto>>> GetAllGroups()
+        [ProducesResponseType(typeof(PagedResult<VirtualKeyGroupDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<PagedResult<VirtualKeyGroupDto>>> GetAllGroups(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("GetAllGroups called");
-                var groups = await _groupRepository.GetAllAsync();
-                _logger.LogInformation("Repository returned {Count} groups", groups.Count());
-                var dtos = groups.Select(g => 
+                // Validate and clamp page parameters
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 50;
+                if (pageSize > 100) pageSize = 100;
+
+                _logger.LogInformation("GetAllGroups called with page={Page}, pageSize={PageSize}", page, pageSize);
+
+                var (groups, totalCount) = await _groupRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
+
+                _logger.LogInformation("Repository returned {Count} groups out of {TotalCount} total", groups.Count, totalCount);
+
+                var dtos = groups.Select(g => new VirtualKeyGroupDto
                 {
-                    _logger.LogInformation("Group {GroupId} has {KeyCount} keys (null: {IsNull})", 
-                        g.Id, g.VirtualKeys?.Count ?? -1, g.VirtualKeys == null);
-                    
-                    return new VirtualKeyGroupDto
-                    {
-                        Id = g.Id,
-                        ExternalGroupId = g.ExternalGroupId,
-                        GroupName = g.GroupName,
-                        Balance = g.Balance,
-                        LifetimeCreditsAdded = g.LifetimeCreditsAdded,
-                        LifetimeSpent = g.LifetimeSpent,
-                        CreatedAt = g.CreatedAt,
-                        UpdatedAt = g.UpdatedAt,
-                        VirtualKeyCount = g.VirtualKeys?.Count ?? 0
-                    };
+                    Id = g.Id,
+                    ExternalGroupId = g.ExternalGroupId,
+                    GroupName = g.GroupName,
+                    Balance = g.Balance,
+                    LifetimeCreditsAdded = g.LifetimeCreditsAdded,
+                    LifetimeSpent = g.LifetimeSpent,
+                    CreatedAt = g.CreatedAt,
+                    UpdatedAt = g.UpdatedAt,
+                    VirtualKeyCount = g.VirtualKeys?.Count ?? 0
                 }).ToList();
 
-                return Ok(dtos);
+                var result = new PagedResult<VirtualKeyGroupDto>
+                {
+                    Items = dtos,
+                    TotalCount = totalCount,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                };
+
+                return Ok(result);
             }
             catch (Exception ex)
             {

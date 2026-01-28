@@ -114,6 +114,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<ModelCost>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             try
@@ -129,6 +130,57 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all model costs");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<ModelCost> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.ModelCosts
+                    .AsNoTracking()
+                    .Include(m => m.ModelProviderTypeAssociations)
+                        .ThenInclude(mpta => mpta.Model);
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderBy(m => m.CostName)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated model costs for page {PageNumber}, size {PageSize}",
+                    LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
                 throw;
             }
         }
@@ -162,6 +214,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// </remarks>
 
         /// <inheritdoc/>
+        [Obsolete("Use GetByProviderPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<ModelCost>> GetByProviderAsync(int providerId, CancellationToken cancellationToken = default)
         {
             try
@@ -214,6 +267,71 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting model costs for provider {ProviderId}", providerId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<ModelCost> Items, int TotalCount)> GetByProviderPaginatedAsync(
+            int providerId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                // Verify provider exists
+                var provider = await dbContext.Providers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == providerId, cancellationToken);
+
+                if (provider == null)
+                {
+                    _logger.LogWarning("No provider found with ID {ProviderId}", providerId);
+                    return (new List<ModelCost>(), 0);
+                }
+
+                var query = dbContext.ModelCosts
+                    .AsNoTracking()
+                    .Include(m => m.ModelProviderTypeAssociations)
+                        .ThenInclude(mpta => mpta.Model)
+                    .Where(m => m.ModelProviderTypeAssociations.Any(mpta =>
+                        mpta.Provider != null && mpta.IsEnabled));
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderBy(m => m.CostName)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated model costs for provider {ProviderId}, page {PageNumber}, size {PageSize}",
+                    providerId, LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
                 throw;
             }
         }

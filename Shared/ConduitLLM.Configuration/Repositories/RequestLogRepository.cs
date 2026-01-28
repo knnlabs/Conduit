@@ -47,6 +47,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<RequestLog>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             try
@@ -65,6 +66,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        [Obsolete("Use GetByVirtualKeyIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<RequestLog>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
         {
             try
@@ -79,6 +81,57 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting request logs for virtual key ID {VirtualKeyId}", LogSanitizer.SanitizeObject(virtualKeyId));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<RequestLog> Logs, int TotalCount)> GetByVirtualKeyIdPaginatedAsync(
+            int virtualKeyId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.VirtualKeyId == virtualKeyId);
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var logs = await query
+                    .OrderByDescending(r => r.Timestamp)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (logs, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated request logs for virtual key ID {VirtualKeyId}, page {PageNumber}, size {PageSize}",
+                    LogSanitizer.SanitizeObject(virtualKeyId), LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
                 throw;
             }
         }
@@ -108,6 +161,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        [Obsolete("Use GetByModelPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<RequestLog>> GetByModelAsync(string modelName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(modelName))
@@ -127,6 +181,83 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting request logs for model {ModelName}", LogSanitizer.SanitizeObject(modelName));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<RequestLog> Logs, int TotalCount)> GetByModelPaginatedAsync(
+            string modelName,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(modelName))
+            {
+                throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
+            }
+
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.ModelName == modelName);
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var logs = await query
+                    .OrderByDescending(r => r.Timestamp)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (logs, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated request logs for model {ModelName}, page {PageNumber}, size {PageSize}",
+                    LogSanitizer.SanitizeObject(modelName), LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<string>> GetDistinctModelsAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.ModelName != null && r.ModelName != "")
+                    .Select(r => r.ModelName!)
+                    .Distinct()
+                    .OrderBy(m => m)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting distinct models from request logs");
                 throw;
             }
         }

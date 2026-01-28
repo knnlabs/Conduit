@@ -48,6 +48,7 @@ namespace ConduitLLM.Configuration.Repositories
 
 
         /// <inheritdoc/>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<Provider>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             try
@@ -62,6 +63,95 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all providers");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<Provider> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.Providers
+                    .Include(pc => pc.ProviderKeyCredentials)
+                    .AsNoTracking();
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderBy(pc => pc.ProviderType)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated providers for page {PageNumber}, size {PageSize}",
+                    LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<Dictionary<int, string>> GetProviderNameMapAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.Providers
+                    .AsNoTracking()
+                    .ToDictionaryAsync(p => p.Id, p => p.ProviderName ?? p.ProviderType.ToString(), cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting provider name map");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<int> CountAsync(bool? enabledOnly = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                var query = dbContext.Providers.AsNoTracking();
+
+                if (enabledOnly.HasValue)
+                {
+                    query = query.Where(p => p.IsEnabled == enabledOnly.Value);
+                }
+
+                return await query.CountAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error counting providers (enabledOnly: {EnabledOnly})", enabledOnly);
                 throw;
             }
         }

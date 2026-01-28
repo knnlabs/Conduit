@@ -75,10 +75,10 @@ export default function VirtualKeysPage() {
 
   const fetchVirtualKeyGroups = useCallback(async () => {
     try {
-      const groups = await withAdminClient(client => 
+      const groupsResult = await withAdminClient(client =>
         client.virtualKeyGroups.list()
       );
-      setVirtualKeyGroups(groups);
+      setVirtualKeyGroups(groupsResult.items);
     } catch (err) {
       console.warn('Error fetching virtual key groups:', err);
     }

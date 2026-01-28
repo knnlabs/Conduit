@@ -52,6 +52,7 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     }
 
     /// <inheritdoc />
+    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     public async Task<List<VirtualKeyGroup>> GetAllAsync()
     {
         return await _context.VirtualKeyGroups
@@ -59,6 +60,45 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
             .AsNoTracking()
             .OrderBy(g => g.GroupName)
             .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<(List<VirtualKeyGroup> Items, int TotalCount)> GetPaginatedAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        if (pageNumber < 1)
+        {
+            throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+        }
+
+        if (pageSize < 1)
+        {
+            throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+        }
+
+        const int maxPageSize = 100;
+        if (pageSize > maxPageSize)
+        {
+            _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                pageSize, maxPageSize);
+            pageSize = maxPageSize;
+        }
+
+        var query = _context.VirtualKeyGroups
+            .Include(g => g.VirtualKeys)
+            .AsNoTracking();
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderBy(g => g.GroupName)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
     }
 
     /// <inheritdoc />
@@ -186,6 +226,7 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     }
 
     /// <inheritdoc />
+    [Obsolete("Use GetLowBalanceGroupsPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     public async Task<List<VirtualKeyGroup>> GetLowBalanceGroupsAsync(decimal threshold)
     {
         return await _context.VirtualKeyGroups
@@ -193,6 +234,46 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
             .Where(g => g.Balance < threshold)
             .OrderBy(g => g.Balance)
             .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<(List<VirtualKeyGroup> Items, int TotalCount)> GetLowBalanceGroupsPaginatedAsync(
+        decimal threshold,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        if (pageNumber < 1)
+        {
+            throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+        }
+
+        if (pageSize < 1)
+        {
+            throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+        }
+
+        const int maxPageSize = 100;
+        if (pageSize > maxPageSize)
+        {
+            _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                pageSize, maxPageSize);
+            pageSize = maxPageSize;
+        }
+
+        var query = _context.VirtualKeyGroups
+            .AsNoTracking()
+            .Where(g => g.Balance < threshold);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderBy(g => g.Balance)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
     }
 
     /// <summary>

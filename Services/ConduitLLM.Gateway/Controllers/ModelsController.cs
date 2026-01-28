@@ -33,21 +33,40 @@ namespace ConduitLLM.Gateway.Controllers
         /// <summary>
         /// Lists available models.
         /// </summary>
-        /// <returns>A list of available models.</returns>
+        /// <returns>A list of available models in OpenAI-compatible format.</returns>
+        /// <remarks>
+        /// This endpoint maintains OpenAI API compatibility and returns all models without pagination.
+        /// For large deployments with many models, use the Admin API's paginated endpoints.
+        /// </remarks>
         [HttpGet("models")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ListModels()
+        public async Task<IActionResult> ListModels(CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Getting available models");
 
-                // Get model mappings from the repository
-                var mappings = await _modelMappingRepository.GetAllAsync();
-                
+                // Get model mappings using paginated repository method
+                // Use max page size; most deployments have <100 model mappings
+                var allMappings = new List<Configuration.Entities.ModelProviderMapping>();
+                var pageNumber = 1;
+                const int pageSize = 100;
+
+                // Fetch all pages to maintain OpenAI API compatibility (no pagination in response)
+                while (true)
+                {
+                    var (mappings, totalCount) = await _modelMappingRepository.GetPaginatedAsync(pageNumber, pageSize, cancellationToken);
+                    allMappings.AddRange(mappings);
+
+                    if (allMappings.Count >= totalCount || mappings.Count == 0)
+                        break;
+
+                    pageNumber++;
+                }
+
                 // Convert to OpenAI format using model aliases
-                var basicModelData = mappings
+                var basicModelData = allMappings
                     .Select(m => m.ModelAlias)
                     .Distinct()
                     .Select(alias => new

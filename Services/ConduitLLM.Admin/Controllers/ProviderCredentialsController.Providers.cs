@@ -40,19 +40,30 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets all provider configurations
+        /// Gets all provider configurations with pagination
         /// </summary>
-        /// <returns>List of all providers</returns>
+        /// <param name="page">Page number (1-based, default: 1)</param>
+        /// <param name="pageSize">Number of items per page (default: 50, max: 100)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Paginated list of providers</returns>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Configuration.DTOs.PagedResult<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetAllProviders()
+        public Task<IActionResult> GetAllProviders(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50,
+            CancellationToken cancellationToken = default)
         {
+            // Validate and clamp page parameters
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 50;
+            if (pageSize > 100) pageSize = 100;
+
             return ExecuteAsync(
                 async () =>
                 {
-                    var providers = await _providerRepository.GetAllAsync();
-                    return providers.Select(p => new
+                    var (providers, totalCount) = await _providerRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
+                    var items = providers.Select(p => new
                     {
                         p.Id,
                         p.ProviderType,
@@ -62,7 +73,16 @@ namespace ConduitLLM.Admin.Controllers
                         p.CreatedAt,
                         p.UpdatedAt,
                         KeyCount = p.ProviderKeyCredentials?.Count ?? 0
-                    });
+                    }).ToList();
+
+                    return new Configuration.DTOs.PagedResult<object>
+                    {
+                        Items = items.Cast<object>().ToList(),
+                        TotalCount = totalCount,
+                        CurrentPage = page,
+                        PageSize = pageSize,
+                        TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                    };
                 },
                 result => Ok(result),
                 "GetAllProviders");

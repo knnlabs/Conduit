@@ -86,8 +86,27 @@ namespace ConduitLLM.Configuration.Interfaces
         /// scenarios and improves performance, especially when dealing with potentially
         /// large numbers of entities.
         /// </para>
+        /// <para>
+        /// This method is obsolete. Use GetPaginatedAsync instead for better performance.
+        /// </para>
         /// </remarks>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         Task<List<VirtualKey>> GetAllAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves virtual key entities with pagination.
+        /// </summary>
+        /// <param name="pageNumber">The page number (1-based).</param>
+        /// <param name="pageSize">The number of items per page.</param>
+        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// a tuple with the list of virtual keys and the total count.
+        /// </returns>
+        Task<(List<VirtualKey> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves all virtual key entities belonging to a specific group.
@@ -101,8 +120,54 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <remarks>
         /// This method is used for filtering virtual keys by their group membership,
         /// which is useful for organizational and reporting purposes.
+        /// This method is obsolete. Use GetByVirtualKeyGroupIdPaginatedAsync instead for better performance.
         /// </remarks>
+        [Obsolete("Use GetByVirtualKeyGroupIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         Task<List<VirtualKey>> GetByVirtualKeyGroupIdAsync(int virtualKeyGroupId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves virtual key entities belonging to a specific group with pagination.
+        /// </summary>
+        /// <param name="virtualKeyGroupId">The ID of the virtual key group.</param>
+        /// <param name="pageNumber">The page number (1-based).</param>
+        /// <param name="pageSize">The number of items per page.</param>
+        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// a tuple with the list of virtual keys and the total count.
+        /// </returns>
+        Task<(List<VirtualKey> Items, int TotalCount)> GetByVirtualKeyGroupIdPaginatedAsync(
+            int virtualKeyGroupId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves key names for a set of virtual key IDs.
+        /// </summary>
+        /// <param name="ids">The virtual key IDs to look up.</param>
+        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// a dictionary mapping virtual key IDs to their names.
+        /// </returns>
+        /// <remarks>
+        /// This method is optimized for bulk lookups when only the name is needed,
+        /// avoiding the need to load full entities.
+        /// </remarks>
+        Task<Dictionary<int, string>> GetKeyNamesByIdsAsync(
+            IEnumerable<int> ids,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Counts active (enabled and non-expired) virtual keys.
+        /// </summary>
+        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// the count of active virtual keys.
+        /// </returns>
+        Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Creates a new virtual key entity in the database.

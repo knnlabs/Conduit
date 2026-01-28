@@ -48,10 +48,10 @@ export default function MediaAssetsContent() {
     const fetchKeyGroups = async () => {
       try {
         setLoadingKeyGroups(true);
-        const result = await withAdminClient(client => 
+        const result = await withAdminClient(client =>
           client.virtualKeyGroups.list()
         );
-        const groups = result.map((group) => ({
+        const groups = result.items.map((group) => ({
           id: group.id,
           name: group.groupName
         }));

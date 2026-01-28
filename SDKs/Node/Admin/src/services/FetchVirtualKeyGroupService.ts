@@ -13,17 +13,38 @@ import type {
 import type { PagedResult } from '../models/security';
 
 /**
+ * Parameters for listing virtual key groups
+ */
+export interface ListGroupsParams {
+  /** Page number (1-based, default: 1) */
+  page?: number;
+  /** Number of items per page (default: 50, max: 100) */
+  pageSize?: number;
+}
+
+/**
  * Type-safe Virtual Key Group service using native fetch
  */
 export class FetchVirtualKeyGroupService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
   /**
-   * Get all virtual key groups
+   * Get all virtual key groups with pagination
    */
-  async list(config?: RequestConfig): Promise<VirtualKeyGroupDto[]> {
-    return this.client['get']<VirtualKeyGroupDto[]>(
-      ENDPOINTS.VIRTUAL_KEY_GROUPS,
+  async list(params?: ListGroupsParams, config?: RequestConfig): Promise<PagedResult<VirtualKeyGroupDto>> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) {
+      queryParams.append('page', params.page.toString());
+    }
+    if (params?.pageSize !== undefined) {
+      queryParams.append('pageSize', params.pageSize.toString());
+    }
+
+    const queryString = queryParams.toString();
+    const url = `${ENDPOINTS.VIRTUAL_KEY_GROUPS}${queryString ? `?${queryString}` : ''}`;
+
+    return this.client['get']<PagedResult<VirtualKeyGroupDto>>(
+      url,
       {
         signal: config?.signal,
         timeout: config?.timeout,

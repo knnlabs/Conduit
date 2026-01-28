@@ -21,6 +21,8 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of all request logs</returns>
+        /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         Task<List<RequestLog>> GetAllAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -29,7 +31,23 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="virtualKeyId">The virtual key ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of request logs for the specified virtual key</returns>
+        /// <remarks>This method is obsolete. Use GetByVirtualKeyIdPaginatedAsync instead for better performance.</remarks>
+        [Obsolete("Use GetByVirtualKeyIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         Task<List<RequestLog>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets paginated request logs for a specific virtual key
+        /// </summary>
+        /// <param name="virtualKeyId">The virtual key ID</param>
+        /// <param name="pageNumber">The page number (1-based)</param>
+        /// <param name="pageSize">The page size</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A paginated list of request logs for the specified virtual key</returns>
+        Task<(List<RequestLog> Logs, int TotalCount)> GetByVirtualKeyIdPaginatedAsync(
+            int virtualKeyId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets request logs for a specific date range
@@ -62,7 +80,30 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="modelName">The model name</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of request logs for the specified model</returns>
+        /// <remarks>This method is obsolete. Use GetByModelPaginatedAsync instead for better performance.</remarks>
+        [Obsolete("Use GetByModelPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         Task<List<RequestLog>> GetByModelAsync(string modelName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets paginated request logs for a specific model
+        /// </summary>
+        /// <param name="modelName">The model name</param>
+        /// <param name="pageNumber">The page number (1-based)</param>
+        /// <param name="pageSize">The page size</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A paginated list of request logs for the specified model</returns>
+        Task<(List<RequestLog> Logs, int TotalCount)> GetByModelPaginatedAsync(
+            string modelName,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets distinct model names from request logs
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A list of distinct model names used in request logs</returns>
+        Task<List<string>> GetDistinctModelsAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets paginated request logs

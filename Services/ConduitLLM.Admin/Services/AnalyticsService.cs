@@ -156,34 +156,30 @@ public partial class AnalyticsService : IAnalyticsService
     {
         var stopwatch = Stopwatch.StartNew();
         var cacheHit = false;
-        
+
         var result = await _cache.GetOrCreateAsync(CachePrefixModels, async entry =>
         {
             _metrics?.RecordCacheMiss(CachePrefixModels);
             entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
-            
+
             _logger.LogInformationSecure("Getting distinct models from request logs");
-            
+
             var fetchStopwatch = Stopwatch.StartNew();
-            var logs = await _requestLogRepository.GetAllAsync();
-            _metrics?.RecordFetchDuration("RequestLogRepository.GetAllAsync", fetchStopwatch.ElapsedMilliseconds);
-            
-            return logs
-                .Where(l => !string.IsNullOrEmpty(l.ModelName))
-                .Select(l => l.ModelName)
-                .Distinct()
-                .OrderBy(m => m)
-                .ToList();
+            // Use repository-level DISTINCT query instead of loading all logs into memory
+            var models = await _requestLogRepository.GetDistinctModelsAsync();
+            _metrics?.RecordFetchDuration("RequestLogRepository.GetDistinctModelsAsync", fetchStopwatch.ElapsedMilliseconds);
+
+            return models;
         });
-        
+
         if (!cacheHit && result != null)
         {
             cacheHit = true;
             _metrics?.RecordCacheHit(CachePrefixModels);
         }
-        
+
         _metrics?.RecordOperationDuration("GetDistinctModelsAsync", stopwatch.ElapsedMilliseconds);
-        
+
         return result ?? Enumerable.Empty<string>();
     }
 

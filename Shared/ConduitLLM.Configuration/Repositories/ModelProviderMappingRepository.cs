@@ -79,6 +79,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<ModelProviderMappingEntity>> GetAllAsync(
             CancellationToken cancellationToken = default)
         {
@@ -101,6 +102,59 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<(List<ModelProviderMappingEntity> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    pageSize, maxPageSize);
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.ModelProviderMappings
+                    .Include(m => m.Provider)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(a => a.Model)
+                    .AsNoTracking();
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderBy(m => m.ModelAlias)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated model provider mappings for page {PageNumber}, size {PageSize}",
+                    pageNumber, pageSize);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        [Obsolete("Use GetByProviderPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<ModelProviderMappingEntity>> GetByProviderAsync(
             ProviderType providerType,
             CancellationToken cancellationToken = default)
@@ -129,6 +183,84 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting model provider mappings for provider type {ProviderType}", providerType);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<ModelProviderMappingEntity> Items, int TotalCount)> GetByProviderPaginatedAsync(
+            int providerId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    pageSize, maxPageSize);
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.ModelProviderMappings
+                    .Include(m => m.Provider)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(a => a.Model)
+                    .AsNoTracking()
+                    .Where(m => m.ProviderId == providerId);
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderBy(m => m.ModelAlias)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated model provider mappings for provider {ProviderId}, page {PageNumber}, size {PageSize}",
+                    providerId, pageNumber, pageSize);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ModelProviderMappingEntity>> GetByModelIdAsync(
+            int modelId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.ModelProviderMappings
+                    .Include(m => m.Provider)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(a => a.Model)
+                    .AsNoTracking()
+                    .Where(m => m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.ModelId == modelId)
+                    .OrderBy(m => m.ModelAlias)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting model provider mappings for model ID {ModelId}", modelId);
                 throw;
             }
         }

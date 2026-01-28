@@ -45,6 +45,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<Notification>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             try
@@ -63,6 +64,54 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<(List<Notification> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    pageSize, maxPageSize);
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.Notifications.AsNoTracking();
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderByDescending(n => n.CreatedAt)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated notifications for page {PageNumber}, size {PageSize}",
+                    pageNumber, pageSize);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        [Obsolete("Use GetUnreadPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<Notification>> GetUnreadAsync(CancellationToken cancellationToken = default)
         {
             try
@@ -77,6 +126,100 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting unread notifications");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<Notification> Items, int TotalCount)> GetUnreadPaginatedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            const int maxPageSize = 100;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
+                    pageSize, maxPageSize);
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var query = dbContext.Notifications
+                    .AsNoTracking()
+                    .Where(n => !n.IsRead);
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var items = await query
+                    .OrderByDescending(n => n.CreatedAt)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated unread notifications for page {PageNumber}, size {PageSize}",
+                    pageNumber, pageSize);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<Notification>> GetUnreadByVirtualKeyIdAsync(
+            int virtualKeyId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.Notifications
+                    .AsNoTracking()
+                    .Where(n => !n.IsRead && n.VirtualKeyId == virtualKeyId)
+                    .OrderByDescending(n => n.CreatedAt)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting unread notifications for virtual key {VirtualKeyId}", virtualKeyId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<Notification>> GetUnreadByVirtualKeyAndTypeAsync(
+            int virtualKeyId,
+            NotificationType notificationType,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.Notifications
+                    .AsNoTracking()
+                    .Where(n => !n.IsRead && n.VirtualKeyId == virtualKeyId && n.Type == notificationType)
+                    .OrderByDescending(n => n.CreatedAt)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting unread notifications for virtual key {VirtualKeyId} and type {NotificationType}",
+                    virtualKeyId, notificationType);
                 throw;
             }
         }

@@ -63,10 +63,9 @@ namespace ConduitLLM.Admin.Controllers
                     limit = 1000; // Cap at 1000 for performance
 
                 var errors = await _errorService.GetRecentErrorsAsync(providerId, keyId, limit);
-                
-                // Get provider and key names for display
-                var providers = await _providerRepo.GetAllAsync();
-                var providerMap = providers.ToDictionary(p => p.Id, p => p.ProviderName);
+
+                // Get provider names for display using efficient lookup
+                var providerMap = await _providerRepo.GetProviderNameMapAsync();
                 
                 var dtos = errors.Select(e => new ProviderErrorDto
                 {
@@ -99,10 +98,23 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                var providers = await _providerRepo.GetAllAsync();
+                // Use paginated retrieval - get all providers in batches
+                var allProviders = new List<ConduitLLM.Configuration.Entities.Provider>();
+                var pageNumber = 1;
+                const int pageSize = 100;
+                int totalCount;
+
+                do
+                {
+                    var (items, count) = await _providerRepo.GetPaginatedAsync(pageNumber, pageSize);
+                    allProviders.AddRange(items);
+                    totalCount = count;
+                    pageNumber++;
+                } while (allProviders.Count < totalCount);
+
                 var summaries = new List<ProviderErrorSummaryDto>();
 
-                foreach (var provider in providers)
+                foreach (var provider in allProviders)
                 {
                     var summary = await _errorService.GetProviderSummaryAsync(provider.Id);
                     if (summary != null)
@@ -266,10 +278,10 @@ namespace ConduitLLM.Admin.Controllers
 
                 var window = TimeSpan.FromHours(hours);
                 var stats = await _errorService.GetErrorStatisticsAsync(window);
-                
-                // Get provider names for the statistics
-                var providers = await _providerRepo.GetAllAsync();
-                var providerNames = providers.ToDictionary(p => p.Id.ToString(), p => p.ProviderName);
+
+                // Get provider names for the statistics using efficient lookup
+                var providerNameMap = await _providerRepo.GetProviderNameMapAsync();
+                var providerNames = providerNameMap.ToDictionary(p => p.Key.ToString(), p => p.Value);
 
                 var dto = new ErrorStatisticsDto
                 {

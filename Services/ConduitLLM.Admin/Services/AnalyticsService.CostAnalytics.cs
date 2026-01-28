@@ -216,8 +216,12 @@ namespace ConduitLLM.Admin.Services
             endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-            var virtualKeys = await _virtualKeyRepository.GetAllAsync();
-            var keyMap = virtualKeys.ToDictionary(k => k.Id, k => k.KeyName);
+
+            // Get only the virtual key names we need using efficient lookup
+            var virtualKeyIds = logs.Select(l => l.VirtualKeyId).Distinct().ToList();
+            var keyMap = virtualKeyIds.Count != 0
+                ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
+                : new Dictionary<int, string>();
 
             var breakdown = logs
                 .GroupBy(l => l.VirtualKeyId)
