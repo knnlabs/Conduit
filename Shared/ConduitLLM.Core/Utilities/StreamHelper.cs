@@ -51,7 +51,7 @@ namespace ConduitLLM.Core.Utilities
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                line = await reader.ReadLineAsync();
+                line = await reader.ReadLineAsync(cancellationToken);
                 if (line == null) break; // End of stream
                 lineCount++;
                 
@@ -138,10 +138,10 @@ namespace ConduitLLM.Core.Utilities
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    line = await reader.ReadLineAsync();
+                    line = await reader.ReadLineAsync(cancellationToken);
                     if (line == null) break; // End of stream
                     lineCount++;
-                    
+
                     // Log first few lines for debugging
                     if (lineCount <= 5)
                     {
@@ -363,7 +363,7 @@ namespace ConduitLLM.Core.Utilities
                 string? line;
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    line = await reader.ReadLineAsync();
+                    line = await reader.ReadLineAsync(cancellationToken);
                     if (line == null) break; // End of stream
                     if (string.IsNullOrEmpty(line))
                     {
@@ -385,7 +385,12 @@ namespace ConduitLLM.Core.Utilities
                     }
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (OperationCanceledException)
+            {
+                logger?.LogDebug("Stream processing was cancelled");
+                throw;
+            }
+            catch (Exception ex)
             {
                 logger?.LogError(ex, "Error processing custom stream");
                 throw new LLMCommunicationException("Error processing custom streaming response", ex);
