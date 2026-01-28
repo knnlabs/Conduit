@@ -354,40 +354,93 @@ namespace ConduitLLM.Providers
         /// <param name="cancellationToken">Cancellation token for the operation.</param>
         /// <returns>An authentication result indicating success or failure.</returns>
         /// <remarks>
-        /// This default implementation performs a basic check that the API key exists.
-        /// Derived classes should override this method to implement provider-specific
-        /// authentication verification logic.
+        /// This implementation makes an actual HTTP request to verify the API key works.
+        /// It uses <see cref="GetHealthCheckUrl"/> to determine the endpoint.
+        /// Derived classes can override this for provider-specific verification logic,
+        /// or just override <see cref="GetHealthCheckUrl"/> if only the endpoint differs.
         /// </remarks>
         public virtual async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
             string? apiKey = null,
             string? baseUrl = null,
             CancellationToken cancellationToken = default)
         {
+            var startTime = DateTime.UtcNow;
+
             try
             {
                 // Use provided API key or fall back to configured one
                 var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
-                
+
                 // Basic validation
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
                     return Core.Interfaces.AuthenticationResult.Failure(
                         "API key is required",
-                        "No API key provided for authentication verification");
+                        $"No API key provided for {ProviderName} authentication");
                 }
 
-                // For base implementation, just verify key exists
-                // Derived classes should override with actual API calls
-                Logger.LogInformation("Basic authentication check passed for {Provider}", ProviderName);
-                
-                // Return completed task to make this properly async
-                await Task.CompletedTask;
-                
-                return Core.Interfaces.AuthenticationResult.Success($"Authentication verified for {ProviderName}");
+                // Create HTTP client and make verification request
+                using var client = CreateAuthenticationVerificationClient(effectiveApiKey);
+                var healthCheckUrl = GetHealthCheckUrl(baseUrl);
+
+                Logger.LogDebug("Verifying {Provider} authentication with endpoint: {Endpoint}", ProviderName, healthCheckUrl);
+
+                var response = await client.GetAsync(healthCheckUrl, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                Logger.LogInformation("{Provider} auth check returned status {StatusCode}", ProviderName, response.StatusCode);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success(
+                        $"Connected successfully to {ProviderName}",
+                        responseTime);
+                }
+
+                // Handle specific error cases
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    Logger.LogWarning("{Provider} authentication failed: {Response}", ProviderName, responseContent);
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Authentication failed",
+                        $"Invalid API key for {ProviderName}");
+                }
+
+                if (response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Access forbidden",
+                        $"API key does not have sufficient permissions for {ProviderName}");
+                }
+
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Unexpected response: {response.StatusCode}",
+                    responseContent);
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogError(ex, "Network error verifying {Provider} authentication", ProviderName);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Network error: {ex.Message}",
+                    ex.ToString());
+            }
+            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+            {
+                Logger.LogError(ex, "Timeout verifying {Provider} authentication", ProviderName);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    "Request timeout",
+                    "Authentication request timed out");
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogDebug("{Provider} authentication verification was cancelled", ProviderName);
+                throw;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error verifying authentication for {Provider}", ProviderName);
+                Logger.LogError(ex, "Error verifying {Provider} authentication", ProviderName);
                 return Core.Interfaces.AuthenticationResult.Failure(
                     $"Authentication verification failed: {ex.Message}",
                     ex.ToString());
@@ -400,16 +453,17 @@ namespace ConduitLLM.Providers
         /// <param name="baseUrl">Optional base URL override. If null, uses the configured URL.</param>
         /// <returns>The URL to use for health checks.</returns>
         /// <remarks>
-        /// This default implementation returns a generic /health endpoint.
-        /// Derived classes should override this method to return provider-specific URLs.
+        /// This default implementation returns the /models endpoint, which is commonly
+        /// used by OpenAI-compatible APIs for authentication verification.
+        /// Derived classes should override this method for provider-specific endpoints.
         /// </remarks>
         public virtual string GetHealthCheckUrl(string? baseUrl = null)
         {
-            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
-                ? baseUrl.TrimEnd('/') 
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                ? baseUrl.TrimEnd('/')
                 : (Provider.BaseUrl ?? GetDefaultBaseUrl()).TrimEnd('/');
-            
-            return $"{effectiveBaseUrl}/health";
+
+            return $"{effectiveBaseUrl}/models";
         }
 
         /// <summary>
