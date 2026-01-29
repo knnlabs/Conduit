@@ -1,4 +1,3 @@
-using System.Linq;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
@@ -10,28 +9,21 @@ using ConduitLLM.Gateway.Security;
 using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Providers.Extensions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Hosting;
-using Polly;
-using Polly.Extensions.Http;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using MassTransit;
-using Microsoft.AspNetCore.SignalR;
 
 public partial class Program
 {
     public static void ConfigureCoreServices(WebApplicationBuilder builder)
     {
+        // ========== Core Infrastructure ==========
+
         // Add leader election service for distributed background service coordination
         builder.Services.AddLeaderElection();
         Console.WriteLine("[Conduit] Leader election service configured for background service coordination");
 
         // Global settings cache service - loads settings at startup and provides fast access
-        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService, GlobalSettingsCacheService>();
-        builder.Services.AddHostedService(provider => provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService>() as GlobalSettingsCacheService
+        builder.Services.AddSingleton<IGlobalSettingsCacheService, GlobalSettingsCacheService>();
+        builder.Services.AddHostedService(provider => provider.GetRequiredService<IGlobalSettingsCacheService>() as GlobalSettingsCacheService
             ?? throw new InvalidOperationException("GlobalSettingsCacheService must be registered as singleton"));
         Console.WriteLine("[Conduit] Global settings cache service configured");
 
@@ -39,240 +31,47 @@ public partial class Program
         builder.Services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            options.AddPolicy<Microsoft.AspNetCore.Http.HttpContext>("VirtualKeyPolicy", context =>
+            options.AddPolicy<HttpContext>("VirtualKeyPolicy", context =>
             {
-                // Use the actual partition provider from the policy instance
                 var policy = context.RequestServices.GetRequiredService<VirtualKeyRateLimitPolicy>();
                 return policy.GetPartition(context);
             });
         });
         builder.Services.AddScoped<VirtualKeyRateLimitPolicy>();
 
-        // Model costs tracking service
-        builder.Services.AddScoped<IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
-        
-        // Ephemeral key service for direct browser-to-API authentication (used for all direct access including SignalR)
-        builder.Services.AddScoped<IEphemeralKeyService, EphemeralKeyService>();
-        
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
-
-        // Tool cost calculation service for provider tool billing
-        builder.Services.AddScoped<IToolCostCalculationService, ToolCostCalculationService>();
-
-        // Parameter validation service for minimal, provider-agnostic validation
-        builder.Services.AddScoped<ConduitLLM.Core.Validation.MinimalParameterValidator>();
-
-        // Virtual key service (Configuration layer - used by RealtimeUsageTracker)
-        builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
-
-        // Billing audit service for comprehensive billing event tracking - with leader election
-        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(
-            provider => {
-                try
-                {
-                    Console.WriteLine("[Leader Election] Resolving BillingAuditService...");
-                    var service = provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService
-                        ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService");
-                    Console.WriteLine("[Leader Election] ✓ Successfully resolved BillingAuditService");
-                    return service;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve BillingAuditService: {ex.GetType().Name}: {ex.Message}");
-                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
-                    throw;
-                }
-            },
-            "BillingAuditService");
-
-        // Pricing rules engine services for flexible rules-based pricing
-        builder.Services.AddScoped<ConduitLLM.Core.Services.IPricingRulesEvaluator, ConduitLLM.Core.Services.PricingRulesEvaluator>();
-        builder.Services.AddScoped<ConduitLLM.Core.Services.IPricingRulesValidator, ConduitLLM.Core.Services.PricingRulesValidator>();
-
-        // Cached pricing rules service for parsed configuration caching
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ICachedPricingRulesService, ConduitLLM.Core.Services.CachedPricingRulesService>();
-        Console.WriteLine("[Conduit] Pricing rules engine services registered");
-
-        // Pricing audit service for rules-based pricing evaluation tracking - with leader election
-        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IPricingAuditService, ConduitLLM.Configuration.Services.PricingAuditService>();
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.PricingAuditService>(
-            provider => {
-                try
-                {
-                    Console.WriteLine("[Leader Election] Resolving PricingAuditService...");
-                    var service = provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IPricingAuditService>() as ConduitLLM.Configuration.Services.PricingAuditService
-                        ?? throw new InvalidOperationException("PricingAuditService must implement IHostedService");
-                    Console.WriteLine("[Leader Election] ✓ Successfully resolved PricingAuditService");
-                    return service;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve PricingAuditService: {ex.GetType().Name}: {ex.Message}");
-                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
-                    throw;
-                }
-            },
-            "PricingAuditService");
-
-        // Provider error tracking service
-        builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
-        builder.Services.AddSingleton<IProviderErrorTrackingService, ProviderErrorTrackingService>();
+        // ========== Caching Infrastructure ==========
 
         builder.Services.AddMemoryCache();
-
-        // Add cache infrastructure with distributed statistics collection
         builder.Services.AddCacheInfrastructure(builder.Configuration);
 
-        // Configure OpenTelemetry with metrics and tracing
-        var otlpEndpoint = builder.Configuration["Telemetry:OtlpEndpoint"] ?? "http://localhost:4317";
-        var tracingEnabled = builder.Configuration.GetValue<bool>("Telemetry:TracingEnabled", true);
+        // ========== Observability ==========
 
-        var otelBuilder = builder.Services.AddOpenTelemetry()
-            .WithMetrics(meterProviderBuilder =>
-            {
-                meterProviderBuilder
-                    .SetResourceBuilder(OpenTelemetry.Resources.ResourceBuilder.CreateDefault()
-                        .AddService(serviceName: "ConduitLLM.Gateway", serviceVersion: "1.0.0"))
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation()
-                    .AddProcessInstrumentation()
-                    .AddMeter("ConduitLLM.SignalR") // Add SignalR metrics
-                    .AddMeter("ConduitLLM.MediaGeneration") // Add Media Generation metrics
-                    .AddPrometheusExporter();
-            });
+        builder.Services.AddObservabilityServices(builder.Configuration);
 
-        // Add distributed tracing when enabled
-        if (tracingEnabled)
-        {
-            otelBuilder.WithTracing(tracerProviderBuilder =>
-            {
-                tracerProviderBuilder
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault()
-                        .AddService(serviceName: "ConduitLLM.Gateway", serviceVersion: "1.0.0"))
-                    .AddAspNetCoreInstrumentation(options =>
-                    {
-                        // Filter out health check endpoints to reduce noise
-                        options.Filter = httpContext =>
-                            !httpContext.Request.Path.StartsWithSegments("/health") &&
-                            !httpContext.Request.Path.StartsWithSegments("/metrics");
-                    })
-                    .AddHttpClientInstrumentation()
-                    .AddSqlClientInstrumentation(options =>
-                    {
-                        options.SetDbStatementForText = true;
-                        options.RecordException = true;
-                    })
-                    .AddRedisInstrumentation()
-                    .AddSource("ConduitLLM.SignalR")
-                    .AddSource("ConduitLLM.MediaGeneration")
-                    .AddOtlpExporter(options =>
-                    {
-                        options.Endpoint = new Uri(otlpEndpoint);
-                    });
-            });
-            Console.WriteLine($"[Conduit] OpenTelemetry tracing enabled - exporting to {otlpEndpoint}");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] OpenTelemetry tracing disabled (set Telemetry:TracingEnabled=true to enable)");
-        }
+        // ========== SignalR Reliability ==========
 
-        // Distributed monitoring services are registered in HealthMonitoringExtensions
-        // Legacy SignalRMetricsService registration removed - now using DistributedSignalRMetricsService
+        builder.Services.AddSignalRReliabilityServices();
 
-        // Register new SignalR reliability services
-        builder.Services.AddSingleton<ConduitLLM.Gateway.Services.ISignalRAcknowledgmentService, ConduitLLM.Gateway.Services.SignalRAcknowledgmentService>();
-        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.SignalRAcknowledgmentService>(provider => 
-            (ConduitLLM.Gateway.Services.SignalRAcknowledgmentService)provider.GetRequiredService<ConduitLLM.Gateway.Services.ISignalRAcknowledgmentService>());
+        // ========== Database Services ==========
 
-        builder.Services.AddSingleton<ConduitLLM.Gateway.Services.ISignalRMessageQueueService, ConduitLLM.Gateway.Services.SignalRMessageQueueService>();
-        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.SignalRMessageQueueService>(provider => 
-            (ConduitLLM.Gateway.Services.SignalRMessageQueueService)provider.GetRequiredService<ConduitLLM.Gateway.Services.ISignalRMessageQueueService>());
+        builder.Services.AddDatabaseServices(builder.Configuration);
 
-        builder.Services.AddSingleton<ConduitLLM.Gateway.Services.ISignalRConnectionMonitor, ConduitLLM.Gateway.Services.SignalRConnectionMonitor>();
-        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.SignalRConnectionMonitor>(provider => 
-            (ConduitLLM.Gateway.Services.SignalRConnectionMonitor)provider.GetRequiredService<ConduitLLM.Gateway.Services.ISignalRConnectionMonitor>());
+        // ========== Security ==========
 
-        builder.Services.AddSingleton<ConduitLLM.Gateway.Services.ISignalRMessageBatcher, ConduitLLM.Gateway.Services.SignalRMessageBatcher>();
-        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.SignalRMessageBatcher>(provider => 
-            (ConduitLLM.Gateway.Services.SignalRMessageBatcher)provider.GetRequiredService<ConduitLLM.Gateway.Services.ISignalRMessageBatcher>());
-
-        // Register SignalR OpenTelemetry metrics
-        builder.Services.AddSingleton<ConduitLLM.Gateway.Metrics.SignalRMetrics>();
-        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.SignalROpenTelemetryService>();
-
-        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.TaskProcessingMetricsService>();
-        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.BusinessMetricsService>();
-
-        // 2. Register DbContext Factory (using connection string from environment variables)
-        var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
-        // Pass "CoreAPI" to get Gateway API-specific connection pool settings
-        var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI", msg => Console.WriteLine(msg));
-
-        // Log the connection pool settings for verification
-        if (dbProvider == "postgres" && dbConnectionString.Contains("MaxPoolSize"))
-        {
-            Console.WriteLine($"[Conduit] Gateway API database connection pool configured:");
-            var match = System.Text.RegularExpressions.Regex.Match(dbConnectionString, @"MinPoolSize=(\d+);MaxPoolSize=(\d+)");
-            if (match.Success)
-            {
-                Console.WriteLine($"[Conduit]   Min Pool Size: {match.Groups[1].Value}");
-                Console.WriteLine($"[Conduit]   Max Pool Size: {match.Groups[2].Value}");
-            }
-        }
-
-        // Only PostgreSQL is supported
-        if (dbProvider != "postgres")
-        {
-            throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
-        }
-
-        // Configure query monitoring for performance tracking
-        builder.Services.Configure<ConduitLLM.Configuration.Interceptors.QueryMonitoringOptions>(
-            builder.Configuration.GetSection(ConduitLLM.Configuration.Interceptors.QueryMonitoringOptions.SectionName));
-        builder.Services.AddSingleton<ConduitLLM.Configuration.Interceptors.QueryMonitoringInterceptor>();
-
-        builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>((sp, options) =>
-        {
-            var interceptor = sp.GetRequiredService<ConduitLLM.Configuration.Interceptors.QueryMonitoringInterceptor>();
-            options.UseNpgsql(dbConnectionString)
-                   .AddInterceptors(interceptor);
-        });
-        Console.WriteLine("[Conduit] Query monitoring interceptor configured for performance tracking");
-        
-        // Also add scoped registration from factory for services that need direct injection
-        // Note: This creates contexts from the factory on demand
-        builder.Services.AddScoped<ConduitLLM.Configuration.ConduitDbContext>(provider =>
-        {
-            var factory = provider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
-            if (factory == null)
-            {
-                throw new InvalidOperationException("IDbContextFactory<ConfigurationDbContext> is not registered");
-            }
-            return factory.CreateDbContext();
-        });
-
-        // Authentication and authorization are configured later with policies
-
-        // Add Gateway API Security services
         builder.Services.AddCoreApiSecurity(builder.Configuration);
 
-        // Add all the service registrations BEFORE calling builder.Build()
-        // Register HttpClientFactory - REQUIRED for LLMClientFactory
+        // ========== HTTP Infrastructure ==========
+
         builder.Services.AddHttpClient();
-
-        // Add standard LLM provider HTTP clients with timeout/retry policies
         builder.Services.AddLLMProviderHttpClients();
-
-        // Add video generation HTTP clients without timeout for long-running operations
         builder.Services.AddVideoGenerationHttpClients();
+        builder.Services.AddHttpClientServices(builder.Configuration);
 
         // Register operation timeout provider for operation-aware timeout policies
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
+        builder.Services.AddSingleton<IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
 
-        // Add dependencies needed for the Conduit service
+        // ========== Provider Services ==========
+
         // Use DatabaseAwareLLMClientFactory to get provider credentials from database
         builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
 
@@ -280,436 +79,99 @@ public partial class Program
         builder.Services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
         Console.WriteLine("[ConduitLLM.Gateway] Provider Registry registered - centralized provider metadata management enabled");
 
-        // Add performance metrics service
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IPerformanceMetricsService, ConduitLLM.Core.Services.PerformanceMetricsService>();
+        // Provider error tracking service
+        builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
+        builder.Services.AddSingleton<IProviderErrorTrackingService, ProviderErrorTrackingService>();
 
-        // Image generation metrics service removed - not needed
+        // Add performance metrics service
+        builder.Services.AddSingleton<IPerformanceMetricsService, PerformanceMetricsService>();
+
+        // ========== Billing & Pricing ==========
+
+        builder.Services.AddBillingAndPricingServices();
+        Console.WriteLine("[Conduit] Pricing rules engine services registered");
+
+        // ========== Token Management ==========
+
+        // Parameter validation service for minimal, provider-agnostic validation
+        builder.Services.AddScoped<ConduitLLM.Core.Validation.MinimalParameterValidator>();
 
         // Register token counter service for context management
-        builder.Services.AddScoped<ITokenCounter, ConduitLLM.Core.Services.TiktokenCounter>();
-        builder.Services.AddScoped<IContextManager, ConduitLLM.Core.Services.ContextManager>();
+        builder.Services.AddScoped<ITokenCounter, TiktokenCounter>();
+        builder.Services.AddScoped<IContextManager, ContextManager>();
 
-        // Register all repositories using the extension method
+        // ========== Repositories ==========
+
         builder.Services.AddRepositories();
 
-        // Register services
+        // ========== Model Services ==========
+
         // Register model provider mapping service with caching decorator pattern
         builder.Services.AddScoped<ConduitLLM.Configuration.ModelProviderMappingService>(); // Inner service
         builder.Services.AddScoped<IModelProviderMappingService>(provider =>
         {
             var innerService = provider.GetRequiredService<ConduitLLM.Configuration.ModelProviderMappingService>();
-            var cacheManager = provider.GetRequiredService<ConduitLLM.Core.Interfaces.ICacheManager>();
-            var logger = provider.GetRequiredService<ILogger<ConduitLLM.Core.Services.CachedModelProviderMappingService>>();
-            return new ConduitLLM.Core.Services.CachedModelProviderMappingService(innerService, cacheManager, logger);
+            var cacheManager = provider.GetRequiredService<ICacheManager>();
+            var logger = provider.GetRequiredService<ILogger<CachedModelProviderMappingService>>();
+            return new CachedModelProviderMappingService(innerService, cacheManager, logger);
         });
         Console.WriteLine("[Conduit] Model provider mapping service registered with caching - reduces database queries by 80-95%");
 
         builder.Services.AddScoped<IProviderService, ConduitLLM.Configuration.ProviderService>();
 
-        // Request Log Service - now uses batch processing like other audit services
-        builder.Services.AddSingleton<IRequestLogService, ConduitLLM.Configuration.Services.RequestLogService>();
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.RequestLogService>(
-            provider =>
-            {
-                try
-                {
-                    Console.WriteLine("[Leader Election] Resolving RequestLogService...");
-                    var service = provider.GetRequiredService<IRequestLogService>() as ConduitLLM.Configuration.Services.RequestLogService
-                        ?? throw new InvalidOperationException("RequestLogService must implement IHostedService");
-                    Console.WriteLine("[Leader Election] ✓ Successfully resolved RequestLogService");
-                    return service;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve RequestLogService: {ex.GetType().Name}: {ex.Message}");
-                    throw;
-                }
-            },
-            "RequestLogService");
-
         // Register System Notification Service
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISystemNotificationService, ConduitLLM.Gateway.Services.SystemNotificationService>();
+        builder.Services.AddSingleton<ISystemNotificationService, SystemNotificationService>();
 
         // Register Model Metadata Service
         builder.Services.AddSingleton<IModelMetadataService, ModelMetadataService>();
 
-        // Register TaskHub Service for ITaskHub interface
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ITaskHub, ConduitLLM.Gateway.Services.TaskHubService>();
+        // ========== Audit Services ==========
 
-        // Register Batch Operation Services
-        builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IBatchOperationHistoryRepository, ConduitLLM.Configuration.Repositories.BatchOperationHistoryRepository>();
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchOperationHistoryService, ConduitLLM.Gateway.Services.BatchOperationHistoryService>();
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationNotificationService, ConduitLLM.Gateway.Services.BatchOperationNotificationService>();
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
+        builder.Services.AddAuditServices();
 
-        // Register Batch Operation Idempotency Service (Redis-based)
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationIdempotencyService, ConduitLLM.Gateway.Services.BatchOperationIdempotencyService>();
+        // ========== Batch Operations ==========
 
-        // Register batch operations
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchVirtualKeyUpdateOperation, ConduitLLM.Core.Services.BatchOperations.BatchVirtualKeyUpdateOperation>();
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchWebhookSendOperation, ConduitLLM.Core.Services.BatchOperations.BatchWebhookSendOperation>();
+        builder.Services.AddBatchOperationServices();
 
-        // Register spend update batch operation
-        builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchSpendUpdateOperation>();
+        // ========== Webhook Services ==========
 
-        // Register Webhook Delivery Service
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryService, ConduitLLM.Gateway.Services.WebhookDeliveryService>();
+        builder.Services.AddWebhookServices(builder.Configuration);
 
-        // Register Distributed Spend Notification Service (Redis-based for multi-instance consistency) - with leader election
-        Console.WriteLine("[Service Registration] Registering DistributedSpendNotificationService...");
-        // Register as singleton via interface using two-parameter syntax to avoid auto-discovery
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISpendNotificationService, ConduitLLM.Gateway.Services.SpendNotification.DistributedSpendNotificationService>();
-        Console.WriteLine("[Service Registration] Adding leader-elected hosted service for DistributedSpendNotificationService...");
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.SpendNotification.DistributedSpendNotificationService>(
-            sp => {
-                try
-                {
-                    Console.WriteLine("[Leader Election] Resolving DistributedSpendNotificationService...");
-                    var service = sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>() as ConduitLLM.Gateway.Services.SpendNotification.DistributedSpendNotificationService
-                        ?? throw new InvalidOperationException("DistributedSpendNotificationService must implement IHostedService");
-                    Console.WriteLine("[Leader Election] ✓ Successfully resolved DistributedSpendNotificationService");
-                    return service;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve DistributedSpendNotificationService: {ex.GetType().Name}: {ex.Message}");
-                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
-                    throw;
-                }
-            },
-            "SpendNotificationService");
+        // ========== Async Task Services ==========
 
-        // Register Webhook Metrics Service (Redis-based when available)
-        builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookMetricsService>(sp =>
-        {
-            var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
-            
-            if (redis != null)
-            {
-                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisWebhookMetricsService>>();
-                return new ConduitLLM.Core.Services.RedisWebhookMetricsService(redis, logger);
-            }
-            
-            // Return null when Redis is not available - the notification service will handle fallback
-            return null!;
-        });
-        
-        // Register Webhook Connection Tracker (Redis-based when available)
-        builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookConnectionTracker>(sp =>
-        {
-            var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
-            
-            if (redis != null)
-            {
-                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisWebhookConnectionTracker>>();
-                return new ConduitLLM.Core.Services.RedisWebhookConnectionTracker(redis, logger);
-            }
-            else
-            {
-                // Fall back to in-memory tracker
-                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.InMemoryWebhookConnectionTracker>>();
-                return new ConduitLLM.Core.Services.InMemoryWebhookConnectionTracker(logger);
-            }
-        });
-        
-        // Register Webhook Delivery Notification Service - with leader election
-        Console.WriteLine("[Service Registration] Registering WebhookDeliveryNotificationService as singleton...");
-        // Use factory to prevent auto-discovery by ASP.NET Core
-        builder.Services.AddSingleton<ConduitLLM.Gateway.Services.IWebhookDeliveryNotificationService>(sp =>
-        {
-            var hubContext = sp.GetRequiredService<IHubContext<ConduitLLM.Gateway.Hubs.WebhookDeliveryHub>>();
-            var serviceProvider = sp;
-            var logger = sp.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.WebhookDeliveryNotificationService>>();
-            return new ConduitLLM.Gateway.Services.WebhookDeliveryNotificationService(hubContext, serviceProvider, logger);
-        });
-        Console.WriteLine("[Service Registration] Adding leader-elected hosted service for WebhookDeliveryNotificationService...");
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.WebhookDeliveryNotificationService>(
-            sp => {
-                try
-                {
-                    Console.WriteLine("[Leader Election] Resolving WebhookDeliveryNotificationService...");
-                    var service = (ConduitLLM.Gateway.Services.WebhookDeliveryNotificationService)sp.GetRequiredService<ConduitLLM.Gateway.Services.IWebhookDeliveryNotificationService>();
-                    Console.WriteLine("[Leader Election] ✓ Successfully resolved WebhookDeliveryNotificationService");
-                    return service;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve WebhookDeliveryNotificationService: {ex.GetType().Name}: {ex.Message}");
-                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
-                    throw;
-                }
-            },
-            "WebhookDeliveryNotificationService");
-
-        // Model Capability Service is registered via ServiceCollectionExtensions
-
-        // Provider Discovery Service is only used in Admin API for dynamic model discovery
-        // Gateway API relies on configured model mappings only
-
-        // Register Video Generation Service with explicit dependencies
-        builder.Services.AddScoped<IVideoGenerationService>(sp =>
-        {
-            var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
-            var capabilityService = sp.GetRequiredService<IModelCapabilityService>();
-            var costService = sp.GetRequiredService<ICostCalculationService>();
-            var virtualKeyService = sp.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyService>();
-            var mediaStorage = sp.GetRequiredService<IMediaStorageService>();
-            var taskService = sp.GetRequiredService<IAsyncTaskService>();
-            var logger = sp.GetRequiredService<ILogger<VideoGenerationService>>();
-            var modelMappingService = sp.GetRequiredService<IModelProviderMappingService>();
-            var publishEndpoint = sp.GetService<IPublishEndpoint>(); // Optional
-            var taskRegistry = sp.GetService<ICancellableTaskRegistry>(); // Optional
-            
-            return new VideoGenerationService(
-                clientFactory,
-                capabilityService,
-                costService,
-                virtualKeyService,
-                mediaStorage,
-                taskService,
-                logger,
-                modelMappingService,
-                publishEndpoint,
-                taskRegistry);
-        });
-
-        // Configure Video Generation Retry Settings
-        builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryConfiguration>(options =>
-        {
-            options.MaxRetries = builder.Configuration.GetValue<int>("VideoGeneration:MaxRetries", 3);
-            options.BaseDelaySeconds = builder.Configuration.GetValue<int>("VideoGeneration:BaseDelaySeconds", 30);
-            options.MaxDelaySeconds = builder.Configuration.GetValue<int>("VideoGeneration:MaxDelaySeconds", 3600);
-            options.EnableRetries = builder.Configuration.GetValue<bool>("VideoGeneration:EnableRetries", true);
-            options.RetryCheckIntervalSeconds = builder.Configuration.GetValue<int>("VideoGeneration:RetryCheckIntervalSeconds", 30);
-        });
-
-        // Register HTTP client for external image fetching (used by IImageDownloadService)
-        builder.Services.AddHttpClient(ConduitLLM.Core.Services.ImageDownloadService.HttpClientName, client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
-            client.DefaultRequestHeaders.Add("Accept", "image/*");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 20,
-            EnableMultipleHttp2Connections = true
-        })
-        .AddPolicyHandler(GetImageDownloadRetryPolicy());
-
-        // Register IImageDownloadService for DI-friendly image downloading
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IImageDownloadService, ConduitLLM.Core.Services.ImageDownloadService>();
-        Console.WriteLine("[Conduit] Image download service registered with connection pooling");
-
-        // Register HTTP clients for function providers (Exa and Tavily)
-        builder.Services.AddHttpClient("ExaFunctionClient", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 10,
-            EnableMultipleHttp2Connections = true
-        })
-        .AddPolicyHandler(GetRetryPolicy());
-
-        builder.Services.AddHttpClient("TavilyFunctionClient", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 10,
-            EnableMultipleHttp2Connections = true
-        })
-        .AddPolicyHandler(GetRetryPolicy());
-        Console.WriteLine("[Conduit] Function provider HTTP clients registered (Exa, Tavily)");
-
-        // Register HTTP client for image downloads with retry policies
-        builder.Services.AddHttpClient("ImageDownload", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(60); // Timeout for large images
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-ImageDownloader/1.0");
-            client.DefaultRequestHeaders.Add("Accept", "image/*");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 20,
-            EnableMultipleHttp2Connections = true,
-            MaxResponseHeadersLength = 64 * 1024,
-            ResponseDrainTimeout = TimeSpan.FromSeconds(10),
-            ConnectTimeout = TimeSpan.FromSeconds(10),
-            AutomaticDecompression = System.Net.DecompressionMethods.All, // Handle gzip/deflate
-            AllowAutoRedirect = true, // Handle redirects automatically
-            MaxAutomaticRedirections = 5 // Limit redirect chains
-        })
-        .AddPolicyHandler(GetImageDownloadRetryPolicy())
-        .AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(120))); // Overall timeout including retries
-
-        // Register HTTP client for video downloads with retry policies
-        builder.Services.AddHttpClient("VideoDownload", client =>
-        {
-            client.Timeout = TimeSpan.FromMinutes(10); // Much longer timeout for large videos
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-VideoDownloader/1.0");
-            client.DefaultRequestHeaders.Add("Accept", "video/*");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(10),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-            MaxConnectionsPerServer = 10, // Fewer connections for large transfers
-            EnableMultipleHttp2Connections = true,
-            MaxResponseHeadersLength = 64 * 1024,
-            ResponseDrainTimeout = TimeSpan.FromSeconds(30),
-            ConnectTimeout = TimeSpan.FromSeconds(30),
-            AutomaticDecompression = System.Net.DecompressionMethods.All,
-            AllowAutoRedirect = true,
-            MaxAutomaticRedirections = 5
-        })
-        .AddPolicyHandler(GetVideoDownloadRetryPolicy())
-        .AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromMinutes(15))); // Overall timeout including retries
-
-        // Register Webhook Notification Service with optimized configuration for high throughput
-        builder.Services.AddTransient<ConduitLLM.Gateway.Handlers.WebhookMetricsHandler>();
-        builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(
-            "WebhookClient", 
-            client =>
-            {
-                client.Timeout = TimeSpan.FromSeconds(10); // Reduced from 30s for better scalability
-                client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
-                client.DefaultRequestHeaders.ConnectionClose = false; // Keep-alive for connection reuse
-            })
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-            {
-                PooledConnectionLifetime = TimeSpan.FromMinutes(5),     // Refresh connections every 5 minutes
-                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),  // Close idle connections after 2 minutes
-                MaxConnectionsPerServer = 100,                          // Support 1000+ webhooks/min (17/sec avg, 100 concurrent)
-                EnableMultipleHttp2Connections = true,                  // Allow multiple HTTP/2 connections
-                MaxResponseHeadersLength = 64 * 1024,                   // 64KB for headers
-                ResponseDrainTimeout = TimeSpan.FromSeconds(5),         // Drain response within 5 seconds
-                ConnectTimeout = TimeSpan.FromSeconds(5),               // Connection timeout
-                KeepAlivePingTimeout = TimeSpan.FromSeconds(20),        // HTTP/2 keep-alive ping timeout
-                KeepAlivePingDelay = TimeSpan.FromSeconds(30)           // HTTP/2 keep-alive ping delay
-            })
-            .AddPolicyHandler(GetWebhookRetryPolicy())
-            .AddPolicyHandler(GetWebhookCircuitBreakerPolicy())
-            .AddHttpMessageHandler<ConduitLLM.Gateway.Handlers.WebhookMetricsHandler>();
-
-        // Register Webhook Circuit Breaker for preventing repeated failures
-        builder.Services.AddMemoryCache(); // Ensure memory cache is available
-        builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookCircuitBreaker>(sp =>
-        {
-            var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
-            
-            if (redis != null)
-            {
-                // Use Redis-based distributed circuit breaker when available
-                var redisLogger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisWebhookCircuitBreaker>>();
-                return new ConduitLLM.Core.Services.RedisWebhookCircuitBreaker(
-                    redis,
-                    redisLogger,
-                    failureThreshold: 5,
-                    openDuration: TimeSpan.FromMinutes(5),
-                    halfOpenTestInterval: TimeSpan.FromSeconds(30));
-            }
-            else
-            {
-                // Fall back to in-memory circuit breaker
-                var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
-                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.WebhookCircuitBreaker>>();
-                
-                return new ConduitLLM.Core.Services.WebhookCircuitBreaker(
-                    cache, 
-                    logger, 
-                    failureThreshold: 5,
-                    openDuration: TimeSpan.FromMinutes(5),
-                    counterResetDuration: TimeSpan.FromMinutes(15));
-            }
-        });
-
-        // Register provider model list service
-        // OBSOLETE: External model discovery is no longer used. 
-        // The ProviderModelsController now returns models from the local database.
-        // builder.Services.AddScoped<IModelListService, ModelListService>();
-
-        // Model discovery providers have been migrated to sister classes
-
-        // Configure HttpClient for discovery providers
-        builder.Services.AddHttpClient("DiscoveryProviders", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
-        });
-
-
-        // Register async task service
         // Register cancellable task registry
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ICancellableTaskRegistry, ConduitLLM.Core.Services.CancellableTaskRegistry>();
+        builder.Services.AddSingleton<ICancellableTaskRegistry, CancellableTaskRegistry>();
 
         // Always use hybrid database+cache task management
-        // This provides consistency across all deployments and proper event publishing
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
+        builder.Services.AddScoped<IAsyncTaskService>(sp =>
         {
             var repository = sp.GetRequiredService<IAsyncTaskRepository>();
             var cache = sp.GetRequiredService<IDistributedCache>();
             var publishEndpoint = sp.GetService<MassTransit.IPublishEndpoint>(); // Optional
-            var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();
-            
+            var logger = sp.GetRequiredService<ILogger<HybridAsyncTaskService>>();
+
             return publishEndpoint != null
-                ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, publishEndpoint, logger)
-                : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
+                ? new HybridAsyncTaskService(repository, cache, publishEndpoint, logger)
+                : new HybridAsyncTaskService(repository, cache, logger);
         });
 
-        // Register Conduit service
+        // ========== Conduit Service ==========
+
         builder.Services.AddScoped<Conduit>();
 
-        // Register File Retrieval Service with retry-enabled HttpClient for resilient URL fetching
-        builder.Services.AddHttpClient<ConduitLLM.Core.Interfaces.IFileRetrievalService, ConduitLLM.Core.Services.FileRetrievalService>()
-            .AddPolicyHandler(GetRetryPolicy())
-            .ConfigureHttpClient(client =>
-            {
-                client.Timeout = TimeSpan.FromSeconds(60); // Longer timeout for file downloads
-            });
+        // ========== Model Capability Services ==========
 
-        // Register Model Capability services (capability detection and caching)
         builder.Services.AddModelCapabilityServices(builder.Configuration);
 
-        // Register Function repositories
-        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository, ConduitLLM.Configuration.Repositories.FunctionConfigurationRepository>();
+        // ========== Function Services ==========
 
-        // Register Function services
-        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostService, ConduitLLM.Functions.Services.FunctionCostService>();
-        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostCalculationService, ConduitLLM.Functions.Services.FunctionCostCalculationService>();
-        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionClientFactory, ConduitLLM.Functions.Services.FunctionClientFactory>();
-        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionExecutionService, ConduitLLM.Functions.Services.FunctionExecutionService>();
-        builder.Services.AddScoped<ConduitLLM.Functions.Services.FunctionParameterValidationService>();
+        builder.Services.AddFunctionServices();
 
-        // Register Function Call Audit service with leader election
-        builder.Services.AddSingleton<ConduitLLM.Functions.Interfaces.IFunctionCallAuditService, ConduitLLM.Configuration.Services.FunctionCallAuditService>();
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.FunctionCallAuditService>(
-            provider => provider.GetRequiredService<ConduitLLM.Functions.Interfaces.IFunctionCallAuditService>() as ConduitLLM.Configuration.Services.FunctionCallAuditService
-            ?? throw new InvalidOperationException("FunctionCallAuditService must implement IHostedService"),
-            "FunctionCallAuditService");
-
-        // Register Agentic Function Calling services
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IFunctionDiscoveryService, ConduitLLM.Core.Services.FunctionDiscoveryService>();
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAgenticOrchestrationService, ConduitLLM.Core.Services.AgenticOrchestrationService>();
+        // ========== Cache Services ==========
 
         // Register Batch Cache Invalidation service
         builder.Services.AddBatchCacheInvalidation(builder.Configuration);
-        
+
         // Register Discovery Cache service for model discovery endpoint caching
         builder.Services.AddDiscoveryCache(builder.Configuration);
 
@@ -721,123 +183,10 @@ public partial class Program
         Console.WriteLine("[Conduit] Function Discovery Cache registered - function tool definitions will be cached based on per-function TTL");
 
         // Register Redis batch operations for optimized cache management
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisBatchOperations, ConduitLLM.Gateway.Services.RedisBatchOperations>();
+        builder.Services.AddSingleton<IRedisBatchOperations, RedisBatchOperations>();
 
+        // ========== Media Generation Services ==========
 
-
-        // Register Image Generation Retry Configuration
-        builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationRetryConfiguration>(
-            builder.Configuration.GetSection("ConduitLLM:ImageGenerationRetry"));
-
-        // Add background services for monitoring and cleanup (skip in test environment to prevent endless loops)
-        if (builder.Environment.EnvironmentName != "Test")
-        {
-            // Add database-based background service for image generation
-            // REMOVED: ImageGenerationDatabaseBackgroundService - Events are now processed by ImageGenerationOrchestrator consumer
-
-            // DISABLED: VideoGenerationBackgroundService causes duplicate event publishing
-            // The VideoGenerationService already publishes VideoGenerationRequested events directly
-            // builder.Services.AddHostedService<VideoGenerationBackgroundService>();
-
-            // Add background service for image generation metrics cleanup
-            // ImageGenerationMetricsCleanupService removed - metrics handled differently now
-            
-            // Register media generation metrics
-            builder.Services.AddSingleton<ConduitLLM.Core.Metrics.MediaGenerationMetrics>();
-            
-            // Register media generation orchestrators
-            builder.Services.AddScoped<ImageGenerationOrchestrator>();
-            builder.Services.AddScoped<VideoGenerationOrchestrator>();
-        }
-
-        Console.WriteLine("[Conduit] Image generation configured with database-first architecture");
-        Console.WriteLine("[Conduit] Image generation supports multi-instance deployment with lease-based task processing");
-        Console.WriteLine("[Conduit] Image generation performance tracking and optimization enabled");
-    }
-
-    // Polly retry policy for image downloads with exponential backoff
-    static IAsyncPolicy<HttpResponseMessage> GetImageDownloadRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError() // Handles HttpRequestException and 5XX, 408 status codes
-            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            .WaitAndRetryAsync(
-                3, // Retry up to 3 times
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff: 2, 4, 8 seconds
-                onRetry: (outcome, timespan, retryCount, context) =>
-                {
-                    // Log retry attempts (logger will be injected via DI in actual use)
-                    var logger = context.Values.FirstOrDefault() as ILogger;
-                    logger?.LogWarning("Image download retry {RetryCount} after {Delay}ms", retryCount, timespan.TotalMilliseconds);
-                });
-    }
-
-    // Polly retry policy for video downloads with longer exponential backoff
-    static IAsyncPolicy<HttpResponseMessage> GetVideoDownloadRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            .WaitAndRetryAsync(
-                3, // Retry up to 3 times
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)), // Longer backoff: 3, 9, 27 seconds
-                onRetry: (outcome, timespan, retryCount, context) =>
-                {
-                    var logger = context.Values.FirstOrDefault() as ILogger;
-                    logger?.LogWarning("Video download retry {RetryCount} after {Delay}s", retryCount, timespan.TotalSeconds);
-                });
-    }
-
-    // Polly retry policy for webhook delivery
-    static IAsyncPolicy<HttpResponseMessage> GetWebhookRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .OrResult(msg => !msg.IsSuccessStatusCode && msg.StatusCode != System.Net.HttpStatusCode.BadRequest)
-            .WaitAndRetryAsync(
-                3,
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff: 2s, 4s, 8s
-                onRetry: (outcome, timespan, retryCount, context) =>
-                {
-                    // Log retry attempts to console (logger not available in static context)
-                    Console.WriteLine($"[Webhook Retry] Attempt {retryCount} after {timespan.TotalMilliseconds}ms. Status: {outcome.Result?.StatusCode.ToString() ?? "N/A"}");
-                });
-    }
-
-    // Polly circuit breaker policy for webhook delivery
-    static IAsyncPolicy<HttpResponseMessage> GetWebhookCircuitBreakerPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .CircuitBreakerAsync(
-                handledEventsAllowedBeforeBreaking: 5,
-                durationOfBreak: TimeSpan.FromMinutes(1),
-                onBreak: (result, duration) =>
-                {
-                    // Circuit breaker opened - this will be logged by the WebhookCircuitBreaker service
-                    Console.WriteLine($"[Webhook Circuit Breaker] Opened for {duration.TotalSeconds} seconds");
-                },
-                onReset: () =>
-                {
-                    // Circuit breaker closed
-                    Console.WriteLine("[Webhook Circuit Breaker] Reset");
-                });
-    }
-
-    /// <summary>
-    /// Creates a standard retry policy for HTTP requests.
-    /// Uses exponential backoff with jitter to handle transient failures.
-    /// </summary>
-    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError() // Handles 5xx status codes and connection failures
-            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            .WaitAndRetryAsync(
-                retryCount: 3,
-                sleepDurationProvider: retryAttempt =>
-                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) + // Exponential backoff
-                    TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000)) // Jitter
-            );
+        builder.Services.AddMediaGenerationServices(builder.Configuration, builder.Environment);
     }
 }
