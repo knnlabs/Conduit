@@ -485,11 +485,12 @@ namespace ConduitLLM.Providers.MiniMax
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
-            
-            // Set a very long timeout for video generation (1 hour)
-            client.Timeout = TimeSpan.FromHours(1);
-            
-            Logger.LogInformation("Created video HTTP client with 1-hour timeout and no Polly policies (bypassing factory: {BypassFactory})", HttpClientFactory == null);
+
+            // Use large file download timeout for video files
+            client.Timeout = LargeFileDownloadTimeout;
+
+            Logger.LogInformation("Created video HTTP client with {Timeout} timeout and no Polly policies (bypassing factory: {BypassFactory})",
+                LargeFileDownloadTimeout, HttpClientFactory == null);
             
             return client;
         }

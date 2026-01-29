@@ -9,17 +9,48 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Common.Models;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
     /// <summary>
-    /// Base class for LLM client implementations that provides common functionality 
+    /// Base class for LLM client implementations that provides common functionality
     /// and standardized handling of requests, responses, and errors.
     /// </summary>
     public abstract class BaseLLMClient : ILLMClient, IAuthenticationVerifiable
     {
+        /// <summary>
+        /// Default timeout for standard API requests (2 minutes).
+        /// Matches <see cref="ProviderHttpClientOptions.DefaultTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(120);
+
+        /// <summary>
+        /// Timeout for authentication verification requests (30 seconds).
+        /// Matches <see cref="ProviderHttpClientOptions.AuthVerificationTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan AuthVerificationTimeout = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Timeout for image generation requests (3 minutes).
+        /// Matches <see cref="ProviderHttpClientOptions.ImageGenerationTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan ImageGenerationTimeout = TimeSpan.FromSeconds(180);
+
+        /// <summary>
+        /// Timeout for video generation requests (10 minutes).
+        /// Matches <see cref="ProviderHttpClientOptions.VideoGenerationTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan VideoGenerationTimeout = TimeSpan.FromMinutes(10);
+
+        /// <summary>
+        /// Timeout for large file downloads (30 minutes).
+        /// Matches <see cref="ProviderHttpClientOptions.LargeFileDownloadTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan LargeFileDownloadTimeout = TimeSpan.FromMinutes(30);
+
         protected readonly Provider Provider;
         protected readonly ProviderKeyCredential PrimaryKeyCredential;
         protected readonly string ProviderModelId;
@@ -122,9 +153,9 @@ namespace ConduitLLM.Providers
 
             // Configure authentication
             ConfigureAuthentication(client, apiKey);
-            
-            // Configure timeout
-            client.Timeout = TimeSpan.FromMinutes(5);
+
+            // Configure default timeout (can be overridden per-request)
+            client.Timeout = DefaultRequestTimeout;
         }
         
         /// <summary>
@@ -165,13 +196,13 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            
+
             // Configure authentication
             ConfigureAuthentication(client, apiKey);
-            
+
             // Use a shorter timeout for health checks
-            client.Timeout = TimeSpan.FromSeconds(30);
-            
+            client.Timeout = AuthVerificationTimeout;
+
             // Do NOT set BaseAddress - we'll be using absolute URLs
             return client;
         }

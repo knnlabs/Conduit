@@ -44,7 +44,8 @@ namespace ConduitLLM.Providers.MiniMax
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
             // Add Accept header for SSE streaming
             client.DefaultRequestHeaders.Add("Accept", "text/event-stream");
-            client.Timeout = TimeSpan.FromMinutes(10); // Long timeout for video processing
+            // Use video generation timeout since MiniMax supports video
+            client.Timeout = VideoGenerationTimeout;
         }
 
         /// <summary>
