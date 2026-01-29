@@ -237,8 +237,11 @@ namespace ConduitLLM.Core.Services
                     offset += segmentLength;
                 }
             }
-            catch { }
-            
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse JPEG dimensions from image bytes");
+            }
+
             return (0, 0);
         }
 
@@ -256,8 +259,11 @@ namespace ConduitLLM.Core.Services
                 int height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
                 return (width, height);
             }
-            catch { }
-            
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse PNG dimensions from image bytes");
+            }
+
             return (0, 0);
         }
 
@@ -274,8 +280,11 @@ namespace ConduitLLM.Core.Services
                 int height = bytes[8] | (bytes[9] << 8);
                 return (width, height);
             }
-            catch { }
-            
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse GIF dimensions from image bytes");
+            }
+
             return (0, 0);
         }
 
@@ -309,8 +318,11 @@ namespace ConduitLLM.Core.Services
                     }
                 }
             }
-            catch { }
-            
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse WebP dimensions from image bytes");
+            }
+
             return (0, 0);
         }
 
