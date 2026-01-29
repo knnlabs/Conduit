@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.AspNetCore.Authorization;
@@ -40,7 +41,8 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                var authors = await _repository.GetAllAsync();
+                var authors = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _repository.GetPaginatedAsync);
                 var dtos = authors.Select(a => MapToDto(a));
                 return Ok(dtos);
             }

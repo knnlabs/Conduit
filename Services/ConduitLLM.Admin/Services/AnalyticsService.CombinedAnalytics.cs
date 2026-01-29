@@ -3,6 +3,7 @@ using System.Diagnostics;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Extensions;
 
 using Microsoft.Extensions.Caching.Memory;
 
@@ -41,7 +42,8 @@ namespace ConduitLLM.Admin.Services
                 _metrics?.RecordFetchDuration("RequestLogRepository.GetByDateRangeAsync", fetchStopwatch.ElapsedMilliseconds);
                 
                 fetchStopwatch.Restart();
-                var virtualKeys = await _virtualKeyRepository.GetAllAsync();
+                var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _virtualKeyRepository.GetPaginatedAsync);
                 _metrics?.RecordFetchDuration("VirtualKeyRepository.GetAllAsync", fetchStopwatch.ElapsedMilliseconds);
                 var keyMap = virtualKeys.ToDictionary(k => k.Id, k => k.KeyName);
 

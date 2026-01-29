@@ -34,8 +34,9 @@ namespace ConduitLLM.Tests.Admin.Services
                 }
             };
 
-            _mockVirtualKeyRepository.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(keys);
+            _mockVirtualKeyRepository.Setup(x => x.GetPaginatedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((keys, keys.Count));
 
             _mockVirtualKeyRepository.Setup(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
@@ -46,7 +47,7 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             // Verify expired key was disabled
             Assert.False(keys[0].IsEnabled);
-            
+
             // Only the expired key should be updated
             _mockVirtualKeyRepository.Verify(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Once);
         }

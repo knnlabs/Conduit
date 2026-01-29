@@ -1,13 +1,13 @@
 using System.Text.Json;
 
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
-
-using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -253,7 +253,8 @@ namespace ConduitLLM.Core.Services
             if (mapping == null)
             {
                 // Try to find by provider model name
-                var allMappings = await _repository.GetAllAsync(cancellationToken);
+                var allMappings = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _repository.GetPaginatedAsync, cancellationToken: cancellationToken);
                 mapping = allMappings.FirstOrDefault(m =>
                     m.ProviderModelId.Equals(model, StringComparison.OrdinalIgnoreCase));
             }

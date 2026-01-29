@@ -127,8 +127,9 @@ namespace ConduitLLM.Tests.Core.Services
                 }
             };
 
-            mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdAsync(groupId, default))
-                .ReturnsAsync(virtualKeys);
+            mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                    groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((virtualKeys, virtualKeys.Count));
             _mockMediaRepository.Setup(x => x.GetByVirtualKeyIdAsync(1))
                 .ReturnsAsync(mediaForKey1);
             _mockMediaRepository.Setup(x => x.GetByVirtualKeyIdAsync(3))
@@ -177,8 +178,9 @@ namespace ConduitLLM.Tests.Core.Services
             const int groupId = 999;
             var virtualKeys = new List<VirtualKey>(); // Empty list
 
-            mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdAsync(groupId, default))
-                .ReturnsAsync(virtualKeys);
+            mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                    groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((virtualKeys, 0));
 
             // Act
             var result = await service.GetOverallStorageStatsAsync(groupId);

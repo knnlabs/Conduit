@@ -2,6 +2,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -25,8 +26,9 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 // Get all virtual keys
-                var allKeys = await _virtualKeyRepository.GetAllAsync();
-                _logger.LogInformation("Processing maintenance for {KeyCount} virtual keys", allKeys.Count());
+                var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _virtualKeyRepository.GetPaginatedAsync);
+                _logger.LogInformation("Processing maintenance for {KeyCount} virtual keys", allKeys.Count);
 
                 int keysDisabled = 0;
 

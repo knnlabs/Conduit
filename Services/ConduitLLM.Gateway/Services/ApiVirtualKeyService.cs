@@ -4,6 +4,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Gateway.Services
@@ -132,7 +133,8 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var virtualKeys = await _virtualKeyRepository.GetAllAsync();
+                var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _virtualKeyRepository.GetPaginatedAsync);
                 return [..virtualKeys.Select(MapToDto)];
             }
             catch (Exception ex)

@@ -17,34 +17,34 @@ namespace ConduitLLM.Tests.Admin.Services
             // Arrange
             var testLogs = new List<RequestLog>
             {
-                new() { 
-                    ModelName = "gpt-4", 
-                    Cost = 0.05m, 
+                new() {
+                    ModelName = "gpt-4",
+                    Cost = 0.05m,
                     Timestamp = DateTime.UtcNow.AddHours(-12), // Within last 24 hours
                     InputTokens = 100,
                     OutputTokens = 50
                 },
-                new() { 
-                    ModelName = "gpt-3.5-turbo", 
-                    Cost = 0.02m, 
+                new() {
+                    ModelName = "gpt-3.5-turbo",
+                    Cost = 0.02m,
                     Timestamp = DateTime.UtcNow.AddDays(-2),
                     InputTokens = 200,
                     OutputTokens = 100
                 }
             };
-            
+
             var virtualKeys = new List<VirtualKey>
             {
                 new() { Id = 1, KeyName = "Test Key 1" }
             };
-            
+
             _mockRequestLogRepository
                 .Setup(x => x.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(testLogs);
-            
+
             _mockVirtualKeyRepository
-                .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKeys);
+                .Setup(x => x.GetPaginatedAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((virtualKeys, virtualKeys.Count));
 
             // Act
             var result = await _service.GetCostSummaryAsync();
@@ -66,14 +66,16 @@ namespace ConduitLLM.Tests.Admin.Services
                 new() { ModelName = "gpt-4", Cost = 0.03m, Timestamp = DateTime.UtcNow },
                 new() { ModelName = "claude-3", Cost = 0.02m, Timestamp = DateTime.UtcNow }
             };
-            
+
+            var emptyKeys = new List<VirtualKey>();
+
             _mockRequestLogRepository
                 .Setup(x => x.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(testLogs);
-            
+
             _mockVirtualKeyRepository
-                .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<VirtualKey>());
+                .Setup(x => x.GetPaginatedAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((emptyKeys, 0));
 
             // Act
             var result = await _service.GetCostSummaryAsync();

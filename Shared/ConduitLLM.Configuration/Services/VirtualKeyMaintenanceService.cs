@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Services
 {
@@ -49,7 +50,8 @@ namespace ConduitLLM.Configuration.Services
                 var now = DateTime.UtcNow;
 
                 // Get all active keys with expiration dates that have passed
-                var allKeys = await _virtualKeyRepository.GetAllAsync();
+                var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _virtualKeyRepository.GetPaginatedAsync);
                 var expiredKeys = allKeys
                     .Where(k => k.IsEnabled)
                     .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt.Value < now)

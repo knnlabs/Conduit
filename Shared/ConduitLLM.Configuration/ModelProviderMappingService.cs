@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Utilities;
 
@@ -87,7 +88,8 @@ namespace ConduitLLM.Configuration
             try
             {
                 _logger.LogInformation("Getting all model-provider mappings");
-                return await _repository.GetAllAsync();
+                return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _repository.GetPaginatedAsync);
             }
             catch (Exception ex)
             {
@@ -299,7 +301,8 @@ namespace ConduitLLM.Configuration
             try
             {
                 _logger.LogInformation("Getting all available providers");
-                var providers = await _providerRepository.GetAllAsync();
+                var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _providerRepository.GetPaginatedAsync);
                 return providers.Select(p => (p.Id, p.ProviderName)).ToList();
             }
             catch (Exception ex)

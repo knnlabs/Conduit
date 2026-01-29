@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.Extensions.Logging;
@@ -63,7 +64,9 @@ namespace ConduitLLM.Configuration.Services
                 var now = DateTime.UtcNow;
                 var warningDate = now.AddDays(ExpirationWarningDays);
 
-                var keys = (await _virtualKeyRepository.GetAllAsync())
+                var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _virtualKeyRepository.GetPaginatedAsync);
+                var keys = allKeys
                     .Where(k => k.IsEnabled && k.ExpiresAt.HasValue)
                     .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt <= warningDate)
                     .ToList();
@@ -107,7 +110,8 @@ namespace ConduitLLM.Configuration.Services
             try
             {
                 // Get existing notifications for this key
-                var notifications = await _notificationRepository.GetAllAsync();
+                var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetPaginatedAsync);
                 var existingNotification = notifications
                     .Where(n => n.VirtualKeyId == key.Id)
                     .Where(n => n.Type == NotificationType.BudgetWarning)
@@ -156,7 +160,8 @@ namespace ConduitLLM.Configuration.Services
             try
             {
                 // Get existing notifications for this key
-                var notifications = await _notificationRepository.GetAllAsync();
+                var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetPaginatedAsync);
                 var existingNotification = notifications
                     .Where(n => n.VirtualKeyId == key.Id)
                     .Where(n => n.Type == NotificationType.ExpirationWarning)
@@ -234,7 +239,9 @@ namespace ConduitLLM.Configuration.Services
         {
             try
             {
-                var notifications = (await _notificationRepository.GetAllAsync())
+                var allNotifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetPaginatedAsync);
+                var notifications = allNotifications
                     .Where(n => n.VirtualKeyId == virtualKeyId && !n.IsRead)
                     .ToList();
 
@@ -259,7 +266,8 @@ namespace ConduitLLM.Configuration.Services
         {
             try
             {
-                var notifications = await _notificationRepository.GetAllAsync();
+                var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetPaginatedAsync);
                 return notifications
                     .Where(n => n.VirtualKeyId == virtualKeyId && !n.IsRead)
                     .OrderByDescending(n => n.CreatedAt)

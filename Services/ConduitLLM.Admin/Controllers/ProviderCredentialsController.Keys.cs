@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Admin.Extensions;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,7 +21,8 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                var keys = await _keyRepository.GetByProviderIdAsync(providerId);
+                var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
                 var result = keys.Select(k => new
                 {
                     k.Id,
@@ -313,7 +315,8 @@ namespace ConduitLLM.Admin.Controllers
                 }
 
                 // Unset all other primary keys for this provider
-                var allKeys = await _keyRepository.GetByProviderIdAsync(providerId);
+                var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
                 foreach (var otherKey in allKeys.Where(k => k.IsPrimary && k.Id != keyId))
                 {
                     otherKey.IsPrimary = false;

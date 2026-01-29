@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Admin.Services
@@ -119,11 +120,13 @@ namespace ConduitLLM.Admin.Services
             IEnumerable<ModelCost> modelCosts;
             if (providerId != null)
             {
-                modelCosts = await _modelCostRepository.GetByProviderAsync(providerId.Value);
+                modelCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _modelCostRepository.GetByProviderPaginatedAsync, providerId.Value);
             }
             else
             {
-                modelCosts = await _modelCostRepository.GetAllAsync();
+                modelCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _modelCostRepository.GetPaginatedAsync);
             }
 
             format = format?.ToLowerInvariant() ?? "json";

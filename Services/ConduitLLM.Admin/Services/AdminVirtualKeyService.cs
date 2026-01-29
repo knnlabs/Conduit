@@ -6,6 +6,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Events;
@@ -183,13 +184,15 @@ namespace ConduitLLM.Admin.Services
             if (virtualKeyGroupId.HasValue)
             {
                 _logger.LogInformation("Listing virtual keys for group {GroupId}", virtualKeyGroupId.Value);
-                var keysByGroup = await _virtualKeyRepository.GetByVirtualKeyGroupIdAsync(virtualKeyGroupId.Value);
+                var keysByGroup = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _virtualKeyRepository.GetByVirtualKeyGroupIdPaginatedAsync, virtualKeyGroupId.Value);
                 return keysByGroup.ConvertAll(MapToDto);
             }
             else
             {
                 _logger.LogInformation("Listing all virtual keys");
-                var keys = await _virtualKeyRepository.GetAllAsync();
+                var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _virtualKeyRepository.GetPaginatedAsync);
                 return keys.ConvertAll(MapToDto);
             }
         }

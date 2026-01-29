@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.Extensions.Caching.Memory;
@@ -74,7 +75,8 @@ public class ModelCostService : IModelCostService
             _logger.LogDebug("Cache miss for model cost: {ModelId}, querying database", modelId);
 
             // Get all model costs with their associated ModelProviderTypeAssociations
-            var allCosts = await _modelCostRepository.GetAllAsync(cancellationToken);
+            var allCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _modelCostRepository.GetPaginatedAsync, cancellationToken: cancellationToken);
             
             // Find a cost where one of its associated ModelProviderTypeAssociations has this identifier
             var now = DateTime.UtcNow;
@@ -158,7 +160,8 @@ public class ModelCostService : IModelCostService
                 return cachedCosts;
             }
 
-            var costs = await _modelCostRepository.GetAllAsync(cancellationToken);
+            var costs = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _modelCostRepository.GetPaginatedAsync, cancellationToken: cancellationToken);
 
             await SetInHybridCacheAsync(AllModelsCacheKey, costs);
             return costs;

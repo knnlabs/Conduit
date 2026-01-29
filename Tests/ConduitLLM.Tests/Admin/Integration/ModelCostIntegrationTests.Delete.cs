@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Extensions;
 
 using FluentAssertions;
 
@@ -19,7 +20,8 @@ namespace ConduitLLM.Tests.Admin.Integration
         {
             // Arrange
             var providerId = await SetupTestDataAsync();
-            var mappings = await _modelMappingRepository.GetAllAsync();
+            var mappings = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _modelMappingRepository.GetPaginatedAsync);
             var mappingIds = mappings.Select(m => m.Id).ToList();
 
             var createDto = new CreateModelCostDto

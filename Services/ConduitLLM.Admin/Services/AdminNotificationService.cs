@@ -1,7 +1,7 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
-
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
@@ -37,7 +37,8 @@ namespace ConduitLLM.Admin.Services
             {
                 _logger.LogInformation("Getting all notifications");
 
-                var notifications = await _notificationRepository.GetAllAsync();
+                var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetPaginatedAsync);
                 var virtualKeyIds = notifications
                     .Where(n => n.VirtualKeyId.HasValue)
                     .Select(n => n.VirtualKeyId!.Value)
@@ -80,7 +81,8 @@ namespace ConduitLLM.Admin.Services
             {
                 _logger.LogInformation("Getting unread notifications");
 
-                var notifications = await _notificationRepository.GetUnreadAsync();
+                var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetUnreadPaginatedAsync);
                 var virtualKeyIds = notifications
                     .Where(n => n.VirtualKeyId.HasValue)
                     .Select(n => n.VirtualKeyId!.Value)
@@ -250,7 +252,8 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogInformation("Marking all notifications as read");
 
                 // Get all unread notifications
-                var unreadNotifications = await _notificationRepository.GetUnreadAsync();
+                var unreadNotifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetUnreadPaginatedAsync);
                 if (!unreadNotifications.Any())
                 {
                     return 0;

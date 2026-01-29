@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Events;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -170,7 +171,8 @@ namespace ConduitLLM.Core.Services
                     await _errorStore.AddDisabledKeyToProviderAsync(key.ProviderId, keyId);
                     
                     // Check if all keys are now disabled - if so, disable the provider
-                    var allKeys = await keyRepo.GetByProviderIdAsync(key.ProviderId);
+                    var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                        keyRepo.GetByProviderIdPaginatedAsync, key.ProviderId);
                     if (allKeys.All(k => !k.IsEnabled))
                     {
                         var provider = await providerRepo.GetByIdAsync(key.ProviderId);
@@ -241,8 +243,9 @@ namespace ConduitLLM.Core.Services
         {
             using var scope = _scopeFactory.CreateScope();
             var keyRepo = scope.ServiceProvider.GetRequiredService<IProviderKeyCredentialRepository>();
-            
-            var keys = await keyRepo.GetByProviderIdAsync(providerId);
+
+            var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                keyRepo.GetByProviderIdPaginatedAsync, providerId);
             var keyIds = keys.Select(k => k.Id).ToList();
             
             var errorCounts = await _errorStore.GetErrorCountsByKeysAsync(providerId, keyIds, window);
@@ -338,7 +341,8 @@ namespace ConduitLLM.Core.Services
             using (var scope = _scopeFactory.CreateScope())
             {
                 var keyRepo = scope.ServiceProvider.GetRequiredService<IProviderKeyCredentialRepository>();
-                var keys = await keyRepo.GetAllAsync();
+                var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    keyRepo.GetPaginatedAsync);
                 stats.DisabledKeys = keys.Count(k => !k.IsEnabled);
             }
             

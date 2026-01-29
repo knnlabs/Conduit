@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Exceptions;
+using ConduitLLM.Configuration.Extensions;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
@@ -83,11 +84,12 @@ namespace ConduitLLM.Configuration
         public async Task<List<Provider>> GetAllProvidersAsync()
         {
             _logger.LogInformation("Getting all providers");
-            
+
             try
             {
-                var providers = await _repository.GetAllAsync();
-                _logger.LogInformation("Retrieved {Count} providers", providers.Count());
+                var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _repository.GetPaginatedAsync);
+                _logger.LogInformation("Retrieved {Count} providers", providers.Count);
                 return providers;
             }
             catch (Exception ex)
@@ -130,12 +132,13 @@ namespace ConduitLLM.Configuration
         public async Task<List<Provider>> GetAllEnabledProvidersAsync()
         {
             _logger.LogInformation("Getting all enabled providers");
-            
+
             try
             {
-                var providers = await _repository.GetAllAsync();
+                var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _repository.GetPaginatedAsync);
                 var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
-                _logger.LogInformation("Retrieved {Count} enabled providers out of {Total} total", enabledProviders.Count(), providers.Count());
+                _logger.LogInformation("Retrieved {Count} enabled providers out of {Total} total", enabledProviders.Count, providers.Count);
                 return enabledProviders;
             }
             catch (Exception ex)
@@ -180,11 +183,12 @@ namespace ConduitLLM.Configuration
         public async Task<List<ProviderKeyCredential>> GetAllCredentialsAsync()
         {
             _logger.LogInformation("Getting all key credentials across all providers");
-            
+
             try
             {
-                var credentials = await _keyRepository.GetAllAsync();
-                _logger.LogInformation("Retrieved {Count} key credentials across all providers", credentials.Count());
+                var credentials = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetPaginatedAsync);
+                _logger.LogInformation("Retrieved {Count} key credentials across all providers", credentials.Count);
                 return credentials;
             }
             catch (Exception ex)
@@ -197,10 +201,11 @@ namespace ConduitLLM.Configuration
         public async Task<List<ProviderKeyCredential>> GetKeyCredentialsByProviderIdAsync(int providerId)
         {
             _logger.LogInformation("Getting key credentials for provider ID: {ProviderId}", providerId);
-            
+
             try
             {
-                return await _keyRepository.GetByProviderIdAsync(providerId);
+                return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
             }
             catch (Exception ex)
             {
@@ -243,7 +248,8 @@ namespace ConduitLLM.Configuration
                 }
 
                 // If this is the first key or marked as primary, ensure it's the only primary
-                var existingKeys = await _keyRepository.GetByProviderIdAsync(providerId);
+                var existingKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
                 if (!existingKeys.Any() || keyCredential.IsPrimary)
                 {
                     // Unset any existing primary keys
@@ -256,9 +262,10 @@ namespace ConduitLLM.Configuration
                 }
 
                 keyCredential.ProviderId = providerId;
-                
+
                 // Check if this API key already exists for this provider
-                var allProviderKeys = await _keyRepository.GetByProviderIdAsync(providerId);
+                var allProviderKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
                 if (allProviderKeys.Any(k => k.ApiKey == keyCredential.ApiKey))
                 {
                     var provider = await _repository.GetByIdAsync(providerId);

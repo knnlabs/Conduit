@@ -258,7 +258,8 @@ namespace ConduitLLM.Admin.Controllers
                     return NotFound($"Model with ID {id} not found");
                 }
 
-                var providers = await _providerRepository.GetAllAsync();
+                var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _providerRepository.GetPaginatedAsync);
                 var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
 
                 var result = new List<object>();

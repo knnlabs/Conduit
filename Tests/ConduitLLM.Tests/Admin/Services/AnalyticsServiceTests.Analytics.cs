@@ -17,8 +17,8 @@ namespace ConduitLLM.Tests.Admin.Services
             // Arrange
             var testLogs = new List<RequestLog>
             {
-                new() { 
-                    ModelName = "gpt-4", 
+                new() {
+                    ModelName = "gpt-4",
                     Cost = 0.05m,
                     InputTokens = 100,
                     OutputTokens = 50,
@@ -27,8 +27,8 @@ namespace ConduitLLM.Tests.Admin.Services
                     Timestamp = DateTime.UtcNow,
                     VirtualKeyId = 1
                 },
-                new() { 
-                    ModelName = "gpt-3.5-turbo", 
+                new() {
+                    ModelName = "gpt-3.5-turbo",
                     Cost = 0.02m,
                     InputTokens = 200,
                     OutputTokens = 100,
@@ -37,8 +37,8 @@ namespace ConduitLLM.Tests.Admin.Services
                     Timestamp = DateTime.UtcNow,
                     VirtualKeyId = 2
                 },
-                new() { 
-                    ModelName = "gpt-4", 
+                new() {
+                    ModelName = "gpt-4",
                     Cost = 0.00m,
                     InputTokens = 50,
                     OutputTokens = 0,
@@ -48,20 +48,20 @@ namespace ConduitLLM.Tests.Admin.Services
                     VirtualKeyId = 1
                 }
             };
-            
+
             var virtualKeys = new List<VirtualKey>
             {
                 new() { Id = 1, KeyName = "Production Key" },
                 new() { Id = 2, KeyName = "Development Key" }
             };
-            
+
             _mockRequestLogRepository
                 .Setup(x => x.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(testLogs);
-            
+
             _mockVirtualKeyRepository
-                .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKeys);
+                .Setup(x => x.GetPaginatedAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((virtualKeys, virtualKeys.Count));
 
             // Act
             var result = await _service.GetAnalyticsSummaryAsync();

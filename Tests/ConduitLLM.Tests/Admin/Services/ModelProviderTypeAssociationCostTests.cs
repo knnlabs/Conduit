@@ -72,8 +72,10 @@ namespace ConduitLLM.Tests.Admin.Services
                 }
             };
 
-            _mockModelCostRepository.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ModelCost> { expectedCost });
+            var costs = new List<ModelCost> { expectedCost };
+            _mockModelCostRepository.Setup(x => x.GetPaginatedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((costs, costs.Count));
 
             // Act
             var result = await _service.GetCostForModelAsync(modelIdentifier);
@@ -123,8 +125,9 @@ namespace ConduitLLM.Tests.Admin.Services
                 }
             };
 
-            _mockModelCostRepository.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(costs);
+            _mockModelCostRepository.Setup(x => x.GetPaginatedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((costs, costs.Count));
 
             // Act
             var result = await _service.GetCostForModelAsync(modelIdentifier);
@@ -158,8 +161,10 @@ namespace ConduitLLM.Tests.Admin.Services
                 }
             };
 
-            _mockModelCostRepository.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ModelCost> { cost });
+            var costs = new List<ModelCost> { cost };
+            _mockModelCostRepository.Setup(x => x.GetPaginatedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((costs, costs.Count));
 
             // Act
             var result = await _service.GetCostForModelAsync(modelIdentifier);
@@ -192,8 +197,10 @@ namespace ConduitLLM.Tests.Admin.Services
                 }
             };
 
-            _mockModelCostRepository.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ModelCost> { cost });
+            var costs = new List<ModelCost> { cost };
+            _mockModelCostRepository.Setup(x => x.GetPaginatedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((costs, costs.Count));
 
             // Act
             var result = await _service.GetCostForModelAsync(modelIdentifier);

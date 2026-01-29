@@ -4,6 +4,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
@@ -168,7 +169,8 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                var modelCosts = await _modelCostRepository.GetAllAsync();
+                var modelCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _modelCostRepository.GetPaginatedAsync);
                 return modelCosts.Select(mc => mc.ToDto()).ToList();
             }
             catch (Exception ex)
@@ -265,7 +267,8 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                var modelCosts = await _modelCostRepository.GetByProviderAsync(providerId);
+                var modelCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _modelCostRepository.GetByProviderPaginatedAsync, providerId);
                 return modelCosts.Select(mc => mc.ToDto()).ToList();
             }
             catch (Exception ex)

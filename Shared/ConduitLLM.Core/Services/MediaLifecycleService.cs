@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
@@ -354,7 +355,8 @@ namespace ConduitLLM.Core.Services
                     }
                     
                     // Get virtual keys for this group
-                    var virtualKeys = await _virtualKeyRepository.GetByVirtualKeyGroupIdAsync(virtualKeyGroupId.Value);
+                    var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                        _virtualKeyRepository.GetByVirtualKeyGroupIdPaginatedAsync, virtualKeyGroupId.Value);
                     var virtualKeyIds = virtualKeys.Select(vk => vk.Id).ToList();
                     
                     // Get media only for these virtual keys

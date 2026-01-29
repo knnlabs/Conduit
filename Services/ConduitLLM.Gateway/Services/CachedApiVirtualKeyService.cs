@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
@@ -245,7 +246,8 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var virtualKeys = await _virtualKeyRepository.GetAllAsync();
+                var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _virtualKeyRepository.GetPaginatedAsync);
                 return [..virtualKeys.Select(VirtualKeyUtilities.MapToDto)];
             }
             catch (Exception ex)

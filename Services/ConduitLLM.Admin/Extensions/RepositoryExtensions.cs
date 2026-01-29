@@ -1,6 +1,6 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
-
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Extensions
 {
@@ -49,7 +49,8 @@ namespace ConduitLLM.Admin.Extensions
             string keyName,
             CancellationToken cancellationToken = default)
         {
-            var keys = await repository.GetAllAsync(cancellationToken);
+            var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                repository.GetPaginatedAsync, cancellationToken: cancellationToken);
             return keys.FirstOrDefault(k => k.KeyName.Equals(keyName, StringComparison.OrdinalIgnoreCase));
         }
 
