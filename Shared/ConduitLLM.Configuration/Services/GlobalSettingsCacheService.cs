@@ -319,7 +319,7 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
             using (var scope = _scopeFactory.CreateScope())
             {
                 var repository = scope.ServiceProvider.GetRequiredService<IGlobalSettingRepository>();
-                var settings = await repository.GetAllAsync();
+                var settings = await repository.GetAllUnboundedAsync();
 
                 foreach (var setting in settings)
                 {

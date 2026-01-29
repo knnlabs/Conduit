@@ -45,7 +45,7 @@ public class FunctionCredentialsController : ControllerBase
     {
         try
         {
-            var credentials = await _credentialRepository.GetAllAsync();
+            var credentials = await _credentialRepository.GetAllUnboundedAsync();
             return Ok(credentials);
         }
         catch (Exception ex)

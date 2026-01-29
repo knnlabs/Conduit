@@ -44,7 +44,7 @@ namespace ConduitLLM.Admin.Services
             {
                 _logger.LogInformation("Getting all global settings");
 
-                var settings = await _globalSettingRepository.GetAllAsync();
+                var settings = await _globalSettingRepository.GetAllUnboundedAsync();
                 return settings.Select(s => s.ToDto()).ToList();
             }
             catch (Exception ex)

@@ -243,4 +243,36 @@ public abstract class FunctionRepositoryBase<TEntity, TKey>
             throw;
         }
     }
+
+    /// <summary>
+    /// Gets all entities WITHOUT pagination. Use ONLY for legitimate batch operations
+    /// like cache warming, exports, or migrations.
+    /// </summary>
+    /// <remarks>
+    /// This method logs a warning when called to help identify potential performance issues.
+    /// For high-risk tables, use GetPaginatedAsync() instead.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of all entities</returns>
+    public virtual async Task<List<TEntity>> GetAllUnboundedAsync(CancellationToken cancellationToken = default)
+    {
+        Logger.LogWarning(
+            "Unbounded query executed on {EntityType} via GetAllUnboundedAsync(). " +
+            "Ensure this is intentional (cache warming, export, migration).",
+            EntityTypeName);
+
+        try
+        {
+            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            var query = GetDbSet(context).AsNoTracking();
+            query = ApplyDefaultIncludes(query);
+            query = ApplyDefaultOrdering(query);
+            return await query.ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting all {EntityType} entities (unbounded)", EntityTypeName);
+            throw;
+        }
+    }
 }

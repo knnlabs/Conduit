@@ -68,4 +68,16 @@ public interface IRepositoryBase<TEntity, TKey>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The total count of entities</returns>
     Task<int> CountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all entities WITHOUT pagination. Use ONLY for legitimate batch operations
+    /// like cache warming, exports, or migrations.
+    /// </summary>
+    /// <remarks>
+    /// This method logs a warning when called to help identify potential performance issues.
+    /// For high-risk tables (RequestLog, VirtualKey, etc.), use GetPaginatedAsync() instead.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of all entities</returns>
+    Task<List<TEntity>> GetAllUnboundedAsync(CancellationToken cancellationToken = default);
 }

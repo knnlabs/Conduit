@@ -229,10 +229,18 @@ public partial class Program
             throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
         }
 
-        builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>(options =>
+        // Configure query monitoring for performance tracking
+        builder.Services.Configure<ConduitLLM.Configuration.Interceptors.QueryMonitoringOptions>(
+            builder.Configuration.GetSection(ConduitLLM.Configuration.Interceptors.QueryMonitoringOptions.SectionName));
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interceptors.QueryMonitoringInterceptor>();
+
+        builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>((sp, options) =>
         {
-            options.UseNpgsql(dbConnectionString);
+            var interceptor = sp.GetRequiredService<ConduitLLM.Configuration.Interceptors.QueryMonitoringInterceptor>();
+            options.UseNpgsql(dbConnectionString)
+                   .AddInterceptors(interceptor);
         });
+        Console.WriteLine("[Conduit] Query monitoring interceptor configured for performance tracking");
         
         // Also add scoped registration from factory for services that need direct injection
         // Note: This creates contexts from the factory on demand

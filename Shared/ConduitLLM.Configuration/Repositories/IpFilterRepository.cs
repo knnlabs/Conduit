@@ -37,24 +37,11 @@ public class IpFilterRepository : RepositoryBase<IpFilterEntity, int>, IIpFilter
     }
 
     /// <inheritdoc/>
+    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries.")]
     public async Task<IEnumerable<IpFilterEntity>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .OrderBy(f => f.FilterType)
-                    .ThenBy(f => f.IpAddressOrCidr)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting all IP filters");
-            throw;
-        }
+        // Delegate to the base class GetAllUnboundedAsync to avoid code duplication
+        return await GetAllUnboundedAsync(cancellationToken);
     }
 
     /// <inheritdoc/>

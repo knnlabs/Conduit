@@ -59,23 +59,11 @@ public class GlobalSettingRepository : RepositoryBase<GlobalSetting, int>, IGlob
     }
 
     /// <inheritdoc/>
+    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries.")]
     public async Task<List<GlobalSetting>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .OrderBy(gs => gs.Key)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting all global settings");
-            throw;
-        }
+        // Delegate to the base class GetAllUnboundedAsync to avoid code duplication
+        return await GetAllUnboundedAsync(cancellationToken);
     }
 
     /// <inheritdoc/>

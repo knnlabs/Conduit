@@ -24,8 +24,20 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries.")]
     public async Task<List<FunctionCredential>> GetAllAsync(CancellationToken cancellationToken = default)
     {
+        // Delegate to GetAllUnboundedAsync to avoid code duplication
+        return await GetAllUnboundedAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<FunctionCredential>> GetAllUnboundedAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning(
+            "Unbounded query executed on FunctionCredential via GetAllUnboundedAsync(). " +
+            "Ensure this is intentional (cache warming, export, migration).");
+
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -38,7 +50,42 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting all function credentials");
+            _logger.LogError(ex, "Error getting all function credentials (unbounded)");
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<(List<FunctionCredential> Items, int TotalCount)> GetPaginatedAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        // Validate and normalize pagination parameters
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100;
+
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var query = dbContext.FunctionCredentials.AsNoTracking();
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderBy(c => c.ProviderType)
+                .ThenByDescending(c => c.IsPrimary)
+                .ThenBy(c => c.KeyName)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting paginated function credentials (page {Page}, size {PageSize})", page, pageSize);
             throw;
         }
     }

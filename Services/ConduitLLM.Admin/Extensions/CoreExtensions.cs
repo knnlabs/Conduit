@@ -50,10 +50,18 @@ namespace ConduitLLM.Admin.Extensions
                 throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
             }
 
-            services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>(options =>
+            // Configure query monitoring for performance tracking
+            services.Configure<ConduitLLM.Configuration.Interceptors.QueryMonitoringOptions>(
+                configuration.GetSection(ConduitLLM.Configuration.Interceptors.QueryMonitoringOptions.SectionName));
+            services.AddSingleton<ConduitLLM.Configuration.Interceptors.QueryMonitoringInterceptor>();
+
+            services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>((sp, options) =>
             {
-                options.UseNpgsql(dbConnectionString);
+                var interceptor = sp.GetRequiredService<ConduitLLM.Configuration.Interceptors.QueryMonitoringInterceptor>();
+                options.UseNpgsql(dbConnectionString)
+                       .AddInterceptors(interceptor);
             });
+            Console.WriteLine("[ConduitLLM.Admin] Query monitoring interceptor configured for performance tracking");
             
             // Also add scoped registration from factory for services that need direct injection
             // Note: This creates contexts from the factory on demand

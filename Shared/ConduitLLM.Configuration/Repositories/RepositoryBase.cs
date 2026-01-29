@@ -317,4 +317,27 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
             throw;
         }
     }
+
+    /// <inheritdoc/>
+    public virtual async Task<List<TEntity>> GetAllUnboundedAsync(CancellationToken cancellationToken = default)
+    {
+        Logger.LogWarning(
+            "Unbounded query executed on {EntityType} via GetAllUnboundedAsync(). " +
+            "Ensure this is intentional (cache warming, export, migration).",
+            EntityTypeName);
+
+        try
+        {
+            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            var query = GetDbSet(context).AsNoTracking();
+            query = ApplyDefaultIncludes(query);
+            query = ApplyDefaultOrdering(query);
+            return await query.ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting all {EntityType} entities (unbounded)", EntityTypeName);
+            throw;
+        }
+    }
 }

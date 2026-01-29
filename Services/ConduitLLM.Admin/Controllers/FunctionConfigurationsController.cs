@@ -44,7 +44,7 @@ public class FunctionConfigurationsController : ControllerBase
     {
         try
         {
-            var configurations = await _configurationRepository.GetAllAsync();
+            var configurations = await _configurationRepository.GetAllUnboundedAsync();
             return Ok(configurations);
         }
         catch (Exception ex)

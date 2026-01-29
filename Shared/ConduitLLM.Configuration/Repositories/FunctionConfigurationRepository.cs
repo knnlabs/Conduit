@@ -90,8 +90,20 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         }
     }
 
+    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries.")]
     public async Task<List<FunctionConfiguration>> GetAllAsync(CancellationToken cancellationToken = default)
     {
+        // Delegate to GetAllUnboundedAsync to avoid code duplication
+        return await GetAllUnboundedAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<FunctionConfiguration>> GetAllUnboundedAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning(
+            "Unbounded query executed on FunctionConfiguration via GetAllUnboundedAsync(). " +
+            "Ensure this is intentional (cache warming, export, migration).");
+
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -104,7 +116,43 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting all function configurations");
+            _logger.LogError(ex, "Error getting all function configurations (unbounded)");
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<(List<FunctionConfiguration> Items, int TotalCount)> GetPaginatedAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        // Validate and normalize pagination parameters
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100;
+
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var query = dbContext.FunctionConfigurations
+                .AsNoTracking()
+                .Include(f => f.CostMappings)
+                    .ThenInclude(cm => cm.FunctionCost);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderBy(f => f.ConfigurationName)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting paginated function configurations (page {Page}, size {PageSize})", page, pageSize);
             throw;
         }
     }

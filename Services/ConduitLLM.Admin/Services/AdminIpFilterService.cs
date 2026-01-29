@@ -61,7 +61,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
         {
             _logger.LogInformation("Getting all IP filters");
 
-            var filters = await _ipFilterRepository.GetAllAsync();
+            var filters = await _ipFilterRepository.GetAllUnboundedAsync();
             return filters.Select(MapToDto);
         }
         catch (Exception ex)
