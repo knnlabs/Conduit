@@ -8,61 +8,21 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Providers.Helpers
 {
     /// <summary>
-    /// Provider-specific extension of the core HttpClientHelper with additional methods
-    /// tailored for LLM API interactions.
+    /// Provider-specific HTTP utilities that extend the core HttpClientHelper functionality.
+    /// Provides specialized methods for LLM provider API interactions that are not covered
+    /// by the core HTTP helpers.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This class builds on the core HttpClientHelper functionality and adds specialized methods
-    /// for working with LLM provider APIs. It provides standardized approaches for handling
-    /// provider-specific request formatting, authentication schemes, and response parsing.
+    /// This class provides additional HTTP utilities specific to LLM provider needs, such as
+    /// form-encoded requests for authentication endpoints and multipart content for file uploads.
     /// </para>
     /// <para>
-    /// The helpers encapsulate common patterns used across different LLM clients to reduce
-    /// code duplication and ensure consistent error handling and logging.
+    /// For standard JSON requests and streaming, use <see cref="Core.Utilities.HttpClientHelper"/> directly.
     /// </para>
     /// </remarks>
-    public static class HttpClientHelper
+    public static class ProviderHttpHelper
     {
-        private static readonly JsonSerializerOptions DefaultJsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
-
-        /// <summary>
-        /// Sends a JSON request to an LLM provider API and deserializes the response.
-        /// </summary>
-        /// <typeparam name="TRequest">The type of the request object to serialize.</typeparam>
-        /// <typeparam name="TResponse">The type to deserialize the response into.</typeparam>
-        /// <param name="client">The HttpClient to use for the request.</param>
-        /// <param name="method">The HTTP method to use.</param>
-        /// <param name="endpoint">The endpoint to send the request to.</param>
-        /// <param name="requestData">The data to serialize and send.</param>
-        /// <param name="headers">Optional additional headers to include with the request.</param>
-        /// <param name="jsonOptions">Optional JSON serialization options.</param>
-        /// <param name="logger">Optional logger for request/response logging.</param>
-        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-        /// <returns>The deserialized response object.</returns>
-        /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
-        /// <remarks>
-        /// This method delegates to the core HttpClientHelper.SendJsonRequestAsync method
-        /// to maintain a consistent approach to HTTP requests across the application.
-        /// </remarks>
-        public static Task<TResponse> SendJsonRequestAsync<TRequest, TResponse>(
-            HttpClient client,
-            HttpMethod method,
-            string endpoint,
-            TRequest requestData,
-            IDictionary<string, string>? headers = null,
-            JsonSerializerOptions? jsonOptions = null,
-            ILogger? logger = null,
-            CancellationToken cancellationToken = default)
-        {
-            return Core.Utilities.HttpClientHelper.SendJsonRequestAsync<TRequest, TResponse>(
-                client, method, endpoint, requestData, headers, jsonOptions, logger, cancellationToken);
-        }
-
         /// <summary>
         /// Sends a request with form URL encoded content and deserializes the response.
         /// </summary>
@@ -91,7 +51,12 @@ namespace ConduitLLM.Providers.Helpers
             ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
-            var options = jsonOptions ?? DefaultJsonOptions;
+            // Use Core's default options if none specified
+            var options = jsonOptions ?? new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+            };
 
             try
             {
@@ -157,37 +122,6 @@ namespace ConduitLLM.Providers.Helpers
                 logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
             }
-        }
-
-        /// <summary>
-        /// Sends a streaming request and returns the response for processing.
-        /// </summary>
-        /// <param name="client">The HttpClient to use for the request.</param>
-        /// <param name="method">The HTTP method to use.</param>
-        /// <param name="endpoint">The endpoint to send the request to.</param>
-        /// <param name="requestData">The data to serialize and send.</param>
-        /// <param name="headers">Optional additional headers to include with the request.</param>
-        /// <param name="jsonOptions">Optional JSON serialization options.</param>
-        /// <param name="logger">Optional logger for request/response logging.</param>
-        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-        /// <returns>The HttpResponseMessage for further processing.</returns>
-        /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
-        /// <remarks>
-        /// This method delegates to the core HttpClientHelper.SendStreamingRequestAsync method
-        /// to maintain a consistent approach to streaming requests across the application.
-        /// </remarks>
-        public static Task<HttpResponseMessage> SendStreamingRequestAsync<TRequest>(
-            HttpClient client,
-            HttpMethod method,
-            string endpoint,
-            TRequest requestData,
-            IDictionary<string, string>? headers = null,
-            JsonSerializerOptions? jsonOptions = null,
-            ILogger? logger = null,
-            CancellationToken cancellationToken = default)
-        {
-            return Core.Utilities.HttpClientHelper.SendStreamingRequestAsync<TRequest>(
-                client, method, endpoint, requestData, headers, jsonOptions, logger, cancellationToken);
         }
 
         /// <summary>
