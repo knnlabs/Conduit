@@ -112,22 +112,18 @@ namespace ConduitLLM.Providers
         /// </summary>
         /// <param name="apiKey">Optional API key to override the one in credentials.</param>
         /// <returns>A configured HttpClient instance.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when IHttpClientFactory is not available.</exception>
         protected virtual HttpClient CreateHttpClient(string? apiKey = null)
         {
-            HttpClient client;
+            if (HttpClientFactory == null)
+            {
+                throw new InvalidOperationException(
+                    $"IHttpClientFactory is required for {ProviderName} but was not injected. " +
+                    "Ensure IHttpClientFactory is registered in the dependency injection container. " +
+                    "Creating HttpClient instances directly can cause socket exhaustion under load.");
+            }
 
-            if (HttpClientFactory != null)
-            {
-                client = HttpClientFactory.CreateClient($"{ProviderName}LLMClient");
-            }
-            else
-            {
-                Logger.LogWarning(
-                    "Creating HttpClient without IHttpClientFactory for {ProviderName}. " +
-                    "This may cause socket exhaustion under high load. Ensure IHttpClientFactory is injected.",
-                    ProviderName);
-                client = new HttpClient();
-            }
+            var client = HttpClientFactory.CreateClient($"{ProviderName}LLMClient");
 
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
@@ -176,21 +172,18 @@ namespace ConduitLLM.Providers
         /// </summary>
         /// <param name="apiKey">The API key to use for authentication.</param>
         /// <returns>A configured HttpClient for authentication verification.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when IHttpClientFactory is not available.</exception>
         protected virtual HttpClient CreateAuthenticationVerificationClient(string apiKey)
         {
-            HttpClient client;
-            if (HttpClientFactory != null)
+            if (HttpClientFactory == null)
             {
-                client = HttpClientFactory.CreateClient($"{ProviderName}AuthVerification");
+                throw new InvalidOperationException(
+                    $"IHttpClientFactory is required for {ProviderName} authentication verification but was not injected. " +
+                    "Ensure IHttpClientFactory is registered in the dependency injection container. " +
+                    "Creating HttpClient instances directly can cause socket exhaustion under load.");
             }
-            else
-            {
-                Logger.LogWarning(
-                    "Creating HttpClient for authentication verification without IHttpClientFactory for {ProviderName}. " +
-                    "This may cause socket exhaustion under high load. Ensure IHttpClientFactory is injected.",
-                    ProviderName);
-                client = new HttpClient();
-            }
+
+            var client = HttpClientFactory.CreateClient($"{ProviderName}AuthVerification");
 
             // Configure basic headers
             client.DefaultRequestHeaders.Accept.Clear();

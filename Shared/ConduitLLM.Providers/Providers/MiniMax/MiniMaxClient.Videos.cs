@@ -458,22 +458,20 @@ namespace ConduitLLM.Providers.MiniMax
         /// </summary>
         /// <param name="apiKey">Optional API key to override the one in credentials.</param>
         /// <returns>A configured HttpClient instance for video generation.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when IHttpClientFactory is not available.</exception>
         protected virtual HttpClient CreateVideoHttpClient(string? apiKey = null)
         {
-            HttpClient client;
-            
-            // Use the factory if available (for testing), otherwise create new client
-            if (HttpClientFactory != null)
+            if (HttpClientFactory == null)
             {
-                client = HttpClientFactory.CreateClient($"{ProviderName}VideoClient");
+                throw new InvalidOperationException(
+                    $"IHttpClientFactory is required for {ProviderName} video client but was not injected. " +
+                    "Ensure IHttpClientFactory is registered in the dependency injection container. " +
+                    "Creating HttpClient instances directly can cause socket exhaustion under load.");
             }
-            else
-            {
-                // For video generation, create a new HttpClient without using the factory
-                // This ensures no timeout policies are applied by HttpClientFactory in production
-                client = new HttpClient();
-            }
-            
+
+            // Use a dedicated named client for video operations (should be configured without aggressive timeout policies)
+            var client = HttpClientFactory.CreateClient($"{ProviderName}VideoClient");
+
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
             {
@@ -489,9 +487,9 @@ namespace ConduitLLM.Providers.MiniMax
             // Use large file download timeout for video files
             client.Timeout = LargeFileDownloadTimeout;
 
-            Logger.LogInformation("Created video HTTP client with {Timeout} timeout and no Polly policies (bypassing factory: {BypassFactory})",
-                LargeFileDownloadTimeout, HttpClientFactory == null);
-            
+            Logger.LogInformation("Created video HTTP client with {Timeout} timeout via IHttpClientFactory",
+                LargeFileDownloadTimeout);
+
             return client;
         }
     }

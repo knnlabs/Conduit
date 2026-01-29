@@ -93,23 +93,18 @@ public partial class TavilyClient : IFunctionClient
     /// <summary>
     /// Creates an HTTP client instance.
     /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when IHttpClientFactory is not available.</exception>
     protected virtual HttpClient CreateHttpClient(string? apiKey = null)
     {
-        HttpClient client;
-
-        if (_httpClientFactory != null)
+        if (_httpClientFactory == null)
         {
-            client = _httpClientFactory.CreateClient($"{ProviderName}FunctionClient");
-        }
-        else
-        {
-            _logger.LogWarning(
-                "Creating HttpClient without IHttpClientFactory for {ProviderName}. " +
-                "This may cause socket exhaustion under high load. Ensure IHttpClientFactory is injected.",
-                ProviderName);
-            client = new HttpClient();
+            throw new InvalidOperationException(
+                $"IHttpClientFactory is required for {ProviderName} but was not injected. " +
+                "Ensure IHttpClientFactory is registered in the dependency injection container. " +
+                "Creating HttpClient instances directly can cause socket exhaustion under load.");
         }
 
+        var client = _httpClientFactory.CreateClient($"{ProviderName}FunctionClient");
         ConfigureHttpClient(client, apiKey);
         return client;
     }

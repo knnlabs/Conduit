@@ -232,35 +232,17 @@ namespace ConduitLLM.Core.Utilities
         /// <param name="url">The URL of the image to download</param>
         /// <returns>The image data as a byte array</returns>
         /// <remarks>
-        /// This method creates a new HttpClient for each call, which can cause socket exhaustion under load.
-        /// Prefer using the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService.
+        /// This method is no longer supported. Use the overload that accepts an HttpClient from IHttpClientFactory,
+        /// or use IImageDownloadService to properly manage HTTP connections and avoid socket exhaustion.
         /// </remarks>
-        [Obsolete("Use the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService. This method may cause socket exhaustion under high load.")]
-        public static async Task<byte[]> DownloadImageAsync(string url)
+        /// <exception cref="NotSupportedException">Always thrown. Use the overload that accepts an HttpClient parameter.</exception>
+        [Obsolete("Use the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService. This method is no longer supported.", error: true)]
+        public static Task<byte[]> DownloadImageAsync(string url)
         {
-            if (string.IsNullOrEmpty(url))
-                throw new ArgumentException("URL cannot be null or empty", nameof(url));
-
-            if (url.StartsWith("data:"))
-            {
-                byte[]? imageData = ExtractImageDataFromDataUrl(url, out _);
-                if (imageData == null)
-                    throw new ArgumentException("Invalid data URL format", nameof(url));
-
-                return imageData;
-            }
-
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(30); // Set a reasonable timeout
-
-            try
-            {
-                return await httpClient.GetByteArrayAsync(url);
-            }
-            catch (HttpRequestException ex)
-            {
-                throw new IOException($"Failed to download image from URL: {ex.Message}", ex);
-            }
+            throw new NotSupportedException(
+                "This method is no longer supported due to socket exhaustion risks. " +
+                "Use DownloadImageAsync(url, httpClient, cancellationToken) with an HttpClient from IHttpClientFactory, " +
+                "or use IImageDownloadService.");
         }
 
         /// <summary>

@@ -156,31 +156,17 @@ public static class ImageUrlExtensions
     /// <param name="detail">Optional detail level for vision models</param>
     /// <returns>An ImageUrl object with the image as a base64 data URL</returns>
     /// <remarks>
-    /// This method creates a new HttpClient for each call, which can cause socket exhaustion under load.
-    /// Prefer using the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService.
+    /// This method is no longer supported. Use the overload that accepts an HttpClient from IHttpClientFactory,
+    /// or use IImageDownloadService to properly manage HTTP connections and avoid socket exhaustion.
     /// </remarks>
-    [Obsolete("Use the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService. This method may cause socket exhaustion under high load.")]
-    public static async Task<ImageUrl> FromExternalUrlAsync(string url, string? detail = null)
+    /// <exception cref="NotSupportedException">Always thrown. Use the overload that accepts an HttpClient parameter.</exception>
+    [Obsolete("Use the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService. This method is no longer supported.", error: true)]
+    public static Task<ImageUrl> FromExternalUrlAsync(string url, string? detail = null)
     {
-        if (string.IsNullOrEmpty(url))
-            throw new ArgumentException("URL cannot be null or empty", nameof(url));
-
-        if (url.StartsWith("data:"))
-            return new ImageUrl { Url = url, Detail = detail };
-
-        using var httpClient = new HttpClient();
-        byte[] imageBytes = await httpClient.GetByteArrayAsync(url);
-
-        // Try to determine MIME type from content or fall back to a default
-        string mimeType = DetectMimeTypeFromBytes(imageBytes);
-
-        string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
-
-        return new ImageUrl
-        {
-            Url = dataUrl,
-            Detail = detail
-        };
+        throw new NotSupportedException(
+            "This method is no longer supported due to socket exhaustion risks. " +
+            "Use FromExternalUrlAsync(url, httpClient, detail, cancellationToken) with an HttpClient from IHttpClientFactory, " +
+            "or use IImageDownloadService.");
     }
 
     /// <summary>
