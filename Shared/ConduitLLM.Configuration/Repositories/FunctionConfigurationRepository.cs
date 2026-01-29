@@ -37,7 +37,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting function configuration with ID {ConfigId}", LogSanitizer.SanitizeObject(id));
+            _logger.LogError(ex, "Error getting function configuration with ID {ConfigId}", LoggingSanitizer.S(id));
             throw;
         }
     }
@@ -61,7 +61,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting function configurations with IDs {ConfigIds}", LogSanitizer.SanitizeObject(ids));
+            _logger.LogError(ex, "Error getting function configurations with IDs {ConfigIds}", LoggingSanitizer.S(ids));
             throw;
         }
     }
@@ -85,7 +85,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting function configuration with name {ConfigName}",
-                LogSanitizer.SanitizeObject(configurationName));
+                LoggingSanitizer.S(configurationName));
             throw;
         }
     }
@@ -145,7 +145,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting function configurations for provider type {ProviderType}",
-                LogSanitizer.SanitizeObject(providerType));
+                LoggingSanitizer.S(providerType));
             throw;
         }
     }
@@ -166,7 +166,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting function configurations for purpose {Purpose}",
-                LogSanitizer.SanitizeObject(purpose));
+                LoggingSanitizer.S(purpose));
             throw;
         }
     }
@@ -199,20 +199,20 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while creating function configuration '{ConfigName}'",
-                    LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionConfiguration.ConfigurationName)));
+                    LoggingSanitizer.S(functionConfiguration.ConfigurationName));
                 throw;
             }
         }
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Database error creating function configuration '{ConfigName}'",
-                LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionConfiguration.ConfigurationName)));
+                LoggingSanitizer.S(functionConfiguration.ConfigurationName));
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating function configuration '{ConfigName}'",
-                LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionConfiguration.ConfigurationName)));
+                LoggingSanitizer.S(functionConfiguration.ConfigurationName));
             throw;
         }
     }
@@ -242,7 +242,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Concurrency error updating function configuration with ID {ConfigId}",
-                    LogSanitizer.SanitizeObject(functionConfiguration.Id));
+                    LoggingSanitizer.S(functionConfiguration.Id));
 
                 // Retry logic
                 try
@@ -265,7 +265,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
                 catch (Exception retryEx)
                 {
                     _logger.LogError(retryEx, "Error during retry of function configuration update with ID {ConfigId}",
-                        LogSanitizer.SanitizeObject(functionConfiguration.Id));
+                        LoggingSanitizer.S(functionConfiguration.Id));
                     throw;
                 }
             }
@@ -273,14 +273,14 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while updating function configuration with ID {ConfigId}",
-                    LogSanitizer.SanitizeObject(functionConfiguration.Id));
+                    LoggingSanitizer.S(functionConfiguration.Id));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating function configuration with ID {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfiguration.Id));
+                LoggingSanitizer.S(functionConfiguration.Id));
             throw;
         }
     }
@@ -309,14 +309,14 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while deleting function configuration with ID {ConfigId}",
-                    LogSanitizer.SanitizeObject(id));
+                    LoggingSanitizer.S(id));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting function configuration with ID {ConfigId}",
-                LogSanitizer.SanitizeObject(id));
+                LoggingSanitizer.S(id));
             throw;
         }
     }
@@ -346,7 +346,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking if function configuration name exists: {ConfigName}",
-                LogSanitizer.SanitizeObject(configurationName));
+                LoggingSanitizer.S(configurationName));
             throw;
         }
     }

@@ -78,7 +78,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                Logger.LogError(ex, "Concurrency error updating virtual key with ID {KeyId}", LogSanitizer.SanitizeObject(virtualKey.Id));
+                Logger.LogError(ex, "Concurrency error updating virtual key with ID {KeyId}", LoggingSanitizer.S(virtualKey.Id));
 
                 // Handle concurrency issues by reloading and reapplying changes if needed
                 try
@@ -100,13 +100,13 @@ namespace ConduitLLM.Configuration.Repositories
                 }
                 catch (Exception retryEx)
                 {
-                    Logger.LogError(retryEx, "Error during retry of virtual key update with ID {KeyId}", LogSanitizer.SanitizeObject(virtualKey.Id));
+                    Logger.LogError(retryEx, "Error during retry of virtual key update with ID {KeyId}", LoggingSanitizer.S(virtualKey.Id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error updating virtual key with ID {KeyId}", LogSanitizer.SanitizeObject(virtualKey.Id));
+                Logger.LogError(ex, "Error updating virtual key with ID {KeyId}", LoggingSanitizer.S(virtualKey.Id));
                 throw;
             }
         }
@@ -195,7 +195,7 @@ namespace ConduitLLM.Configuration.Repositories
             if (pageSize > MaxPageSize)
             {
                 Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(MaxPageSize));
+                    LoggingSanitizer.S(pageSize), LoggingSanitizer.S(MaxPageSize));
                 pageSize = MaxPageSize;
             }
 
@@ -221,7 +221,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting paginated virtual keys for group {GroupId}, page {PageNumber}, size {PageSize}",
-                    virtualKeyGroupId, LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                    virtualKeyGroupId, LoggingSanitizer.S(pageNumber), LoggingSanitizer.S(pageSize));
                 throw;
             }
         }
@@ -294,13 +294,13 @@ namespace ConduitLLM.Configuration.Repositories
                     context.VirtualKeys.Remove(virtualKey);
                     int rowsAffected = await context.SaveChangesAsync(cancellationToken);
 
-                    Logger.LogInformation("Deleted virtual key with hash {KeyHash}", LogSanitizer.SanitizeObject(keyHash));
+                    Logger.LogInformation("Deleted virtual key with hash {KeyHash}", LoggingSanitizer.S(keyHash));
                     return rowsAffected > 0;
                 }, cancellationToken);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error deleting virtual key with hash {KeyHash}", LogSanitizer.SanitizeObject(keyHash));
+                Logger.LogError(ex, "Error deleting virtual key with hash {KeyHash}", LoggingSanitizer.S(keyHash));
                 throw;
             }
         }

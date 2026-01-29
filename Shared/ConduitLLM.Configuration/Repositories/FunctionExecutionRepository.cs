@@ -61,7 +61,7 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error getting executions for virtual key {VirtualKeyId}",
-                LogSanitizer.SanitizeObject(virtualKeyId));
+                LoggingSanitizer.S(virtualKeyId));
             throw;
         }
     }
@@ -82,7 +82,7 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error getting executions for function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfigurationId));
+                LoggingSanitizer.S(functionConfigurationId));
             throw;
         }
     }
@@ -103,7 +103,7 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error getting executions with state {State}", LogSanitizer.SanitizeObject(state));
+            Logger.LogError(ex, "Error getting executions with state {State}", LoggingSanitizer.S(state));
             throw;
         }
     }
@@ -215,14 +215,14 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
             {
                 await transaction.RollbackAsync(cancellationToken);
                 Logger.LogError(ex, "Error leasing next pending execution for worker {WorkerId}",
-                    LogSanitizer.SanitizeObject(workerId));
+                    LoggingSanitizer.S(workerId));
                 throw;
             }
         }
         catch (Exception ex) when (ex is not DbUpdateConcurrencyException)
         {
             Logger.LogError(ex, "Error in LeaseNextPendingAsync for worker {WorkerId}",
-                LogSanitizer.SanitizeObject(workerId));
+                LoggingSanitizer.S(workerId));
             throw;
         }
     }
@@ -311,14 +311,14 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
             {
                 await transaction.RollbackAsync(cancellationToken);
                 Logger.LogError(ex, "Transaction rolled back while updating {EntityType} {ExecutionId}",
-                    EntityTypeName, LogSanitizer.SanitizeObject(execution.Id));
+                    EntityTypeName, LoggingSanitizer.S(execution.Id));
                 throw;
             }
         }
         catch (Exception ex) when (ex is not DbUpdateConcurrencyException)
         {
             Logger.LogError(ex, "Error updating {EntityType} {ExecutionId}",
-                EntityTypeName, LogSanitizer.SanitizeObject(execution.Id));
+                EntityTypeName, LoggingSanitizer.S(execution.Id));
             throw;
         }
     }
@@ -364,14 +364,14 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
             {
                 await transaction.RollbackAsync(cancellationToken);
                 Logger.LogError(ex, "Transaction rolled back while updating state for execution {ExecutionId}",
-                    LogSanitizer.SanitizeObject(executionId));
+                    LoggingSanitizer.S(executionId));
                 throw;
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error updating state for execution {ExecutionId}",
-                LogSanitizer.SanitizeObject(executionId));
+                LoggingSanitizer.S(executionId));
             throw;
         }
     }
@@ -398,7 +398,7 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error updating progress for execution {ExecutionId}",
-                LogSanitizer.SanitizeObject(executionId));
+                LoggingSanitizer.S(executionId));
             // Don't throw - progress updates are non-critical
         }
     }

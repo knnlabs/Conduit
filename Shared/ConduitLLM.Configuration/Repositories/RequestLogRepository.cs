@@ -94,7 +94,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error getting request logs for virtual key ID {VirtualKeyId}", LogSanitizer.SanitizeObject(virtualKeyId));
+                Logger.LogError(ex, "Error getting request logs for virtual key ID {VirtualKeyId}", LoggingSanitizer.S(virtualKeyId));
                 throw;
             }
         }
@@ -119,7 +119,7 @@ namespace ConduitLLM.Configuration.Repositories
             if (pageSize > MaxPageSize)
             {
                 Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(MaxPageSize));
+                    LoggingSanitizer.S(pageSize), LoggingSanitizer.S(MaxPageSize));
                 pageSize = MaxPageSize;
             }
 
@@ -145,7 +145,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting paginated request logs for virtual key ID {VirtualKeyId}, page {PageNumber}, size {PageSize}",
-                    LogSanitizer.SanitizeObject(virtualKeyId), LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                    LoggingSanitizer.S(virtualKeyId), LoggingSanitizer.S(pageNumber), LoggingSanitizer.S(pageSize));
                 throw;
             }
         }
@@ -171,7 +171,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting request logs for date range {StartDate} to {EndDate}",
-                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate));
+                    LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
                 throw;
             }
         }
@@ -198,7 +198,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error getting request logs for model {ModelName}", LogSanitizer.SanitizeObject(modelName));
+                Logger.LogError(ex, "Error getting request logs for model {ModelName}", LoggingSanitizer.S(modelName));
                 throw;
             }
         }
@@ -228,7 +228,7 @@ namespace ConduitLLM.Configuration.Repositories
             if (pageSize > MaxPageSize)
             {
                 Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(MaxPageSize));
+                    LoggingSanitizer.S(pageSize), LoggingSanitizer.S(MaxPageSize));
                 pageSize = MaxPageSize;
             }
 
@@ -254,7 +254,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting paginated request logs for model {ModelName}, page {PageNumber}, size {PageSize}",
-                    LogSanitizer.SanitizeObject(modelName), LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                    LoggingSanitizer.S(modelName), LoggingSanitizer.S(pageNumber), LoggingSanitizer.S(pageSize));
                 throw;
             }
         }
@@ -303,7 +303,7 @@ namespace ConduitLLM.Configuration.Repositories
             if (pageSize > MaxPageSize)
             {
                 Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(MaxPageSize));
+                    LoggingSanitizer.S(pageSize), LoggingSanitizer.S(MaxPageSize));
                 pageSize = MaxPageSize;
             }
 
@@ -336,8 +336,8 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting paginated request logs for date range {StartDate} to {EndDate}, page {PageNumber}, size {PageSize}",
-                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate),
-                    LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                    LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate),
+                    LoggingSanitizer.S(pageNumber), LoggingSanitizer.S(pageSize));
                 throw;
             }
         }
@@ -391,7 +391,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting usage statistics for date range {StartDate} to {EndDate}",
-                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate));
+                    LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
                 throw;
             }
         }
@@ -424,7 +424,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                     if (requestLog == null)
                     {
-                        Logger.LogWarning("Request log not found for task ID {TaskId}", LogSanitizer.SanitizeObject(taskId));
+                        Logger.LogWarning("Request log not found for task ID {TaskId}", LoggingSanitizer.S(taskId));
                         return false;
                     }
 
@@ -471,7 +471,7 @@ namespace ConduitLLM.Configuration.Repositories
                         catch (System.Text.Json.JsonException ex)
                         {
                             Logger.LogWarning(ex, "Failed to parse metadata for task ID {TaskId}, skipping metadata update",
-                                LogSanitizer.SanitizeObject(taskId));
+                                LoggingSanitizer.S(taskId));
                         }
                     }
 
@@ -481,14 +481,14 @@ namespace ConduitLLM.Configuration.Repositories
 
                     Logger.LogInformation(
                         "Updated request log for task {TaskId}: Cost=${Cost}, Model={Model}, Duration={Duration}s",
-                        LogSanitizer.SanitizeObject(taskId), cost, modelName ?? requestLog.ModelName, durationSeconds);
+                        LoggingSanitizer.S(taskId), cost, modelName ?? requestLog.ModelName, durationSeconds);
 
                     return rowsAffected > 0;
                 }, cancellationToken);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error updating request log for task ID {TaskId}", LogSanitizer.SanitizeObject(taskId));
+                Logger.LogError(ex, "Error updating request log for task ID {TaskId}", LoggingSanitizer.S(taskId));
                 throw;
             }
         }

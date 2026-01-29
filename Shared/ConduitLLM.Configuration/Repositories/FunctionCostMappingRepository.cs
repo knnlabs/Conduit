@@ -36,7 +36,7 @@ public class FunctionCostMappingRepository : IFunctionCostMappingRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting function cost mapping with ID {MappingId}", LogSanitizer.SanitizeObject(id));
+            _logger.LogError(ex, "Error getting function cost mapping with ID {MappingId}", LoggingSanitizer.S(id));
             throw;
         }
     }
@@ -57,7 +57,7 @@ public class FunctionCostMappingRepository : IFunctionCostMappingRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting cost mappings for function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfigurationId));
+                LoggingSanitizer.S(functionConfigurationId));
             throw;
         }
     }
@@ -77,7 +77,7 @@ public class FunctionCostMappingRepository : IFunctionCostMappingRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting active mapping for function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfigurationId));
+                LoggingSanitizer.S(functionConfigurationId));
             throw;
         }
     }
@@ -147,14 +147,14 @@ public class FunctionCostMappingRepository : IFunctionCostMappingRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while updating function cost mapping with ID {MappingId}",
-                    LogSanitizer.SanitizeObject(mapping.Id));
+                    LoggingSanitizer.S(mapping.Id));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating function cost mapping with ID {MappingId}",
-                LogSanitizer.SanitizeObject(mapping.Id));
+                LoggingSanitizer.S(mapping.Id));
             throw;
         }
     }
@@ -183,14 +183,14 @@ public class FunctionCostMappingRepository : IFunctionCostMappingRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while deleting function cost mapping with ID {MappingId}",
-                    LogSanitizer.SanitizeObject(id));
+                    LoggingSanitizer.S(id));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting function cost mapping with ID {MappingId}",
-                LogSanitizer.SanitizeObject(id));
+                LoggingSanitizer.S(id));
             throw;
         }
     }
@@ -220,14 +220,14 @@ public class FunctionCostMappingRepository : IFunctionCostMappingRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while deactivating mappings for function {ConfigId}",
-                    LogSanitizer.SanitizeObject(functionConfigurationId));
+                    LoggingSanitizer.S(functionConfigurationId));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deactivating mappings for function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfigurationId));
+                LoggingSanitizer.S(functionConfigurationId));
             throw;
         }
     }

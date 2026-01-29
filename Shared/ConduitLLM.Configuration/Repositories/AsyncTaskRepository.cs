@@ -54,13 +54,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 Logger.LogError(ex, "Database error creating async task: {Task}",
-                    LogSanitizer.SanitizeObject(entity));
+                    LoggingSanitizer.S(entity));
                 throw;
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error creating async task: {Task}",
-                    LogSanitizer.SanitizeObject(entity));
+                    LoggingSanitizer.S(entity));
                 throw;
             }
         }

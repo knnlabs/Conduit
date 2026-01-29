@@ -35,7 +35,7 @@ public class FunctionCostRepository : IFunctionCostRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting function cost with ID {CostId}", LogSanitizer.SanitizeObject(id));
+            _logger.LogError(ex, "Error getting function cost with ID {CostId}", LoggingSanitizer.S(id));
             throw;
         }
     }
@@ -58,7 +58,7 @@ public class FunctionCostRepository : IFunctionCostRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting function cost with name {CostName}",
-                LogSanitizer.SanitizeObject(costName));
+                LoggingSanitizer.S(costName));
             throw;
         }
     }
@@ -138,7 +138,7 @@ public class FunctionCostRepository : IFunctionCostRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting active cost for function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfigurationId));
+                LoggingSanitizer.S(functionConfigurationId));
             throw;
         }
     }
@@ -171,20 +171,20 @@ public class FunctionCostRepository : IFunctionCostRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while creating function cost '{CostName}'",
-                    LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionCost.CostName)));
+                    LoggingSanitizer.S(functionCost.CostName));
                 throw;
             }
         }
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Database error creating function cost '{CostName}'",
-                LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionCost.CostName)));
+                LoggingSanitizer.S(functionCost.CostName));
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating function cost '{CostName}'",
-                LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionCost.CostName)));
+                LoggingSanitizer.S(functionCost.CostName));
             throw;
         }
     }
@@ -214,14 +214,14 @@ public class FunctionCostRepository : IFunctionCostRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while updating function cost with ID {CostId}",
-                    LogSanitizer.SanitizeObject(functionCost.Id));
+                    LoggingSanitizer.S(functionCost.Id));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating function cost with ID {CostId}",
-                LogSanitizer.SanitizeObject(functionCost.Id));
+                LoggingSanitizer.S(functionCost.Id));
             throw;
         }
     }
@@ -250,14 +250,14 @@ public class FunctionCostRepository : IFunctionCostRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while deleting function cost with ID {CostId}",
-                    LogSanitizer.SanitizeObject(id));
+                    LoggingSanitizer.S(id));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting function cost with ID {CostId}",
-                LogSanitizer.SanitizeObject(id));
+                LoggingSanitizer.S(id));
             throw;
         }
     }

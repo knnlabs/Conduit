@@ -54,7 +54,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting function credential with ID {CredentialId}", LogSanitizer.SanitizeObject(id));
+            _logger.LogError(ex, "Error getting function credential with ID {CredentialId}", LoggingSanitizer.S(id));
             throw;
         }
     }
@@ -74,7 +74,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting credentials for provider type {ProviderType}",
-                LogSanitizer.SanitizeObject(providerType));
+                LoggingSanitizer.S(providerType));
             throw;
         }
     }
@@ -94,7 +94,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting enabled credentials for provider type {ProviderType}",
-                LogSanitizer.SanitizeObject(providerType));
+                LoggingSanitizer.S(providerType));
             throw;
         }
     }
@@ -112,7 +112,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting primary credential for provider type {ProviderType}",
-                LogSanitizer.SanitizeObject(providerType));
+                LoggingSanitizer.S(providerType));
             throw;
         }
     }
@@ -132,7 +132,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting credentials for group {Group} in provider type {ProviderType}",
-                LogSanitizer.SanitizeObject(functionAccountGroup), LogSanitizer.SanitizeObject(providerType));
+                LoggingSanitizer.S(functionAccountGroup), LoggingSanitizer.S(providerType));
             throw;
         }
     }
@@ -166,7 +166,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
                     {
                         credential.IsPrimary = true;
                         _logger.LogInformation("Automatically setting credential as primary since it's the only enabled credential for provider type {ProviderType}",
-                            LogSanitizer.SanitizeObject(credential.ProviderType));
+                            LoggingSanitizer.S(credential.ProviderType));
                     }
                 }
 
@@ -195,20 +195,20 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while creating function credential '{KeyName}'",
-                    LogSanitizer.SanitizeObject(LoggingSanitizer.S(credential.KeyName)));
+                    LoggingSanitizer.S(credential.KeyName));
                 throw;
             }
         }
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Database error creating function credential '{KeyName}'",
-                LogSanitizer.SanitizeObject(LoggingSanitizer.S(credential.KeyName)));
+                LoggingSanitizer.S(credential.KeyName));
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating function credential '{KeyName}'",
-                LogSanitizer.SanitizeObject(LoggingSanitizer.S(credential.KeyName)));
+                LoggingSanitizer.S(credential.KeyName));
             throw;
         }
     }
@@ -262,7 +262,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
                     {
                         existingCredential.IsPrimary = true;
                         _logger.LogInformation("Automatically setting credential {CredentialId} as primary since it's the only enabled credential for provider type {ProviderType}",
-                            LogSanitizer.SanitizeObject(existingCredential.Id), LogSanitizer.SanitizeObject(existingCredential.ProviderType));
+                            LoggingSanitizer.S(existingCredential.Id), LoggingSanitizer.S(existingCredential.ProviderType));
                     }
                 }
 
@@ -291,14 +291,14 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while updating function credential with ID {CredentialId}",
-                    LogSanitizer.SanitizeObject(credential.Id));
+                    LoggingSanitizer.S(credential.Id));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating function credential with ID {CredentialId}",
-                LogSanitizer.SanitizeObject(credential.Id));
+                LoggingSanitizer.S(credential.Id));
             throw;
         }
     }
@@ -327,14 +327,14 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while deleting function credential with ID {CredentialId}",
-                    LogSanitizer.SanitizeObject(id));
+                    LoggingSanitizer.S(id));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting function credential with ID {CredentialId}",
-                LogSanitizer.SanitizeObject(id));
+                LoggingSanitizer.S(id));
             throw;
         }
     }
@@ -379,14 +379,14 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Transaction rolled back while setting credential {CredentialId} as primary",
-                    LogSanitizer.SanitizeObject(credentialId));
+                    LoggingSanitizer.S(credentialId));
                 throw;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error setting credential {CredentialId} as primary",
-                LogSanitizer.SanitizeObject(credentialId));
+                LoggingSanitizer.S(credentialId));
             throw;
         }
     }
