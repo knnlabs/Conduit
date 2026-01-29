@@ -1,3 +1,6 @@
+using ConduitLLM.Configuration;
+using ConduitLLM.Providers.Configuration;
+
 namespace ConduitLLM.Providers.Groq
 {
     /// <summary>
@@ -5,6 +8,12 @@ namespace ConduitLLM.Providers.Groq
     /// </summary>
     public partial class GroqClient
     {
+        /// <summary>
+        /// Gets the Groq-specific error messages from the configuration registry.
+        /// </summary>
+        private static ProviderErrorMessages GroqErrorMessages =>
+            ProviderConfigurationRegistry.GetErrorMessages(ProviderType.Groq);
+
         /// <summary>
         /// Extracts a more helpful error message from exception details for Groq errors.
         /// </summary>
@@ -34,14 +43,14 @@ namespace ConduitLLM.Providers.Groq
                 msg.Contains("The model", StringComparison.OrdinalIgnoreCase) &&
                 msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
             {
-                return Constants.ErrorMessages.ModelNotFound;
+                return GroqErrorMessages.ModelNotFound;
             }
 
             // For rate limit errors, provide a clearer message
             if (msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("too many requests", StringComparison.OrdinalIgnoreCase))
             {
-                return Constants.ErrorMessages.RateLimitExceeded;
+                return GroqErrorMessages.RateLimitExceeded;
             }
 
             // Look for Body data

@@ -8,6 +8,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Providers.Authentication;
 using ConduitLLM.Providers.Common.Models;
 using ConduitLLM.Providers.Configuration;
 
@@ -64,6 +65,24 @@ namespace ConduitLLM.Providers
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
+
+        /// <summary>
+        /// Gets the authentication strategy for this provider.
+        /// Override in derived classes to use provider-specific authentication methods.
+        /// </summary>
+        /// <remarks>
+        /// Default is Bearer token authentication. Override this property in derived classes
+        /// for providers that use different authentication methods (e.g., Token, api-key header).
+        /// </remarks>
+        protected virtual IAuthenticationStrategy AuthenticationStrategy => BearerTokenStrategy.Instance;
+
+        /// <summary>
+        /// Gets the provider configuration from the registry.
+        /// Returns null if no configuration is registered for this provider type.
+        /// </summary>
+        protected virtual ProviderConfiguration? ProviderConfig =>
+            ProviderConfigurationRegistry.TryGetConfiguration(Provider.ProviderType, out var config)
+                ? config : null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BaseLLMClient"/> class.
@@ -156,14 +175,14 @@ namespace ConduitLLM.Providers
         
         /// <summary>
         /// Configures authentication for the HttpClient.
-        /// Override in derived classes to use provider-specific authentication methods.
+        /// Uses the <see cref="AuthenticationStrategy"/> property to determine the authentication method.
+        /// Override the <see cref="AuthenticationStrategy"/> property in derived classes to change the authentication method.
         /// </summary>
         /// <param name="client">The HttpClient to configure.</param>
         /// <param name="apiKey">The API key to use for authentication.</param>
         protected virtual void ConfigureAuthentication(HttpClient client, string apiKey)
         {
-            // Default Bearer token authentication - can be overridden by providers
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            AuthenticationStrategy.ApplyAuthentication(client, apiKey);
         }
 
         /// <summary>
@@ -351,6 +370,7 @@ namespace ConduitLLM.Providers
 
         /// <summary>
         /// Creates a dictionary of standard headers for API requests.
+        /// Uses the <see cref="AuthenticationStrategy"/> property to determine the authentication header.
         /// </summary>
         /// <param name="apiKey">Optional API key to override the one in credentials.</param>
         /// <returns>A dictionary of headers.</returns>
@@ -363,9 +383,17 @@ namespace ConduitLLM.Providers
                 ["User-Agent"] = "ConduitLLM"
             };
 
-            // Add authentication - default to Bearer
-            // Override in derived classes to use different auth methods
-            headers["Authorization"] = $"Bearer {effectiveApiKey}";
+            // Add authentication using the strategy
+            var authHeader = AuthenticationStrategy.CreateAuthenticationHeader(effectiveApiKey);
+            if (authHeader != null)
+            {
+                headers["Authorization"] = $"{authHeader.Scheme} {authHeader.Parameter}";
+            }
+            else if (AuthenticationStrategy is ApiKeyHeaderStrategy apiKeyStrategy)
+            {
+                // For header-based auth strategies that don't use Authorization header
+                headers[apiKeyStrategy.HeaderName] = effectiveApiKey;
+            }
 
             return headers;
         }
@@ -477,9 +505,9 @@ namespace ConduitLLM.Providers
         /// <param name="baseUrl">Optional base URL override. If null, uses the configured URL.</param>
         /// <returns>The URL to use for health checks.</returns>
         /// <remarks>
-        /// This default implementation returns the /models endpoint, which is commonly
-        /// used by OpenAI-compatible APIs for authentication verification.
-        /// Derived classes should override this method for provider-specific endpoints.
+        /// This default implementation uses the health check endpoint from the provider configuration registry,
+        /// falling back to the /models endpoint which is commonly used by OpenAI-compatible APIs.
+        /// Derived classes can override this method for provider-specific endpoints.
         /// </remarks>
         public virtual string GetHealthCheckUrl(string? baseUrl = null)
         {
@@ -487,7 +515,9 @@ namespace ConduitLLM.Providers
                 ? baseUrl.TrimEnd('/')
                 : (Provider.BaseUrl ?? GetDefaultBaseUrl()).TrimEnd('/');
 
-            return $"{effectiveBaseUrl}/models";
+            // Use the health check endpoint from configuration, or default to /models
+            var healthCheckEndpoint = ProviderConfigurationRegistry.GetHealthCheckEndpoint(Provider.ProviderType);
+            return $"{effectiveBaseUrl}{healthCheckEndpoint}";
         }
 
         /// <summary>
@@ -495,11 +525,14 @@ namespace ConduitLLM.Providers
         /// </summary>
         /// <returns>The default base URL.</returns>
         /// <remarks>
-        /// Override in derived classes to provide provider-specific default URLs.
+        /// Uses the default URL from the provider configuration registry.
+        /// Override in derived classes to provide provider-specific default URLs
+        /// if not defined in the registry.
         /// </remarks>
         protected virtual string GetDefaultBaseUrl()
         {
-            return "https://api.example.com";
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(Provider.ProviderType)
+                ?? "https://api.example.com";
         }
 
         /// <summary>

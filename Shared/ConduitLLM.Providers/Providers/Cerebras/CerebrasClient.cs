@@ -2,6 +2,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.Common.Models;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -29,40 +30,11 @@ namespace ConduitLLM.Providers.Cerebras
     /// </remarks>
     public partial class CerebrasClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
-        // API configuration constants
-        private static class Constants
-        {
-            public static class Urls
-            {
-                /// <summary>
-                /// Default base URL for the Cerebras Inference API
-                /// </summary>
-                public const string DefaultBaseUrl = "https://api.cerebras.ai/v1";
-            }
-
-            public static class Headers
-            {
-                /// <summary>
-                /// Authorization header for API key authentication
-                /// </summary>
-                public const string Authorization = "Authorization";
-            }
-
-            public static class Endpoints
-            {
-                public const string ChatCompletions = "/chat/completions";
-                public const string Models = "/models";
-            }
-
-            public static class ErrorMessages
-            {
-                public const string MissingApiKey = "API key is missing for provider 'cerebras'";
-                public const string RateLimitExceeded = "Cerebras API rate limit exceeded. Please try again later or reduce your request frequency.";
-                public const string InvalidApiKey = "Invalid Cerebras API key. Please check your credentials.";
-                public const string ModelNotFound = "The specified model is not available. Please check the model name and try again.";
-                public const string QuotaExceeded = "API quota exceeded. Please check your usage limits or upgrade your plan.";
-            }
-        }
+        /// <summary>
+        /// Gets the Cerebras-specific error messages from the configuration registry.
+        /// </summary>
+        private static ProviderErrorMessages CerebrasErrorMessages =>
+            ProviderConfigurationRegistry.GetErrorMessages(ProviderType.Cerebras);
 
         /// <summary>
         /// Fallback models for Cerebras when the models endpoint is not available
@@ -72,17 +44,17 @@ namespace ConduitLLM.Providers.Cerebras
             // Llama 3.1 models
             ExtendedModelInfo.Create("llama3.1-8b", "cerebras", "Llama 3.1 8B"),
             ExtendedModelInfo.Create("llama3.1-70b", "cerebras", "Llama 3.1 70B"),
-            
+
             // Llama 3.3 models
             ExtendedModelInfo.Create("llama-3.3-70b", "cerebras", "Llama 3.3 70B"),
-            
+
             // Llama 4 Scout models
             ExtendedModelInfo.Create("llama-4-scout-17b-16e-instruct", "cerebras", "Llama 4 Scout 17B Instruct"),
-            
+
             // Qwen 3 models
             ExtendedModelInfo.Create("qwen-3-32b", "cerebras", "Qwen 3 32B"),
             ExtendedModelInfo.Create("qwen-3-235b-a22b", "cerebras", "Qwen 3 235B"),
-            
+
             // DeepSeek models (private preview)
             ExtendedModelInfo.Create("deepseek-r1-distill-llama-70b", "cerebras", "DeepSeek R1 Distill Llama 70B")
         };
@@ -90,7 +62,8 @@ namespace ConduitLLM.Providers.Cerebras
         /// <summary>
         /// Initializes a new instance of the CerebrasClient class.
         /// </summary>
-        /// <param name="credentials">LLMProvider credentials containing API key and endpoint configuration.</param>
+        /// <param name="provider">The provider configuration.</param>
+        /// <param name="keyCredential">The API key credential.</param>
         /// <param name="providerModelId">The specific model ID to use with this provider.</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
@@ -113,12 +86,12 @@ namespace ConduitLLM.Providers.Cerebras
                 logger,
                 httpClientFactory,
                 providerName ?? "cerebras",
-                baseUrl: Constants.Urls.DefaultBaseUrl,
+                baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Cerebras),
                 defaultModels: defaultModels)
         {
             if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
             {
-                throw new ConfigurationException(Constants.ErrorMessages.MissingApiKey);
+                throw new ConfigurationException(CerebrasErrorMessages.MissingApiKey);
             }
         }
 

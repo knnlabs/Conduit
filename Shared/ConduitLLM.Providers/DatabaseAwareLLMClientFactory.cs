@@ -5,14 +5,8 @@ using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Providers.OpenAI;
-using ConduitLLM.Providers.Groq;
-using ConduitLLM.Providers.Replicate;
-using ConduitLLM.Providers.Fireworks;
-using ConduitLLM.Providers.MiniMax;
-using ConduitLLM.Providers.Cerebras;
-using ConduitLLM.Providers.SambaNova;
-using ConduitLLM.Providers.DeepInfra;
+using ConduitLLM.Providers.Configuration;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
@@ -224,80 +218,37 @@ namespace ConduitLLM.Providers
         private ILLMClient CreateClientForProvider(Provider provider, ProviderKeyCredential keyCredential, string modelId)
         {
             var providerName = provider.ProviderType.ToString().ToLowerInvariant();
-            
-            _logger.LogDebug("Creating client for provider type: {ProviderType}, model: {ModelId}", 
+
+            _logger.LogDebug("Creating client for provider type: {ProviderType}, model: {ModelId}",
                 provider.ProviderType, modelId);
 
-            // TODO: Get default models configuration from somewhere (database?)
-            ProviderDefaultModels? defaultModels = null;
-
-            // Create the base client
-            ILLMClient client;
-            
-            // Create clients using the provider type
-            switch (provider.ProviderType)
+            // Create the client creation context with all dependencies
+            var context = new ClientCreationContext
             {
-                case ProviderType.OpenAI:
-                    var openAiLogger = _loggerFactory.CreateLogger<OpenAIClient>();
-                    client = new OpenAIClient(provider, keyCredential, modelId, openAiLogger, 
-                        _httpClientFactory, _capabilityService, defaultModels);
-                    break;
+                LoggerFactory = _loggerFactory,
+                HttpClientFactory = _httpClientFactory,
+                CapabilityService = _capabilityService,
+                DefaultModels = null // TODO: Get default models configuration from somewhere (database?)
+            };
 
-                case ProviderType.Groq:
-                    var groqLogger = _loggerFactory.CreateLogger<GroqClient>();
-                    client = new GroqClient(provider, keyCredential, modelId, groqLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Replicate:
-                    var replicateLogger = _loggerFactory.CreateLogger<ReplicateClient>();
-                    client = new ReplicateClient(provider, keyCredential, modelId, replicateLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Fireworks:
-                    var fireworksLogger = _loggerFactory.CreateLogger<FireworksClient>();
-                    client = new FireworksClient(provider, keyCredential, modelId, fireworksLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.OpenAICompatible:
-                    var compatibleLogger = _loggerFactory.CreateLogger<OpenAICompatibleGenericClient>();
-                    client = new OpenAICompatibleGenericClient(provider, keyCredential, modelId, compatibleLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.MiniMax:
-                    var miniMaxLogger = _loggerFactory.CreateLogger<MiniMaxClient>();
-                    client = new MiniMaxClient(provider, keyCredential, modelId, miniMaxLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-
-                case ProviderType.Cerebras:
-                    var cerebrasLogger = _loggerFactory.CreateLogger<CerebrasClient>();
-                    client = new CerebrasClient(provider, keyCredential, modelId, cerebrasLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.SambaNova:
-                    var sambaNovaLogger = _loggerFactory.CreateLogger<SambaNovaClient>();
-                    client = new SambaNovaClient(provider, keyCredential, modelId, sambaNovaLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.DeepInfra:
-                    var deepInfraLogger = _loggerFactory.CreateLogger<DeepInfraClient>();
-                    client = new DeepInfraClient(provider, keyCredential, modelId, deepInfraLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                default:
-                    throw new ConfigurationException($"Unsupported provider type: {provider.ProviderType}");
+            // Create the base client using the registry
+            ILLMClient client;
+            try
+            {
+                client = ClientCreatorRegistry.CreateClient(
+                    provider.ProviderType,
+                    provider,
+                    keyCredential,
+                    modelId,
+                    context);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ConfigurationException($"Unsupported provider type: {provider.ProviderType}", ex);
             }
 
             // Apply context decorator to set provider key context for error tracking
-            _logger.LogDebug("Applying context decorator for KeyId: {KeyId}, ProviderId: {ProviderId}", 
+            _logger.LogDebug("Applying context decorator for KeyId: {KeyId}, ProviderId: {ProviderId}",
                 keyCredential.Id, provider.Id);
             client = new ContextAwareLLMClient(client, keyCredential.Id, provider.Id, _serviceProvider);
 

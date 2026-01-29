@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Providers.Authentication;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -14,17 +16,21 @@ namespace ConduitLLM.Providers.Replicate
     /// </summary>
     public partial class ReplicateClient : CustomProviderClient
     {
-        // Default base URL for Replicate API
-        private const string DefaultReplicateBaseUrl = "https://api.replicate.com/v1/";
-
         // Default polling configuration
         private static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromSeconds(2);
         private static readonly TimeSpan MaxPollingDuration = TimeSpan.FromMinutes(10);
 
         /// <summary>
+        /// Gets the Token authentication strategy for Replicate.
+        /// Replicate uses "Token" scheme instead of "Bearer".
+        /// </summary>
+        protected override IAuthenticationStrategy AuthenticationStrategy => TokenStrategy.Instance;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="ReplicateClient"/> class.
         /// </summary>
-        /// <param name="credentials">The credentials for accessing the Replicate API.</param>
+        /// <param name="provider">The provider configuration.</param>
+        /// <param name="keyCredential">The API key credential.</param>
         /// <param name="providerModelId">The model identifier to use (typically a version hash or full slug).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">The HTTP client factory for creating HttpClient instances.</param>
@@ -43,7 +49,7 @@ namespace ConduitLLM.Providers.Replicate
                 logger,
                 httpClientFactory,
                 "Replicate",
-                baseUrl: DefaultReplicateBaseUrl,
+                baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate),
                 defaultModels: defaultModels)
         {
         }
@@ -62,11 +68,13 @@ namespace ConduitLLM.Providers.Replicate
         /// <inheritdoc/>
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
-            // Customize configuration for Replicate - use Token auth
+            // Configure standard headers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", apiKey);
+
+            // Apply Token authentication via strategy
+            AuthenticationStrategy.ApplyAuthentication(client, apiKey);
 
             // Set the base address if not already set
             // Ensure base URL ends with trailing slash for relative path resolution
@@ -78,11 +86,12 @@ namespace ConduitLLM.Providers.Replicate
         }
 
         /// <summary>
-        /// Gets the default base URL for Replicate.
+        /// Gets the default base URL for Replicate from the configuration registry.
         /// </summary>
         protected override string GetDefaultBaseUrl()
         {
-            return DefaultReplicateBaseUrl;
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate)
+                ?? "https://api.replicate.com/v1";
         }
     }
 }

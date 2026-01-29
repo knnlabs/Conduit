@@ -1,4 +1,6 @@
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Providers.Configuration;
 using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
@@ -20,7 +22,7 @@ namespace ConduitLLM.Providers.OpenAI
         {
             var startTime = DateTime.UtcNow;
             var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
-            
+
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
             {
                 return AuthenticationResult.Failure(
@@ -31,7 +33,7 @@ namespace ConduitLLM.Providers.OpenAI
             try
             {
                 using var client = CreateHttpClient(effectiveApiKey);
-                
+
                 // Override base URL if provided
                 if (!string.IsNullOrWhiteSpace(baseUrl))
                 {
@@ -68,7 +70,7 @@ namespace ConduitLLM.Providers.OpenAI
 
                 // Handle specific error cases
                 var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                
+
                 if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
                     Logger.LogWarning("{Provider} authentication failed: {Response}", ProviderName, responseContent);
@@ -116,11 +118,14 @@ namespace ConduitLLM.Providers.OpenAI
         /// </summary>
         public override string GetHealthCheckUrl(string? baseUrl = null)
         {
-            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
-                ? baseUrl.TrimEnd('/') 
-                : (!string.IsNullOrWhiteSpace(Provider.BaseUrl) 
-                    ? Provider.BaseUrl.TrimEnd('/') 
-                    : Constants.Urls.DefaultOpenAIBaseUrl.TrimEnd('/'));
+            var defaultBaseUrl = ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)
+                ?? "https://api.openai.com/v1";
+
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                ? baseUrl.TrimEnd('/')
+                : (!string.IsNullOrWhiteSpace(Provider.BaseUrl)
+                    ? Provider.BaseUrl.TrimEnd('/')
+                    : defaultBaseUrl.TrimEnd('/'));
 
             if (_isAzure)
             {
@@ -132,11 +137,12 @@ namespace ConduitLLM.Providers.OpenAI
         }
 
         /// <summary>
-        /// Gets the default base URL for OpenAI.
+        /// Gets the default base URL for OpenAI from the configuration registry.
         /// </summary>
         protected override string GetDefaultBaseUrl()
         {
-            return Constants.Urls.DefaultOpenAIBaseUrl;
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)
+                ?? "https://api.openai.com/v1";
         }
     }
 }

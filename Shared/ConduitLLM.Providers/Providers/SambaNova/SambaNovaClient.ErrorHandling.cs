@@ -1,6 +1,8 @@
 using System.Text.Json;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -23,12 +25,14 @@ namespace ConduitLLM.Providers.SambaNova
             Logger.LogError("SambaNova API error - Status: {StatusCode}, Content: {Content}, RequestId: {RequestId}",
                 statusCode, responseContent, requestId);
 
+            var errorMessages = SambaNovaErrorMessages;
+
             return statusCode switch
             {
-                System.Net.HttpStatusCode.Unauthorized => new ConfigurationException(Constants.ErrorMessages.InvalidApiKey),
-                System.Net.HttpStatusCode.TooManyRequests => new LLMCommunicationException(Constants.ErrorMessages.RateLimitExceeded),
-                System.Net.HttpStatusCode.NotFound => new ModelUnavailableException(Constants.ErrorMessages.ModelNotFound),
-                System.Net.HttpStatusCode.PaymentRequired => new LLMCommunicationException(Constants.ErrorMessages.QuotaExceeded),
+                System.Net.HttpStatusCode.Unauthorized => new ConfigurationException(errorMessages.InvalidApiKey),
+                System.Net.HttpStatusCode.TooManyRequests => new LLMCommunicationException(errorMessages.RateLimitExceeded),
+                System.Net.HttpStatusCode.NotFound => new ModelUnavailableException(errorMessages.ModelNotFound),
+                System.Net.HttpStatusCode.PaymentRequired => new LLMCommunicationException("API quota exceeded. Please check your usage limits or upgrade your plan."),
                 System.Net.HttpStatusCode.BadRequest => ParseBadRequestError(responseContent),
                 System.Net.HttpStatusCode.InternalServerError => new LLMCommunicationException($"SambaNova API internal error: {responseContent}"),
                 System.Net.HttpStatusCode.ServiceUnavailable => new LLMCommunicationException("SambaNova API is temporarily unavailable. Please try again later."),
@@ -51,18 +55,18 @@ namespace ConduitLLM.Providers.SambaNova
                     if (errorElement.TryGetProperty("message", out var messageElement))
                     {
                         var errorMessage = messageElement.GetString();
-                        
+
                         // Check for specific error patterns
                         if (errorMessage?.Contains("model", StringComparison.OrdinalIgnoreCase) == true)
                         {
                             return new ModelUnavailableException($"Model error: {errorMessage}");
                         }
-                        
+
                         if (errorMessage?.Contains("token", StringComparison.OrdinalIgnoreCase) == true)
                         {
                             return new ValidationException($"Token limit error: {errorMessage}");
                         }
-                        
+
                         return new ValidationException($"Request error: {errorMessage}");
                     }
                 }
