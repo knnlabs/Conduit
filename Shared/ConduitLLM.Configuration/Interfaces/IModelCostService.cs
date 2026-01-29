@@ -62,7 +62,19 @@ public interface IModelCostService
     Task<bool> DeleteModelCostAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Clears the cache for model costs
+    /// Clears the cache for model costs synchronously.
     /// </summary>
+    /// <remarks>
+    /// This method uses blocking async patterns internally which can cause thread pool starvation.
+    /// Prefer using <see cref="ClearCacheAsync"/> instead.
+    /// </remarks>
+    [Obsolete("Use ClearCacheAsync instead. This synchronous method may cause thread pool starvation.")]
     void ClearCache();
+
+    /// <summary>
+    /// Clears the cache for model costs asynchronously.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A task representing the asynchronous operation</returns>
+    Task ClearCacheAsync(CancellationToken cancellationToken = default);
 }
