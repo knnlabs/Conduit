@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Caching.Distributed;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Models;
 
@@ -74,8 +75,6 @@ namespace ConduitLLM.Gateway.Services
     /// </summary>
     public class EphemeralKeyService : EphemeralKeyServiceBase<EphemeralKeyData>, IEphemeralKeyService
     {
-        private const string CacheKeyPrefix = "ephemeral:";
-        private const string TokenPrefixValue = "ek_";
         private const int DefaultTTLSeconds = 900; // 15 minutes - longer for video generation which can take several minutes
 
         // Use a static key for encryption - in production this should come from configuration
@@ -85,10 +84,10 @@ namespace ConduitLLM.Gateway.Services
         private static readonly byte[] EncryptionKey = Convert.FromBase64String("VGhpc0lzQTMyQnl0ZUtleUZvckFFUzI1NkVuY3J5cHQ=");
 
         /// <inheritdoc />
-        protected override string KeyPrefix => CacheKeyPrefix;
+        protected override string KeyPrefix => CacheKeys.Ephemeral.Prefix;
 
         /// <inheritdoc />
-        protected override string TokenPrefix => TokenPrefixValue;
+        protected override string TokenPrefix => CacheKeys.Ephemeral.TokenPrefix;
 
         /// <inheritdoc />
         protected override int TTLSeconds => DefaultTTLSeconds;

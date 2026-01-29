@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Hubs;
@@ -18,7 +19,6 @@ namespace ConduitLLM.Gateway.EventHandlers
         private readonly IMemoryCache _progressCache;
         private readonly IHubContext<VideoGenerationHub> _hubContext;
         private readonly ILogger<VideoGenerationProgressHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "video_generation_progress_";
 
         public VideoGenerationProgressHandler(
             IAsyncTaskService asyncTaskService,
@@ -42,7 +42,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             try
             {
                 // Update progress cache for real-time queries
-                var cacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";
+                var cacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
                 var progressData = new
                 {
                     RequestId = message.RequestId,

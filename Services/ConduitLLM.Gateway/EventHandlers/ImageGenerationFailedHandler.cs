@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using MassTransit;
@@ -16,7 +17,6 @@ namespace ConduitLLM.Gateway.EventHandlers
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationFailedHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "image_generation_progress_";
         private const string FailureCountCacheKeyPrefix = "image_generation_failures_";
         private const int MaxRetryAttempts = 3;
 
@@ -44,7 +44,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             try
             {
                 // Clear progress cache for failed task
-                var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.TaskId}";
+                var progressCacheKey = CacheKeys.MediaProgress.ImageProgress(message.TaskId);
                 _progressCache.Remove(progressCacheKey);
                 
                 // Track failure metrics

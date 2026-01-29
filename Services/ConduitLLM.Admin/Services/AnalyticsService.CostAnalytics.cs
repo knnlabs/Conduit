@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.Costs;
 
 using Microsoft.Extensions.Caching.Memory;
@@ -20,7 +21,7 @@ namespace ConduitLLM.Admin.Services
             DateTime? endDate = null)
         {
             var stopwatch = Stopwatch.StartNew();
-            var cacheKey = $"{CachePrefixSummary}cost:{timeframe}:{startDate?.Ticks}:{endDate?.Ticks}";
+            var cacheKey = $"{CacheKeys.Analytics.SummaryPrefix}cost:{timeframe}:{startDate?.Ticks}:{endDate?.Ticks}";
             var cacheHit = false;
             
             var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>
@@ -124,7 +125,7 @@ namespace ConduitLLM.Admin.Services
             DateTime? endDate = null)
         {
             var stopwatch = Stopwatch.StartNew();
-            var cacheKey = $"{CachePrefixCostTrend}{period}:{startDate?.Ticks}:{endDate?.Ticks}";
+            var cacheKey = $"{CacheKeys.Analytics.CostTrendPrefix}{period}:{startDate?.Ticks}:{endDate?.Ticks}";
             var cacheHit = false;
             
             var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>

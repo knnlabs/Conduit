@@ -1,6 +1,7 @@
 using System.Text.Json;
 using StackExchange.Redis;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -20,11 +21,11 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var hits = await _database.StringGetAsync(STATS_HIT_KEY);
-                var misses = await _database.StringGetAsync(STATS_MISS_KEY);
-                var invalidations = await _database.StringGetAsync(STATS_INVALIDATION_KEY);
-                var patternMatches = await _database.StringGetAsync(STATS_PATTERN_MATCH_KEY);
-                var resetTime = await _database.StringGetAsync(STATS_RESET_TIME_KEY);
+                var hits = await _database.StringGetAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.ModelCostService));
+                var misses = await _database.StringGetAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ModelCostService));
+                var invalidations = await _database.StringGetAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.ModelCostService));
+                var patternMatches = await _database.StringGetAsync(CacheKeys.Stats.PatternMatches());
+                var resetTime = await _database.StringGetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.ModelCostService));
 
                 // Include pending buffered stats that haven't been flushed yet
                 var pendingHits = Interlocked.Read(ref _statsBuffer.Hits);
@@ -34,7 +35,7 @@ namespace ConduitLLM.Gateway.Services
 
                 // Count entries
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: KeyPrefix + "*");
+                var keys = server.Keys(pattern: CacheKeys.ModelCost.Prefix + "*");
                 var entryCount = 0L;
                 foreach (var _ in keys)
                 {
@@ -60,7 +61,7 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task SetModelCostAsync(ModelCost cost)
         {
-            var patternKey = PatternKeyPrefix + cost.CostName.ToLowerInvariant();
+            var patternKey = CacheKeys.ModelCost.PatternPrefix + cost.CostName.ToLowerInvariant();
             
             // Create cached version with pre-parsed configuration
             var cachedCost = ConvertToCachedModelCost(cost);
@@ -74,11 +75,11 @@ namespace ConduitLLM.Gateway.Services
         /*
         private async Task SetProviderModelCostsAsync(string providerName, List<ModelCost> costs)
         {
-            var providerKey = ProviderKeyPrefix + providerName.ToLowerInvariant();
+            var providerKey = CacheKeys.ModelCost.ProviderPrefix + providerName.ToLowerInvariant();
             var serialized = JsonSerializer.Serialize(costs, _jsonOptions);
-            
+
             await _database.StringSetAsync(providerKey, serialized, _defaultExpiry);
-            
+
             _logger.LogDebug("Model costs cached for provider: {Provider} ({Count} costs)", providerName, costs.Count());
         }
         */

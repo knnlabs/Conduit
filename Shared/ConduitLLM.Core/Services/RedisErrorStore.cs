@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -28,7 +29,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task TrackFatalErrorAsync(int keyId, ProviderErrorInfo error)
         {
-            var fatalKey = $"provider:errors:key:{keyId}:fatal";
+            var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
             
             var tasks = new List<Task>
             {
@@ -51,7 +52,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task TrackWarningAsync(int keyId, ProviderErrorInfo error)
         {
-            var warningKey = $"provider:errors:key:{keyId}:warnings";
+            var warningKey = CacheKeys.ProviderError.WarningsByKey(keyId);
             var warningData = JsonSerializer.Serialize(new
             {
                 type = error.ErrorType.ToString(),
@@ -72,7 +73,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task UpdateProviderSummaryAsync(int providerId, bool isFatal)
         {
-            var summaryKey = $"provider:errors:provider:{providerId}:summary";
+            var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
             
             var tasks = new List<Task>
             {
@@ -94,7 +95,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task AddToGlobalFeedAsync(ProviderErrorInfo error)
         {
-            var feedKey = "provider:errors:recent";
+            var feedKey = CacheKeys.ProviderError.RecentFeed;
             var feedEntry = JsonSerializer.Serialize(new
             {
                 keyId = error.KeyCredentialId,
@@ -114,7 +115,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task<FatalErrorData?> GetFatalErrorDataAsync(int keyId)
         {
-            var fatalKey = $"provider:errors:key:{keyId}:fatal";
+            var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
             var data = await _db.HashGetAllAsync(fatalKey);
             
             if (data.Length == 0)
@@ -140,13 +141,13 @@ namespace ConduitLLM.Core.Services
 
         public async Task MarkKeyDisabledAsync(int keyId, DateTime disabledAt)
         {
-            var fatalKey = $"provider:errors:key:{keyId}:fatal";
+            var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
             await _db.HashSetAsync(fatalKey, "disabled_at", disabledAt.ToString("O"));
         }
 
         public async Task MarkProviderDisabledAsync(int providerId, DateTime disabledAt, string reason)
         {
-            var summaryKey = $"provider:errors:provider:{providerId}:summary";
+            var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
             await Task.WhenAll(
                 _db.HashSetAsync(summaryKey, "provider_disabled_at", disabledAt.ToString("O")),
                 _db.HashSetAsync(summaryKey, "provider_disable_reason", reason)
@@ -155,7 +156,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task AddDisabledKeyToProviderAsync(int providerId, int keyId)
         {
-            var summaryKey = $"provider:errors:provider:{providerId}:summary";
+            var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
             var disabledKeys = await _db.HashGetAsync(summaryKey, "disabled_keys");
             var keyList = disabledKeys.HasValue 
                 ? JsonSerializer.Deserialize<List<int>>(disabledKeys.ToString()) ?? new List<int>()
@@ -171,7 +172,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task<IReadOnlyList<ErrorFeedEntry>> GetRecentErrorsAsync(int limit = 100)
         {
-            var feedKey = "provider:errors:recent";
+            var feedKey = CacheKeys.ProviderError.RecentFeed;
             var entries = await _db.SortedSetRangeByScoreAsync(
                 feedKey, 
                 order: Order.Descending, 
@@ -212,7 +213,7 @@ namespace ConduitLLM.Core.Services
             
             foreach (var keyId in keyIds)
             {
-                var fatalKey = $"provider:errors:key:{keyId}:fatal";
+                var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
                 var lastSeenValue = await _db.HashGetAsync(fatalKey, "last_seen");
                 
                 if (lastSeenValue.HasValue)
@@ -238,13 +239,11 @@ namespace ConduitLLM.Core.Services
 
         public async Task ClearErrorsForKeyAsync(int keyId)
         {
-            var keyPrefix = $"provider:errors:key:{keyId}";
-            
             // Delete error keys
             await _db.KeyDeleteAsync(new RedisKey[]
             {
-                $"{keyPrefix}:fatal",
-                $"{keyPrefix}:warnings"
+                CacheKeys.ProviderError.FatalByKey(keyId),
+                CacheKeys.ProviderError.WarningsByKey(keyId)
             });
             
             _logger.LogInformation("Cleared errors for key {KeyId}", keyId);
@@ -258,7 +257,7 @@ namespace ConduitLLM.Core.Services
             result.FatalError = await GetFatalErrorDataAsync(keyId);
             
             // Get recent warnings
-            var warningKey = $"provider:errors:key:{keyId}:warnings";
+            var warningKey = CacheKeys.ProviderError.WarningsByKey(keyId);
             var warnings = await _db.SortedSetRangeByScoreAsync(
                 warningKey, 
                 order: Order.Descending, 
@@ -287,7 +286,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task<ProviderSummaryData?> GetProviderSummaryAsync(int providerId)
         {
-            var summaryKey = $"provider:errors:provider:{providerId}:summary";
+            var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
             var summaryData = await _db.HashGetAllAsync(summaryKey);
             
             if (summaryData.Length == 0)
@@ -317,7 +316,7 @@ namespace ConduitLLM.Core.Services
             var cutoff = DateTime.UtcNow - window;
             
             // Get recent errors from feed
-            var feedKey = "provider:errors:recent";
+            var feedKey = CacheKeys.ProviderError.RecentFeed;
             var entries = await _db.SortedSetRangeByScoreAsync(
                 feedKey,
                 new DateTimeOffset(cutoff).ToUnixTimeSeconds(),

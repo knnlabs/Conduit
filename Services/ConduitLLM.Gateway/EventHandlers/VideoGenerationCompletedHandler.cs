@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
@@ -21,7 +22,6 @@ namespace ConduitLLM.Gateway.EventHandlers
         private readonly IMemoryCache _progressCache;
         private readonly IHubContext<VideoGenerationHub> _hubContext;
         private readonly ILogger<VideoGenerationCompletedHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "video_generation_progress_";
         private const string CompletedTasksCacheKey = "completed_video_tasks";
 
         public VideoGenerationCompletedHandler(
@@ -103,7 +103,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 }
 
                 // Clear progress cache for this task
-                var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";
+                var progressCacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
                 _progressCache.Remove(progressCacheKey);
                 
                 // Store completion info for analytics and audit

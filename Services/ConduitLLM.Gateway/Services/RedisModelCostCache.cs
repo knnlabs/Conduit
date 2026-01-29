@@ -1,5 +1,6 @@
 using System.Text.Json;
 using StackExchange.Redis;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
@@ -14,19 +15,6 @@ namespace ConduitLLM.Gateway.Services
         private readonly ILogger<RedisModelCostCache> _logger;
         private readonly IDistributedCachePopulator _cachePopulator;
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromHours(6); // Model costs change infrequently
-        private const string KeyPrefix = "modelcost:";
-        private const string PatternKeyPrefix = "modelcost:pattern:";
-        private const string ProviderKeyPrefix = "modelcost:provider:";
-
-        // Statistics tracking keys
-        private const string STATS_HIT_KEY = "conduit:cache:modelcost:stats:hits";
-        private const string STATS_MISS_KEY = "conduit:cache:modelcost:stats:misses";
-        private const string STATS_INVALIDATION_KEY = "conduit:cache:modelcost:stats:invalidations";
-        private const string STATS_RESET_TIME_KEY = "conduit:cache:modelcost:stats:reset_time";
-        private const string STATS_PATTERN_MATCH_KEY = "conduit:cache:modelcost:stats:pattern_matches";
-
-        private const string InvalidationChannel = "mcost_invalidated";
-        private const string BatchInvalidationChannel = "mcost_batch_invalidated";
         private readonly ISubscriber _subscriber;
 
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
@@ -72,7 +60,7 @@ namespace ConduitLLM.Gateway.Services
             _cachePopulator = cachePopulator;
 
             // Initialize stats reset time if not exists (fire-and-forget, non-blocking)
-            _ = _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.ToString("O"), when: When.NotExists)
+            _ = _database.StringSetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.ModelCostService), DateTime.UtcNow.ToString("O"), when: When.NotExists)
                 .ContinueWith(t =>
                 {
                     if (t.IsFaulted)
@@ -82,8 +70,8 @@ namespace ConduitLLM.Gateway.Services
                 }, TaskContinuationOptions.OnlyOnFaulted);
 
             // Subscribe to invalidation messages
-            _subscriber.Subscribe(RedisChannel.Literal(InvalidationChannel), OnCostInvalidated);
-            _subscriber.Subscribe(RedisChannel.Literal(BatchInvalidationChannel), OnBatchInvalidated);
+            _subscriber.Subscribe(RedisChannel.Literal(CacheKeys.ModelCost.InvalidationChannel), OnCostInvalidated);
+            _subscriber.Subscribe(RedisChannel.Literal(CacheKeys.ModelCost.BatchInvalidationChannel), OnBatchInvalidated);
 
             // Initialize statistics flush timer
             _flushTimer = new Timer(FlushStatisticsCallback, null, _flushInterval, _flushInterval);
@@ -96,7 +84,7 @@ namespace ConduitLLM.Gateway.Services
             string modelIdPattern, 
             Func<string, Task<ModelCost?>> databaseFallback)
         {
-            var cacheKey = PatternKeyPrefix + modelIdPattern.ToLowerInvariant();
+            var cacheKey = CacheKeys.ModelCost.PatternPrefix + modelIdPattern.ToLowerInvariant();
             
             try
             {
@@ -163,57 +151,57 @@ namespace ConduitLLM.Gateway.Services
         /// NOTE: This method is disabled as ModelCost entity doesn't contain provider information
         /// </summary>
         public async Task<List<ModelCost>> GetProviderModelCostsAsync(
-            string providerName, 
+            string providerName,
             Func<string, Task<List<ModelCost>>> databaseFallback)
         {
-            var cacheKey = ProviderKeyPrefix + providerName.ToLowerInvariant();
-            
+            var cacheKey = CacheKeys.ModelCost.ProviderPrefix + providerName.ToLowerInvariant();
+
             try
             {
                 var cachedValue = await _database.StringGetAsync(cacheKey);
-                
+
                 if (cachedValue.HasValue)
                 {
                     var jsonString = (string?)cachedValue;
                     if (jsonString is not null)
                     {
                         var costs = JsonSerializer.Deserialize<List<ModelCost>>(jsonString, _jsonOptions);
-                        
+
                         if (costs != null)
                         {
                             _logger.LogDebug("Model costs cache hit for provider: {Provider}", providerName);
-                            await _database.StringIncrementAsync(STATS_HIT_KEY);
+                            await _database.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.ModelCostService));
                             return costs;
                         }
                     }
                 }
-                
+
                 // Cache miss - fallback to database
                 _logger.LogDebug("Model costs cache miss for provider, querying database: {Provider}", providerName);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
-                
+                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ModelCostService));
+
                 var dbCosts = await databaseFallback(providerName);
-                
+
                 if (dbCosts != null && dbCosts.Any())
                 {
                     // NOTE: Provider-based caching disabled as ModelCost doesn't contain provider info
                     // await SetProviderModelCostsAsync(providerName, dbCosts);
-                    
+
                     // Also cache individual costs by pattern
                     foreach (var cost in dbCosts)
                     {
                         await SetModelCostAsync(cost);
                     }
-                    
+
                     return dbCosts;
                 }
-                
+
                 return dbCosts ?? new List<ModelCost>();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error accessing Model Costs cache for provider, falling back to database: {Provider}", providerName);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ModelCostService));
                 return await databaseFallback(providerName) ?? new List<ModelCost>();
             }
         }
@@ -229,7 +217,7 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 // Try exact match first
-                var exactKey = PatternKeyPrefix + modelId.ToLowerInvariant();
+                var exactKey = CacheKeys.ModelCost.PatternPrefix + modelId.ToLowerInvariant();
                 var cachedValue = await _database.StringGetAsync(exactKey);
                 
                 if (cachedValue.HasValue)
@@ -311,10 +299,10 @@ namespace ConduitLLM.Gateway.Services
                 var batch = _database.CreateBatch();
                 var tasks = new List<Task>();
 
-                if (hits > 0) tasks.Add(batch.StringIncrementAsync(STATS_HIT_KEY, hits));
-                if (misses > 0) tasks.Add(batch.StringIncrementAsync(STATS_MISS_KEY, misses));
-                if (patternMatches > 0) tasks.Add(batch.StringIncrementAsync(STATS_PATTERN_MATCH_KEY, patternMatches));
-                if (invalidations > 0) tasks.Add(batch.StringIncrementAsync(STATS_INVALIDATION_KEY, invalidations));
+                if (hits > 0) tasks.Add(batch.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.ModelCostService), hits));
+                if (misses > 0) tasks.Add(batch.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ModelCostService), misses));
+                if (patternMatches > 0) tasks.Add(batch.StringIncrementAsync(CacheKeys.Stats.PatternMatches(), patternMatches));
+                if (invalidations > 0) tasks.Add(batch.StringIncrementAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.ModelCostService), invalidations));
 
                 batch.Execute();
                 await Task.WhenAll(tasks);
@@ -353,10 +341,10 @@ namespace ConduitLLM.Gateway.Services
                     if (hits > 0 || misses > 0 || patternMatches > 0 || invalidations > 0)
                     {
                         var tasks = new List<Task>();
-                        if (hits > 0) tasks.Add(_database.StringIncrementAsync(STATS_HIT_KEY, hits));
-                        if (misses > 0) tasks.Add(_database.StringIncrementAsync(STATS_MISS_KEY, misses));
-                        if (patternMatches > 0) tasks.Add(_database.StringIncrementAsync(STATS_PATTERN_MATCH_KEY, patternMatches));
-                        if (invalidations > 0) tasks.Add(_database.StringIncrementAsync(STATS_INVALIDATION_KEY, invalidations));
+                        if (hits > 0) tasks.Add(_database.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.ModelCostService), hits));
+                        if (misses > 0) tasks.Add(_database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ModelCostService), misses));
+                        if (patternMatches > 0) tasks.Add(_database.StringIncrementAsync(CacheKeys.Stats.PatternMatches(), patternMatches));
+                        if (invalidations > 0) tasks.Add(_database.StringIncrementAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.ModelCostService), invalidations));
                         Task.WaitAll(tasks.ToArray(), TimeSpan.FromSeconds(5));
 
                         _logger.LogDebug("Final flush of model cost cache stats on dispose: Hits={Hits}, Misses={Misses}, Patterns={Patterns}, Invalidations={Invalidations}",

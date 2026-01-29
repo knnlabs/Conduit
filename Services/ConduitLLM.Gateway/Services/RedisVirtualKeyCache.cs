@@ -1,5 +1,6 @@
 using System.Text.Json;
 using StackExchange.Redis;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
@@ -14,15 +15,6 @@ namespace ConduitLLM.Gateway.Services
         private readonly ISubscriber _subscriber;
         private readonly ILogger<RedisVirtualKeyCache> _logger;
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromMinutes(30); // Fallback expiry
-        private const string KeyPrefix = "vkey:";
-        private const string InvalidationChannel = "vkey_invalidated";
-        private const string BatchInvalidationChannel = "vkey_batch_invalidated";
-        
-        // Statistics tracking keys
-        private const string STATS_HIT_KEY = "conduit:cache:stats:hits";
-        private const string STATS_MISS_KEY = "conduit:cache:stats:misses";
-        private const string STATS_INVALIDATION_KEY = "conduit:cache:stats:invalidations";
-        private const string STATS_RESET_TIME_KEY = "conduit:cache:stats:reset_time";
 
         public RedisVirtualKeyCache(
             IConnectionMultiplexer redis,
@@ -33,8 +25,8 @@ namespace ConduitLLM.Gateway.Services
             _logger = logger;
 
             // Subscribe to invalidation messages
-            _subscriber.Subscribe(RedisChannel.Literal(InvalidationChannel), OnKeyInvalidated);
-            _subscriber.Subscribe(RedisChannel.Literal(BatchInvalidationChannel), OnBatchInvalidated);
+            _subscriber.Subscribe(RedisChannel.Literal(CacheKeys.VirtualKey.InvalidationChannel), OnKeyInvalidated);
+            _subscriber.Subscribe(RedisChannel.Literal(CacheKeys.VirtualKey.BatchInvalidationChannel), OnBatchInvalidated);
         }
 
         /// <summary>
@@ -47,8 +39,8 @@ namespace ConduitLLM.Gateway.Services
             string keyHash, 
             Func<string, Task<VirtualKey?>> databaseFallback)
         {
-            var cacheKey = KeyPrefix + keyHash;
-            
+            var cacheKey = CacheKeys.VirtualKey.ByHash(keyHash);
+
             try
             {
                 // Try Redis first - this is ~50x faster than database
@@ -66,7 +58,7 @@ namespace ConduitLLM.Gateway.Services
                         {
                             _logger.LogDebug("Virtual Key cache hit: {KeyHash}", keyHash);
                             // Increment hit counter
-                            await _database.StringIncrementAsync(STATS_HIT_KEY);
+                            await _database.StringIncrementAsync(CacheKeys.Stats.VirtualKeyHits);
                             return virtualKey;
                         }
                         else
@@ -81,7 +73,7 @@ namespace ConduitLLM.Gateway.Services
                 // Cache miss or invalid key - fallback to database
                 _logger.LogDebug("Virtual Key cache miss, querying database: {KeyHash}", keyHash);
                 // Increment miss counter
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.VirtualKeyMisses);
                 var dbKey = await databaseFallback(keyHash);
                 
                 if (dbKey != null && IsKeyValid(dbKey))
@@ -109,7 +101,7 @@ namespace ConduitLLM.Gateway.Services
         /// <param name="virtualKey">Virtual Key to cache</param>
         public async Task SetVirtualKeyAsync(string keyHash, VirtualKey virtualKey)
         {
-            var cacheKey = KeyPrefix + keyHash;
+            var cacheKey = CacheKeys.VirtualKey.ByHash(keyHash);
             
             try
             {
@@ -135,7 +127,7 @@ namespace ConduitLLM.Gateway.Services
         /// <param name="keyHash">Hashed key value to invalidate</param>
         public async Task InvalidateVirtualKeyAsync(string keyHash)
         {
-            var cacheKey = KeyPrefix + keyHash;
+            var cacheKey = CacheKeys.VirtualKey.ByHash(keyHash);
             
             try
             {
@@ -143,10 +135,10 @@ namespace ConduitLLM.Gateway.Services
                 await _database.KeyDeleteAsync(cacheKey);
                 
                 // Notify ALL instances to invalidate their caches
-                await _subscriber.PublishAsync(RedisChannel.Literal(InvalidationChannel), keyHash);
-                
+                await _subscriber.PublishAsync(RedisChannel.Literal(CacheKeys.VirtualKey.InvalidationChannel), keyHash);
+
                 // Increment invalidation counter
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.VirtualKeyInvalidations);
                 
                 _logger.LogInformation("Invalidated Virtual Key across all instances: {KeyHash}", keyHash);
             }
@@ -190,10 +182,10 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 // Get the actual statistics from Redis
-                var hitCountTask = _database.StringGetAsync(STATS_HIT_KEY);
-                var missCountTask = _database.StringGetAsync(STATS_MISS_KEY);
-                var invalidationCountTask = _database.StringGetAsync(STATS_INVALIDATION_KEY);
-                var resetTimeTask = _database.StringGetAsync(STATS_RESET_TIME_KEY);
+                var hitCountTask = _database.StringGetAsync(CacheKeys.Stats.VirtualKeyHits);
+                var missCountTask = _database.StringGetAsync(CacheKeys.Stats.VirtualKeyMisses);
+                var invalidationCountTask = _database.StringGetAsync(CacheKeys.Stats.VirtualKeyInvalidations);
+                var resetTimeTask = _database.StringGetAsync(CacheKeys.Stats.VirtualKeyResetTime);
                 
                 await Task.WhenAll(hitCountTask, missCountTask, invalidationCountTask, resetTimeTask);
                 
@@ -213,7 +205,7 @@ namespace ConduitLLM.Gateway.Services
                 else
                 {
                     // If no reset time exists, set it now
-                    await _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.Ticks.ToString());
+                    await _database.StringSetAsync(CacheKeys.Stats.VirtualKeyResetTime, DateTime.UtcNow.Ticks.ToString());
                 }
                 
                 return new ConduitLLM.Core.Interfaces.VirtualKeyCacheStats
@@ -239,7 +231,7 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var cacheKey = KeyPrefix + keyHash;
+                var cacheKey = CacheKeys.VirtualKey.ByHash(keyHash.ToString());
                 await _database.KeyDeleteAsync(cacheKey);
                 
                 _logger.LogDebug("Invalidated Virtual Key from pub/sub: {KeyHash}", keyHash.ToString());
@@ -291,7 +283,7 @@ namespace ConduitLLM.Gateway.Services
         {
             var keyHashes = requests
                 .Where(r => r.EntityType == CacheType.VirtualKey.ToString())
-                .Select(r => KeyPrefix + r.EntityId)
+                .Select(r => CacheKeys.VirtualKey.ByHash(r.EntityId))
                 .ToArray();
             
             if (keyHashes.Length == 0)
@@ -324,17 +316,17 @@ namespace ConduitLLM.Gateway.Services
                 await Task.WhenAll(deleteTasks);
                 
                 // Update invalidation statistics
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY, keyHashes.Length);
-                
+                await _database.StringIncrementAsync(CacheKeys.Stats.VirtualKeyInvalidations, keyHashes.Length);
+
                 // Publish batch invalidation message to other instances
                 var batchMessage = new VirtualKeyBatchInvalidation
                 {
-                    KeyHashes = keyHashes.Select(k => k.Replace(KeyPrefix, "")).ToArray(),
+                    KeyHashes = keyHashes.Select(k => k.Replace(CacheKeys.VirtualKey.Prefix, "")).ToArray(),
                     Timestamp = DateTime.UtcNow
                 };
                 
                 await _subscriber.PublishAsync(
-                    RedisChannel.Literal(BatchInvalidationChannel), 
+                    RedisChannel.Literal(CacheKeys.VirtualKey.BatchInvalidationChannel),
                     JsonSerializer.Serialize(batchMessage));
                 
                 stopwatch.Stop();
@@ -381,7 +373,7 @@ namespace ConduitLLM.Gateway.Services
                     
                     foreach (var keyHash in batchMessage.KeyHashes)
                     {
-                        var cacheKey = KeyPrefix + keyHash;
+                        var cacheKey = CacheKeys.VirtualKey.ByHash(keyHash);
                         deleteTasks.Add(batch.KeyDeleteAsync(cacheKey));
                     }
                     

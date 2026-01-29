@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using MassTransit;
@@ -15,7 +16,6 @@ namespace ConduitLLM.Gateway.EventHandlers
         private readonly IAsyncTaskService _taskService;
         private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationProgressHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "image_generation_progress_";
 
         public ImageGenerationProgressHandler(
             IMemoryCache progressCache,
@@ -39,7 +39,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             try
             {
                 // Update progress cache for real-time queries
-                var cacheKey = $"{ProgressCacheKeyPrefix}{message.TaskId}";
+                var cacheKey = CacheKeys.MediaProgress.ImageProgress(message.TaskId);
                 var progressData = new
                 {
                     TaskId = message.TaskId,

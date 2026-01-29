@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Hubs;
@@ -18,7 +19,6 @@ namespace ConduitLLM.Gateway.EventHandlers
         private readonly IMemoryCache _progressCache;
         private readonly IHubContext<VideoGenerationHub> _hubContext;
         private readonly ILogger<VideoGenerationFailedHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "video_generation_progress_";
 
         public VideoGenerationFailedHandler(
             IAsyncTaskService asyncTaskService,
@@ -70,7 +70,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 }
                 
                 // Clear progress cache for this task
-                var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";
+                var progressCacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
                 _progressCache.Remove(progressCacheKey);
                 
                 // Log failure metrics for monitoring

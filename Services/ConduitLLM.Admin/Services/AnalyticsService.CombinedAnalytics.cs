@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs;
 
 using Microsoft.Extensions.Caching.Memory;
@@ -21,7 +22,7 @@ namespace ConduitLLM.Admin.Services
             DateTime? endDate = null)
         {
             var stopwatch = Stopwatch.StartNew();
-            var cacheKey = $"{CachePrefixSummary}full:{timeframe}:{startDate?.Ticks}:{endDate?.Ticks}";
+            var cacheKey = $"{CacheKeys.Analytics.SummaryPrefix}full:{timeframe}:{startDate?.Ticks}:{endDate?.Ticks}";
             var cacheHit = false;
             
             var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>

@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
@@ -13,7 +14,6 @@ namespace ConduitLLM.Gateway.EventHandlers
         private readonly IMemoryCache _progressCache;
         private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationCompletedHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "image_generation_progress_";
         private const string CompletedTasksCacheKey = "completed_image_tasks";
 
         public ImageGenerationCompletedHandler(
@@ -36,7 +36,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             try
             {
                 // Clear progress cache for this task
-                var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.TaskId}";
+                var progressCacheKey = CacheKeys.MediaProgress.ImageProgress(message.TaskId);
                 _progressCache.Remove(progressCacheKey);
                 
                 // Store completion info for analytics and audit

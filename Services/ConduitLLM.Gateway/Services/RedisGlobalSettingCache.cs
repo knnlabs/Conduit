@@ -1,5 +1,6 @@
 using System.Text.Json;
 using StackExchange.Redis;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
@@ -14,16 +15,6 @@ namespace ConduitLLM.Gateway.Services
         private readonly ILogger<RedisGlobalSettingCache> _logger;
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromHours(2);
         private readonly TimeSpan _authKeyExpiry = TimeSpan.FromMinutes(15); // Shorter expiry for auth keys
-        private const string KeyPrefix = "globalsetting:";
-        private const string AuthKeyCache = "globalsetting:authkey";
-        
-        // Statistics tracking keys
-        private const string STATS_HIT_KEY = "conduit:cache:globalsetting:stats:hits";
-        private const string STATS_MISS_KEY = "conduit:cache:globalsetting:stats:misses";
-        private const string STATS_INVALIDATION_KEY = "conduit:cache:globalsetting:stats:invalidations";
-        private const string STATS_RESET_TIME_KEY = "conduit:cache:globalsetting:stats:reset_time";
-        private const string STATS_AUTH_HIT_KEY = "conduit:cache:globalsetting:stats:auth_hits";
-        private const string STATS_AUTH_MISS_KEY = "conduit:cache:globalsetting:stats:auth_misses";
 
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
@@ -38,17 +29,17 @@ namespace ConduitLLM.Gateway.Services
             _logger = logger;
             
             // Initialize stats reset time if not exists
-            _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
+            _database.StringSetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.GlobalSettingService), DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
         }
 
         /// <summary>
         /// Get Global Setting from cache with database fallback
         /// </summary>
         public async Task<GlobalSetting?> GetSettingAsync(
-            string settingKey, 
+            string settingKey,
             Func<string, Task<GlobalSetting?>> databaseFallback)
         {
-            var cacheKey = KeyPrefix + settingKey.ToLowerInvariant();
+            var cacheKey = CacheKeys.GlobalSetting.Prefix + settingKey.ToLowerInvariant();
             
             try
             {
@@ -64,7 +55,7 @@ namespace ConduitLLM.Gateway.Services
                         if (setting != null)
                         {
                             _logger.LogDebug("Global setting cache hit: {SettingKey}", settingKey);
-                            await _database.StringIncrementAsync(STATS_HIT_KEY);
+                            await _database.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.GlobalSettingService));
                             return setting;
                         }
                     }
@@ -72,7 +63,7 @@ namespace ConduitLLM.Gateway.Services
                 
                 // Cache miss - fallback to database
                 _logger.LogDebug("Global setting cache miss, querying database: {SettingKey}", settingKey);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.GlobalSettingService));
                 
                 var dbSetting = await databaseFallback(settingKey);
                 
@@ -88,7 +79,7 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error accessing Global Setting cache, falling back to database: {SettingKey}", settingKey);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.GlobalSettingService));
                 return await databaseFallback(settingKey);
             }
         }
@@ -108,7 +99,7 @@ namespace ConduitLLM.Gateway.Services
                 // Try to get all settings from cache
                 foreach (var key in settingKeys)
                 {
-                    var cacheKey = KeyPrefix + key.ToLowerInvariant();
+                    var cacheKey = CacheKeys.GlobalSetting.Prefix + key.ToLowerInvariant();
                     var cachedValue = await _database.StringGetAsync(cacheKey);
                     
                     if (cachedValue.HasValue)
@@ -120,14 +111,14 @@ namespace ConduitLLM.Gateway.Services
                             if (setting != null)
                             {
                                 result[key] = setting;
-                                await _database.StringIncrementAsync(STATS_HIT_KEY);
+                                await _database.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.GlobalSettingService));
                                 continue;
                             }
                         }
                     }
                     
                     missingKeys.Add(key);
-                    await _database.StringIncrementAsync(STATS_MISS_KEY);
+                    await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.GlobalSettingService));
                 }
                 
                 // Fetch missing settings from database
@@ -160,25 +151,25 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var cachedValue = await _database.StringGetAsync(AuthKeyCache);
+                var cachedValue = await _database.StringGetAsync(CacheKeys.GlobalSetting.AuthKey);
                 
                 if (cachedValue.HasValue)
                 {
                     _logger.LogDebug("Authentication key cache hit");
-                    await _database.StringIncrementAsync(STATS_AUTH_HIT_KEY);
+                    await _database.StringIncrementAsync(CacheKeys.Stats.AuthHits());
                     return (string?)cachedValue;
                 }
                 
                 // Cache miss - fallback to database
                 _logger.LogDebug("Authentication key cache miss, querying database");
-                await _database.StringIncrementAsync(STATS_AUTH_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.AuthMisses());
                 
                 var authKey = await databaseFallback();
                 
                 if (!string.IsNullOrEmpty(authKey))
                 {
                     // Cache with shorter expiry for auth keys
-                    await _database.StringSetAsync(AuthKeyCache, authKey, _authKeyExpiry);
+                    await _database.StringSetAsync(CacheKeys.GlobalSetting.AuthKey, authKey, _authKeyExpiry);
                     return authKey;
                 }
                 
@@ -187,7 +178,7 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error accessing authentication key cache, falling back to database");
-                await _database.StringIncrementAsync(STATS_AUTH_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.AuthMisses());
                 return await databaseFallback();
             }
         }
@@ -199,14 +190,14 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var cacheKey = KeyPrefix + settingKey.ToLowerInvariant();
+                var cacheKey = CacheKeys.GlobalSetting.Prefix + settingKey.ToLowerInvariant();
                 await _database.KeyDeleteAsync(cacheKey);
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.GlobalSettingService));
                 
                 // If it's the auth key, invalidate the specialized cache too
                 if (settingKey.Equals("AuthenticationKey", StringComparison.OrdinalIgnoreCase))
                 {
-                    await _database.KeyDeleteAsync(AuthKeyCache);
+                    await _database.KeyDeleteAsync(CacheKeys.GlobalSetting.AuthKey);
                 }
                 
                 _logger.LogInformation("Global setting cache invalidated: {SettingKey}", settingKey);
@@ -224,16 +215,16 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var cacheKeys = settingKeys.Select(k => (RedisKey)(KeyPrefix + k.ToLowerInvariant())).ToArray();
+                var cacheKeys = settingKeys.Select(k => (RedisKey)(CacheKeys.GlobalSetting.Prefix + k.ToLowerInvariant())).ToArray();
                 await _database.KeyDeleteAsync(cacheKeys);
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY, settingKeys.Length);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.GlobalSettingService), settingKeys.Length);
                 
                 // Check if auth key is in the list
                 if (settingKeys.Any(k => k.Equals("AuthenticationKey", StringComparison.OrdinalIgnoreCase)))
                 {
-                    await _database.KeyDeleteAsync(AuthKeyCache);
+                    await _database.KeyDeleteAsync(CacheKeys.GlobalSetting.AuthKey);
                 }
-                
+
                 _logger.LogInformation("Global settings cache invalidated: {Count} keys", settingKeys.Length);
             }
             catch (Exception ex)
@@ -250,15 +241,15 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var authKeys = server.Keys(pattern: KeyPrefix + "auth*");
-                
+                var authKeys = server.Keys(pattern: CacheKeys.GlobalSetting.Prefix + "auth*");
+
                 foreach (var key in authKeys)
                 {
                     await _database.KeyDeleteAsync(key);
                 }
-                
+
                 // Also invalidate the specialized auth key cache
-                await _database.KeyDeleteAsync(AuthKeyCache);
+                await _database.KeyDeleteAsync(CacheKeys.GlobalSetting.AuthKey);
                 
                 _logger.LogWarning("All authentication-related settings cache entries cleared");
             }
@@ -276,15 +267,15 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: KeyPrefix + "*");
-                
+                var keys = server.Keys(pattern: CacheKeys.GlobalSetting.Prefix + "*");
+
                 foreach (var key in keys)
                 {
                     await _database.KeyDeleteAsync(key);
                 }
-                
+
                 // Also clear the auth key cache
-                await _database.KeyDeleteAsync(AuthKeyCache);
+                await _database.KeyDeleteAsync(CacheKeys.GlobalSetting.AuthKey);
                 
                 _logger.LogWarning("All global setting cache entries cleared");
             }
@@ -301,16 +292,16 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var hits = await _database.StringGetAsync(STATS_HIT_KEY);
-                var misses = await _database.StringGetAsync(STATS_MISS_KEY);
-                var invalidations = await _database.StringGetAsync(STATS_INVALIDATION_KEY);
-                var authHits = await _database.StringGetAsync(STATS_AUTH_HIT_KEY);
-                var authMisses = await _database.StringGetAsync(STATS_AUTH_MISS_KEY);
-                var resetTime = await _database.StringGetAsync(STATS_RESET_TIME_KEY);
-                
+                var hits = await _database.StringGetAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.GlobalSettingService));
+                var misses = await _database.StringGetAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.GlobalSettingService));
+                var invalidations = await _database.StringGetAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.GlobalSettingService));
+                var authHits = await _database.StringGetAsync(CacheKeys.Stats.AuthHits());
+                var authMisses = await _database.StringGetAsync(CacheKeys.Stats.AuthMisses());
+                var resetTime = await _database.StringGetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.GlobalSettingService));
+
                 // Count entries
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: KeyPrefix + "*");
+                var keys = server.Keys(pattern: CacheKeys.GlobalSetting.Prefix + "*");
                 var entryCount = 0L;
                 foreach (var _ in keys)
                 {
@@ -337,7 +328,7 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task SetSettingAsync(GlobalSetting setting)
         {
-            var cacheKey = KeyPrefix + setting.Key.ToLowerInvariant();
+            var cacheKey = CacheKeys.GlobalSetting.Prefix + setting.Key.ToLowerInvariant();
             var serialized = JsonSerializer.Serialize(setting, _jsonOptions);
             
             // Use shorter expiry for auth-related settings

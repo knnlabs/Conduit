@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -40,9 +41,6 @@ namespace ConduitLLM.Gateway.Consumers
 
         // Cache configuration - must match CachedModelProviderMappingService
         private const CacheRegion Region = CacheRegion.ModelMetadata;
-        private const string ByAliasKeyPattern = "model:mapping:{0}";
-        private const string ByIdKeyPattern = "model:mapping:id:{0}";
-        private const string AllMappingsKey = "model:mapping:all";
 
         public ModelMappingCacheInvalidationConsumer(
             ICacheManager cacheManager,
@@ -81,16 +79,16 @@ namespace ConduitLLM.Gateway.Consumers
                 var keysToRemove = new List<string>();
 
                 // Always invalidate the ID-based key
-                keysToRemove.Add(string.Format(ByIdKeyPattern, @event.MappingId));
+                keysToRemove.Add(CacheKeys.ModelMapping.ById(@event.MappingId));
 
                 // Invalidate alias-based key (primary lookup path for most operations)
                 if (!string.IsNullOrEmpty(@event.ModelAlias))
                 {
-                    keysToRemove.Add(string.Format(ByAliasKeyPattern, @event.ModelAlias));
+                    keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(@event.ModelAlias));
                 }
 
                 // Invalidate the "all mappings" cache
-                keysToRemove.Add(AllMappingsKey);
+                keysToRemove.Add(CacheKeys.ModelMapping.AllMappings);
 
                 // Perform cache invalidation
                 var removed = await _cacheManager.RemoveManyAsync(keysToRemove, Region);

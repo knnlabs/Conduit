@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Caching.Distributed;
 using ConduitLLM.Admin.Models;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Admin.Services
@@ -48,15 +49,13 @@ namespace ConduitLLM.Admin.Services
     /// </summary>
     public class EphemeralMasterKeyService : EphemeralKeyServiceBase<EphemeralMasterKeyData>, IEphemeralMasterKeyService
     {
-        private const string CacheKeyPrefix = "ephemeral:master:";
-        private const string TokenPrefixValue = "emk_";
         private const int DefaultTTLSeconds = 300; // 5 minutes
 
         /// <inheritdoc />
-        protected override string KeyPrefix => CacheKeyPrefix;
+        protected override string KeyPrefix => CacheKeys.Ephemeral.MasterPrefix;
 
         /// <inheritdoc />
-        protected override string TokenPrefix => TokenPrefixValue;
+        protected override string TokenPrefix => CacheKeys.Ephemeral.MasterTokenPrefix;
 
         /// <inheritdoc />
         protected override int TTLSeconds => DefaultTTLSeconds;

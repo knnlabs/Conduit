@@ -1,5 +1,6 @@
 using System.Text.Json;
 using StackExchange.Redis;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -15,14 +16,6 @@ namespace ConduitLLM.Gateway.Services
         private readonly ILogger<RedisProviderCache> _logger;
         private readonly IDistributedCachePopulator _cachePopulator;
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromHours(1);
-        private const string KeyPrefix = "provider:";
-        private const string NameKeyPrefix = "provider:name:"; // DEPRECATED - only for cleanup
-        
-        // Statistics tracking keys
-        private const string STATS_HIT_KEY = "conduit:cache:provider:stats:hits";
-        private const string STATS_MISS_KEY = "conduit:cache:provider:stats:misses";
-        private const string STATS_INVALIDATION_KEY = "conduit:cache:provider:stats:invalidations";
-        private const string STATS_RESET_TIME_KEY = "conduit:cache:provider:stats:reset_time";
 
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
@@ -39,7 +32,7 @@ namespace ConduitLLM.Gateway.Services
             _cachePopulator = cachePopulator;
 
             // Initialize stats reset time if not exists
-            _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
+            _database.StringSetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.ProviderService), DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -49,7 +42,7 @@ namespace ConduitLLM.Gateway.Services
             int providerId, 
             Func<int, Task<CachedProvider?>> databaseFallback)
         {
-            var cacheKey = KeyPrefix + providerId;
+            var cacheKey = CacheKeys.Provider.ById(providerId);
             
             try
             {
@@ -65,7 +58,7 @@ namespace ConduitLLM.Gateway.Services
                         if (credential != null)
                         {
                             _logger.LogDebug("Provider credential cache hit: {ProviderId}", providerId);
-                            await _database.StringIncrementAsync(STATS_HIT_KEY);
+                            await _database.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.ProviderService));
                             return credential;
                         }
                     }
@@ -73,7 +66,7 @@ namespace ConduitLLM.Gateway.Services
                 
                 // Cache miss - use stampede prevention to avoid multiple concurrent DB queries
                 _logger.LogDebug("Provider credential cache miss, querying database: {ProviderId}", providerId);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ProviderService));
 
                 var dbCredential = await _cachePopulator.GetOrPopulateAsync(
                     lockKey: $"populate:provider:{providerId}",
@@ -105,7 +98,7 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error accessing Provider Credential cache, falling back to database: {ProviderId}", providerId);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ProviderService));
                 return await databaseFallback(providerId);
             }
         }
@@ -122,7 +115,7 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 _logger.LogDebug("Provider credential lookup by name, querying database: {ProviderName}", providerName);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ProviderService));
                 
                 var dbCredential = await databaseFallback(providerName);
                 
@@ -149,7 +142,7 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var cacheKey = KeyPrefix + providerId;
+                var cacheKey = CacheKeys.Provider.ById(providerId);
                 
                 // Get the provider to find its name for name-based key invalidation
                 var cachedValue = await _database.StringGetAsync(cacheKey);
@@ -168,7 +161,7 @@ namespace ConduitLLM.Gateway.Services
                 
                 // Delete ID-based key
                 await _database.KeyDeleteAsync(cacheKey);
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
+                await _database.StringIncrementAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.ProviderService));
                 
                 _logger.LogInformation("Provider credential cache invalidated: {ProviderId}", providerId);
             }
@@ -197,7 +190,7 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: KeyPrefix + "*");
+                var keys = server.Keys(pattern: CacheKeys.Provider.Prefix + "*");
                 
                 foreach (var key in keys)
                 {
@@ -205,7 +198,7 @@ namespace ConduitLLM.Gateway.Services
                 }
                 
                 // Clean up any legacy name-based keys
-                var nameKeys = server.Keys(pattern: NameKeyPrefix + "*");
+                var nameKeys = server.Keys(pattern: CacheKeys.Provider.NamePrefix + "*");
                 foreach (var key in nameKeys)
                 {
                     await _database.KeyDeleteAsync(key);
@@ -226,14 +219,14 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var hits = await _database.StringGetAsync(STATS_HIT_KEY);
-                var misses = await _database.StringGetAsync(STATS_MISS_KEY);
-                var invalidations = await _database.StringGetAsync(STATS_INVALIDATION_KEY);
-                var resetTime = await _database.StringGetAsync(STATS_RESET_TIME_KEY);
+                var hits = await _database.StringGetAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.ProviderService));
+                var misses = await _database.StringGetAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ProviderService));
+                var invalidations = await _database.StringGetAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.ProviderService));
+                var resetTime = await _database.StringGetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.ProviderService));
                 
                 // Count entries
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: KeyPrefix + "*");
+                var keys = server.Keys(pattern: CacheKeys.Provider.Prefix + "*");
                 var entryCount = 0L;
                 foreach (var _ in keys)
                 {
@@ -258,7 +251,7 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task SetProviderAsync(int providerId, CachedProvider credential)
         {
-            var cacheKey = KeyPrefix + providerId;
+            var cacheKey = CacheKeys.Provider.ById(providerId);
             var serialized = JsonSerializer.Serialize(credential, _jsonOptions);
             
             // Cache by ID only - never by name since names can change
