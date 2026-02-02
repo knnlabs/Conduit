@@ -179,10 +179,19 @@ namespace ConduitLLM.Gateway.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error starting async video generation");
+
+                // Extract useful error information for debugging while avoiding sensitive data exposure
+                var errorDetail = ExtractSafeErrorDetail(ex);
+
                 return StatusCode(500, new ProblemDetails
                 {
                     Title = "Internal Server Error",
-                    Detail = "An error occurred while starting video generation"
+                    Detail = errorDetail,
+                    Extensions =
+                    {
+                        ["errorType"] = ex.GetType().Name,
+                        ["traceId"] = HttpContext.TraceIdentifier
+                    }
                 });
             }
         }
@@ -631,6 +640,47 @@ namespace ConduitLLM.Gateway.Controllers
             {
                 pricingParameters[parameterName] = value;
             }
+        }
+
+        /// <summary>
+        /// Extracts a safe error message from an exception for API responses.
+        /// Avoids exposing internal details while providing useful debugging information.
+        /// </summary>
+        private static string ExtractSafeErrorDetail(Exception ex)
+        {
+            // For database errors, provide a cleaner message
+            if (ex.GetType().Name.Contains("DbUpdateException") ||
+                ex.GetType().Name.Contains("DbException"))
+            {
+                return "A database error occurred while processing the request. Please try again or contact support if the issue persists.";
+            }
+
+            // For provider-related errors, include more detail
+            if (ex is HttpRequestException || ex.GetType().Name.Contains("Provider"))
+            {
+                return $"Failed to communicate with the video generation provider: {ex.Message}";
+            }
+
+            // For InvalidOperationException, the message is usually safe and informative
+            if (ex is InvalidOperationException)
+            {
+                return ex.Message;
+            }
+
+            // For other errors, check if it's an internal implementation detail
+            var message = ex.Message;
+
+            // Avoid exposing stack traces or internal type names
+            if (message.Contains("at ") || message.Contains("Exception:") ||
+                message.Contains("System.") || message.Contains("Microsoft."))
+            {
+                return "An internal error occurred while processing the video generation request. Please try again.";
+            }
+
+            // Return the message if it seems safe
+            return !string.IsNullOrEmpty(message) && message.Length < 500
+                ? message
+                : "An error occurred while starting video generation. Please try again.";
         }
 
         /// <summary>

@@ -42,8 +42,15 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
 
         LogSlowQueryIfNeeded(command, eventData);
 
-        // Wrap the reader to count rows
-        return new RowCountingDataReader(result, _logger, _options, GetCommandSummary(command));
+        // Only wrap SELECT queries - INSERT/UPDATE/DELETE with RETURNING clauses
+        // return readers that Npgsql internally casts to NpgsqlDataReader, which fails
+        // if wrapped. Row counting is only meaningful for SELECT anyway.
+        if (IsSelectQuery(command))
+        {
+            return new RowCountingDataReader(result, _logger, _options, GetCommandSummary(command));
+        }
+
+        return result;
     }
 
     /// <inheritdoc/>
@@ -60,8 +67,15 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
 
         LogSlowQueryIfNeeded(command, eventData);
 
-        // Wrap the reader to count rows
-        return new RowCountingDataReader(result, _logger, _options, GetCommandSummary(command));
+        // Only wrap SELECT queries - INSERT/UPDATE/DELETE with RETURNING clauses
+        // return readers that Npgsql internally casts to NpgsqlDataReader, which fails
+        // if wrapped. Row counting is only meaningful for SELECT anyway.
+        if (IsSelectQuery(command))
+        {
+            return new RowCountingDataReader(result, _logger, _options, GetCommandSummary(command));
+        }
+
+        return result;
     }
 
     /// <inheritdoc/>
@@ -134,6 +148,12 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
                 _options.SlowQueryThresholdMs,
                 commandSummary);
         }
+    }
+
+    private static bool IsSelectQuery(DbCommand command)
+    {
+        var text = command.CommandText.TrimStart();
+        return text.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetCommandSummary(DbCommand command)

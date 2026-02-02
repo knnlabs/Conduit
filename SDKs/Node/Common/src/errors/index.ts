@@ -376,15 +376,31 @@ export function handleApiError(error: unknown, endpoint?: string, method?: strin
 
   if (isHttpError(error)) {
     const { status, data } = error.response;
-    const errorData = data as { error?: string; message?: string; details?: unknown } | null;
-    const baseMessage = errorData?.error || errorData?.message || error.message;
-    
+    // Support both standard error format and ASP.NET Core ProblemDetails format
+    const errorData = data as {
+      error?: string;
+      message?: string;
+      details?: unknown;
+      // ProblemDetails fields
+      title?: string;
+      detail?: string;
+      traceId?: string;
+      errorType?: string;
+      extensions?: Record<string, unknown>;
+    } | null;
+
+    // Extract message from various possible fields, preferring detail for ProblemDetails
+    const baseMessage = errorData?.detail || errorData?.error || errorData?.message || errorData?.title || error.message;
+
     // Enhanced error messages with endpoint information
     const endpointInfo = endpoint && method ? ` (${method.toUpperCase()} ${endpoint})` : '';
     const enhancedMessage = `${baseMessage}${endpointInfo}`;
-    
-    // Add details to context
+
+    // Add details to context, including ProblemDetails extensions
     context.details = errorData?.details || data;
+    if (errorData?.traceId) context.traceId = errorData.traceId;
+    if (errorData?.errorType) context.errorType = errorData.errorType;
+    if (errorData?.extensions) context.extensions = errorData.extensions;
 
     switch (status) {
       case 400:
