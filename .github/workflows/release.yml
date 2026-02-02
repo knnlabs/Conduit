@@ -100,7 +100,7 @@ jobs:
           cache-dependency-path: |
             SDKs/Node/package-lock.json
             SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Core/package-lock.json
+            SDKs/Node/Gateway/package-lock.json
             SDKs/Node/Common/package-lock.json
       
       - name: Update versions and publish

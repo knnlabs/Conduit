@@ -150,7 +150,7 @@ function Test-EsLintDirectory {
 
 # Validate all TypeScript projects
 Test-EsLintDirectory -Directory 'SDKs/Node/Admin' -Name 'Admin Client'
-Test-EsLintDirectory -Directory 'SDKs/Node/Core' -Name 'Core Client'
+Test-EsLintDirectory -Directory 'SDKs/Node/Gateway' -Name 'Gateway Client'
 Test-EsLintDirectory -Directory 'WebAdmin' -Name 'WebAdmin'
 
 # Print summary

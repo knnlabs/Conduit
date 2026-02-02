@@ -142,7 +142,7 @@ function Build-Sdks {
     Invoke-InWebAdmin @('sh', '-c', @"
 cd /app/SDKs/Node/Common && npm run build &&
 cd /app/SDKs/Node/Admin && npm run build &&
-cd /app/SDKs/Node/Core && npm run build
+cd /app/SDKs/Node/Gateway && npm run build
 "@)
     Write-Info "SDK builds completed"
 }
@@ -199,7 +199,7 @@ function Install-SdksDeps {
     Invoke-InWebAdmin @('sh', '-c', @"
 cd /app/SDKs/Node/Common && npm install &&
 cd /app/SDKs/Node/Admin && npm install &&
-cd /app/SDKs/Node/Core && npm install
+cd /app/SDKs/Node/Gateway && npm install
 "@)
 }
 

@@ -7,7 +7,7 @@ WORKDIR /app
 # IMPORTANT: This is a monorepo where packages depend on each other via file: references
 # The WebAdmin package.json contains:
 #   "@knn_labs/conduit-admin-client": "file:../SDKs/Node/Admin"
-#   "@knn_labs/conduit-core-client": "file:../SDKs/Node/Core"
+#   "@knn_labs/conduit-gateway-client": "file:../SDKs/Node/Gateway"
 # Therefore, we MUST copy the entire monorepo structure before running npm install
 # Otherwise npm will timeout trying to fetch these packages from the registry
 COPY . .
@@ -28,13 +28,13 @@ WORKDIR /app/SDKs/Node/Admin
 RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>/dev/null && exit 1)
 RUN npm run build
 
-# Build Core SDK next (depends on Common package)
-WORKDIR /app/SDKs/Node/Core
+# Build Gateway SDK next (depends on Common package)
+WORKDIR /app/SDKs/Node/Gateway
 RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>/dev/null && exit 1)
 RUN npm run build
 
-# Build WebAdmin last (depends on Admin and Core SDKs via file: references)
-# The WebAdmin's npm install will symlink to the local Admin and Core packages
+# Build WebAdmin last (depends on Admin and Gateway SDKs via file: references)
+# The WebAdmin's npm install will symlink to the local Admin and Gateway packages
 WORKDIR /app/WebAdmin
 # Create public directory if it doesn't exist (Next.js 15 doesn't require it)
 RUN mkdir -p public
@@ -67,7 +67,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/public ./public
 # Without these, the runtime will fail to resolve the packages
 COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Common /app/SDKs/Node/Common
 COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Admin /app/SDKs/Node/Admin
-COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Core /app/SDKs/Node/Core
+COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Gateway /app/SDKs/Node/Gateway
 
 # Switch to non-root user
 USER nextjs

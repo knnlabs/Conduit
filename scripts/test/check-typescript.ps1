@@ -450,7 +450,7 @@ Test-WebAdmin
 
 # Check SDKs
 Test-SDK -SdkPath "SDKs/Node/Admin" -SdkName "Admin SDK"
-Test-SDK -SdkPath "SDKs/Node/Core" -SdkName "Core SDK"
+Test-SDK -SdkPath "SDKs/Node/Gateway" -SdkName "Gateway SDK"
 Test-SDK -SdkPath "SDKs/Node/Common" -SdkName "Common SDK"
 
 # Generate report

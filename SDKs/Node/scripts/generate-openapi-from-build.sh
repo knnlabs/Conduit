@@ -337,7 +337,7 @@ main() {
         log "${GREEN}📋 Summary:${NC}"
         log "${GREEN}   - Gateway API: Services/ConduitLLM.Gateway/openapi-gateway.json${NC}"
         log "${GREEN}   - Admin API: Services/ConduitLLM.Admin/openapi-admin.json${NC}"
-        log "${GREEN}   - Core SDK: SDKs/Node/Core/src/generated/gateway-api.ts${NC}"
+        log "${GREEN}   - Gateway SDK: SDKs/Node/Gateway/src/generated/gateway-api.ts${NC}"
         log "${GREEN}   - Admin SDK: SDKs/Node/Admin/src/generated/admin-api.ts${NC}"
         
         exit 0

@@ -151,8 +151,8 @@ dotnet build WebAdmin          # WebAdmin backend
 
 ### SDK Builds
 ```bash
-cd SDKs/Node/Admin && npm run build   # Admin SDK
-cd SDKs/Node/Core && npm run build    # Core SDK
+cd SDKs/Node/Admin && npm run build     # Admin SDK
+cd SDKs/Node/Gateway && npm run build  # Gateway SDK
 cd SDKs/Node/Common && npm run build  # Common SDK
 ```
 
