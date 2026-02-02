@@ -140,8 +140,9 @@ public partial class Program
             signalRBuilder.AddMessagePackProtocol(options =>
             {
                 // Configure MessagePack with security and compression
+                // Use ContractlessStandardResolver to serialize DTOs without requiring [MessagePackObject] attributes
                 options.SerializerOptions = MessagePack.MessagePackSerializerOptions.Standard
-                    .WithResolver(MessagePack.Resolvers.StandardResolver.Instance)
+                    .WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance)
                     .WithSecurity(MessagePack.MessagePackSecurity.UntrustedData) // CVE-2020-5234 protection
                     .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray) // Use Lz4BlockArray for GC optimization
                     .WithCompressionMinLength(256); // Only compress messages > 256 bytes
