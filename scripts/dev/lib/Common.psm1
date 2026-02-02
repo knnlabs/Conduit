@@ -484,7 +484,7 @@ function Get-ContainerHealth {
 function Test-PortInUse {
     <#
     .SYNOPSIS
-        Check if a TCP port is in use.
+        Check if a TCP port is actively in use (excludes TIME_WAIT and other transitional states).
     #>
     [CmdletBinding()]
     param(
@@ -495,12 +495,16 @@ function Test-PortInUse {
     if (Test-IsWindows) {
         # Use Get-NetTCPConnection on Windows
         try {
-            $connections = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
-            return $null -ne $connections -and $connections.Count -gt 0
+            # Filter out TIME_WAIT, CLOSE_WAIT, and other transitional states
+            # Only Listen and Established connections truly block the port
+            $blockingStates = @('Listen', 'Established', 'SynSent', 'SynReceived')
+            $connections = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
+                Where-Object { $blockingStates -contains $_.State }
+            return $null -ne $connections -and @($connections).Count -gt 0
         }
         catch {
-            # Fallback to netstat
-            $result = netstat -an | Select-String ":$Port\s"
+            # Fallback to netstat - filter out TIME_WAIT
+            $result = netstat -an | Select-String ":$Port\s" | Where-Object { $_ -notmatch 'TIME_WAIT' }
             return $null -ne $result
         }
     }
