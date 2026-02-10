@@ -82,9 +82,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>();
-            var dtos = (IEnumerable<ModelDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>().Subject;
             dtos.Should().HaveCount(2);
 
             var firstDto = dtos.First();
@@ -108,9 +107,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>();
-            var dtos = (IEnumerable<ModelDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>().Subject;
             dtos.Should().BeEmpty();
 
             _mockRepository.Verify(r => r.GetAllWithDetailsAsync(), Times.Once);
@@ -128,9 +126,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModels();
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 
@@ -164,8 +162,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelById(modelId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dto = okResult.Value.Should().BeOfType<ModelDto>().Subject;
             dto.Id.Should().Be(modelId);
             dto.Name.Should().Be("test-model");
             dto.IsActive.Should().BeTrue();
@@ -187,8 +185,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelById(modelId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
@@ -207,9 +205,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelById(modelId);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 
@@ -268,9 +266,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<object>>();
-            var identifiers = (IEnumerable<object>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var identifiers = okResult.Value.Should().BeAssignableTo<IEnumerable<object>>().Subject;
             identifiers.Should().HaveCount(3);
 
             // Verify the structure by serializing to JSON and deserializing
@@ -316,9 +313,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<object>>();
-            var identifiers = (IEnumerable<object>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var identifiers = okResult.Value.Should().BeAssignableTo<IEnumerable<object>>().Subject;
             identifiers.Should().BeEmpty();
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
@@ -336,8 +332,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
@@ -356,9 +352,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Interfaces;
 
 namespace ConduitLLM.Gateway.Services
@@ -327,7 +328,7 @@ namespace ConduitLLM.Gateway.Services
         public async Task<Dictionary<string, ConduitLLM.Configuration.DTOs.HealthMonitoring.EndpointMetrics>> GetAggregatedEndpointMetricsAsync()
         {
             var pattern = $"{EndpointMetricsPrefix}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
             
             var endpointMetrics = new Dictionary<string, ConduitLLM.Configuration.DTOs.HealthMonitoring.EndpointMetrics>();
@@ -365,7 +366,7 @@ namespace ConduitLLM.Gateway.Services
         public async Task<List<string>> GetActiveInstancesAsync()
         {
             var pattern = $"{InstancesSetKey}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
             
             var instances = new List<string>();
@@ -523,7 +524,7 @@ namespace ConduitLLM.Gateway.Services
         private async Task CheckCachePerformanceAsync()
         {
             var pattern = $"{CacheMetricsPrefix}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
 
             foreach (var key in keys)
@@ -570,7 +571,7 @@ namespace ConduitLLM.Gateway.Services
         private async Task CheckConnectionPoolsAsync()
         {
             var pattern = $"{ConnectionPoolMetricsPrefix}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
 
             foreach (var key in keys)

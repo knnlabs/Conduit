@@ -36,11 +36,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateSetting(createDto);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
             createdResult.ActionName.Should().Be(nameof(GlobalSettingsController.GetSettingById));
             createdResult.RouteValues!["id"].Should().Be(10);
-            
-            var returnedSetting = Assert.IsType<GlobalSettingDto>(createdResult.Value);
+
+            var returnedSetting = createdResult.Value.Should().BeOfType<GlobalSettingDto>().Subject;
             returnedSetting.Key.Should().Be("new_setting");
         }
 
@@ -61,8 +61,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateSetting(createDto);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.error.Should().Be("Setting with key already exists");
             errorResponse.Code.Should().Be("invalid_operation");
         }

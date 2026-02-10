@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using Prometheus;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Interfaces;
 
 namespace ConduitLLM.Gateway.Services
@@ -331,7 +332,7 @@ namespace ConduitLLM.Gateway.Services
         public async Task<int> GetGlobalConnectionCountAsync()
         {
             var pattern = $"{ActiveConnectionsPrefix}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
             
             var count = 0;
@@ -392,7 +393,7 @@ namespace ConduitLLM.Gateway.Services
         public async Task<List<string>> GetActiveInstancesAsync()
         {
             var pattern = $"{InstancesSetKey}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
             
             var instances = new List<string>();
@@ -445,7 +446,7 @@ namespace ConduitLLM.Gateway.Services
         private async Task UpdateVirtualKeyMetricsAsync()
         {
             var pattern = $"{VirtualKeyConnectionsPrefix}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
 
             foreach (var key in keys)
@@ -485,7 +486,7 @@ namespace ConduitLLM.Gateway.Services
         {
             var distribution = new Dictionary<string, Dictionary<string, int>>();
             var pattern = $"{ActiveConnectionsPrefix}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
 
             foreach (var key in keys)
@@ -547,7 +548,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var staleThreshold = DateTime.UtcNow.AddMinutes(-10); // 10 minutes without activity
                 var pattern = $"{ActiveConnectionsPrefix}:*";
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+                var server = _database.Multiplexer.GetPrimaryServer();
                 var keys = server.Keys(pattern: pattern);
 
                 var staleConnections = new List<string>();
@@ -603,7 +604,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 // Find all connections for this instance and clean them up
                 var pattern = $"{ActiveConnectionsPrefix}:*";
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+                var server = _database.Multiplexer.GetPrimaryServer();
                 var keys = server.Keys(pattern: pattern);
 
                 var instanceConnections = new List<string>();

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Collections.Concurrent;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Extensions;
 
 namespace ConduitLLM.Core.Services
 {
@@ -199,7 +200,7 @@ namespace ConduitLLM.Core.Services
                 var cutoffTime = GetCutoffTime(period);
                 
                 // Get all webhook URL metrics keys
-                var server = _redis.GetServer(_redis.GetEndPoints().First());
+                var server = _redis.GetPrimaryServer();
                 var keys = server.Keys(pattern: "webhook:metrics:urls:*").ToList();
                 
                 var tasks = new List<Task<WebhookUrlStatistics?>>();

@@ -2,6 +2,8 @@ using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -55,8 +57,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            var acceptedResult = Assert.IsType<AcceptedResult>(result);
-            var taskResponse = Assert.IsType<VideoGenerationTaskResponse>(acceptedResult.Value);
+            var acceptedResult = result.Should().BeOfType<AcceptedResult>().Subject;
+            var taskResponse = acceptedResult.Value.Should().BeOfType<VideoGenerationTaskResponse>().Subject;
             Assert.Equal(taskId, taskResponse.TaskId);
             Assert.Equal(TaskStateConstants.Pending, taskResponse.Status);
             Assert.Contains(taskId, taskResponse.CheckStatusUrl);
@@ -80,8 +82,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var problemDetails = unauthorizedResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Unauthorized", problemDetails.Title);
             Assert.Equal("Virtual key not found in request context", problemDetails.Detail);
         }
@@ -116,8 +118,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Invalid Request", problemDetails.Title);
             Assert.Equal("Invalid model specified", problemDetails.Detail);
         }
@@ -152,9 +154,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            var forbiddenResult = Assert.IsType<ObjectResult>(result);
+            var forbiddenResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(403, forbiddenResult.StatusCode);
-            var problemDetails = Assert.IsType<ProblemDetails>(forbiddenResult.Value);
+            var problemDetails = forbiddenResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Forbidden", problemDetails.Title);
         }
 
@@ -188,8 +190,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Not Supported", problemDetails.Title);
             Assert.Equal("Model does not support video generation", problemDetails.Detail);
         }
@@ -224,9 +226,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            var internalServerErrorResult = Assert.IsType<ObjectResult>(result);
+            var internalServerErrorResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, internalServerErrorResult.StatusCode);
-            var problemDetails = Assert.IsType<ProblemDetails>(internalServerErrorResult.Value);
+            var problemDetails = internalServerErrorResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Internal Server Error", problemDetails.Title);
         }
 

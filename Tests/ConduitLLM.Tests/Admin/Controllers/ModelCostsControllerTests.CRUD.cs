@@ -68,11 +68,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModelCost(createDto);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
             createdResult.ActionName.Should().Be(nameof(ModelCostsController.GetModelCostById));
             createdResult.RouteValues!["id"].Should().Be(10);
-            
-            var returnedCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+
+            var returnedCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
             returnedCost.CostName.Should().Be("New Model Pricing");
         }
 
@@ -93,8 +93,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModelCost(createDto);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.error.ToString().Should().Be("Model cost with this name already exists");
             errorResponse.Code.Should().Be("invalid_operation");
         }
@@ -122,7 +122,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModelCost(1, updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -140,7 +140,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModelCost(1, updateDto);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("ID in route must match ID in body");
         }
 
@@ -162,8 +162,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModelCost(999, updateDto);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 
@@ -182,7 +182,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteModelCost(1);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -196,8 +196,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteModelCost(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 

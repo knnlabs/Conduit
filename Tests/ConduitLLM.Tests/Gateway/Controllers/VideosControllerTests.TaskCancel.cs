@@ -1,6 +1,8 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -51,7 +53,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
             _mockTaskRegistry.Verify(x => x.TryCancel(taskId), Times.Once);
             _mockVideoService.Verify(x => x.CancelVideoGenerationAsync(taskId, virtualKey, It.IsAny<CancellationToken>()), Times.Once);
             _mockTaskService.Verify(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()), Times.Once);
@@ -88,8 +90,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var conflictResult = Assert.IsType<ConflictObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(conflictResult.Value);
+            var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
+            var problemDetails = conflictResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Cannot Cancel Task", problemDetails.Title);
             Assert.Contains("already completed", problemDetails.Detail);
         }
@@ -116,8 +118,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var problemDetails = notFoundResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Task Not Found", problemDetails.Title);
         }
 
@@ -158,8 +160,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var conflictResult = Assert.IsType<ConflictObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(conflictResult.Value);
+            var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
+            var problemDetails = conflictResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Cancellation Failed", problemDetails.Title);
         }
 

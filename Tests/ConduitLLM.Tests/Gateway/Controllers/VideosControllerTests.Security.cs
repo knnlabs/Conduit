@@ -3,6 +3,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -47,11 +49,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var problemDetails = notFoundResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Task Not Found", problemDetails.Title);
             Assert.Equal("The requested task was not found", problemDetails.Detail);
-            
+
             // Verify security logging
             _mockLogger.Verify(x => x.Log(
                 Microsoft.Extensions.Logging.LogLevel.Warning,
@@ -95,8 +97,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var problemDetails = notFoundResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Task Not Found", problemDetails.Title);
         }
 
@@ -119,8 +121,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var problemDetails = unauthorizedResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Unauthorized", problemDetails.Title);
             Assert.Equal("Virtual key not found in request context", problemDetails.Detail);
         }
@@ -159,11 +161,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var problemDetails = notFoundResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Task Not Found", problemDetails.Title);
             Assert.Equal("The requested task was not found", problemDetails.Detail);
-            
+
             // Verify security logging
             _mockLogger.Verify(x => x.Log(
                 Microsoft.Extensions.Logging.LogLevel.Warning,
@@ -204,11 +206,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var problemDetails = notFoundResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Task Not Found", problemDetails.Title);
             Assert.Equal("The requested task was not found", problemDetails.Detail);
-            
+
             // Verify security logging
             _mockLogger.Verify(x => x.Log(
                 Microsoft.Extensions.Logging.LogLevel.Warning,
@@ -277,8 +279,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<VideoGenerationTaskStatus>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<VideoGenerationTaskStatus>().Subject;
             Assert.Equal(taskId, response.TaskId);
             Assert.Equal(TaskStateConstants.Pending, response.Status);
         }
@@ -323,7 +325,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
             _mockTaskRegistry.Verify(x => x.TryCancel(taskId), Times.Once);
             _mockVideoService.Verify(x => x.CancelVideoGenerationAsync(taskId, virtualKey, It.IsAny<CancellationToken>()), Times.Once);
             _mockTaskService.Verify(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()), Times.Once);

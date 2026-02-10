@@ -30,7 +30,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteMapping(1);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -44,8 +44,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteMapping(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 

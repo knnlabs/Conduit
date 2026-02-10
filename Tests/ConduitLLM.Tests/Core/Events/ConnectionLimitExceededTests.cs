@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Tests.Core.Events
@@ -32,8 +33,8 @@ namespace ConduitLLM.Tests.Core.Events
             var eventRecord = new ConnectionLimitExceeded();
 
             // Assert
-            Assert.IsAssignableFrom<DomainEvent>(eventRecord);
-            Assert.IsAssignableFrom<IDomainEvent>(eventRecord);
+            eventRecord.Should().BeAssignableTo<DomainEvent>();
+            eventRecord.Should().BeAssignableTo<IDomainEvent>();
         }
 
         [Fact]

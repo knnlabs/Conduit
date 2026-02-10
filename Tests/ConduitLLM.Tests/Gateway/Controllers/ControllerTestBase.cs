@@ -1,3 +1,5 @@
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -88,10 +90,10 @@ namespace ConduitLLM.Tests.Http.Controllers
         /// </summary>
         protected void AssertOkObjectResult<T>(IActionResult result, Action<T> assertions = null)
         {
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.NotNull(okResult.Value);
-            
-            var value = Assert.IsType<T>(okResult.Value);
+
+            var value = okResult.Value.Should().BeOfType<T>().Subject;
             assertions?.Invoke(value);
         }
 
@@ -100,8 +102,8 @@ namespace ConduitLLM.Tests.Http.Controllers
         /// </summary>
         protected void AssertBadRequest(IActionResult result, string expectedMessage = null)
         {
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+
             if (!string.IsNullOrEmpty(expectedMessage))
             {
                 Assert.Equal(expectedMessage, badRequestResult.Value?.ToString());
@@ -113,7 +115,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         /// </summary>
         protected void AssertNotFound(IActionResult result)
         {
-            Assert.IsType<NotFoundResult>(result);
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         /// <summary>
@@ -121,7 +123,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         /// </summary>
         protected void AssertUnauthorized(IActionResult result)
         {
-            Assert.IsType<UnauthorizedResult>(result);
+            result.Should().BeOfType<UnauthorizedResult>();
         }
 
         /// <summary>
@@ -129,9 +131,9 @@ namespace ConduitLLM.Tests.Http.Controllers
         /// </summary>
         protected void AssertInternalServerError(IActionResult result, string expectedMessage = null)
         {
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            
+
             if (!string.IsNullOrEmpty(expectedMessage))
             {
                 Assert.Equal(expectedMessage, objectResult.Value?.ToString());

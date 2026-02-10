@@ -50,8 +50,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllMappings();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedMappings = Assert.IsAssignableFrom<IEnumerable<ModelProviderMappingDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedMappings = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelProviderMappingDto>>().Subject;
             returnedMappings.Should().HaveCount(2);
             returnedMappings.First().ModelProviderTypeAssociationId.Should().Be(1);
         }
@@ -67,9 +67,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllMappings();
 
             // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 
@@ -97,8 +97,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetMappingById(1);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedMapping = Assert.IsType<ModelProviderMappingDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedMapping = okResult.Value.Should().BeOfType<ModelProviderMappingDto>().Subject;
             returnedMapping.ModelProviderTypeAssociationId.Should().Be(1);
         }
 
@@ -113,8 +113,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetMappingById(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 

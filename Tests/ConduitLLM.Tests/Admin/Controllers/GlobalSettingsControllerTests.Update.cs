@@ -28,7 +28,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateSetting(1, updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateSetting(1, updateDto);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("ID in route must match ID in body");
         }
 
@@ -66,8 +66,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateSetting(999, updateDto);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 
@@ -93,7 +93,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateSettingByKey(updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -115,8 +115,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             // Controller throws InvalidOperationException when service returns false,
             // which AdminControllerBase maps to 400 Bad Request
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.error.Should().Be("Failed to update or create global setting");
             errorResponse.Code.Should().Be("invalid_operation");
         }
@@ -138,9 +138,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateSettingByKey(updateDto);
 
             // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 

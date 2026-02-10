@@ -28,8 +28,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllSettings();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedSettings = Assert.IsAssignableFrom<IEnumerable<GlobalSettingDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedSettings = okResult.Value.Should().BeAssignableTo<IEnumerable<GlobalSettingDto>>().Subject;
             returnedSettings.Should().HaveCount(3);
             returnedSettings.First().Key.Should().Be("rate_limit");
         }
@@ -45,8 +45,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllSettings();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedSettings = Assert.IsAssignableFrom<IEnumerable<GlobalSettingDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedSettings = okResult.Value.Should().BeAssignableTo<IEnumerable<GlobalSettingDto>>().Subject;
             returnedSettings.Should().BeEmpty();
         }
 
@@ -61,9 +61,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllSettings();
 
             // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 

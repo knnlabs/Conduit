@@ -275,8 +275,8 @@ namespace ConduitLLM.Admin.Services
             var previousTask = _requestLogRepository.GetSummaryAsync(previousStart, previousEnd);
             await Task.WhenAll(currentTask, previousTask);
 
-            var current = currentTask.Result;
-            var previous = previousTask.Result;
+            var current = await currentTask;
+            var previous = await previousTask;
 
             var currentErrorRate = current.TotalRequests > 0
                 ? current.ErrorCount * 100.0 / current.TotalRequests

@@ -3,6 +3,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -72,8 +74,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<VideoGenerationTaskStatus>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<VideoGenerationTaskStatus>().Subject;
             Assert.Equal(taskId, response.TaskId);
             Assert.Equal(TaskStateConstants.Pending, response.Status);
             Assert.Contains("Retry", response.Error);
@@ -110,8 +112,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Invalid Task State", problemDetails.Title);
             Assert.Contains("failed tasks can be retried", problemDetails.Detail);
         }
@@ -148,8 +150,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Task Not Retryable", problemDetails.Title);
         }
 
@@ -187,8 +189,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Max Retries Exceeded", problemDetails.Title);
             Assert.Contains("already been retried", problemDetails.Detail);
         }

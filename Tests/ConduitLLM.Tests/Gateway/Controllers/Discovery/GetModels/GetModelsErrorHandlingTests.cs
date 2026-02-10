@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -28,9 +29,9 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            var errorDto = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            var errorDto = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Failed to retrieve model discovery information", errorDto.error.ToString());
         }
 

@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Core.Events;
+using FluentAssertions;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -43,7 +44,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.InvalidateDiscoveryCache();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
 
             // Verify the event was published
@@ -69,7 +70,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.InvalidateDiscoveryCache();
 
             // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
+            var statusResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
 
             // Verify error was logged
@@ -95,7 +96,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.InvalidateDiscoveryCache();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.NotNull(okResult.Value);
 
             // Check the response structure using JSON serialization

@@ -4,6 +4,8 @@ using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -81,8 +83,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GenerateKey(request);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
-            var response = Assert.IsType<CreateVirtualKeyResponseDto>(createdResult.Value);
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var response = createdResult.Value.Should().BeOfType<CreateVirtualKeyResponseDto>().Subject;
             Assert.Equal("vk_test123", response.VirtualKey);
             Assert.Equal(1, response.KeyInfo.VirtualKeyGroupId);
         }
@@ -104,7 +106,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GenerateKey(request);
 
             // Assert - AdminControllerBase maps InvalidOperationException to 400 Bad Request
-            Assert.IsType<BadRequestObjectResult>(result);
+            result.Should().BeOfType<BadRequestObjectResult>();
         }
 
         [Fact]

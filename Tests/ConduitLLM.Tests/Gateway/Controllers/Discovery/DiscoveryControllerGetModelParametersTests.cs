@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -31,8 +32,8 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetModelParameters("gpt-4");
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorDto = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var errorDto = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Virtual key not found", errorDto.error.ToString());
         }
 
@@ -66,7 +67,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetModelParameters("gpt-4");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(1, response.model_id);
             Assert.Equal("gpt-4", response.model_alias);
@@ -96,7 +97,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetModelParameters("123");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(123, response.model_id);
             Assert.Equal("gpt-4", response.model_alias);
@@ -113,8 +114,8 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetModelParameters("non-existent");
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorDto = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorDto = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Model 'non-existent' not found or has no parameter information", errorDto.error.ToString());
         }
 
@@ -139,7 +140,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetModelParameters("gpt-4");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.NotNull(response.parameters); // Should return empty object, not null
         }
@@ -157,9 +158,9 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetModelParameters("gpt-4");
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            var errorDto = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            var errorDto = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Failed to retrieve model parameters", errorDto.error.ToString());
         }
     }

@@ -46,9 +46,9 @@ namespace ConduitLLM.Tests.Admin.Integration
             var result = await _controller.CreateModelCost(createDto);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
-            
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
+
             createdCost.CostName.Should().Be("GPT-4 Pricing");
             createdCost.AssociatedModelAliases.Should().HaveCount(2);
             createdCost.AssociatedModelAliases.Should().Contain(new[] { "gpt-4", "gpt-3.5-turbo" });
@@ -86,8 +86,8 @@ namespace ConduitLLM.Tests.Admin.Integration
             var result = await _controller.CreateModelCost(duplicateCost);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.error.Should().Be("A model cost with name 'Standard Pricing' already exists");
             errorResponse.Code.Should().Be("invalid_operation");
         }

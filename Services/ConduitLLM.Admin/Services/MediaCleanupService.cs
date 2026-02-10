@@ -274,93 +274,14 @@ namespace ConduitLLM.Admin.Services
                     return (0, 0);
                 }
 
-                // Check for simple retention override first
-                int retentionDays;
-                bool respectRecentAccess;
-                int recentAccessWindowDays;
-
-                var simpleOverride = await GetSimpleRetentionOverrideAsync(stoppingToken);
-                if (simpleOverride.HasValue)
-                {
-                    // Simple override is set - use fixed retention for all media
-                    retentionDays = simpleOverride.Value;
-                    respectRecentAccess = false; // Simple mode ignores recent access
-                    recentAccessWindowDays = 0;
-
-                    _logger.LogDebug(
-                        "Group {GroupId}: Using simple retention override of {Days} days (ignoring balance-based policy)",
-                        groupId, retentionDays);
-                }
-                else
-                {
-                    // No override - use balance-aware policy-based retention
-                    var policy = group.MediaRetentionPolicy ?? await GetDefaultPolicyAsync(context, stoppingToken);
-                    if (policy == null)
-                    {
-                        _logger.LogDebug(
-                            "No retention policy found for group {GroupId} and no default policy exists",
-                            groupId);
-                        return (0, 0);
-                    }
-
-                    // Calculate retention days based on balance
-                    retentionDays = group.Balance switch
-                    {
-                        > 0 => policy.PositiveBalanceRetentionDays,
-                        0 => policy.ZeroBalanceRetentionDays,
-                        < 0 => policy.NegativeBalanceRetentionDays
-                    };
-                    respectRecentAccess = policy.RespectRecentAccess;
-                    recentAccessWindowDays = policy.RecentAccessWindowDays;
-
-                    _logger.LogDebug(
-                        "Group {GroupId} balance: {Balance:C}, retention days: {Days} (policy: {PolicyName})",
-                        group.Id, group.Balance, retentionDays, policy.Name);
-                }
-
-                // Calculate cutoff date
-                var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
-
-                // Get all virtual keys in the group
-                var virtualKeyIds = await context.VirtualKeys
-                    .Where(vk => vk.VirtualKeyGroupId == groupId)
-                    .Select(vk => vk.Id)
-                    .ToListAsync(stoppingToken);
-
-                if (!virtualKeyIds.Any())
-                {
-                    _logger.LogDebug("No virtual keys found in group {GroupId}", group.Id);
+                var retention = await ResolveRetentionSettingsAsync(group, context, stoppingToken);
+                if (retention == null)
                     return (0, 0);
-                }
 
-                // Query media records eligible for cleanup
-                var mediaToDelete = await context.MediaRecords
-                    .Where(m => virtualKeyIds.Contains(m.VirtualKeyId))
-                    .Where(m => m.CreatedAt < cutoffDate)
-                    .Where(m => !respectRecentAccess ||
-                               m.LastAccessedAt == null ||
-                               m.LastAccessedAt < DateTime.UtcNow.AddDays(-recentAccessWindowDays))
-                    .ToListAsync(stoppingToken);
-
-                if (!mediaToDelete.Any())
-                {
-                    _logger.LogDebug("No media eligible for cleanup in group {GroupId}", group.Id);
+                var mediaToDelete = await QueryEligibleMediaAsync(
+                    group, retention.Value, context, stoppingToken);
+                if (mediaToDelete == null || mediaToDelete.Count == 0)
                     return (0, 0);
-                }
-
-                _logger.LogInformation(
-                    "Found {Count} media files eligible for cleanup in group {GroupId}",
-                    mediaToDelete.Count, group.Id);
-
-                // Check if manual approval is required for large batches
-                if (_options.RequireManualApprovalForLargeBatches &&
-                    mediaToDelete.Count > _options.LargeBatchThreshold)
-                {
-                    _logger.LogWarning(
-                        "Batch of {Count} files exceeds threshold of {Threshold}. Manual approval required. Skipping.",
-                        mediaToDelete.Count, _options.LargeBatchThreshold);
-                    return (0, 0);
-                }
 
                 // Process deletions in batches
                 return await DeleteMediaBatchesAsync(
@@ -371,6 +292,101 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogError(ex, "Error processing cleanup for group {GroupId}", groupId);
                 return (0, 0);
             }
+        }
+
+        /// <summary>
+        /// Resolves retention settings for a group, preferring simple override over policy-based retention.
+        /// Returns null if no retention settings can be determined.
+        /// </summary>
+        private async Task<(int retentionDays, bool respectRecentAccess, int recentAccessWindowDays)?> ResolveRetentionSettingsAsync(
+            VirtualKeyGroup group,
+            IConfigurationDbContext context,
+            CancellationToken stoppingToken)
+        {
+            var simpleOverride = await GetSimpleRetentionOverrideAsync(stoppingToken);
+            if (simpleOverride.HasValue)
+            {
+                _logger.LogDebug(
+                    "Group {GroupId}: Using simple retention override of {Days} days (ignoring balance-based policy)",
+                    group.Id, simpleOverride.Value);
+                return (simpleOverride.Value, false, 0);
+            }
+
+            // No override - use balance-aware policy-based retention
+            var policy = group.MediaRetentionPolicy ?? await GetDefaultPolicyAsync(context, stoppingToken);
+            if (policy == null)
+            {
+                _logger.LogDebug(
+                    "No retention policy found for group {GroupId} and no default policy exists",
+                    group.Id);
+                return null;
+            }
+
+            var retentionDays = group.Balance switch
+            {
+                > 0 => policy.PositiveBalanceRetentionDays,
+                0 => policy.ZeroBalanceRetentionDays,
+                < 0 => policy.NegativeBalanceRetentionDays
+            };
+
+            _logger.LogDebug(
+                "Group {GroupId} balance: {Balance:C}, retention days: {Days} (policy: {PolicyName})",
+                group.Id, group.Balance, retentionDays, policy.Name);
+
+            return (retentionDays, policy.RespectRecentAccess, policy.RecentAccessWindowDays);
+        }
+
+        /// <summary>
+        /// Queries for media records eligible for cleanup based on retention settings.
+        /// Returns null if no eligible media found or if manual approval is required for large batches.
+        /// </summary>
+        private async Task<List<MediaRecord>?> QueryEligibleMediaAsync(
+            VirtualKeyGroup group,
+            (int retentionDays, bool respectRecentAccess, int recentAccessWindowDays) retention,
+            IConfigurationDbContext context,
+            CancellationToken stoppingToken)
+        {
+            var cutoffDate = DateTime.UtcNow.AddDays(-retention.retentionDays);
+
+            var virtualKeyIds = await context.VirtualKeys
+                .Where(vk => vk.VirtualKeyGroupId == group.Id)
+                .Select(vk => vk.Id)
+                .ToListAsync(stoppingToken);
+
+            if (!virtualKeyIds.Any())
+            {
+                _logger.LogDebug("No virtual keys found in group {GroupId}", group.Id);
+                return null;
+            }
+
+            var mediaToDelete = await context.MediaRecords
+                .Where(m => virtualKeyIds.Contains(m.VirtualKeyId))
+                .Where(m => m.CreatedAt < cutoffDate)
+                .Where(m => !retention.respectRecentAccess ||
+                           m.LastAccessedAt == null ||
+                           m.LastAccessedAt < DateTime.UtcNow.AddDays(-retention.recentAccessWindowDays))
+                .ToListAsync(stoppingToken);
+
+            if (!mediaToDelete.Any())
+            {
+                _logger.LogDebug("No media eligible for cleanup in group {GroupId}", group.Id);
+                return null;
+            }
+
+            _logger.LogInformation(
+                "Found {Count} media files eligible for cleanup in group {GroupId}",
+                mediaToDelete.Count, group.Id);
+
+            if (_options.RequireManualApprovalForLargeBatches &&
+                mediaToDelete.Count > _options.LargeBatchThreshold)
+            {
+                _logger.LogWarning(
+                    "Batch of {Count} files exceeds threshold of {Threshold}. Manual approval required. Skipping.",
+                    mediaToDelete.Count, _options.LargeBatchThreshold);
+                return null;
+            }
+
+            return mediaToDelete;
         }
 
         private async Task<(int deleted, long bytesFreed)> DeleteMediaBatchesAsync(
@@ -513,15 +529,16 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(_options.R2OperationTimeoutSeconds));
+                stoppingToken.ThrowIfCancellationRequested();
 
+                // Note: IMediaStorageService.DeleteAsync does not accept a CancellationToken,
+                // so per-operation timeouts must be enforced by the storage implementation itself.
                 await storageService.DeleteAsync(storageKey);
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("Storage delete operation timed out for key: {Key}", storageKey);
+                _logger.LogWarning("Storage delete operation cancelled for key: {Key}", storageKey);
                 return false;
             }
             catch (Exception ex)

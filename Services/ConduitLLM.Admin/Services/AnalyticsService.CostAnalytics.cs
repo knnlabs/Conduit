@@ -48,9 +48,9 @@ namespace ConduitLLM.Admin.Services
                 await Task.WhenAll(modelTask, virtualKeyTask, dailyCostsTask, last24hTask, last7dTask);
                 _metrics?.RecordFetchDuration("RequestLogRepository.AggregateQueries", fetchStopwatch.ElapsedMilliseconds);
 
-                var modelBreakdown = modelTask.Result;
-                var virtualKeyBreakdown = virtualKeyTask.Result;
-                var dailyCosts = dailyCostsTask.Result;
+                var modelBreakdown = await modelTask;
+                var virtualKeyBreakdown = await virtualKeyTask;
+                var dailyCosts = await dailyCostsTask;
                 var providerBreakdown = CalculateProviderBreakdownFromModels(modelBreakdown);
 
                 var totalCost = dailyCosts.Sum(d => d.TotalCost);
@@ -95,8 +95,8 @@ namespace ConduitLLM.Admin.Services
                     StartDate = startDate.Value,
                     EndDate = endDate.Value,
                     TotalCost = totalCost,
-                    Last24HoursCost = last24hTask.Result.TotalCost,
-                    Last7DaysCost = last7dTask.Result.TotalCost,
+                    Last24HoursCost = (await last24hTask).TotalCost,
+                    Last7DaysCost = (await last7dTask).TotalCost,
                     Last30DaysCost = totalCost, // Date range already defaults to 30 days
                     TopModelsBySpend = topModelsBySpend,
                     TopProvidersBySpend = topProvidersBySpend,
@@ -156,7 +156,7 @@ namespace ConduitLLM.Admin.Services
                 _metrics?.RecordFetchDuration("RequestLogRepository.GetCostsByDateAsync", fetchStopwatch.ElapsedMilliseconds);
 
                 // Calculate trends from daily aggregations (~365 rows max)
-                var trendData = CalculateCostTrendsFromDaily(dailyCostsTask.Result, period);
+                var trendData = CalculateCostTrendsFromDaily(await dailyCostsTask, period);
 
                 // Convert to CostTrendDataDto format
                 var trendDataDto = trendData.Select(t => new CostTrendDataDto

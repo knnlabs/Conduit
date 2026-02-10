@@ -1,6 +1,7 @@
 using System.Text;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ConduitLLM.Configuration.DTOs;
@@ -58,10 +59,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId);
 
             // Assert
-            var fileActionResult = Assert.IsType<FileStreamResult>(result);
-            Assert.Equal("text/plain", fileActionResult.ContentType);
-            Assert.Equal("test.txt", fileActionResult.FileDownloadName);
-            Assert.True(fileActionResult.EnableRangeProcessing);
+            var fileActionResult = result.Should().BeOfType<FileStreamResult>().Subject;
+            fileActionResult.ContentType.Should().Be("text/plain");
+            fileActionResult.FileDownloadName.Should().Be("test.txt");
+            fileActionResult.EnableRangeProcessing.Should().BeTrue();
         }
 
         [Fact]
@@ -108,8 +109,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId, inline: true);
 
             // Assert
-            Assert.IsType<FileStreamResult>(result);
-            Assert.False(_controller.Response.Headers.ContainsKey("Content-Disposition"));
+            result.Should().BeOfType<FileStreamResult>();
+            _controller.Response.Headers.ContainsKey("Content-Disposition").Should().BeFalse();
         }
 
         [Fact]
@@ -184,11 +185,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("File not found", errorDetails.Message);
-            Assert.Equal("not_found", errorDetails.Type);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("File not found");
+            errorDetails.Type.Should().Be("not_found");
         }
 
         [Fact]
@@ -223,12 +224,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId);
 
             // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusCodeResult.StatusCode);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("An error occurred while downloading the file", errorDetails.Message);
-            Assert.Equal("server_error", errorDetails.Type);
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
+            statusCodeResult.StatusCode.Should().Be(500);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("An error occurred while downloading the file");
+            errorDetails.Type.Should().Be("server_error");
         }
 
         #endregion

@@ -1,7 +1,7 @@
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Policies;
 using ConduitLLM.Core.Services;
 using Polly;
-using Polly.Extensions.Http;
 
 namespace ConduitLLM.Gateway.Extensions;
 
@@ -29,41 +29,14 @@ public static class HttpClientServicesExtensions
             MaxConnectionsPerServer = 20,
             EnableMultipleHttp2Connections = true
         })
-        .AddPolicyHandler(GetImageDownloadRetryPolicy());
+        .AddPolicyHandler(HttpRetryPolicies.GetMediaDownloadRetryPolicy(backoffBase: 2, mediaType: "Image"));
 
         // Register IImageDownloadService for DI-friendly image downloading
         services.AddScoped<IImageDownloadService, ImageDownloadService>();
 
         // Register HTTP clients for function providers (Exa and Tavily)
-        services.AddHttpClient("ExaFunctionClient", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 10,
-            EnableMultipleHttp2Connections = true
-        })
-        .AddPolicyHandler(GetRetryPolicy());
-
-        services.AddHttpClient("TavilyFunctionClient", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 10,
-            EnableMultipleHttp2Connections = true
-        })
-        .AddPolicyHandler(GetRetryPolicy());
+        AddFunctionProviderHttpClient(services, "ExaFunctionClient");
+        AddFunctionProviderHttpClient(services, "TavilyFunctionClient");
 
         // Register HTTP client for image downloads with retry policies
         services.AddHttpClient("ImageDownload", client =>
@@ -85,7 +58,7 @@ public static class HttpClientServicesExtensions
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5
         })
-        .AddPolicyHandler(GetImageDownloadRetryPolicy())
+        .AddPolicyHandler(HttpRetryPolicies.GetMediaDownloadRetryPolicy(backoffBase: 2, mediaType: "Image"))
         .AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(120)));
 
         // Register HTTP client for video downloads with retry policies
@@ -108,7 +81,7 @@ public static class HttpClientServicesExtensions
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5
         })
-        .AddPolicyHandler(GetVideoDownloadRetryPolicy())
+        .AddPolicyHandler(HttpRetryPolicies.GetMediaDownloadRetryPolicy(backoffBase: 3, mediaType: "Video"))
         .AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromMinutes(15)));
 
         // Configure HttpClient for discovery providers
@@ -120,7 +93,7 @@ public static class HttpClientServicesExtensions
 
         // Register File Retrieval Service with retry-enabled HttpClient for resilient URL fetching
         services.AddHttpClient<IFileRetrievalService, FileRetrievalService>()
-            .AddPolicyHandler(GetRetryPolicy())
+            .AddPolicyHandler(HttpRetryPolicies.GetStandardRetryPolicy())
             .ConfigureHttpClient(client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(60);
@@ -130,54 +103,23 @@ public static class HttpClientServicesExtensions
     }
 
     /// <summary>
-    /// Polly retry policy for image downloads with exponential backoff
+    /// Registers an HTTP client for a function provider with standard configuration.
     /// </summary>
-    private static IAsyncPolicy<HttpResponseMessage> GetImageDownloadRetryPolicy()
+    private static void AddFunctionProviderHttpClient(IServiceCollection services, string clientName)
     {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            .WaitAndRetryAsync(
-                3,
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                onRetry: (outcome, timespan, retryCount, context) =>
-                {
-                    var logger = context.Values.FirstOrDefault() as ILogger;
-                    logger?.LogWarning("Image download retry {RetryCount} after {Delay}ms", retryCount, timespan.TotalMilliseconds);
-                });
-    }
-
-    /// <summary>
-    /// Polly retry policy for video downloads with longer exponential backoff
-    /// </summary>
-    private static IAsyncPolicy<HttpResponseMessage> GetVideoDownloadRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            .WaitAndRetryAsync(
-                3,
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)),
-                onRetry: (outcome, timespan, retryCount, context) =>
-                {
-                    var logger = context.Values.FirstOrDefault() as ILogger;
-                    logger?.LogWarning("Video download retry {RetryCount} after {Delay}s", retryCount, timespan.TotalSeconds);
-                });
-    }
-
-    /// <summary>
-    /// Standard retry policy for HTTP requests with exponential backoff and jitter
-    /// </summary>
-    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            .WaitAndRetryAsync(
-                retryCount: 3,
-                sleepDurationProvider: retryAttempt =>
-                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) +
-                    TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000))
-            );
+        services.AddHttpClient(clientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 10,
+            EnableMultipleHttp2Connections = true
+        })
+        .AddPolicyHandler(HttpRetryPolicies.GetStandardRetryPolicy());
     }
 }

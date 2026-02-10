@@ -111,9 +111,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
-            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>().Subject;
             dtos.Should().HaveCount(2);
 
             var firstDto = dtos.First();
@@ -140,7 +139,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
@@ -156,7 +155,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
@@ -172,7 +171,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
@@ -236,9 +235,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
-            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>().Subject;
             var dto = dtos.First();
 
             // Should use the groq-specific identifier
@@ -283,9 +281,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
-            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>().Subject;
             var dto = dtos.First();
 
             // Should match case-insensitively
@@ -306,9 +303,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 
@@ -351,9 +348,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
-            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>().Subject;
             var dto = dtos.First();
 
             // After consolidation, capability fields have default values

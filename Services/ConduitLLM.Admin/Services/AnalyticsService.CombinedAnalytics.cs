@@ -48,9 +48,9 @@ namespace ConduitLLM.Admin.Services
                 await Task.WhenAll(summaryTask, modelTask, virtualKeyTask, dailyStatsTask, comparisonTask);
                 _metrics?.RecordFetchDuration("RequestLogRepository.AggregateQueries", fetchStopwatch.ElapsedMilliseconds);
 
-                var summary = summaryTask.Result;
-                var modelAggregations = modelTask.Result;
-                var virtualKeyAggregations = virtualKeyTask.Result;
+                var summary = await summaryTask;
+                var modelAggregations = await modelTask;
+                var virtualKeyAggregations = await virtualKeyTask;
 
                 // Get virtual key names for the top keys
                 fetchStopwatch.Restart();
@@ -88,7 +88,7 @@ namespace ConduitLLM.Admin.Services
                 }).ToList();
 
                 // Aggregate daily stats to requested timeframe
-                var dailyStats = AggregateStatisticsByTimeframe(dailyStatsTask.Result, timeframe);
+                var dailyStats = AggregateStatisticsByTimeframe(await dailyStatsTask, timeframe);
 
                 return new AnalyticsSummaryDto
                 {
@@ -103,7 +103,7 @@ namespace ConduitLLM.Admin.Services
                     TopModels = topModels,
                     TopVirtualKeys = topVirtualKeys,
                     DailyStats = dailyStats,
-                    Comparison = comparisonTask.Result
+                    Comparison = await comparisonTask
                 };
             });
 
@@ -148,8 +148,8 @@ namespace ConduitLLM.Admin.Services
             var modelTask = _requestLogRepository.GetAggregatedByModelForVirtualKeyAsync(virtualKeyId, startDate.Value, endDate.Value);
             await Task.WhenAll(summaryTask, modelTask);
 
-            var summary = summaryTask.Result;
-            var modelAggregations = modelTask.Result;
+            var summary = await summaryTask;
+            var modelAggregations = await modelTask;
 
             var result = new UsageStatisticsDto
             {

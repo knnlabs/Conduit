@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Controllers;
+using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -127,12 +128,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("test-model");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             var response = okResult.Value;
-            
+
             var json = JsonSerializer.Serialize(response);
             var jsonDoc = JsonDocument.Parse(json);
-            
+
             Assert.Equal(1, jsonDoc.RootElement.GetProperty("model_id").GetInt32());
             Assert.Equal("test-model", jsonDoc.RootElement.GetProperty("model_alias").GetString());
             Assert.Equal("Test Series", jsonDoc.RootElement.GetProperty("series_name").GetString());
@@ -192,12 +193,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("42");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             var response = okResult.Value;
-            
+
             var json = JsonSerializer.Serialize(response);
             var jsonDoc = JsonDocument.Parse(json);
-            
+
             Assert.Equal(42, jsonDoc.RootElement.GetProperty("model_id").GetInt32());
             Assert.Equal("test-model-42", jsonDoc.RootElement.GetProperty("model_alias").GetString());
         }
@@ -214,8 +215,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("non-existent-model");
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Contains("not found", errorResponse.error.ToString()?.ToLower() ?? "");
         }
 
@@ -230,8 +231,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("test-model");
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var errorResponse = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Invalid virtual key", errorResponse.error.ToString());
         }
 
@@ -245,8 +246,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("test-model");
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var errorResponse = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Virtual key not found", errorResponse.error.ToString());
         }
 
@@ -301,12 +302,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("test-model");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             var response = okResult.Value;
-            
+
             var json = JsonSerializer.Serialize(response);
             var jsonDoc = JsonDocument.Parse(json);
-            
+
             Assert.True(jsonDoc.RootElement.TryGetProperty("parameters", out var parameters));
             Assert.Equal(JsonValueKind.Object, parameters.ValueKind);
             var count = 0;
@@ -366,12 +367,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("test-model");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             var response = okResult.Value;
-            
+
             var json = JsonSerializer.Serialize(response);
             var jsonDoc = JsonDocument.Parse(json);
-            
+
             Assert.True(jsonDoc.RootElement.TryGetProperty("parameters", out var parameters));
             Assert.Equal(JsonValueKind.Object, parameters.ValueKind);
             var count = 0;
@@ -420,8 +421,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("disabled-model");
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Contains("not found", errorResponse.error.ToString()?.ToLower() ?? "");
         }
 

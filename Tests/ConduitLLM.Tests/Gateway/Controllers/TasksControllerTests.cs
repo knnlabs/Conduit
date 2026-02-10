@@ -1,6 +1,8 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Controllers;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -95,9 +97,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             Assert.NotNull(notFoundResult.Value);
-            
+
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
             Assert.Equal("Task not found", errorResponse.error.Message.ToString());
@@ -116,9 +118,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            
+
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
             Assert.Equal("An error occurred while retrieving the task", errorResponse.error.Message.ToString());
@@ -141,7 +143,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
             _mockTaskService.Verify(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -157,7 +159,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
             Assert.Equal("Task not found", errorResponse.error.Message.ToString());
@@ -176,9 +178,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            
+
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
             Assert.Equal("An error occurred while cancelling the task", errorResponse.error.Message.ToString());
@@ -239,7 +241,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.PollTask(taskId, timeout, interval);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
+            result.Should().BeOfType<OkObjectResult>();
             _mockTaskService.Verify(x => x.PollTaskUntilCompletedAsync(
                 taskId,
                 TimeSpan.FromSeconds(1),
@@ -263,9 +265,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.PollTask(taskId);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(408, objectResult.StatusCode);
-            
+
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
             Assert.Equal("Task polling timed out", errorResponse.error.Message.ToString());
@@ -288,7 +290,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.PollTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
             Assert.Equal("Task not found", errorResponse.error.Message.ToString());
@@ -310,9 +312,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.PollTask(taskId);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            
+
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
             Assert.Equal("An error occurred while polling the task", errorResponse.error.Message.ToString());

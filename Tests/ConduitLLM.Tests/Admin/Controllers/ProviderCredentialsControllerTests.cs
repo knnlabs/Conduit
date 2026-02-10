@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using FluentAssertions;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -98,9 +99,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
+
             Assert.Equal(ApiKeyTestResult.Success, response.Result);
             Assert.Contains("authorized", response.Message);
             Assert.NotNull(response.Details?.ModelsAvailable);
@@ -127,9 +128,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
+
             Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
             Assert.Contains("authorization test", response.Message);
             Assert.NotNull(response.Details);
@@ -156,9 +157,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
+
             Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
             Assert.Contains("authorization test", response.Message);
             Assert.NotNull(response.Details);
@@ -187,9 +188,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
+
             // Verify the connection test properly fails (no fallback models returned)
             Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
             Assert.Contains("authorization test", response.Message);
@@ -219,8 +220,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert - ExceptionToResponseMapper maps ArgumentException to 400 Bad Request
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("invalid_argument", errorResponse.Code);
         }
 
@@ -243,8 +244,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert - ExceptionToResponseMapper maps ArgumentException to 400 Bad Request
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("invalid_argument", errorResponse.Code);
         }
 
@@ -268,8 +269,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
 
             Assert.Equal(ApiKeyTestResult.UnknownError, response.Result);
             Assert.Contains("unexpected error", response.Message);
@@ -292,8 +293,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
 
             _output.WriteLine($"Result: {response.Result}");
             _output.WriteLine($"Message: {response.Message}");
@@ -318,8 +319,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
 
             Assert.Equal(ApiKeyTestResult.Ignored, response.Result);
             Assert.Contains("untested", response.Message, StringComparison.OrdinalIgnoreCase);

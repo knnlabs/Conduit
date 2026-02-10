@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -312,7 +313,7 @@ namespace ConduitLLM.Core.Services
                 try
                 {
                     var pattern = CacheKeys.Embedding.Prefix + "*";
-                    var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+                    var server = _database.Multiplexer.GetPrimaryServer();
                     var keys = server.Keys(pattern: pattern, pageSize: 1000).Take(1000);
                     currentStats.EntryCount = keys.Count();
                 }
@@ -337,7 +338,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var pattern = CacheKeys.Embedding.Prefix + "*";
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+                var server = _database.Multiplexer.GetPrimaryServer();
                 var keys = server.Keys(pattern: pattern, pageSize: 1000);
 
                 var keyArray = keys.Select(key => (RedisKey)key).ToArray();

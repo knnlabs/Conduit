@@ -1,6 +1,8 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Core.Interfaces;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -53,9 +55,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CleanupOldTasks();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.NotNull(okResult.Value);
-            
+
             var response = okResult.Value.GetType().GetProperty("cleaned_up")?.GetValue(okResult.Value);
             var hours = okResult.Value.GetType().GetProperty("older_than_hours")?.GetValue(okResult.Value);
             
@@ -77,7 +79,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CleanupOldTasks(olderThanHours);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
+            result.Should().BeOfType<OkObjectResult>();
             _mockTaskService.Verify(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(48), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -93,7 +95,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CleanupOldTasks(olderThanHours);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
+            result.Should().BeOfType<OkObjectResult>();
             _mockTaskService.Verify(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(1), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -108,12 +110,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CleanupOldTasks();
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
             Assert.NotNull(objectResult.Value);
 
             // Verify standardized error response structure from AdminControllerBase
-            var errorResponse = Assert.IsType<ConduitLLM.Configuration.DTOs.ErrorResponseDto>(objectResult.Value);
+            var errorResponse = objectResult.Value.Should().BeOfType<ConduitLLM.Configuration.DTOs.ErrorResponseDto>().Subject;
             Assert.Equal("An unexpected error occurred.", errorResponse.error);
             Assert.Equal("internal_error", errorResponse.Code);
         }

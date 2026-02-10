@@ -33,14 +33,14 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+            var createdResult = createResult.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
 
             // Act
             var deleteResult = await _controller.DeleteModelCost(createdCost.Id);
 
             // Assert
-            Assert.IsType<NoContentResult>(deleteResult);
+            deleteResult.Should().BeOfType<NoContentResult>();
 
             // Verify cost deleted
             var deletedCost = await _modelCostRepository.GetByIdAsync(createdCost.Id);

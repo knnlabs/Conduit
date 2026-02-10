@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Events;
+using FluentAssertions;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -83,11 +84,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
-            
+            result.Should().BeOfType<OkObjectResult>();
+
             // Verify the event was published
             _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<ModelUpdated>(), default), Times.Once);
-            
+
             // Verify the event has correct properties
             Assert.NotNull(capturedEvent);
             Assert.Equal(modelId, capturedEvent.ModelId);
@@ -140,11 +141,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
-            
+            result.Should().BeOfType<OkObjectResult>();
+
             // Verify the event was published
             _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<ModelUpdated>(), default), Times.Once);
-            
+
             // Verify the event has correct properties
             Assert.NotNull(capturedEvent);
             Assert.Equal(modelId, capturedEvent.ModelId);

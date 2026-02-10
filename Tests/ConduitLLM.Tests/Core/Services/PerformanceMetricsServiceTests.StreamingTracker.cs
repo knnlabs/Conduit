@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -14,7 +15,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.NotNull(tracker);
-            Assert.IsAssignableFrom<IStreamingMetricsTracker>(tracker);
+            tracker.Should().BeAssignableTo<IStreamingMetricsTracker>();
         }
 
         [Fact]

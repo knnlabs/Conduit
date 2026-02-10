@@ -24,7 +24,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteSetting(1);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -38,8 +38,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteSetting(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 
@@ -58,7 +58,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteSettingByKey("rate_limit");
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -72,8 +72,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteSettingByKey("non_existing");
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 
@@ -88,9 +88,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteSettingByKey("test_key");
 
             // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 

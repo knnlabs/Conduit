@@ -41,7 +41,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var actionResult = await _controller.UpdateMapping(1, mapping.ToDto());
 
             // Assert
-            Assert.IsType<NoContentResult>(actionResult);
+            actionResult.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -65,8 +65,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var actionResult = await _controller.UpdateMapping(999, mapping.ToDto());
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(actionResult);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var notFoundResult = actionResult.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 

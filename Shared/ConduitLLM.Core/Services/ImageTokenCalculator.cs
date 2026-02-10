@@ -131,9 +131,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 // First try to get dimensions from headers (if server supports it)
-                var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
-                var headResponse = await _httpClient.SendAsync(headRequest);
-                
+                using var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
+                using var headResponse = await _httpClient.SendAsync(headRequest);
+
                 if (headResponse.Headers.TryGetValues("X-Image-Width", out var widthValues) &&
                     headResponse.Headers.TryGetValues("X-Image-Height", out var heightValues))
                 {
@@ -146,7 +146,7 @@ namespace ConduitLLM.Core.Services
 
                 // If headers don't contain dimensions, download the image
                 // We only need the first few bytes to determine dimensions for most formats
-                var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
                 using var stream = await response.Content.ReadAsStreamAsync();
                 
                 // Read enough bytes to get image dimensions (usually in the header)

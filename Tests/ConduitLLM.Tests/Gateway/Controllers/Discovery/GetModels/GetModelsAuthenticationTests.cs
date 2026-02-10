@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.DTOs;
@@ -29,8 +30,8 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorDto = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var errorDto = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Virtual key not found", errorDto.error.ToString());
         }
 
@@ -51,8 +52,8 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorDto = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var errorDto = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Invalid virtual key", errorDto.error.ToString());
         }
 
@@ -73,8 +74,8 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorDto = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var errorDto = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             Assert.Equal("Invalid virtual key", errorDto.error.ToString());
         }
     }

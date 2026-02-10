@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Interfaces;
 
 using System.Collections.Concurrent;
@@ -149,7 +150,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var connection = await _redisConnectionFactory.GetConnectionAsync();
                 _redis = connection.GetDatabase();
-                _server = connection.GetServer(connection.GetEndPoints().First());
+                _server = connection.GetPrimaryServer();
 
                 _cleanupTimer = new Timer(
                     CleanupStaleConnections,

@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Options;
+using ConduitLLM.Core.Policies;
 using ConduitLLM.Core.Services;
 
 using Microsoft.Extensions.Configuration;
@@ -9,8 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using ConduitLLM.Configuration.Interfaces;
-using Polly;
-using Polly.Extensions.Http;
+
 namespace ConduitLLM.Core.Extensions
 {
     /// <summary>
@@ -38,7 +38,7 @@ namespace ConduitLLM.Core.Extensions
             
             // Register image token calculator with retry-enabled HttpClient for accurate vision model billing
             services.AddHttpClient<IImageTokenCalculator, ImageTokenCalculator>()
-                .AddPolicyHandler(GetRetryPolicy())
+                .AddPolicyHandler(HttpRetryPolicies.GetStandardRetryPolicy())
                 .ConfigureHttpClient(client =>
                 {
                     client.Timeout = TimeSpan.FromSeconds(30); // Reasonable timeout for image dimension checks
@@ -165,53 +165,21 @@ namespace ConduitLLM.Core.Extensions
                 {
                     // First try to bind from the configuration section
                     configuration.GetSection(S3StorageOptions.SectionName).Bind(options);
-                    
+
                     // Then override with environment variables if they exist
-                    var endpoint = configuration["CONDUIT_S3_ENDPOINT"] ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ENDPOINT");
-                    if (!string.IsNullOrEmpty(endpoint))
-                    {
-                        options.ServiceUrl = endpoint;
-                    }
-                    
-                    var accessKey = configuration["CONDUIT_S3_ACCESS_KEY_ID"] 
-                        ?? configuration["CONDUIT_S3_ACCESS_KEY"] 
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ACCESS_KEY_ID")
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ACCESS_KEY");
-                    if (!string.IsNullOrEmpty(accessKey))
-                    {
-                        options.AccessKey = accessKey;
-                    }
-                    
-                    var secretKey = configuration["CONDUIT_S3_SECRET_ACCESS_KEY"] 
-                        ?? configuration["CONDUIT_S3_SECRET_KEY"]
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SECRET_ACCESS_KEY")
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SECRET_KEY");
-                    if (!string.IsNullOrEmpty(secretKey))
-                    {
-                        options.SecretKey = secretKey;
-                    }
-                    
-                    var bucketName = configuration["CONDUIT_S3_BUCKET_NAME"] 
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_BUCKET_NAME");
-                    if (!string.IsNullOrEmpty(bucketName))
-                    {
-                        options.BucketName = bucketName;
-                    }
-                    
-                    var region = configuration["CONDUIT_S3_REGION"] 
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_REGION");
-                    if (!string.IsNullOrEmpty(region))
-                    {
-                        options.Region = region;
-                    }
-                    
-                    var publicBaseUrl = configuration["CONDUIT_S3_PUBLIC_BASE_URL"] 
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_PUBLIC_BASE_URL");
-                    if (!string.IsNullOrEmpty(publicBaseUrl))
-                    {
-                        options.PublicBaseUrl = publicBaseUrl;
-                    }
-                    
+                    ApplyConfigOrEnvVar(configuration, value => options.ServiceUrl = value,
+                        "CONDUIT_S3_ENDPOINT");
+                    ApplyConfigOrEnvVar(configuration, value => options.AccessKey = value,
+                        "CONDUIT_S3_ACCESS_KEY_ID", "CONDUIT_S3_ACCESS_KEY");
+                    ApplyConfigOrEnvVar(configuration, value => options.SecretKey = value,
+                        "CONDUIT_S3_SECRET_ACCESS_KEY", "CONDUIT_S3_SECRET_KEY");
+                    ApplyConfigOrEnvVar(configuration, value => options.BucketName = value,
+                        "CONDUIT_S3_BUCKET_NAME");
+                    ApplyConfigOrEnvVar(configuration, value => options.Region = value,
+                        "CONDUIT_S3_REGION");
+                    ApplyConfigOrEnvVar(configuration, value => options.PublicBaseUrl = value,
+                        "CONDUIT_S3_PUBLIC_BASE_URL");
+
                     // Set defaults for S3 compatibility
                     options.ForcePathStyle = true;
                     options.AutoCreateBucket = true;
@@ -241,20 +209,20 @@ namespace ConduitLLM.Core.Extensions
         }
 
         /// <summary>
-        /// Creates a standard retry policy for HTTP requests.
-        /// Uses exponential backoff with jitter to handle transient failures.
+        /// Resolves a configuration value by checking IConfiguration keys and environment variables in order.
+        /// If a non-empty value is found, applies it via the setter.
         /// </summary>
-        private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+        private static void ApplyConfigOrEnvVar(IConfiguration configuration, Action<string> setter, params string[] keys)
         {
-            return HttpPolicyExtensions
-                .HandleTransientHttpError() // Handles 5xx status codes and connection failures
-                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                .WaitAndRetryAsync(
-                    retryCount: 3,
-                    sleepDurationProvider: retryAttempt =>
-                        TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) + // Exponential backoff
-                        TimeSpan.FromMilliseconds(new Random().Next(0, 1000)) // Jitter
-                );
+            foreach (var key in keys)
+            {
+                var value = configuration[key] ?? Environment.GetEnvironmentVariable(key);
+                if (!string.IsNullOrEmpty(value))
+                {
+                    setter(value);
+                    return;
+                }
+            }
         }
     }
 }

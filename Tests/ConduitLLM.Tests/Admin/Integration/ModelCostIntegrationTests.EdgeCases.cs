@@ -35,9 +35,9 @@ namespace ConduitLLM.Tests.Admin.Integration
             var result = await _controller.CreateModelCost(createDto);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
-            
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
+
             createdCost.CostName.Should().Be("Cost with Invalid Mappings");
             createdCost.AssociatedModelAliases.Should().BeEmpty(); // No valid mappings
 
@@ -67,8 +67,8 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+            var createdResult = createResult.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
 
             // Prepare two concurrent updates
             var update1 = new UpdateModelCostDto

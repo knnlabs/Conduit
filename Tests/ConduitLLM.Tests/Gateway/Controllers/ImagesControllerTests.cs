@@ -3,6 +3,8 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Controllers;
 
+using FluentAssertions;
+
 using MassTransit;
 
 using Microsoft.AspNetCore.Mvc;
@@ -78,7 +80,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CreateImage(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
             Assert.Equal("Prompt is required", errorResponse.Error.Message);
@@ -111,7 +113,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CreateImage(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
             Assert.Equal("Model gpt-4 does not support image generation", errorResponse.Error.Message);
@@ -135,7 +137,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CreateImage(request);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
             var errorResponse = objectResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
@@ -161,7 +163,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CreateImageAsync(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
             Assert.Equal("Prompt is required", errorResponse.Error.Message);
@@ -195,7 +197,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CreateImageAsync(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
             Assert.Equal("Model gpt-4 does not support image generation", errorResponse.Error.Message);
@@ -219,7 +221,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetGenerationStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             var errorResponse = notFoundResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
             Assert.Equal("Task not found", errorResponse.Error.Message);
@@ -239,7 +241,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetGenerationStatus(taskId);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
             var errorResponse = objectResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
@@ -263,7 +265,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelGeneration(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             var errorResponse = notFoundResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
             Assert.Equal("Task not found", errorResponse.Error.Message);
@@ -316,7 +318,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelGeneration(taskId);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
             Assert.Equal("Task has already completed", errorResponse.Error.Message);

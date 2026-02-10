@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.Http.Builders;
@@ -38,7 +39,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels(capability: "vision");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(1, response.count);
             Assert.Equal("gpt-4-vision", ((IEnumerable<dynamic>)response.data).First().id);
@@ -68,7 +69,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels(capability: "streaming");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(1, response.count);
             Assert.Equal("gpt-4", ((IEnumerable<dynamic>)response.data).First().id);
@@ -98,7 +99,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels(capability: "chat_stream");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(1, response.count);
         }
@@ -121,7 +122,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels(capability: "invalid_capability");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(0, response.count);
         }
@@ -146,7 +147,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels(capability: "audio-transcription");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             // Should work as controller converts dashes to underscores
             Assert.NotNull(response);

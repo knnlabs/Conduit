@@ -3,6 +3,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -58,8 +60,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<VideoGenerationTaskStatus>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<VideoGenerationTaskStatus>().Subject;
             Assert.Equal(taskId, response.TaskId);
             Assert.Equal(TaskStateConstants.Completed, response.Status);
             Assert.Equal(100, response.Progress);
@@ -88,8 +90,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var problemDetails = notFoundResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Task Not Found", problemDetails.Title);
             Assert.Equal("The requested task was not found", problemDetails.Detail);
         }
@@ -105,8 +107,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(unauthorizedResult.Value);
+            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+            var problemDetails = unauthorizedResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Unauthorized", problemDetails.Title);
         }
 
@@ -132,9 +134,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var internalServerErrorResult = Assert.IsType<ObjectResult>(result);
+            var internalServerErrorResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, internalServerErrorResult.StatusCode);
-            var problemDetails = Assert.IsType<ProblemDetails>(internalServerErrorResult.Value);
+            var problemDetails = internalServerErrorResult.Value.Should().BeOfType<ProblemDetails>().Subject;
             Assert.Equal("Internal Server Error", problemDetails.Title);
         }
 

@@ -45,15 +45,15 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+            var createdResult = createResult.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
 
             // Act
             var getResult = await _controller.GetModelCostById(createdCost.Id);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(getResult);
-            var retrievedCost = Assert.IsType<ModelCostDto>(okResult.Value);
+            var okResult = getResult.Should().BeOfType<OkObjectResult>().Subject;
+            var retrievedCost = okResult.Value.Should().BeOfType<ModelCostDto>().Subject;
             
             retrievedCost.CostName.Should().Be("Test Cost with Associations");
             retrievedCost.AssociatedModelAliases.Should().HaveCount(3);
@@ -106,8 +106,8 @@ namespace ConduitLLM.Tests.Admin.Integration
             var result = await _controller.GetAllModelCosts();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var costs = Assert.IsAssignableFrom<IEnumerable<ModelCostDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var costs = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostDto>>().Subject;
             var costList = costs.ToList();
 
             costList.Should().HaveCount(2);

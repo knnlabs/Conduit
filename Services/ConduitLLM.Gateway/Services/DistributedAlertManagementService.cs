@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Microsoft.AspNetCore.SignalR;
 using StackExchange.Redis;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Gateway.Interfaces;
 
@@ -399,7 +400,7 @@ namespace ConduitLLM.Gateway.Services
         public async Task<List<string>> GetActiveInstancesAsync()
         {
             var pattern = $"{InstancesSetKey}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
             
             var instances = new List<string>();
@@ -633,7 +634,7 @@ namespace ConduitLLM.Gateway.Services
                 
                 // Clean up old alert history
                 var historyPattern = $"{AlertHistoryPrefix}:*";
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+                var server = _database.Multiplexer.GetPrimaryServer();
                 var historyKeys = server.Keys(pattern: historyPattern);
                 
                 foreach (var key in historyKeys)

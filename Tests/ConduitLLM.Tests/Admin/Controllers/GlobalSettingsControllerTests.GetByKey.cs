@@ -29,8 +29,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetSettingByKey("rate_limit");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedSetting = Assert.IsType<GlobalSettingDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedSetting = okResult.Value.Should().BeOfType<GlobalSettingDto>().Subject;
             returnedSetting.Key.Should().Be("rate_limit");
         }
 
@@ -45,9 +45,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetSettingByKey("non_existing");
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             notFoundResult.Value.Should().NotBeNull();
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("not_found");
         }
 
@@ -62,9 +62,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetSettingByKey("test_key");
 
             // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.Code.Should().Be("internal_error");
         }
 

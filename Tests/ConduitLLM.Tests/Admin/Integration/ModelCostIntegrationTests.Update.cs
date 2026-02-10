@@ -48,8 +48,8 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+            var createdResult = createResult.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
 
             // Update with different mappings
             var updateDto = new UpdateModelCostDto
@@ -65,7 +65,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             var updateResult = await _controller.UpdateModelCost(createdCost.Id, updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(updateResult);
+            updateResult.Should().BeOfType<NoContentResult>();
 
             // Verify updated mappings
             var updatedCost = await _modelCostRepository.GetByIdAsync(createdCost.Id);
@@ -96,8 +96,8 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+            var createdResult = createResult.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
 
             // Update to remove all mappings
             var updateDto = new UpdateModelCostDto
@@ -113,7 +113,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             var updateResult = await _controller.UpdateModelCost(createdCost.Id, updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(updateResult);
+            updateResult.Should().BeOfType<NoContentResult>();
 
             // Verify mappings removed
             using (var verifyContext = new ConduitDbContext(_dbContextOptions))

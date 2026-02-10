@@ -188,16 +188,21 @@ namespace ConduitLLM.Gateway.Services
                 var resetTimeTask = _database.StringGetAsync(CacheKeys.Stats.VirtualKeyResetTime);
                 
                 await Task.WhenAll(hitCountTask, missCountTask, invalidationCountTask, resetTimeTask);
-                
+
+                var hitCountValue = await hitCountTask;
+                var missCountValue = await missCountTask;
+                var invalidationCountValue = await invalidationCountTask;
+                var resetTimeValue = await resetTimeTask;
+
                 // Parse values with defaults for missing keys
-                long hitCount = hitCountTask.Result.HasValue ? (long)hitCountTask.Result : 0;
-                long missCount = missCountTask.Result.HasValue ? (long)missCountTask.Result : 0;
-                long invalidationCount = invalidationCountTask.Result.HasValue ? (long)invalidationCountTask.Result : 0;
-                
+                long hitCount = hitCountValue.HasValue ? (long)hitCountValue : 0;
+                long missCount = missCountValue.HasValue ? (long)missCountValue : 0;
+                long invalidationCount = invalidationCountValue.HasValue ? (long)invalidationCountValue : 0;
+
                 DateTime lastResetTime = DateTime.UtcNow;
-                if (resetTimeTask.Result.HasValue)
+                if (resetTimeValue.HasValue)
                 {
-                    if (long.TryParse(resetTimeTask.Result.ToString(), out var ticks))
+                    if (long.TryParse(resetTimeValue.ToString(), out var ticks))
                     {
                         lastResetTime = new DateTime(ticks, DateTimeKind.Utc);
                     }
