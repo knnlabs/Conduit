@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 
 using FluentAssertions;
@@ -34,7 +35,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullTaskService_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => 
+            var exception = Assert.Throws<ArgumentNullException>(() =>
                 new TasksController(null, _mockLogger.Object));
             Assert.Equal("taskService", exception.ParamName);
         }
@@ -43,7 +44,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => 
+            var exception = Assert.Throws<ArgumentNullException>(() =>
                 new TasksController(_mockTaskService.Object, null));
             Assert.Equal("logger", exception.ParamName);
         }
@@ -100,10 +101,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             Assert.NotNull(notFoundResult.Value);
 
-            var errorResponse = notFoundResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
-            Assert.Equal("not_found", errorResponse.error.Type.ToString());
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Task not found", errorResponse.Error.Message);
+            Assert.Equal("not_found_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -121,10 +121,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
 
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while retrieving the task", errorResponse.error.Message.ToString());
-            Assert.Equal("server_error", errorResponse.error.Type.ToString());
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("An unexpected error occurred.", errorResponse.Error.Message);
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         #endregion
@@ -160,10 +159,9 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
-            Assert.Equal("not_found", errorResponse.error.Type.ToString());
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Task not found", errorResponse.Error.Message);
+            Assert.Equal("not_found_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -181,10 +179,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
 
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while cancelling the task", errorResponse.error.Message.ToString());
-            Assert.Equal("server_error", errorResponse.error.Type.ToString());
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("An unexpected error occurred.", errorResponse.Error.Message);
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         #endregion
@@ -205,8 +202,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             _mockTaskService.Setup(x => x.PollTaskUntilCompletedAsync(
-                    taskId, 
-                    It.IsAny<TimeSpan>(), 
+                    taskId,
+                    It.IsAny<TimeSpan>(),
                     It.IsAny<TimeSpan>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedStatus);
@@ -229,7 +226,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var taskId = "task-123";
             var timeout = 700; // Above max, should be clamped to 600
             var interval = 0; // Below min, should be clamped to 1
-            
+
             _mockTaskService.Setup(x => x.PollTaskUntilCompletedAsync(
                     taskId,
                     TimeSpan.FromSeconds(1), // Clamped interval
@@ -268,10 +265,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(408, objectResult.StatusCode);
 
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Task polling timed out", errorResponse.error.Message.ToString());
-            Assert.Equal("timeout", errorResponse.error.Type.ToString());
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Task polling timed out", errorResponse.Error.Message);
+            Assert.Equal("timeout", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -291,9 +287,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Task not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -315,9 +310,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
 
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while polling the task", errorResponse.error.Message.ToString());
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("An unexpected error occurred.", errorResponse.Error.Message);
         }
 
         #endregion

@@ -1,6 +1,7 @@
-using MassTransit;
+using ConduitLLM.Core.Consumers;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Gateway.EventHandlers
 {
@@ -8,47 +9,35 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles DiscoveryCacheInvalidationRequested events from Admin API
     /// Invalidates the discovery cache across all Gateway API instances
     /// </summary>
-    public class DiscoveryCacheInvalidationHandler : IConsumer<DiscoveryCacheInvalidationRequested>
+    public class DiscoveryCacheInvalidationHandler : CacheInvalidationConsumerBase<DiscoveryCacheInvalidationRequested>
     {
         private readonly IDiscoveryCacheService _discoveryCacheService;
-        private readonly ILogger<DiscoveryCacheInvalidationHandler> _logger;
 
         public DiscoveryCacheInvalidationHandler(
             IDiscoveryCacheService discoveryCacheService,
             ILogger<DiscoveryCacheInvalidationHandler> logger)
+            : base(logger)
         {
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        /// <summary>
-        /// Handles manual discovery cache invalidation requests from Admin API
-        /// </summary>
-        public async Task Consume(ConsumeContext<DiscoveryCacheInvalidationRequested> context)
-        {
-            var @event = context.Message;
+        protected override Task InvalidateCacheAsync(DiscoveryCacheInvalidationRequested message)
+            => _discoveryCacheService.InvalidateAllDiscoveryAsync();
 
-            try
-            {
-                _logger.LogInformation(
-                    "Processing discovery cache invalidation request. Reason: {Reason}, Requested by: {RequestedBy}",
-                    @event.Reason,
-                    @event.RequestedBy);
+        protected override void LogReceived(DiscoveryCacheInvalidationRequested message)
+            => Logger.LogInformation(
+                "Processing discovery cache invalidation request. Reason: {Reason}, Requested by: {RequestedBy}",
+                message.Reason,
+                message.RequestedBy);
 
-                // Invalidate all discovery cache entries
-                await _discoveryCacheService.InvalidateAllDiscoveryAsync();
+        protected override void LogSuccess(DiscoveryCacheInvalidationRequested message)
+            => Logger.LogInformation(
+                "Successfully invalidated all discovery cache entries. Reason: {Reason}",
+                message.Reason);
 
-                _logger.LogInformation(
-                    "Successfully invalidated all discovery cache entries. Reason: {Reason}",
-                    @event.Reason);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to invalidate discovery cache. Reason: {Reason}",
-                    @event.Reason);
-                throw; // Re-throw to trigger MassTransit retry logic
-            }
-        }
+        protected override void LogFailure(DiscoveryCacheInvalidationRequested message, Exception ex)
+            => Logger.LogError(ex,
+                "Failed to invalidate discovery cache. Reason: {Reason}",
+                message.Reason);
     }
 }

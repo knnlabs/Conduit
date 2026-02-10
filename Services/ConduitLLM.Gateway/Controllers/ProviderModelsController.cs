@@ -1,7 +1,8 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Models;
 
 using Microsoft.AspNetCore.Mvc;
-using ConduitLLM.Configuration.DTOs;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Gateway.Controllers
@@ -11,10 +12,9 @@ namespace ConduitLLM.Gateway.Controllers
     /// </summary>
     [ApiController]
     [Route("api/provider-models")]
-    public class ProviderModelsController : ControllerBase
+    public class ProviderModelsController : GatewayControllerBase
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-        private readonly ILogger<ProviderModelsController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProviderModelsController"/> class.
@@ -24,9 +24,9 @@ namespace ConduitLLM.Gateway.Controllers
         public ProviderModelsController(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ProviderModelsController> logger)
+            : base(logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -36,15 +36,15 @@ namespace ConduitLLM.Gateway.Controllers
         /// <returns>List of model identifiers that can be used with this provider</returns>
         [HttpGet("{providerId:int}")]
         [ProducesResponseType(typeof(List<string>), 200)]
-        [ProducesResponseType(typeof(object), 404)]
+        [ProducesResponseType(typeof(OpenAIErrorResponse), 404)]
         public async Task<IActionResult> GetProviderModels(int providerId)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
-                _logger.LogInformation("Getting compatible models for provider {ProviderId}", providerId);
+                Logger.LogInformation("Getting compatible models for provider {ProviderId}", providerId);
 
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                
+
                 // Get the provider to determine its type
                 var provider = await dbContext.Providers
                     .AsNoTracking()
@@ -52,8 +52,16 @@ namespace ConduitLLM.Gateway.Controllers
 
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider with ID {ProviderId} not found", providerId);
-                    return NotFound(new ErrorResponseDto($"Provider with ID {providerId} not found"));
+                    Logger.LogWarning("Provider with ID {ProviderId} not found", providerId);
+                    return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = $"Provider with ID {providerId} not found",
+                            Type = "not_found_error",
+                            Code = "not_found"
+                        }
+                    });
                 }
 
                 // Get all models that have the appropriate capabilities for this provider type
@@ -67,19 +75,19 @@ namespace ConduitLLM.Gateway.Controllers
                 {
                     case ProviderType.OpenAI:
                     case ProviderType.OpenAICompatible:
-                        query = query.Where(m => m.SupportsChat || 
+                        query = query.Where(m => m.SupportsChat ||
                                                  m.SupportsImageGeneration ||
                                                  m.SupportsEmbeddings);
                         break;
-                    
+
                     case ProviderType.Replicate:
                         // Replicate supports various model types including video
-                        query = query.Where(m => m.SupportsImageGeneration || 
+                        query = query.Where(m => m.SupportsImageGeneration ||
                                                  m.SupportsVideoGeneration ||
                                                  m.SupportsChat);
                         break;
-                    
-                    
+
+
                     case ProviderType.Groq:
                     case ProviderType.Cerebras:
                     case ProviderType.SambaNova:
@@ -87,7 +95,7 @@ namespace ConduitLLM.Gateway.Controllers
                         // Fast inference providers typically support chat models
                         query = query.Where(m => m.SupportsChat);
                         break;
-                    
+
                     default:
                         // For other providers, return all active models
                         break;
@@ -100,17 +108,17 @@ namespace ConduitLLM.Gateway.Controllers
                 // Get the model identifiers that are most commonly used
                 // Prefer identifiers that match the provider type if available
                 var modelIdentifiers = new List<string>();
-                
+
                 // Map provider type to enum for comparison
                 var providerType = provider.ProviderType;
-                
+
                 foreach (var model in models)
                 {
                     // First, check if there's a provider-specific identifier
                     var providerSpecificId = model.Identifiers
-                        .FirstOrDefault(i => i.Provider.HasValue && 
+                        .FirstOrDefault(i => i.Provider.HasValue &&
                                            i.Provider.Value == providerType);
-                    
+
                     if (providerSpecificId != null)
                     {
                         modelIdentifiers.Add(providerSpecificId.Identifier);
@@ -142,16 +150,11 @@ namespace ConduitLLM.Gateway.Controllers
                     .OrderBy(m => m, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                _logger.LogInformation("Found {ModelsCount} compatible models for provider {ProviderId} (type: {ProviderType})",
+                Logger.LogInformation("Found {ModelsCount} compatible models for provider {ProviderId} (type: {ProviderType})",
                     sortedIdentifiers.Count, providerId, provider.ProviderType);
 
                 return Ok(sortedIdentifiers);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving models for provider {ProviderId}", providerId);
-                return StatusCode(500, new ErrorResponseDto($"Failed to retrieve models: {ex.Message}"));
-            }
+            }, "GetProviderModels", providerId);
         }
     }
 }

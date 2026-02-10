@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit.Abstractions;
-using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -109,8 +108,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Operation not found", errorResponse.error.ToString());
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Operation not found", errorResponse.Error.Message);
         }
 
         #endregion
@@ -160,8 +159,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
-            var errorResponse = conflictResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Operation cannot be cancelled", errorResponse.error.ToString());
+            var errorResponse = conflictResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Operation cannot be cancelled", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -186,8 +185,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
-            var errorResponse = conflictResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Failed to cancel operation", errorResponse.error.ToString());
+            var errorResponse = conflictResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Failed to cancel operation", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -203,8 +202,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Operation not found", errorResponse.error.ToString());
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Operation not found", errorResponse.Error.Message);
         }
 
         #endregion
@@ -292,8 +291,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("No updates provided", errorResponse.error.ToString());
+            var errorResponse = badRequestResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("No updates provided", errorResponse.Error.Message);
         }
 
         #endregion
