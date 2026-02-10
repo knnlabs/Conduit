@@ -62,27 +62,27 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc />
-        public Task<int> EstimateTokenCountAsync(string modelName, List<Message> messages)
+        public async Task<int> EstimateTokenCountAsync(string modelName, List<Message> messages)
         {
             if (messages == null || !messages.Any())
             {
-                return Task.FromResult(0);
+                return 0;
             }
 
             try
             {
-                var encoding = GetEncodingForModel(modelName);
+                var encoding = await GetEncodingForModelAsync(modelName);
                 if (encoding == null)
                 {
                     // Fallback strategy if we can't get the right encoding
                     _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return Task.FromResult(FallbackEstimateTokens(messages));
+                    return FallbackEstimateTokens(messages);
                 }
 
                 int tokenCount = 0;
                 foreach (var message in messages)
                 {
-                    // OpenAI adds tokens per message and per role. 
+                    // OpenAI adds tokens per message and per role.
                     // These numbers are based on OpenAI's tokenization approach
                     tokenCount += 4; // Every message follows <|start|>{role/name}\n{content}<|end|>\n
 
@@ -148,47 +148,47 @@ namespace ConduitLLM.Core.Services
 
                 tokenCount += 3; // Every reply is primed with <|start|>assistant<|message|>
 
-                return Task.FromResult(tokenCount);
+                return tokenCount;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return Task.FromResult(FallbackEstimateTokens(messages));
+                return FallbackEstimateTokens(messages);
             }
         }
 
         /// <inheritdoc />
-        public Task<int> EstimateTokenCountAsync(string modelName, string text)
+        public async Task<int> EstimateTokenCountAsync(string modelName, string text)
         {
             if (string.IsNullOrEmpty(text))
             {
-                return Task.FromResult(0);
+                return 0;
             }
 
             try
             {
-                var encoding = GetEncodingForModel(modelName);
+                var encoding = await GetEncodingForModelAsync(modelName);
                 if (encoding == null)
                 {
                     // Fallback strategy
                     _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return Task.FromResult(FallbackEstimateTokens(text));
+                    return FallbackEstimateTokens(text);
                 }
 
                 try
                 {
-                    return Task.FromResult(encoding.Encode(text).Count);
+                    return encoding.Encode(text).Count;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error encoding text. Using fallback estimate.");
-                    return Task.FromResult(FallbackEstimateTokens(text));
+                    return FallbackEstimateTokens(text);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return Task.FromResult(FallbackEstimateTokens(text));
+                return FallbackEstimateTokens(text);
             }
         }
 
@@ -226,68 +226,6 @@ namespace ConduitLLM.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in GetEncodingForModelAsync");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Gets the appropriate TikToken encoding for a given model (synchronous, for backward compatibility).
-        /// Uses cached encoding when available to avoid blocking on async calls.
-        /// </summary>
-        /// <param name="modelName">The name of the model to get encoding for.</param>
-        /// <returns>The appropriate TikToken encoding, or null if it cannot be determined.</returns>
-        /// <remarks>
-        /// <para>
-        /// This method determines the appropriate encoding based on the model name using these steps:
-        /// </para>
-        /// <list type="number">
-        ///   <item><description>Identifies the encoding type based on model name patterns</description></item>
-        ///   <item><description>Uses a thread-safe caching mechanism to avoid repeatedly creating encodings</description></item>
-        ///   <item><description>Falls back to the most modern encoding (cl100k_base) when uncertain</description></item>
-        /// </list>
-        /// <para>
-        /// The current encoding mappings are:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>cl100k_base: GPT-3.5 and GPT-4 models</description></item>
-        ///   <item><description>p50k_base: Legacy models (davinci, curie, babbage, ada)</description></item>
-        /// </list>
-        /// </remarks>
-        private TikToken? GetEncodingForModel(string modelName)
-        {
-            try
-            {
-                string encodingName = "cl100k_base"; // Default for newer models
-
-                // Try to get tokenizer type from capability service first
-                // Note: We use ConfigureAwait(false) to avoid deadlocks. For truly async behavior,
-                // use GetEncodingForModelAsync instead.
-                if (_capabilityService != null)
-                {
-                    try
-                    {
-                        var task = _capabilityService.GetTokenizerTypeAsync(modelName);
-                        // Check if already completed to avoid blocking
-                        var tokenizerType = task.IsCompleted
-                            ? task.Result
-                            : task.ConfigureAwait(false).GetAwaiter().GetResult();
-                        if (!string.IsNullOrEmpty(tokenizerType))
-                        {
-                            encodingName = tokenizerType;
-                            _logger.LogDebug("Using tokenizer {TokenizerType} from capability service for model {Model}", tokenizerType, modelName);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error getting tokenizer type from capability service for model {Model}", modelName);
-                    }
-                }
-
-                return GetOrCreateEncoding(encodingName, modelName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetEncodingForModel");
                 return null;
             }
         }
