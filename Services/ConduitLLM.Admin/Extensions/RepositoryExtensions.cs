@@ -10,7 +10,8 @@ namespace ConduitLLM.Admin.Extensions
     public static class RepositoryExtensions
     {
         /// <summary>
-        /// Gets daily costs from request logs within a specified date range
+        /// Gets daily costs from request logs within a specified date range.
+        /// Uses database-level aggregation instead of loading all logs into memory.
         /// </summary>
         /// <param name="repository">The request log repository</param>
         /// <param name="startDate">The start date (inclusive)</param>
@@ -23,18 +24,10 @@ namespace ConduitLLM.Admin.Extensions
             DateTime endDate,
             CancellationToken cancellationToken = default)
         {
-            // Get the logs for the date range
-            var logs = await repository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
-
-            // Group by date and calculate daily costs
-            var dailyCosts = logs
-                .GroupBy(l => l.Timestamp.Date)
-                .Select(g => new { Date = g.Key, Cost = g.Sum(l => l.Cost) })
-                .OrderBy(d => d.Date)
-                .Select(d => (d.Date, d.Cost))
+            var aggregations = await repository.GetCostsByDateAsync(startDate, endDate, cancellationToken);
+            return aggregations
+                .Select(a => (a.Date, a.TotalCost))
                 .ToList();
-
-            return dailyCosts;
         }
 
         /// <summary>
@@ -55,7 +48,8 @@ namespace ConduitLLM.Admin.Extensions
         }
 
         /// <summary>
-        /// Gets the spend history for a virtual key within a date range
+        /// Gets the spend history for a virtual key within a date range.
+        /// Delegates to the repository's database-level filtered query.
         /// </summary>
         /// <param name="repository">The spend history repository</param>
         /// <param name="virtualKeyId">The ID of the virtual key</param>
@@ -70,11 +64,9 @@ namespace ConduitLLM.Admin.Extensions
             DateTime endDate,
             CancellationToken cancellationToken = default)
         {
-            var history = await repository.GetByVirtualKeyIdAsync(virtualKeyId, cancellationToken);
-            return history
-                .Where(h => h.Timestamp >= startDate && h.Timestamp <= endDate)
-                .OrderBy(h => h.Timestamp)
-                .ToList();
+            // Use the repository's DB-level filtered query instead of loading all history then filtering in memory
+            var history = await repository.GetByVirtualKeyAndDateRangeAsync(virtualKeyId, startDate, endDate, cancellationToken);
+            return history.OrderBy(h => h.Timestamp).ToList();
         }
 
 

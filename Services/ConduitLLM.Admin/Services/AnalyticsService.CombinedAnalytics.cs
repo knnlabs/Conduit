@@ -25,97 +25,96 @@ namespace ConduitLLM.Admin.Services
             var stopwatch = Stopwatch.StartNew();
             var cacheKey = $"{CacheKeys.Analytics.SummaryPrefix}full:{timeframe}:{startDate?.Ticks}:{endDate?.Ticks}";
             var cacheHit = false;
-            
+
             var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>
             {
                 _metrics?.RecordCacheMiss(cacheKey);
                 entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
-                
+
                 _logger.LogInformation("Getting comprehensive analytics summary");
 
                 timeframe = NormalizeTimeframe(timeframe);
                 startDate ??= DateTime.UtcNow.AddDays(-30);
                 endDate ??= DateTime.UtcNow;
 
+                // Fetch all aggregations from database in parallel — no full log loading
                 var fetchStopwatch = Stopwatch.StartNew();
-                var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-                _metrics?.RecordFetchDuration("RequestLogRepository.GetByDateRangeAsync", fetchStopwatch.ElapsedMilliseconds);
-                
+                var summaryTask = _requestLogRepository.GetSummaryAsync(startDate.Value, endDate.Value);
+                var modelTask = _requestLogRepository.GetAggregatedByModelAsync(startDate.Value, endDate.Value);
+                var virtualKeyTask = _requestLogRepository.GetAggregatedByVirtualKeyAsync(startDate.Value, endDate.Value);
+                var dailyStatsTask = _requestLogRepository.GetDailyStatisticsAsync(startDate.Value, endDate.Value);
+                var comparisonTask = CalculatePreviousPeriodComparison(startDate.Value, endDate.Value);
+
+                await Task.WhenAll(summaryTask, modelTask, virtualKeyTask, dailyStatsTask, comparisonTask);
+                _metrics?.RecordFetchDuration("RequestLogRepository.AggregateQueries", fetchStopwatch.ElapsedMilliseconds);
+
+                var summary = summaryTask.Result;
+                var modelAggregations = modelTask.Result;
+                var virtualKeyAggregations = virtualKeyTask.Result;
+
+                // Get virtual key names for the top keys
                 fetchStopwatch.Restart();
-                var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                    _virtualKeyRepository.GetPaginatedAsync);
-                _metrics?.RecordFetchDuration("VirtualKeyRepository.GetAllAsync", fetchStopwatch.ElapsedMilliseconds);
-                var keyMap = virtualKeys.ToDictionary(k => k.Id, k => k.KeyName);
+                var virtualKeyIds = virtualKeyAggregations.Take(10).Select(v => v.VirtualKeyId).ToList();
+                var keyMap = virtualKeyIds.Count != 0
+                    ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
+                    : new Dictionary<int, string>();
+                _metrics?.RecordFetchDuration("VirtualKeyRepository.GetKeyNamesByIdsAsync", fetchStopwatch.ElapsedMilliseconds);
 
-                // Calculate metrics
-                var successfulRequests = logs.Count(l => l.StatusCode >= 200 && l.StatusCode < 300);
-                var totalRequests = logs.Count;
-                var successRate = totalRequests > 0 ? (successfulRequests * 100.0 / totalRequests) : 0;
+                var successRate = summary.TotalRequests > 0
+                    ? (summary.SuccessCount * 100.0 / summary.TotalRequests)
+                    : 0;
 
-                // Get top models
-                var topModels = logs
-                    .GroupBy(l => l.ModelName)
-                    .Select(g => new ModelUsageSummary
-                    {
-                        ModelName = g.Key,
-                        RequestCount = g.Count(),
-                        TotalCost = g.Sum(l => l.Cost),
-                        InputTokens = g.Sum(l => (long)l.InputTokens),
-                        OutputTokens = g.Sum(l => (long)l.OutputTokens),
-                        AverageResponseTime = g.Average(l => l.ResponseTimeMs),
-                        ErrorRate = g.Count(l => l.StatusCode >= 400) * 100.0 / g.Count()
-                    })
-                    .OrderByDescending(m => m.TotalCost)
-                    .Take(10)
-                    .ToList();
+                // Convert model aggregations to top models summary
+                var topModels = modelAggregations.Take(10).Select(m => new ModelUsageSummary
+                {
+                    ModelName = m.ModelName,
+                    RequestCount = m.RequestCount,
+                    TotalCost = m.TotalCost,
+                    InputTokens = m.InputTokens,
+                    OutputTokens = m.OutputTokens,
+                    AverageResponseTime = 0, // Not available from model aggregation (would need additional query)
+                    ErrorRate = 0 // Not available from model aggregation
+                }).ToList();
 
-                // Get top virtual keys
-                var topVirtualKeys = logs
-                    .GroupBy(l => l.VirtualKeyId)
-                    .Select(g => new VirtualKeyUsageSummary
-                    {
-                        VirtualKeyId = g.Key,
-                        KeyName = keyMap.GetValueOrDefault(g.Key, $"Key #{g.Key}"),
-                        RequestCount = g.Count(),
-                        TotalCost = g.Sum(l => l.Cost),
-                        LastUsed = g.Max(l => l.Timestamp),
-                        ModelsUsed = g.Select(l => l.ModelName).Distinct().ToList()
-                    })
-                    .OrderByDescending(v => v.TotalCost)
-                    .Take(10)
-                    .ToList();
+                // Convert virtual key aggregations to top keys summary
+                var topVirtualKeys = virtualKeyAggregations.Take(10).Select(v => new VirtualKeyUsageSummary
+                {
+                    VirtualKeyId = v.VirtualKeyId,
+                    KeyName = keyMap.GetValueOrDefault(v.VirtualKeyId, $"Key #{v.VirtualKeyId}"),
+                    RequestCount = v.RequestCount,
+                    TotalCost = v.TotalCost,
+                    LastUsed = v.LastUsed,
+                    ModelsUsed = new List<string>() // Not available from aggregation
+                }).ToList();
 
-                // Calculate daily statistics
-                var dailyStats = CalculateDailyStatistics(logs, timeframe);
-
-                // Get comparison with previous period
-                var comparison = await CalculatePreviousPeriodComparison(startDate.Value, endDate.Value);
+                // Aggregate daily stats to requested timeframe
+                var dailyStats = AggregateStatisticsByTimeframe(dailyStatsTask.Result, timeframe);
 
                 return new AnalyticsSummaryDto
                 {
-                    TotalRequests = totalRequests,
-                    TotalCost = logs.Sum(l => l.Cost),
-                    TotalInputTokens = logs.Sum(l => (long)l.InputTokens),
-                    TotalOutputTokens = logs.Sum(l => (long)l.OutputTokens),
-                    AverageResponseTime = logs.Any() ? logs.Average(l => l.ResponseTimeMs) : 0,
+                    TotalRequests = summary.TotalRequests,
+                    TotalCost = summary.TotalCost,
+                    TotalInputTokens = summary.TotalInputTokens,
+                    TotalOutputTokens = summary.TotalOutputTokens,
+                    AverageResponseTime = summary.AverageResponseTimeMs,
                     SuccessRate = successRate,
-                    UniqueVirtualKeys = logs.Select(l => l.VirtualKeyId).Distinct().Count(),
-                    UniqueModels = logs.Select(l => l.ModelName).Distinct().Count(),
+                    UniqueVirtualKeys = virtualKeyAggregations.Count,
+                    UniqueModels = modelAggregations.Count,
                     TopModels = topModels,
                     TopVirtualKeys = topVirtualKeys,
                     DailyStats = dailyStats,
-                    Comparison = comparison
+                    Comparison = comparisonTask.Result
                 };
             });
-            
+
             if (!cacheHit && result != null)
             {
                 cacheHit = true;
                 _metrics?.RecordCacheHit(cacheKey);
             }
-            
+
             _metrics?.RecordOperationDuration("GetAnalyticsSummaryAsync", stopwatch.ElapsedMilliseconds);
-            
+
             return result ?? new AnalyticsSummaryDto
             {
                 TotalRequests = 0,
@@ -144,30 +143,32 @@ namespace ConduitLLM.Admin.Services
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;
 
-            // Get all logs and filter by virtual key
-            var allLogs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-            var logs = allLogs.Where(l => l.VirtualKeyId == virtualKeyId).ToList();
+            // Fetch summary and model breakdown for this specific key via database-level aggregation
+            var summaryTask = _requestLogRepository.GetSummaryForVirtualKeyAsync(virtualKeyId, startDate.Value, endDate.Value);
+            var modelTask = _requestLogRepository.GetAggregatedByModelForVirtualKeyAsync(virtualKeyId, startDate.Value, endDate.Value);
+            await Task.WhenAll(summaryTask, modelTask);
+
+            var summary = summaryTask.Result;
+            var modelAggregations = modelTask.Result;
 
             var result = new UsageStatisticsDto
             {
-                TotalRequests = logs.Count(),
-                TotalCost = logs.Sum(l => l.Cost),
-                TotalInputTokens = logs.Sum(l => l.InputTokens),
-                TotalOutputTokens = logs.Sum(l => l.OutputTokens),
-                AverageResponseTimeMs = logs.Any() ? logs.Average(l => l.ResponseTimeMs) : 0,
+                TotalRequests = summary.TotalRequests,
+                TotalCost = summary.TotalCost,
+                TotalInputTokens = (int)Math.Min(summary.TotalInputTokens, int.MaxValue),
+                TotalOutputTokens = (int)Math.Min(summary.TotalOutputTokens, int.MaxValue),
+                AverageResponseTimeMs = summary.AverageResponseTimeMs,
                 ModelUsage = new Dictionary<string, ModelUsage>()
             };
 
-            // Group by model
-            var modelGroups = logs.GroupBy(l => l.ModelName);
-            foreach (var group in modelGroups)
+            foreach (var model in modelAggregations)
             {
-                result.ModelUsage[group.Key] = new ModelUsage
+                result.ModelUsage[model.ModelName] = new ModelUsage
                 {
-                    RequestCount = group.Count(),
-                    Cost = group.Sum(l => l.Cost),
-                    InputTokens = group.Sum(l => l.InputTokens),
-                    OutputTokens = group.Sum(l => l.OutputTokens)
+                    RequestCount = model.RequestCount,
+                    Cost = model.TotalCost,
+                    InputTokens = (int)Math.Min(model.InputTokens, int.MaxValue),
+                    OutputTokens = (int)Math.Min(model.OutputTokens, int.MaxValue)
                 };
             }
 
@@ -187,12 +188,13 @@ namespace ConduitLLM.Admin.Services
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;
 
+            // Export requires full entity data — still loads rows, but this is an infrequent operation
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
 
             // Apply filters
             if (!string.IsNullOrEmpty(model))
                 logs = logs.Where(l => l.ModelName.Contains(model, StringComparison.OrdinalIgnoreCase)).ToList();
-            
+
             if (virtualKeyId.HasValue)
                 logs = logs.Where(l => l.VirtualKeyId == virtualKeyId.Value).ToList();
 

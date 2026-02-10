@@ -46,64 +46,67 @@ namespace ConduitLLM.Admin.Services
             };
         }
 
-        private static List<(DateTime Date, decimal Cost)> CalculateDailyCosts(IEnumerable<RequestLog> logs)
+        /// <summary>
+        /// Converts model aggregations from DB to ModelCostDetail DTOs.
+        /// Provider breakdown is derived from model names (e.g., "openai/gpt-4" → "openai")
+        /// since it requires string parsing that can't be done at the database level.
+        /// </summary>
+        private static List<ModelCostDetail> ToModelCostDetails(List<ModelAggregation> models)
         {
-            return logs
-                .GroupBy(l => l.Timestamp.Date)
-                .Select(g => (Date: g.Key, Cost: g.Sum(l => l.Cost)))
-                .OrderBy(d => d.Date)
-                .ToList();
-        }
-
-        private static List<ModelCostDetail> CalculateModelBreakdown(IEnumerable<RequestLog> logs)
-        {
-            return logs
-                .GroupBy(l => l.ModelName)
-                .Select(g => new ModelCostDetail
+            return models
+                .Select(m => new ModelCostDetail
                 {
-                    ModelName = g.Key,
-                    TotalCost = g.Sum(l => l.Cost),
-                    RequestCount = g.Count(),
-                    InputTokens = g.Sum(l => (long)l.InputTokens),
-                    OutputTokens = g.Sum(l => (long)l.OutputTokens),
-                    AverageCostPerRequest = g.Average(l => l.Cost),
-                    CostPercentage = 0 // Will be calculated later
+                    ModelName = m.ModelName,
+                    TotalCost = m.TotalCost,
+                    RequestCount = m.RequestCount,
+                    InputTokens = m.InputTokens,
+                    OutputTokens = m.OutputTokens,
+                    AverageCostPerRequest = m.RequestCount > 0 ? m.TotalCost / m.RequestCount : 0,
+                    CostPercentage = 0 // Calculated by caller if needed
                 })
-                .OrderByDescending(m => m.TotalCost)
                 .ToList();
         }
 
-        private static List<ProviderCostDetail> CalculateProviderBreakdown(IEnumerable<RequestLog> logs)
+        /// <summary>
+        /// Derives provider breakdown from model aggregations by extracting the provider
+        /// prefix from model names (e.g., "openai/gpt-4" → "openai").
+        /// This is an in-memory operation on the small model aggregation set (~10-100 rows),
+        /// not on individual request log rows.
+        /// </summary>
+        private static List<ProviderCostDetail> CalculateProviderBreakdownFromModels(List<ModelAggregation> models)
         {
-            return logs
-                .GroupBy(l => ExtractProviderFromModel(l.ModelName))
+            return models
+                .GroupBy(m => ExtractProviderFromModel(m.ModelName))
                 .Select(g => new ProviderCostDetail
                 {
                     ProviderName = g.Key,
-                    TotalCost = g.Sum(l => l.Cost),
-                    RequestCount = g.Count(),
-                    AverageCostPerRequest = g.Average(l => l.Cost),
-                    CostPercentage = 0 // Will be calculated later
+                    TotalCost = g.Sum(m => m.TotalCost),
+                    RequestCount = g.Sum(m => m.RequestCount),
+                    AverageCostPerRequest = g.Sum(m => m.RequestCount) > 0
+                        ? g.Sum(m => m.TotalCost) / g.Sum(m => m.RequestCount)
+                        : 0,
+                    CostPercentage = 0 // Calculated by caller if needed
                 })
                 .OrderByDescending(p => p.TotalCost)
                 .ToList();
         }
 
-        private static List<VirtualKeyCostDetail> CalculateVirtualKeyBreakdown(IEnumerable<RequestLog> logs)
+        /// <summary>
+        /// Converts virtual key aggregations from DB to VirtualKeyCostDetail DTOs.
+        /// </summary>
+        private static List<VirtualKeyCostDetail> ToVirtualKeyCostDetails(List<VirtualKeyAggregation> keys)
         {
-            return logs
-                .GroupBy(l => l.VirtualKeyId)
-                .Select(g => new VirtualKeyCostDetail
+            return keys
+                .Select(v => new VirtualKeyCostDetail
                 {
-                    VirtualKeyId = g.Key,
-                    KeyName = $"Key #{g.Key}", // Will be enriched with actual name
-                    TotalCost = g.Sum(l => l.Cost),
-                    RequestCount = g.Count(),
-                    AverageCostPerRequest = g.Average(l => l.Cost),
-                    LastUsed = g.Max(l => l.Timestamp),
-                    UniqueModels = g.Select(l => l.ModelName).Distinct().Count()
+                    VirtualKeyId = v.VirtualKeyId,
+                    KeyName = $"Key #{v.VirtualKeyId}", // Enriched by caller with actual name
+                    TotalCost = v.TotalCost,
+                    RequestCount = v.RequestCount,
+                    AverageCostPerRequest = v.RequestCount > 0 ? v.TotalCost / v.RequestCount : 0,
+                    LastUsed = v.LastUsed,
+                    UniqueModels = v.UniqueModels
                 })
-                .OrderByDescending(v => v.TotalCost)
                 .ToList();
         }
 
@@ -114,39 +117,123 @@ namespace ConduitLLM.Admin.Services
             return parts.Length > 1 ? parts[0] : "unknown";
         }
 
-        private static decimal CalculateLast24HoursCost(IEnumerable<RequestLog> logs)
-        {
-            var cutoff = DateTime.UtcNow.AddDays(-1);
-            return logs.Where(l => l.Timestamp >= cutoff).Sum(l => l.Cost);
-        }
-
-        private static decimal CalculateLast7DaysCost(IEnumerable<RequestLog> logs)
-        {
-            var cutoff = DateTime.UtcNow.AddDays(-7);
-            return logs.Where(l => l.Timestamp >= cutoff).Sum(l => l.Cost);
-        }
-
-        private static decimal CalculateLast30DaysCost(IEnumerable<RequestLog> logs)
-        {
-            var cutoff = DateTime.UtcNow.AddDays(-30);
-            return logs.Where(l => l.Timestamp >= cutoff).Sum(l => l.Cost);
-        }
-
-        private static decimal CalculateAverageDailyCost(List<(DateTime Date, decimal Cost)> dailyCosts)
-        {
-            return dailyCosts.Any() ? dailyCosts.Average(d => d.Cost) : 0;
-        }
-
-        private static List<(DateTime Date, decimal Cost)> AggregateByTimeframe(
-            List<(DateTime Date, decimal Cost)> dailyCosts,
+        /// <summary>
+        /// Aggregates daily statistics to weekly or monthly granularity.
+        /// Operates on the small daily aggregation set (~365 rows/year) from the database,
+        /// not on individual request log rows.
+        /// </summary>
+        private static List<DailyStatistics> AggregateStatisticsByTimeframe(
+            List<DailyStatisticsAggregation> dailyStats,
             string timeframe)
         {
+            if (timeframe == "daily")
+            {
+                return dailyStats
+                    .Select(d => new DailyStatistics
+                    {
+                        Date = d.Date,
+                        RequestCount = d.RequestCount,
+                        Cost = d.Cost,
+                        InputTokens = d.InputTokens,
+                        OutputTokens = d.OutputTokens,
+                        AverageResponseTime = d.AverageResponseTime,
+                        ErrorCount = d.ErrorCount
+                    })
+                    .ToList();
+            }
+
+            var grouped = timeframe switch
+            {
+                "weekly" => dailyStats.GroupBy(d => GetStartOfWeek(d.Date)),
+                "monthly" => dailyStats.GroupBy(d => new DateTime(d.Date.Year, d.Date.Month, 1)),
+                _ => dailyStats.GroupBy(d => d.Date)
+            };
+
+            return grouped
+                .Select(g =>
+                {
+                    var totalRequests = g.Sum(d => d.RequestCount);
+                    return new DailyStatistics
+                    {
+                        Date = g.Key,
+                        RequestCount = totalRequests,
+                        Cost = g.Sum(d => d.Cost),
+                        InputTokens = g.Sum(d => d.InputTokens),
+                        OutputTokens = g.Sum(d => d.OutputTokens),
+                        AverageResponseTime = totalRequests > 0
+                            ? g.Sum(d => d.AverageResponseTime * d.RequestCount) / totalRequests
+                            : 0,
+                        ErrorCount = g.Sum(d => d.ErrorCount)
+                    };
+                })
+                .OrderBy(s => s.Date)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Aggregates daily cost data to weekly or monthly granularity.
+        /// </summary>
+        private static List<(DateTime Date, decimal Cost)> AggregateByTimeframe(
+            List<DateCostAggregation> dailyCosts,
+            string timeframe)
+        {
+            if (timeframe == "daily")
+            {
+                return dailyCosts.Select(d => (d.Date, d.TotalCost)).ToList();
+            }
+
+            var tuples = dailyCosts.Select(d => (d.Date, d.TotalCost)).ToList();
             return timeframe switch
             {
-                "weekly" => AggregateByWeek(dailyCosts),
-                "monthly" => AggregateByMonth(dailyCosts),
-                _ => dailyCosts
+                "weekly" => AggregateByWeek(tuples),
+                "monthly" => AggregateByMonth(tuples),
+                _ => tuples
             };
+        }
+
+        /// <summary>
+        /// Calculates cost trend points from daily cost aggregations.
+        /// </summary>
+        private static List<CostTrendPoint> CalculateCostTrendsFromDaily(
+            List<DateCostAggregation> dailyCosts,
+            string period)
+        {
+            if (period == "daily")
+            {
+                return dailyCosts
+                    .Select(d => new CostTrendPoint
+                    {
+                        Date = d.Date,
+                        Cost = d.TotalCost,
+                        RequestCount = d.RequestCount,
+                        AverageRequestCost = d.RequestCount > 0 ? d.TotalCost / d.RequestCount : 0
+                    })
+                    .OrderBy(t => t.Date)
+                    .ToList();
+            }
+
+            var grouped = period switch
+            {
+                "weekly" => dailyCosts.GroupBy(d => GetStartOfWeek(d.Date)),
+                "monthly" => dailyCosts.GroupBy(d => new DateTime(d.Date.Year, d.Date.Month, 1)),
+                _ => dailyCosts.GroupBy(d => d.Date)
+            };
+
+            return grouped
+                .Select(g =>
+                {
+                    var totalRequests = g.Sum(d => d.RequestCount);
+                    var totalCost = g.Sum(d => d.TotalCost);
+                    return new CostTrendPoint
+                    {
+                        Date = g.Key,
+                        Cost = totalCost,
+                        RequestCount = totalRequests,
+                        AverageRequestCost = totalRequests > 0 ? totalCost / totalRequests : 0
+                    };
+                })
+                .OrderBy(t => t.Date)
+                .ToList();
         }
 
         private static List<(DateTime Date, decimal Cost)> AggregateByWeek(List<(DateTime Date, decimal Cost)> dailyCosts)
@@ -173,100 +260,59 @@ namespace ConduitLLM.Admin.Services
             return date.AddDays(-1 * diff).Date;
         }
 
-        private List<CostTrendPoint> CalculateCostTrends(IEnumerable<RequestLog> logs, string period)
-        {
-            var grouped = period switch
-            {
-                "weekly" => logs.GroupBy(l => GetStartOfWeek(l.Timestamp.Date)),
-                "monthly" => logs.GroupBy(l => new DateTime(l.Timestamp.Year, l.Timestamp.Month, 1)),
-                _ => logs.GroupBy(l => l.Timestamp.Date)
-            };
-
-            return grouped
-                .Select(g => new CostTrendPoint
-                {
-                    Date = g.Key,
-                    Cost = g.Sum(l => l.Cost),
-                    RequestCount = g.Count(),
-                    AverageRequestCost = g.Average(l => l.Cost)
-                })
-                .OrderBy(t => t.Date)
-                .ToList();
-        }
-
-        private List<DailyStatistics> CalculateDailyStatistics(IEnumerable<RequestLog> logs, string timeframe)
-        {
-            var grouped = timeframe switch
-            {
-                "weekly" => logs.GroupBy(l => GetStartOfWeek(l.Timestamp.Date)),
-                "monthly" => logs.GroupBy(l => new DateTime(l.Timestamp.Year, l.Timestamp.Month, 1)),
-                _ => logs.GroupBy(l => l.Timestamp.Date)
-            };
-
-            return grouped
-                .Select(g => new DailyStatistics
-                {
-                    Date = g.Key,
-                    RequestCount = g.Count(),
-                    Cost = g.Sum(l => l.Cost),
-                    InputTokens = g.Sum(l => (long)l.InputTokens),
-                    OutputTokens = g.Sum(l => (long)l.OutputTokens),
-                    AverageResponseTime = g.Average(l => l.ResponseTimeMs),
-                    ErrorCount = g.Count(l => l.StatusCode >= 400)
-                })
-                .OrderBy(s => s.Date)
-                .ToList();
-        }
-
+        /// <summary>
+        /// Compares current period with previous period using database-level summaries.
+        /// Each period is a single aggregate query instead of loading all rows.
+        /// </summary>
         private async Task<PeriodComparison> CalculatePreviousPeriodComparison(DateTime startDate, DateTime endDate)
         {
             var periodLength = endDate - startDate;
             var previousStart = startDate - periodLength;
             var previousEnd = startDate;
 
-            var currentLogs = await _requestLogRepository.GetByDateRangeAsync(startDate, endDate);
-            var previousLogs = await _requestLogRepository.GetByDateRangeAsync(previousStart, previousEnd);
+            // Two lightweight aggregate queries instead of loading all rows for both periods
+            var currentTask = _requestLogRepository.GetSummaryAsync(startDate, endDate);
+            var previousTask = _requestLogRepository.GetSummaryAsync(previousStart, previousEnd);
+            await Task.WhenAll(currentTask, previousTask);
 
-            var currentCost = currentLogs.Sum(l => l.Cost);
-            var previousCost = previousLogs.Sum(l => l.Cost);
-            var currentRequests = currentLogs.Count;
-            var previousRequests = previousLogs.Count;
+            var current = currentTask.Result;
+            var previous = previousTask.Result;
+
+            var currentErrorRate = current.TotalRequests > 0
+                ? current.ErrorCount * 100.0 / current.TotalRequests
+                : 0;
+            var previousErrorRate = previous.TotalRequests > 0
+                ? previous.ErrorCount * 100.0 / previous.TotalRequests
+                : 0;
 
             return new PeriodComparison
             {
-                CostChange = currentCost - previousCost,
-                CostChangePercentage = previousCost > 0 ? ((currentCost - previousCost) / previousCost * 100) : 0,
-                RequestChange = currentRequests - previousRequests,
-                RequestChangePercentage = previousRequests > 0 ? ((decimal)(currentRequests - previousRequests) / previousRequests * 100) : 0,
-                ResponseTimeChange = currentLogs.Any() && previousLogs.Any() 
-                    ? currentLogs.Average(l => l.ResponseTimeMs) - previousLogs.Average(l => l.ResponseTimeMs) 
+                CostChange = current.TotalCost - previous.TotalCost,
+                CostChangePercentage = previous.TotalCost > 0
+                    ? ((current.TotalCost - previous.TotalCost) / previous.TotalCost * 100)
                     : 0,
-                ErrorRateChange = CalculateErrorRateChange(currentLogs, previousLogs)
+                RequestChange = current.TotalRequests - previous.TotalRequests,
+                RequestChangePercentage = previous.TotalRequests > 0
+                    ? ((decimal)(current.TotalRequests - previous.TotalRequests) / previous.TotalRequests * 100)
+                    : 0,
+                ResponseTimeChange = current.TotalRequests > 0 && previous.TotalRequests > 0
+                    ? current.AverageResponseTimeMs - previous.AverageResponseTimeMs
+                    : 0,
+                ErrorRateChange = currentErrorRate - previousErrorRate
             };
-        }
-
-        private static double CalculateErrorRateChange(IList<RequestLog> currentLogs, IList<RequestLog> previousLogs)
-        {
-            var currentErrorRate = currentLogs.Any() 
-                ? currentLogs.Count(l => l.StatusCode >= 400) * 100.0 / currentLogs.Count 
-                : 0;
-            var previousErrorRate = previousLogs.Any() 
-                ? previousLogs.Count(l => l.StatusCode >= 400) * 100.0 / previousLogs.Count 
-                : 0;
-            return currentErrorRate - previousErrorRate;
         }
 
         private static byte[] ExportToCsv(IList<RequestLog> logs)
         {
             var csv = new StringBuilder();
             csv.AppendLine("Timestamp,VirtualKeyId,Model,RequestType,InputTokens,OutputTokens,Cost,ResponseTime,StatusCode");
-            
+
             foreach (var log in logs)
             {
                 csv.AppendLine($"{log.Timestamp:yyyy-MM-dd HH:mm:ss},{log.VirtualKeyId},{log.ModelName},{log.RequestType}," +
                               $"{log.InputTokens},{log.OutputTokens},{log.Cost:F6},{log.ResponseTimeMs:F2},{log.StatusCode}");
             }
-            
+
             return Encoding.UTF8.GetBytes(csv.ToString());
         }
 

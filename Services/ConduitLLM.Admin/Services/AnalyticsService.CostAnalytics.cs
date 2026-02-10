@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Costs;
 
 using Microsoft.Extensions.Caching.Memory;
@@ -23,12 +24,12 @@ namespace ConduitLLM.Admin.Services
             var stopwatch = Stopwatch.StartNew();
             var cacheKey = $"{CacheKeys.Analytics.SummaryPrefix}cost:{timeframe}:{startDate?.Ticks}:{endDate?.Ticks}";
             var cacheHit = false;
-            
+
             var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>
             {
                 _metrics?.RecordCacheMiss(cacheKey);
                 entry.AbsoluteExpirationRelativeToNow = ShortCacheDuration;
-                
+
                 _logger.LogInformation("Getting cost summary with timeframe: {Timeframe}", timeframe);
 
                 // Normalize parameters
@@ -36,15 +37,23 @@ namespace ConduitLLM.Admin.Services
                 startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
                 endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
+                // Fetch aggregations from database in parallel — no full log loading
                 var fetchStopwatch = Stopwatch.StartNew();
-                var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-                _metrics?.RecordFetchDuration("RequestLogRepository.GetByDateRangeAsync", fetchStopwatch.ElapsedMilliseconds);
+                var modelTask = _requestLogRepository.GetAggregatedByModelAsync(startDate.Value, endDate.Value);
+                var virtualKeyTask = _requestLogRepository.GetAggregatedByVirtualKeyAsync(startDate.Value, endDate.Value);
+                var dailyCostsTask = _requestLogRepository.GetCostsByDateAsync(startDate.Value, endDate.Value);
+                var last24hTask = _requestLogRepository.GetSummaryAsync(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
+                var last7dTask = _requestLogRepository.GetSummaryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
 
-                // Calculate aggregations
-                var dailyCosts = CalculateDailyCosts(logs);
-                var modelBreakdown = CalculateModelBreakdown(logs);
-                var providerBreakdown = CalculateProviderBreakdown(logs);
-                var virtualKeyBreakdown = CalculateVirtualKeyBreakdown(logs);
+                await Task.WhenAll(modelTask, virtualKeyTask, dailyCostsTask, last24hTask, last7dTask);
+                _metrics?.RecordFetchDuration("RequestLogRepository.AggregateQueries", fetchStopwatch.ElapsedMilliseconds);
+
+                var modelBreakdown = modelTask.Result;
+                var virtualKeyBreakdown = virtualKeyTask.Result;
+                var dailyCosts = dailyCostsTask.Result;
+                var providerBreakdown = CalculateProviderBreakdownFromModels(modelBreakdown);
+
+                var totalCost = dailyCosts.Sum(d => d.TotalCost);
 
                 // Aggregate by timeframe
                 var aggregatedCosts = AggregateByTimeframe(dailyCosts, timeframe);
@@ -55,7 +64,7 @@ namespace ConduitLLM.Admin.Services
                     {
                         Name = m.ModelName,
                         Cost = m.TotalCost,
-                        Percentage = logs.Any() ? (m.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
+                        Percentage = totalCost > 0 ? (m.TotalCost / totalCost * 100) : 0,
                         RequestCount = m.RequestCount
                     })
                 ];
@@ -65,17 +74,17 @@ namespace ConduitLLM.Admin.Services
                     {
                         Name = p.ProviderName,
                         Cost = p.TotalCost,
-                        Percentage = logs.Any() ? (p.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
+                        Percentage = totalCost > 0 ? (p.TotalCost / totalCost * 100) : 0,
                         RequestCount = p.RequestCount
                     })
                 ];
 
                 List<DetailedCostDataDto> topVirtualKeysBySpend = [
-                    ..virtualKeyBreakdown.Take(10).Select(v => new DetailedCostDataDto
+                    ..ToVirtualKeyCostDetails(virtualKeyBreakdown).Take(10).Select(v => new DetailedCostDataDto
                     {
                         Name = v.KeyName,
                         Cost = v.TotalCost,
-                        Percentage = logs.Any() ? (v.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
+                        Percentage = totalCost > 0 ? (v.TotalCost / totalCost * 100) : 0,
                         RequestCount = v.RequestCount
                     })
                 ];
@@ -85,24 +94,24 @@ namespace ConduitLLM.Admin.Services
                     TimeFrame = timeframe,
                     StartDate = startDate.Value,
                     EndDate = endDate.Value,
-                    TotalCost = logs.Sum(l => l.Cost),
-                    Last24HoursCost = CalculateLast24HoursCost(logs),
-                    Last7DaysCost = CalculateLast7DaysCost(logs),
-                    Last30DaysCost = CalculateLast30DaysCost(logs),
+                    TotalCost = totalCost,
+                    Last24HoursCost = last24hTask.Result.TotalCost,
+                    Last7DaysCost = last7dTask.Result.TotalCost,
+                    Last30DaysCost = totalCost, // Date range already defaults to 30 days
                     TopModelsBySpend = topModelsBySpend,
                     TopProvidersBySpend = topProvidersBySpend,
                     TopVirtualKeysBySpend = topVirtualKeysBySpend
                 };
             });
-            
+
             if (!cacheHit && result != null)
             {
                 cacheHit = true;
                 _metrics?.RecordCacheHit(cacheKey);
             }
-            
+
             _metrics?.RecordOperationDuration("GetCostSummaryAsync", stopwatch.ElapsedMilliseconds);
-            
+
             return result ?? new CostDashboardDto
             {
                 TimeFrame = timeframe,
@@ -127,25 +136,27 @@ namespace ConduitLLM.Admin.Services
             var stopwatch = Stopwatch.StartNew();
             var cacheKey = $"{CacheKeys.Analytics.CostTrendPrefix}{period}:{startDate?.Ticks}:{endDate?.Ticks}";
             var cacheHit = false;
-            
+
             var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>
             {
                 _metrics?.RecordCacheMiss(cacheKey);
                 entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
-                
+
                 _logger.LogInformation("Getting cost trends with period: {Period}", period);
 
                 period = NormalizeTimeframe(period);
                 startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
                 endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
+                // Fetch daily cost aggregations from database and comparison in parallel
                 var fetchStopwatch = Stopwatch.StartNew();
-                var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-                _metrics?.RecordFetchDuration("RequestLogRepository.GetByDateRangeAsync", fetchStopwatch.ElapsedMilliseconds);
+                var dailyCostsTask = _requestLogRepository.GetCostsByDateAsync(startDate.Value, endDate.Value);
+                var comparisonTask = CalculatePreviousPeriodComparison(startDate.Value, endDate.Value);
+                await Task.WhenAll(dailyCostsTask, comparisonTask);
+                _metrics?.RecordFetchDuration("RequestLogRepository.GetCostsByDateAsync", fetchStopwatch.ElapsedMilliseconds);
 
-                // Calculate trends
-                var trendData = CalculateCostTrends(logs, period);
-                var previousPeriodComparison = await CalculatePreviousPeriodComparison(startDate.Value, endDate.Value);
+                // Calculate trends from daily aggregations (~365 rows max)
+                var trendData = CalculateCostTrendsFromDaily(dailyCostsTask.Result, period);
 
                 // Convert to CostTrendDataDto format
                 var trendDataDto = trendData.Select(t => new CostTrendDataDto
@@ -163,15 +174,15 @@ namespace ConduitLLM.Admin.Services
                     Data = trendDataDto
                 };
             });
-            
+
             if (!cacheHit && result != null)
             {
                 cacheHit = true;
                 _metrics?.RecordCacheHit(cacheKey);
             }
-            
+
             _metrics?.RecordOperationDuration("GetCostTrendsAsync", stopwatch.ElapsedMilliseconds);
-            
+
             return result ?? new CostTrendDto
             {
                 Period = period,
@@ -192,16 +203,18 @@ namespace ConduitLLM.Admin.Services
             startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
-            var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-            var modelBreakdown = CalculateModelBreakdown(logs);
+            var modelAggregations = await _requestLogRepository.GetAggregatedByModelAsync(startDate.Value, endDate.Value);
+            var modelBreakdown = ToModelCostDetails(modelAggregations);
+            var totalCost = modelAggregations.Sum(m => m.TotalCost);
+            var totalRequests = modelAggregations.Sum(m => m.RequestCount);
 
             return new ModelCostBreakdownDto
             {
                 StartDate = startDate.Value,
                 EndDate = endDate.Value,
                 Models = modelBreakdown.Take(topN).ToList(),
-                TotalCost = logs.Sum(l => l.Cost),
-                TotalRequests = logs.Count
+                TotalCost = totalCost,
+                TotalRequests = totalRequests
             };
         }
 
@@ -216,37 +229,38 @@ namespace ConduitLLM.Admin.Services
             startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
-            var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
+            var keyAggregations = await _requestLogRepository.GetAggregatedByVirtualKeyAsync(startDate.Value, endDate.Value);
 
             // Get only the virtual key names we need using efficient lookup
-            var virtualKeyIds = logs.Select(l => l.VirtualKeyId).Distinct().ToList();
+            var virtualKeyIds = keyAggregations.Select(k => k.VirtualKeyId).ToList();
             var keyMap = virtualKeyIds.Count != 0
                 ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
                 : new Dictionary<int, string>();
 
-            var breakdown = logs
-                .GroupBy(l => l.VirtualKeyId)
-                .Select(g => new VirtualKeyCostDetail
+            var breakdown = keyAggregations
+                .Select(v => new VirtualKeyCostDetail
                 {
-                    VirtualKeyId = g.Key,
-                    KeyName = keyMap.GetValueOrDefault(g.Key, $"Key #{g.Key}"),
-                    TotalCost = g.Sum(l => l.Cost),
-                    RequestCount = g.Count(),
-                    AverageCostPerRequest = g.Average(l => l.Cost),
-                    LastUsed = g.Max(l => l.Timestamp),
-                    UniqueModels = g.Select(l => l.ModelName).Distinct().Count()
+                    VirtualKeyId = v.VirtualKeyId,
+                    KeyName = keyMap.GetValueOrDefault(v.VirtualKeyId, $"Key #{v.VirtualKeyId}"),
+                    TotalCost = v.TotalCost,
+                    RequestCount = v.RequestCount,
+                    AverageCostPerRequest = v.RequestCount > 0 ? v.TotalCost / v.RequestCount : 0,
+                    LastUsed = v.LastUsed,
+                    UniqueModels = v.UniqueModels
                 })
-                .OrderByDescending(v => v.TotalCost)
                 .Take(topN)
                 .ToList();
+
+            var totalCost = keyAggregations.Sum(k => k.TotalCost);
+            var totalRequests = keyAggregations.Sum(k => k.RequestCount);
 
             return new VirtualKeyCostBreakdownDto
             {
                 StartDate = startDate.Value,
                 EndDate = endDate.Value,
                 VirtualKeys = breakdown,
-                TotalCost = logs.Sum(l => l.Cost),
-                TotalRequests = logs.Count
+                TotalCost = totalCost,
+                TotalRequests = totalRequests
             };
         }
 

@@ -43,13 +43,65 @@ namespace ConduitLLM.Configuration.Interfaces
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets request logs for a specific date range
+        /// Gets request logs for a specific date range.
+        /// WARNING: Loads all matching rows into memory. Prefer aggregate methods
+        /// (GetCostsByDateAsync, GetAggregatedByModelAsync, GetSummaryAsync, etc.)
+        /// for analytics queries, or GetByDateRangePaginatedAsync for browsing.
         /// </summary>
         /// <param name="startDate">The start date</param>
         /// <param name="endDate">The end date</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of request logs within the specified date range</returns>
         Task<List<RequestLog>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        #region Database-Level Aggregation Methods
+
+        /// <summary>
+        /// Gets costs aggregated by date within a date range, computed at the database level.
+        /// Returns one row per day instead of loading all individual request logs.
+        /// </summary>
+        Task<List<DateCostAggregation>> GetCostsByDateAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets request log data aggregated by model within a date range, computed at the database level.
+        /// </summary>
+        Task<List<ModelAggregation>> GetAggregatedByModelAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets request log data aggregated by model for a specific virtual key, computed at the database level.
+        /// </summary>
+        Task<List<ModelAggregation>> GetAggregatedByModelForVirtualKeyAsync(
+            int virtualKeyId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets request log data aggregated by virtual key within a date range, computed at the database level.
+        /// </summary>
+        Task<List<VirtualKeyAggregation>> GetAggregatedByVirtualKeyAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets summary statistics (totals) for a date range in a single database query.
+        /// Returns one row with aggregate counts, sums, and averages.
+        /// </summary>
+        Task<RequestLogSummary> GetSummaryAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets summary statistics for a specific virtual key and date range in a single database query.
+        /// </summary>
+        Task<RequestLogSummary> GetSummaryForVirtualKeyAsync(
+            int virtualKeyId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets daily statistics (per-day breakdown) within a date range, computed at the database level.
+        /// Can be further aggregated to weekly/monthly in C# with minimal overhead (~365 rows/year).
+        /// </summary>
+        Task<List<DailyStatisticsAggregation>> GetDailyStatisticsAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        #endregion
 
         /// <summary>
         /// Gets paginated request logs for a specific date range

@@ -347,46 +347,37 @@ namespace ConduitLLM.Configuration.Repositories
         {
             try
             {
-                return await ExecuteAsync(async context =>
-                {
-                    var logs = await context.RequestLogs
-                        .AsNoTracking()
-                        .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
-                        .ToListAsync(cancellationToken);
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
 
-                    // Calculate statistics
-                    var totalRequests = logs.Count;
-                    var totalInputTokens = logs.Sum(r => r.InputTokens);
-                    var totalOutputTokens = logs.Sum(r => r.OutputTokens);
-                    var totalCost = logs.Sum(r => r.Cost);
+                // Get summary and model breakdown via database-level aggregation
+                var summaryTask = GetSummaryAsync(utcStartDate, utcEndDate, cancellationToken);
+                var modelTask = GetAggregatedByModelAsync(utcStartDate, utcEndDate, cancellationToken);
+                await Task.WhenAll(summaryTask, modelTask);
 
-                    // Get model usage
-                    var modelUsageDict = logs
-                        .GroupBy(r => r.ModelName)
-                        .ToDictionary(
-                            g => g.Key ?? "Unknown",
-                            g => new ModelUsage
-                            {
-                                RequestCount = g.Count(),
-                                Cost = g.Sum(r => r.Cost),
-                                InputTokens = g.Sum(r => r.InputTokens),
-                                OutputTokens = g.Sum(r => r.OutputTokens)
-                            }
-                        );
+                var summary = summaryTask.Result;
+                var modelAggregations = modelTask.Result;
 
-                    // Create result
-                    var result = new UsageStatisticsDto
+                var modelUsageDict = modelAggregations.ToDictionary(
+                    m => m.ModelName,
+                    m => new ModelUsage
                     {
-                        TotalRequests = totalRequests,
-                        TotalCost = totalCost,
-                        AverageResponseTimeMs = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
-                        TotalInputTokens = logs.Sum(r => r.InputTokens),
-                        TotalOutputTokens = logs.Sum(r => r.OutputTokens),
-                        ModelUsage = modelUsageDict
-                    };
+                        RequestCount = m.RequestCount,
+                        Cost = m.TotalCost,
+                        InputTokens = (int)Math.Min(m.InputTokens, int.MaxValue),
+                        OutputTokens = (int)Math.Min(m.OutputTokens, int.MaxValue)
+                    }
+                );
 
-                    return result;
-                }, cancellationToken);
+                return new UsageStatisticsDto
+                {
+                    TotalRequests = summary.TotalRequests,
+                    TotalCost = summary.TotalCost,
+                    AverageResponseTimeMs = summary.AverageResponseTimeMs,
+                    TotalInputTokens = (int)Math.Min(summary.TotalInputTokens, int.MaxValue),
+                    TotalOutputTokens = (int)Math.Min(summary.TotalOutputTokens, int.MaxValue),
+                    ModelUsage = modelUsageDict
+                };
             }
             catch (Exception ex)
             {
@@ -395,6 +386,261 @@ namespace ConduitLLM.Configuration.Repositories
                 throw;
             }
         }
+
+        #region Database-Level Aggregation Methods
+
+        /// <inheritdoc/>
+        public async Task<List<DateCostAggregation>> GetCostsByDateAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+                return await ExecuteAsync(async context =>
+                {
+                    return await context.RequestLogs
+                        .AsNoTracking()
+                        .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                        .GroupBy(r => r.Timestamp.Date)
+                        .Select(g => new DateCostAggregation
+                        {
+                            Date = g.Key,
+                            TotalCost = g.Sum(r => r.Cost),
+                            RequestCount = g.Count()
+                        })
+                        .OrderBy(d => d.Date)
+                        .ToListAsync(cancellationToken);
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting daily cost aggregations for date range {StartDate} to {EndDate}",
+                    LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ModelAggregation>> GetAggregatedByModelAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+                return await ExecuteAsync(async context =>
+                {
+                    return await context.RequestLogs
+                        .AsNoTracking()
+                        .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                        .GroupBy(r => r.ModelName)
+                        .Select(g => new ModelAggregation
+                        {
+                            ModelName = g.Key ?? "Unknown",
+                            TotalCost = g.Sum(r => r.Cost),
+                            RequestCount = g.Count(),
+                            InputTokens = g.Sum(r => (long)r.InputTokens),
+                            OutputTokens = g.Sum(r => (long)r.OutputTokens)
+                        })
+                        .OrderByDescending(m => m.TotalCost)
+                        .ToListAsync(cancellationToken);
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting model aggregations for date range {StartDate} to {EndDate}",
+                    LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ModelAggregation>> GetAggregatedByModelForVirtualKeyAsync(
+            int virtualKeyId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+                return await ExecuteAsync(async context =>
+                {
+                    return await context.RequestLogs
+                        .AsNoTracking()
+                        .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate && r.VirtualKeyId == virtualKeyId)
+                        .GroupBy(r => r.ModelName)
+                        .Select(g => new ModelAggregation
+                        {
+                            ModelName = g.Key ?? "Unknown",
+                            TotalCost = g.Sum(r => r.Cost),
+                            RequestCount = g.Count(),
+                            InputTokens = g.Sum(r => (long)r.InputTokens),
+                            OutputTokens = g.Sum(r => (long)r.OutputTokens)
+                        })
+                        .OrderByDescending(m => m.TotalCost)
+                        .ToListAsync(cancellationToken);
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting model aggregations for virtual key {VirtualKeyId}, date range {StartDate} to {EndDate}",
+                    LoggingSanitizer.S(virtualKeyId), LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<VirtualKeyAggregation>> GetAggregatedByVirtualKeyAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+                return await ExecuteAsync(async context =>
+                {
+                    return await context.RequestLogs
+                        .AsNoTracking()
+                        .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                        .GroupBy(r => r.VirtualKeyId)
+                        .Select(g => new VirtualKeyAggregation
+                        {
+                            VirtualKeyId = g.Key,
+                            TotalCost = g.Sum(r => r.Cost),
+                            RequestCount = g.Count(),
+                            LastUsed = g.Max(r => r.Timestamp),
+                            UniqueModels = g.Select(r => r.ModelName).Distinct().Count()
+                        })
+                        .OrderByDescending(v => v.TotalCost)
+                        .ToListAsync(cancellationToken);
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting virtual key aggregations for date range {StartDate} to {EndDate}",
+                    LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<RequestLogSummary> GetSummaryAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+                return await ExecuteAsync(async context =>
+                {
+                    var summary = await context.RequestLogs
+                        .AsNoTracking()
+                        .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                        .GroupBy(r => 1) // Single group for whole-set aggregation
+                        .Select(g => new RequestLogSummary
+                        {
+                            TotalRequests = g.Count(),
+                            TotalCost = g.Sum(r => r.Cost),
+                            TotalInputTokens = g.Sum(r => (long)r.InputTokens),
+                            TotalOutputTokens = g.Sum(r => (long)r.OutputTokens),
+                            AverageResponseTimeMs = g.Average(r => r.ResponseTimeMs),
+                            SuccessCount = g.Sum(r => (r.StatusCode ?? 0) >= 200 && (r.StatusCode ?? 0) < 300 ? 1 : 0),
+                            ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
+                        })
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    return summary ?? new RequestLogSummary();
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting summary for date range {StartDate} to {EndDate}",
+                    LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<RequestLogSummary> GetSummaryForVirtualKeyAsync(
+            int virtualKeyId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+                return await ExecuteAsync(async context =>
+                {
+                    var summary = await context.RequestLogs
+                        .AsNoTracking()
+                        .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate && r.VirtualKeyId == virtualKeyId)
+                        .GroupBy(r => 1)
+                        .Select(g => new RequestLogSummary
+                        {
+                            TotalRequests = g.Count(),
+                            TotalCost = g.Sum(r => r.Cost),
+                            TotalInputTokens = g.Sum(r => (long)r.InputTokens),
+                            TotalOutputTokens = g.Sum(r => (long)r.OutputTokens),
+                            AverageResponseTimeMs = g.Average(r => r.ResponseTimeMs),
+                            SuccessCount = g.Sum(r => (r.StatusCode ?? 0) >= 200 && (r.StatusCode ?? 0) < 300 ? 1 : 0),
+                            ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
+                        })
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    return summary ?? new RequestLogSummary();
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting summary for virtual key {VirtualKeyId}, date range {StartDate} to {EndDate}",
+                    LoggingSanitizer.S(virtualKeyId), LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<DailyStatisticsAggregation>> GetDailyStatisticsAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+                return await ExecuteAsync(async context =>
+                {
+                    return await context.RequestLogs
+                        .AsNoTracking()
+                        .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                        .GroupBy(r => r.Timestamp.Date)
+                        .Select(g => new DailyStatisticsAggregation
+                        {
+                            Date = g.Key,
+                            RequestCount = g.Count(),
+                            Cost = g.Sum(r => r.Cost),
+                            InputTokens = g.Sum(r => (long)r.InputTokens),
+                            OutputTokens = g.Sum(r => (long)r.OutputTokens),
+                            AverageResponseTime = g.Average(r => r.ResponseTimeMs),
+                            ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
+                        })
+                        .OrderBy(s => s.Date)
+                        .ToListAsync(cancellationToken);
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting daily statistics for date range {StartDate} to {EndDate}",
+                    LoggingSanitizer.S(startDate), LoggingSanitizer.S(endDate));
+                throw;
+            }
+        }
+
+        #endregion
 
         /// <inheritdoc/>
         public async Task<bool> UpdateCostByTaskIdAsync(

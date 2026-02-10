@@ -228,29 +228,24 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                // Get request logs for the specified time period
-                var logs = await _requestLogRepository.GetByDateRangeAsync(startDate, endDate);
-                if (logs == null || !logs.Any())
+                // Use database-level aggregation instead of loading all logs into memory
+                var modelAggregations = await _requestLogRepository.GetAggregatedByModelAsync(startDate, endDate);
+                if (modelAggregations.Count == 0)
                 {
                     return Enumerable.Empty<ModelCostOverviewDto>();
                 }
 
-                // Group by model and aggregate cost data
-                var modelGroups = logs
-                    .Where(l => !string.IsNullOrEmpty(l.ModelName)) // Filter out logs with no model name
-                    .GroupBy(l => l.ModelName)
-                    .Select(g => new ModelCostOverviewDto
+                return modelAggregations
+                    .Where(m => !string.IsNullOrEmpty(m.ModelName))
+                    .Select(m => new ModelCostOverviewDto
                     {
-                        Model = g.Key ?? "Unknown",
-                        RequestCount = g.Count(),
-                        TotalCost = g.Sum(l => l.Cost),
-                        InputTokens = g.Sum(l => l.InputTokens),
-                        OutputTokens = g.Sum(l => l.OutputTokens)
+                        Model = m.ModelName,
+                        RequestCount = m.RequestCount,
+                        TotalCost = m.TotalCost,
+                        InputTokens = (int)Math.Min(m.InputTokens, int.MaxValue),
+                        OutputTokens = (int)Math.Min(m.OutputTokens, int.MaxValue)
                     })
-                    .OrderByDescending(m => m.TotalCost)
                     .ToList();
-
-                return modelGroups;
             }
             catch (Exception ex)
             {
