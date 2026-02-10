@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.DTOs;
 
 using FluentAssertions;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -93,7 +94,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            badRequestResult.Value.Should().Be("Model cost with this name already exists");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            errorResponse.error.ToString().Should().Be("Model cost with this name already exists");
+            errorResponse.Code.Should().Be("invalid_operation");
         }
 
         #endregion
@@ -160,8 +163,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Model cost not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion
@@ -194,8 +197,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Model cost not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion

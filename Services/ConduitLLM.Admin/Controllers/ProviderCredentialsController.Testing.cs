@@ -16,60 +16,54 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> TestProviderConnection(int id)
+        public Task<IActionResult> TestProviderConnection(int id)
         {
-            try
-            {
-                var provider = await _providerRepository.GetByIdAsync(id);
-                if (provider == null)
+            return ExecuteWithNotFoundAsync(
+                () => _providerRepository.GetByIdAsync(id),
+                async provider =>
                 {
-                    return NotFound(new ErrorResponseDto("Provider not found"));
-                }
-
-                // Check if this provider type doesn't support testing
-                var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
-                    new NotSupportedException("Provider does not support API key testing"),
-                    provider.ProviderType
-                );
-
-                if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
-                {
-                    return Ok(nonTestableResponse);
-                }
-
-                // Get a client for this provider to test
-                var client = await _clientFactory.GetClientByProviderIdAsync(id);
-                
-                // Perform a simple test - list models
-                var startTime = DateTime.UtcNow;
-                try
-                {
-                    var models = await client.ListModelsAsync();
-                    var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                    var modelList = models?.Select(m => m.ToString()).ToArray();
-                    
-                    var response = ApiKeyTestResultService.CreateSuccessResponse(
-                        responseTime,
-                        modelList
-                    );
-                    
-                    return Ok(response);
-                }
-                catch (Exception testEx)
-                {
-                    var response = ApiKeyTestResultService.CreateErrorResponse(
-                        testEx,
+                    // Check if this provider type doesn't support testing
+                    var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
+                        new NotSupportedException("Provider does not support API key testing"),
                         provider.ProviderType
                     );
-                    
-                    return Ok(response);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error testing connection for provider with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+
+                    if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
+                    {
+                        return Ok(nonTestableResponse);
+                    }
+
+                    // Get a client for this provider to test
+                    var client = await _clientFactory.GetClientByProviderIdAsync(id);
+
+                    // Perform a simple test - list models
+                    var startTime = DateTime.UtcNow;
+                    try
+                    {
+                        var models = await client.ListModelsAsync();
+                        var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                        var modelList = models?.Select(m => m.ToString()).ToArray();
+
+                        var response = ApiKeyTestResultService.CreateSuccessResponse(
+                            responseTime,
+                            modelList
+                        );
+
+                        return Ok(response);
+                    }
+                    catch (Exception testEx)
+                    {
+                        var response = ApiKeyTestResultService.CreateErrorResponse(
+                            testEx,
+                            provider.ProviderType
+                        );
+
+                        return Ok(response);
+                    }
+                },
+                "Provider",
+                id,
+                "TestProviderConnection");
         }
 
         /// <summary>
@@ -80,91 +74,90 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] TestProviderRequest testRequest)
+        public Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] TestProviderRequest testRequest)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return Task.FromResult<IActionResult>(BadRequest(ModelState));
             }
 
-            try
-            {
-                // Create a temporary provider for testing
-                var testProvider = new Provider
+            return ExecuteAsync(
+                async () =>
                 {
-                    Id = -1, // Temporary ID
-                    ProviderType = testRequest.ProviderType,
-                    ProviderName = "Test Provider",
-                    BaseUrl = testRequest.BaseUrl,
-                    IsEnabled = true
-                };
-
-                // Create a temporary key if provided
-                if (!string.IsNullOrEmpty(testRequest.ApiKey))
-                {
-                    testProvider.ProviderKeyCredentials = new List<ProviderKeyCredential>
+                    // Create a temporary provider for testing
+                    var testProvider = new Provider
                     {
-                        new ProviderKeyCredential
-                        {
-                            ApiKey = testRequest.ApiKey,
-                            Organization = testRequest.Organization,
-                            IsPrimary = true,
-                            IsEnabled = true
-                        }
+                        Id = -1, // Temporary ID
+                        ProviderType = testRequest.ProviderType,
+                        ProviderName = "Test Provider",
+                        BaseUrl = testRequest.BaseUrl,
+                        IsEnabled = true
                     };
-                }
 
-                // Check if this provider type doesn't support testing
-                var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
-                    new NotSupportedException("Provider does not support API key testing"),
-                    testProvider.ProviderType
-                );
+                    // Create a temporary key if provided
+                    if (!string.IsNullOrEmpty(testRequest.ApiKey))
+                    {
+                        testProvider.ProviderKeyCredentials = new List<ProviderKeyCredential>
+                        {
+                            new ProviderKeyCredential
+                            {
+                                ApiKey = testRequest.ApiKey,
+                                Organization = testRequest.Organization,
+                                IsPrimary = true,
+                                IsEnabled = true
+                            }
+                        };
+                    }
 
-                if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
-                {
-                    return Ok(nonTestableResponse);
-                }
-
-                // Test the connection
-                var testKey = new ProviderKeyCredential 
-                { 
-                    ApiKey = testRequest.ApiKey, 
-                    BaseUrl = testRequest.BaseUrl,
-                    Organization = testRequest.Organization,
-                    IsPrimary = true,
-                    IsEnabled = true
-                };
-                var client = _clientFactory.CreateTestClient(testProvider, testKey);
-                
-                var startTime = DateTime.UtcNow;
-                try
-                {
-                    var models = await client.ListModelsAsync();
-                    var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                    var modelList = models?.Select(m => m.ToString()).ToArray();
-                    
-                    var response = ApiKeyTestResultService.CreateSuccessResponse(
-                        responseTime,
-                        modelList
-                    );
-                    
-                    return Ok(response);
-                }
-                catch (Exception testEx)
-                {
-                    var response = ApiKeyTestResultService.CreateErrorResponse(
-                        testEx,
+                    // Check if this provider type doesn't support testing
+                    var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
+                        new NotSupportedException("Provider does not support API key testing"),
                         testProvider.ProviderType
                     );
-                    
-                    return Ok(response);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error testing connection for provider {ProviderType}", testRequest?.ProviderType.ToString() ?? "unknown");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+
+                    if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
+                    {
+                        return (IActionResult)Ok(nonTestableResponse);
+                    }
+
+                    // Test the connection
+                    var testKey = new ProviderKeyCredential
+                    {
+                        ApiKey = testRequest.ApiKey,
+                        BaseUrl = testRequest.BaseUrl,
+                        Organization = testRequest.Organization,
+                        IsPrimary = true,
+                        IsEnabled = true
+                    };
+                    var client = _clientFactory.CreateTestClient(testProvider, testKey);
+
+                    var startTime = DateTime.UtcNow;
+                    try
+                    {
+                        var models = await client.ListModelsAsync();
+                        var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                        var modelList = models?.Select(m => m.ToString()).ToArray();
+
+                        var response = ApiKeyTestResultService.CreateSuccessResponse(
+                            responseTime,
+                            modelList
+                        );
+
+                        return (IActionResult)Ok(response);
+                    }
+                    catch (Exception testEx)
+                    {
+                        var response = ApiKeyTestResultService.CreateErrorResponse(
+                            testEx,
+                            testProvider.ProviderType
+                        );
+
+                        return (IActionResult)Ok(response);
+                    }
+                },
+                result => result,
+                "TestProviderConnectionWithCredentials",
+                new { ProviderType = testRequest?.ProviderType.ToString() ?? "unknown" });
         }
 
         /// <summary>
@@ -177,65 +170,64 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> TestProviderKeyCredential(int providerId, int keyId)
+        public Task<IActionResult> TestProviderKeyCredential(int providerId, int keyId)
         {
-            try
-            {
-                var key = await _keyRepository.GetByIdAsync(keyId);
-                if (key == null || key.ProviderId != providerId)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound(new ErrorResponseDto("Key credential not found"));
-                }
+                    var key = await _keyRepository.GetByIdAsync(keyId);
+                    if (key == null || key.ProviderId != providerId)
+                    {
+                        return (IActionResult)NotFound(new ErrorResponseDto("Key credential not found"));
+                    }
 
-                var provider = await _providerRepository.GetByIdAsync(providerId);
-                if (provider == null)
-                {
-                    return NotFound(new ErrorResponseDto("Provider not found"));
-                }
+                    var provider = await _providerRepository.GetByIdAsync(providerId);
+                    if (provider == null)
+                    {
+                        return (IActionResult)NotFound(new ErrorResponseDto("Provider not found"));
+                    }
 
-                // Check if this provider type doesn't support testing
-                var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
-                    new NotSupportedException("Provider does not support API key testing"),
-                    provider.ProviderType
-                );
-
-                if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
-                {
-                    return Ok(nonTestableResponse);
-                }
-
-                // Test the connection with this specific key
-                var client = _clientFactory.CreateTestClient(provider, key);
-                
-                var startTime = DateTime.UtcNow;
-                try
-                {
-                    var models = await client.ListModelsAsync();
-                    var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                    var modelList = models?.Select(m => m.ToString()).ToArray();
-                    
-                    var response = ApiKeyTestResultService.CreateSuccessResponse(
-                        responseTime,
-                        modelList
-                    );
-                    
-                    return Ok(response);
-                }
-                catch (Exception testEx)
-                {
-                    var response = ApiKeyTestResultService.CreateErrorResponse(
-                        testEx,
+                    // Check if this provider type doesn't support testing
+                    var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
+                        new NotSupportedException("Provider does not support API key testing"),
                         provider.ProviderType
                     );
-                    
-                    return Ok(response);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error testing key credential {KeyId} for provider {ProviderId}", keyId, providerId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+
+                    if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
+                    {
+                        return (IActionResult)Ok(nonTestableResponse);
+                    }
+
+                    // Test the connection with this specific key
+                    var client = _clientFactory.CreateTestClient(provider, key);
+
+                    var startTime = DateTime.UtcNow;
+                    try
+                    {
+                        var models = await client.ListModelsAsync();
+                        var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                        var modelList = models?.Select(m => m.ToString()).ToArray();
+
+                        var response = ApiKeyTestResultService.CreateSuccessResponse(
+                            responseTime,
+                            modelList
+                        );
+
+                        return (IActionResult)Ok(response);
+                    }
+                    catch (Exception testEx)
+                    {
+                        var response = ApiKeyTestResultService.CreateErrorResponse(
+                            testEx,
+                            provider.ProviderType
+                        );
+
+                        return (IActionResult)Ok(response);
+                    }
+                },
+                result => result,
+                "TestProviderKeyCredential",
+                new { ProviderId = providerId, KeyId = keyId });
         }
     }
 }

@@ -12,11 +12,10 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
-public class AnalyticsController : ControllerBase
+public class AnalyticsController : AdminControllerBase
 {
     private readonly IAnalyticsService _analyticsService;
     private readonly IAnalyticsMetrics? _analyticsMetrics;
-    private readonly ILogger<AnalyticsController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the AnalyticsController
@@ -28,9 +27,9 @@ public class AnalyticsController : ControllerBase
         IAnalyticsService analyticsService,
         ILogger<AnalyticsController> logger,
         IAnalyticsMetrics? analyticsMetrics = null)
+        : base(logger)
     {
         _analyticsService = analyticsService ?? throw new ArgumentNullException(nameof(analyticsService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _analyticsMetrics = analyticsMetrics;
     }
 
@@ -51,7 +50,7 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(PagedResult<LogRequestDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetLogs(
+    public Task<IActionResult> GetLogs(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
         [FromQuery] DateTime? startDate = null,
@@ -60,29 +59,22 @@ public class AnalyticsController : ControllerBase
         [FromQuery] int? virtualKeyId = null,
         [FromQuery] int? status = null)
     {
-        try
+        // Validate parameters
+        if (page < 1)
         {
-            // Validate parameters
-            if (page < 1)
-            {
-                return BadRequest("Page must be greater than or equal to 1");
-            }
-
-            if (pageSize < 1 || pageSize > 100)
-            {
-                return BadRequest("Page size must be between 1 and 100");
-            }
-
-            var logs = await _analyticsService.GetLogsAsync(
-                page, pageSize, startDate, endDate, model, virtualKeyId, status);
-
-            return Ok(logs);
+            return Task.FromResult<IActionResult>(BadRequest("Page must be greater than or equal to 1"));
         }
-        catch (Exception ex)
+
+        if (pageSize < 1 || pageSize > 100)
         {
-            _logger.LogError(ex, "Error getting logs");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            return Task.FromResult<IActionResult>(BadRequest("Page size must be between 1 and 100"));
         }
+
+        return ExecuteAsync(
+            () => _analyticsService.GetLogsAsync(
+                page, pageSize, startDate, endDate, model, virtualKeyId, status),
+            Ok,
+            "GetLogs");
     }
 
     /// <summary>
@@ -94,24 +86,14 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(LogRequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetLogById(int id)
+    public Task<IActionResult> GetLogById(int id)
     {
-        try
-        {
-            var log = await _analyticsService.GetLogByIdAsync(id);
-
-            if (log == null)
-            {
-                return NotFound("Log entry not found");
-            }
-
-            return Ok(log);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting log with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteWithNotFoundAsync(
+            () => _analyticsService.GetLogByIdAsync(id),
+            Ok,
+            "Log entry",
+            id,
+            "GetLogById");
     }
 
     /// <summary>
@@ -121,18 +103,12 @@ public class AnalyticsController : ControllerBase
     [HttpGet("logs/models")]
     [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetDistinctModels()
+    public Task<IActionResult> GetDistinctModels()
     {
-        try
-        {
-            var models = await _analyticsService.GetDistinctModelsAsync();
-            return Ok(models);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting distinct models");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _analyticsService.GetDistinctModelsAsync(),
+            Ok,
+            "GetDistinctModels");
     }
 
     #endregion
@@ -150,27 +126,21 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(CostDashboardDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetCostSummary(
+    public Task<IActionResult> GetCostSummary(
         [FromQuery] string timeframe = "daily",
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        try
+        // Validate timeframe
+        if (timeframe.ToLower() != "daily" && timeframe.ToLower() != "weekly" && timeframe.ToLower() != "monthly")
         {
-            // Validate timeframe
-            if (timeframe.ToLower() != "daily" && timeframe.ToLower() != "weekly" && timeframe.ToLower() != "monthly")
-            {
-                return BadRequest("Timeframe must be one of: daily, weekly, monthly");
-            }
+            return Task.FromResult<IActionResult>(BadRequest("Timeframe must be one of: daily, weekly, monthly"));
+        }
 
-            var summary = await _analyticsService.GetCostSummaryAsync(timeframe, startDate, endDate);
-            return Ok(summary);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting cost summary");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _analyticsService.GetCostSummaryAsync(timeframe, startDate, endDate),
+            Ok,
+            "GetCostSummary");
     }
 
     /// <summary>
@@ -184,27 +154,21 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(CostTrendDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetCostTrends(
+    public Task<IActionResult> GetCostTrends(
         [FromQuery] string period = "daily",
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        try
+        // Validate period
+        if (period.ToLower() != "daily" && period.ToLower() != "weekly" && period.ToLower() != "monthly")
         {
-            // Validate period
-            if (period.ToLower() != "daily" && period.ToLower() != "weekly" && period.ToLower() != "monthly")
-            {
-                return BadRequest("Period must be one of: daily, weekly, monthly");
-            }
+            return Task.FromResult<IActionResult>(BadRequest("Period must be one of: daily, weekly, monthly"));
+        }
 
-            var trends = await _analyticsService.GetCostTrendsAsync(period, startDate, endDate);
-            return Ok(trends);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting cost trends");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _analyticsService.GetCostTrendsAsync(period, startDate, endDate),
+            Ok,
+            "GetCostTrends");
     }
 
     /// <summary>
@@ -217,21 +181,15 @@ public class AnalyticsController : ControllerBase
     [HttpGet("costs/models")]
     [ProducesResponseType(typeof(ModelCostBreakdownDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetModelCosts(
+    public Task<IActionResult> GetModelCosts(
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
         [FromQuery] int topN = 10)
     {
-        try
-        {
-            var costs = await _analyticsService.GetModelCostsAsync(startDate, endDate, topN);
-            return Ok(costs);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting model costs");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _analyticsService.GetModelCostsAsync(startDate, endDate, topN),
+            Ok,
+            "GetModelCosts");
     }
 
     /// <summary>
@@ -244,21 +202,15 @@ public class AnalyticsController : ControllerBase
     [HttpGet("costs/virtualkeys")]
     [ProducesResponseType(typeof(VirtualKeyCostBreakdownDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetVirtualKeyCosts(
+    public Task<IActionResult> GetVirtualKeyCosts(
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
         [FromQuery] int topN = 10)
     {
-        try
-        {
-            var costs = await _analyticsService.GetVirtualKeyCostsAsync(startDate, endDate, topN);
-            return Ok(costs);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting virtual key costs");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _analyticsService.GetVirtualKeyCostsAsync(startDate, endDate, topN),
+            Ok,
+            "GetVirtualKeyCosts");
     }
 
     #endregion
@@ -276,27 +228,21 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(AnalyticsSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetAnalyticsSummary(
+    public Task<IActionResult> GetAnalyticsSummary(
         [FromQuery] string timeframe = "daily",
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        try
+        // Validate timeframe
+        if (timeframe.ToLower() != "daily" && timeframe.ToLower() != "weekly" && timeframe.ToLower() != "monthly")
         {
-            // Validate timeframe
-            if (timeframe.ToLower() != "daily" && timeframe.ToLower() != "weekly" && timeframe.ToLower() != "monthly")
-            {
-                return BadRequest("Timeframe must be one of: daily, weekly, monthly");
-            }
+            return Task.FromResult<IActionResult>(BadRequest("Timeframe must be one of: daily, weekly, monthly"));
+        }
 
-            var summary = await _analyticsService.GetAnalyticsSummaryAsync(timeframe, startDate, endDate);
-            return Ok(summary);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting analytics summary");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _analyticsService.GetAnalyticsSummaryAsync(timeframe, startDate, endDate),
+            Ok,
+            "GetAnalyticsSummary");
     }
 
     /// <summary>
@@ -309,21 +255,16 @@ public class AnalyticsController : ControllerBase
     [HttpGet("virtualkeys/{virtualKeyId:int}/usage")]
     [ProducesResponseType(typeof(UsageStatisticsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetVirtualKeyUsage(
+    public Task<IActionResult> GetVirtualKeyUsage(
         int virtualKeyId,
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        try
-        {
-            var usage = await _analyticsService.GetVirtualKeyUsageAsync(virtualKeyId, startDate, endDate);
-            return Ok(usage);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting virtual key usage for ID {VirtualKeyId}", virtualKeyId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _analyticsService.GetVirtualKeyUsageAsync(virtualKeyId, startDate, endDate),
+            Ok,
+            "GetVirtualKeyUsage",
+            new { VirtualKeyId = virtualKeyId });
     }
 
     /// <summary>
@@ -339,33 +280,31 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ExportAnalytics(
+    public Task<IActionResult> ExportAnalytics(
         [FromQuery] string format = "csv",
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
         [FromQuery] string? model = null,
         [FromQuery] int? virtualKeyId = null)
     {
-        try
+        // Validate format
+        if (format.ToLower() != "csv" && format.ToLower() != "json")
         {
-            // Validate format
-            if (format.ToLower() != "csv" && format.ToLower() != "json")
-            {
-                return BadRequest("Format must be one of: csv, json");
-            }
+            return Task.FromResult<IActionResult>(BadRequest("Format must be one of: csv, json"));
+        }
 
-            var data = await _analyticsService.ExportAnalyticsAsync(format, startDate, endDate, model, virtualKeyId);
-            
-            var contentType = format.ToLower() == "csv" ? "text/csv" : "application/json";
-            var fileName = $"analytics_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{format.ToLower()}";
-            
-            return File(data, contentType, fileName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error exporting analytics");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            async () =>
+            {
+                var data = await _analyticsService.ExportAnalyticsAsync(format, startDate, endDate, model, virtualKeyId);
+
+                var contentType = format.ToLower() == "csv" ? "text/csv" : "application/json";
+                var fileName = $"analytics_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{format.ToLower()}";
+
+                return (IActionResult)File(data, contentType, fileName);
+            },
+            result => result,
+            "ExportAnalytics");
     }
 
     #endregion
@@ -416,20 +355,19 @@ public class AnalyticsController : ControllerBase
     [HttpPost("cache/invalidate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult InvalidateCache([FromQuery] string reason = "Manual invalidation")
+    public Task<IActionResult> InvalidateCache([FromQuery] string reason = "Manual invalidation")
     {
-        try
-        {
-            // TODO: Implement cache invalidation logic
-            _analyticsMetrics?.RecordCacheInvalidation(reason, 0);
-            _logger.LogInformation("Cache invalidation requested: {Reason}", reason);
-            return Ok(new { message = "Cache invalidation initiated", reason });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error invalidating cache");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            async () =>
+            {
+                // TODO: Implement cache invalidation logic
+                _analyticsMetrics?.RecordCacheInvalidation(reason, 0);
+                Logger.LogInformation("Cache invalidation requested: {Reason}", reason);
+                await Task.CompletedTask;
+                return new { message = "Cache invalidation initiated", reason };
+            },
+            result => Ok(result),
+            "InvalidateCache");
     }
 
     #endregion

@@ -16,13 +16,12 @@ namespace ConduitLLM.Admin.Controllers
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
-    public class VirtualKeyGroupsController : ControllerBase
+    public class VirtualKeyGroupsController : AdminControllerBase
     {
         private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly IVirtualKeyRepository _keyRepository;
         private readonly IConfigurationDbContext _context;
         private readonly IRefundService _refundService;
-        private readonly ILogger<VirtualKeyGroupsController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the VirtualKeyGroupsController
@@ -33,12 +32,12 @@ namespace ConduitLLM.Admin.Controllers
             IConfigurationDbContext context,
             IRefundService refundService,
             ILogger<VirtualKeyGroupsController> logger)
+            : base(logger)
         {
             _groupRepository = groupRepository;
             _keyRepository = keyRepository;
             _context = context;
             _refundService = refundService;
-            _logger = logger;
         }
 
         /// <summary>
@@ -50,70 +49,60 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<VirtualKeyGroupDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<PagedResult<VirtualKeyGroupDto>>> GetAllGroups(
+        public Task<IActionResult> GetAllGroups(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50,
             CancellationToken cancellationToken = default)
         {
-            try
-            {
-                // Validate and clamp page parameters
-                if (page < 1) page = 1;
-                if (pageSize < 1) pageSize = 50;
-                if (pageSize > 100) pageSize = 100;
+            // Validate and clamp page parameters
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 50;
+            if (pageSize > 100) pageSize = 100;
 
-                _logger.LogInformation("GetAllGroups called with page={Page}, pageSize={PageSize}", page, pageSize);
-
-                var (groups, totalCount) = await _groupRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
-
-                _logger.LogInformation("Repository returned {Count} groups out of {TotalCount} total", groups.Count, totalCount);
-
-                var dtos = groups.Select(g => new VirtualKeyGroupDto
+            return ExecuteAsync(
+                async () =>
                 {
-                    Id = g.Id,
-                    ExternalGroupId = g.ExternalGroupId,
-                    GroupName = g.GroupName,
-                    Balance = g.Balance,
-                    LifetimeCreditsAdded = g.LifetimeCreditsAdded,
-                    LifetimeSpent = g.LifetimeSpent,
-                    CreatedAt = g.CreatedAt,
-                    UpdatedAt = g.UpdatedAt,
-                    VirtualKeyCount = g.VirtualKeys?.Count ?? 0
-                }).ToList();
+                    Logger.LogInformation("GetAllGroups called with page={Page}, pageSize={PageSize}", page, pageSize);
 
-                var result = new PagedResult<VirtualKeyGroupDto>
-                {
-                    Items = dtos,
-                    TotalCount = totalCount,
-                    CurrentPage = page,
-                    PageSize = pageSize,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                };
+                    var (groups, totalCount) = await _groupRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
 
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving virtual key groups");
-                return StatusCode(500, new { message = "An error occurred while retrieving groups" });
-            }
+                    Logger.LogInformation("Repository returned {Count} groups out of {TotalCount} total", groups.Count, totalCount);
+
+                    var dtos = groups.Select(g => new VirtualKeyGroupDto
+                    {
+                        Id = g.Id,
+                        ExternalGroupId = g.ExternalGroupId,
+                        GroupName = g.GroupName,
+                        Balance = g.Balance,
+                        LifetimeCreditsAdded = g.LifetimeCreditsAdded,
+                        LifetimeSpent = g.LifetimeSpent,
+                        CreatedAt = g.CreatedAt,
+                        UpdatedAt = g.UpdatedAt,
+                        VirtualKeyCount = g.VirtualKeys?.Count ?? 0
+                    }).ToList();
+
+                    return (object)new PagedResult<VirtualKeyGroupDto>
+                    {
+                        Items = dtos,
+                        TotalCount = totalCount,
+                        CurrentPage = page,
+                        PageSize = pageSize,
+                        TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                    };
+                },
+                Ok,
+                "GetAllGroups");
         }
 
         /// <summary>
         /// Get a specific virtual key group by ID
         /// </summary>
         [HttpGet("{id}")]
-        public async Task<ActionResult<VirtualKeyGroupDto>> GetGroup(int id)
+        public Task<IActionResult> GetGroup(int id)
         {
-            try
-            {
-                var group = await _groupRepository.GetByIdWithKeysAsync(id);
-                if (group == null)
-                {
-                    return NotFound(new { message = "Group not found" });
-                }
-
-                var dto = new VirtualKeyGroupDto
+            return ExecuteWithNotFoundAsync(
+                () => _groupRepository.GetByIdWithKeysAsync(id),
+                group => Ok(new VirtualKeyGroupDto
                 {
                     Id = group.Id,
                     ExternalGroupId = group.ExternalGroupId,
@@ -124,171 +113,145 @@ namespace ConduitLLM.Admin.Controllers
                     CreatedAt = group.CreatedAt,
                     UpdatedAt = group.UpdatedAt,
                     VirtualKeyCount = group.VirtualKeys?.Count ?? 0
-                };
-
-                return Ok(dto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving virtual key group {GroupId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the group" });
-            }
+                }),
+                "VirtualKeyGroup",
+                id,
+                "GetGroup");
         }
 
         /// <summary>
         /// Create a new virtual key group
         /// </summary>
         [HttpPost]
-        public async Task<ActionResult<VirtualKeyGroupDto>> CreateGroup([FromBody] CreateVirtualKeyGroupRequestDto request)
+        public Task<IActionResult> CreateGroup([FromBody] CreateVirtualKeyGroupRequestDto request)
         {
-            try
-            {
-                var group = new VirtualKeyGroup
+            return ExecuteAsync(
+                async () =>
                 {
-                    ExternalGroupId = request.ExternalGroupId,
-                    GroupName = request.GroupName,
-                    Balance = request.InitialBalance ?? 0,
-                    LifetimeCreditsAdded = request.InitialBalance ?? 0,
-                    LifetimeSpent = 0
-                };
+                    var group = new VirtualKeyGroup
+                    {
+                        ExternalGroupId = request.ExternalGroupId,
+                        GroupName = request.GroupName,
+                        Balance = request.InitialBalance ?? 0,
+                        LifetimeCreditsAdded = request.InitialBalance ?? 0,
+                        LifetimeSpent = 0
+                    };
 
-                var id = await _groupRepository.CreateAsync(group);
-                group.Id = id;
+                    var id = await _groupRepository.CreateAsync(group);
+                    group.Id = id;
 
-                var dto = new VirtualKeyGroupDto
-                {
-                    Id = group.Id,
-                    ExternalGroupId = group.ExternalGroupId,
-                    GroupName = group.GroupName,
-                    Balance = group.Balance,
-                    LifetimeCreditsAdded = group.LifetimeCreditsAdded,
-                    LifetimeSpent = group.LifetimeSpent,
-                    CreatedAt = group.CreatedAt,
-                    UpdatedAt = group.UpdatedAt,
-                    VirtualKeyCount = 0
-                };
+                    var dto = new VirtualKeyGroupDto
+                    {
+                        Id = group.Id,
+                        ExternalGroupId = group.ExternalGroupId,
+                        GroupName = group.GroupName,
+                        Balance = group.Balance,
+                        LifetimeCreditsAdded = group.LifetimeCreditsAdded,
+                        LifetimeSpent = group.LifetimeSpent,
+                        CreatedAt = group.CreatedAt,
+                        UpdatedAt = group.UpdatedAt,
+                        VirtualKeyCount = 0
+                    };
 
-                return CreatedAtAction(nameof(GetGroup), new { id = group.Id }, dto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating virtual key group");
-                return StatusCode(500, new { message = "An error occurred while creating the group" });
-            }
+                    return (IActionResult)CreatedAtAction(nameof(GetGroup), new { id = group.Id }, dto);
+                },
+                r => r,
+                "CreateGroup");
         }
 
         /// <summary>
         /// Update a virtual key group
         /// </summary>
         [HttpPut("{id}")]
-        public async Task<ActionResult> UpdateGroup(int id, [FromBody] UpdateVirtualKeyGroupRequestDto request)
+        public Task<IActionResult> UpdateGroup(int id, [FromBody] UpdateVirtualKeyGroupRequestDto request)
         {
-            try
-            {
-                var group = await _groupRepository.GetByIdAsync(id);
-                if (group == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound(new { message = "Group not found" });
-                }
+                    var group = await _groupRepository.GetByIdAsync(id);
+                    if (group == null)
+                        throw new KeyNotFoundException();
 
-                if (!string.IsNullOrEmpty(request.GroupName))
-                {
-                    group.GroupName = request.GroupName;
-                }
+                    if (!string.IsNullOrEmpty(request.GroupName))
+                    {
+                        group.GroupName = request.GroupName;
+                    }
 
-                if (!string.IsNullOrEmpty(request.ExternalGroupId))
-                {
-                    group.ExternalGroupId = request.ExternalGroupId;
-                }
+                    if (!string.IsNullOrEmpty(request.ExternalGroupId))
+                    {
+                        group.ExternalGroupId = request.ExternalGroupId;
+                    }
 
-                await _groupRepository.UpdateAsync(group);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating virtual key group {GroupId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the group" });
-            }
+                    await _groupRepository.UpdateAsync(group);
+                },
+                NoContent(),
+                "UpdateGroup",
+                new { Id = id });
         }
 
         /// <summary>
         /// Adjust the balance of a virtual key group
         /// </summary>
         [HttpPost("{id}/adjust-balance")]
-        public async Task<ActionResult<VirtualKeyGroupDto>> AdjustBalance(int id, [FromBody] AdjustBalanceDto request)
+        public Task<IActionResult> AdjustBalance(int id, [FromBody] AdjustBalanceDto request)
         {
-            try
-            {
-                // Get the authenticated user's identity
-                var initiatedBy = User.Identity?.Name ?? "System";
-                
-                var newBalance = await _groupRepository.AdjustBalanceAsync(
-                    id, 
-                    request.Amount,
-                    request.Description,
-                    initiatedBy
-                );
-                
-                var group = await _groupRepository.GetByIdAsync(id);
-                if (group == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound(new { message = "Group not found" });
-                }
+                    // Get the authenticated user's identity
+                    var initiatedBy = User.Identity?.Name ?? "System";
 
-                var dto = new VirtualKeyGroupDto
-                {
-                    Id = group.Id,
-                    ExternalGroupId = group.ExternalGroupId,
-                    GroupName = group.GroupName,
-                    Balance = group.Balance,
-                    LifetimeCreditsAdded = group.LifetimeCreditsAdded,
-                    LifetimeSpent = group.LifetimeSpent,
-                    CreatedAt = group.CreatedAt,
-                    UpdatedAt = group.UpdatedAt,
-                    VirtualKeyCount = group.VirtualKeys?.Count ?? 0
-                };
+                    var newBalance = await _groupRepository.AdjustBalanceAsync(
+                        id,
+                        request.Amount,
+                        request.Description,
+                        initiatedBy
+                    );
 
-                return Ok(dto);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adjusting balance for virtual key group {GroupId}", id);
-                return StatusCode(500, new { message = "An error occurred while adjusting the balance" });
-            }
+                    var group = await _groupRepository.GetByIdAsync(id);
+                    if (group == null)
+                        throw new KeyNotFoundException();
+
+                    return (object)new VirtualKeyGroupDto
+                    {
+                        Id = group.Id,
+                        ExternalGroupId = group.ExternalGroupId,
+                        GroupName = group.GroupName,
+                        Balance = group.Balance,
+                        LifetimeCreditsAdded = group.LifetimeCreditsAdded,
+                        LifetimeSpent = group.LifetimeSpent,
+                        CreatedAt = group.CreatedAt,
+                        UpdatedAt = group.UpdatedAt,
+                        VirtualKeyCount = group.VirtualKeys?.Count ?? 0
+                    };
+                },
+                Ok,
+                "AdjustBalance",
+                new { Id = id });
         }
 
         /// <summary>
         /// Delete a virtual key group
         /// </summary>
         [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteGroup(int id)
+        public Task<IActionResult> DeleteGroup(int id)
         {
-            try
-            {
-                var group = await _groupRepository.GetByIdAsync(id);
-                if (group == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound(new { message = "Group not found" });
-                }
+                    var group = await _groupRepository.GetByIdAsync(id);
+                    if (group == null)
+                        throw new KeyNotFoundException();
 
-                // Check if group has any keys
-                if (group.VirtualKeys?.Count > 0)
-                {
-                    return BadRequest(new { message = "Cannot delete group with existing virtual keys" });
-                }
+                    // Check if group has any keys
+                    if (group.VirtualKeys?.Count > 0)
+                        throw new InvalidOperationException("Cannot delete group with existing virtual keys");
 
-                await _groupRepository.DeleteAsync(id);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting virtual key group {GroupId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the group" });
-            }
+                    await _groupRepository.DeleteAsync(id);
+                },
+                NoContent(),
+                "DeleteGroup",
+                new { Id = id });
         }
 
         /// <summary>
@@ -298,111 +261,100 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(PagedResult<VirtualKeyGroupTransactionDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<PagedResult<VirtualKeyGroupTransactionDto>>> GetTransactionHistory(
-            int id, 
+        public Task<IActionResult> GetTransactionHistory(
+            int id,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50)
         {
-            try
-            {
-                var group = await _groupRepository.GetByIdAsync(id);
-                if (group == null)
+            // Validate page parameters
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 50;
+            if (pageSize > 100) pageSize = 100;
+
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound(new { message = "Group not found" });
-                }
+                    var group = await _groupRepository.GetByIdAsync(id);
+                    if (group == null)
+                        throw new KeyNotFoundException();
 
-                // Validate page parameters
-                if (page < 1) page = 1;
-                if (pageSize < 1) pageSize = 50;
-                if (pageSize > 100) pageSize = 100;
+                    // Get total count (soft delete filter applied automatically via named query filter)
+                    var totalCount = await _context.VirtualKeyGroupTransactions
+                        .Where(t => t.VirtualKeyGroupId == id)
+                        .CountAsync();
 
-                // Get total count (soft delete filter applied automatically via named query filter)
-                var totalCount = await _context.VirtualKeyGroupTransactions
-                    .Where(t => t.VirtualKeyGroupId == id)
-                    .CountAsync();
+                    // Calculate pagination
+                    var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+                    var skip = (page - 1) * pageSize;
 
-                // Calculate pagination
-                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
-                var skip = (page - 1) * pageSize;
+                    // Get paginated transactions (soft delete filter applied automatically via named query filter)
+                    var transactions = await _context.VirtualKeyGroupTransactions
+                        .Where(t => t.VirtualKeyGroupId == id)
+                        .OrderByDescending(t => t.CreatedAt)
+                        .Skip(skip)
+                        .Take(pageSize)
+                        .Select(t => new VirtualKeyGroupTransactionDto
+                        {
+                            Id = t.Id,
+                            VirtualKeyGroupId = t.VirtualKeyGroupId,
+                            TransactionType = t.TransactionType,
+                            Amount = t.Amount,
+                            BalanceAfter = t.BalanceAfter,
+                            Description = t.Description,
+                            ReferenceId = t.ReferenceId,
+                            ReferenceType = t.ReferenceType,
+                            InitiatedBy = t.InitiatedBy,
+                            InitiatedByUserId = t.InitiatedByUserId,
+                            CreatedAt = t.CreatedAt
+                        })
+                        .ToListAsync();
 
-                // Get paginated transactions (soft delete filter applied automatically via named query filter)
-                var transactions = await _context.VirtualKeyGroupTransactions
-                    .Where(t => t.VirtualKeyGroupId == id)
-                    .OrderByDescending(t => t.CreatedAt)
-                    .Skip(skip)
-                    .Take(pageSize)
-                    .Select(t => new VirtualKeyGroupTransactionDto
+                    return (object)new PagedResult<VirtualKeyGroupTransactionDto>
                     {
-                        Id = t.Id,
-                        VirtualKeyGroupId = t.VirtualKeyGroupId,
-                        TransactionType = t.TransactionType,
-                        Amount = t.Amount,
-                        BalanceAfter = t.BalanceAfter,
-                        Description = t.Description,
-                        ReferenceId = t.ReferenceId,
-                        ReferenceType = t.ReferenceType,
-                        InitiatedBy = t.InitiatedBy,
-                        InitiatedByUserId = t.InitiatedByUserId,
-                        CreatedAt = t.CreatedAt
-                    })
-                    .ToListAsync();
-
-                var result = new PagedResult<VirtualKeyGroupTransactionDto>
-                {
-                    Items = transactions,
-                    TotalCount = totalCount,
-                    CurrentPage = page,
-                    PageSize = pageSize,
-                    TotalPages = totalPages
-                };
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving transaction history for virtual key group {GroupId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the transaction history" });
-            }
+                        Items = transactions,
+                        TotalCount = totalCount,
+                        CurrentPage = page,
+                        PageSize = pageSize,
+                        TotalPages = totalPages
+                    };
+                },
+                Ok,
+                "GetTransactionHistory",
+                new { Id = id });
         }
 
         /// <summary>
         /// Get virtual keys in a group
         /// </summary>
         [HttpGet("{id}/keys")]
-        public async Task<ActionResult<List<VirtualKeyDto>>> GetKeysInGroup(int id)
+        public Task<IActionResult> GetKeysInGroup(int id)
         {
-            try
-            {
-                var group = await _groupRepository.GetByIdWithKeysAsync(id);
-                if (group == null)
+            return ExecuteWithNotFoundAsync(
+                () => _groupRepository.GetByIdWithKeysAsync(id),
+                group =>
                 {
-                    return NotFound(new { message = "Group not found" });
-                }
+                    var keys = group.VirtualKeys?.Select(k => new VirtualKeyDto
+                    {
+                        Id = k.Id,
+                        KeyName = k.KeyName,
+                        KeyPrefix = k.KeyHash?.Length > 10 ? k.KeyHash.Substring(0, 10) + "..." : k.KeyHash,
+                        AllowedModels = k.AllowedModels,
+                        VirtualKeyGroupId = k.VirtualKeyGroupId,
+                        IsEnabled = k.IsEnabled,
+                        ExpiresAt = k.ExpiresAt,
+                        CreatedAt = k.CreatedAt,
+                        UpdatedAt = k.UpdatedAt,
+                        Metadata = k.Metadata,
+                        RateLimitRpm = k.RateLimitRpm,
+                        RateLimitRpd = k.RateLimitRpd,
+                        Description = k.Description
+                    }).ToList() ?? new List<VirtualKeyDto>();
 
-                var keys = group.VirtualKeys?.Select(k => new VirtualKeyDto
-                {
-                    Id = k.Id,
-                    KeyName = k.KeyName,
-                    KeyPrefix = k.KeyHash?.Length > 10 ? k.KeyHash.Substring(0, 10) + "..." : k.KeyHash,
-                    AllowedModels = k.AllowedModels,
-                    VirtualKeyGroupId = k.VirtualKeyGroupId,
-                    IsEnabled = k.IsEnabled,
-                    ExpiresAt = k.ExpiresAt,
-                    CreatedAt = k.CreatedAt,
-                    UpdatedAt = k.UpdatedAt,
-                    Metadata = k.Metadata,
-                    RateLimitRpm = k.RateLimitRpm,
-                    RateLimitRpd = k.RateLimitRpd,
-                    Description = k.Description
-                }).ToList() ?? new List<VirtualKeyDto>();
-
-                return Ok(keys);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving keys for virtual key group {GroupId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the keys" });
-            }
+                    return Ok(keys);
+                },
+                "VirtualKeyGroup",
+                id,
+                "GetKeysInGroup");
         }
 
         /// <summary>
@@ -416,73 +368,60 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<RefundResultDto>> ProcessRefund(int id, [FromBody] ProcessRefundRequestDto request)
+        public Task<IActionResult> ProcessRefund(int id, [FromBody] ProcessRefundRequestDto request)
         {
-            try
+            // Validate request
+            if (string.IsNullOrEmpty(request.ModelId))
             {
-                // Validate request
-                if (string.IsNullOrEmpty(request.ModelId))
+                return Task.FromResult<IActionResult>(BadRequest(new { message = "Model ID is required" }));
+            }
+
+            if (string.IsNullOrEmpty(request.RefundReason))
+            {
+                return Task.FromResult<IActionResult>(BadRequest(new { message = "Refund reason is required" }));
+            }
+
+            return ExecuteAsync(
+                async () =>
                 {
-                    return BadRequest(new { message = "Model ID is required" });
-                }
+                    // Get user info for audit trail
+                    var initiatedBy = User.Identity?.Name ?? "System";
+                    var initiatedByUserId = User.FindFirst("sub")?.Value; // Clerk user ID from JWT
 
-                if (string.IsNullOrEmpty(request.RefundReason))
-                {
-                    return BadRequest(new { message = "Refund reason is required" });
-                }
+                    // Convert DTOs to core models
+                    var originalUsage = MapToUsage(request.OriginalUsage);
+                    var refundUsage = MapToUsage(request.RefundUsage);
 
-                // Get user info for audit trail
-                var initiatedBy = User.Identity?.Name ?? "System";
-                var initiatedByUserId = User.FindFirst("sub")?.Value; // Clerk user ID from JWT
+                    // Process the refund
+                    var refundResult = await _refundService.ProcessRefundAsync(
+                        id,
+                        request.ModelId,
+                        originalUsage,
+                        refundUsage,
+                        request.RefundReason,
+                        request.OriginalTransactionId,
+                        initiatedBy,
+                        initiatedByUserId);
 
-                // Convert DTOs to core models
-                var originalUsage = MapToUsage(request.OriginalUsage);
-                var refundUsage = MapToUsage(request.RefundUsage);
+                    // Get updated group info for balance
+                    var group = await _groupRepository.GetByIdAsync(id);
+                    if (group == null)
+                        throw new KeyNotFoundException();
 
-                // Process the refund
-                var refundResult = await _refundService.ProcessRefundAsync(
-                    id,
-                    request.ModelId,
-                    originalUsage,
-                    refundUsage,
-                    request.RefundReason,
-                    request.OriginalTransactionId,
-                    initiatedBy,
-                    initiatedByUserId);
+                    // Map to response DTO
+                    var responseDto = MapToRefundResultDto(refundResult, group.Balance);
 
-                // Get updated group info for balance
-                var group = await _groupRepository.GetByIdAsync(id);
-                if (group == null)
-                {
-                    return NotFound(new { message = "Group not found" });
-                }
+                    Logger.LogInformation(
+                        "Refund processed for group {GroupId}: {RefundAmount:C}, Transaction ID: {TransactionId}",
+                        id,
+                        refundResult.RefundAmount,
+                        refundResult.OriginalTransactionId);
 
-                // Map to response DTO
-                var responseDto = MapToRefundResultDto(refundResult, group.Balance);
-
-                _logger.LogInformation(
-                    "Refund processed for group {GroupId}: {RefundAmount:C}, Transaction ID: {TransactionId}",
-                    id,
-                    refundResult.RefundAmount,
-                    refundResult.OriginalTransactionId);
-
-                return Ok(responseDto);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex, "Invalid operation while processing refund for group {GroupId}", id);
-                return NotFound(new { message = ex.Message });
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "Invalid refund request for group {GroupId}", id);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing refund for virtual key group {GroupId}", id);
-                return StatusCode(500, new { message = "An error occurred while processing the refund" });
-            }
+                    return (object)responseDto;
+                },
+                Ok,
+                "ProcessRefund",
+                new { Id = id });
         }
 
         /// <summary>

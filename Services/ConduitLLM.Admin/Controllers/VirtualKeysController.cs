@@ -5,7 +5,6 @@ using ConduitLLM.Configuration.DTOs.VirtualKey;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Admin.Controllers;
 
@@ -14,10 +13,9 @@ namespace ConduitLLM.Admin.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class VirtualKeysController : ControllerBase
+public class VirtualKeysController : AdminControllerBase
 {
     private readonly IAdminVirtualKeyService _virtualKeyService;
-    private readonly ILogger<VirtualKeysController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the VirtualKeysController
@@ -27,9 +25,9 @@ public class VirtualKeysController : ControllerBase
     public VirtualKeysController(
         IAdminVirtualKeyService virtualKeyService,
         ILogger<VirtualKeysController> logger)
+        : base(logger)
     {
         _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -44,28 +42,18 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GenerateKey([FromBody] CreateVirtualKeyRequestDto request)
+    public Task<IActionResult> GenerateKey([FromBody] CreateVirtualKeyRequestDto request)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return Task.FromResult<IActionResult>(BadRequest(ModelState));
         }
 
-        try
-        {
-            var response = await _virtualKeyService.GenerateVirtualKeyAsync(request);
-            return CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response);
-        }
-        catch (DbUpdateException dbEx)
-        {
-            _logger.LogError(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.", LoggingSanitizer.S(request.KeyName));
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while saving the key. It might violate a unique constraint (e.g., duplicate name)." });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating virtual key for '{KeyName}'", LoggingSanitizer.S(request.KeyName));
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _virtualKeyService.GenerateVirtualKeyAsync(request),
+            response => CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response),
+            "GenerateKey",
+            new { KeyName = LoggingSanitizer.S(request.KeyName) });
     }
 
     /// <summary>
@@ -77,18 +65,12 @@ public class VirtualKeysController : ControllerBase
     [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(List<VirtualKeyDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ListKeys([FromQuery] int? virtualKeyGroupId = null)
+    public Task<IActionResult> ListKeys([FromQuery] int? virtualKeyGroupId = null)
     {
-        try
-        {
-            var keys = await _virtualKeyService.ListVirtualKeysAsync(virtualKeyGroupId);
-            return Ok(keys);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error listing virtual keys.");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _virtualKeyService.ListVirtualKeysAsync(virtualKeyGroupId),
+            Ok,
+            "ListKeys");
     }
 
     /// <summary>
@@ -101,22 +83,14 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(typeof(VirtualKeyDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetKeyById(int id)
+    public Task<IActionResult> GetKeyById(int id)
     {
-        try
-        {
-            var key = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
-            if (key == null)
-            {
-                return NotFound();
-            }
-            return Ok(key);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteWithNotFoundAsync(
+            () => _virtualKeyService.GetVirtualKeyInfoAsync(id),
+            Ok,
+            "Virtual key",
+            id,
+            "GetKeyById");
     }
 
     /// <summary>
@@ -133,27 +107,22 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateKey(int id, [FromBody] UpdateVirtualKeyRequestDto request)
+    public Task<IActionResult> UpdateKey(int id, [FromBody] UpdateVirtualKeyRequestDto request)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return Task.FromResult<IActionResult>(BadRequest(ModelState));
         }
 
-        try
-        {
-            var success = await _virtualKeyService.UpdateVirtualKeyAsync(id, request);
-            if (!success)
+        return ExecuteAsync(
+            async () =>
             {
-                return NotFound();
-            }
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                if (!await _virtualKeyService.UpdateVirtualKeyAsync(id, request))
+                    throw new KeyNotFoundException();
+            },
+            NoContent(),
+            "UpdateKey",
+            new { Id = id });
     }
 
     /// <summary>
@@ -168,22 +137,17 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteKey(int id)
+    public Task<IActionResult> DeleteKey(int id)
     {
-        try
-        {
-            var success = await _virtualKeyService.DeleteVirtualKeyAsync(id);
-            if (!success)
+        return ExecuteAsync(
+            async () =>
             {
-                return NotFound();
-            }
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                if (!await _virtualKeyService.DeleteVirtualKeyAsync(id))
+                    throw new KeyNotFoundException();
+            },
+            NoContent(),
+            "DeleteKey",
+            new { Id = id });
     }
 
 
@@ -197,23 +161,17 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     // lgtm [cs/web/missing-function-level-access-control]
-    public async Task<IActionResult> ValidateKey([FromBody] ValidateVirtualKeyRequest request)
+    public Task<IActionResult> ValidateKey([FromBody] ValidateVirtualKeyRequest request)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return Task.FromResult<IActionResult>(BadRequest(ModelState));
         }
 
-        try
-        {
-            var result = await _virtualKeyService.ValidateVirtualKeyAsync(request.Key, request.RequestedModel);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error validating virtual key");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _virtualKeyService.ValidateVirtualKeyAsync(request.Key, request.RequestedModel),
+            Ok,
+            "ValidateKey");
     }
 
 
@@ -229,22 +187,14 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(typeof(VirtualKeyValidationInfoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetValidationInfo(int id)
+    public Task<IActionResult> GetValidationInfo(int id)
     {
-        try
-        {
-            var info = await _virtualKeyService.GetValidationInfoAsync(id);
-            if (info == null)
-            {
-                return NotFound();
-            }
-            return Ok(info);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting validation info for virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteWithNotFoundAsync(
+            () => _virtualKeyService.GetValidationInfoAsync(id),
+            Ok,
+            "Virtual key",
+            id,
+            "GetValidationInfo");
     }
 
     /// <summary>
@@ -263,18 +213,12 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> PerformMaintenance()
+    public Task<IActionResult> PerformMaintenance()
     {
-        try
-        {
-            await _virtualKeyService.PerformMaintenanceAsync();
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error performing virtual key maintenance");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred during maintenance.");
-        }
+        return ExecuteAsync(
+            () => _virtualKeyService.PerformMaintenanceAsync(),
+            NoContent(),
+            "PerformMaintenance");
     }
 
     /// <summary>
@@ -288,22 +232,14 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(typeof(VirtualKeyDiscoveryPreviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> PreviewDiscovery(int id, [FromQuery] string? capability = null)
+    public Task<IActionResult> PreviewDiscovery(int id, [FromQuery] string? capability = null)
     {
-        try
-        {
-            var preview = await _virtualKeyService.PreviewDiscoveryAsync(id, capability);
-            if (preview == null)
-            {
-                return NotFound();
-            }
-            return Ok(preview);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error previewing discovery for virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteWithNotFoundAsync(
+            () => _virtualKeyService.PreviewDiscoveryAsync(id, capability),
+            Ok,
+            "Virtual key",
+            id,
+            "PreviewDiscovery");
     }
 
     /// <summary>
@@ -316,29 +252,28 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetKeyGroup(int id)
+    public Task<IActionResult> GetKeyGroup(int id)
     {
-        try
-        {
-            var key = await _virtualKeyService.GetVirtualKeyByIdAsync(id);
-            if (key == null)
+        return ExecuteAsync(
+            async () =>
             {
-                return NotFound(new { message = "Virtual key not found" });
-            }
+                var key = await _virtualKeyService.GetVirtualKeyByIdAsync(id);
+                if (key == null)
+                {
+                    throw new KeyNotFoundException("Virtual key not found");
+                }
 
-            var groupInfo = await _virtualKeyService.GetKeyGroupAsync(id);
-            if (groupInfo == null)
-            {
-                return NotFound(new { message = "Virtual key group not found" });
-            }
+                var groupInfo = await _virtualKeyService.GetKeyGroupAsync(id);
+                if (groupInfo == null)
+                {
+                    throw new KeyNotFoundException("Virtual key group not found");
+                }
 
-            return Ok(groupInfo);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting group for virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                return groupInfo;
+            },
+            Ok,
+            "GetKeyGroup",
+            new { Id = id });
     }
 
     /// <summary>
@@ -347,8 +282,8 @@ public class VirtualKeysController : ControllerBase
     /// <param name="key">The virtual key value (with prefix)</param>
     /// <returns>Usage information including balance, spending, and request counts</returns>
     /// <remarks>
-    /// This endpoint allows administrators to check the usage and balance of a virtual key 
-    /// using the actual key value instead of the database ID. This is useful for support 
+    /// This endpoint allows administrators to check the usage and balance of a virtual key
+    /// using the actual key value instead of the database ID. This is useful for support
     /// scenarios where users provide their key value.
     /// </remarks>
     [HttpGet("usage/by-key/{key}")]
@@ -359,27 +294,18 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetUsageByKey(string key)
+    public Task<IActionResult> GetUsageByKey(string key)
     {
         if (string.IsNullOrEmpty(key))
         {
-            return BadRequest(new { message = "Key value is required" });
+            return Task.FromResult<IActionResult>(BadRequest(new { message = "Key value is required" }));
         }
 
-        try
-        {
-            var usage = await _virtualKeyService.GetUsageByKeyAsync(key);
-            if (usage == null)
-            {
-                return NotFound(new { message = "Virtual key not found or invalid key format" });
-            }
-
-            return Ok(usage);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting usage for virtual key");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteWithNotFoundAsync(
+            () => _virtualKeyService.GetUsageByKeyAsync(key),
+            Ok,
+            "Virtual key",
+            null,
+            "GetUsageByKey");
     }
 }

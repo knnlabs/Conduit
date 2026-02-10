@@ -46,7 +46,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            errorResponse.error.ToString().Should().Be("Model provider mapping not found");
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion

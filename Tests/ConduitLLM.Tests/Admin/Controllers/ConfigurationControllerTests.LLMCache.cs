@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Cache;
 using FluentAssertions;
 using MassTransit;
@@ -103,17 +104,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.GetLLMCacheStatus();
 
-            // Assert
+            // Assert - AdminControllerBase returns ObjectResult with ErrorResponseDto
             var statusResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusResult.StatusCode.Should().Be(500);
 
-            var responseValue = statusResult.Value;
-            responseValue.Should().NotBeNull();
-            var valueType = responseValue!.GetType();
-            var errorProperty = valueType.GetProperty("error");
-            errorProperty.Should().NotBeNull();
-            var errorValue = errorProperty?.GetValue(responseValue) as string;
-            errorValue.Should().Be("Failed to get LLM cache status");
+            var errorResponse = statusResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.error.Should().Be("An unexpected error occurred.");
+            errorResponse.Code.Should().Be("internal_error");
         }
 
         [Fact]
@@ -313,17 +310,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.ToggleLLMCache(request);
 
-            // Assert
+            // Assert - AdminControllerBase returns ObjectResult with ErrorResponseDto
             var statusResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusResult.StatusCode.Should().Be(500);
 
-            var responseValue = statusResult.Value;
-            responseValue.Should().NotBeNull();
-            var valueType = responseValue!.GetType();
-            var errorProperty = valueType.GetProperty("error");
-            errorProperty.Should().NotBeNull();
-            var errorValue = errorProperty?.GetValue(responseValue) as string;
-            errorValue.Should().Be("Failed to toggle LLM cache");
+            var errorResponse = statusResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.error.Should().Be("An unexpected error occurred.");
+            errorResponse.Code.Should().Be("internal_error");
         }
 
         [Fact]

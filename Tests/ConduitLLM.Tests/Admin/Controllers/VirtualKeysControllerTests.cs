@@ -88,7 +88,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GenerateKey_ServiceThrowsInvalidOperation_ReturnsInternalServerError()
+        public async Task GenerateKey_ServiceThrowsInvalidOperation_ReturnsBadRequest()
         {
             // Arrange
             var request = new CreateVirtualKeyRequestDto
@@ -103,12 +103,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.GenerateKey(request);
 
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusCodeResult.StatusCode);
-            
-            // In a real scenario, you might want to return a more specific error code (e.g., 404) 
-            // for "group not found" scenarios by catching specific exceptions
+            // Assert - AdminControllerBase maps InvalidOperationException to 400 Bad Request
+            Assert.IsType<BadRequestObjectResult>(result);
         }
 
         [Fact]

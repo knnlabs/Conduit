@@ -14,12 +14,11 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class PricingController : ControllerBase
+    public class PricingController : AdminControllerBase
     {
         private readonly IPricingRulesValidator _pricingValidator;
         private readonly IPricingRulesEvaluator _pricingEvaluator;
         private readonly IPricingAuditService _pricingAuditService;
-        private readonly ILogger<PricingController> _logger;
 
         // Metrics for pricing API operations
         private static readonly Counter PricingValidations = Prometheus.Metrics
@@ -52,11 +51,11 @@ namespace ConduitLLM.Admin.Controllers
             IPricingRulesEvaluator pricingEvaluator,
             IPricingAuditService pricingAuditService,
             ILogger<PricingController> logger)
+            : base(logger)
         {
             _pricingValidator = pricingValidator ?? throw new ArgumentNullException(nameof(pricingValidator));
             _pricingEvaluator = pricingEvaluator ?? throw new ArgumentNullException(nameof(pricingEvaluator));
             _pricingAuditService = pricingAuditService ?? throw new ArgumentNullException(nameof(pricingAuditService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -67,56 +66,53 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("validate")]
         [ProducesResponseType(typeof(PricingValidationResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public IActionResult ValidatePricingConfiguration([FromBody] PricingValidationRequest request)
+        public Task<IActionResult> ValidatePricingConfiguration([FromBody] PricingValidationRequest request)
         {
-            try
-            {
-                using var timer = PricingOperationDuration.WithLabels("validate").NewTimer();
-
-                PricingRulesConfig? config = null;
-                try
+            return ExecuteAsync(
+                () =>
                 {
-                    config = JsonSerializer.Deserialize<PricingRulesConfig>(request.PricingConfiguration, new JsonSerializerOptions
+                    using var timer = PricingOperationDuration.WithLabels("validate").NewTimer();
+
+                    PricingRulesConfig? config = null;
+                    try
                     {
-                        PropertyNameCaseInsensitive = true
-                    });
-                }
-                catch (JsonException ex)
-                {
-                    PricingValidations.WithLabels("invalid_json").Inc();
-                    return Ok(new PricingValidationResponse
+                        config = JsonSerializer.Deserialize<PricingRulesConfig>(request.PricingConfiguration, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                    }
+                    catch (JsonException ex)
                     {
-                        IsValid = false,
-                        Errors = new[] { $"Invalid JSON format: {ex.Message}" }
-                    });
-                }
+                        PricingValidations.WithLabels("invalid_json").Inc();
+                        return Task.FromResult<PricingValidationResponse>(new PricingValidationResponse
+                        {
+                            IsValid = false,
+                            Errors = new[] { $"Invalid JSON format: {ex.Message}" }
+                        });
+                    }
 
-                if (config == null)
-                {
-                    PricingValidations.WithLabels("null_config").Inc();
-                    return Ok(new PricingValidationResponse
+                    if (config == null)
                     {
-                        IsValid = false,
-                        Errors = new[] { "Configuration could not be parsed" }
+                        PricingValidations.WithLabels("null_config").Inc();
+                        return Task.FromResult<PricingValidationResponse>(new PricingValidationResponse
+                        {
+                            IsValid = false,
+                            Errors = new[] { "Configuration could not be parsed" }
+                        });
+                    }
+
+                    var result = _pricingValidator.Validate(config);
+
+                    PricingValidations.WithLabels(result.IsValid ? "valid" : "invalid").Inc();
+                    return Task.FromResult(new PricingValidationResponse
+                    {
+                        IsValid = result.IsValid,
+                        Errors = result.Errors.Select(e => $"[{e.Field}] {e.Message}" + (e.RuleIndex.HasValue ? $" (rule {e.RuleIndex})" : "")).ToArray(),
+                        Warnings = result.Warnings.ToArray()
                     });
-                }
-
-                var result = _pricingValidator.Validate(config);
-
-                PricingValidations.WithLabels(result.IsValid ? "valid" : "invalid").Inc();
-                return Ok(new PricingValidationResponse
-                {
-                    IsValid = result.IsValid,
-                    Errors = result.Errors.Select(e => $"[{e.Field}] {e.Message}" + (e.RuleIndex.HasValue ? $" (rule {e.RuleIndex})" : "")).ToArray(),
-                    Warnings = result.Warnings.ToArray()
-                });
-            }
-            catch (Exception ex)
-            {
-                PricingValidations.WithLabels("error").Inc();
-                _logger.LogError(ex, "Error validating pricing configuration");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while validating pricing configuration");
-            }
+                },
+                Ok,
+                "ValidatePricingConfiguration");
         }
 
         /// <summary>
@@ -127,82 +123,75 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("simulate")]
         [ProducesResponseType(typeof(PricingSimulationResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public IActionResult SimulatePricing([FromBody] PricingSimulationRequest request)
+        public Task<IActionResult> SimulatePricing([FromBody] PricingSimulationRequest request)
         {
-            try
-            {
-                using var timer = PricingOperationDuration.WithLabels("simulate").NewTimer();
-
-                // Parse pricing configuration
-                PricingRulesConfig? config = null;
-                try
+            return ExecuteAsync(
+                () =>
                 {
-                    config = JsonSerializer.Deserialize<PricingRulesConfig>(request.PricingConfiguration, new JsonSerializerOptions
+                    using var timer = PricingOperationDuration.WithLabels("simulate").NewTimer();
+
+                    // Parse pricing configuration
+                    PricingRulesConfig? config = null;
+                    try
                     {
-                        PropertyNameCaseInsensitive = true
+                        config = JsonSerializer.Deserialize<PricingRulesConfig>(request.PricingConfiguration, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                    }
+                    catch (JsonException ex)
+                    {
+                        PricingSimulations.WithLabels("invalid_json").Inc();
+                        throw new ArgumentException($"Invalid pricing configuration JSON: {ex.Message}", ex);
+                    }
+
+                    if (config == null)
+                    {
+                        PricingSimulations.WithLabels("null_config").Inc();
+                        throw new ArgumentException("Configuration could not be parsed");
+                    }
+
+                    // Validate configuration first
+                    var validationResult = _pricingValidator.Validate(config);
+                    if (!validationResult.IsValid)
+                    {
+                        PricingSimulations.WithLabels("invalid_config").Inc();
+                        throw new ArgumentException("Pricing configuration is invalid");
+                    }
+
+                    // Build usage object for simulation
+                    var usage = new ConduitLLM.Core.Models.Usage
+                    {
+                        VideoDurationSeconds = request.VideoDurationSeconds,
+                        VideoResolution = request.VideoResolution,
+                        ImageCount = request.ImageCount,
+                        ImageResolution = request.ImageResolution,
+                        ImageQuality = request.ImageQuality,
+                        PricingParameters = request.Parameters ?? new Dictionary<string, object>()
+                    };
+
+                    // Evaluate the pricing rules
+                    var result = _pricingEvaluator.Evaluate(config, request.Parameters ?? new Dictionary<string, object>(), usage);
+
+                    PricingSimulations.WithLabels("success").Inc();
+                    return Task.FromResult(new PricingSimulationResponse
+                    {
+                        CalculatedCost = result.Cost,
+                        AppliedRate = result.Rate,
+                        Quantity = result.Quantity,
+                        MatchedRule = result.MatchedRule != null ? new MatchedRuleInfo
+                        {
+                            Description = result.MatchedRule.Description,
+                            Priority = result.MatchedRule.Priority,
+                            Rate = result.MatchedRule.Rate,
+                            ConditionsSummary = result.MatchedRule.Conditions?.Select(c => $"{c.Key} = {c.Value}").ToArray()
+                        } : null,
+                        UsedDefaultRate = result.UsedDefaultRate,
+                        WarningMessage = result.UsedDefaultRate ? "No matching rule found, default rate was used" : null
                     });
-                }
-                catch (JsonException ex)
-                {
-                    PricingSimulations.WithLabels("invalid_json").Inc();
-                    return BadRequest($"Invalid pricing configuration JSON: {ex.Message}");
-                }
-
-                if (config == null)
-                {
-                    PricingSimulations.WithLabels("null_config").Inc();
-                    return BadRequest("Configuration could not be parsed");
-                }
-
-                // Validate configuration first
-                var validationResult = _pricingValidator.Validate(config);
-                if (!validationResult.IsValid)
-                {
-                    PricingSimulations.WithLabels("invalid_config").Inc();
-                    return BadRequest(new
-                    {
-                        Message = "Pricing configuration is invalid",
-                        Errors = validationResult.Errors
-                    });
-                }
-
-                // Build usage object for simulation
-                var usage = new ConduitLLM.Core.Models.Usage
-                {
-                    VideoDurationSeconds = request.VideoDurationSeconds,
-                    VideoResolution = request.VideoResolution,
-                    ImageCount = request.ImageCount,
-                    ImageResolution = request.ImageResolution,
-                    ImageQuality = request.ImageQuality,
-                    PricingParameters = request.Parameters ?? new Dictionary<string, object>()
-                };
-
-                // Evaluate the pricing rules
-                var result = _pricingEvaluator.Evaluate(config, request.Parameters ?? new Dictionary<string, object>(), usage);
-
-                PricingSimulations.WithLabels("success").Inc();
-                return Ok(new PricingSimulationResponse
-                {
-                    CalculatedCost = result.Cost,
-                    AppliedRate = result.Rate,
-                    Quantity = result.Quantity,
-                    MatchedRule = result.MatchedRule != null ? new MatchedRuleInfo
-                    {
-                        Description = result.MatchedRule.Description,
-                        Priority = result.MatchedRule.Priority,
-                        Rate = result.MatchedRule.Rate,
-                        ConditionsSummary = result.MatchedRule.Conditions?.Select(c => $"{c.Key} = {c.Value}").ToArray()
-                    } : null,
-                    UsedDefaultRate = result.UsedDefaultRate,
-                    WarningMessage = result.UsedDefaultRate ? "No matching rule found, default rate was used" : null
-                });
-            }
-            catch (Exception ex)
-            {
-                PricingSimulations.WithLabels("error").Inc();
-                _logger.LogError(ex, "Error simulating pricing");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while simulating pricing");
-            }
+                },
+                Ok,
+                "SimulatePricing");
         }
 
         /// <summary>
@@ -366,34 +355,105 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("audit/query")]
         [ProducesResponseType(typeof(PricingAuditQueryResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> QueryPricingAuditEvents([FromBody] PricingAuditQueryRequest request)
+        public Task<IActionResult> QueryPricingAuditEvents([FromBody] PricingAuditQueryRequest request)
         {
             if (request.From > request.To)
             {
-                return BadRequest("From date must be before or equal to To date");
+                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
             }
 
             if (request.PageSize > 1000)
             {
-                return BadRequest("Page size cannot exceed 1000");
+                return Task.FromResult<IActionResult>(BadRequest("Page size cannot exceed 1000"));
             }
 
-            try
-            {
-                using var timer = PricingOperationDuration.WithLabels("audit_query").NewTimer();
-
-                var (events, totalCount) = await _pricingAuditService.GetAuditEventsAsync(
-                    request.From,
-                    request.To,
-                    request.VirtualKeyId,
-                    request.ModelId,
-                    request.PricingType,
-                    request.PageNumber,
-                    request.PageSize);
-
-                var response = new PricingAuditQueryResponse
+            return ExecuteAsync(
+                async () =>
                 {
-                    Events = events.Select(e => new PricingAuditEventDto
+                    using var timer = PricingOperationDuration.WithLabels("audit_query").NewTimer();
+
+                    var (events, totalCount) = await _pricingAuditService.GetAuditEventsAsync(
+                        request.From,
+                        request.To,
+                        request.VirtualKeyId,
+                        request.ModelId,
+                        request.PricingType,
+                        request.PageNumber,
+                        request.PageSize);
+
+                    return new PricingAuditQueryResponse
+                    {
+                        Events = events.Select(e => new PricingAuditEventDto
+                        {
+                            Id = e.Id,
+                            Timestamp = e.Timestamp,
+                            VirtualKeyId = e.VirtualKeyId,
+                            ModelId = e.ModelId,
+                            ModelCostId = e.ModelCostId,
+                            PricingType = e.PricingType,
+                            InputParameters = e.InputParameters,
+                            MatchedRule = e.MatchedRule,
+                            UsedDefaultRate = e.UsedDefaultRate,
+                            AppliedRate = e.AppliedRate,
+                            Quantity = e.Quantity,
+                            CalculatedCost = e.CalculatedCost,
+                            RequestId = e.RequestId
+                        }).ToList(),
+                        TotalCount = totalCount,
+                        PageNumber = request.PageNumber,
+                        PageSize = request.PageSize
+                    };
+                },
+                Ok,
+                "QueryPricingAuditEvents");
+        }
+
+        /// <summary>
+        /// Get pricing audit summary
+        /// </summary>
+        [HttpGet("audit/summary")]
+        [ProducesResponseType(typeof(PricingAuditSummary), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public Task<IActionResult> GetPricingAuditSummary(
+            [FromQuery] DateTime from,
+            [FromQuery] DateTime to,
+            [FromQuery] int? virtualKeyId = null)
+        {
+            if (from > to)
+            {
+                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
+            }
+
+            return ExecuteAsync(
+                async () =>
+                {
+                    using var timer = PricingOperationDuration.WithLabels("audit_summary").NewTimer();
+
+                    return await _pricingAuditService.GetSummaryAsync(from, to, virtualKeyId);
+                },
+                Ok,
+                "GetPricingAuditSummary");
+        }
+
+        /// <summary>
+        /// Get pricing audit events by request ID
+        /// </summary>
+        [HttpGet("audit/request/{requestId}")]
+        [ProducesResponseType(typeof(IEnumerable<PricingAuditEventDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public Task<IActionResult> GetPricingAuditByRequestId(string requestId)
+        {
+            return ExecuteAsync(
+                async () =>
+                {
+                    var events = await _pricingAuditService.GetByRequestIdAsync(requestId);
+
+                    if (!events.Any())
+                    {
+                        throw new KeyNotFoundException($"No pricing audit events found for request {requestId}");
+                    }
+
+                    return events.Select(e => new PricingAuditEventDto
                     {
                         Id = e.Id,
                         Timestamp = e.Timestamp,
@@ -408,90 +468,11 @@ namespace ConduitLLM.Admin.Controllers
                         Quantity = e.Quantity,
                         CalculatedCost = e.CalculatedCost,
                         RequestId = e.RequestId
-                    }).ToList(),
-                    TotalCount = totalCount,
-                    PageNumber = request.PageNumber,
-                    PageSize = request.PageSize
-                };
-
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error querying pricing audit events");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while querying pricing audit events");
-            }
-        }
-
-        /// <summary>
-        /// Get pricing audit summary
-        /// </summary>
-        [HttpGet("audit/summary")]
-        [ProducesResponseType(typeof(PricingAuditSummary), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> GetPricingAuditSummary(
-            [FromQuery] DateTime from,
-            [FromQuery] DateTime to,
-            [FromQuery] int? virtualKeyId = null)
-        {
-            if (from > to)
-            {
-                return BadRequest("From date must be before or equal to To date");
-            }
-
-            try
-            {
-                using var timer = PricingOperationDuration.WithLabels("audit_summary").NewTimer();
-
-                var summary = await _pricingAuditService.GetSummaryAsync(from, to, virtualKeyId);
-                return Ok(summary);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting pricing audit summary");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while getting pricing audit summary");
-            }
-        }
-
-        /// <summary>
-        /// Get pricing audit events by request ID
-        /// </summary>
-        [HttpGet("audit/request/{requestId}")]
-        [ProducesResponseType(typeof(IEnumerable<PricingAuditEventDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetPricingAuditByRequestId(string requestId)
-        {
-            try
-            {
-                var events = await _pricingAuditService.GetByRequestIdAsync(requestId);
-
-                if (!events.Any())
-                {
-                    return NotFound($"No pricing audit events found for request {requestId}");
-                }
-
-                return Ok(events.Select(e => new PricingAuditEventDto
-                {
-                    Id = e.Id,
-                    Timestamp = e.Timestamp,
-                    VirtualKeyId = e.VirtualKeyId,
-                    ModelId = e.ModelId,
-                    ModelCostId = e.ModelCostId,
-                    PricingType = e.PricingType,
-                    InputParameters = e.InputParameters,
-                    MatchedRule = e.MatchedRule,
-                    UsedDefaultRate = e.UsedDefaultRate,
-                    AppliedRate = e.AppliedRate,
-                    Quantity = e.Quantity,
-                    CalculatedCost = e.CalculatedCost,
-                    RequestId = e.RequestId
-                }));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting pricing audit events for request {RequestId}", requestId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while getting pricing audit events");
-            }
+                    });
+                },
+                Ok,
+                "GetPricingAuditByRequestId",
+                new { RequestId = requestId });
         }
     }
 

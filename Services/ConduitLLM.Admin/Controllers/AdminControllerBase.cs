@@ -50,6 +50,16 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="AdminControllerBase"/> class
+        /// for controllers that do not require event publishing.
+        /// </summary>
+        /// <param name="logger">The logger instance for the derived controller.</param>
+        protected AdminControllerBase(ILogger logger)
+            : this(null, logger)
+        {
+        }
+
+        /// <summary>
         /// Executes an async operation with standardized error handling.
         /// Automatically handles common exception types and returns appropriate responses.
         /// </summary>

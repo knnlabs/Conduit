@@ -111,16 +111,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var objectResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, objectResult.StatusCode);
             Assert.NotNull(objectResult.Value);
-            
-            // Verify the error response structure
-            var errorProp = objectResult.Value.GetType().GetProperty("error")?.GetValue(objectResult.Value);
-            Assert.NotNull(errorProp);
-            
-            var messageProp = errorProp.GetType().GetProperty("message")?.GetValue(errorProp);
-            var typeProp = errorProp.GetType().GetProperty("type")?.GetValue(errorProp);
-            
-            Assert.Equal("An error occurred while cleaning up tasks", messageProp);
-            Assert.Equal("server_error", typeProp);
+
+            // Verify standardized error response structure from AdminControllerBase
+            var errorResponse = Assert.IsType<ConduitLLM.Configuration.DTOs.ErrorResponseDto>(objectResult.Value);
+            Assert.Equal("An unexpected error occurred.", errorResponse.error);
+            Assert.Equal("internal_error", errorResponse.Code);
         }
 
         [Fact]

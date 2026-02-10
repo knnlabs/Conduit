@@ -201,7 +201,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task TestProviderConnectionWithCredentials_WithEmptyApiKey_ShouldReturnInternalServerError()
+        public async Task TestProviderConnectionWithCredentials_WithEmptyApiKey_ShouldReturnBadRequest()
         {
             // Arrange
             var testRequest = new TestProviderRequest
@@ -218,14 +218,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
-            // Assert - Client factory exceptions result in 500 Internal Server Error
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred.", statusResult.Value);
+            // Assert - ExceptionToResponseMapper maps ArgumentException to 400 Bad Request
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal("invalid_argument", errorResponse.Code);
         }
 
         [Fact]
-        public async Task TestProviderConnectionWithCredentials_WithNullApiKey_ShouldReturnInternalServerError()
+        public async Task TestProviderConnectionWithCredentials_WithNullApiKey_ShouldReturnBadRequest()
         {
             // Arrange
             var testRequest = new TestProviderRequest
@@ -242,10 +242,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
-            // Assert - Client factory exceptions result in 500 Internal Server Error
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred.", statusResult.Value);
+            // Assert - ExceptionToResponseMapper maps ArgumentException to 400 Bad Request
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal("invalid_argument", errorResponse.Code);
         }
 
         [Fact]

@@ -1,10 +1,9 @@
-using ConduitLLM.Tests.Admin.TestHelpers;
+using ConduitLLM.Configuration.DTOs;
 
 using FluentAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 using Moq;
 
@@ -40,8 +39,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Global setting not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion
@@ -74,8 +73,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Global setting not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.Code.Should().Be("not_found");
         }
 
         [Fact]
@@ -91,8 +90,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
             statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error deleting global setting with key");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            errorResponse.Code.Should().Be("internal_error");
         }
 
         #endregion

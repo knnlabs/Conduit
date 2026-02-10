@@ -15,10 +15,9 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
-public class FunctionExecutionsController : ControllerBase
+public class FunctionExecutionsController : AdminControllerBase
 {
     private readonly IFunctionExecutionRepository _executionRepository;
-    private readonly ILogger<FunctionExecutionsController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the FunctionExecutionsController.
@@ -26,9 +25,9 @@ public class FunctionExecutionsController : ControllerBase
     public FunctionExecutionsController(
         IFunctionExecutionRepository executionRepository,
         ILogger<FunctionExecutionsController> logger)
+        : base(logger)
     {
         _executionRepository = executionRepository ?? throw new ArgumentNullException(nameof(executionRepository));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -40,25 +39,18 @@ public class FunctionExecutionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetExecutionById(Guid id)
+    public Task<IActionResult> GetExecutionById(Guid id)
     {
-        try
-        {
-            var execution = await _executionRepository.GetByIdAsync(id);
-
-            if (execution == null)
+        return ExecuteWithNotFoundAsync(
+            async () =>
             {
-                return NotFound(new ErrorResponseDto("Function execution not found"));
-            }
-
-            var dto = MapToDto(execution);
-            return Ok(dto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function execution with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                var execution = await _executionRepository.GetByIdAsync(id);
+                return execution != null ? MapToDto(execution) : null;
+            },
+            Ok,
+            "Function execution",
+            id,
+            "GetExecutionById");
     }
 
     /// <summary>
@@ -69,21 +61,17 @@ public class FunctionExecutionsController : ControllerBase
     [HttpGet("virtualkey/{virtualKeyId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetExecutionsByVirtualKey(int virtualKeyId)
+    public Task<IActionResult> GetExecutionsByVirtualKey(int virtualKeyId)
     {
-        try
-        {
-            var executions = await _executionRepository.GetByVirtualKeyIdAsync(virtualKeyId);
-            var dtos = executions.Select(MapToDto).ToList();
-            return Ok(dtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Error getting function executions for virtual key {VirtualKeyId}",
-                virtualKeyId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            async () =>
+            {
+                var executions = await _executionRepository.GetByVirtualKeyIdAsync(virtualKeyId);
+                return executions.Select(MapToDto).ToList();
+            },
+            Ok,
+            "GetExecutionsByVirtualKey",
+            new { VirtualKeyId = virtualKeyId });
     }
 
     /// <summary>
@@ -94,22 +82,18 @@ public class FunctionExecutionsController : ControllerBase
     [HttpGet("configuration/{functionConfigurationId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetExecutionsByConfiguration(int functionConfigurationId)
+    public Task<IActionResult> GetExecutionsByConfiguration(int functionConfigurationId)
     {
-        try
-        {
-            var executions = await _executionRepository.GetByFunctionConfigurationIdAsync(
-                functionConfigurationId);
-            var dtos = executions.Select(MapToDto).ToList();
-            return Ok(dtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Error getting function executions for configuration {FunctionConfigurationId}",
-                functionConfigurationId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            async () =>
+            {
+                var executions = await _executionRepository.GetByFunctionConfigurationIdAsync(
+                    functionConfigurationId);
+                return executions.Select(MapToDto).ToList();
+            },
+            Ok,
+            "GetExecutionsByConfiguration",
+            new { FunctionConfigurationId = functionConfigurationId });
     }
 
     /// <summary>
@@ -121,24 +105,22 @@ public class FunctionExecutionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetExecutionsByState(string state)
+    public Task<IActionResult> GetExecutionsByState(string state)
     {
-        try
+        if (!Enum.TryParse<ExecutionState>(state, true, out var stateEnum))
         {
-            if (!Enum.TryParse<ExecutionState>(state, true, out var stateEnum))
-            {
-                return BadRequest(new ErrorResponseDto($"Invalid execution state: {state}"));
-            }
+            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto($"Invalid execution state: {state}")));
+        }
 
-            var executions = await _executionRepository.GetByStateAsync(stateEnum);
-            var dtos = executions.Select(MapToDto).ToList();
-            return Ok(dtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function executions for state {State}", state);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            async () =>
+            {
+                var executions = await _executionRepository.GetByStateAsync(stateEnum);
+                return executions.Select(MapToDto).ToList();
+            },
+            Ok,
+            "GetExecutionsByState",
+            new { State = state });
     }
 
     /// <summary>
@@ -148,19 +130,16 @@ public class FunctionExecutionsController : ControllerBase
     [HttpGet("expired-leases")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetExpiredLeases()
+    public Task<IActionResult> GetExpiredLeases()
     {
-        try
-        {
-            var executions = await _executionRepository.GetExpiredLeasesAsync();
-            var dtos = executions.Select(MapToDto).ToList();
-            return Ok(dtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function executions with expired leases");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            async () =>
+            {
+                var executions = await _executionRepository.GetExpiredLeasesAsync();
+                return executions.Select(MapToDto).ToList();
+            },
+            Ok,
+            "GetExpiredLeases");
     }
 
     /// <summary>
@@ -170,19 +149,16 @@ public class FunctionExecutionsController : ControllerBase
     [HttpGet("ready-for-retry")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetReadyForRetry()
+    public Task<IActionResult> GetReadyForRetry()
     {
-        try
-        {
-            var executions = await _executionRepository.GetReadyForRetryAsync();
-            var dtos = executions.Select(MapToDto).ToList();
-            return Ok(dtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function executions ready for retry");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            async () =>
+            {
+                var executions = await _executionRepository.GetReadyForRetryAsync();
+                return executions.Select(MapToDto).ToList();
+            },
+            Ok,
+            "GetReadyForRetry");
     }
 
     /// <summary>
@@ -194,29 +170,28 @@ public class FunctionExecutionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CleanupOldExecutions([FromQuery] int olderThanDays = 30)
+    public Task<IActionResult> CleanupOldExecutions([FromQuery] int olderThanDays = 30)
     {
-        try
+        if (olderThanDays < 1)
         {
-            if (olderThanDays < 1)
-            {
-                return BadRequest(new ErrorResponseDto("olderThanDays must be at least 1"));
-            }
-
-            var olderThan = DateTime.UtcNow.AddDays(-olderThanDays);
-            var deletedCount = await _executionRepository.DeleteOldExecutionsAsync(olderThan);
-
-            return Ok(new
-            {
-                deletedCount,
-                message = $"Deleted {deletedCount} executions older than {olderThanDays} days"
-            });
+            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("olderThanDays must be at least 1")));
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error cleaning up old function executions");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+
+        return ExecuteAsync(
+            async () =>
+            {
+                var olderThan = DateTime.UtcNow.AddDays(-olderThanDays);
+                var deletedCount = await _executionRepository.DeleteOldExecutionsAsync(olderThan);
+
+                return new
+                {
+                    deletedCount,
+                    message = $"Deleted {deletedCount} executions older than {olderThanDays} days"
+                };
+            },
+            Ok,
+            "CleanupOldExecutions",
+            new { OlderThanDays = olderThanDays });
     }
 
     // Mapping methods

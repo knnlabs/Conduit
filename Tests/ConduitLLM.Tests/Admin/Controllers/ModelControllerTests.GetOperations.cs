@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
@@ -129,17 +130,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var objectResult = Assert.IsType<ObjectResult>(result);
             objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while retrieving models");
-
-            // Verify logging occurred
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error getting all models")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            var errorResponse = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            errorResponse.Code.Should().Be("internal_error");
         }
 
         #endregion
@@ -196,7 +188,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.Code.Should().Be("not_found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
         }
@@ -216,17 +209,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var objectResult = Assert.IsType<ObjectResult>(result);
             objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while retrieving the model");
-
-            // Verify logging occurred
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error getting model with ID")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            var errorResponse = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            errorResponse.Code.Should().Be("internal_error");
         }
 
         #endregion
@@ -353,7 +337,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.Code.Should().Be("not_found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
         }
@@ -373,17 +358,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var objectResult = Assert.IsType<ObjectResult>(result);
             objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while retrieving model identifiers");
-
-            // Verify logging occurred
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error getting identifiers for model with ID")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            var errorResponse = Assert.IsType<ErrorResponseDto>(objectResult.Value);
+            errorResponse.Code.Should().Be("internal_error");
         }
 
         #endregion

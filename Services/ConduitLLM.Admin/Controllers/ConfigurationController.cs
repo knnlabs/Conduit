@@ -15,10 +15,9 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/config")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class ConfigurationController : ControllerBase
+    public class ConfigurationController : AdminControllerBase
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-        private readonly ILogger<ConfigurationController> _logger;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
         private readonly ICacheManagementService? _cacheManagementService;
@@ -40,9 +39,9 @@ namespace ConduitLLM.Admin.Controllers
             IConfiguration configuration,
             ILLMCacheManagementService llmCacheManagementService,
             ICacheManagementService? cacheManagementService = null)
+            : base(logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _cacheManagementService = cacheManagementService; // Optional - may be null
@@ -55,69 +54,66 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Routing configuration data.</returns>
         [HttpGet("routing")]
-        public async Task<IActionResult> GetRoutingConfig(CancellationToken cancellationToken = default)
+        public Task<IActionResult> GetRoutingConfig(CancellationToken cancellationToken = default)
         {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            return ExecuteAsync(
+                async () =>
+                {
+                    using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-                // Get model-to-provider mappings
-                var modelMappings = await dbContext.ModelProviderMappings
-                    .Include(m => m.Provider)
-                    .Select(m => new
-                    {
-                        Id = m.Id,
-                        ModelAlias = m.ModelAlias,
-                        ProviderModelId = m.ProviderModelId,
-                        IsEnabled = m.IsEnabled,
-                        Provider = new
+                    // Get model-to-provider mappings
+                    var modelMappings = await dbContext.ModelProviderMappings
+                        .Include(m => m.Provider)
+                        .Select(m => new
                         {
-                            Id = m.Provider.Id,
-                            Name = m.Provider.ProviderName,
-                            Type = m.Provider.ProviderType,
-                            IsEnabled = m.Provider.IsEnabled
+                            Id = m.Id,
+                            ModelAlias = m.ModelAlias,
+                            ProviderModelId = m.ProviderModelId,
+                            IsEnabled = m.IsEnabled,
+                            Provider = new
+                            {
+                                Id = m.Provider.Id,
+                                Name = m.Provider.ProviderName,
+                                Type = m.Provider.ProviderType,
+                                IsEnabled = m.Provider.IsEnabled
+                            }
+                        })
+                        .ToListAsync(cancellationToken);
+
+                    // Get load balancing configuration
+                    var loadBalancers = new List<object>
+                    {
+                        new
+                        {
+                            Id = "primary",
+                            Name = "Primary Load Balancer",
+                            Algorithm = _configuration["LoadBalancing:Algorithm"] ?? "round-robin",
+                            HealthCheckInterval = 30,
+                            FailoverThreshold = 3,
+                            Endpoints = await GetProviderEndpoints(dbContext, cancellationToken)
                         }
-                    })
-                    .ToListAsync(cancellationToken);
+                    };
 
-                // Get load balancing configuration
-                var loadBalancers = new List<object>
-                {
-                    new
+                    // Get routing statistics
+                    var routingStats = await GetRoutingStatistics(dbContext, cancellationToken);
+
+                    return (object)new
                     {
-                        Id = "primary",
-                        Name = "Primary Load Balancer",
-                        Algorithm = _configuration["LoadBalancing:Algorithm"] ?? "round-robin",
-                        HealthCheckInterval = 30,
-                        FailoverThreshold = 3,
-                        Endpoints = await GetProviderEndpoints(dbContext, cancellationToken)
-                    }
-                };
-
-
-                // Get routing statistics
-                var routingStats = await GetRoutingStatistics(dbContext, cancellationToken);
-
-                return Ok(new
-                {
-                    Timestamp = DateTime.UtcNow,
-                    RoutingRules = modelMappings,
-                    LoadBalancers = loadBalancers,
-                    Statistics = routingStats,
-                    Configuration = new
-                    {
-                        EnableFailover = _configuration.GetValue<bool>("Routing:EnableFailover", true),
-                        EnableLoadBalancing = _configuration.GetValue<bool>("Routing:EnableLoadBalancing", true),
-                        RequestTimeout = _configuration.GetValue<int>("Routing:RequestTimeoutSeconds", 30),
-                        CircuitBreakerThreshold = _configuration.GetValue<int>("Routing:CircuitBreakerThreshold", 5)
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to retrieve routing configuration");
-                return StatusCode(500, new { error = "Failed to retrieve routing configuration", message = ex.Message });
-            }
+                        Timestamp = DateTime.UtcNow,
+                        RoutingRules = modelMappings,
+                        LoadBalancers = loadBalancers,
+                        Statistics = routingStats,
+                        Configuration = new
+                        {
+                            EnableFailover = _configuration.GetValue<bool>("Routing:EnableFailover", true),
+                            EnableLoadBalancing = _configuration.GetValue<bool>("Routing:EnableLoadBalancing", true),
+                            RequestTimeout = _configuration.GetValue<int>("Routing:RequestTimeoutSeconds", 30),
+                            CircuitBreakerThreshold = _configuration.GetValue<int>("Routing:CircuitBreakerThreshold", 5)
+                        }
+                    };
+                },
+                Ok,
+                "GetRoutingConfig");
         }
 
         /// <summary>
@@ -126,22 +122,17 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Caching configuration data.</returns>
         [HttpGet("caching")]
-        public async Task<IActionResult> GetCachingConfig(CancellationToken cancellationToken = default)
+        public Task<IActionResult> GetCachingConfig(CancellationToken cancellationToken = default)
         {
-            try
+            if (_cacheManagementService == null)
             {
-                if (_cacheManagementService == null)
-                {
-                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
-                }
-                var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
-                return Ok(configuration);
+                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to retrieve caching configuration");
-                return StatusCode(500, new { error = "Failed to retrieve caching configuration", message = ex.Message });
-            }
+
+            return ExecuteAsync(
+                () => _cacheManagementService.GetConfigurationAsync(cancellationToken),
+                Ok,
+                "GetCachingConfig");
         }
 
 
@@ -152,22 +143,17 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPut("caching")]
-        public async Task<IActionResult> UpdateCachingConfig([FromBody] UpdateCacheConfigDto config, CancellationToken cancellationToken = default)
+        public Task<IActionResult> UpdateCachingConfig([FromBody] UpdateCacheConfigDto config, CancellationToken cancellationToken = default)
         {
-            try
+            if (_cacheManagementService == null)
             {
-                if (_cacheManagementService == null)
-                {
-                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
-                }
-                await _cacheManagementService.UpdateConfigurationAsync(config, cancellationToken);
-                return Ok(new { message = "Caching configuration updated successfully" });
+                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update caching configuration");
-                return StatusCode(500, new { error = "Failed to update caching configuration", message = ex.Message });
-            }
+
+            return ExecuteAsync(
+                async () => { await _cacheManagementService.UpdateConfigurationAsync(config, cancellationToken); },
+                Ok(new { message = "Caching configuration updated successfully" }),
+                "UpdateCachingConfig");
         }
 
         /// <summary>
@@ -177,26 +163,22 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPost("caching/{cacheId}/clear")]
-        public async Task<IActionResult> ClearCache(string cacheId, CancellationToken cancellationToken = default)
+        public Task<IActionResult> ClearCache(string cacheId, CancellationToken cancellationToken = default)
         {
-            try
+            if (_cacheManagementService == null)
             {
-                if (_cacheManagementService == null)
+                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
+            }
+
+            return ExecuteAsync(
+                async () =>
                 {
-                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
-                }
-                await _cacheManagementService.ClearCacheAsync(cacheId, cancellationToken);
-                return Ok(new { message = $"Cache '{cacheId}' cleared successfully" });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to clear cache {CacheId}", cacheId);
-                return StatusCode(500, new { error = "Failed to clear cache", message = ex.Message });
-            }
+                    await _cacheManagementService.ClearCacheAsync(cacheId, cancellationToken);
+                    return new { message = $"Cache '{cacheId}' cleared successfully" };
+                },
+                Ok,
+                "ClearCache",
+                new { CacheId = cacheId });
         }
 
         /// <summary>
@@ -206,26 +188,18 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Cache statistics.</returns>
         [HttpGet("caching/statistics")]
-        public async Task<IActionResult> GetCacheStatistics([FromQuery] string? regionId = null, CancellationToken cancellationToken = default)
+        public Task<IActionResult> GetCacheStatistics([FromQuery] string? regionId = null, CancellationToken cancellationToken = default)
         {
-            try
+            if (_cacheManagementService == null)
             {
-                if (_cacheManagementService == null)
-                {
-                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
-                }
-                var statistics = await _cacheManagementService.GetStatisticsAsync(regionId, cancellationToken);
-                return Ok(statistics);
+                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
             }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get cache statistics");
-                return StatusCode(500, new { error = "Failed to get cache statistics", message = ex.Message });
-            }
+
+            return ExecuteAsync(
+                () => _cacheManagementService.GetStatisticsAsync(regionId, cancellationToken),
+                Ok,
+                "GetCacheStatistics",
+                new { RegionId = regionId });
         }
 
         /// <summary>
@@ -234,26 +208,25 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of cache regions.</returns>
         [HttpGet("caching/regions")]
-        public async Task<IActionResult> GetCacheRegions(CancellationToken cancellationToken = default)
+        public Task<IActionResult> GetCacheRegions(CancellationToken cancellationToken = default)
         {
-            try
+            if (_cacheManagementService == null)
             {
-                if (_cacheManagementService == null)
-                {
-                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
-                }
-                var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
-                return Ok(new
-                {
-                    Regions = configuration.CacheRegions,
-                    Timestamp = DateTime.UtcNow
-                });
+                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get cache regions");
-                return StatusCode(500, new { error = "Failed to get cache regions", message = ex.Message });
-            }
+
+            return ExecuteAsync(
+                async () =>
+                {
+                    var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
+                    return (object)new
+                    {
+                        Regions = configuration.CacheRegions,
+                        Timestamp = DateTime.UtcNow
+                    };
+                },
+                Ok,
+                "GetCacheRegions");
         }
 
         /// <summary>
@@ -265,31 +238,23 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Cache entries.</returns>
         [HttpGet("caching/{regionId}/entries")]
-        public async Task<IActionResult> GetCacheEntries(string regionId, [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken cancellationToken = default)
+        public Task<IActionResult> GetCacheEntries(string regionId, [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken cancellationToken = default)
         {
-            try
+            if (_cacheManagementService == null)
             {
-                if (_cacheManagementService == null)
-                {
-                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
-                }
-                if (take > 1000)
-                {
-                    return BadRequest(new ErrorResponseDto("Cannot retrieve more than 1000 entries at once"));
-                }
+                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
+            }
 
-                var entries = await _cacheManagementService.GetEntriesAsync(regionId, skip, take, cancellationToken);
-                return Ok(entries);
-            }
-            catch (ArgumentException ex)
+            if (take > 1000)
             {
-                return BadRequest(new { error = ex.Message });
+                return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("Cannot retrieve more than 1000 entries at once")));
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get cache entries for region {RegionId}", regionId);
-                return StatusCode(500, new { error = "Failed to get cache entries", message = ex.Message });
-            }
+
+            return ExecuteAsync(
+                () => _cacheManagementService.GetEntriesAsync(regionId, skip, take, cancellationToken),
+                Ok,
+                "GetCacheEntries",
+                new { RegionId = regionId });
         }
 
         /// <summary>
@@ -300,33 +265,25 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPost("caching/{regionId}/refresh")]
-        public async Task<IActionResult> RefreshCache(string regionId, [FromQuery] string? key = null, CancellationToken cancellationToken = default)
+        public Task<IActionResult> RefreshCache(string regionId, [FromQuery] string? key = null, CancellationToken cancellationToken = default)
         {
-            try
+            if (_cacheManagementService == null)
             {
-                if (_cacheManagementService == null)
+                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
+            }
+
+            return ExecuteAsync(
+                async () =>
                 {
-                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
-                }
-                await _cacheManagementService.RefreshCacheAsync(regionId, key, cancellationToken);
-                var message = string.IsNullOrEmpty(key)
-                    ? $"Cache region '{regionId}' refreshed successfully"
-                    : $"Cache key '{key}' in region '{regionId}' refreshed successfully";
-                return Ok(new { message });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to refresh cache for region {RegionId}", regionId);
-                return StatusCode(500, new { error = "Failed to refresh cache", message = ex.Message });
-            }
+                    await _cacheManagementService.RefreshCacheAsync(regionId, key, cancellationToken);
+                    var message = string.IsNullOrEmpty(key)
+                        ? $"Cache region '{regionId}' refreshed successfully"
+                        : $"Cache key '{key}' in region '{regionId}' refreshed successfully";
+                    return new { message };
+                },
+                Ok,
+                "RefreshCache",
+                new { RegionId = regionId, Key = key });
         }
 
         /// <summary>
@@ -337,26 +294,18 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPut("caching/{regionId}/policy")]
-        public async Task<IActionResult> UpdateCachePolicy(string regionId, [FromBody] UpdateCachePolicyDto policyUpdate, CancellationToken cancellationToken = default)
+        public Task<IActionResult> UpdateCachePolicy(string regionId, [FromBody] UpdateCachePolicyDto policyUpdate, CancellationToken cancellationToken = default)
         {
-            try
+            if (_cacheManagementService == null)
             {
-                if (_cacheManagementService == null)
-                {
-                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
-                }
-                await _cacheManagementService.UpdatePolicyAsync(regionId, policyUpdate, cancellationToken);
-                return Ok(new { message = $"Cache policy for region '{regionId}' updated successfully" });
+                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
             }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update cache policy for region {RegionId}", regionId);
-                return StatusCode(500, new { error = "Failed to update cache policy", message = ex.Message });
-            }
+
+            return ExecuteAsync(
+                async () => { await _cacheManagementService.UpdatePolicyAsync(regionId, policyUpdate, cancellationToken); },
+                Ok(new { message = $"Cache policy for region '{regionId}' updated successfully" }),
+                "UpdateCachePolicy",
+                new { RegionId = regionId });
         }
 
         private async Task<List<object>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
@@ -412,18 +361,12 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>LLM cache control status.</returns>
         [HttpGet("caching/llm-status")]
         [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
-        public async Task<IActionResult> GetLLMCacheStatus(CancellationToken cancellationToken = default)
+        public Task<IActionResult> GetLLMCacheStatus(CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var status = await _llmCacheManagementService.GetLLMCacheStatusAsync(cancellationToken);
-                return Ok(status);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get LLM cache status");
-                return StatusCode(500, new { error = "Failed to get LLM cache status", message = ex.Message });
-            }
+            return ExecuteAsync(
+                () => _llmCacheManagementService.GetLLMCacheStatusAsync(cancellationToken),
+                Ok,
+                "GetLLMCacheStatus");
         }
 
         /// <summary>
@@ -434,24 +377,20 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Updated LLM cache control status.</returns>
         [HttpPost("caching/llm-toggle")]
         [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
-        public async Task<IActionResult> ToggleLLMCache([FromBody] ToggleLLMCacheRequest request, CancellationToken cancellationToken = default)
+        public Task<IActionResult> ToggleLLMCache([FromBody] ToggleLLMCacheRequest request, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var userName = User?.Identity?.Name ?? "Unknown";
-                var result = await _llmCacheManagementService.ToggleLLMCacheAsync(
-                    request.Enabled,
-                    userName,
-                    request.Reason,
-                    cancellationToken);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to toggle LLM cache");
-                return StatusCode(500, new { error = "Failed to toggle LLM cache", message = ex.Message });
-            }
+            return ExecuteAsync(
+                async () =>
+                {
+                    var userName = User?.Identity?.Name ?? "Unknown";
+                    return await _llmCacheManagementService.ToggleLLMCacheAsync(
+                        request.Enabled,
+                        userName,
+                        request.Reason,
+                        cancellationToken);
+                },
+                Ok,
+                "ToggleLLMCache");
         }
 
     }

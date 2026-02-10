@@ -12,10 +12,9 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/admin/media-cleanup")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class MediaCleanupController : ControllerBase
+    public class MediaCleanupController : AdminControllerBase
     {
         private readonly IMediaCleanupStatusService _statusService;
-        private readonly ILogger<MediaCleanupController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MediaCleanupController"/> class.
@@ -23,9 +22,9 @@ namespace ConduitLLM.Admin.Controllers
         public MediaCleanupController(
             IMediaCleanupStatusService statusService,
             ILogger<MediaCleanupController> logger)
+            : base(logger)
         {
             _statusService = statusService;
-            _logger = logger;
         }
 
         /// <summary>
@@ -35,20 +34,12 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("status")]
         [ProducesResponseType(typeof(MediaCleanupStatusDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetStatus()
+        public Task<IActionResult> GetStatus()
         {
-            try
-            {
-                var status = await _statusService.GetStatusAsync();
-                return Ok(status);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting media cleanup status");
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while getting cleanup status" });
-            }
+            return ExecuteAsync(
+                () => _statusService.GetStatusAsync(),
+                Ok,
+                "GetStatus");
         }
 
         /// <summary>
@@ -58,20 +49,16 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("enabled")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetEnabled()
+        public Task<IActionResult> GetEnabled()
         {
-            try
-            {
-                var isEnabled = await _statusService.IsEnabledAsync();
-                return Ok(new { enabled = isEnabled });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting media cleanup enabled state");
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while getting enabled state" });
-            }
+            return ExecuteAsync(
+                async () =>
+                {
+                    var isEnabled = await _statusService.IsEnabledAsync();
+                    return new { enabled = isEnabled };
+                },
+                Ok,
+                "GetEnabled");
         }
 
         /// <summary>
@@ -84,31 +71,27 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SetEnabled([FromBody] UpdateMediaCleanupEnabledRequest request)
+        public Task<IActionResult> SetEnabled([FromBody] UpdateMediaCleanupEnabledRequest request)
         {
-            try
-            {
-                await _statusService.SetEnabledAsync(request.Enabled);
-
-                _logger.LogInformation(
-                    "Media cleanup service enabled state changed to {Enabled} by admin request",
-                    request.Enabled);
-
-                return Ok(new
+            return ExecuteAsync(
+                async () =>
                 {
-                    enabled = request.Enabled,
-                    message = request.Enabled
-                        ? "Media cleanup service has been enabled"
-                        : "Media cleanup service has been disabled"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting media cleanup enabled state");
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while setting enabled state" });
-            }
+                    await _statusService.SetEnabledAsync(request.Enabled);
+
+                    Logger.LogInformation(
+                        "Media cleanup service enabled state changed to {Enabled} by admin request",
+                        request.Enabled);
+
+                    return new
+                    {
+                        enabled = request.Enabled,
+                        message = request.Enabled
+                            ? "Media cleanup service has been enabled"
+                            : "Media cleanup service has been disabled"
+                    };
+                },
+                Ok,
+                "SetEnabled");
         }
 
         /// <summary>
@@ -119,24 +102,20 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("simple-retention")]
         [ProducesResponseType(typeof(SimpleRetentionResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetSimpleRetention()
+        public Task<IActionResult> GetSimpleRetention()
         {
-            try
-            {
-                var days = await _statusService.GetSimpleRetentionOverrideAsync();
-                return Ok(new SimpleRetentionResponse
+            return ExecuteAsync(
+                async () =>
                 {
-                    RetentionDays = days,
-                    IsOverrideActive = days.HasValue
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting simple retention override");
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while getting simple retention override" });
-            }
+                    var days = await _statusService.GetSimpleRetentionOverrideAsync();
+                    return new SimpleRetentionResponse
+                    {
+                        RetentionDays = days,
+                        IsOverrideActive = days.HasValue
+                    };
+                },
+                Ok,
+                "GetSimpleRetention");
         }
 
         /// <summary>
@@ -150,38 +129,30 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(SimpleRetentionResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SetSimpleRetention([FromBody] UpdateSimpleRetentionRequest request)
+        public Task<IActionResult> SetSimpleRetention([FromBody] UpdateSimpleRetentionRequest request)
         {
-            try
-            {
-                await _statusService.SetSimpleRetentionOverrideAsync(request.RetentionDays);
-
-                var message = request.RetentionDays.HasValue
-                    ? $"Simple retention override set to {request.RetentionDays} days - all media will be deleted after this period"
-                    : "Simple retention override cleared - using policy-based retention";
-
-                _logger.LogInformation(
-                    "Simple retention override changed to {Days} by admin request",
-                    request.RetentionDays?.ToString() ?? "null (cleared)");
-
-                return Ok(new SimpleRetentionResponse
+            return ExecuteAsync(
+                async () =>
                 {
-                    RetentionDays = request.RetentionDays,
-                    IsOverrideActive = request.RetentionDays.HasValue,
-                    Message = message
-                });
-            }
-            catch (ArgumentOutOfRangeException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting simple retention override");
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while setting simple retention override" });
-            }
+                    await _statusService.SetSimpleRetentionOverrideAsync(request.RetentionDays);
+
+                    var message = request.RetentionDays.HasValue
+                        ? $"Simple retention override set to {request.RetentionDays} days - all media will be deleted after this period"
+                        : "Simple retention override cleared - using policy-based retention";
+
+                    Logger.LogInformation(
+                        "Simple retention override changed to {Days} by admin request",
+                        request.RetentionDays?.ToString() ?? "null (cleared)");
+
+                    return new SimpleRetentionResponse
+                    {
+                        RetentionDays = request.RetentionDays,
+                        IsOverrideActive = request.RetentionDays.HasValue,
+                        Message = message
+                    };
+                },
+                Ok,
+                "SetSimpleRetention");
         }
     }
 }

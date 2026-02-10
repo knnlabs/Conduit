@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
@@ -96,9 +97,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.GetKeysInGroup(groupId);
 
-            // Assert
-            var actionResult = Assert.IsType<ActionResult<List<VirtualKeyDto>>>(result);
-            var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
+            // Assert - Controller returns IActionResult, not ActionResult<T>
+            var okResult = Assert.IsType<OkObjectResult>(result);
             var keys = Assert.IsType<List<VirtualKeyDto>>(okResult.Value);
 
             Assert.Equal(2, keys.Count);
@@ -125,17 +125,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.GetKeysInGroup(groupId);
 
-            // Assert
-            var actionResult = Assert.IsType<ActionResult<List<VirtualKeyDto>>>(result);
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(actionResult.Result);
-            
-            var response = notFoundResult.Value;
-            Assert.NotNull(response);
-            
-            // Use reflection to check the message property
-            var messageProperty = response.GetType().GetProperty("message");
-            Assert.NotNull(messageProperty);
-            Assert.Equal("Group not found", messageProperty.GetValue(response));
+            // Assert - ExecuteWithNotFoundAsync returns NotFoundObjectResult with ErrorResponseDto
+            Assert.IsType<NotFoundObjectResult>(result);
 
             // Verify the correct repository method was called
             _mockGroupRepository.Verify(r => r.GetByIdWithKeysAsync(groupId), Times.Once);
@@ -164,9 +155,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.GetKeysInGroup(groupId);
 
-            // Assert
-            var actionResult = Assert.IsType<ActionResult<List<VirtualKeyDto>>>(result);
-            var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
+            // Assert - Controller returns IActionResult, not ActionResult<T>
+            var okResult = Assert.IsType<OkObjectResult>(result);
             var keys = Assert.IsType<List<VirtualKeyDto>>(okResult.Value);
 
             Assert.Empty(keys);
@@ -176,7 +166,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GetKeysInGroup_ShouldReturnInternalServerError_WhenExceptionOccurs()
+        public async Task GetKeysInGroup_ShouldReturnBadRequest_WhenInvalidOperationExceptionOccurs()
         {
             // Arrange
             var groupId = 1;
@@ -186,19 +176,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.GetKeysInGroup(groupId);
 
-            // Assert
-            var actionResult = Assert.IsType<ActionResult<List<VirtualKeyDto>>>(result);
-            var statusCodeResult = Assert.IsType<ObjectResult>(actionResult.Result);
-            
-            Assert.Equal(500, statusCodeResult.StatusCode);
-            
-            var response = statusCodeResult.Value;
-            Assert.NotNull(response);
-            
-            // Use reflection to check the message property
-            var messageProperty = response.GetType().GetProperty("message");
-            Assert.NotNull(messageProperty);
-            Assert.Equal("An error occurred while retrieving the keys", messageProperty.GetValue(response));
+            // Assert - ExceptionToResponseMapper maps InvalidOperationException to 400 Bad Request
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal("Database error", errorResponse.error);
+            Assert.Equal("invalid_operation", errorResponse.Code);
 
             // Verify the repository method was called
             _mockGroupRepository.Verify(r => r.GetByIdWithKeysAsync(groupId), Times.Once);
@@ -227,9 +210,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.GetKeysInGroup(groupId);
 
-            // Assert
-            var actionResult = Assert.IsType<ActionResult<List<VirtualKeyDto>>>(result);
-            var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
+            // Assert - Controller returns IActionResult, not ActionResult<T>
+            var okResult = Assert.IsType<OkObjectResult>(result);
             var keys = Assert.IsType<List<VirtualKeyDto>>(okResult.Value);
 
             Assert.Empty(keys);

@@ -14,11 +14,9 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
-public class FunctionConfigurationsController : ControllerBase
+public class FunctionConfigurationsController : AdminControllerBase
 {
     private readonly IFunctionConfigurationRepository _configurationRepository;
-    private readonly IPublishEndpoint? _publishEndpoint;
-    private readonly ILogger<FunctionConfigurationsController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the FunctionConfigurationsController.
@@ -27,10 +25,9 @@ public class FunctionConfigurationsController : ControllerBase
         IFunctionConfigurationRepository configurationRepository,
         IPublishEndpoint? publishEndpoint,
         ILogger<FunctionConfigurationsController> logger)
+        : base(publishEndpoint, logger)
     {
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));
-        _publishEndpoint = publishEndpoint; // Nullable for in-memory mode
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -40,18 +37,12 @@ public class FunctionConfigurationsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetAllConfigurations()
+    public Task<IActionResult> GetAllConfigurations()
     {
-        try
-        {
-            var configurations = await _configurationRepository.GetAllUnboundedAsync();
-            return Ok(configurations);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all function configurations");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _configurationRepository.GetAllUnboundedAsync(),
+            Ok,
+            "GetAllConfigurations");
     }
 
     /// <summary>
@@ -63,24 +54,14 @@ public class FunctionConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetConfigurationById(int id)
+    public Task<IActionResult> GetConfigurationById(int id)
     {
-        try
-        {
-            var configuration = await _configurationRepository.GetByIdAsync(id);
-
-            if (configuration == null)
-            {
-                return NotFound(new ErrorResponseDto("Function configuration not found"));
-            }
-
-            return Ok(configuration);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function configuration with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteWithNotFoundAsync(
+            () => _configurationRepository.GetByIdAsync(id),
+            Ok,
+            "FunctionConfiguration",
+            id,
+            "GetConfigurationById");
     }
 
     /// <summary>
@@ -91,23 +72,18 @@ public class FunctionConfigurationsController : ControllerBase
     [HttpGet("provider/{providerType}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetConfigurationsByProvider(string providerType)
+    public Task<IActionResult> GetConfigurationsByProvider(string providerType)
     {
-        try
+        if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionProviderType>(providerType, true, out var providerEnum))
         {
-            if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionProviderType>(providerType, true, out var providerEnum))
-            {
-                return BadRequest(new ErrorResponseDto($"Invalid provider type: {providerType}"));
-            }
+            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto($"Invalid provider type: {providerType}")));
+        }
 
-            var configurations = await _configurationRepository.GetByProviderTypeAsync(providerEnum);
-            return Ok(configurations);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function configurations for provider {ProviderType}", providerType);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _configurationRepository.GetByProviderTypeAsync(providerEnum),
+            Ok,
+            "GetConfigurationsByProvider",
+            new { ProviderType = providerType });
     }
 
     /// <summary>
@@ -118,23 +94,18 @@ public class FunctionConfigurationsController : ControllerBase
     [HttpGet("purpose/{purpose}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetConfigurationsByPurpose(string purpose)
+    public Task<IActionResult> GetConfigurationsByPurpose(string purpose)
     {
-        try
+        if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionPurpose>(purpose, true, out var purposeEnum))
         {
-            if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionPurpose>(purpose, true, out var purposeEnum))
-            {
-                return BadRequest(new ErrorResponseDto($"Invalid purpose: {purpose}"));
-            }
+            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto($"Invalid purpose: {purpose}")));
+        }
 
-            var configurations = await _configurationRepository.GetByPurposeAsync(purposeEnum);
-            return Ok(configurations);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function configurations for purpose {Purpose}", purpose);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _configurationRepository.GetByPurposeAsync(purposeEnum),
+            Ok,
+            "GetConfigurationsByPurpose",
+            new { Purpose = purpose });
     }
 
     /// <summary>
@@ -146,27 +117,26 @@ public class FunctionConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateConfiguration(
+    public Task<IActionResult> CreateConfiguration(
         [FromBody] ConduitLLM.Functions.Entities.FunctionConfiguration configuration)
     {
-        try
+        if (configuration == null)
         {
-            if (configuration == null)
+            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("Function configuration data is required")));
+        }
+
+        return ExecuteAsync(
+            async () =>
             {
-                return BadRequest(new ErrorResponseDto("Function configuration data is required"));
-            }
+                int id = await _configurationRepository.CreateAsync(configuration);
 
-            int id = await _configurationRepository.CreateAsync(configuration);
+                // Fetch the created entity to return
+                var created = await _configurationRepository.GetByIdAsync(id);
 
-            // Fetch the created entity to return
-            var created = await _configurationRepository.GetByIdAsync(id);
-
-            // Publish FunctionConfigurationChanged event for cache invalidation
-            if (_publishEndpoint != null && created != null)
-            {
-                try
+                // Publish FunctionConfigurationChanged event for cache invalidation
+                if (created != null)
                 {
-                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
+                    PublishEventFireAndForget(new FunctionConfigurationChanged
                     {
                         FunctionConfigurationId = created.Id,
                         ConfigurationName = created.ConfigurationName,
@@ -177,31 +147,17 @@ public class FunctionConfigurationsController : ControllerBase
                         IsEnabledChanged = false,
                         CacheTtlChanged = false,
                         CorrelationId = Guid.NewGuid().ToString()
-                    });
-
-                    _logger.LogInformation(
-                        "Published FunctionConfigurationChanged event for created configuration '{ConfigName}' (ID: {ConfigId})",
-                        created.ConfigurationName, created.Id);
+                    }, "create function configuration",
+                    new { ConfigName = created.ConfigurationName, ConfigId = created.Id });
                 }
-                catch (Exception publishEx)
-                {
-                    // Log but don't fail the request if event publishing fails
-                    _logger.LogError(publishEx,
-                        "Failed to publish FunctionConfigurationChanged event for created configuration '{ConfigName}' (ID: {ConfigId})",
-                        created.ConfigurationName, created.Id);
-                }
-            }
 
-            return CreatedAtAction(
+                return (id, created);
+            },
+            result => CreatedAtAction(
                 nameof(GetConfigurationById),
-                new { id },
-                created);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating function configuration");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                new { id = result.id },
+                result.created),
+            "CreateConfiguration");
     }
 
     /// <summary>
@@ -215,60 +171,53 @@ public class FunctionConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateConfiguration(
+    public Task<IActionResult> UpdateConfiguration(
         int id,
         [FromBody] ConduitLLM.Functions.Entities.FunctionConfiguration configuration)
     {
-        try
+        if (configuration == null)
         {
-            if (configuration == null)
+            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("Function configuration data is required")));
+        }
+
+        if (id != configuration.Id)
+        {
+            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("ID mismatch")));
+        }
+
+        return ExecuteWithNotFoundAsync(
+            () => _configurationRepository.GetByIdAsync(id),
+            async existing =>
             {
-                return BadRequest(new ErrorResponseDto("Function configuration data is required"));
-            }
+                // Detect changes for event publishing
+                bool isEnabledChanged = existing.IsEnabled != configuration.IsEnabled;
+                bool cacheTtlChanged = existing.CacheTtlMinutes != configuration.CacheTtlMinutes;
+                var changedProperties = new List<string>();
+                if (existing.ConfigurationName != configuration.ConfigurationName) changedProperties.Add("ConfigurationName");
+                if (existing.ProviderType != configuration.ProviderType) changedProperties.Add("ProviderType");
+                if (existing.Purpose != configuration.Purpose) changedProperties.Add("Purpose");
+                if (existing.IsEnabled != configuration.IsEnabled) changedProperties.Add("IsEnabled");
+                if (existing.BaseUrl != configuration.BaseUrl) changedProperties.Add("BaseUrl");
+                if (existing.TimeoutSeconds != configuration.TimeoutSeconds) changedProperties.Add("TimeoutSeconds");
+                if (existing.CacheTtlMinutes != configuration.CacheTtlMinutes) changedProperties.Add("CacheTtlMinutes");
+                if (existing.ProviderSettings != configuration.ProviderSettings) changedProperties.Add("ProviderSettings");
+                if (existing.ParameterSchema != configuration.ParameterSchema) changedProperties.Add("ParameterSchema");
+                if (existing.Description != configuration.Description) changedProperties.Add("Description");
 
-            if (id != configuration.Id)
-            {
-                return BadRequest(new ErrorResponseDto("ID mismatch"));
-            }
+                await _configurationRepository.UpdateAsync(configuration);
 
-            // Get existing configuration to detect changes
-            var existing = await _configurationRepository.GetByIdAsync(id);
-            if (existing == null)
-            {
-                return NotFound(new ErrorResponseDto("Function configuration not found"));
-            }
+                // Fetch the updated entity to return
+                var updated = await _configurationRepository.GetByIdAsync(id);
 
-            // Detect changes for event publishing
-            bool isEnabledChanged = existing.IsEnabled != configuration.IsEnabled;
-            bool cacheTtlChanged = existing.CacheTtlMinutes != configuration.CacheTtlMinutes;
-            var changedProperties = new List<string>();
-            if (existing.ConfigurationName != configuration.ConfigurationName) changedProperties.Add("ConfigurationName");
-            if (existing.ProviderType != configuration.ProviderType) changedProperties.Add("ProviderType");
-            if (existing.Purpose != configuration.Purpose) changedProperties.Add("Purpose");
-            if (existing.IsEnabled != configuration.IsEnabled) changedProperties.Add("IsEnabled");
-            if (existing.BaseUrl != configuration.BaseUrl) changedProperties.Add("BaseUrl");
-            if (existing.TimeoutSeconds != configuration.TimeoutSeconds) changedProperties.Add("TimeoutSeconds");
-            if (existing.CacheTtlMinutes != configuration.CacheTtlMinutes) changedProperties.Add("CacheTtlMinutes");
-            if (existing.ProviderSettings != configuration.ProviderSettings) changedProperties.Add("ProviderSettings");
-            if (existing.ParameterSchema != configuration.ParameterSchema) changedProperties.Add("ParameterSchema");
-            if (existing.Description != configuration.Description) changedProperties.Add("Description");
-
-            await _configurationRepository.UpdateAsync(configuration);
-
-            // Fetch the updated entity to return
-            var updated = await _configurationRepository.GetByIdAsync(id);
-
-            if (updated == null)
-            {
-                return NotFound(new ErrorResponseDto("Function configuration not found"));
-            }
-
-            // Publish FunctionConfigurationChanged event for cache invalidation
-            if (_publishEndpoint != null && changedProperties.Count > 0)
-            {
-                try
+                if (updated == null)
                 {
-                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
+                    return NotFound(new ErrorResponseDto("Function configuration not found after update"));
+                }
+
+                // Publish FunctionConfigurationChanged event for cache invalidation
+                if (changedProperties.Count > 0)
+                {
+                    PublishEventFireAndForget(new FunctionConfigurationChanged
                     {
                         FunctionConfigurationId = updated.Id,
                         ConfigurationName = updated.ConfigurationName,
@@ -279,28 +228,15 @@ public class FunctionConfigurationsController : ControllerBase
                         IsEnabledChanged = isEnabledChanged,
                         CacheTtlChanged = cacheTtlChanged,
                         CorrelationId = Guid.NewGuid().ToString()
-                    });
-
-                    _logger.LogInformation(
-                        "Published FunctionConfigurationChanged event for updated configuration '{ConfigName}' (ID: {ConfigId}, Changed: {ChangedProps})",
-                        updated.ConfigurationName, updated.Id, string.Join(", ", changedProperties));
+                    }, "update function configuration",
+                    new { ConfigName = updated.ConfigurationName, ConfigId = updated.Id, ChangedProps = string.Join(", ", changedProperties) });
                 }
-                catch (Exception publishEx)
-                {
-                    // Log but don't fail the request if event publishing fails
-                    _logger.LogError(publishEx,
-                        "Failed to publish FunctionConfigurationChanged event for updated configuration '{ConfigName}' (ID: {ConfigId})",
-                        updated.ConfigurationName, updated.Id);
-                }
-            }
 
-            return Ok(updated);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating function configuration with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                return Ok(updated);
+            },
+            "FunctionConfiguration",
+            id,
+            "UpdateConfiguration");
     }
 
     /// <summary>
@@ -312,56 +248,33 @@ public class FunctionConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteConfiguration(int id)
+    public Task<IActionResult> DeleteConfiguration(int id)
     {
-        try
-        {
-            // Get the configuration before deleting for event publishing
-            var toDelete = await _configurationRepository.GetByIdAsync(id);
-            if (toDelete == null)
+        return ExecuteWithNotFoundAsync(
+            () => _configurationRepository.GetByIdAsync(id),
+            async toDelete =>
             {
-                return NotFound(new ErrorResponseDto("Function configuration not found"));
-            }
+                await _configurationRepository.DeleteAsync(id);
 
-            await _configurationRepository.DeleteAsync(id);
-
-            // Publish FunctionConfigurationChanged event for cache invalidation
-            if (_publishEndpoint != null)
-            {
-                try
+                // Publish FunctionConfigurationChanged event for cache invalidation
+                PublishEventFireAndForget(new FunctionConfigurationChanged
                 {
-                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
-                    {
-                        FunctionConfigurationId = toDelete.Id,
-                        ConfigurationName = toDelete.ConfigurationName,
-                        ProviderType = toDelete.ProviderType.ToString(),
-                        Purpose = toDelete.Purpose.ToString(),
-                        ChangeType = "Deleted",
-                        ChangedProperties = new[] { "Deleted" },
-                        IsEnabledChanged = false,
-                        CacheTtlChanged = false,
-                        CorrelationId = Guid.NewGuid().ToString()
-                    });
+                    FunctionConfigurationId = toDelete.Id,
+                    ConfigurationName = toDelete.ConfigurationName,
+                    ProviderType = toDelete.ProviderType.ToString(),
+                    Purpose = toDelete.Purpose.ToString(),
+                    ChangeType = "Deleted",
+                    ChangedProperties = new[] { "Deleted" },
+                    IsEnabledChanged = false,
+                    CacheTtlChanged = false,
+                    CorrelationId = Guid.NewGuid().ToString()
+                }, "delete function configuration",
+                new { ConfigName = toDelete.ConfigurationName, ConfigId = toDelete.Id });
 
-                    _logger.LogInformation(
-                        "Published FunctionConfigurationChanged event for deleted configuration '{ConfigName}' (ID: {ConfigId})",
-                        toDelete.ConfigurationName, toDelete.Id);
-                }
-                catch (Exception publishEx)
-                {
-                    // Log but don't fail the request if event publishing fails
-                    _logger.LogError(publishEx,
-                        "Failed to publish FunctionConfigurationChanged event for deleted configuration '{ConfigName}' (ID: {ConfigId})",
-                        toDelete.ConfigurationName, toDelete.Id);
-                }
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting function configuration with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                return NoContent();
+            },
+            "FunctionConfiguration",
+            id,
+            "DeleteConfiguration");
     }
 }

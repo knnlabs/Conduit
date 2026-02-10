@@ -1,9 +1,7 @@
 using ConduitLLM.Admin.Controllers;
-using ConduitLLM.Tests.Admin.TestHelpers;
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Controllers
@@ -64,9 +62,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            badRequestResult.Value.Should().Be("Setting with key already exists");
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Warning, "Invalid operation when creating global setting");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            errorResponse.error.Should().Be("Setting with key already exists");
+            errorResponse.Code.Should().Be("invalid_operation");
         }
 
         #endregion

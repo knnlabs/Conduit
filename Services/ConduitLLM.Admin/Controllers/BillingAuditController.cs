@@ -15,11 +15,10 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/audit/billing")]
     [Authorize]
-    public class BillingAuditController : ControllerBase
+    public class BillingAuditController : AdminControllerBase
     {
         private readonly IBillingAuditService _billingAuditService;
-        private readonly ILogger<BillingAuditController> _logger;
-        
+
         // Metrics for billing audit API operations
         private static readonly Counter BillingAuditQueries = Prometheus.Metrics
             .CreateCounter("conduit_admin_billing_audit_queries_total", "Total billing audit queries",
@@ -27,7 +26,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     LabelNames = new[] { "endpoint", "status" }
                 });
-        
+
         private static readonly Histogram BillingAuditQueryDuration = Prometheus.Metrics
             .CreateHistogram("conduit_admin_billing_audit_query_duration_seconds", "Billing audit query duration",
                 new HistogramConfiguration
@@ -35,14 +34,14 @@ namespace ConduitLLM.Admin.Controllers
                     LabelNames = new[] { "endpoint" },
                     Buckets = Histogram.ExponentialBuckets(0.01, 2, 10) // 10ms to ~10s
                 });
-        
+
         private static readonly Counter BillingAuditExports = Prometheus.Metrics
             .CreateCounter("conduit_admin_billing_audit_exports_total", "Total billing audit exports",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "format", "status" }
                 });
-        
+
         private static readonly Gauge BillingAnomaliesDetected = Prometheus.Metrics
             .CreateGauge("conduit_admin_billing_anomalies_detected", "Number of billing anomalies detected",
                 new GaugeConfiguration
@@ -56,9 +55,9 @@ namespace ConduitLLM.Admin.Controllers
         public BillingAuditController(
             IBillingAuditService billingAuditService,
             ILogger<BillingAuditController> logger)
+            : base(logger)
         {
             _billingAuditService = billingAuditService ?? throw new ArgumentNullException(nameof(billingAuditService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -69,47 +68,44 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("query")]
         [ProducesResponseType(typeof(BillingAuditResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> QueryAuditEvents([FromBody] BillingAuditQueryRequest request)
+        public Task<IActionResult> QueryAuditEvents([FromBody] BillingAuditQueryRequest request)
         {
             if (request.From > request.To)
             {
-                return BadRequest("From date must be before or equal to To date");
+                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
             }
 
             if (request.PageSize > 1000)
             {
-                return BadRequest("Page size cannot exceed 1000");
+                return Task.FromResult<IActionResult>(BadRequest("Page size cannot exceed 1000"));
             }
 
-            try
-            {
-                using var timer = BillingAuditQueryDuration.WithLabels("query").NewTimer();
-                
-                var (events, totalCount) = await _billingAuditService.GetAuditEventsAsync(
-                    request.From,
-                    request.To,
-                    request.EventType,
-                    request.VirtualKeyId,
-                    request.PageNumber,
-                    request.PageSize);
-
-                var response = new BillingAuditResponse
+            return ExecuteAsync(
+                async () =>
                 {
-                    Events = events.Select(e => MapToDto(e)).ToList(),
-                    TotalCount = totalCount,
-                    PageNumber = request.PageNumber,
-                    PageSize = request.PageSize
-                };
+                    using var timer = BillingAuditQueryDuration.WithLabels("query").NewTimer();
 
-                BillingAuditQueries.WithLabels("query", "success").Inc();
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                BillingAuditQueries.WithLabels("query", "error").Inc();
-                _logger.LogError(ex, "Error querying billing audit events");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while querying audit events");
-            }
+                    var (events, totalCount) = await _billingAuditService.GetAuditEventsAsync(
+                        request.From,
+                        request.To,
+                        request.EventType,
+                        request.VirtualKeyId,
+                        request.PageNumber,
+                        request.PageSize);
+
+                    var response = new BillingAuditResponse
+                    {
+                        Events = events.Select(e => MapToDto(e)).ToList(),
+                        TotalCount = totalCount,
+                        PageNumber = request.PageNumber,
+                        PageSize = request.PageSize
+                    };
+
+                    BillingAuditQueries.WithLabels("query", "success").Inc();
+                    return response;
+                },
+                Ok,
+                "QueryAuditEvents");
         }
 
         /// <summary>
@@ -122,31 +118,28 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("summary")]
         [ProducesResponseType(typeof(BillingAuditSummary), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> GetSummary(
+        public Task<IActionResult> GetSummary(
             [FromQuery] DateTime from,
             [FromQuery] DateTime to,
             [FromQuery] int? virtualKeyId = null)
         {
             if (from > to)
             {
-                return BadRequest("From date must be before or equal to To date");
+                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
             }
 
-            try
-            {
-                using var timer = BillingAuditQueryDuration.WithLabels("summary").NewTimer();
-                
-                var summary = await _billingAuditService.GetAuditSummaryAsync(from, to, virtualKeyId);
-                
-                BillingAuditQueries.WithLabels("summary", "success").Inc();
-                return Ok(summary);
-            }
-            catch (Exception ex)
-            {
-                BillingAuditQueries.WithLabels("summary", "error").Inc();
-                _logger.LogError(ex, "Error getting billing audit summary");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while getting audit summary");
-            }
+            return ExecuteAsync(
+                async () =>
+                {
+                    using var timer = BillingAuditQueryDuration.WithLabels("summary").NewTimer();
+
+                    var summary = await _billingAuditService.GetAuditSummaryAsync(from, to, virtualKeyId);
+
+                    BillingAuditQueries.WithLabels("summary", "success").Inc();
+                    return summary;
+                },
+                Ok,
+                "GetSummary");
         }
 
         /// <summary>
@@ -158,37 +151,34 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("anomalies")]
         [ProducesResponseType(typeof(List<BillingAnomaly>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> DetectAnomalies(
+        public Task<IActionResult> DetectAnomalies(
             [FromQuery] DateTime from,
             [FromQuery] DateTime to)
         {
             if (from > to)
             {
-                return BadRequest("From date must be before or equal to To date");
+                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
             }
 
-            try
-            {
-                using var timer = BillingAuditQueryDuration.WithLabels("anomalies").NewTimer();
-                
-                var anomalies = await _billingAuditService.DetectAnomaliesAsync(from, to);
-                
-                // Update anomaly gauge metrics
-                var anomalyGroups = anomalies.GroupBy(a => a.Severity ?? "unknown");
-                foreach (var group in anomalyGroups)
+            return ExecuteAsync(
+                async () =>
                 {
-                    BillingAnomaliesDetected.WithLabels(group.Key).Set(group.Count());
-                }
-                
-                BillingAuditQueries.WithLabels("anomalies", "success").Inc();
-                return Ok(anomalies);
-            }
-            catch (Exception ex)
-            {
-                BillingAuditQueries.WithLabels("anomalies", "error").Inc();
-                _logger.LogError(ex, "Error detecting billing anomalies");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while detecting anomalies");
-            }
+                    using var timer = BillingAuditQueryDuration.WithLabels("anomalies").NewTimer();
+
+                    var anomalies = await _billingAuditService.DetectAnomaliesAsync(from, to);
+
+                    // Update anomaly gauge metrics
+                    var anomalyGroups = anomalies.GroupBy(a => a.Severity ?? "unknown");
+                    foreach (var group in anomalyGroups)
+                    {
+                        BillingAnomaliesDetected.WithLabels(group.Key).Set(group.Count());
+                    }
+
+                    BillingAuditQueries.WithLabels("anomalies", "success").Inc();
+                    return anomalies;
+                },
+                Ok,
+                "DetectAnomalies");
         }
 
         /// <summary>
@@ -200,30 +190,27 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("revenue-loss")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> GetRevenueLoss(
+        public Task<IActionResult> GetRevenueLoss(
             [FromQuery] DateTime from,
             [FromQuery] DateTime to)
         {
             if (from > to)
             {
-                return BadRequest("From date must be before or equal to To date");
+                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
             }
 
-            try
-            {
-                using var timer = BillingAuditQueryDuration.WithLabels("revenue-loss").NewTimer();
-                
-                var loss = await _billingAuditService.GetPotentialRevenueLossAsync(from, to);
-                
-                BillingAuditQueries.WithLabels("revenue-loss", "success").Inc();
-                return Ok(new { potentialRevenueLoss = loss, currency = "USD" });
-            }
-            catch (Exception ex)
-            {
-                BillingAuditQueries.WithLabels("revenue-loss", "error").Inc();
-                _logger.LogError(ex, "Error calculating revenue loss");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while calculating revenue loss");
-            }
+            return ExecuteAsync(
+                async () =>
+                {
+                    using var timer = BillingAuditQueryDuration.WithLabels("revenue-loss").NewTimer();
+
+                    var loss = await _billingAuditService.GetPotentialRevenueLossAsync(from, to);
+
+                    BillingAuditQueries.WithLabels("revenue-loss", "success").Inc();
+                    return new { potentialRevenueLoss = loss, currency = "USD" };
+                },
+                result => Ok(result),
+                "GetRevenueLoss");
         }
 
         /// <summary>
@@ -234,51 +221,48 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("export")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ExportAuditEvents([FromBody] BillingAuditExportRequest request)
+        public Task<IActionResult> ExportAuditEvents([FromBody] BillingAuditExportRequest request)
         {
             if (request.From > request.To)
             {
-                return BadRequest("From date must be before or equal to To date");
+                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
             }
 
-            try
-            {
-                using var timer = BillingAuditQueryDuration.WithLabels("export").NewTimer();
-                
-                // Get all events for the period (no pagination for export)
-                var (events, _) = await _billingAuditService.GetAuditEventsAsync(
-                    request.From,
-                    request.To,
-                    request.EventType,
-                    request.VirtualKeyId,
-                    pageNumber: 1,
-                    pageSize: int.MaxValue);
-
-                switch (request.Format)
+            return ExecuteAsync(
+                async () =>
                 {
-                    case ExportFormat.Json:
-                        BillingAuditExports.WithLabels("json", "success").Inc();
-                        return ExportAsJson(events);
-                    
-                    case ExportFormat.Csv:
-                        BillingAuditExports.WithLabels("csv", "success").Inc();
-                        return ExportAsCsv(events);
-                    
-                    case ExportFormat.Excel:
-                        BillingAuditExports.WithLabels("excel", "not_implemented").Inc();
-                        return BadRequest("Excel export not yet implemented");
-                    
-                    default:
-                        BillingAuditExports.WithLabels(request.Format.ToString(), "unsupported").Inc();
-                        return BadRequest($"Unsupported export format: {request.Format}");
-                }
-            }
-            catch (Exception ex)
-            {
-                BillingAuditExports.WithLabels(request.Format.ToString(), "error").Inc();
-                _logger.LogError(ex, "Error exporting billing audit events");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while exporting audit events");
-            }
+                    using var timer = BillingAuditQueryDuration.WithLabels("export").NewTimer();
+
+                    // Get all events for the period (no pagination for export)
+                    var (events, _) = await _billingAuditService.GetAuditEventsAsync(
+                        request.From,
+                        request.To,
+                        request.EventType,
+                        request.VirtualKeyId,
+                        pageNumber: 1,
+                        pageSize: int.MaxValue);
+
+                    switch (request.Format)
+                    {
+                        case ExportFormat.Json:
+                            BillingAuditExports.WithLabels("json", "success").Inc();
+                            return ExportAsJson(events);
+
+                        case ExportFormat.Csv:
+                            BillingAuditExports.WithLabels("csv", "success").Inc();
+                            return ExportAsCsv(events);
+
+                        case ExportFormat.Excel:
+                            BillingAuditExports.WithLabels("excel", "not_implemented").Inc();
+                            return (IActionResult)BadRequest("Excel export not yet implemented");
+
+                        default:
+                            BillingAuditExports.WithLabels(request.Format.ToString(), "unsupported").Inc();
+                            return (IActionResult)BadRequest($"Unsupported export format: {request.Format}");
+                    }
+                },
+                result => result,
+                "ExportAuditEvents");
         }
 
         /// <summary>
@@ -332,7 +316,7 @@ namespace ConduitLLM.Admin.Controllers
                 catch (JsonException)
                 {
                     // Log but don't fail
-                    _logger.LogWarning("Failed to parse usage JSON for audit event {Id}", entity.Id);
+                    Logger.LogWarning("Failed to parse usage JSON for audit event {Id}", entity.Id);
                 }
             }
 
@@ -346,7 +330,7 @@ namespace ConduitLLM.Admin.Controllers
                 }
                 catch (JsonException)
                 {
-                    _logger.LogWarning("Failed to parse metadata JSON for audit event {Id}", entity.Id);
+                    Logger.LogWarning("Failed to parse metadata JSON for audit event {Id}", entity.Id);
                 }
             }
 

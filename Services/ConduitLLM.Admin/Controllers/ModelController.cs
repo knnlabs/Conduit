@@ -23,13 +23,12 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class ModelController : ControllerBase
+    public class ModelController : AdminControllerBase
     {
         private readonly IModelRepository _modelRepository;
         private readonly IAdminModelProviderMappingService _mappingService;
         private readonly IProviderRepository _providerRepository;
         private readonly IPublishEndpoint _publishEndpoint;
-        private readonly ILogger<ModelController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ModelController
@@ -40,12 +39,12 @@ namespace ConduitLLM.Admin.Controllers
             IProviderRepository providerRepository,
             IPublishEndpoint publishEndpoint,
             ILogger<ModelController> logger)
+            : base(publishEndpoint, logger)
         {
             _modelRepository = modelRepository ?? throw new ArgumentNullException(nameof(modelRepository));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
             _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -55,19 +54,16 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAllModels()
+        public Task<IActionResult> GetAllModels()
         {
-            try
-            {
-                var models = await _modelRepository.GetAllWithDetailsAsync();
-                var dtos = models.Select(m => MapToDto(m));
-                return Ok(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all models");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving models");
-            }
+            return ExecuteAsync(
+                async () =>
+                {
+                    var models = await _modelRepository.GetAllWithDetailsAsync();
+                    return models.Select(m => MapToDto(m));
+                },
+                result => Ok(result),
+                "GetAllModels");
         }
 
         /// <summary>
@@ -79,23 +75,12 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(ModelDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelById(int id)
+        public Task<IActionResult> GetModelById(int id)
         {
-            try
-            {
-                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
-                if (model == null)
-                {
-                    return NotFound($"Model with ID {id} not found");
-                }
-
-                return Ok(MapToDto(model));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting model with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the model");
-            }
+            return ExecuteWithNotFoundAsync(
+                () => _modelRepository.GetByIdWithDetailsAsync(id),
+                model => Ok(MapToDto(model)),
+                "Model", id, "GetModelById");
         }
 
 
@@ -107,24 +92,21 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("search")]
         [ProducesResponseType(typeof(IEnumerable<ModelDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SearchModels([FromQuery] string query)
+        public Task<IActionResult> SearchModels([FromQuery] string query)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(query))
+            return ExecuteAsync(
+                async () =>
                 {
-                    return Ok(new List<ModelDto>());
-                }
+                    if (string.IsNullOrWhiteSpace(query))
+                    {
+                        return (object)new List<ModelDto>();
+                    }
 
-                var models = await _modelRepository.SearchByNameAsync(query);
-                var dtos = models.Select(m => MapToDto(m));
-                return Ok(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching models with query {Query}", query);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while searching models");
-            }
+                    var models = await _modelRepository.SearchByNameAsync(query);
+                    return models.Select(m => MapToDto(m));
+                },
+                result => Ok(result),
+                "SearchModels");
         }
 
         /// <summary>
@@ -136,64 +118,62 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<ModelWithProviderIdDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelsByProvider(string provider)
+        public Task<IActionResult> GetModelsByProvider(string provider)
         {
-            try
+            if (string.IsNullOrWhiteSpace(provider))
             {
-                if (string.IsNullOrWhiteSpace(provider))
-                {
-                    return BadRequest("Provider name is required");
-                }
+                return Task.FromResult<IActionResult>(BadRequest("Provider name is required"));
+            }
 
-                // Parse provider string to enum
-                if (!Enum.TryParse<ProviderType>(provider, ignoreCase: true, out var providerType))
-                {
-                    var validProviders = Enum.GetNames<ProviderType>()
-                        .Select(p => p.ToLowerInvariant());
-                    return BadRequest($"Invalid provider '{provider}'. Valid providers: {string.Join(", ", validProviders)}");
-                }
+            // Parse provider string to enum
+            if (!Enum.TryParse<ProviderType>(provider, ignoreCase: true, out var providerType))
+            {
+                var validProviders = Enum.GetNames<ProviderType>()
+                    .Select(p => p.ToLowerInvariant());
+                return Task.FromResult<IActionResult>(BadRequest($"Invalid provider '{provider}'. Valid providers: {string.Join(", ", validProviders)}"));
+            }
 
-                var models = await _modelRepository.GetByProviderAsync(providerType);
-                var dtos = models.Select(m => 
+            return ExecuteAsync(
+                async () =>
                 {
-                    // Repository already handles the provider string to enum conversion
-                    // Just get the first identifier for this model (they're already filtered by provider)
-                    var providerIdentifier = m.Identifiers?.FirstOrDefault()?.Identifier 
-                        ?? m.Name; // Fallback to model name if no specific identifier
-
-                    // Use MapToDto to get base DTO, then create extended DTO
-                    var baseDto = MapToDto(m);
-                    return new ModelWithProviderIdDto
+                    var models = await _modelRepository.GetByProviderAsync(providerType);
+                    return models.Select(m =>
                     {
-                        Id = baseDto.Id,
-                        Name = baseDto.Name,
-                        ProviderModelId = providerIdentifier,
-                        ModelSeriesId = baseDto.ModelSeriesId,
-                        IsActive = baseDto.IsActive,
-                        CreatedAt = baseDto.CreatedAt,
-                        UpdatedAt = baseDto.UpdatedAt,
-                        Series = baseDto.Series,
-                        ModelParameters = baseDto.ModelParameters,
-                        // Copy capability fields
-                        SupportsChat = baseDto.SupportsChat,
-                        SupportsVision = baseDto.SupportsVision,
-                        SupportsFunctionCalling = baseDto.SupportsFunctionCalling,
-                        SupportsStreaming = baseDto.SupportsStreaming,
-                        SupportsImageGeneration = baseDto.SupportsImageGeneration,
-                        SupportsVideoGeneration = baseDto.SupportsVideoGeneration,
-                        SupportsEmbeddings = baseDto.SupportsEmbeddings,
-                        MaxInputTokens = baseDto.MaxInputTokens,
-                        MaxOutputTokens = baseDto.MaxOutputTokens,
-                        TokenizerType = baseDto.TokenizerType
-                    };
-                });
-                return Ok(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting models for provider {Provider}", provider);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving models");
-            }
+                        // Repository already handles the provider string to enum conversion
+                        // Just get the first identifier for this model (they're already filtered by provider)
+                        var providerIdentifier = m.Identifiers?.FirstOrDefault()?.Identifier
+                            ?? m.Name; // Fallback to model name if no specific identifier
+
+                        // Use MapToDto to get base DTO, then create extended DTO
+                        var baseDto = MapToDto(m);
+                        return new ModelWithProviderIdDto
+                        {
+                            Id = baseDto.Id,
+                            Name = baseDto.Name,
+                            ProviderModelId = providerIdentifier,
+                            ModelSeriesId = baseDto.ModelSeriesId,
+                            IsActive = baseDto.IsActive,
+                            CreatedAt = baseDto.CreatedAt,
+                            UpdatedAt = baseDto.UpdatedAt,
+                            Series = baseDto.Series,
+                            ModelParameters = baseDto.ModelParameters,
+                            // Copy capability fields
+                            SupportsChat = baseDto.SupportsChat,
+                            SupportsVision = baseDto.SupportsVision,
+                            SupportsFunctionCalling = baseDto.SupportsFunctionCalling,
+                            SupportsStreaming = baseDto.SupportsStreaming,
+                            SupportsImageGeneration = baseDto.SupportsImageGeneration,
+                            SupportsVideoGeneration = baseDto.SupportsVideoGeneration,
+                            SupportsEmbeddings = baseDto.SupportsEmbeddings,
+                            MaxInputTokens = baseDto.MaxInputTokens,
+                            MaxOutputTokens = baseDto.MaxOutputTokens,
+                            TokenizerType = baseDto.TokenizerType
+                        };
+                    });
+                },
+                result => Ok(result),
+                "GetModelsByProvider",
+                new { Provider = provider });
         }
 
         /// <summary>
@@ -205,37 +185,29 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelIdentifiers(int id)
+        public Task<IActionResult> GetModelIdentifiers(int id)
         {
-            try
-            {
-                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
-                if (model == null)
+            return ExecuteWithNotFoundAsync(
+                () => _modelRepository.GetByIdWithDetailsAsync(id),
+                model =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
+                    var identifiers = model.Identifiers.Select(i => new
+                    {
+                        id = i.Id,
+                        identifier = i.Identifier,
+                        provider = (int?)i.Provider,
+                        isPrimary = i.IsPrimary,
+                        maxInputTokens = i.MaxInputTokens,
+                        maxOutputTokens = i.MaxOutputTokens,
+                        speedScore = i.SpeedScore,
+                        qualityScore = i.QualityScore,
+                        providerVariation = i.ProviderVariation,
+                        modelCostId = i.ModelCostId
+                    });
 
-                var identifiers = model.Identifiers.Select(i => new
-                {
-                    id = i.Id,
-                    identifier = i.Identifier,
-                    provider = (int?)i.Provider,
-                    isPrimary = i.IsPrimary,
-                    maxInputTokens = i.MaxInputTokens,
-                    maxOutputTokens = i.MaxOutputTokens,
-                    speedScore = i.SpeedScore,
-                    qualityScore = i.QualityScore,
-                    providerVariation = i.ProviderVariation,
-                    modelCostId = i.ModelCostId
-                });
-
-                return Ok(identifiers);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting identifiers for model with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving model identifiers");
-            }
+                    return Ok(identifiers);
+                },
+                "Model", id, "GetModelIdentifiers");
         }
 
         /// <summary>
@@ -248,68 +220,60 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAvailableProviders(int id)
+        public Task<IActionResult> GetAvailableProviders(int id)
         {
-            try
-            {
-                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
-                if (model == null)
+            return ExecuteWithNotFoundAsync(
+                () => _modelRepository.GetByIdWithDetailsAsync(id),
+                async model =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
+                    var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                        _providerRepository.GetPaginatedAsync);
+                    var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
 
-                var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                    _providerRepository.GetPaginatedAsync);
-                var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
+                    var result = new List<object>();
 
-                var result = new List<object>();
-
-                foreach (var association in model.Identifiers)
-                {
-                    // Skip associations without a provider type - they're not properly configured
-                    if (association.Provider == null)
+                    foreach (var association in model.Identifiers)
                     {
-                        _logger.LogWarning(
-                            "ModelIdentifier {AssociationId} for model {ModelId} has null Provider field - skipping",
-                            association.Id, id);
-                        continue;
-                    }
-
-                    // Find matching providers for this association
-                    var matchingProviders = enabledProviders.Where(p =>
-                        p.ProviderType == association.Provider
-                    ).ToList();
-
-                    if (matchingProviders.Any())
-                    {
-                        result.Add(new
+                        // Skip associations without a provider type - they're not properly configured
+                        if (association.Provider == null)
                         {
-                            associationId = association.Id,
-                            identifier = association.Identifier,
-                            provider = (int?)association.Provider,
-                            providerVariation = association.ProviderVariation,
-                            maxInputTokens = association.MaxInputTokens,
-                            maxOutputTokens = association.MaxOutputTokens,
-                            speedScore = association.SpeedScore,
-                            qualityScore = association.QualityScore,
-                            isPrimary = association.IsPrimary,
-                            availableProviders = matchingProviders.Select(p => new
-                            {
-                                providerId = p.Id,
-                                providerName = p.ProviderName,
-                                providerType = p.ProviderType.ToString()
-                            })
-                        });
-                    }
-                }
+                            Logger.LogWarning(
+                                "ModelIdentifier {AssociationId} for model {ModelId} has null Provider field - skipping",
+                                association.Id, id);
+                            continue;
+                        }
 
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting available providers for model with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving available providers");
-            }
+                        // Find matching providers for this association
+                        var matchingProviders = enabledProviders.Where(p =>
+                            p.ProviderType == association.Provider
+                        ).ToList();
+
+                        if (matchingProviders.Any())
+                        {
+                            result.Add(new
+                            {
+                                associationId = association.Id,
+                                identifier = association.Identifier,
+                                provider = (int?)association.Provider,
+                                providerVariation = association.ProviderVariation,
+                                maxInputTokens = association.MaxInputTokens,
+                                maxOutputTokens = association.MaxOutputTokens,
+                                speedScore = association.SpeedScore,
+                                qualityScore = association.QualityScore,
+                                isPrimary = association.IsPrimary,
+                                availableProviders = matchingProviders.Select(p => new
+                                {
+                                    providerId = p.Id,
+                                    providerName = p.ProviderName,
+                                    providerType = p.ProviderType.ToString()
+                                })
+                            });
+                        }
+                    }
+
+                    return (IActionResult)Ok(result);
+                },
+                "Model", id, "GetAvailableProviders");
         }
 
         /// <summary>
@@ -323,64 +287,63 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<IActionResult> CreateModelIdentifier(int id, [FromBody] CreateModelIdentifierDto dto)
+        public Task<IActionResult> CreateModelIdentifier(int id, [FromBody] CreateModelIdentifierDto dto)
         {
-            try
-            {
-                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
-                if (model == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
+                    var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+                    if (model == null)
+                    {
+                        return (IActionResult)NotFound($"Model with ID {id} not found");
+                    }
 
-                // Parse provider if provided as integer
-                ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
-                
-                // Check if identifier already exists for this provider
-                var existing = model.Identifiers.FirstOrDefault(i => 
-                    i.Identifier == dto.Identifier && 
-                    i.Provider == providerType);
-                    
-                if (existing != null)
-                {
-                    return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
-                }
+                    // Parse provider if provided as integer
+                    ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
 
-                var identifier = new ModelProviderTypeAssociation
-                {
-                    ModelId = id,
-                    Identifier = dto.Identifier,
-                    Provider = providerType,
-                    IsPrimary = dto.IsPrimary ?? false,
-                    Metadata = dto.Metadata,
-                    MaxInputTokens = dto.MaxInputTokens,
-                    MaxOutputTokens = dto.MaxOutputTokens,
-                    SpeedScore = dto.SpeedScore,
-                    QualityScore = dto.QualityScore,
-                    ProviderVariation = dto.ProviderVariation
-                };
+                    // Check if identifier already exists for this provider
+                    var existing = model.Identifiers.FirstOrDefault(i =>
+                        i.Identifier == dto.Identifier &&
+                        i.Provider == providerType);
 
-                model.Identifiers.Add(identifier);
-                await _modelRepository.UpdateModelAsync(model);
+                    if (existing != null)
+                    {
+                        return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
+                    }
 
-                return CreatedAtAction(nameof(GetModelIdentifiers), new { id }, new
-                {
-                    id = identifier.Id,
-                    identifier = identifier.Identifier,
-                    provider = (int?)identifier.Provider,
-                    isPrimary = identifier.IsPrimary,
-                    maxInputTokens = identifier.MaxInputTokens,
-                    maxOutputTokens = identifier.MaxOutputTokens,
-                    speedScore = identifier.SpeedScore,
-                    qualityScore = identifier.QualityScore,
-                    providerVariation = identifier.ProviderVariation
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating identifier for model {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating the identifier");
-            }
+                    var identifier = new ModelProviderTypeAssociation
+                    {
+                        ModelId = id,
+                        Identifier = dto.Identifier,
+                        Provider = providerType,
+                        IsPrimary = dto.IsPrimary ?? false,
+                        Metadata = dto.Metadata,
+                        MaxInputTokens = dto.MaxInputTokens,
+                        MaxOutputTokens = dto.MaxOutputTokens,
+                        SpeedScore = dto.SpeedScore,
+                        QualityScore = dto.QualityScore,
+                        ProviderVariation = dto.ProviderVariation
+                    };
+
+                    model.Identifiers.Add(identifier);
+                    await _modelRepository.UpdateModelAsync(model);
+
+                    return CreatedAtAction(nameof(GetModelIdentifiers), new { id }, new
+                    {
+                        id = identifier.Id,
+                        identifier = identifier.Identifier,
+                        provider = (int?)identifier.Provider,
+                        isPrimary = identifier.IsPrimary,
+                        maxInputTokens = identifier.MaxInputTokens,
+                        maxOutputTokens = identifier.MaxOutputTokens,
+                        speedScore = identifier.SpeedScore,
+                        qualityScore = identifier.QualityScore,
+                        providerVariation = identifier.ProviderVariation
+                    });
+                },
+                result => result,
+                "CreateModelIdentifier",
+                new { Id = id });
         }
 
         /// <summary>
@@ -395,58 +358,57 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<IActionResult> UpdateModelIdentifier(int id, int identifierId, [FromBody] UpdateModelIdentifierDto dto)
+        public Task<IActionResult> UpdateModelIdentifier(int id, int identifierId, [FromBody] UpdateModelIdentifierDto dto)
         {
-            try
-            {
-                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
-                if (model == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
-
-                var identifier = model.Identifiers.FirstOrDefault(i => i.Id == identifierId);
-                if (identifier == null)
-                {
-                    return NotFound($"Identifier with ID {identifierId} not found for model {id}");
-                }
-
-                // Parse provider if provided as integer
-                ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
-                
-                // Check if the new identifier/provider combo already exists (if changed)
-                if (identifier.Identifier != dto.Identifier || identifier.Provider != providerType)
-                {
-                    var existing = model.Identifiers.FirstOrDefault(i => 
-                        i.Id != identifierId &&
-                        i.Identifier == dto.Identifier && 
-                        i.Provider == providerType);
-                        
-                    if (existing != null)
+                    var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+                    if (model == null)
                     {
-                        return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
+                        return (IActionResult)NotFound($"Model with ID {id} not found");
                     }
-                }
 
-                identifier.Identifier = dto.Identifier;
-                identifier.Provider = providerType;
-                identifier.IsPrimary = dto.IsPrimary ?? identifier.IsPrimary;
-                identifier.Metadata = dto.Metadata;
-                identifier.MaxInputTokens = dto.MaxInputTokens;
-                identifier.MaxOutputTokens = dto.MaxOutputTokens;
-                identifier.SpeedScore = dto.SpeedScore;
-                identifier.QualityScore = dto.QualityScore;
-                identifier.ProviderVariation = dto.ProviderVariation;
+                    var identifier = model.Identifiers.FirstOrDefault(i => i.Id == identifierId);
+                    if (identifier == null)
+                    {
+                        return NotFound($"Identifier with ID {identifierId} not found for model {id}");
+                    }
 
-                await _modelRepository.UpdateModelAsync(model);
+                    // Parse provider if provided as integer
+                    ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
 
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating identifier {IdentifierId} for model {Id}", identifierId, id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the identifier");
-            }
+                    // Check if the new identifier/provider combo already exists (if changed)
+                    if (identifier.Identifier != dto.Identifier || identifier.Provider != providerType)
+                    {
+                        var existing = model.Identifiers.FirstOrDefault(i =>
+                            i.Id != identifierId &&
+                            i.Identifier == dto.Identifier &&
+                            i.Provider == providerType);
+
+                        if (existing != null)
+                        {
+                            return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
+                        }
+                    }
+
+                    identifier.Identifier = dto.Identifier;
+                    identifier.Provider = providerType;
+                    identifier.IsPrimary = dto.IsPrimary ?? identifier.IsPrimary;
+                    identifier.Metadata = dto.Metadata;
+                    identifier.MaxInputTokens = dto.MaxInputTokens;
+                    identifier.MaxOutputTokens = dto.MaxOutputTokens;
+                    identifier.SpeedScore = dto.SpeedScore;
+                    identifier.QualityScore = dto.QualityScore;
+                    identifier.ProviderVariation = dto.ProviderVariation;
+
+                    await _modelRepository.UpdateModelAsync(model);
+
+                    return (IActionResult)NoContent();
+                },
+                result => result,
+                "UpdateModelIdentifier",
+                new { Id = id, IdentifierId = identifierId });
         }
 
         /// <summary>
@@ -458,25 +420,22 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{id}/identifiers/{identifierId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteModelIdentifier(int id, int identifierId)
+        public Task<IActionResult> DeleteModelIdentifier(int id, int identifierId)
         {
-            try
-            {
-                // Directly delete the identifier from the repository
-                var deleted = await _modelRepository.DeleteIdentifierAsync(id, identifierId);
-                
-                if (!deleted)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound($"Identifier with ID {identifierId} not found for model {id}");
-                }
+                    // Directly delete the identifier from the repository
+                    var deleted = await _modelRepository.DeleteIdentifierAsync(id, identifierId);
 
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting identifier {IdentifierId} for model {Id}", identifierId, id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the identifier");
-            }
+                    if (!deleted)
+                    {
+                        throw new KeyNotFoundException($"Identifier with ID {identifierId} not found for model {id}");
+                    }
+                },
+                NoContent(),
+                "DeleteModelIdentifier",
+                new { Id = id, IdentifierId = identifierId });
         }
 
         /// <summary>
@@ -489,72 +448,70 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> CreateModel([FromBody] CreateModelDto dto)
+        public Task<IActionResult> CreateModel([FromBody] CreateModelDto dto)
         {
-            try
+            if (dto == null)
             {
-                if (dto == null)
-                {
-                    return BadRequest("Model data is required");
-                }
-
-                if (string.IsNullOrWhiteSpace(dto.Name))
-                {
-                    return BadRequest("Model name is required");
-                }
-
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                // Check if a model with the same name already exists
-                var existing = await _modelRepository.GetByNameAsync(dto.Name);
-                if (existing != null)
-                {
-                    return Conflict($"A model with name '{dto.Name}' already exists");
-                }
-
-                var model = new Model
-                {
-                    Name = dto.Name,
-                    ModelSeriesId = dto.ModelSeriesId,
-                    ModelParameters = dto.ModelParameters,
-                    IsActive = dto.IsActive ?? true,
-                    // Set capability fields directly
-                    SupportsChat = dto.SupportsChat,
-                    SupportsVision = dto.SupportsVision,
-                    SupportsFunctionCalling = dto.SupportsFunctionCalling,
-                    SupportsStreaming = dto.SupportsStreaming,
-                    SupportsImageGeneration = dto.SupportsImageGeneration,
-                    SupportsVideoGeneration = dto.SupportsVideoGeneration,
-                    SupportsEmbeddings = dto.SupportsEmbeddings,
-                    MaxInputTokens = dto.MaxInputTokens,
-                    MaxOutputTokens = dto.MaxOutputTokens,
-                    TokenizerType = dto.TokenizerType,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                await _modelRepository.CreateModelAsync(model);
-
-                // Reload with capabilities
-                model = await _modelRepository.GetByIdWithDetailsAsync(model.Id);
-                if (model == null)
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to reload created model");
-                }
-
-                return CreatedAtAction(
-                    nameof(GetModelById),
-                    new { id = model.Id },
-                    MapToDto(model));
+                return Task.FromResult<IActionResult>(BadRequest("Model data is required"));
             }
-            catch (Exception ex)
+
+            if (string.IsNullOrWhiteSpace(dto.Name))
             {
-                _logger.LogError(ex, "Error creating model");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating the model");
+                return Task.FromResult<IActionResult>(BadRequest("Model name is required"));
             }
+
+            if (!ModelState.IsValid)
+            {
+                return Task.FromResult<IActionResult>(BadRequest(ModelState));
+            }
+
+            return ExecuteAsync(
+                async () =>
+                {
+                    // Check if a model with the same name already exists
+                    var existing = await _modelRepository.GetByNameAsync(dto.Name);
+                    if (existing != null)
+                    {
+                        return (IActionResult)Conflict($"A model with name '{dto.Name}' already exists");
+                    }
+
+                    var model = new Model
+                    {
+                        Name = dto.Name,
+                        ModelSeriesId = dto.ModelSeriesId,
+                        ModelParameters = dto.ModelParameters,
+                        IsActive = dto.IsActive ?? true,
+                        // Set capability fields directly
+                        SupportsChat = dto.SupportsChat,
+                        SupportsVision = dto.SupportsVision,
+                        SupportsFunctionCalling = dto.SupportsFunctionCalling,
+                        SupportsStreaming = dto.SupportsStreaming,
+                        SupportsImageGeneration = dto.SupportsImageGeneration,
+                        SupportsVideoGeneration = dto.SupportsVideoGeneration,
+                        SupportsEmbeddings = dto.SupportsEmbeddings,
+                        MaxInputTokens = dto.MaxInputTokens,
+                        MaxOutputTokens = dto.MaxOutputTokens,
+                        TokenizerType = dto.TokenizerType,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await _modelRepository.CreateModelAsync(model);
+
+                    // Reload with capabilities
+                    model = await _modelRepository.GetByIdWithDetailsAsync(model.Id);
+                    if (model == null)
+                    {
+                        return StatusCode(StatusCodes.Status500InternalServerError, "Failed to reload created model");
+                    }
+
+                    return CreatedAtAction(
+                        nameof(GetModelById),
+                        new { id = model.Id },
+                        MapToDto(model));
+                },
+                result => result,
+                "CreateModel");
         }
 
         /// <summary>
@@ -569,93 +526,92 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateModel(int id, [FromBody] UpdateModelDto dto)
+        public Task<IActionResult> UpdateModel(int id, [FromBody] UpdateModelDto dto)
         {
-            try
+            if (dto == null)
             {
-                if (dto == null)
-                {
-                    return BadRequest("Update data is required");
-                }
+                return Task.FromResult<IActionResult>(BadRequest("Update data is required"));
+            }
 
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
+            if (!ModelState.IsValid)
+            {
+                return Task.FromResult<IActionResult>(BadRequest(ModelState));
+            }
 
-                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
-                if (model == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
-
-                // Check for name conflicts if name is being changed
-                if (!string.IsNullOrEmpty(dto.Name) && dto.Name != model.Name)
-                {
-                    var existing = await _modelRepository.GetByNameAsync(dto.Name);
-                    if (existing != null && existing.Id != id)
+                    var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+                    if (model == null)
                     {
-                        return Conflict($"A model with name '{dto.Name}' already exists");
+                        return (IActionResult)NotFound($"Model with ID {id} not found");
                     }
-                    model.Name = dto.Name;
-                }
 
-                if (dto.ModelSeriesId.HasValue)
-                    model.ModelSeriesId = dto.ModelSeriesId.Value;
-                if (dto.IsActive.HasValue)
-                    model.IsActive = dto.IsActive.Value;
-                if (dto.ModelParameters != null)
-                    model.ModelParameters = string.IsNullOrWhiteSpace(dto.ModelParameters) ? null : dto.ModelParameters;
+                    // Check for name conflicts if name is being changed
+                    if (!string.IsNullOrEmpty(dto.Name) && dto.Name != model.Name)
+                    {
+                        var existing = await _modelRepository.GetByNameAsync(dto.Name);
+                        if (existing != null && existing.Id != id)
+                        {
+                            return Conflict($"A model with name '{dto.Name}' already exists");
+                        }
+                        model.Name = dto.Name;
+                    }
 
-                // Update capability fields
-                if (dto.SupportsChat.HasValue)
-                    model.SupportsChat = dto.SupportsChat.Value;
-                if (dto.SupportsVision.HasValue)
-                    model.SupportsVision = dto.SupportsVision.Value;
-                if (dto.SupportsFunctionCalling.HasValue)
-                    model.SupportsFunctionCalling = dto.SupportsFunctionCalling.Value;
-                if (dto.SupportsStreaming.HasValue)
-                    model.SupportsStreaming = dto.SupportsStreaming.Value;
-                if (dto.SupportsImageGeneration.HasValue)
-                    model.SupportsImageGeneration = dto.SupportsImageGeneration.Value;
-                if (dto.SupportsVideoGeneration.HasValue)
-                    model.SupportsVideoGeneration = dto.SupportsVideoGeneration.Value;
-                if (dto.SupportsEmbeddings.HasValue)
-                    model.SupportsEmbeddings = dto.SupportsEmbeddings.Value;
-                // For nullable int fields, we need to handle them differently
-                // The DTO will have the property set if it was included in the JSON
-                // We always update these fields since the frontend always sends them
-                model.MaxInputTokens = dto.MaxInputTokens;
-                model.MaxOutputTokens = dto.MaxOutputTokens;
+                    if (dto.ModelSeriesId.HasValue)
+                        model.ModelSeriesId = dto.ModelSeriesId.Value;
+                    if (dto.IsActive.HasValue)
+                        model.IsActive = dto.IsActive.Value;
+                    if (dto.ModelParameters != null)
+                        model.ModelParameters = string.IsNullOrWhiteSpace(dto.ModelParameters) ? null : dto.ModelParameters;
 
-                model.UpdatedAt = DateTime.UtcNow;
+                    // Update capability fields
+                    if (dto.SupportsChat.HasValue)
+                        model.SupportsChat = dto.SupportsChat.Value;
+                    if (dto.SupportsVision.HasValue)
+                        model.SupportsVision = dto.SupportsVision.Value;
+                    if (dto.SupportsFunctionCalling.HasValue)
+                        model.SupportsFunctionCalling = dto.SupportsFunctionCalling.Value;
+                    if (dto.SupportsStreaming.HasValue)
+                        model.SupportsStreaming = dto.SupportsStreaming.Value;
+                    if (dto.SupportsImageGeneration.HasValue)
+                        model.SupportsImageGeneration = dto.SupportsImageGeneration.Value;
+                    if (dto.SupportsVideoGeneration.HasValue)
+                        model.SupportsVideoGeneration = dto.SupportsVideoGeneration.Value;
+                    if (dto.SupportsEmbeddings.HasValue)
+                        model.SupportsEmbeddings = dto.SupportsEmbeddings.Value;
+                    // For nullable int fields, we need to handle them differently
+                    // The DTO will have the property set if it was included in the JSON
+                    // We always update these fields since the frontend always sends them
+                    model.MaxInputTokens = dto.MaxInputTokens;
+                    model.MaxOutputTokens = dto.MaxOutputTokens;
 
-                // Track if parameters were changed
-                bool parametersChanged = dto.ModelParameters != null;
-                
-                var updatedModel = await _modelRepository.UpdateModelAsync(model);
+                    model.UpdatedAt = DateTime.UtcNow;
 
-                // Publish ModelUpdated event for cache invalidation
-                await _publishEndpoint.Publish(new ModelUpdated
-                {
-                    ModelId = updatedModel.Id,
-                    ModelName = updatedModel.Name,
-                    ModelSeriesId = updatedModel.ModelSeriesId,
-                    ChangeType = "Updated",
-                    ParametersChanged = parametersChanged,
-                    ChangedProperties = GetChangedProperties(dto)
-                });
+                    // Track if parameters were changed
+                    bool parametersChanged = dto.ModelParameters != null;
 
-                _logger.LogInformation("Published ModelUpdated event for model {ModelId} ({ModelName})",
-                    updatedModel.Id, updatedModel.Name);
+                    var updatedModel = await _modelRepository.UpdateModelAsync(model);
 
-                return Ok(MapToDto(updatedModel));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating model with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the model");
-            }
+                    // Publish ModelUpdated event for cache invalidation
+                    await _publishEndpoint.Publish(new ModelUpdated
+                    {
+                        ModelId = updatedModel.Id,
+                        ModelName = updatedModel.Name,
+                        ModelSeriesId = updatedModel.ModelSeriesId,
+                        ChangeType = "Updated",
+                        ParametersChanged = parametersChanged,
+                        ChangedProperties = GetChangedProperties(dto)
+                    });
+
+                    Logger.LogInformation("Published ModelUpdated event for model {ModelId} ({ModelName})",
+                        updatedModel.Id, updatedModel.Name);
+
+                    return (IActionResult)Ok(MapToDto(updatedModel));
+                },
+                result => result,
+                "UpdateModel",
+                new { Id = id });
         }
 
         /// <summary>
@@ -668,32 +624,31 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> DeleteModel(int id)
+        public Task<IActionResult> DeleteModel(int id)
         {
-            try
-            {
-                var model = await _modelRepository.GetByIdAsync(id);
-                if (model == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
+                    var model = await _modelRepository.GetByIdAsync(id);
+                    if (model == null)
+                    {
+                        return (IActionResult)NotFound($"Model with ID {id} not found");
+                    }
 
-                // Check if model is referenced by any mappings
-                var hasReferences = await _modelRepository.HasMappingReferencesAsync(id);
-                if (hasReferences)
-                {
-                    return Conflict("Cannot delete model that is referenced by model provider mappings");
-                }
+                    // Check if model is referenced by any mappings
+                    var hasReferences = await _modelRepository.HasMappingReferencesAsync(id);
+                    if (hasReferences)
+                    {
+                        return Conflict("Cannot delete model that is referenced by model provider mappings");
+                    }
 
-                await _modelRepository.DeleteAsync(id);
+                    await _modelRepository.DeleteAsync(id);
 
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting model with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the model");
-            }
+                    return (IActionResult)NoContent();
+                },
+                result => result,
+                "DeleteModel",
+                new { Id = id });
         }
 
         private static ModelDto MapToDto(Model model)
@@ -747,28 +702,19 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<ModelProviderMappingDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelProviderMappings(int id)
+        public Task<IActionResult> GetModelProviderMappings(int id)
         {
-            try
-            {
-                // Check if model exists
-                var model = await _modelRepository.GetByIdAsync(id);
-                if (model == null)
+            return ExecuteWithNotFoundAsync(
+                () => _modelRepository.GetByIdAsync(id),
+                async model =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
+                    // Get all mappings for this model
+                    var mappings = await _mappingService.GetMappingsByModelIdAsync(id);
+                    var dtos = mappings.Select(m => m.ToDto());
 
-                // Get all mappings for this model
-                var mappings = await _mappingService.GetMappingsByModelIdAsync(id);
-                var dtos = mappings.Select(m => m.ToDto());
-                
-                return Ok(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting provider mappings for model with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving provider mappings");
-            }
+                    return (IActionResult)Ok(dtos);
+                },
+                "Model", id, "GetModelProviderMappings");
         }
 
         /// <summary>
@@ -783,51 +729,50 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> CreateModelProviderMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
+        public Task<IActionResult> CreateModelProviderMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
         {
-            try
-            {
-                // Skip ModelId validation since it's no longer on the DTO
-                // The ModelProviderTypeAssociationId provides the model relationship
-
-                // Check if model exists
-                var model = await _modelRepository.GetByIdAsync(id);
-                if (model == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
+                    // Skip ModelId validation since it's no longer on the DTO
+                    // The ModelProviderTypeAssociationId provides the model relationship
 
-                // Check for duplicate mapping
-                var existingMappings = await _mappingService.GetMappingsByModelIdAsync(id);
-                if (existingMappings.Any(m => m.ProviderId == mappingDto.ProviderId))
-                {
-                    return Conflict($"A mapping for model ID {id} with provider ID {mappingDto.ProviderId} already exists");
-                }
+                    // Check if model exists
+                    var model = await _modelRepository.GetByIdAsync(id);
+                    if (model == null)
+                    {
+                        return (IActionResult)NotFound($"Model with ID {id} not found");
+                    }
 
-                // Create the mapping
-                var mapping = mappingDto.ToEntity();
-                var success = await _mappingService.AddMappingAsync(mapping);
+                    // Check for duplicate mapping
+                    var existingMappings = await _mappingService.GetMappingsByModelIdAsync(id);
+                    if (existingMappings.Any(m => m.ProviderId == mappingDto.ProviderId))
+                    {
+                        return Conflict($"A mapping for model ID {id} with provider ID {mappingDto.ProviderId} already exists");
+                    }
 
-                if (!success)
-                {
-                    return BadRequest("Failed to create provider mapping");
-                }
+                    // Create the mapping
+                    var mapping = mappingDto.ToEntity();
+                    var success = await _mappingService.AddMappingAsync(mapping);
 
-                // Get the created mapping
-                var createdMappings = await _mappingService.GetMappingsByModelIdAsync(id);
-                var createdMapping = createdMappings.FirstOrDefault(m => m.ProviderId == mappingDto.ProviderId);
+                    if (!success)
+                    {
+                        return BadRequest("Failed to create provider mapping");
+                    }
 
-                return CreatedAtAction(
-                    nameof(GetModelProviderMappings), 
-                    new { id = id }, 
-                    createdMapping?.ToDto()
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating provider mapping for model with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating the provider mapping");
-            }
+                    // Get the created mapping
+                    var createdMappings = await _mappingService.GetMappingsByModelIdAsync(id);
+                    var createdMapping = createdMappings.FirstOrDefault(m => m.ProviderId == mappingDto.ProviderId);
+
+                    return CreatedAtAction(
+                        nameof(GetModelProviderMappings),
+                        new { id = id },
+                        createdMapping?.ToDto()
+                    );
+                },
+                result => result,
+                "CreateModelProviderMapping",
+                new { Id = id });
         }
 
         /// <summary>
@@ -842,52 +787,51 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateModelProviderMapping(int id, int mappingId, [FromBody] ModelProviderMappingDto mappingDto)
+        public Task<IActionResult> UpdateModelProviderMapping(int id, int mappingId, [FromBody] ModelProviderMappingDto mappingDto)
         {
-            try
+            if (mappingDto.Id != mappingId)
             {
-                // Skip ModelId validation since it's no longer on the DTO
-                // The ModelProviderTypeAssociationId provides the model relationship
-
-                if (mappingDto.Id != mappingId)
-                {
-                    return BadRequest("Mapping ID in URL does not match Mapping ID in request body");
-                }
-
-                // Check if model exists
-                var model = await _modelRepository.GetByIdAsync(id);
-                if (model == null)
-                {
-                    return NotFound($"Model with ID {id} not found");
-                }
-
-                // Get and update the mapping
-                var existingMapping = await _mappingService.GetMappingByIdAsync(mappingId);
-                if (existingMapping == null)
-                {
-                    return NotFound($"Provider mapping with ID {mappingId} not found");
-                }
-
-                if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
-                {
-                    return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
-                }
-
-                existingMapping.UpdateFromDto(mappingDto);
-                var success = await _mappingService.UpdateMappingAsync(existingMapping);
-
-                if (!success)
-                {
-                    return BadRequest("Failed to update provider mapping");
-                }
-
-                return NoContent();
+                return Task.FromResult<IActionResult>(BadRequest("Mapping ID in URL does not match Mapping ID in request body"));
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating provider mapping {MappingId} for model {ModelId}", mappingId, id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the provider mapping");
-            }
+
+            return ExecuteAsync(
+                async () =>
+                {
+                    // Skip ModelId validation since it's no longer on the DTO
+                    // The ModelProviderTypeAssociationId provides the model relationship
+
+                    // Check if model exists
+                    var model = await _modelRepository.GetByIdAsync(id);
+                    if (model == null)
+                    {
+                        return (IActionResult)NotFound($"Model with ID {id} not found");
+                    }
+
+                    // Get and update the mapping
+                    var existingMapping = await _mappingService.GetMappingByIdAsync(mappingId);
+                    if (existingMapping == null)
+                    {
+                        return NotFound($"Provider mapping with ID {mappingId} not found");
+                    }
+
+                    if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
+                    {
+                        return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
+                    }
+
+                    existingMapping.UpdateFromDto(mappingDto);
+                    var success = await _mappingService.UpdateMappingAsync(existingMapping);
+
+                    if (!success)
+                    {
+                        return BadRequest("Failed to update provider mapping");
+                    }
+
+                    return (IActionResult)NoContent();
+                },
+                result => result,
+                "UpdateModelProviderMapping",
+                new { Id = id, MappingId = mappingId });
         }
 
         /// <summary>
@@ -900,52 +844,51 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> DeleteModelProviderMapping(int id, int mappingId)
+        public Task<IActionResult> DeleteModelProviderMapping(int id, int mappingId)
         {
-            try
-            {
-                // Check if model exists
-                var model = await _modelRepository.GetByIdAsync(id);
-                if (model == null)
+            return ExecuteAsync(
+                async () =>
                 {
-                    return NotFound($"Model with ID {id} not found");
-                }
+                    // Check if model exists
+                    var model = await _modelRepository.GetByIdAsync(id);
+                    if (model == null)
+                    {
+                        return (IActionResult)NotFound($"Model with ID {id} not found");
+                    }
 
-                // Check if mapping exists and belongs to this model
-                var existingMapping = await _mappingService.GetMappingByIdAsync(mappingId);
-                if (existingMapping == null)
-                {
-                    return NotFound($"Provider mapping with ID {mappingId} not found");
-                }
+                    // Check if mapping exists and belongs to this model
+                    var existingMapping = await _mappingService.GetMappingByIdAsync(mappingId);
+                    if (existingMapping == null)
+                    {
+                        return NotFound($"Provider mapping with ID {mappingId} not found");
+                    }
 
-                if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
-                {
-                    return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
-                }
+                    if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
+                    {
+                        return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
+                    }
 
-                var success = await _mappingService.DeleteMappingAsync(mappingId);
+                    var success = await _mappingService.DeleteMappingAsync(mappingId);
 
-                if (!success)
-                {
-                    return BadRequest("Failed to delete provider mapping");
-                }
+                    if (!success)
+                    {
+                        return BadRequest("Failed to delete provider mapping");
+                    }
 
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting provider mapping {MappingId} for model {ModelId}", mappingId, id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the provider mapping");
-            }
+                    return (IActionResult)NoContent();
+                },
+                result => result,
+                "DeleteModelProviderMapping",
+                new { Id = id, MappingId = mappingId });
         }
-        
+
         /// <summary>
         /// Helper method to get list of changed properties from DTO
         /// </summary>
         private static string[] GetChangedProperties(UpdateModelDto dto)
         {
             var changedProps = new List<string>();
-            
+
             if (dto.Name != null) changedProps.Add("Name");
             if (dto.ModelSeriesId.HasValue) changedProps.Add("ModelSeriesId");
             if (dto.IsActive.HasValue) changedProps.Add("IsActive");
@@ -959,7 +902,7 @@ namespace ConduitLLM.Admin.Controllers
             if (dto.SupportsEmbeddings.HasValue) changedProps.Add("SupportsEmbeddings");
             if (dto.MaxInputTokens.HasValue) changedProps.Add("MaxInputTokens");
             if (dto.MaxOutputTokens.HasValue) changedProps.Add("MaxOutputTokens");
-            
+
             return changedProps.ToArray();
         }
     }

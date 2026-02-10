@@ -13,10 +13,9 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
-public class IpFilterController : ControllerBase
+public class IpFilterController : AdminControllerBase
 {
     private readonly IAdminIpFilterService _ipFilterService;
-    private readonly ILogger<IpFilterController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the IpFilterController
@@ -26,9 +25,9 @@ public class IpFilterController : ControllerBase
     public IpFilterController(
         IAdminIpFilterService ipFilterService,
         ILogger<IpFilterController> logger)
+        : base(logger)
     {
         _ipFilterService = ipFilterService ?? throw new ArgumentNullException(nameof(ipFilterService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -38,18 +37,12 @@ public class IpFilterController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<IpFilterDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetAllFilters()
+    public Task<IActionResult> GetAllFilters()
     {
-        try
-        {
-            var filters = await _ipFilterService.GetAllFiltersAsync();
-            return Ok(filters);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all IP filters");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _ipFilterService.GetAllFiltersAsync(),
+            Ok,
+            "GetAllFilters");
     }
 
     /// <summary>
@@ -59,18 +52,12 @@ public class IpFilterController : ControllerBase
     [HttpGet("enabled")]
     [ProducesResponseType(typeof(IEnumerable<IpFilterDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetEnabledFilters()
+    public Task<IActionResult> GetEnabledFilters()
     {
-        try
-        {
-            var filters = await _ipFilterService.GetEnabledFiltersAsync();
-            return Ok(filters);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting enabled IP filters");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _ipFilterService.GetEnabledFiltersAsync(),
+            Ok,
+            "GetEnabledFilters");
     }
 
     /// <summary>
@@ -82,24 +69,14 @@ public class IpFilterController : ControllerBase
     [ProducesResponseType(typeof(IpFilterDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetFilterById(int id)
+    public Task<IActionResult> GetFilterById(int id)
     {
-        try
-        {
-            var filter = await _ipFilterService.GetFilterByIdAsync(id);
-
-            if (filter == null)
-            {
-                return NotFound("IP filter not found");
-            }
-
-            return Ok(filter);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting IP filter with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteWithNotFoundAsync(
+            () => _ipFilterService.GetFilterByIdAsync(id),
+            Ok,
+            "IP filter",
+            id,
+            "GetFilterById");
     }
 
     /// <summary>
@@ -114,29 +91,27 @@ public class IpFilterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateFilter([FromBody] CreateIpFilterDto filter)
+    public Task<IActionResult> CreateFilter([FromBody] CreateIpFilterDto filter)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return Task.FromResult<IActionResult>(BadRequest(ModelState));
         }
 
-        try
-        {
-            var (success, errorMessage, createdFilter) = await _ipFilterService.CreateFilterAsync(filter);
-
-            if (!success)
+        return ExecuteAsync(
+            async () =>
             {
-                return BadRequest(errorMessage);
-            }
+                var (success, errorMessage, createdFilter) = await _ipFilterService.CreateFilterAsync(filter);
 
-            return CreatedAtAction(nameof(GetFilterById), new { id = createdFilter!.Id }, createdFilter);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating IP filter");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                if (!success)
+                {
+                    throw new InvalidOperationException(errorMessage);
+                }
+
+                return createdFilter!;
+            },
+            createdFilter => CreatedAtAction(nameof(GetFilterById), new { id = createdFilter.Id }, createdFilter),
+            "CreateFilter");
     }
 
     /// <summary>
@@ -153,40 +128,37 @@ public class IpFilterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateFilter(int id, [FromBody] UpdateIpFilterDto filter)
+    public Task<IActionResult> UpdateFilter(int id, [FromBody] UpdateIpFilterDto filter)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return Task.FromResult<IActionResult>(BadRequest(ModelState));
         }
 
         // Ensure ID in route matches ID in body
         if (id != filter.Id)
         {
-            return BadRequest("ID in route must match ID in body");
+            return Task.FromResult<IActionResult>(BadRequest("ID in route must match ID in body"));
         }
 
-        try
-        {
-            var (success, errorMessage) = await _ipFilterService.UpdateFilterAsync(filter);
-
-            if (!success)
+        return ExecuteAsync(
+            async () =>
             {
-                if (errorMessage?.Contains("not found") == true)
+                var (success, errorMessage) = await _ipFilterService.UpdateFilterAsync(filter);
+
+                if (!success)
                 {
-                    return NotFound(errorMessage);
+                    if (errorMessage?.Contains("not found") == true)
+                    {
+                        throw new KeyNotFoundException(errorMessage);
+                    }
+
+                    throw new InvalidOperationException(errorMessage);
                 }
-
-                return BadRequest(errorMessage);
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating IP filter with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+            },
+            NoContent(),
+            "UpdateFilter",
+            new { Id = id });
     }
 
     /// <summary>
@@ -201,29 +173,26 @@ public class IpFilterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteFilter(int id)
+    public Task<IActionResult> DeleteFilter(int id)
     {
-        try
-        {
-            var (success, errorMessage) = await _ipFilterService.DeleteFilterAsync(id);
-
-            if (!success)
+        return ExecuteAsync(
+            async () =>
             {
-                if (errorMessage?.Contains("not found") == true)
+                var (success, errorMessage) = await _ipFilterService.DeleteFilterAsync(id);
+
+                if (!success)
                 {
-                    return NotFound(errorMessage);
+                    if (errorMessage?.Contains("not found") == true)
+                    {
+                        throw new KeyNotFoundException(errorMessage);
+                    }
+
+                    throw new InvalidOperationException(errorMessage);
                 }
-
-                return BadRequest(errorMessage);
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting IP filter with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+            },
+            NoContent(),
+            "DeleteFilter",
+            new { Id = id });
     }
 
     /// <summary>
@@ -233,18 +202,12 @@ public class IpFilterController : ControllerBase
     [HttpGet("settings")]
     [ProducesResponseType(typeof(IpFilterSettingsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetSettings()
+    public Task<IActionResult> GetSettings()
     {
-        try
-        {
-            var settings = await _ipFilterService.GetIpFilterSettingsAsync();
-            return Ok(settings);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting IP filter settings");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _ipFilterService.GetIpFilterSettingsAsync(),
+            Ok,
+            "GetSettings");
     }
 
     /// <summary>
@@ -259,29 +222,25 @@ public class IpFilterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateSettings([FromBody] IpFilterSettingsDto settings)
+    public Task<IActionResult> UpdateSettings([FromBody] IpFilterSettingsDto settings)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return Task.FromResult<IActionResult>(BadRequest(ModelState));
         }
 
-        try
-        {
-            var (success, errorMessage) = await _ipFilterService.UpdateIpFilterSettingsAsync(settings);
-
-            if (!success)
+        return ExecuteAsync(
+            async () =>
             {
-                return BadRequest(errorMessage);
-            }
+                var (success, errorMessage) = await _ipFilterService.UpdateIpFilterSettingsAsync(settings);
 
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating IP filter settings");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+                if (!success)
+                {
+                    throw new InvalidOperationException(errorMessage);
+                }
+            },
+            NoContent(),
+            "UpdateSettings");
     }
 
     /// <summary>
@@ -294,22 +253,17 @@ public class IpFilterController : ControllerBase
     [ProducesResponseType(typeof(IpCheckResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CheckIpAddress(string ipAddress)
+    public Task<IActionResult> CheckIpAddress(string ipAddress)
     {
         if (string.IsNullOrWhiteSpace(ipAddress))
         {
-            return BadRequest("IP address must be provided");
+            return Task.FromResult<IActionResult>(BadRequest("IP address must be provided"));
         }
 
-        try
-        {
-            var result = await _ipFilterService.CheckIpAddressAsync(ipAddress);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking IP address {IpAddress}", LoggingSanitizer.S(ipAddress));
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return ExecuteAsync(
+            () => _ipFilterService.CheckIpAddressAsync(ipAddress),
+            Ok,
+            "CheckIpAddress",
+            new { IpAddress = LoggingSanitizer.S(ipAddress) });
     }
 }

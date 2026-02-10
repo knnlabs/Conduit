@@ -1,12 +1,10 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Tests.Admin.TestHelpers;
 
 using FluentAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 using Moq;
 
@@ -71,8 +69,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
             statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error getting all model provider mappings");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            errorResponse.Code.Should().Be("internal_error");
         }
 
         #endregion
@@ -117,7 +115,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            errorResponse.error.ToString().Should().Be("Model provider mapping not found");
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion

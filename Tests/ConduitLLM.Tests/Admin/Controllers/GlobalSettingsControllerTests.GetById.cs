@@ -50,8 +50,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Global setting not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion
