@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Admin.Interfaces;
@@ -62,7 +63,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             _logger.LogInformation("Getting all IP filters");
 
             var filters = await _ipFilterRepository.GetAllUnboundedAsync();
-            return filters.Select(MapToDto);
+            return filters.Select(f => f.ToDto());
         }
         catch (Exception ex)
         {
@@ -79,7 +80,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             _logger.LogInformation("Getting enabled IP filters");
 
             var filters = await _ipFilterRepository.GetEnabledAsync();
-            return filters.Select(MapToDto);
+            return filters.Select(f => f.ToDto());
         }
         catch (Exception ex)
         {
@@ -96,7 +97,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             _logger.LogInformation("Getting IP filter with ID: {FilterId}", id);
 
             var filter = await _ipFilterRepository.GetByIdAsync(id);
-            return filter != null ? MapToDto(filter) : null;
+            return filter?.ToDto();
         }
         catch (Exception ex)
         {
@@ -149,7 +150,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 new { IpAddressOrCidr = createdFilter.IpAddressOrCidr, FilterType = createdFilter.FilterType });
 
             // Return the created filter
-            return (true, null, MapToDto(createdFilter));
+            return (true, null, createdFilter.ToDto());
         }
         catch (Exception ex)
         {
@@ -520,27 +521,6 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 DeniedReason = "Error during IP check, allowed as a failsafe"
             };
         }
-    }
-
-    /// <summary>
-    /// Maps an IP filter entity to a DTO
-    /// </summary>
-    /// <param name="entity">The entity to map</param>
-    /// <returns>The mapped DTO</returns>
-    private static IpFilterDto MapToDto(IpFilterEntity entity)
-    {
-        return new IpFilterDto
-        {
-            Id = entity.Id,
-            FilterType = entity.FilterType,
-            IpAddressOrCidr = entity.IpAddressOrCidr,
-            Description = entity.Description,
-            IsEnabled = entity.IsEnabled,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt,
-            CreatedBy = entity.CreatedBy,
-            UpdatedBy = entity.UpdatedBy
-        };
     }
 
     /// <summary>

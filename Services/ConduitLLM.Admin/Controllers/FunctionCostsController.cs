@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.DTOs;
@@ -42,7 +43,7 @@ public class FunctionCostsController : AdminControllerBase
             async () =>
             {
                 var functionCosts = await _functionCostService.ListCostsAsync();
-                return functionCosts.Select(MapToDto).ToList();
+                return functionCosts.Select(e => e.ToDto()).ToList();
             },
             Ok,
             "GetAllFunctionCosts");
@@ -63,7 +64,7 @@ public class FunctionCostsController : AdminControllerBase
             async () =>
             {
                 var functionCost = await _functionCostService.GetCostByIdAsync(id);
-                return functionCost != null ? MapToDto(functionCost) : null;
+                return functionCost?.ToDto();
             },
             Ok,
             "Function cost",
@@ -87,7 +88,7 @@ public class FunctionCostsController : AdminControllerBase
             {
                 var functionCost = await _functionCostService.GetCostForConfigurationAsync(
                     functionConfigurationId);
-                return functionCost != null ? MapToDto(functionCost) : null;
+                return functionCost?.ToDto();
             },
             Ok,
             "Function cost for configuration",
@@ -120,7 +121,7 @@ public class FunctionCostsController : AdminControllerBase
 
                 // Fetch the created entity to return as DTO
                 var created = await _functionCostService.GetCostByIdAsync(id);
-                var dto = created != null ? MapToDto(created) : null;
+                var dto = created?.ToDto();
 
                 return (id, dto);
             },
@@ -172,7 +173,7 @@ public class FunctionCostsController : AdminControllerBase
 
                 // Fetch the updated entity to return
                 var updated = await _functionCostService.GetCostByIdAsync(id);
-                return updated != null ? MapToDto(updated) : null;
+                return updated?.ToDto();
             },
             dto => Ok(dto),
             "UpdateFunctionCost",
@@ -217,32 +218,6 @@ public class FunctionCostsController : AdminControllerBase
     }
 
     // Mapping methods
-
-    private static FunctionCostDto MapToDto(FunctionCost entity)
-    {
-        return new FunctionCostDto
-        {
-            Id = entity.Id,
-            CostName = entity.CostName,
-            ProviderType = entity.ProviderType,
-            Purpose = entity.Purpose,
-            Description = entity.Description,
-            BaseCost = entity.BaseCost,
-            PricingModel = entity.PricingModel,
-            CostPerExecution = entity.CostPerExecution,
-            CostPerResult = entity.CostPerResult,
-            CostPerToken = entity.CostPerToken,
-            CostPerMinute = entity.CostPerMinute,
-            TieredPricing = entity.TieredPricing,
-            PricingConfiguration = entity.PricingConfiguration,
-            IsActive = entity.IsActive,
-            EffectiveDate = entity.EffectiveDate,
-            ExpiryDate = entity.ExpiryDate,
-            Priority = entity.Priority,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt
-        };
-    }
 
     private static FunctionCost MapToEntity(CreateFunctionCostDto dto)
     {

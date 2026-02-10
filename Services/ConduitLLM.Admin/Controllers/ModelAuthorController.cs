@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
@@ -43,7 +44,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     var authors = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                         _repository.GetPaginatedAsync);
-                    return authors.Select(a => MapToDto(a));
+                    return authors.Select(a => a.ToDto());
                 },
                 Ok,
                 "GetAll");
@@ -62,7 +63,7 @@ namespace ConduitLLM.Admin.Controllers
         {
             return ExecuteWithNotFoundAsync(
                 () => _repository.GetByIdAsync(id),
-                author => Ok(MapToDto(author)),
+                author => Ok(author.ToDto()),
                 "Model author",
                 id,
                 "GetById");
@@ -134,7 +135,7 @@ namespace ConduitLLM.Admin.Controllers
                 author => CreatedAtAction(
                     nameof(GetById),
                     new { id = author.Id },
-                    MapToDto(author)),
+                    author.ToDto()),
                 "Create");
         }
 
@@ -224,15 +225,5 @@ namespace ConduitLLM.Admin.Controllers
                 new { Id = id });
         }
 
-        private static ModelAuthorDto MapToDto(ModelAuthor author)
-        {
-            return new ModelAuthorDto
-            {
-                Id = author.Id,
-                Name = author.Name,
-                Description = author.Description,
-                WebsiteUrl = author.WebsiteUrl
-            };
-        }
     }
 }

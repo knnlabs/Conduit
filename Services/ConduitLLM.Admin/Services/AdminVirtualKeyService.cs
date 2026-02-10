@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Core.Extensions;
 using System.Security.Cryptography;
 
@@ -154,7 +155,7 @@ namespace ConduitLLM.Admin.Services
                 new { KeyName = virtualKey.KeyName });
 
             // Map to response DTO
-            var keyDto = MapToDto(virtualKey);
+            var keyDto = virtualKey.ToDto();
 
             // Return response with the generated key
             return new CreateVirtualKeyResponseDto
@@ -176,7 +177,7 @@ namespace ConduitLLM.Admin.Services
                 return null;
             }
 
-            return MapToDto(key);
+            return key.ToDto();
         }
 
         /// <inheritdoc />
@@ -187,14 +188,14 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogInformation("Listing virtual keys for group {GroupId}", virtualKeyGroupId.Value);
                 var keysByGroup = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _virtualKeyRepository.GetByVirtualKeyGroupIdPaginatedAsync, virtualKeyGroupId.Value);
-                return keysByGroup.ConvertAll(MapToDto);
+                return keysByGroup.ConvertAll(k => k.ToDto());
             }
             else
             {
                 _logger.LogInformation("Listing all virtual keys");
                 var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _virtualKeyRepository.GetPaginatedAsync);
-                return keys.ConvertAll(MapToDto);
+                return keys.ConvertAll(k => k.ToDto());
             }
         }
 

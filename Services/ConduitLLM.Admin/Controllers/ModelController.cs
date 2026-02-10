@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Admin.Models.ModelCapabilities;
@@ -60,7 +61,7 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     var models = await _modelRepository.GetAllWithDetailsAsync();
-                    return models.Select(m => MapToDto(m));
+                    return models.Select(m => m.ToDto());
                 },
                 result => Ok(result),
                 "GetAllModels");
@@ -79,7 +80,7 @@ namespace ConduitLLM.Admin.Controllers
         {
             return ExecuteWithNotFoundAsync(
                 () => _modelRepository.GetByIdWithDetailsAsync(id),
-                model => Ok(MapToDto(model)),
+                model => Ok(model.ToDto()),
                 "Model", id, "GetModelById");
         }
 
@@ -103,7 +104,7 @@ namespace ConduitLLM.Admin.Controllers
                     }
 
                     var models = await _modelRepository.SearchByNameAsync(query);
-                    return models.Select(m => MapToDto(m));
+                    return models.Select(m => m.ToDto());
                 },
                 result => Ok(result),
                 "SearchModels");
@@ -145,7 +146,7 @@ namespace ConduitLLM.Admin.Controllers
                             ?? m.Name; // Fallback to model name if no specific identifier
 
                         // Use MapToDto to get base DTO, then create extended DTO
-                        var baseDto = MapToDto(m);
+                        var baseDto = m.ToDto();
                         return new ModelWithProviderIdDto
                         {
                             Id = baseDto.Id,
@@ -503,7 +504,7 @@ namespace ConduitLLM.Admin.Controllers
                     return CreatedAtAction(
                         nameof(GetModelById),
                         new { id = model.Id },
-                        MapToDto(model));
+                        model.ToDto());
                 },
                 result => result,
                 "CreateModel");
@@ -597,7 +598,7 @@ namespace ConduitLLM.Admin.Controllers
                     Logger.LogInformation("Published ModelUpdated event for model {ModelId} ({ModelName})",
                         updatedModel.Id, updatedModel.Name);
 
-                    return (IActionResult)Ok(MapToDto(updatedModel));
+                    return (IActionResult)Ok(updatedModel.ToDto());
                 },
                 result => result,
                 "UpdateModel",
@@ -640,48 +641,6 @@ namespace ConduitLLM.Admin.Controllers
                 "DeleteModel",
                 new { Id = id });
         }
-
-        private static ModelDto MapToDto(Model model)
-        {
-            // Map model with embedded capabilities
-            return new ModelDto
-            {
-                Id = model.Id,
-                Name = model.Name,
-                ModelSeriesId = model.ModelSeriesId,
-                IsActive = model.IsActive,
-                CreatedAt = model.CreatedAt,
-                UpdatedAt = model.UpdatedAt,
-                Series = model.Series != null ? MapSeriesToDto(model.Series) : null,
-                ModelParameters = model.ModelParameters,
-                // Capability fields embedded directly
-                SupportsChat = model.SupportsChat,
-                SupportsVision = model.SupportsVision,
-                SupportsImageGeneration = model.SupportsImageGeneration,
-                SupportsVideoGeneration = model.SupportsVideoGeneration,
-                SupportsEmbeddings = model.SupportsEmbeddings,
-                SupportsFunctionCalling = model.SupportsFunctionCalling,
-                SupportsStreaming = model.SupportsStreaming,
-                MaxInputTokens = model.MaxInputTokens,
-                MaxOutputTokens = model.MaxOutputTokens,
-                TokenizerType = model.TokenizerType
-            };
-        }
-
-        private static ModelSeriesDto MapSeriesToDto(ModelSeries series)
-        {
-            return new ModelSeriesDto
-            {
-                Id = series.Id,
-                AuthorId = series.AuthorId,
-                AuthorName = series.Author?.Name,
-                Name = series.Name,
-                Description = series.Description,
-                TokenizerType = series.TokenizerType,
-                Parameters = series.Parameters
-            };
-        }
-
 
         /// <summary>
         /// Gets all provider mappings for a specific model

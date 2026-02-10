@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -41,7 +42,7 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     var series = await _repository.GetAllWithAuthorAsync();
-                    return series.Select(s => MapToDto(s));
+                    return series.Select(s => s.ToDto());
                 },
                 Ok,
                 "GetAll");
@@ -60,7 +61,7 @@ namespace ConduitLLM.Admin.Controllers
         {
             return ExecuteWithNotFoundAsync(
                 () => _repository.GetByIdWithAuthorAsync(id),
-                series => Ok(MapToDto(series)),
+                series => Ok(series.ToDto()),
                 "Model series",
                 id,
                 "GetById");
@@ -141,7 +142,7 @@ namespace ConduitLLM.Admin.Controllers
                 series => CreatedAtAction(
                     nameof(GetById),
                     new { id = series.Id },
-                    MapToDto(series)),
+                    series.ToDto()),
                 "Create");
         }
 
@@ -233,18 +234,5 @@ namespace ConduitLLM.Admin.Controllers
                 new { Id = id });
         }
 
-        private static ModelSeriesDto MapToDto(ModelSeries series)
-        {
-            return new ModelSeriesDto
-            {
-                Id = series.Id,
-                AuthorId = series.AuthorId,
-                AuthorName = series.Author?.Name,
-                Name = series.Name,
-                Description = series.Description,
-                TokenizerType = series.TokenizerType,
-                Parameters = series.Parameters
-            };
-        }
     }
 }

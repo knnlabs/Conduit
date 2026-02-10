@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.DTOs;
@@ -45,7 +46,7 @@ public class FunctionExecutionsController : AdminControllerBase
             async () =>
             {
                 var execution = await _executionRepository.GetByIdAsync(id);
-                return execution != null ? MapToDto(execution) : null;
+                return execution?.ToDto();
             },
             Ok,
             "Function execution",
@@ -67,7 +68,7 @@ public class FunctionExecutionsController : AdminControllerBase
             async () =>
             {
                 var executions = await _executionRepository.GetByVirtualKeyIdAsync(virtualKeyId);
-                return executions.Select(MapToDto).ToList();
+                return executions.Select(e => e.ToDto()).ToList();
             },
             Ok,
             "GetExecutionsByVirtualKey",
@@ -89,7 +90,7 @@ public class FunctionExecutionsController : AdminControllerBase
             {
                 var executions = await _executionRepository.GetByFunctionConfigurationIdAsync(
                     functionConfigurationId);
-                return executions.Select(MapToDto).ToList();
+                return executions.Select(e => e.ToDto()).ToList();
             },
             Ok,
             "GetExecutionsByConfiguration",
@@ -116,7 +117,7 @@ public class FunctionExecutionsController : AdminControllerBase
             async () =>
             {
                 var executions = await _executionRepository.GetByStateAsync(stateEnum);
-                return executions.Select(MapToDto).ToList();
+                return executions.Select(e => e.ToDto()).ToList();
             },
             Ok,
             "GetExecutionsByState",
@@ -136,7 +137,7 @@ public class FunctionExecutionsController : AdminControllerBase
             async () =>
             {
                 var executions = await _executionRepository.GetExpiredLeasesAsync();
-                return executions.Select(MapToDto).ToList();
+                return executions.Select(e => e.ToDto()).ToList();
             },
             Ok,
             "GetExpiredLeases");
@@ -155,7 +156,7 @@ public class FunctionExecutionsController : AdminControllerBase
             async () =>
             {
                 var executions = await _executionRepository.GetReadyForRetryAsync();
-                return executions.Select(MapToDto).ToList();
+                return executions.Select(e => e.ToDto()).ToList();
             },
             Ok,
             "GetReadyForRetry");
@@ -194,39 +195,4 @@ public class FunctionExecutionsController : AdminControllerBase
             new { OlderThanDays = olderThanDays });
     }
 
-    // Mapping methods
-
-    /// <summary>
-    /// Maps FunctionExecution entity to DTO, converting TimeSpan to milliseconds
-    /// </summary>
-    private static FunctionExecutionDto MapToDto(FunctionExecution entity)
-    {
-        return new FunctionExecutionDto
-        {
-            Id = entity.Id,
-            FunctionConfigurationId = entity.FunctionConfigurationId,
-            VirtualKeyId = entity.VirtualKeyId,
-            ExecutionMode = entity.ExecutionMode,
-            State = entity.State,
-            RequestedAt = entity.RequestedAt,
-            StartedAt = entity.StartedAt,
-            CompletedAt = entity.CompletedAt,
-            Duration = entity.Duration?.TotalMilliseconds,
-            RequestJson = entity.RequestJson,
-            ResponseJson = entity.ResponseJson,
-            ErrorMessage = entity.ErrorMessage,
-            EstimatedCost = entity.EstimatedCost,
-            ActualCost = entity.ActualCost,
-            CostCalculationDetails = entity.CostCalculationDetails,
-            RetryCount = entity.RetryCount,
-            NextRetryAt = entity.NextRetryAt,
-            LeasedBy = entity.LeasedBy,
-            LeaseExpiryTime = entity.LeaseExpiryTime,
-            Version = entity.Version,
-            WebhookUrl = entity.WebhookUrl,
-            WebhookDelivered = entity.WebhookDelivered,
-            ProgressPercentage = entity.ProgressPercentage,
-            StatusMessage = entity.StatusMessage
-        };
-    }
 }

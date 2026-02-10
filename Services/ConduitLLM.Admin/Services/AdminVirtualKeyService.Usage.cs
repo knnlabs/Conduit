@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
@@ -77,7 +78,7 @@ namespace ConduitLLM.Admin.Services
             {
                 return null;
             }
-            return MapToDto(key);
+            return key.ToDto();
         }
 
         /// <inheritdoc />
@@ -166,48 +167,5 @@ namespace ConduitLLM.Admin.Services
             };
         }
 
-        /// <summary>
-        /// Maps a VirtualKey entity to a VirtualKeyDto
-        /// </summary>
-        /// <param name="key">The entity to map</param>
-        /// <returns>The mapped DTO</returns>
-        private static VirtualKeyDto MapToDto(VirtualKey key)
-        {
-            return new VirtualKeyDto
-            {
-                Id = key.Id,
-                KeyName = key.KeyName,
-                KeyPrefix = GenerateKeyPrefix(key.KeyHash),
-                AllowedModels = key.AllowedModels,
-                VirtualKeyGroupId = key.VirtualKeyGroupId,
-                IsEnabled = key.IsEnabled,
-                ExpiresAt = key.ExpiresAt,
-                CreatedAt = key.CreatedAt,
-                UpdatedAt = key.UpdatedAt,
-                Metadata = key.Metadata,
-                RateLimitRpm = key.RateLimitRpm,
-                RateLimitRpd = key.RateLimitRpd
-            };
-        }
-
-        /// <summary>
-        /// Generates a key prefix for display purposes
-        /// </summary>
-        /// <param name="keyHash">The key hash</param>
-        /// <returns>A prefix showing part of the key</returns>
-        private static string GenerateKeyPrefix(string keyHash)
-        {
-            // Handle null or empty keyHash to prevent exceptions in tests
-            if (string.IsNullOrEmpty(keyHash))
-            {
-                return "condt_******...";
-            }
-
-            // Generate a prefix like "condt_abc123..." from the hash
-            // This is for display purposes only
-            var prefixLength = Math.Min(6, keyHash.Length);
-            var shortPrefix = keyHash.Substring(0, prefixLength).ToLower();
-            return $"condt_{shortPrefix}...";
-        }
     }
 }
