@@ -1,11 +1,12 @@
-using System.Text;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Services;
 
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -44,11 +45,11 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 // Generate a new key with prefix
-                var keyValue = GenerateSecureKey();
+                var keyValue = VirtualKeyUtilities.GenerateSecureKey();
                 var keyWithPrefix = $"condt_{keyValue}";
-                
+
                 // Hash the key for storage
-                var keyHash = HashKey(keyWithPrefix);
+                var keyHash = VirtualKeyUtilities.HashKey(keyWithPrefix);
                 
                 // VirtualKeyGroupId is now required
                 var existingGroup = await _groupRepository.GetByIdAsync(request.VirtualKeyGroupId);
@@ -89,7 +90,7 @@ namespace ConduitLLM.Gateway.Services
                         return new CreateVirtualKeyResponseDto
                         {
                             VirtualKey = keyWithPrefix,
-                            KeyInfo = MapToDto(created)
+                            KeyInfo = VirtualKeyUtilities.MapToDto(created)
                         };
                     }
                 }
@@ -117,7 +118,7 @@ namespace ConduitLLM.Gateway.Services
                     return null;
                 }
                 
-                return MapToDto(virtualKey);
+                return VirtualKeyUtilities.MapToDto(virtualKey);
             }
             catch (Exception ex)
             {
@@ -135,7 +136,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _virtualKeyRepository.GetPaginatedAsync);
-                return [..virtualKeys.Select(MapToDto)];
+                return [..virtualKeys.Select(VirtualKeyUtilities.MapToDto)];
             }
             catch (Exception ex)
             {
@@ -301,10 +302,10 @@ namespace ConduitLLM.Gateway.Services
             }
 
             // Hash the incoming key before looking it up
-            var keyHash = HashKey(key);
-            _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}", 
+            var keyHash = VirtualKeyUtilities.HashKey(key);
+            _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}",
                 key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
-            
+
             var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
             if (virtualKey == null)
             {
@@ -312,39 +313,11 @@ namespace ConduitLLM.Gateway.Services
                 return null;
             }
 
-            // Check if key is enabled
-            if (!virtualKey.IsEnabled)
-            {
-                _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", 
-                    LoggingSanitizer.S(virtualKey.KeyName) ?? "Unknown", virtualKey.Id);
-                return null;
-            }
+            // Delegate to shared validation helper (no balance check for authentication)
+            var result = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
+                virtualKey, requestedModel, checkBalance: false, _groupRepository, _logger);
 
-            // Check expiration
-            if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
-            {
-                _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
-                    LoggingSanitizer.S(virtualKey.KeyName) ?? "Unknown", virtualKey.Id, virtualKey.ExpiresAt);
-                return null;
-            }
-
-            // Check if model is allowed (but skip balance check for authentication)
-            if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
-            {
-                bool isModelAllowed = IsModelAllowed(requestedModel, virtualKey.AllowedModels);
-                if (!isModelAllowed)
-                {
-                    _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
-                        LoggingSanitizer.S(virtualKey.KeyName) ?? "Unknown", virtualKey.Id, 
-                        LoggingSanitizer.S(requestedModel));
-                    return null;
-                }
-            }
-
-            // Authentication validation passed
-            _logger.LogDebug("Virtual key authenticated successfully: {KeyName} (ID: {KeyId})",
-                LoggingSanitizer.S(virtualKey.KeyName) ?? "Unknown", virtualKey.Id);
-            return virtualKey;
+            return result.IsValid ? virtualKey : null;
         }
 
         /// <inheritdoc />
@@ -357,10 +330,10 @@ namespace ConduitLLM.Gateway.Services
             }
 
             // Hash the incoming key before looking it up
-            var keyHash = HashKey(key);
-            _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}", 
+            var keyHash = VirtualKeyUtilities.HashKey(key);
+            _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}",
                 key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
-            
+
             var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
             if (virtualKey == null)
             {
@@ -368,47 +341,11 @@ namespace ConduitLLM.Gateway.Services
                 return null;
             }
 
-            // Check if key is enabled
-            if (!virtualKey.IsEnabled)
-            {
-                _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
-                return null;
-            }
+            // Delegate to shared validation helper (with balance check)
+            var result = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
+                virtualKey, requestedModel, checkBalance: true, _groupRepository, _logger);
 
-            // Check expiration
-            if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
-            {
-                _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
-                    LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, virtualKey.ExpiresAt);
-                return null;
-            }
-
-            // Check group balance
-            var group = await _groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
-            if (group != null && group.Balance <= 0)
-            {
-                _logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has balance {Balance}",
-                    LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, group.Id, group.Balance);
-                return null;
-            }
-
-            // Check if model is allowed, if model restrictions are in place
-            if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
-            {
-                bool isModelAllowed = IsModelAllowed(requestedModel, virtualKey.AllowedModels);
-
-                if (!isModelAllowed)
-                {
-                    _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
-                        LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, LoggingSanitizer.S(requestedModel));
-                    return null;
-                }
-            }
-
-            // All validations passed
-            _logger.LogInformation("Validated virtual key successfully: {KeyName} (ID: {KeyId})",
-                LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
-            return virtualKey;
+            return result.IsValid ? virtualKey : null;
         }
 
         /// <inheritdoc />
@@ -465,82 +402,5 @@ namespace ConduitLLM.Gateway.Services
             return await _virtualKeyRepository.GetByIdAsync(keyId, cancellationToken);
         }
 
-        // Helper method to check if a model is allowed
-        private bool IsModelAllowed(string requestedModel, string allowedModels)
-        {
-            if (string.IsNullOrEmpty(allowedModels))
-                return true; // No restrictions
-
-            var allowedModelsList = allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            // First check for exact match
-            if (allowedModelsList.Any(m => string.Equals(m, requestedModel, StringComparison.OrdinalIgnoreCase)))
-                return true;
-
-            // Then check for wildcard/prefix matches
-            foreach (var allowedModel in allowedModelsList)
-            {
-                // Handle wildcards like "gpt-4*" to match any GPT-4 model
-                if (allowedModel.EndsWith("*", StringComparison.OrdinalIgnoreCase) &&
-                    allowedModel.Length > 1)
-                {
-                    string prefix = allowedModel.Substring(0, allowedModel.Length - 1);
-                    if (requestedModel.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                        return true;
-                }
-            }
-
-            return false;
-        }
-        
-        // Helper method to generate a secure random key
-        private string GenerateSecureKey()
-        {
-            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-            var bytes = new byte[32]; // 256 bits
-            rng.GetBytes(bytes);
-            return Convert.ToBase64String(bytes)
-                .Replace("+", "")
-                .Replace("/", "")
-                .Replace("=", "")
-                .Substring(0, 32); // Take first 32 characters for consistency
-        }
-        
-        // Helper method to hash a key using SHA256
-        private string HashKey(string key)
-        {
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var bytes = System.Text.Encoding.UTF8.GetBytes(key);
-            var hash = sha256.ComputeHash(bytes);
-            
-            // Convert to hex string to match Admin API format
-            var builder = new StringBuilder();
-            foreach (byte b in hash)
-            {
-                builder.Append(b.ToString("x2"));
-            }
-            return builder.ToString();
-        }
-        
-        // Helper method to map VirtualKey entity to VirtualKeyDto
-        private VirtualKeyDto MapToDto(VirtualKey virtualKey)
-        {
-            return new VirtualKeyDto
-            {
-                Id = virtualKey.Id,
-                KeyName = virtualKey.KeyName,
-                KeyPrefix = "condt_****", // Don't expose the actual key
-                AllowedModels = virtualKey.AllowedModels,
-                VirtualKeyGroupId = virtualKey.VirtualKeyGroupId,
-                IsEnabled = virtualKey.IsEnabled,
-                ExpiresAt = virtualKey.ExpiresAt,
-                CreatedAt = virtualKey.CreatedAt,
-                UpdatedAt = virtualKey.UpdatedAt,
-                Metadata = virtualKey.Metadata,
-                RateLimitRpm = virtualKey.RateLimitRpm,
-                RateLimitRpd = virtualKey.RateLimitRpd,
-                Description = virtualKey.Description,
-            };
-        }
     }
 }

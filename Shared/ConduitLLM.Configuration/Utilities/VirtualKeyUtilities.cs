@@ -3,7 +3,7 @@ using System.Text;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 
-namespace ConduitLLM.Gateway.Services
+namespace ConduitLLM.Configuration.Utilities
 {
     /// <summary>
     /// Static utility methods for virtual key operations
@@ -20,7 +20,7 @@ namespace ConduitLLM.Gateway.Services
             using var sha256 = SHA256.Create();
             var bytes = Encoding.UTF8.GetBytes(key);
             var hash = sha256.ComputeHash(bytes);
-            
+
             // Convert to hex string to match Admin API format
             var builder = new StringBuilder();
             foreach (byte b in hash)

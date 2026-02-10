@@ -3,6 +3,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 using MassTransit;

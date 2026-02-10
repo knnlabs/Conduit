@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
+using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -118,7 +119,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Hash the key for lookup
-            var keyHash = ComputeSha256Hash(keyValue);
+            var keyHash = VirtualKeyUtilities.HashKey(keyValue);
             
             // Get the virtual key by hash
             var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);

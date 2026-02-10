@@ -3,7 +3,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Gateway.Services
+namespace ConduitLLM.Core.Services
 {
     /// <summary>
     /// Helper class containing shared virtual key validation logic
@@ -29,7 +29,7 @@ namespace ConduitLLM.Gateway.Services
             // Check if key is enabled
             if (!virtualKey.IsEnabled)
             {
-                logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", 
+                logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})",
                     LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
                 return new ValidationResult { IsValid = false, Reason = "Key is disabled" };
             }
@@ -50,10 +50,10 @@ namespace ConduitLLM.Gateway.Services
                 {
                     logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has balance {Balance}",
                         LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, group.Id, group.Balance);
-                    
-                    return new ValidationResult 
-                    { 
-                        IsValid = false, 
+
+                    return new ValidationResult
+                    {
+                        IsValid = false,
                         Reason = "Insufficient balance",
                         StatusCode = 402 // Payment Required
                     };
@@ -63,7 +63,7 @@ namespace ConduitLLM.Gateway.Services
             // Check if model is allowed
             if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
             {
-                bool isModelAllowed = VirtualKeyUtilities.IsModelAllowed(requestedModel, virtualKey.AllowedModels);
+                bool isModelAllowed = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities.IsModelAllowed(requestedModel, virtualKey.AllowedModels);
                 if (!isModelAllowed)
                 {
                     logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
@@ -97,12 +97,12 @@ namespace ConduitLLM.Gateway.Services
             /// Whether the validation passed
             /// </summary>
             public bool IsValid { get; set; }
-            
+
             /// <summary>
             /// Reason for validation failure
             /// </summary>
             public string? Reason { get; set; }
-            
+
             /// <summary>
             /// Optional status code to return (e.g., 402 for insufficient balance)
             /// </summary>
