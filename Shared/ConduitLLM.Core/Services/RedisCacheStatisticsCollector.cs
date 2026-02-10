@@ -11,7 +11,7 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Redis-based distributed cache statistics collector with atomic operations.
     /// </summary>
-    public class RedisCacheStatisticsCollector : IDistributedCacheStatisticsCollector
+    public class RedisCacheStatisticsCollector : IDistributedCacheStatisticsCollector, IAsyncDisposable, IDisposable
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly IDatabase _db;
@@ -586,10 +586,35 @@ namespace ConduitLLM.Core.Services
             return string.Join("\n", lines);
         }
 
+        public async ValueTask DisposeAsync()
+        {
+            if (_heartbeatTimer != null)
+            {
+                await _heartbeatTimer.DisposeAsync();
+            }
+
+            try
+            {
+                await UnregisterInstanceAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error unregistering instance during async disposal");
+            }
+        }
+
         public void Dispose()
         {
             _heartbeatTimer?.Dispose();
-            UnregisterInstanceAsync().GetAwaiter().GetResult();
+
+            try
+            {
+                UnregisterInstanceAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error unregistering instance during disposal");
+            }
         }
     }
 }

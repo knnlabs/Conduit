@@ -1,6 +1,5 @@
 using ConduitLLM.Core;
 using ConduitLLM.Core.Controllers;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
 using MassTransit;
@@ -19,10 +18,9 @@ namespace ConduitLLM.Gateway.Controllers
     [Authorize(AuthenticationSchemes = "VirtualKey")]
     [RequireBalance]
     [Tags("Embeddings")]
-    public class EmbeddingsController : EventPublishingControllerBase
+    public class EmbeddingsController : GatewayControllerBase
     {
         private readonly Conduit _conduit;
-        private readonly ILogger<EmbeddingsController> _logger;
         private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
 
         public EmbeddingsController(
@@ -32,7 +30,6 @@ namespace ConduitLLM.Gateway.Controllers
             IPublishEndpoint publishEndpoint) : base(publishEndpoint, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
 
@@ -63,43 +60,33 @@ namespace ConduitLLM.Gateway.Controllers
                 });
             }
 
-            try
-            {
-                _logger.LogInformation("Processing embeddings request for model: {Model}", request.Model);
-                
-                // Get provider info for usage tracking
-                try
+            return await ExecuteAsync(
+                async () =>
                 {
-                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
-                    if (modelMapping != null)
+                    Logger.LogInformation("Processing embeddings request for model: {Model}", request.Model);
+
+                    // Get provider info for usage tracking
+                    try
                     {
-                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
-                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                        var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                        if (modelMapping != null)
+                        {
+                            HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                            HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
-                }
-                
-                // Get the client for the specified model and create embeddings
-                var client = await _conduit.GetClientAsync(request.Model, cancellationToken);
-                var response = await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing embeddings request for model: {Model}", request.Model);
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
+                    catch (Exception ex)
                     {
-                        Message = ex.Message,
-                        Type = "server_error",
-                        Code = "internal_error"
+                        Logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
                     }
-                });
-            }
+
+                    // Get the client for the specified model and create embeddings
+                    var client = await _conduit.GetClientAsync(request.Model, cancellationToken);
+                    return await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
+                },
+                result => Ok(result),
+                "CreateEmbedding",
+                request.Model);
         }
     }
 }

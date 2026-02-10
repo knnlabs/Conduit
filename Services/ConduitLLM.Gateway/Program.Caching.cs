@@ -21,22 +21,7 @@ public partial class Program
         // Virtual Key service registration will be done after Redis configuration
 
         // Configure Redis connection for all Redis-dependent services
-        // Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-        if (!string.IsNullOrEmpty(redisUrl))
-        {
-            try
-            {
-                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-            }
-            catch
-            {
-                // Failed to parse REDIS_URL, will use legacy connection string if available
-                // Validation will be logged during startup after logger is available
-            }
-        }
+        var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
         // Configure CacheOptions with the parsed Redis connection string
         // This ensures SignalRAcknowledgmentService and other services can access it

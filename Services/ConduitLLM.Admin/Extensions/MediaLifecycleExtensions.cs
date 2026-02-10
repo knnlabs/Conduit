@@ -68,20 +68,7 @@ namespace ConduitLLM.Admin.Extensions
             MediaLifecycleOptions options)
         {
             // Check if Redis is configured
-            var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-            var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-            if (!string.IsNullOrEmpty(redisUrl))
-            {
-                try
-                {
-                    redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-                }
-                catch
-                {
-                    // Failed to parse REDIS_URL
-                }
-            }
+            var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
             if (!string.IsNullOrEmpty(redisConnectionString))
             {

@@ -12,20 +12,7 @@ public partial class Program
     public static void ConfigureSignalRServices(WebApplicationBuilder builder)
     {
         // Get Redis connection string from environment
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-        if (!string.IsNullOrEmpty(redisUrl))
-        {
-            try
-            {
-                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-            }
-            catch
-            {
-                // Failed to parse REDIS_URL, will use legacy connection string if available
-            }
-        }
+        var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
         // Register VirtualKeyHubFilter for SignalR authentication
         builder.Services.AddScoped<ConduitLLM.Gateway.Authentication.VirtualKeyHubFilter>();
@@ -116,61 +103,21 @@ public partial class Program
         // Register Business Metrics Background Service - with leader election
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.BusinessMetricsService>("BusinessMetricsService");
 
-        // Add SignalR for real-time navigation state updates
-        var signalRBuilder = builder.Services.AddSignalR(options =>
-        {
-            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-            options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
-            options.KeepAliveInterval = TimeSpan.FromSeconds(30);
-            options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
-            options.StreamBufferCapacity = 10;
-            
-            // Add global filters
-            options.AddFilter<ConduitLLM.Gateway.Filters.SignalRMetricsFilter>();
-            options.AddFilter<ConduitLLM.Gateway.Filters.SignalRErrorHandlingFilter>();
-            options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeyHubFilter>();
-            options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeySignalRRateLimitFilter>();
-        });
-
-        // Add MessagePack protocol support with LZ4 compression
-        // Enables both JSON (default) and MessagePack protocols for backward compatibility
-        var messagePackEnabled = Environment.GetEnvironmentVariable("SIGNALR_MESSAGEPACK_ENABLED")?.ToLowerInvariant() != "false";
-        if (messagePackEnabled)
-        {
-            signalRBuilder.AddMessagePackProtocol(options =>
-            {
-                // Configure MessagePack with security and compression
-                // Use ContractlessStandardResolver to serialize DTOs without requiring [MessagePackObject] attributes
-                options.SerializerOptions = MessagePack.MessagePackSerializerOptions.Standard
-                    .WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance)
-                    .WithSecurity(MessagePack.MessagePackSecurity.UntrustedData) // CVE-2020-5234 protection
-                    .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray) // Use Lz4BlockArray for GC optimization
-                    .WithCompressionMinLength(256); // Only compress messages > 256 bytes
-            });
-            Console.WriteLine("[Conduit] SignalR configured with MessagePack protocol (LZ4 compression enabled)");
-            Console.WriteLine("[Conduit] SignalR supports both JSON and MessagePack protocols for backward compatibility");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] SignalR configured with JSON protocol only (MessagePack disabled)");
-        }
-
-        // Configure SignalR Redis backplane for horizontal scaling
-        // Use dedicated Redis connection string if available, otherwise fall back to main Redis connection
+        // Add SignalR with shared configuration (MessagePack, Redis backplane)
         var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
-        if (!string.IsNullOrEmpty(signalRRedisConnectionString))
-        {
-            signalRBuilder.AddStackExchangeRedis(signalRRedisConnectionString, options =>
+        builder.Services.AddConduitSignalR(
+            builder.Environment,
+            signalRRedisConnectionString,
+            redisChannelPrefix: "conduit_signalr:",
+            redisDatabase: 2,
+            serviceName: "Conduit",
+            configureHubOptions: options =>
             {
-                options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("conduit_signalr:", StackExchange.Redis.RedisChannel.PatternMode.Literal);
-                options.Configuration.DefaultDatabase = 2; // Separate database for SignalR
+                options.AddFilter<ConduitLLM.Gateway.Filters.SignalRMetricsFilter>();
+                options.AddFilter<ConduitLLM.Gateway.Filters.SignalRErrorHandlingFilter>();
+                options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeyHubFilter>();
+                options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeySignalRRateLimitFilter>();
             });
-            Console.WriteLine("[Conduit] SignalR configured with Redis backplane for horizontal scaling");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] SignalR configured without Redis backplane (single-instance mode)");
-        }
 
         // Navigation state notification service removed - WebAdmin uses React Query instead of SignalR for model mapping updates
 

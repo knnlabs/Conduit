@@ -138,7 +138,7 @@ public class FunctionExecutionService : IFunctionExecutionService
             }
 
             // 5. Execute function via provider client
-            var client = _clientFactory.GetClient(configuration.ProviderType, functionConfigurationId);
+            var client = await _clientFactory.GetClientAsync(configuration.ProviderType, functionConfigurationId);
 
             _logger.LogInformation("Executing {ProviderType} function via client...",
                 configuration.ProviderType);

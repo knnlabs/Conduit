@@ -32,13 +32,6 @@ public class FunctionClientFactory : IFunctionClientFactory
         _httpClientFactory = httpClientFactory;
     }
 
-    /// <inheritdoc />
-    public IFunctionClient GetClient(FunctionProviderType providerType, int functionConfigurationId)
-    {
-        // Prefer using GetClientAsync for non-blocking operation
-        return GetClientAsync(providerType, functionConfigurationId).ConfigureAwait(false).GetAwaiter().GetResult();
-    }
-
     /// <summary>
     /// Gets a function client asynchronously.
     /// </summary>

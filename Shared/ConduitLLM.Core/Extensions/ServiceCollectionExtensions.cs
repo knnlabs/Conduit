@@ -64,9 +64,6 @@ namespace ConduitLLM.Core.Extensions
             // Register model capability service if not already registered - use database-backed implementation
             services.TryAddScoped<IModelCapabilityService, DatabaseModelCapabilityService>();
 
-            // Register capability detector if not already registered
-            services.TryAddScoped<IModelCapabilityDetector, ModelCapabilityDetector>();
-
             // Register performance optimization services
             services.AddMemoryCache();
 

@@ -229,7 +229,7 @@ public class FunctionCredentialsController : AdminControllerBase
                 }
 
                 // Create client and test authentication
-                var client = _clientFactory.GetClient(
+                var client = await _clientFactory.GetClientAsync(
                     credential.ProviderType,
                     configuration.Id);
 

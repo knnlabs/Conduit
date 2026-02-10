@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Hubs;
 
 using MassTransit;
@@ -47,18 +48,43 @@ namespace ConduitLLM.Gateway.EventHandlers
 
             try
             {
-                // Update task status to completed
-                var result = new
+                // Parse resolution to width/height if available
+                int width = 0, height = 0;
+                if (!string.IsNullOrEmpty(message.Resolution))
                 {
-                    VideoUrl = message.VideoUrl,
-                    PreviewUrl = message.PreviewUrl,
-                    Duration = message.Duration,
-                    Resolution = message.Resolution,
-                    FileSize = message.FileSize,
-                    Cost = message.Cost,
-                    Provider = message.Provider,
+                    var parts = message.Resolution.Split('x', 'X');
+                    if (parts.Length == 2)
+                    {
+                        int.TryParse(parts[0], out width);
+                        int.TryParse(parts[1], out height);
+                    }
+                }
+
+                // Update task status to completed with VideoGenerationResponse format
+                // This matches what the SDK expects: { created, data: [{ url, metadata }], model }
+                var result = new VideoGenerationResponse
+                {
+                    Created = new DateTimeOffset(message.CompletedAt).ToUnixTimeSeconds(),
+                    Data = new List<VideoData>
+                    {
+                        new VideoData
+                        {
+                            Url = message.VideoUrl,
+                            Metadata = new VideoMetadata
+                            {
+                                Width = width,
+                                Height = height,
+                                Duration = message.Duration,
+                                FileSizeBytes = message.FileSize
+                            }
+                        }
+                    },
                     Model = message.Model,
-                    CompletedAt = message.CompletedAt
+                    Usage = new VideoGenerationUsage
+                    {
+                        VideosGenerated = 1,
+                        TotalDurationSeconds = message.Duration
+                    }
                 };
 
                 await _asyncTaskService.UpdateTaskStatusAsync(

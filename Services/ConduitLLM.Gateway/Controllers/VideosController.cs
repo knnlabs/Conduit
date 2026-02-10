@@ -73,12 +73,6 @@ namespace ConduitLLM.Gateway.Controllers
         {
             try
             {
-                // Validate request
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
                 // Get virtual key and ID from HttpContext (set by VirtualKeyAuthenticationMiddleware)
                 var virtualKey = HttpContext.Items["VirtualKey"]?.ToString();
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
@@ -264,7 +258,7 @@ namespace ConduitLLM.Gateway.Controllers
                     UpdatedAt = taskStatus.UpdatedAt,
                     CompletedAt = taskStatus.CompletedAt,
                     Error = taskStatus.Error,
-                    Result = taskStatus.Result?.ToString()
+                    ResultRaw = taskStatus.Result?.ToString()
                 };
 
                 // If completed, try to get the video response
@@ -280,7 +274,7 @@ namespace ConduitLLM.Gateway.Controllers
                                 taskId,
                                 virtualKey,
                                 cancellationToken);
-                            response.VideoResponse = videoResponse;
+                            response.Result = videoResponse;
                         }
                     }
                     catch (NotImplementedException)
@@ -787,13 +781,14 @@ namespace ConduitLLM.Gateway.Controllers
         public string? Error { get; set; }
 
         /// <summary>
-        /// Result data (internal use).
+        /// Internal result data (raw format, for debugging).
         /// </summary>
-        public string? Result { get; set; }
+        public string? ResultRaw { get; set; }
 
         /// <summary>
-        /// The video generation response if completed.
+        /// The video generation result if completed.
+        /// SDK clients expect this field as 'result' (snake_case: 'result').
         /// </summary>
-        public VideoGenerationResponse? VideoResponse { get; set; }
+        public VideoGenerationResponse? Result { get; set; }
     }
 }

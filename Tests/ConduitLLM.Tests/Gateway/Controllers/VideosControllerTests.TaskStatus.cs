@@ -63,7 +63,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(taskId, response.TaskId);
             Assert.Equal(TaskStateConstants.Completed, response.Status);
             Assert.Equal(100, response.Progress);
-            Assert.NotNull(response.VideoResponse);
+            Assert.NotNull(response.Result);
         }
 
         [Fact]

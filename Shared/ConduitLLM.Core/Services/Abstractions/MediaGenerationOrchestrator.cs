@@ -329,16 +329,53 @@ namespace ConduitLLM.Core.Services.Abstractions
 
         protected virtual async Task CompleteTaskAsync(TEventRequest request, ProcessedMedia media, decimal cost, GenerationModelInfo modelInfo, Stopwatch stopwatch)
         {
+            // Build data array from processed media items in OpenAI-compatible format
+            // This format is expected by SDKs: { created, data: [{ url, metadata }], model, usage }
+            var dataItems = new List<object>();
+
+            if (media.Items.Any())
+            {
+                foreach (var item in media.Items)
+                {
+                    dataItems.Add(new
+                    {
+                        url = item.Url,
+                        metadata = item.Metadata.Count > 0 ? item.Metadata : null
+                    });
+                }
+            }
+            else if (!string.IsNullOrEmpty(media.Url))
+            {
+                // Single item case - wrap in data array
+                dataItems.Add(new
+                {
+                    url = media.Url,
+                    metadata = media.Metadata.Count > 0 ? media.Metadata : null
+                });
+            }
+
+            // Create result in OpenAI-compatible format that SDKs expect
+            // Both ImageGenerationResponse and VideoGenerationResponse share this structure
             var result = new
             {
-                mediaUrl = media.Url ?? media.Items.FirstOrDefault()?.Url,
-                mediaCount = media.Count,
-                duration = stopwatch.Elapsed.TotalSeconds,
-                cost,
-                provider = modelInfo.ProviderName,
-                model = modelInfo.ModelId
+                created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                data = dataItems,
+                model = modelInfo.ModelId,
+                usage = new
+                {
+                    // Generic usage info - specific orchestrators can override if needed
+                    count = media.Count,
+                    duration_seconds = stopwatch.Elapsed.TotalSeconds
+                },
+                // Additional metadata for internal use (not part of OpenAI spec but useful)
+                _metadata = new
+                {
+                    cost,
+                    provider = modelInfo.ProviderName,
+                    generation_duration_seconds = stopwatch.Elapsed.TotalSeconds
+                }
             };
-            
+
             // Record completion metrics
             _metrics.RecordGenerationCompleted(
                 GetMediaType(),
@@ -347,16 +384,16 @@ namespace ConduitLLM.Core.Services.Abstractions
                 GetVirtualKeyId(request),
                 stopwatch.Elapsed.TotalSeconds,
                 (double)cost);
-            
+
             // Update task registry size
             _metrics.UpdateTaskRegistrySize(-1);
-            
+
             await _taskService.UpdateTaskStatusAsync(
                 GetRequestId(request),
                 TaskState.Completed,
                 progress: 100,
                 result: result);
-            
+
             await PublishCompletedEventAsync(request, media, cost, modelInfo, stopwatch.Elapsed);
         }
 

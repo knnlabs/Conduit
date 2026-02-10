@@ -13,7 +13,7 @@ namespace ConduitLLM.Configuration.Services
     /// Background service that batches Virtual Key spend updates to reduce database writes
     /// Provides events for cache invalidation integration
     /// </summary>
-    public class BatchSpendUpdateService : BackgroundService, IBatchSpendUpdateService
+    public class BatchSpendUpdateService : BackgroundService, IBatchSpendUpdateService, IAsyncDisposable
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BatchSpendUpdateService> _logger;
@@ -417,13 +417,31 @@ namespace ConduitLLM.Configuration.Services
         }
 
         /// <summary>
-        /// Cleanup resources
+        /// Async cleanup - preferred over Dispose() to avoid sync-over-async.
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            await _flushTimer.DisposeAsync();
+
+            try
+            {
+                await FlushPendingUpdatesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error flushing pending updates during async disposal");
+            }
+
+            base.Dispose();
+        }
+
+        /// <summary>
+        /// Sync cleanup fallback.
         /// </summary>
         public override void Dispose()
         {
             _flushTimer?.Dispose();
-            
-            // Try to flush any remaining updates on shutdown
+
             try
             {
                 FlushPendingUpdatesAsync().GetAwaiter().GetResult();
@@ -432,7 +450,7 @@ namespace ConduitLLM.Configuration.Services
             {
                 _logger.LogError(ex, "Error flushing pending updates during service disposal");
             }
-            
+
             base.Dispose();
         }
 

@@ -80,21 +80,7 @@ public partial class Program
         builder.Services.AddAdminServices(builder.Configuration);
 
         // Configure Data Protection with Redis persistence
-        // Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-        if (!string.IsNullOrEmpty(redisUrl))
-        {
-            try
-            {
-                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-            }
-            catch
-            {
-                // Failed to parse REDIS_URL, will use legacy connection string if available
-            }
-        }
+        var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
@@ -115,53 +101,14 @@ public partial class Program
             Console.WriteLine("[ConduitLLM.Admin] WARNING: Using in-memory cache - ephemeral keys will not work across instances");
         }
 
-        // Add SignalR with configuration
-        var signalRBuilder = builder.Services.AddSignalR(options =>
-        {
-            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-            options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
-            options.KeepAliveInterval = TimeSpan.FromSeconds(30);
-            options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
-            options.StreamBufferCapacity = 10;
-        });
-
-        // Add MessagePack protocol support with LZ4 compression
-        // Enables both JSON (default) and MessagePack protocols for backward compatibility
-        var messagePackEnabled = Environment.GetEnvironmentVariable("SIGNALR_MESSAGEPACK_ENABLED")?.ToLowerInvariant() != "false";
-        if (messagePackEnabled)
-        {
-            signalRBuilder.AddMessagePackProtocol(options =>
-            {
-                // Configure MessagePack with security and compression
-                options.SerializerOptions = MessagePack.MessagePackSerializerOptions.Standard
-                    .WithResolver(MessagePack.Resolvers.StandardResolver.Instance)
-                    .WithSecurity(MessagePack.MessagePackSecurity.UntrustedData) // CVE-2020-5234 protection
-                    .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray) // Use Lz4BlockArray for GC optimization
-                    .WithCompressionMinLength(256); // Only compress messages > 256 bytes
-            });
-            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with MessagePack protocol (LZ4 compression enabled)");
-            Console.WriteLine("[ConduitLLM.Admin] SignalR supports both JSON and MessagePack protocols for backward compatibility");
-        }
-        else
-        {
-            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with JSON protocol only (MessagePack disabled)");
-        }
-
-        // Configure SignalR Redis backplane for horizontal scaling if Redis is configured
+        // Add SignalR with shared configuration (MessagePack, Redis backplane)
         var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
-        if (!string.IsNullOrEmpty(signalRRedisConnectionString))
-        {
-            signalRBuilder.AddStackExchangeRedis(signalRRedisConnectionString, options =>
-            {
-                options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("conduit_admin_signalr:", StackExchange.Redis.RedisChannel.PatternMode.Literal);
-                options.Configuration.DefaultDatabase = 3; // Separate database for Admin SignalR
-            });
-            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with Redis backplane for horizontal scaling");
-        }
-        else
-        {
-            Console.WriteLine("[ConduitLLM.Admin] SignalR configured without Redis backplane (single-instance mode)");
-        }
+        builder.Services.AddConduitSignalR(
+            builder.Environment,
+            signalRRedisConnectionString,
+            redisChannelPrefix: "conduit_admin_signalr:",
+            redisDatabase: 3,
+            serviceName: "ConduitLLM.Admin");
 
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 

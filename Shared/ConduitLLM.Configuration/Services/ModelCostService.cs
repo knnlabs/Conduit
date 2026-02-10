@@ -329,17 +329,6 @@ public class ModelCostService : IModelCostService
     }
 
     /// <inheritdoc />
-    [Obsolete("Use ClearCacheAsync instead. This synchronous method may cause thread pool starvation.")]
-    public void ClearCache()
-    {
-        // Synchronous wrapper for async cache clearing
-        // WARNING: This can cause deadlocks in async contexts. Use ClearCacheAsync instead.
-#pragma warning disable CA1849 // Call async methods when in an async method
-        Task.Run(async () => await ClearCacheAsync()).Wait();
-#pragma warning restore CA1849
-    }
-
-    /// <inheritdoc />
     public async Task ClearCacheAsync(CancellationToken cancellationToken = default)
     {
         // Remove all ModelCost-related entries from the cache
