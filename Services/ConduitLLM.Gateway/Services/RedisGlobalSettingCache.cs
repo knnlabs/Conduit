@@ -28,8 +28,15 @@ namespace ConduitLLM.Gateway.Services
             _database = redis.GetDatabase();
             _logger = logger;
             
-            // Initialize stats reset time if not exists
-            _database.StringSetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.GlobalSettingService), DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
+            // Initialize stats reset time if not exists (fire-and-forget, non-blocking)
+            _ = _database.StringSetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.GlobalSettingService), DateTime.UtcNow.ToString("O"), when: When.NotExists)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        _logger.LogWarning(t.Exception, "Failed to initialize stats reset time");
+                    }
+                }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
         /// <summary>
