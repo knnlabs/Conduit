@@ -45,32 +45,32 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Gets information about a specific connection
         /// </summary>
-        ConduitLLM.Gateway.Models.ConnectionInfo? GetConnection(string connectionId);
+        Task<ConduitLLM.Gateway.Models.ConnectionInfo?> GetConnectionAsync(string connectionId);
 
         /// <summary>
         /// Gets all active connections
         /// </summary>
-        IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo> GetActiveConnections();
+        Task<IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo>> GetActiveConnectionsAsync();
 
         /// <summary>
         /// Gets connections for a specific hub
         /// </summary>
-        IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo> GetHubConnections(string hubName);
+        Task<IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo>> GetHubConnectionsAsync(string hubName);
 
         /// <summary>
         /// Gets connections for a specific virtual key
         /// </summary>
-        IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo> GetVirtualKeyConnections(int virtualKeyId);
+        Task<IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo>> GetVirtualKeyConnectionsAsync(int virtualKeyId);
 
         /// <summary>
         /// Gets connections in a specific group
         /// </summary>
-        IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo> GetGroupConnections(string groupName);
+        Task<IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo>> GetGroupConnectionsAsync(string groupName);
 
         /// <summary>
         /// Gets monitoring statistics
         /// </summary>
-        ConnectionStatistics GetStatistics();
+        Task<ConnectionStatistics> GetStatisticsAsync();
 
         /// <summary>
         /// Records a message sent to a connection
@@ -461,13 +461,6 @@ namespace ConduitLLM.Gateway.Services
             return null;
         }
 
-        [Obsolete("Use GetConnectionAsync instead. This synchronous method may cause thread pool starvation.")]
-        public SignalRConnectionInfo? GetConnection(string connectionId)
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetConnectionAsync(connectionId).GetAwaiter().GetResult();
-        }
-
         public async Task<IEnumerable<SignalRConnectionInfo>> GetActiveConnectionsAsync()
         {
             if (_redis == null)
@@ -503,20 +496,6 @@ namespace ConduitLLM.Gateway.Services
                 _logger.LogError(ex, "Failed to get active connections");
                 return Enumerable.Empty<SignalRConnectionInfo>();
             }
-        }
-
-        [Obsolete("Use GetActiveConnectionsAsync instead. This synchronous method may cause thread pool starvation.")]
-        public IEnumerable<SignalRConnectionInfo> GetActiveConnections()
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetActiveConnectionsAsync().GetAwaiter().GetResult();
-        }
-
-        [Obsolete("Use GetHubConnectionsAsync instead. This synchronous method may cause thread pool starvation.")]
-        public IEnumerable<SignalRConnectionInfo> GetHubConnections(string hubName)
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetHubConnectionsAsync(hubName).GetAwaiter().GetResult();
         }
 
         public async Task<IEnumerable<SignalRConnectionInfo>> GetHubConnectionsAsync(string hubName)
@@ -556,13 +535,6 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
-        [Obsolete("Use GetVirtualKeyConnectionsAsync instead. This synchronous method may cause thread pool starvation.")]
-        public IEnumerable<SignalRConnectionInfo> GetVirtualKeyConnections(int virtualKeyId)
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetVirtualKeyConnectionsAsync(virtualKeyId).GetAwaiter().GetResult();
-        }
-
         public async Task<IEnumerable<SignalRConnectionInfo>> GetVirtualKeyConnectionsAsync(int virtualKeyId)
         {
             if (_redis == null)
@@ -598,13 +570,6 @@ namespace ConduitLLM.Gateway.Services
                 _logger.LogError(ex, "Failed to get virtual key connections for {VirtualKeyId}", virtualKeyId);
                 return Enumerable.Empty<SignalRConnectionInfo>();
             }
-        }
-
-        [Obsolete("Use GetGroupConnectionsAsync instead. This synchronous method may cause thread pool starvation.")]
-        public IEnumerable<SignalRConnectionInfo> GetGroupConnections(string groupName)
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetGroupConnectionsAsync(groupName).GetAwaiter().GetResult();
         }
 
         public async Task<IEnumerable<SignalRConnectionInfo>> GetGroupConnectionsAsync(string groupName)
@@ -649,13 +614,6 @@ namespace ConduitLLM.Gateway.Services
                 _logger.LogError(ex, "Failed to get group connections for {GroupName}", groupName);
                 return Enumerable.Empty<SignalRConnectionInfo>();
             }
-        }
-
-        [Obsolete("Use GetStatisticsAsync instead. This synchronous method may cause thread pool starvation.")]
-        public ConnectionStatistics GetStatistics()
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetStatisticsAsync().GetAwaiter().GetResult();
         }
 
         public async Task<ConnectionStatistics> GetStatisticsAsync()

@@ -53,7 +53,7 @@ namespace ConduitLLM.Gateway.Services
                 var connectionMonitor = scope.ServiceProvider.GetService<ISignalRConnectionMonitor>();
                 if (connectionMonitor != null)
                 {
-                    var stats = connectionMonitor.GetStatistics();
+                    var stats = await connectionMonitor.GetStatisticsAsync();
 
                     // Update gauge metrics
                     foreach (var hub in stats.ConnectionsByHub)

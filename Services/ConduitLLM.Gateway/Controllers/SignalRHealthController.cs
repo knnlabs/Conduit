@@ -42,9 +42,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("connections")]
         [AllowAnonymous] // Middleware handles health endpoint authorization
-        public ActionResult<ConnectionStatistics> GetConnectionStatistics()
+        public async Task<ActionResult<ConnectionStatistics>> GetConnectionStatistics()
         {
-            var stats = _connectionMonitor.GetStatistics();
+            var stats = await _connectionMonitor.GetStatisticsAsync();
             return Ok(stats);
         }
 
@@ -65,9 +65,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("connections/details")]
         [Authorize(Policy = "AdminOnly")]
-        public ActionResult<object> GetConnectionDetails()
+        public async Task<ActionResult<object>> GetConnectionDetails()
         {
-            var connections = _connectionMonitor.GetActiveConnections();
+            var connections = await _connectionMonitor.GetActiveConnectionsAsync();
             return Ok(new
             {
                 activeConnections = connections,
@@ -81,9 +81,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("connections/hub/{hubName}")]
         [AllowAnonymous] // Middleware handles health endpoint authorization
-        public ActionResult<object> GetHubConnections(string hubName)
+        public async Task<ActionResult<object>> GetHubConnections(string hubName)
         {
-            var connections = _connectionMonitor.GetHubConnections(hubName);
+            var connections = await _connectionMonitor.GetHubConnectionsAsync(hubName);
             return Ok(new
             {
                 hubName,
@@ -105,12 +105,12 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("connections/key/{virtualKeyId}")]
         [Authorize]
-        public ActionResult<object> GetVirtualKeyConnections(int virtualKeyId)
+        public async Task<ActionResult<object>> GetVirtualKeyConnections(int virtualKeyId)
         {
             // Check if the requester has permission to view this virtual key's connections
             // This would normally involve checking if the requester owns or has admin access to the key
-            
-            var connections = _connectionMonitor.GetVirtualKeyConnections(virtualKeyId);
+
+            var connections = await _connectionMonitor.GetVirtualKeyConnectionsAsync(virtualKeyId);
             return Ok(new
             {
                 virtualKeyId,
@@ -132,9 +132,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("connections/group/{groupName}")]
         [AllowAnonymous] // Middleware handles health endpoint authorization
-        public ActionResult<object> GetGroupConnections(string groupName)
+        public async Task<ActionResult<object>> GetGroupConnections(string groupName)
         {
-            var connections = _connectionMonitor.GetGroupConnections(groupName);
+            var connections = await _connectionMonitor.GetGroupConnectionsAsync(groupName);
             return Ok(new
             {
                 groupName,
@@ -192,9 +192,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet]
         [AllowAnonymous] // Middleware handles health endpoint authorization
-        public ActionResult<object> GetHealthStatus()
+        public async Task<ActionResult<object>> GetHealthStatus()
         {
-            var connectionStats = _connectionMonitor.GetStatistics();
+            var connectionStats = await _connectionMonitor.GetStatisticsAsync();
             var queueStats = _messageQueueService.GetStatistics();
 
             var isHealthy = connectionStats.TotalActiveConnections >= 0 &&
