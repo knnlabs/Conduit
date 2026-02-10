@@ -76,11 +76,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] TestProviderRequest testRequest)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteAsync(
                 async () =>
                 {

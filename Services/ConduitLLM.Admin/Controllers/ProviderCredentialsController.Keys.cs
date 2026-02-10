@@ -103,11 +103,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateProviderKeyCredential(int providerId, [FromBody] CreateKeyRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             try
             {
                 // Verify provider exists
@@ -190,11 +185,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateProviderKeyCredential(int providerId, int keyId, [FromBody] UpdateKeyRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             try
             {
                 var key = await _keyRepository.GetByIdAsync(keyId);

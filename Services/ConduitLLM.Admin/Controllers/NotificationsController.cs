@@ -89,11 +89,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> CreateNotification([FromBody] CreateNotificationDto notification)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteAsync(
                 () => _notificationService.CreateNotificationAsync(notification),
                 createdNotification => CreatedAtAction(nameof(GetNotificationById), new { id = createdNotification.Id }, createdNotification),
@@ -113,11 +108,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> UpdateNotification(int id, [FromBody] UpdateNotificationDto notification)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             // Ensure ID in route matches ID in body
             if (id != notification.Id)
             {

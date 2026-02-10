@@ -127,11 +127,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> CreateProvider([FromBody] CreateProviderRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteAsync(
                 async () =>
                 {
@@ -189,11 +184,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> UpdateProvider(int id, [FromBody] UpdateProviderRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteWithNotFoundAsync(
                 () => _providerRepository.GetByIdAsync(id),
                 async provider =>

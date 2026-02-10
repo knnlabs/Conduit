@@ -108,11 +108,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> Create([FromBody] CreateModelSeriesDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteAsync(
                 async () =>
                 {
@@ -164,11 +159,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> Update(int id, [FromBody] UpdateModelSeriesDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             if (id != dto.Id)
             {
                 return Task.FromResult<IActionResult>(BadRequest("ID mismatch"));

@@ -99,11 +99,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> CreateSetting([FromBody] CreateGlobalSettingDto setting)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteAsync(
                 () => _globalSettingService.CreateSettingAsync(setting),
                 createdSetting => CreatedAtAction(nameof(GetSettingById), new { id = createdSetting.Id }, createdSetting),
@@ -123,11 +118,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> UpdateSetting(int id, [FromBody] UpdateGlobalSettingDto setting)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             // Ensure ID in route matches ID in body
             if (id != setting.Id)
             {
@@ -156,11 +146,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> UpdateSettingByKey([FromBody] UpdateGlobalSettingByKeyDto setting)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteAsync(
                 async () =>
                 {

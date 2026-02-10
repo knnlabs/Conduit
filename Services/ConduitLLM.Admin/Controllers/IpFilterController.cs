@@ -93,11 +93,6 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public Task<IActionResult> CreateFilter([FromBody] CreateIpFilterDto filter)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         return ExecuteAsync(
             async () =>
             {
@@ -130,11 +125,6 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public Task<IActionResult> UpdateFilter(int id, [FromBody] UpdateIpFilterDto filter)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         // Ensure ID in route matches ID in body
         if (id != filter.Id)
         {
@@ -224,11 +214,6 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public Task<IActionResult> UpdateSettings([FromBody] IpFilterSettingsDto settings)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         return ExecuteAsync(
             async () =>
             {

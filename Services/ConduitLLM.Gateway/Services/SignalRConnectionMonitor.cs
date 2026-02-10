@@ -1,6 +1,8 @@
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Gateway.Interfaces;
 
+using System.Collections.Concurrent;
+
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -111,7 +113,8 @@ namespace ConduitLLM.Gateway.Services
         
         private Timer? _cleanupTimer;
         private IDatabase? _redis;
-        
+        private IServer? _server;
+
         // Redis keys
         private readonly string _connectionsKey;
         private readonly string _groupConnectionsKeyPrefix;
@@ -146,6 +149,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var connection = await _redisConnectionFactory.GetConnectionAsync();
                 _redis = connection.GetDatabase();
+                _server = connection.GetServer(connection.GetEndPoints().First());
 
                 _cleanupTimer = new Timer(
                     CleanupStaleConnections,
@@ -248,16 +252,12 @@ namespace ConduitLLM.Gateway.Services
                 await _redis.HashDeleteAsync(_connectionsKey, connectionId);
 
                 // Remove from all groups - scan group keys for this connection
-                var groupKeys = await _redis.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Resp2Type == ResultType.Array)
+                if (_server != null)
                 {
                     var tasks = new List<Task>();
-                    foreach (var groupKey in (RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>())
+                    foreach (var groupKey in _server.Keys(pattern: $"{_groupConnectionsKeyPrefix}:*"))
                     {
-                        if (groupKey.ToString() is { } keyStr)
-                        {
-                            tasks.Add(_redis.SetRemoveAsync(keyStr, connectionId));
-                        }
+                        tasks.Add(_redis.SetRemoveAsync(groupKey, connectionId));
                     }
                     await Task.WhenAll(tasks);
                 }
@@ -747,14 +747,13 @@ namespace ConduitLLM.Gateway.Services
             return allConnections;
         }
 
-        private async Task<int> GetGroupCountAsync()
+        private Task<int> GetGroupCountAsync()
         {
             try
             {
-                var groupKeys = await _redis!.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Resp2Type == ResultType.Array)
+                if (_server != null)
                 {
-                    return ((RedisResult[]?)groupKeys)?.Length ?? 0;
+                    return Task.FromResult(_server.Keys(pattern: $"{_groupConnectionsKeyPrefix}:*").Count());
                 }
             }
             catch (Exception ex)
@@ -762,7 +761,7 @@ namespace ConduitLLM.Gateway.Services
                 _logger.LogWarning(ex, "Failed to get group count from Redis");
             }
 
-            return 0;
+            return Task.FromResult(0);
         }
 
         private void CleanupStaleConnections(object? state)
@@ -817,16 +816,12 @@ namespace ConduitLLM.Gateway.Services
                 await _redis!.HashDeleteAsync(_connectionsKey, connection.ConnectionId);
 
                 // Remove from all groups
-                var groupKeys = await _redis.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Resp2Type == ResultType.Array)
+                if (_server != null)
                 {
                     var removalTasks = new List<Task>();
-                    foreach (var groupKey in (RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>())
+                    foreach (var groupKey in _server.Keys(pattern: $"{_groupConnectionsKeyPrefix}:*"))
                     {
-                        if (groupKey.ToString() is { } keyStr)
-                        {
-                            removalTasks.Add(_redis.SetRemoveAsync(keyStr, connection.ConnectionId));
-                        }
+                        removalTasks.Add(_redis.SetRemoveAsync(groupKey, connection.ConnectionId));
                     }
                     await Task.WhenAll(removalTasks);
                 }
@@ -847,30 +842,24 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var groupKeys = await _redis!.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Resp2Type == ResultType.Array)
+                if (_server != null)
                 {
-                    var emptyGroups = new List<string>();
-                    var checkTasks = ((RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>()).Select(async groupKey =>
+                    var allGroupKeys = _server.Keys(pattern: $"{_groupConnectionsKeyPrefix}:*").ToArray();
+                    var emptyGroups = new ConcurrentBag<RedisKey>();
+                    var checkTasks = allGroupKeys.Select(async groupKey =>
                     {
-                        if (groupKey.ToString() is { } keyStr)
+                        var count = await _redis!.SetLengthAsync(groupKey);
+                        if (count == 0)
                         {
-                            var count = await _redis.SetLengthAsync(keyStr);
-                            if (count == 0)
-                            {
-                                lock (emptyGroups)
-                                {
-                                    emptyGroups.Add(keyStr);
-                                }
-                            }
+                            emptyGroups.Add(groupKey);
                         }
                     });
 
                     await Task.WhenAll(checkTasks);
 
-                    if (emptyGroups.Count > 0)
+                    if (!emptyGroups.IsEmpty)
                     {
-                        await _redis.KeyDeleteAsync([..emptyGroups.Select(g => (RedisKey)g)]);
+                        await _redis!.KeyDeleteAsync(emptyGroups.ToArray());
                     }
 
                     return emptyGroups.Count;

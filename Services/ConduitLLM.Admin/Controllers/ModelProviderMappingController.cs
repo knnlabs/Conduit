@@ -85,11 +85,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public Task<IActionResult> CreateMapping([FromBody] ModelProviderMappingDto mappingDto)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         return ExecuteAsync(
             async () =>
             {
@@ -129,11 +124,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public Task<IActionResult> UpdateMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         if (id != mappingDto.Id)
         {
             return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("ID mismatch")));
@@ -219,11 +209,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public Task<IActionResult> CreateBulkMappings([FromBody] List<ModelProviderMappingDto> mappingDtos)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         if (mappingDtos == null || !mappingDtos.Any())
         {
             return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("No mappings provided")));

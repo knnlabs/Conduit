@@ -153,11 +153,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> CreateModelCost([FromBody] CreateModelCostDto modelCost)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteAsync(
                 () => _modelCostService.CreateModelCostAsync(modelCost),
                 result => CreatedAtAction(nameof(GetModelCostById), new { id = result.Id }, result),
@@ -177,11 +172,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public Task<IActionResult> UpdateModelCost(int id, [FromBody] UpdateModelCostDto modelCost)
         {
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             // Ensure ID in route matches ID in body
             if (id != modelCost.Id)
             {

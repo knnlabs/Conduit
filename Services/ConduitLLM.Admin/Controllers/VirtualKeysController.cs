@@ -44,11 +44,6 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public Task<IActionResult> GenerateKey([FromBody] CreateVirtualKeyRequestDto request)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         return ExecuteAsync(
             () => _virtualKeyService.GenerateVirtualKeyAsync(request),
             response => CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response),
@@ -109,11 +104,6 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public Task<IActionResult> UpdateKey(int id, [FromBody] UpdateVirtualKeyRequestDto request)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         return ExecuteAsync(
             async () =>
             {
@@ -163,11 +153,6 @@ public class VirtualKeysController : AdminControllerBase
     // lgtm [cs/web/missing-function-level-access-control]
     public Task<IActionResult> ValidateKey([FromBody] ValidateVirtualKeyRequest request)
     {
-        if (!ModelState.IsValid)
-        {
-            return Task.FromResult<IActionResult>(BadRequest(ModelState));
-        }
-
         return ExecuteAsync(
             () => _virtualKeyService.ValidateVirtualKeyAsync(request.Key, request.RequestedModel),
             Ok,

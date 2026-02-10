@@ -65,24 +65,6 @@ namespace ConduitLLM.Tests.Http.Controllers
         }
 
         [Fact]
-        public async Task GenerateVideoAsync_WithInvalidModelState_ShouldReturnBadRequest()
-        {
-            // Arrange
-            var request = new VideoGenerationRequest
-            {
-                Prompt = "",  // Empty prompt to trigger validation
-                Model = "runway-ml"
-            };
-            _controller.ModelState.AddModelError("Prompt", "Prompt is required");
-
-            // Act
-            var result = await _controller.GenerateVideoAsync(request);
-
-            // Assert
-            Assert.IsType<BadRequestObjectResult>(result);
-        }
-
-        [Fact]
         public async Task GenerateVideoAsync_WithoutVirtualKey_ShouldReturnUnauthorized()
         {
             // Arrange

@@ -460,11 +460,6 @@ namespace ConduitLLM.Admin.Controllers
                 return Task.FromResult<IActionResult>(BadRequest("Model name is required"));
             }
 
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
-            }
-
             return ExecuteAsync(
                 async () =>
                 {
@@ -531,11 +526,6 @@ namespace ConduitLLM.Admin.Controllers
             if (dto == null)
             {
                 return Task.FromResult<IActionResult>(BadRequest("Update data is required"));
-            }
-
-            if (!ModelState.IsValid)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(ModelState));
             }
 
             return ExecuteAsync(
