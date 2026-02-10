@@ -227,13 +227,19 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Handle invalidation messages from other instances
         /// </summary>
-        private async void OnKeyInvalidated(RedisChannel channel, RedisValue keyHash)
+        private void OnKeyInvalidated(RedisChannel channel, RedisValue keyHash)
+        {
+            // Fire-and-forget with proper exception handling - don't use async void
+            _ = OnKeyInvalidatedAsync(keyHash);
+        }
+
+        private async Task OnKeyInvalidatedAsync(RedisValue keyHash)
         {
             try
             {
                 var cacheKey = CacheKeys.VirtualKey.ByHash(keyHash.ToString());
                 await _database.KeyDeleteAsync(cacheKey);
-                
+
                 _logger.LogDebug("Invalidated Virtual Key from pub/sub: {KeyHash}", keyHash.ToString());
             }
             catch (Exception ex)
@@ -361,7 +367,13 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Handle batch invalidation messages from other instances
         /// </summary>
-        private async void OnBatchInvalidated(RedisChannel channel, RedisValue message)
+        private void OnBatchInvalidated(RedisChannel channel, RedisValue message)
+        {
+            // Fire-and-forget with proper exception handling - don't use async void
+            _ = OnBatchInvalidatedAsync(message);
+        }
+
+        private async Task OnBatchInvalidatedAsync(RedisValue message)
         {
             try
             {
@@ -370,16 +382,16 @@ namespace ConduitLLM.Gateway.Services
                 {
                     var batch = _database.CreateBatch();
                     var deleteTasks = new List<Task<bool>>();
-                    
+
                     foreach (var keyHash in batchMessage.KeyHashes)
                     {
                         var cacheKey = CacheKeys.VirtualKey.ByHash(keyHash);
                         deleteTasks.Add(batch.KeyDeleteAsync(cacheKey));
                     }
-                    
+
                     batch.Execute();
                     await Task.WhenAll(deleteTasks);
-                    
+
                     _logger.LogDebug(
                         "Batch invalidated {Count} virtual keys from pub/sub",
                         batchMessage.KeyHashes.Length);
