@@ -146,7 +146,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
                 Logger.LogDebug("Sending streaming chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
 
-                var response = await SendStreamingRequestAsync(client, endpoint, openAiRequest, apiKey, cancellationToken);
+                using var response = await SendStreamingRequestAsync(client, endpoint, openAiRequest, apiKey, cancellationToken);
                 chunks = await ProcessStreamingResponseAsync(response, request.Model, cancellationToken);
 
                 return chunks;

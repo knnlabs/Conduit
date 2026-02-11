@@ -51,7 +51,7 @@ namespace ConduitLLM.Providers.MiniMax
                 var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
                 httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
                 
-                var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+                using var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
                 var rawContent = await httpResponse.Content.ReadAsStringAsync();
                 
                 Logger.LogInformation("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);

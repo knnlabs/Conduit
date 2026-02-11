@@ -17,7 +17,7 @@ namespace ConduitLLM.Providers.Replicate
             try
             {
                 using var client = CreateHttpClient(apiKey);
-                var response = await client.PostAsync($"predictions/{predictionId}/cancel", null);
+                using var response = await client.PostAsync($"predictions/{predictionId}/cancel", null);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -64,7 +64,7 @@ namespace ConduitLLM.Providers.Replicate
                 }
                 
                 Logger.LogInformation("Sending request to Replicate: {BaseUrl}{Endpoint}", client.BaseAddress, endpoint);
-                var response = await client.PostAsJsonAsync(endpoint, request, cancellationToken);
+                using var response = await client.PostAsJsonAsync(endpoint, request, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -137,7 +137,7 @@ namespace ConduitLLM.Providers.Replicate
                 try
                 {
                     using var client = CreateHttpClient(apiKey);
-                    var response = await client.GetAsync($"predictions/{predictionId}", cancellationToken);
+                    using var response = await client.GetAsync($"predictions/{predictionId}", cancellationToken);
 
                     if (!response.IsSuccessStatusCode)
                     {

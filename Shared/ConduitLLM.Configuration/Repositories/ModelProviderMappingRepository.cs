@@ -56,20 +56,12 @@ namespace ConduitLLM.Configuration.Repositories
                 throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
             }
 
-            try
+            return await ExecuteAsync(async context =>
             {
-                return await ExecuteAsync(async context =>
-                {
-                    var query = GetDbSet(context).AsNoTracking();
-                    query = ApplyDefaultIncludes(query);
-                    return await query.FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting model provider mapping for model {ModelName}", LoggingSanitizer.S(modelName));
-                throw;
-            }
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query.FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
+            }, cancellationToken, $"getting by model name {LoggingSanitizer.S(modelName)}");
         }
 
         /// <inheritdoc/>
@@ -77,21 +69,13 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<List<ModelProviderMapping>> GetAllAsync(
             CancellationToken cancellationToken = default)
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                return await ExecuteAsync(async context =>
-                {
-                    var query = GetDbSet(context).AsNoTracking();
-                    query = ApplyDefaultIncludes(query);
-                    query = ApplyDefaultOrdering(query);
-                    return await query.ToListAsync(cancellationToken);
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting all model provider mappings");
-                throw;
-            }
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                query = ApplyDefaultOrdering(query);
+                return await query.ToListAsync(cancellationToken);
+            }, cancellationToken, "getting all");
         }
 
         /// <inheritdoc/>
@@ -100,33 +84,25 @@ namespace ConduitLLM.Configuration.Repositories
             ProviderType providerType,
             CancellationToken cancellationToken = default)
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                return await ExecuteAsync(async context =>
+                var credential = await context.Providers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(pc => pc.ProviderType == providerType, cancellationToken);
+
+                if (credential == null)
                 {
-                    var credential = await context.Providers
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(pc => pc.ProviderType == providerType, cancellationToken);
+                    return new List<ModelProviderMapping>();
+                }
 
-                    if (credential == null)
-                    {
-                        return new List<ModelProviderMapping>();
-                    }
-
-                    // Then find mappings with this credential ID
-                    var query = GetDbSet(context).AsNoTracking();
-                    query = ApplyDefaultIncludes(query);
-                    return await query
-                        .Where(m => m.ProviderId == credential.Id)
-                        .OrderBy(m => m.ModelAlias)
-                        .ToListAsync(cancellationToken);
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting model provider mappings for provider type {ProviderType}", providerType);
-                throw;
-            }
+                // Then find mappings with this credential ID
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query
+                    .Where(m => m.ProviderId == credential.Id)
+                    .OrderBy(m => m.ModelAlias)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting by provider type {providerType}");
         }
 
         /// <inheritdoc/>
@@ -153,31 +129,22 @@ namespace ConduitLLM.Configuration.Repositories
                 pageSize = MaxPageSize;
             }
 
-            try
+            return await ExecuteAsync(async context =>
             {
-                return await ExecuteAsync(async context =>
-                {
-                    var query = GetDbSet(context).AsNoTracking();
-                    query = ApplyDefaultIncludes(query);
-                    query = query.Where(m => m.ProviderId == providerId);
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                query = query.Where(m => m.ProviderId == providerId);
 
-                    var totalCount = await query.CountAsync(cancellationToken);
+                var totalCount = await query.CountAsync(cancellationToken);
 
-                    var items = await query
-                        .OrderBy(m => m.ModelAlias)
-                        .Skip((pageNumber - 1) * pageSize)
-                        .Take(pageSize)
-                        .ToListAsync(cancellationToken);
+                var items = await query
+                    .OrderBy(m => m.ModelAlias)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
 
-                    return (items, totalCount);
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting paginated model provider mappings for provider {ProviderId}, page {PageNumber}, size {PageSize}",
-                    providerId, pageNumber, pageSize);
-                throw;
-            }
+                return (items, totalCount);
+            }, cancellationToken, $"getting paginated for provider {providerId}");
         }
 
         /// <inheritdoc/>
@@ -185,23 +152,15 @@ namespace ConduitLLM.Configuration.Repositories
             int modelId,
             CancellationToken cancellationToken = default)
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                return await ExecuteAsync(async context =>
-                {
-                    var query = GetDbSet(context).AsNoTracking();
-                    query = ApplyDefaultIncludes(query);
-                    return await query
-                        .Where(m => m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.ModelId == modelId)
-                        .OrderBy(m => m.ModelAlias)
-                        .ToListAsync(cancellationToken);
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting model provider mappings for model ID {ModelId}", modelId);
-                throw;
-            }
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query
+                    .Where(m => m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.ModelId == modelId)
+                    .OrderBy(m => m.ModelAlias)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting by model ID {modelId}");
         }
 
         /// <inheritdoc/>
@@ -211,43 +170,35 @@ namespace ConduitLLM.Configuration.Repositories
         {
             ArgumentNullException.ThrowIfNull(modelProviderMapping);
 
-            try
+            return await ExecuteAsync(async context =>
             {
-                return await ExecuteAsync(async context =>
+                // Get existing entity to ensure it exists
+                var existingEntity = await GetDbSet(context)
+                    .FirstOrDefaultAsync(m => m.Id == modelProviderMapping.Id, cancellationToken);
+
+                if (existingEntity == null)
                 {
-                    // Get existing entity to ensure it exists
-                    var existingEntity = await GetDbSet(context)
-                        .FirstOrDefaultAsync(m => m.Id == modelProviderMapping.Id, cancellationToken);
+                    Logger.LogWarning("Cannot update non-existent model provider mapping with ID {MappingId}", modelProviderMapping.Id);
+                    return false;
+                }
 
-                    if (existingEntity == null)
-                    {
-                        Logger.LogWarning("Cannot update non-existent model provider mapping with ID {MappingId}", modelProviderMapping.Id);
-                        return false;
-                    }
+                // Update fields
+                existingEntity.ModelAlias = modelProviderMapping.ModelAlias;
+                existingEntity.ProviderModelId = modelProviderMapping.ProviderModelId;
+                existingEntity.ProviderId = modelProviderMapping.ProviderId;
+                existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
+                existingEntity.ModelProviderTypeAssociationId = modelProviderMapping.ModelProviderTypeAssociationId;
 
-                    // Update fields
-                    existingEntity.ModelAlias = modelProviderMapping.ModelAlias;
-                    existingEntity.ProviderModelId = modelProviderMapping.ProviderModelId;
-                    existingEntity.ProviderId = modelProviderMapping.ProviderId;
-                    existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
-                    existingEntity.ModelProviderTypeAssociationId = modelProviderMapping.ModelProviderTypeAssociationId;
+                existingEntity.UpdatedAt = DateTime.UtcNow;
 
-                    existingEntity.UpdatedAt = DateTime.UtcNow;
+                Logger.LogInformation(
+                    "Updating model mapping {ModelAlias} with AssociationId={AssociationId}",
+                    existingEntity.ModelAlias,
+                    existingEntity.ModelProviderTypeAssociationId);
 
-                    Logger.LogInformation(
-                        "Updating model mapping {ModelAlias} with AssociationId={AssociationId}",
-                        existingEntity.ModelAlias,
-                        existingEntity.ModelProviderTypeAssociationId);
-
-                    await context.SaveChangesAsync(cancellationToken);
-                    return true;
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error updating model provider mapping with ID {MappingId}", modelProviderMapping.Id);
-                throw;
-            }
+                await context.SaveChangesAsync(cancellationToken);
+                return true;
+            }, cancellationToken, $"updating ID {modelProviderMapping.Id}");
         }
     }
 }

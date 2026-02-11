@@ -42,7 +42,7 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Validates a cache configuration.
         /// </summary>
-        Task<ValidationResult> ValidateConfigurationAsync(CacheRegionConfig config, CancellationToken cancellationToken = default);
+        Task<CacheValidationResult> ValidateConfigurationAsync(CacheRegionConfig config, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets the audit history for a cache region.
@@ -406,9 +406,9 @@ namespace ConduitLLM.Configuration.Services
             }
         }
 
-        public Task<ValidationResult> ValidateConfigurationAsync(CacheRegionConfig config, CancellationToken cancellationToken = default)
+        public Task<CacheValidationResult> ValidateConfigurationAsync(CacheRegionConfig config, CancellationToken cancellationToken = default)
         {
-            var result = new ValidationResult { IsValid = true };
+            var result = new CacheValidationResult { IsValid = true };
 
             // Validate TTL
             if (config.DefaultTTL.HasValue && config.DefaultTTL.Value < TimeSpan.Zero)

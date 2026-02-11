@@ -37,66 +37,42 @@ public class ModelAuthorRepository : RepositoryBase<ModelAuthor, int>, IModelAut
     [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     public async Task<List<ModelAuthor>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .OrderBy(a => a.Name)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting all model authors");
-            throw;
-        }
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .OrderBy(a => a.Name)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, "getting all");
     }
 
     /// <inheritdoc/>
     public async Task<ModelAuthor?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(a => a.Name == name, cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting model author by name: {Name}", name);
-            throw;
-        }
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Name == name, cancellationToken);
+        }, cancellationToken, $"getting by name {name}");
     }
 
     /// <inheritdoc/>
     public async Task<List<ModelSeries>?> GetSeriesByAuthorAsync(int authorId, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                var exists = await GetDbSet(context)
-                    .AnyAsync(a => a.Id == authorId, cancellationToken);
+            var exists = await GetDbSet(context)
+                .AnyAsync(a => a.Id == authorId, cancellationToken);
 
-                if (!exists)
-                    return null;
+            if (!exists)
+                return null;
 
-                return await context.ModelSeries
-                    .AsNoTracking()
-                    .Where(s => s.AuthorId == authorId)
-                    .OrderBy(s => s.Name)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting series for author ID: {AuthorId}", authorId);
-            throw;
-        }
+            return await context.ModelSeries
+                .AsNoTracking()
+                .Where(s => s.AuthorId == authorId)
+                .OrderBy(s => s.Name)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, $"getting series for author ID {authorId}");
     }
 }

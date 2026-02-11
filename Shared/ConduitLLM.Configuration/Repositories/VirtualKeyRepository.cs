@@ -119,60 +119,36 @@ namespace ConduitLLM.Configuration.Repositories
                 throw new ArgumentException("Key hash cannot be null or empty", nameof(keyHash));
             }
 
-            try
-            {
-                return await ExecuteAsync(async context =>
-                    await context.VirtualKeys
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(vk => vk.KeyHash == keyHash, cancellationToken),
-                    cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting virtual key by hash");
-                throw;
-            }
+            return await ExecuteAsync(async context =>
+                await context.VirtualKeys
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(vk => vk.KeyHash == keyHash, cancellationToken),
+                cancellationToken, "getting by key hash");
         }
 
         /// <inheritdoc/>
         [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<VirtualKey>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            try
-            {
-                return await ExecuteAsync(async context =>
-                    await context.VirtualKeys
-                        .AsNoTracking()
-                        .OrderBy(vk => vk.KeyName)
-                        .ToListAsync(cancellationToken),
-                    cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting all virtual keys");
-                throw;
-            }
+            return await ExecuteAsync(async context =>
+                await context.VirtualKeys
+                    .AsNoTracking()
+                    .OrderBy(vk => vk.KeyName)
+                    .ToListAsync(cancellationToken),
+                cancellationToken, "getting all");
         }
 
         /// <inheritdoc/>
         [Obsolete("Use GetByVirtualKeyGroupIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<VirtualKey>> GetByVirtualKeyGroupIdAsync(int virtualKeyGroupId, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                return await ExecuteAsync(async context =>
-                    await context.VirtualKeys
-                        .AsNoTracking()
-                        .Where(vk => vk.VirtualKeyGroupId == virtualKeyGroupId)
-                        .OrderBy(vk => vk.KeyName)
-                        .ToListAsync(cancellationToken),
-                    cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting virtual keys for group {GroupId}", virtualKeyGroupId);
-                throw;
-            }
+            return await ExecuteAsync(async context =>
+                await context.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.VirtualKeyGroupId == virtualKeyGroupId)
+                    .OrderBy(vk => vk.KeyName)
+                    .ToListAsync(cancellationToken),
+                cancellationToken, $"getting by group ID {virtualKeyGroupId}");
         }
 
         /// <inheritdoc/>
@@ -199,31 +175,22 @@ namespace ConduitLLM.Configuration.Repositories
                 pageSize = MaxPageSize;
             }
 
-            try
+            return await ExecuteAsync(async context =>
             {
-                return await ExecuteAsync(async context =>
-                {
-                    var query = context.VirtualKeys
-                        .AsNoTracking()
-                        .Where(vk => vk.VirtualKeyGroupId == virtualKeyGroupId);
+                var query = context.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.VirtualKeyGroupId == virtualKeyGroupId);
 
-                    var totalCount = await query.CountAsync(cancellationToken);
+                var totalCount = await query.CountAsync(cancellationToken);
 
-                    var items = await query
-                        .OrderBy(vk => vk.KeyName)
-                        .Skip((pageNumber - 1) * pageSize)
-                        .Take(pageSize)
-                        .ToListAsync(cancellationToken);
+                var items = await query
+                    .OrderBy(vk => vk.KeyName)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
 
-                    return (items, totalCount);
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting paginated virtual keys for group {GroupId}, page {PageNumber}, size {PageSize}",
-                    virtualKeyGroupId, LoggingSanitizer.S(pageNumber), LoggingSanitizer.S(pageSize));
-                throw;
-            }
+                return (items, totalCount);
+            }, cancellationToken, $"getting paginated by group ID {virtualKeyGroupId}");
         }
 
         /// <inheritdoc/>
@@ -239,91 +206,59 @@ namespace ConduitLLM.Configuration.Repositories
                 return new Dictionary<int, string>();
             }
 
-            try
-            {
-                return await ExecuteAsync(async context =>
-                    await context.VirtualKeys
-                        .AsNoTracking()
-                        .Where(vk => idList.Contains(vk.Id))
-                        .ToDictionaryAsync(vk => vk.Id, vk => vk.KeyName ?? "", cancellationToken),
-                    cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting key names for {Count} IDs", idList.Count);
-                throw;
-            }
+            return await ExecuteAsync(async context =>
+                await context.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => idList.Contains(vk.Id))
+                    .ToDictionaryAsync(vk => vk.Id, vk => vk.KeyName ?? "", cancellationToken),
+                cancellationToken, $"getting key names for {idList.Count} IDs");
         }
 
         /// <inheritdoc/>
         public async Task<int> CountActiveAsync(CancellationToken cancellationToken = default)
         {
-            try
-            {
-                return await ExecuteAsync(async context =>
-                    await context.VirtualKeys
-                        .AsNoTracking()
-                        .Where(vk => vk.IsEnabled &&
-                            (vk.ExpiresAt == null || vk.ExpiresAt > DateTime.UtcNow))
-                        .CountAsync(cancellationToken),
-                    cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error counting active virtual keys");
-                throw;
-            }
+            return await ExecuteAsync(async context =>
+                await context.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.IsEnabled &&
+                        (vk.ExpiresAt == null || vk.ExpiresAt > DateTime.UtcNow))
+                    .CountAsync(cancellationToken),
+                cancellationToken, "counting active");
         }
 
         /// <inheritdoc/>
         public async Task<bool> DeleteAsync(string keyHash, CancellationToken cancellationToken = default)
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                return await ExecuteAsync(async context =>
+                var virtualKey = await context.VirtualKeys
+                    .Where(vk => vk.KeyHash == keyHash)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (virtualKey == null)
                 {
-                    var virtualKey = await context.VirtualKeys
-                        .Where(vk => vk.KeyHash == keyHash)
-                        .FirstOrDefaultAsync(cancellationToken);
+                    return false;
+                }
 
-                    if (virtualKey == null)
-                    {
-                        return false;
-                    }
+                context.VirtualKeys.Remove(virtualKey);
+                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
 
-                    context.VirtualKeys.Remove(virtualKey);
-                    int rowsAffected = await context.SaveChangesAsync(cancellationToken);
-
-                    Logger.LogInformation("Deleted virtual key with hash {KeyHash}", LoggingSanitizer.S(keyHash));
-                    return rowsAffected > 0;
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error deleting virtual key with hash {KeyHash}", LoggingSanitizer.S(keyHash));
-                throw;
-            }
+                Logger.LogInformation("Deleted virtual key with hash {KeyHash}", LoggingSanitizer.S(keyHash));
+                return rowsAffected > 0;
+            }, cancellationToken, "deleting by key hash");
         }
 
         /// <inheritdoc/>
         public async Task<List<VirtualKey>> GetTopEnabledAsync(int count, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                return await ExecuteAsync(async context =>
-                    await context.VirtualKeys
-                        .AsNoTracking()
-                        .Where(vk => vk.IsEnabled)
-                        .OrderBy(vk => vk.KeyName)
-                        .Take(count)
-                        .ToListAsync(cancellationToken),
-                    cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting top {Count} enabled virtual keys", count);
-                throw;
-            }
+            return await ExecuteAsync(async context =>
+                await context.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.IsEnabled)
+                    .OrderBy(vk => vk.KeyName)
+                    .Take(count)
+                    .ToListAsync(cancellationToken),
+                cancellationToken, $"getting top {count} enabled");
         }
     }
 }

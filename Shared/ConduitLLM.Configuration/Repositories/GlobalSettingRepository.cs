@@ -42,20 +42,12 @@ public class GlobalSettingRepository : RepositoryBase<GlobalSetting, int>, IGlob
             throw new ArgumentException("Key cannot be null or empty", nameof(key));
         }
 
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(gs => gs.Key == key, cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting global setting with key {SettingKey}", LoggingSanitizer.S(key));
-            throw;
-        }
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(gs => gs.Key == key, cancellationToken);
+        }, cancellationToken, $"getting by key {LoggingSanitizer.S(key)}");
     }
 
     /// <inheritdoc/>
@@ -76,52 +68,44 @@ public class GlobalSettingRepository : RepositoryBase<GlobalSetting, int>, IGlob
 
         ArgumentNullException.ThrowIfNull(value);
 
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            var dbSet = GetDbSet(context);
+
+            // Try to find existing setting
+            var existingSetting = await dbSet
+                .FirstOrDefaultAsync(gs => gs.Key == key, cancellationToken);
+
+            if (existingSetting == null)
             {
-                var dbSet = GetDbSet(context);
-
-                // Try to find existing setting
-                var existingSetting = await dbSet
-                    .FirstOrDefaultAsync(gs => gs.Key == key, cancellationToken);
-
-                if (existingSetting == null)
+                // Create new setting
+                var newSetting = new GlobalSetting
                 {
-                    // Create new setting
-                    var newSetting = new GlobalSetting
-                    {
-                        Key = key,
-                        Value = value,
-                        Description = description,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
+                    Key = key,
+                    Value = value,
+                    Description = description,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
 
-                    dbSet.Add(newSetting);
-                }
-                else
+                dbSet.Add(newSetting);
+            }
+            else
+            {
+                // Update existing setting
+                existingSetting.Value = value;
+                existingSetting.UpdatedAt = DateTime.UtcNow;
+
+                // Only update description if provided
+                if (description != null)
                 {
-                    // Update existing setting
-                    existingSetting.Value = value;
-                    existingSetting.UpdatedAt = DateTime.UtcNow;
-
-                    // Only update description if provided
-                    if (description != null)
-                    {
-                        existingSetting.Description = description;
-                    }
+                    existingSetting.Description = description;
                 }
+            }
 
-                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
-                return rowsAffected > 0;
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error upserting global setting with key '{SettingKey}'", LoggingSanitizer.S(key));
-            throw;
-        }
+            int rowsAffected = await context.SaveChangesAsync(cancellationToken);
+            return rowsAffected > 0;
+        }, cancellationToken, $"upserting by key {LoggingSanitizer.S(key)}");
     }
 
     /// <inheritdoc/>
@@ -132,28 +116,20 @@ public class GlobalSettingRepository : RepositoryBase<GlobalSetting, int>, IGlob
             throw new ArgumentException("Key cannot be null or empty", nameof(key));
         }
 
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            var dbSet = GetDbSet(context);
+            var globalSetting = await dbSet
+                .FirstOrDefaultAsync(gs => gs.Key == key, cancellationToken);
+
+            if (globalSetting == null)
             {
-                var dbSet = GetDbSet(context);
-                var globalSetting = await dbSet
-                    .FirstOrDefaultAsync(gs => gs.Key == key, cancellationToken);
+                return false;
+            }
 
-                if (globalSetting == null)
-                {
-                    return false;
-                }
-
-                dbSet.Remove(globalSetting);
-                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
-                return rowsAffected > 0;
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting global setting with key {SettingKey}", LoggingSanitizer.S(key));
-            throw;
-        }
+            dbSet.Remove(globalSetting);
+            int rowsAffected = await context.SaveChangesAsync(cancellationToken);
+            return rowsAffected > 0;
+        }, cancellationToken, $"deleting by key {LoggingSanitizer.S(key)}");
     }
 }

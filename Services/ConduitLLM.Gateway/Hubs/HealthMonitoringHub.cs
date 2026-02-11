@@ -67,17 +67,29 @@ namespace ConduitLLM.Gateway.Hubs
         public ChannelReader<HealthAlert> StreamAlerts(CancellationToken cancellationToken = default)
         {
             var channel = Channel.CreateUnbounded<HealthAlert>();
-            
+
             _ = Task.Run(async () =>
             {
-                await foreach (var alert in _alertManagementService.GetAlertStreamAsync(cancellationToken))
+                try
                 {
-                    await channel.Writer.WriteAsync(alert, cancellationToken);
+                    await foreach (var alert in _alertManagementService.GetAlertStreamAsync(cancellationToken))
+                    {
+                        await channel.Writer.WriteAsync(alert, cancellationToken);
+                    }
+
+                    channel.Writer.Complete();
                 }
-                
-                channel.Writer.Complete();
+                catch (OperationCanceledException)
+                {
+                    channel.Writer.TryComplete();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error streaming alerts to client {ConnectionId}", Context.ConnectionId);
+                    channel.Writer.TryComplete(ex);
+                }
             }, cancellationToken);
-            
+
             return channel.Reader;
         }
 

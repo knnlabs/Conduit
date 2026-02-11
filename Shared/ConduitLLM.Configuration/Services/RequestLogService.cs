@@ -44,25 +44,7 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
     {
         try
         {
-            var log = new RequestLog
-            {
-                VirtualKeyId = request.VirtualKeyId,
-                ModelName = request.ModelName,
-                ProviderId = request.ProviderId,
-                ProviderType = request.ProviderType,
-                RequestType = request.RequestType,
-                InputTokens = request.InputTokens,
-                OutputTokens = request.OutputTokens,
-                Cost = request.Cost,
-                ResponseTimeMs = request.ResponseTimeMs,
-                Timestamp = DateTime.UtcNow,
-                UserId = request.UserId,
-                ClientIp = request.ClientIp,
-                RequestPath = request.RequestPath,
-                StatusCode = request.StatusCode,
-                Metadata = request.Metadata
-            };
-
+            var log = MapToRequestLog(request);
             await LogEventAsync(log);
 
             Logger.LogDebug("Request logged for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, ProviderId={ProviderId}, queued for batch write",
@@ -88,25 +70,7 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
     {
         try
         {
-            var log = new RequestLog
-            {
-                VirtualKeyId = request.VirtualKeyId,
-                ModelName = request.ModelName,
-                ProviderId = request.ProviderId,
-                ProviderType = request.ProviderType,
-                RequestType = request.RequestType,
-                InputTokens = request.InputTokens,
-                OutputTokens = request.OutputTokens,
-                Cost = request.Cost,
-                ResponseTimeMs = request.ResponseTimeMs,
-                Timestamp = DateTime.UtcNow,
-                UserId = request.UserId,
-                ClientIp = request.ClientIp,
-                RequestPath = request.RequestPath,
-                StatusCode = request.StatusCode,
-                Metadata = request.Metadata
-            };
-
+            var log = MapToRequestLog(request);
             await LogEventAsync(log);
 
             // Queue spend update for batching instead of immediate database write
@@ -125,6 +89,25 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
             throw;
         }
     }
+
+    private static RequestLog MapToRequestLog(LogRequestDto request) => new()
+    {
+        VirtualKeyId = request.VirtualKeyId,
+        ModelName = request.ModelName,
+        ProviderId = request.ProviderId,
+        ProviderType = request.ProviderType,
+        RequestType = request.RequestType,
+        InputTokens = request.InputTokens,
+        OutputTokens = request.OutputTokens,
+        Cost = request.Cost,
+        ResponseTimeMs = request.ResponseTimeMs,
+        Timestamp = DateTime.UtcNow,
+        UserId = request.UserId,
+        ClientIp = request.ClientIp,
+        RequestPath = request.RequestPath,
+        StatusCode = request.StatusCode,
+        Metadata = request.Metadata
+    };
 
     /// <inheritdoc/>
     public new Task FlushEventsAsync()

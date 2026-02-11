@@ -437,7 +437,7 @@ namespace ConduitLLM.Providers
 
                 Logger.LogDebug("Verifying {Provider} authentication with endpoint: {Endpoint}", ProviderName, healthCheckUrl);
 
-                var response = await client.GetAsync(healthCheckUrl, cancellationToken);
+                using var response = await client.GetAsync(healthCheckUrl, cancellationToken);
                 var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
                 Logger.LogInformation("{Provider} auth check returned status {StatusCode}", ProviderName, response.StatusCode);

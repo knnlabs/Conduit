@@ -1,15 +1,15 @@
+using ConduitLLM.Functions.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities.Interfaces;
 
 /// <summary>
-/// Marker interface for entities with a typed primary key.
+/// Marker interface for configuration entities with a typed primary key.
+/// Extends IIdentifiableEntity to share a common base with function entities,
+/// enabling a single RepositoryBase for all entity types.
 /// </summary>
 /// <typeparam name="TKey">The type of the primary key (e.g., int, long, Guid, string)</typeparam>
-public interface IEntity<TKey> where TKey : IEquatable<TKey>
+public interface IEntity<TKey> : IIdentifiableEntity<TKey> where TKey : IEquatable<TKey>
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for this entity.
-    /// </summary>
-    TKey Id { get; set; }
 }
 
 /// <summary>

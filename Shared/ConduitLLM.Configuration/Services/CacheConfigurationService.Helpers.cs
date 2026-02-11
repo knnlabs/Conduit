@@ -231,7 +231,7 @@ namespace ConduitLLM.Configuration.Services
     /// <summary>
     /// Validation result for cache configurations.
     /// </summary>
-    public class ValidationResult
+    public class CacheValidationResult
     {
         public bool IsValid { get; set; }
         public List<string> Errors { get; } = new();

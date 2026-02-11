@@ -356,65 +356,74 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         }
     }
 
-    private string MaskConnectionString(string? connectionString)
+    /// <summary>
+    /// Parses a connection string into a case-insensitive dictionary of key-value pairs.
+    /// Handles values containing '=' correctly by limiting the split.
+    /// </summary>
+    private static Dictionary<string, string> ParseConnectionStringParts(string? connectionString)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(connectionString))
+            return result;
+
+        foreach (var part in connectionString.Split(';'))
+        {
+            var trimmed = part.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                continue;
+
+            var kvp = trimmed.Split('=', 2);
+            if (kvp.Length == 2)
+            {
+                result[kvp[0].Trim()] = kvp[1].Trim();
+            }
+        }
+
+        return result;
+    }
+
+    private static string MaskConnectionString(string? connectionString)
     {
         if (string.IsNullOrEmpty(connectionString))
             return "Not configured";
 
-        var parts = connectionString.Split(';');
-        var maskedParts = new List<string>();
+        var parts = ParseConnectionStringParts(connectionString);
+        var maskedParts = new List<string>(parts.Count);
 
-        foreach (var part in parts)
+        foreach (var kvp in parts)
         {
-            var trimmedPart = part.Trim();
-            if (trimmedPart.StartsWith("Password=", StringComparison.OrdinalIgnoreCase) ||
-                trimmedPart.StartsWith("Pwd=", StringComparison.OrdinalIgnoreCase))
+            if (kvp.Key.Equals("Password", StringComparison.OrdinalIgnoreCase) ||
+                kvp.Key.Equals("Pwd", StringComparison.OrdinalIgnoreCase))
             {
-                maskedParts.Add(trimmedPart.Split('=')[0] + "=****");
+                maskedParts.Add($"{kvp.Key}=****");
             }
             else
             {
-                maskedParts.Add(trimmedPart);
+                maskedParts.Add($"{kvp.Key}={kvp.Value}");
             }
         }
 
         return string.Join("; ", maskedParts);
     }
 
-
-    private string ExtractHostFromConnectionString(string? connectionString)
+    private static string ExtractHostFromConnectionString(string? connectionString)
     {
-        if (string.IsNullOrEmpty(connectionString))
-            return "Unknown";
+        var parts = ParseConnectionStringParts(connectionString);
 
-        var parts = connectionString.Split(';');
-        foreach (var part in parts)
-        {
-            var trimmedPart = part.Trim();
-            if (trimmedPart.StartsWith("Host=", StringComparison.OrdinalIgnoreCase) ||
-                trimmedPart.StartsWith("Server=", StringComparison.OrdinalIgnoreCase))
-            {
-                return trimmedPart.Split('=')[1].Trim();
-            }
-        }
+        if (parts.TryGetValue("Host", out var host))
+            return host;
+        if (parts.TryGetValue("Server", out var server))
+            return server;
 
         return "Unknown";
     }
 
-    private string ExtractDatabaseNameFromConnectionString(string? connectionString)
+    private static string ExtractDatabaseNameFromConnectionString(string? connectionString)
     {
-        if (string.IsNullOrEmpty(connectionString))
-            return "";
+        var parts = ParseConnectionStringParts(connectionString);
 
-        var parts = connectionString.Split(';');
-        foreach (var part in parts)
-        {
-            var trimmedPart = part.Trim();
-            if (trimmedPart.StartsWith("Database=", StringComparison.OrdinalIgnoreCase))
-            {
-                return trimmedPart.Split('=')[1].Trim();
-            }
-        }
+        if (parts.TryGetValue("Database", out var database))
+            return database;
 
         return "";
     }

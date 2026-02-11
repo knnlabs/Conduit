@@ -47,23 +47,15 @@ public class IpFilterRepository : RepositoryBase<IpFilterEntity, int>, IIpFilter
     /// <inheritdoc/>
     public async Task<IEnumerable<IpFilterEntity>> GetEnabledAsync(CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(f => f.IsEnabled)
-                    .OrderBy(f => f.FilterType)
-                    .ThenBy(f => f.IpAddressOrCidr)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting enabled IP filters");
-            throw;
-        }
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .Where(f => f.IsEnabled)
+                .OrderBy(f => f.FilterType)
+                .ThenBy(f => f.IpAddressOrCidr)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, "getting enabled filters");
     }
 
     /// <inheritdoc/>
@@ -71,20 +63,13 @@ public class IpFilterRepository : RepositoryBase<IpFilterEntity, int>, IIpFilter
     {
         ArgumentNullException.ThrowIfNull(filter);
 
-        try
-        {
-            await CreateAsync(filter, cancellationToken);
+        // Base CreateAsync already handles error logging
+        await CreateAsync(filter, cancellationToken);
 
-            Logger.LogInformation("Added new IP filter: {FilterType} {IpAddressOrCidr}",
-                LoggingSanitizer.S(filter.FilterType),
-                LoggingSanitizer.S(filter.IpAddressOrCidr));
+        Logger.LogInformation("Added new IP filter: {FilterType} {IpAddressOrCidr}",
+            LoggingSanitizer.S(filter.FilterType),
+            LoggingSanitizer.S(filter.IpAddressOrCidr));
 
-            return filter;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error adding IP filter for {IpAddressOrCidr}", LoggingSanitizer.S(filter.IpAddressOrCidr));
-            throw;
-        }
+        return filter;
     }
 }

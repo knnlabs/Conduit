@@ -7,101 +7,94 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class ProviderKeyCredentialValidator
     {
-        private readonly ConduitDbContext _context;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private const int MaxKeysPerProvider = 32;
 
-        public ProviderKeyCredentialValidator(ConduitDbContext context)
+        public ProviderKeyCredentialValidator(IDbContextFactory<ConduitDbContext> dbContextFactory)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
         }
 
         /// <summary>
         /// Validates if a new key can be added to a provider
         /// </summary>
-        public async Task<KeyValidationResult> ValidateAddKeyAsync(int ProviderId)
+        public async Task<ValidationResult> ValidateAddKeyAsync(int ProviderId, CancellationToken cancellationToken = default)
         {
-            var currentKeyCount = await _context.ProviderKeyCredentials
-                .CountAsync(k => k.ProviderId == ProviderId);
+            using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var currentKeyCount = await context.ProviderKeyCredentials
+                .CountAsync(k => k.ProviderId == ProviderId, cancellationToken);
 
             if (currentKeyCount >= MaxKeysPerProvider)
             {
-                return KeyValidationResult.Failure($"Provider already has the maximum of {MaxKeysPerProvider} keys");
+                return ValidationResult.Failure($"Provider already has the maximum of {MaxKeysPerProvider} keys");
             }
 
-            return KeyValidationResult.Success();
+            return ValidationResult.Success();
         }
 
         /// <summary>
         /// Validates if a key can be set as primary
         /// </summary>
-        public async Task<KeyValidationResult> ValidateSetPrimaryAsync(int keyId)
+        public async Task<ValidationResult> ValidateSetPrimaryAsync(int keyId, CancellationToken cancellationToken = default)
         {
-            var key = await _context.ProviderKeyCredentials
-                .FirstOrDefaultAsync(k => k.Id == keyId);
+            using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var key = await context.ProviderKeyCredentials
+                .FirstOrDefaultAsync(k => k.Id == keyId, cancellationToken);
 
             if (key == null)
             {
-                return KeyValidationResult.Failure("Key not found");
+                return ValidationResult.Failure("Key not found");
             }
 
             if (!key.IsEnabled)
             {
-                return KeyValidationResult.Failure("Cannot set a disabled key as primary");
+                return ValidationResult.Failure("Cannot set a disabled key as primary");
             }
 
-            return KeyValidationResult.Success();
+            return ValidationResult.Success();
         }
 
         /// <summary>
         /// Validates if a key can be disabled
         /// </summary>
-        public async Task<KeyValidationResult> ValidateDisableKeyAsync(int keyId)
+        public async Task<ValidationResult> ValidateDisableKeyAsync(int keyId, CancellationToken cancellationToken = default)
         {
-            var key = await _context.ProviderKeyCredentials
-                .FirstOrDefaultAsync(k => k.Id == keyId);
+            using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var key = await context.ProviderKeyCredentials
+                .FirstOrDefaultAsync(k => k.Id == keyId, cancellationToken);
 
             if (key == null)
             {
-                return KeyValidationResult.Failure("Key not found");
+                return ValidationResult.Failure("Key not found");
             }
 
             if (key.IsPrimary)
             {
-                return KeyValidationResult.Failure("Cannot disable a primary key. Set another key as primary first.");
+                return ValidationResult.Failure("Cannot disable a primary key. Set another key as primary first.");
             }
 
-            return KeyValidationResult.Success();
+            return ValidationResult.Success();
         }
 
         /// <summary>
         /// Ensures at least one key is enabled for a provider
         /// </summary>
-        public async Task<KeyValidationResult> ValidateProviderHasEnabledKeyAsync(int ProviderId)
+        public async Task<ValidationResult> ValidateProviderHasEnabledKeyAsync(int ProviderId, CancellationToken cancellationToken = default)
         {
-            var hasEnabledKey = await _context.ProviderKeyCredentials
-                .AnyAsync(k => k.ProviderId == ProviderId && k.IsEnabled);
+            using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var hasEnabledKey = await context.ProviderKeyCredentials
+                .AnyAsync(k => k.ProviderId == ProviderId && k.IsEnabled, cancellationToken);
 
             if (!hasEnabledKey)
             {
-                return KeyValidationResult.Failure("Provider must have at least one enabled key");
+                return ValidationResult.Failure("Provider must have at least one enabled key");
             }
 
-            return KeyValidationResult.Success();
+            return ValidationResult.Success();
         }
-    }
-
-    public class KeyValidationResult
-    {
-        public bool IsValid { get; private set; }
-        public string? ErrorMessage { get; private set; }
-
-        private KeyValidationResult(bool isValid, string? errorMessage = null)
-        {
-            IsValid = isValid;
-            ErrorMessage = errorMessage;
-        }
-
-        public static KeyValidationResult Success() => new KeyValidationResult(true);
-        public static KeyValidationResult Failure(string errorMessage) => new KeyValidationResult(false, errorMessage);
     }
 }

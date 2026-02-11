@@ -10,7 +10,7 @@ namespace ConduitLLM.Functions.Entities;
 /// Tracks the complete lifecycle from request to completion/failure.
 /// </summary>
 [Table("FunctionExecutions")]
-public class FunctionExecution : IFunctionEntity<Guid>
+public class FunctionExecution : IIdentifiableEntity<Guid>
 {
     /// <summary>
     /// Unique identifier for this execution

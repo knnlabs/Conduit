@@ -60,236 +60,148 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
             return null;
         }
 
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await ApplyDefaultIncludes(GetDbSet(context).AsNoTracking())
-                    .FirstOrDefaultAsync(m => m.StorageKey == storageKey, cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting media record by storage key {StorageKey}", storageKey);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await ApplyDefaultIncludes(GetDbSet(context).AsNoTracking())
+                .FirstOrDefaultAsync(m => m.StorageKey == storageKey, cancellationToken),
+            cancellationToken, $"getting by storage key {storageKey}");
     }
 
     /// <inheritdoc/>
     public async Task<List<MediaRecord>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(m => m.VirtualKeyId == virtualKeyId)
-                    .OrderByDescending(m => m.CreatedAt)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting media records for virtual key {VirtualKeyId}", virtualKeyId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(m => m.VirtualKeyId == virtualKeyId)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync(cancellationToken),
+            cancellationToken, $"getting by virtual key ID {virtualKeyId}");
     }
 
     /// <inheritdoc/>
     public async Task<List<MediaRecord>> GetExpiredMediaAsync(DateTime currentTime, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(m => m.ExpiresAt != null && m.ExpiresAt <= currentTime)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting expired media records (currentTime: {CurrentTime})", currentTime);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(m => m.ExpiresAt != null && m.ExpiresAt <= currentTime)
+                .ToListAsync(cancellationToken),
+            cancellationToken, "getting expired media");
     }
 
     /// <inheritdoc/>
     public async Task<List<MediaRecord>> GetMediaOlderThanAsync(DateTime cutoffDate, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(m => m.CreatedAt < cutoffDate)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting media records older than {CutoffDate}", cutoffDate);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(m => m.CreatedAt < cutoffDate)
+                .ToListAsync(cancellationToken),
+            cancellationToken, $"getting media older than {cutoffDate:d}");
     }
 
     /// <inheritdoc/>
     public async Task<List<MediaRecord>> GetOrphanedMediaAsync(CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            // Find media records where the virtual key no longer exists
+            var orphanedMedia = await GetDbSet(context)
+                .AsNoTracking()
+                .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
+                .ToListAsync(cancellationToken);
+
+            if (orphanedMedia.Count > 0)
             {
-                // Find media records where the virtual key no longer exists
-                var orphanedMedia = await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
-                    .ToListAsync(cancellationToken);
+                Logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
+            }
 
-                if (orphanedMedia.Count > 0)
-                {
-                    Logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
-                }
-
-                return orphanedMedia;
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting orphaned media records");
-            throw;
-        }
+            return orphanedMedia;
+        }, cancellationToken, "getting orphaned media");
     }
 
     /// <inheritdoc/>
     public async Task<bool> UpdateAccessStatsAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            var mediaRecord = await GetDbSet(context).FindAsync(new object[] { id }, cancellationToken);
+            if (mediaRecord == null)
             {
-                var mediaRecord = await GetDbSet(context).FindAsync(new object[] { id }, cancellationToken);
-                if (mediaRecord == null)
-                {
-                    return false;
-                }
+                return false;
+            }
 
-                mediaRecord.AccessCount++;
-                mediaRecord.LastAccessedAt = DateTime.UtcNow;
+            mediaRecord.AccessCount++;
+            mediaRecord.LastAccessedAt = DateTime.UtcNow;
 
-                await context.SaveChangesAsync(cancellationToken);
-                return true;
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error updating access stats for media record {Id}", id);
-            throw;
-        }
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }, cancellationToken, $"updating access stats for ID {id}");
     }
 
     /// <inheritdoc/>
     public async Task<int> DeleteManyAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            var idList = ids.ToList();
+            var mediaRecords = await GetDbSet(context)
+                .Where(m => idList.Contains(m.Id))
+                .ToListAsync(cancellationToken);
+
+            if (mediaRecords.Count > 0)
             {
-                var idList = ids.ToList();
-                var mediaRecords = await GetDbSet(context)
-                    .Where(m => idList.Contains(m.Id))
-                    .ToListAsync(cancellationToken);
+                GetDbSet(context).RemoveRange(mediaRecords);
+                await context.SaveChangesAsync(cancellationToken);
 
-                if (mediaRecords.Count > 0)
-                {
-                    GetDbSet(context).RemoveRange(mediaRecords);
-                    await context.SaveChangesAsync(cancellationToken);
+                Logger.LogInformation("Deleted {Count} media records", mediaRecords.Count);
+            }
 
-                    Logger.LogInformation("Deleted {Count} media records", mediaRecords.Count);
-                }
-
-                return mediaRecords.Count;
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting multiple media records");
-            throw;
-        }
+            return mediaRecords.Count;
+        }, cancellationToken, "deleting multiple");
     }
 
     /// <inheritdoc/>
     public async Task<long> GetTotalStorageSizeByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .Where(m => m.VirtualKeyId == virtualKeyId && m.SizeBytes.HasValue)
-                    .SumAsync(m => m.SizeBytes ?? 0, cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting total storage size for virtual key {VirtualKeyId}", virtualKeyId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .Where(m => m.VirtualKeyId == virtualKeyId && m.SizeBytes.HasValue)
+                .SumAsync(m => m.SizeBytes ?? 0, cancellationToken),
+            cancellationToken, $"getting total storage size for virtual key {virtualKeyId}");
     }
 
     /// <inheritdoc/>
     public async Task<Dictionary<string, long>> GetStorageStatsByProviderAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .Where(m => m.Provider != null && m.SizeBytes.HasValue)
-                    .GroupBy(m => m.Provider!)
-                    .Select(g => new { Provider = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
-                    .ToDictionaryAsync(x => x.Provider, x => x.TotalSize, cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting storage stats by provider");
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .Where(m => m.Provider != null && m.SizeBytes.HasValue)
+                .GroupBy(m => m.Provider!)
+                .Select(g => new { Provider = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
+                .ToDictionaryAsync(x => x.Provider, x => x.TotalSize, cancellationToken),
+            cancellationToken, "getting storage stats by provider");
     }
 
     /// <inheritdoc/>
     public async Task<Dictionary<string, long>> GetStorageStatsByMediaTypeAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .Where(m => m.SizeBytes.HasValue)
-                    .GroupBy(m => m.MediaType)
-                    .Select(g => new { MediaType = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
-                    .ToDictionaryAsync(x => x.MediaType, x => x.TotalSize, cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting storage stats by media type");
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .Where(m => m.SizeBytes.HasValue)
+                .GroupBy(m => m.MediaType)
+                .Select(g => new { MediaType = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
+                .ToDictionaryAsync(x => x.MediaType, x => x.TotalSize, cancellationToken),
+            cancellationToken, "getting storage stats by media type");
     }
 
     /// <inheritdoc/>
     public async Task<int> GetCountByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .CountAsync(m => m.VirtualKeyId == virtualKeyId, cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting media count for virtual key {VirtualKeyId}", virtualKeyId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .CountAsync(m => m.VirtualKeyId == virtualKeyId, cancellationToken),
+            cancellationToken, $"getting count for virtual key {virtualKeyId}");
     }
 
     /// <inheritdoc/>
@@ -310,30 +222,22 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
             maxResults = 1000;
         }
 
-        try
-        {
-            // Escape special characters in the pattern for LIKE/ILIKE
-            var escapedPattern = storageKeyPattern
-                .Replace("\\", "\\\\")
-                .Replace("%", "\\%")
-                .Replace("_", "\\_");
+        // Escape special characters in the pattern for LIKE/ILIKE
+        var escapedPattern = storageKeyPattern
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
-            // Use ILIKE for case-insensitive pattern matching in PostgreSQL
-            var likePattern = $"%{escapedPattern}%";
+        // Use ILIKE for case-insensitive pattern matching in PostgreSQL
+        var likePattern = $"%{escapedPattern}%";
 
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(m => EF.Functions.ILike(m.StorageKey, likePattern))
-                    .OrderByDescending(m => m.CreatedAt)
-                    .Take(maxResults)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error searching media records by storage key pattern");
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(m => EF.Functions.ILike(m.StorageKey, likePattern))
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(maxResults)
+                .ToListAsync(cancellationToken),
+            cancellationToken, "searching by storage key pattern");
     }
 }

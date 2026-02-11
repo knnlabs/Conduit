@@ -44,64 +44,40 @@ public class ProviderRepository : RepositoryBase<Provider, int>, IProviderReposi
     [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     public async Task<List<Provider>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .Include(p => p.ProviderKeyCredentials)
-                    .AsNoTracking()
-                    .OrderBy(p => p.ProviderType)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting all providers");
-            throw;
-        }
+            return await GetDbSet(context)
+                .Include(p => p.ProviderKeyCredentials)
+                .AsNoTracking()
+                .OrderBy(p => p.ProviderType)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, "getting all");
     }
 
     /// <inheritdoc/>
     public async Task<Dictionary<int, string>> GetProviderNameMapAsync(CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .ToDictionaryAsync(p => p.Id, p => p.ProviderName ?? p.ProviderType.ToString(), cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting provider name map");
-            throw;
-        }
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .ToDictionaryAsync(p => p.Id, p => p.ProviderName ?? p.ProviderType.ToString(), cancellationToken);
+        }, cancellationToken, "getting provider name map");
     }
 
     /// <inheritdoc/>
     public async Task<int> CountAsync(bool? enabledOnly, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            var query = GetDbSet(context).AsNoTracking();
+
+            if (enabledOnly.HasValue)
             {
-                var query = GetDbSet(context).AsNoTracking();
+                query = query.Where(p => p.IsEnabled == enabledOnly.Value);
+            }
 
-                if (enabledOnly.HasValue)
-                {
-                    query = query.Where(p => p.IsEnabled == enabledOnly.Value);
-                }
-
-                return await query.CountAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error counting providers (enabledOnly: {EnabledOnly})", enabledOnly);
-            throw;
-        }
+            return await query.CountAsync(cancellationToken);
+        }, cancellationToken, $"counting (enabledOnly: {enabledOnly})");
     }
 }

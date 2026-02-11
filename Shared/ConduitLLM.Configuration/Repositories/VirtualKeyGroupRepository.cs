@@ -124,41 +124,26 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
     /// <inheritdoc />
     public async Task<VirtualKeyGroup?> GetByIdWithKeysAsync(int id)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .Include(g => g.VirtualKeys)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(g => g.Id == id));
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting virtual key group {GroupId} with keys", id);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .Include(g => g.VirtualKeys)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(g => g.Id == id),
+            operationName: $"getting by ID {id} with keys");
     }
 
     /// <inheritdoc />
     public async Task<VirtualKeyGroup?> GetByKeyIdAsync(int virtualKeyId)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                var key = await context.VirtualKeys
-                    .Include(k => k.VirtualKeyGroup)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(k => k.Id == virtualKeyId);
+            var key = await context.VirtualKeys
+                .Include(k => k.VirtualKeyGroup)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(k => k.Id == virtualKeyId);
 
-                return key?.VirtualKeyGroup;
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting virtual key group by key ID {VirtualKeyId}", virtualKeyId);
-            throw;
-        }
+            return key?.VirtualKeyGroup;
+        }, operationName: $"getting by key ID {virtualKeyId}");
     }
 
     /// <inheritdoc />
@@ -269,30 +254,22 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         if (pageSize < 1) pageSize = DefaultPageSize;
         if (pageSize > MaxPageSize) pageSize = MaxPageSize;
 
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                var query = GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(g => g.Balance < threshold);
+            var query = GetDbSet(context)
+                .AsNoTracking()
+                .Where(g => g.Balance < threshold);
 
-                var totalCount = await query.CountAsync(cancellationToken);
+            var totalCount = await query.CountAsync(cancellationToken);
 
-                var items = await query
-                    .OrderBy(g => g.Balance)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
+            var items = await query
+                .OrderBy(g => g.Balance)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
 
-                return (items, totalCount);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting low balance groups with threshold {Threshold}", threshold);
-            throw;
-        }
+            return (items, totalCount);
+        }, cancellationToken, $"getting low balance groups (threshold: {threshold})");
     }
 
     /// <summary>

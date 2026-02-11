@@ -9,10 +9,10 @@ namespace ConduitLLM.Configuration.Repositories;
 
 /// <summary>
 /// Repository implementation for function executions using Entity Framework Core.
-/// Extends FunctionRepositoryBase for standard CRUD operations and adds domain-specific methods.
+/// Extends RepositoryBase for standard CRUD operations and adds domain-specific methods.
 /// Includes distributed execution support via leasing mechanism.
 /// </summary>
-public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecution, Guid>, IFunctionExecutionRepository
+public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Guid>, IFunctionExecutionRepository
 {
     /// <summary>
     /// Creates a new instance of the repository.
@@ -232,7 +232,7 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
     #region Create/Update Operations
 
     /// <inheritdoc/>
-    public async Task<Guid> CreateAsync(FunctionExecution execution, CancellationToken cancellationToken = default)
+    public override async Task<Guid> CreateAsync(FunctionExecution execution, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(execution);
 
@@ -274,7 +274,7 @@ public class FunctionExecutionRepository : FunctionRepositoryBase<FunctionExecut
     }
 
     /// <inheritdoc/>
-    public async Task<bool> UpdateAsync(FunctionExecution execution, CancellationToken cancellationToken = default)
+    public override async Task<bool> UpdateAsync(FunctionExecution execution, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(execution);
 

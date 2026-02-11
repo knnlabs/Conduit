@@ -56,7 +56,7 @@ namespace ConduitLLM.Providers.OpenAI
 
                 Logger.LogDebug("Testing authentication with endpoint: {Endpoint}", endpoint);
 
-                var response = await client.GetAsync(endpoint, cancellationToken);
+                using var response = await client.GetAsync(endpoint, cancellationToken);
                 var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
                 Logger.LogInformation("{Provider} auth check returned status {StatusCode}", ProviderName, response.StatusCode);

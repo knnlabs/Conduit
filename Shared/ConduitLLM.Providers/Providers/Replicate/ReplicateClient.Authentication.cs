@@ -36,7 +36,7 @@ namespace ConduitLLM.Providers.Replicate
 
                 // Make a request to the account endpoint
                 var accountUrl = GetHealthCheckUrl(baseUrl);
-                var response = await client.GetAsync(accountUrl, cancellationToken);
+                using var response = await client.GetAsync(accountUrl, cancellationToken);
                 var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
                 Logger.LogInformation("Replicate auth check returned status {StatusCode}", response.StatusCode);

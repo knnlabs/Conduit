@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Functions.Entities.Interfaces;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -9,11 +10,13 @@ namespace ConduitLLM.Configuration.Repositories;
 /// <summary>
 /// Abstract base class providing common repository functionality for CRUD operations.
 /// Derived classes only need to implement GetDbSet() and can override other methods as needed.
+/// Constrains on IIdentifiableEntity to support both configuration entities (IEntity)
+/// and function entities (IIdentifiableEntity) without duplication.
 /// </summary>
 /// <typeparam name="TEntity">The entity type</typeparam>
 /// <typeparam name="TKey">The primary key type (must implement IEquatable)</typeparam>
 public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, TKey>
-    where TEntity : class, IEntity<TKey>
+    where TEntity : class, IIdentifiableEntity<TKey>
     where TKey : IEquatable<TKey>
 {
     /// <summary>
@@ -113,50 +116,63 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         }
     }
 
+    #region ExecuteAsync helpers
+
     /// <summary>
-    /// Executes a custom query using the database context.
-    /// Use this for complex queries that don't fit the standard CRUD pattern.
+    /// Executes a database operation. When <paramref name="operationName"/> is provided,
+    /// exceptions are logged with the entity type before re-throwing.
     /// </summary>
-    /// <typeparam name="TResult">The result type</typeparam>
-    /// <param name="operation">The operation to execute</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The result of the operation</returns>
     protected async Task<TResult> ExecuteAsync<TResult>(
         Func<ConduitDbContext, Task<TResult>> operation,
-        CancellationToken cancellationToken = default)
-    {
-        await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-        return await operation(context);
-    }
-
-    /// <summary>
-    /// Executes a custom operation using the database context with no return value.
-    /// </summary>
-    /// <param name="operation">The operation to execute</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    protected async Task ExecuteAsync(
-        Func<ConduitDbContext, Task> operation,
-        CancellationToken cancellationToken = default)
-    {
-        await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-        await operation(context);
-    }
-
-    /// <inheritdoc/>
-    public virtual async Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? operationName = null)
     {
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            return await operation(context);
+        }
+        catch (Exception ex) when (operationName != null)
+        {
+            Logger.LogError(ex, "Error {OperationName} {EntityType}", operationName, EntityTypeName);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Executes a void database operation. When <paramref name="operationName"/> is provided,
+    /// exceptions are logged with the entity type before re-throwing.
+    /// </summary>
+    protected async Task ExecuteAsync(
+        Func<ConduitDbContext, Task> operation,
+        CancellationToken cancellationToken = default,
+        string? operationName = null)
+    {
+        try
+        {
+            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            await operation(context);
+        }
+        catch (Exception ex) when (operationName != null)
+        {
+            Logger.LogError(ex, "Error {OperationName} {EntityType}", operationName, EntityTypeName);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Standard CRUD operations
+
+    /// <inheritdoc/>
+    public virtual async Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
             var query = GetDbSet(context).AsNoTracking();
             query = ApplyDefaultIncludes(query);
             return await query.FirstOrDefaultAsync(e => e.Id.Equals(id), cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting {EntityType} with ID {Id}", EntityTypeName, id);
-            throw;
-        }
+        }, cancellationToken, $"getting by ID {id}");
     }
 
     /// <inheritdoc/>
@@ -218,9 +234,8 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
     /// <inheritdoc/>
     public virtual async Task<bool> DeleteAsync(TKey id, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
             var dbSet = GetDbSet(context);
 
             var entity = await dbSet.FindAsync(new object[] { id! }, cancellationToken);
@@ -243,12 +258,7 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
 
             int rowsAffected = await context.SaveChangesAsync(cancellationToken);
             return rowsAffected > 0;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting {EntityType} with ID {Id}", EntityTypeName, id);
-            throw;
-        }
+        }, cancellationToken, $"deleting by ID {id}");
     }
 
     /// <inheritdoc/>
@@ -262,9 +272,8 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         if (pageSize < 1) pageSize = DefaultPageSize;
         if (pageSize > MaxPageSize) pageSize = MaxPageSize;
 
-        try
+        return await ExecuteAsync(async context =>
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
             var query = GetDbSet(context).AsNoTracking();
             query = ApplyDefaultIncludes(query);
 
@@ -277,45 +286,25 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
                 .ToListAsync(cancellationToken);
 
             return (items, totalCount);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting paginated {EntityType} (page {Page}, size {PageSize})",
-                EntityTypeName, page, pageSize);
-            throw;
-        }
+        }, cancellationToken, $"getting paginated (page {page}, size {pageSize})");
     }
 
     /// <inheritdoc/>
     public virtual async Task<bool> ExistsAsync(TKey id, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await GetDbSet(context)
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
                 .AsNoTracking()
-                .AnyAsync(e => e.Id.Equals(id), cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error checking existence of {EntityType} with ID {Id}", EntityTypeName, id);
-            throw;
-        }
+                .AnyAsync(e => e.Id.Equals(id), cancellationToken),
+            cancellationToken, $"checking existence of ID {id}");
     }
 
     /// <inheritdoc/>
     public virtual async Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await GetDbSet(context).CountAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error counting {EntityType} entities", EntityTypeName);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context).CountAsync(cancellationToken),
+            cancellationToken, "counting entities");
     }
 
     /// <inheritdoc/>
@@ -326,18 +315,14 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
             "Ensure this is intentional (cache warming, export, migration).",
             EntityTypeName);
 
-        try
+        return await ExecuteAsync(async context =>
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
             var query = GetDbSet(context).AsNoTracking();
             query = ApplyDefaultIncludes(query);
             query = ApplyDefaultOrdering(query);
             return await query.ToListAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting all {EntityType} entities (unbounded)", EntityTypeName);
-            throw;
-        }
+        }, cancellationToken, "getting all (unbounded)");
     }
+
+    #endregion
 }

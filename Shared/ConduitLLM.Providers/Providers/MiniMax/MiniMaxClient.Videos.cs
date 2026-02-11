@@ -78,7 +78,7 @@ namespace ConduitLLM.Providers.MiniMax
                 var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
                 httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
                 
-                var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+                using var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
                 var rawContent = await httpResponse.Content.ReadAsStringAsync();
                 
                 Logger.LogInformation("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);
@@ -154,30 +154,33 @@ namespace ConduitLLM.Providers.MiniMax
                         
                         // Check status with retry on transient errors
                         var statusEndpoint = $"{_baseUrl}/v1/query/video_generation?task_id={response.TaskId}";
-                        var statusRequest = new HttpRequestMessage(HttpMethod.Get, statusEndpoint);
-                        
-                        HttpResponseMessage statusResponse;
+                        using var statusRequest = new HttpRequestMessage(HttpMethod.Get, statusEndpoint);
+
                         string statusContent;
-                        
+                        bool isSuccess;
+                        System.Net.HttpStatusCode statusCode;
+
                         try
                         {
-                            statusResponse = await httpClient.SendAsync(statusRequest, cancellationToken);
+                            using var statusResponse = await httpClient.SendAsync(statusRequest, cancellationToken);
                             statusContent = await statusResponse.Content.ReadAsStringAsync();
-                            
+                            isSuccess = statusResponse.IsSuccessStatusCode;
+                            statusCode = statusResponse.StatusCode;
+
                             // Reset consecutive errors on success
                             consecutiveErrors = 0;
                         }
                         catch (HttpRequestException ex)
                         {
                             consecutiveErrors++;
-                            Logger.LogWarning(ex, "Network error checking video status (attempt {Attempt}, consecutive errors: {ConsecutiveErrors})", 
+                            Logger.LogWarning(ex, "Network error checking video status (attempt {Attempt}, consecutive errors: {ConsecutiveErrors})",
                                 attempt + 1, consecutiveErrors);
-                            
+
                             if (consecutiveErrors >= maxConsecutiveErrors)
                             {
                                 throw new LLMCommunicationException($"Failed to check video status after {maxConsecutiveErrors} consecutive errors", ex);
                             }
-                            
+
                             continue;
                         }
                         catch (TaskCanceledException ex)
@@ -185,36 +188,36 @@ namespace ConduitLLM.Providers.MiniMax
                             Logger.LogWarning(ex, "Timeout checking video status (attempt {Attempt})", attempt + 1);
                             throw new LLMCommunicationException("Video status check timed out", ex);
                         }
-                        
-                        Logger.LogInformation("MiniMax video status check {Attempt}: {Status}", 
+
+                        Logger.LogInformation("MiniMax video status check {Attempt}: {Status}",
                             attempt + 1, statusContent);
-                        
-                        if (!statusResponse.IsSuccessStatusCode)
+
+                        if (!isSuccess)
                         {
                             // Handle specific error codes
-                            if (statusResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                            if (statusCode == System.Net.HttpStatusCode.TooManyRequests)
                             {
                                 Logger.LogWarning("Rate limited while checking video status, backing off");
                                 pollingIntervalMs = maxPollingIntervalMs; // Max out the interval
                                 continue;
                             }
-                            else if ((int)statusResponse.StatusCode >= 500)
+                            else if ((int)statusCode >= 500)
                             {
                                 // Server errors - retry with backoff
                                 consecutiveErrors++;
                                 Logger.LogWarning("Server error checking video status: {StatusCode} - {Response}", 
-                                    statusResponse.StatusCode, statusContent);
+                                    statusCode, statusContent);
                                 
                                 if (consecutiveErrors >= maxConsecutiveErrors)
                                 {
-                                    throw new LLMCommunicationException($"Server error persisted after {maxConsecutiveErrors} attempts: {statusResponse.StatusCode}");
+                                    throw new LLMCommunicationException($"Server error persisted after {maxConsecutiveErrors} attempts: {statusCode}");
                                 }
                                 continue;
                             }
                             else
                             {
                                 // Client errors - don't retry
-                                throw new LLMCommunicationException($"Client error checking video status: {statusResponse.StatusCode} - {statusContent}");
+                                throw new LLMCommunicationException($"Client error checking video status: {statusCode} - {statusContent}");
                             }
                         }
                         
