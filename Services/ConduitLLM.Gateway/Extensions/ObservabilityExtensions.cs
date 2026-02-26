@@ -51,7 +51,6 @@ public static class ObservabilityExtensions
                     .AddHttpClientInstrumentation()
                     .AddSqlClientInstrumentation(options =>
                     {
-                        options.SetDbStatementForText = true;
                         options.RecordException = true;
                     })
                     .AddRedisInstrumentation()
