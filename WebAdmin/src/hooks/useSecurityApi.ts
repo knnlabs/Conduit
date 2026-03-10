@@ -7,10 +7,6 @@ import type {
   IpFilterDto,
   CreateIpFilterDto,
   UpdateIpFilterDto,
-  SecurityEvent,
-  ThreatDetection,
-  SecurityEventFilters,
-  ComplianceMetrics,
 } from '@knn_labs/conduit-admin-client';
 
 // Legacy interface for backward compatibility - maps to IpFilterDto
@@ -63,79 +59,6 @@ function legacyRuleToIpFilter(rule: IpRule): CreateIpFilterDto {
 export function useSecurityApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const getSecurityEvents = useCallback(async (params?: {
-    page?: number;
-    pageSize?: number;
-    severity?: string;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ events: SecurityEvent[]; total: number }> => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const filters: SecurityEventFilters = {
-        page: params?.page,
-        pageSize: params?.pageSize,
-        severity: params?.severity as SecurityEventFilters['severity'],
-        startDate: params?.startDate,
-        endDate: params?.endDate,
-      };
-
-      const result = await withAdminClient(client =>
-        client.security.getEvents(filters)
-      );
-
-      return { events: result.items, total: result.totalCount };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch security events';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const getThreats = useCallback(async (params?: {
-    status?: 'active' | 'mitigated' | 'resolved';
-    severity?: string;
-  }): Promise<ThreatDetection[]> => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const result = await withAdminClient(client =>
-        client.security.getThreats()
-      );
-
-      // Filter threats based on parameters (client-side filtering since SDK doesn't support it yet)
-      let filteredThreats = result;
-      
-      if (params?.status) {
-        // Map 'mitigated' to 'acknowledged' since that's what the API supports
-        const mappedStatus = params.status === 'mitigated' ? 'acknowledged' : params.status;
-        filteredThreats = result.filter(threat => 
-          threat.status === mappedStatus || 
-          (params.status === 'mitigated' && threat.status === 'acknowledged')
-        );
-      }
-      
-      if (params?.severity) {
-        filteredThreats = filteredThreats.filter(threat => 
-          threat.severity === params.severity
-        );
-      }
-
-      return filteredThreats;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch threats';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   const getIpRules = useCallback(async (): Promise<IpRule[]> => {
     setIsLoading(true);
@@ -303,35 +226,12 @@ export function useSecurityApi() {
     }
   }, []);
 
-  const getComplianceStatus = useCallback(async (): Promise<ComplianceMetrics> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await withAdminClient(client =>
-        client.security.getComplianceStatus()
-      );
-
-      // The SDK returns unknown, so we cast to ComplianceMetrics
-      return result as ComplianceMetrics;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch compliance status';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   return {
-    getSecurityEvents,
-    getThreats,
     getIpRules,
     createIpRule,
     updateIpRule,
     deleteIpRule,
     getIpStats,
-    getComplianceStatus,
     isLoading,
     error,
   };

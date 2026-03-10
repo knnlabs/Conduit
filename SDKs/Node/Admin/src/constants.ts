@@ -245,13 +245,6 @@ export const ENDPOINTS = {
     FALLBACK_BY_MODEL: (primaryModel: string) => `/api/Router/fallbacks/${primaryModel}`,
   },
 
-  // Security endpoints
-  SECURITY: {
-    EVENTS: '/api/security/events',
-    THREATS: '/api/security/threats',
-    COMPLIANCE: '/api/security/compliance',
-  },
-
   // System
   SYSTEM: {
     INFO: '/api/SystemInfo/info',

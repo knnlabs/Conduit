@@ -10,7 +10,7 @@ import type {
   VirtualKeyGroupTransactionDto,
   TransactionHistoryParams
 } from '../models/virtualKey';
-import type { PagedResult } from '../models/security';
+import type { PagedResult } from '../models/common-types';
 
 /**
  * Parameters for listing virtual key groups
