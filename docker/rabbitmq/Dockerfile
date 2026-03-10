@@ -33,7 +33,7 @@ COPY rabbitmq.conf /etc/rabbitmq/rabbitmq.conf
 # Labels for documentation
 LABEL org.opencontainers.image.title="Conduit RabbitMQ" \
       org.opencontainers.image.description="RabbitMQ with delayed message exchange for Conduit" \
-      org.opencontainers.image.vendor="KNN Labs" \
+      org.opencontainers.image.vendor="Nick Nassiri" \
       org.opencontainers.image.source="https://github.com/knnlabs/Conduit" \
       rabbitmq.version="3.13" \
       rabbitmq.delayed-message-plugin.version="${DELAYED_MESSAGE_PLUGIN_VERSION}"

@@ -10,7 +10,7 @@ export function Footer() {
       <Container py="md">
         <Group justify="space-between" align="center">
           <Text size="sm" c="dimmed">
-            © 2025 KNN Labs, Inc.
+            © 2026 Nick Nassiri
           </Text>
           
           <Group gap="md">

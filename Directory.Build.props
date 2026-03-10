@@ -13,11 +13,11 @@
     <!-- Don't set PackageId here as it needs to be unique per project -->
     <PackageFamilyName>knnlabs.Conduit</PackageFamilyName>
     <PackageName>Conduit</PackageName>
-    <Authors>KNN Labs, Inc.</Authors>
-    <Company>KNN Labs, Inc.</Company>
+    <Authors>Nick Nassiri</Authors>
+    <Company>Nick Nassiri</Company>
     <Product>Conduit</Product>
     <Description>A unified .NET client library for interacting with various LLM providers</Description>
-    <Copyright>© $([System.DateTime]::UtcNow.Year) KNN Labs, Inc.</Copyright>
+    <Copyright>© $([System.DateTime]::UtcNow.Year) Nick Nassiri</Copyright>
     <PackageProjectUrl>https://github.com/knnlabs/Conduit</PackageProjectUrl>
     <RepositoryUrl>https://github.com/knnlabs/Conduit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

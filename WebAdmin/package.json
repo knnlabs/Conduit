@@ -61,7 +61,7 @@
     "typescript",
     "mantine"
   ],
-  "author": "KNN Labs",
+  "author": "Nick Nassiri",
   "license": "ISC",
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
