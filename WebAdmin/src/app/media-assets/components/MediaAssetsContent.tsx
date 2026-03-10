@@ -146,17 +146,39 @@ export default function MediaAssetsContent() {
       onConfirm: () => {
         void (async () => {
           const selectedMedia = getSelectedMedia();
-          
+          let successCount = 0;
+          let failCount = 0;
+
           for (const media of selectedMedia) {
-            await deleteMedia(media.id);
+            const success = await deleteMedia(media.id, false);
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
           }
-          
+
           deselectAll();
-          notifications.show({
-            title: 'Success',
-            message: `Deleted ${count} media items`,
-            color: 'green',
-          });
+
+          if (failCount === 0) {
+            notifications.show({
+              title: 'Success',
+              message: `Deleted ${successCount} media items`,
+              color: 'green',
+            });
+          } else if (successCount === 0) {
+            notifications.show({
+              title: 'Error',
+              message: `Failed to delete ${failCount} media items`,
+              color: 'red',
+            });
+          } else {
+            notifications.show({
+              title: 'Partial Success',
+              message: `Deleted ${successCount} of ${count} items. ${failCount} failed.`,
+              color: 'orange',
+            });
+          }
         })();
       },
     });

@@ -157,20 +157,21 @@ public static class ServiceCollectionExtensions
         // Register refund service
         services.AddScoped<ConduitLLM.Admin.Interfaces.IRefundService, ConduitLLM.Admin.Services.RefundService>();
 
-        // Register media management service (requires IMediaLifecycleService to be registered)
+        // Register media management service (requires IMediaLifecycleService and IMediaStorageService to be registered)
         services.AddScoped<IAdminMediaService>(serviceProvider =>
         {
             var mediaRepository = serviceProvider.GetRequiredService<IMediaRecordRepository>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>();
+            var storageService = serviceProvider.GetRequiredService<IMediaStorageService>();
             var logger = serviceProvider.GetRequiredService<ILogger<AdminMediaService>>();
-            
+
             // Only register if media lifecycle service is available
             if (mediaLifecycleService == null)
             {
                 throw new InvalidOperationException("IMediaLifecycleService must be registered to use AdminMediaService");
             }
-            
-            return new AdminMediaService(mediaRepository, mediaLifecycleService, logger);
+
+            return new AdminMediaService(mediaRepository, mediaLifecycleService, storageService, logger);
         });
 
         // Register database-aware LLM client factory (must be registered before discovery service)

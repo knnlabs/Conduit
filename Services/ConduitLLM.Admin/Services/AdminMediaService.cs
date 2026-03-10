@@ -12,6 +12,7 @@ namespace ConduitLLM.Admin.Services
     {
         private readonly IMediaRecordRepository _mediaRepository;
         private readonly IMediaLifecycleService _mediaLifecycleService;
+        private readonly IMediaStorageService _storageService;
         private readonly ILogger<AdminMediaService> _logger;
 
         /// <summary>
@@ -19,14 +20,17 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         /// <param name="mediaRepository">The media record repository.</param>
         /// <param name="mediaLifecycleService">The media lifecycle service.</param>
+        /// <param name="storageService">The media storage service for S3/R2 operations.</param>
         /// <param name="logger">The logger instance.</param>
         public AdminMediaService(
             IMediaRecordRepository mediaRepository,
             IMediaLifecycleService mediaLifecycleService,
+            IMediaStorageService storageService,
             ILogger<AdminMediaService> logger)
         {
             _mediaRepository = mediaRepository ?? throw new ArgumentNullException(nameof(mediaRepository));
             _mediaLifecycleService = mediaLifecycleService ?? throw new ArgumentNullException(nameof(mediaLifecycleService));
+            _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -144,7 +148,7 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 _logger.LogInformation("Deleting media record {MediaId}", mediaId);
-                
+
                 var mediaRecord = await _mediaRepository.GetByIdAsync(mediaId);
                 if (mediaRecord == null)
                 {
@@ -152,29 +156,33 @@ namespace ConduitLLM.Admin.Services
                     return false;
                 }
 
-                // Delete from storage first
-                try
+                // Delete from storage first — abort if this fails to prevent orphaned files
+                var storageDeleted = await _storageService.DeleteAsync(mediaRecord.StorageKey);
+                if (!storageDeleted)
                 {
-                    var storageService = _mediaLifecycleService as IMediaStorageService;
-                    if (storageService != null)
-                    {
-                        await storageService.DeleteAsync(mediaRecord.StorageKey);
-                    }
-                }
-                catch (Exception storageEx)
-                {
-                    _logger.LogError(storageEx, "Failed to delete media {StorageKey} from storage, continuing with database deletion", mediaRecord.StorageKey);
+                    _logger.LogError(
+                        "Failed to delete media {StorageKey} from storage for record {MediaId}. " +
+                        "Database record will be preserved to prevent orphaned storage.",
+                        mediaRecord.StorageKey, mediaId);
+                    throw new InvalidOperationException(
+                        $"Failed to delete media from storage (key: {mediaRecord.StorageKey}). " +
+                        "The database record was preserved to allow retry.");
                 }
 
-                // Delete from database
+                // Storage succeeded — now delete from database
                 var result = await _mediaRepository.DeleteAsync(mediaId);
-                
+
                 if (result)
                 {
-                    _logger.LogInformation("Successfully deleted media record {MediaId}", mediaId);
+                    _logger.LogInformation("Successfully deleted media record {MediaId} and storage {StorageKey}",
+                        mediaId, mediaRecord.StorageKey);
                 }
-                
+
                 return result;
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

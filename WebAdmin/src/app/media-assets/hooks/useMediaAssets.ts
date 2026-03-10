@@ -37,24 +37,30 @@ export function useMediaAssets(virtualKeyId?: number) {
     }
   }, [virtualKeyId]);
 
-  const deleteMedia = async (mediaId: string): Promise<void> => {
+  const deleteMedia = async (mediaId: string, showNotification = true): Promise<boolean> => {
     try {
-      await withAdminClient(client => 
+      await withAdminClient(client =>
         client.media.deleteMedia(mediaId)
       );
 
       setMedia(prev => prev.filter(m => m.id !== mediaId));
-      notifications.show({
-        title: 'Success',
-        message: 'Media deleted successfully',
-        color: 'green',
-      });
+      if (showNotification) {
+        notifications.show({
+          title: 'Success',
+          message: 'Media deleted successfully',
+          color: 'green',
+        });
+      }
+      return true;
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete media',
-        color: 'red',
-      });
+      if (showNotification) {
+        notifications.show({
+          title: 'Error',
+          message: 'Failed to delete media',
+          color: 'red',
+        });
+      }
+      return false;
     }
   };
 
