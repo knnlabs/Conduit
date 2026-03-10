@@ -235,31 +235,59 @@ namespace ConduitLLM.Gateway.Middleware
                     cost = await costCalculationService.CalculateCostAsync(model, usage);
                 }
 
-                // Reset stream position after JsonDocument.ParseAsync for tool usage extraction
+                // Read the response body once for all subsequent extractions
                 responseBody.Seek(0, SeekOrigin.Begin);
+                string responseText;
+                using (var reader = new StreamReader(responseBody, leaveOpen: true))
+                {
+                    responseText = reader.ReadToEnd();
+                }
 
                 // Extract and calculate tool usage costs (provider-hosted tools like Groq code_interpreter)
-                var toolUsageData = ExtractToolUsageFromResponse(responseBody, providerTypeEnum);
+                var toolUsageData = UsageExtractor.ExtractToolUsage(responseText, providerTypeEnum, _logger);
                 decimal? toolCost = null;
                 string? toolUsageJson = null;
+                List<string>? unconfiguredTools = null;
 
                 if (toolUsageData != null)
                 {
-                    var calculatedToolCost = await toolCostCalculationService.CalculateToolCostsAsync(toolUsageData, providerTypeEnum);
+                    var toolCostResult = await toolCostCalculationService.CalculateToolCostsAsync(toolUsageData, providerTypeEnum);
                     toolUsageJson = toolCostCalculationService.SerializeToolUsage(toolUsageData);
+                    unconfiguredTools = toolCostResult.UnconfiguredToolNames;
 
-                    if (calculatedToolCost >= 0)
+                    if (!toolCostResult.Failed)
                     {
-                        toolCost = calculatedToolCost;
+                        toolCost = toolCostResult.TotalCost;
                         _logger.LogDebug("Tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
                     }
                     else
                     {
-                        // Cost calculation failed (returned -1) — record usage but log error
+                        // Cost calculation failed — record usage but log error
                         toolCost = 0m;
                         _logger.LogError("Tool cost calculation failed for provider {ProviderType}. " +
                             "Tool usage recorded but cost set to $0. Review provider tool configuration.",
                             providerTypeEnum);
+                    }
+
+                    // Log audit event for unconfigured tools only when there's also billable cost from other tools.
+                    // When toolCost == 0, BillingPolicyHandler.LogZeroCostBilling already emits ToolUsageMissingCostConfig.
+                    if (toolCostResult.HasUnconfiguredTools && toolCost > 0)
+                    {
+                        var virtualKeyIdForAudit = (int)context.Items["VirtualKeyId"]!;
+                        billingAuditService.LogBillingEvent(new Configuration.Entities.BillingAuditEvent
+                        {
+                            EventType = Configuration.Entities.BillingAuditEventType.ToolUsageMissingCostConfig,
+                            VirtualKeyId = virtualKeyIdForAudit,
+                            Model = model,
+                            RequestId = context.TraceIdentifier,
+                            RequestPath = context.Request.Path.ToString(),
+                            HttpStatusCode = context.Response.StatusCode,
+                            ProviderType = providerType,
+                            ToolUsageJson = toolUsageJson,
+                            ToolUsageCost = toolCost,
+                            FailureReason = $"Unconfigured tools: {string.Join(", ", toolCostResult.UnconfiguredToolNames)}"
+                        });
+                        UsageMetrics.BillingAuditEvents.WithLabels("ToolUsageMissingCostConfig", providerType).Inc();
                     }
                 }
 
@@ -267,9 +295,6 @@ namespace ConduitLLM.Gateway.Middleware
                 string? chatToolCallsJson = null;
                 if (endpointType == "chat")
                 {
-                    responseBody.Seek(0, SeekOrigin.Begin);
-                    using var reader = new StreamReader(responseBody, leaveOpen: true);
-                    var responseText = reader.ReadToEnd();
                     var chatToolCalls = UsageExtractor.ExtractChatToolCalls(responseText, _logger);
                     chatToolCallsJson = UsageExtractor.SerializeChatToolCalls(chatToolCalls);
 
@@ -393,9 +418,38 @@ namespace ConduitLLM.Gateway.Middleware
 
             if (toolUsageData != null)
             {
-                toolCost = await toolCostCalculationService.CalculateToolCostsAsync(toolUsageData, providerTypeEnum);
+                var toolCostResult = await toolCostCalculationService.CalculateToolCostsAsync(toolUsageData, providerTypeEnum);
                 toolUsageJson = toolCostCalculationService.SerializeToolUsage(toolUsageData);
-                _logger.LogDebug("Streaming tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
+
+                if (!toolCostResult.Failed)
+                {
+                    toolCost = toolCostResult.TotalCost;
+                    _logger.LogDebug("Streaming tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
+                }
+                else
+                {
+                    toolCost = 0m;
+                    _logger.LogError("Streaming tool cost calculation failed for provider {ProviderType}.", providerTypeEnum);
+                }
+
+                // Only emit when there's also billable cost — BillingPolicyHandler handles the zero-cost case
+                if (toolCostResult.HasUnconfiguredTools && toolCost > 0)
+                {
+                    billingAuditService.LogBillingEvent(new Configuration.Entities.BillingAuditEvent
+                    {
+                        EventType = Configuration.Entities.BillingAuditEventType.ToolUsageMissingCostConfig,
+                        VirtualKeyId = virtualKeyId,
+                        Model = model,
+                        RequestId = context.TraceIdentifier,
+                        RequestPath = context.Request.Path.ToString(),
+                        HttpStatusCode = context.Response.StatusCode,
+                        ProviderType = providerType,
+                        ToolUsageJson = toolUsageJson,
+                        ToolUsageCost = toolCost,
+                        FailureReason = $"Unconfigured tools: {string.Join(", ", toolCostResult.UnconfiguredToolNames)}"
+                    });
+                    UsageMetrics.BillingAuditEvents.WithLabels("ToolUsageMissingCostConfig", providerType).Inc();
+                }
             }
 
             // Extract function execution results from streaming context (richer data with execution status)
@@ -1019,29 +1073,6 @@ namespace ConduitLLM.Gateway.Middleware
             string providerType, IBillingAuditService billingAuditService, string? toolUsageJson = null, decimal? toolCost = null)
         {
             BillingPolicyHandler.LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService, _logger, toolUsageJson, toolCost);
-        }
-
-        /// <summary>
-        /// Extracts tool usage data from the response body.
-        /// </summary>
-        /// <param name="responseBody">The response body stream</param>
-        /// <param name="providerType">The provider type</param>
-        /// <returns>Tool usage data or null if no tools were used</returns>
-        private ToolUsageData? ExtractToolUsageFromResponse(MemoryStream responseBody, ProviderType providerType)
-        {
-            try
-            {
-                responseBody.Seek(0, SeekOrigin.Begin);
-                using var reader = new StreamReader(responseBody, leaveOpen: true);
-                var responseText = reader.ReadToEnd();
-                
-                return UsageExtractor.ExtractToolUsage(responseText, providerType, _logger);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to extract tool usage from response");
-                return null;
-            }
         }
 
         private void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost,

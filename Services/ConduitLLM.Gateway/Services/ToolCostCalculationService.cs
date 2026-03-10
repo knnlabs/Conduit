@@ -9,17 +9,45 @@ using Microsoft.EntityFrameworkCore;
 namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
+    /// Result of a tool cost calculation, including cost and diagnostic information.
+    /// </summary>
+    public class ToolCostResult
+    {
+        /// <summary>
+        /// Total calculated cost. -1 indicates a calculation failure.
+        /// </summary>
+        public decimal TotalCost { get; init; }
+
+        /// <summary>
+        /// Tool names that were used but had no cost configuration.
+        /// Empty if all tools were configured.
+        /// </summary>
+        public List<string> UnconfiguredToolNames { get; init; } = new();
+
+        /// <summary>
+        /// True if the cost calculation encountered an error.
+        /// </summary>
+        public bool Failed => TotalCost < 0;
+
+        /// <summary>
+        /// True if some tools were used but had no cost configuration.
+        /// </summary>
+        public bool HasUnconfiguredTools => UnconfiguredToolNames.Count > 0;
+    }
+
+    /// <summary>
     /// Service for calculating costs of tool usage across different providers.
     /// </summary>
     public interface IToolCostCalculationService
     {
         /// <summary>
         /// Calculates the total cost for tool usage based on provider configuration.
+        /// Returns a result containing the cost and any unconfigured tool names.
         /// </summary>
         /// <param name="toolUsage">Tool usage data extracted from provider response</param>
         /// <param name="providerType">The provider type to look up tool costs</param>
-        /// <returns>Total cost for all tool usage, or -1 if calculation failed</returns>
-        Task<decimal> CalculateToolCostsAsync(ToolUsageData toolUsage, ProviderType providerType);
+        /// <returns>Tool cost result with cost and diagnostic info</returns>
+        Task<ToolCostResult> CalculateToolCostsAsync(ToolUsageData toolUsage, ProviderType providerType);
 
         /// <summary>
         /// Serializes tool usage data to JSON for storage in BillingAuditEvent.
@@ -54,10 +82,10 @@ namespace ConduitLLM.Gateway.Services
         }
 
         /// <inheritdoc/>
-        public async Task<decimal> CalculateToolCostsAsync(ToolUsageData toolUsage, ProviderType providerType)
+        public async Task<ToolCostResult> CalculateToolCostsAsync(ToolUsageData toolUsage, ProviderType providerType)
         {
             if (toolUsage?.Tools == null || toolUsage.Tools.Count == 0)
-                return 0;
+                return new ToolCostResult { TotalCost = 0 };
 
             try
             {
@@ -65,6 +93,7 @@ namespace ConduitLLM.Gateway.Services
                 var providerTools = await GetActiveToolsForProviderAsync(providerType);
 
                 var totalCost = 0m;
+                var unconfiguredTools = new List<string>();
 
                 foreach (var toolUsageItem in toolUsage.Tools)
                 {
@@ -83,20 +112,23 @@ namespace ConduitLLM.Gateway.Services
                     }
                     else
                     {
+                        unconfiguredTools.Add(toolUsageItem.ToolName);
                         _logger.LogWarning("No cost configuration found for tool {ToolName} on provider {ProviderType}",
                             toolUsageItem.ToolName, providerType);
                     }
                 }
 
-                return totalCost;
+                return new ToolCostResult
+                {
+                    TotalCost = totalCost,
+                    UnconfiguredToolNames = unconfiguredTools
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to calculate tool costs for provider {ProviderType}. " +
                     "Tool usage will be recorded but cost may be inaccurate.", providerType);
-                // Return -1 to signal calculation failure to the caller,
-                // distinguishing it from a legitimate zero cost
-                return -1;
+                return new ToolCostResult { TotalCost = -1 };
             }
         }
 

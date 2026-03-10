@@ -265,7 +265,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
             mock.Setup(x => x.CalculateToolCostsAsync(
                 It.IsAny<ToolUsageData>(),
                 It.IsAny<ProviderType>()))
-                .ReturnsAsync(0m);
+                .ReturnsAsync(new ToolCostResult { TotalCost = 0m });
             mock.Setup(x => x.SerializeToolUsage(It.IsAny<ToolUsageData>()))
                 .Returns<ToolUsageData>(data => System.Text.Json.JsonSerializer.Serialize(data));
             return mock;
