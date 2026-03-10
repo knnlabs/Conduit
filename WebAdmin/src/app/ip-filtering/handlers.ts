@@ -1,6 +1,7 @@
 import { useSecurityApi, type IpRule } from '@/hooks/useSecurityApi';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { notifications } from '@mantine/notifications';
+import type { IpFilterTemplate, IpTemplateRule } from '@/components/ip-filtering/ipFilterTemplates';
 
 export function useIpFilteringHandlers(
   fetchIpRules: () => Promise<void>,
@@ -256,6 +257,54 @@ export function useIpFilteringHandlers(
     }
   };
 
+  const handleApplyTemplate = async (
+    template: IpFilterTemplate,
+    rulesToCreate: IpTemplateRule[],
+    setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    if (rulesToCreate.length === 0) return;
+
+    setIsSubmitting(true);
+    let created = 0;
+    let failed = 0;
+
+    try {
+      for (const rule of rulesToCreate) {
+        try {
+          await withAdminClient(client =>
+            client.ipFilters.create({
+              name: rule.name,
+              ipAddressOrCidr: rule.ipAddressOrCidr,
+              filterType: 'whitelist',
+              isEnabled: true,
+              description: rule.description,
+            })
+          );
+          created++;
+        } catch {
+          failed++;
+        }
+      }
+
+      notifications.show({
+        title: 'Template Applied',
+        message: `Created ${created} rule${created !== 1 ? 's' : ''} from "${template.label}"${failed > 0 ? `, ${failed} failed` : ''}`,
+        color: failed > 0 ? 'yellow' : 'green',
+      });
+
+      await fetchIpRules();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to apply template';
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return {
     handleBulkOperation,
     handleExport,
@@ -263,5 +312,6 @@ export function useIpFilteringHandlers(
     handleDeleteRule,
     handleToggleRule,
     handleModalSubmit,
+    handleApplyTemplate,
   };
 }
