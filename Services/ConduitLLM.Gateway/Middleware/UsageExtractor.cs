@@ -298,15 +298,30 @@ namespace ConduitLLM.Gateway.Middleware
                             {
                                 ToolName = billingToolName,
                                 Count = count,
-                                // For code_interpreter, we might want to track duration
-                                // For now, we'll use a standard unit (could be enhanced later)
-                                Duration = billingToolName == "code_interpreter" ? 1 : null
+                                Duration = null // Duration populated below from provider-specific fields
                             });
                         }
                     }
                 }
 
-                if (toolUsageList.Any())
+                // Extract duration data from Groq-specific fields (e.g., code_interpreter execution time)
+                // Groq may report duration in seconds as a separate field like "code_interpreter_duration_seconds"
+                foreach (var toolItem in toolUsageList)
+                {
+                    // Try provider-specific duration fields (seconds)
+                    var durationKey = $"{toolItem.ToolName}_duration_seconds";
+                    if (usage.TryGetProperty(durationKey, out var durationSeconds) &&
+                        durationSeconds.ValueKind == JsonValueKind.Number)
+                    {
+                        var seconds = durationSeconds.GetDecimal();
+                        // Convert seconds to hours for "hours" billing, or minutes for "minutes" billing
+                        // Store as raw seconds and let CalculateUsageAmount handle unit conversion
+                        toolItem.DurationSeconds = seconds;
+                        logger.LogDebug("Tool {ToolName} duration: {DurationSeconds}s", toolItem.ToolName, seconds);
+                    }
+                }
+
+                if (toolUsageList.Count > 0)
                 {
                     return new ToolUsageData { Tools = toolUsageList };
                 }
@@ -348,9 +363,16 @@ namespace ConduitLLM.Gateway.Middleware
         public int Count { get; set; }
 
         /// <summary>
-        /// Duration of tool usage (for time-based billing like code execution)
+        /// Duration of tool usage in the billing unit (hours/minutes).
+        /// When set explicitly, takes priority over DurationSeconds.
         /// </summary>
         public decimal? Duration { get; set; }
+
+        /// <summary>
+        /// Raw duration in seconds as reported by the provider.
+        /// Used by CalculateUsageAmount to convert to the appropriate billing unit.
+        /// </summary>
+        public decimal? DurationSeconds { get; set; }
     }
 
     /// <summary>

@@ -150,6 +150,28 @@ public static class CacheKeys
 
     #endregion
 
+    #region Provider Tool Cache
+
+    /// <summary>
+    /// Cache keys for Provider Tool cost lookups.
+    /// Used by RedisProviderToolCache for billing pipeline tool cost calculations.
+    /// </summary>
+    public static class ProviderTool
+    {
+        /// <summary>Prefix for provider tool cache entries by provider type</summary>
+        public const string Prefix = "providertool:";
+
+        /// <summary>Channel for tool invalidation notifications</summary>
+        public const string InvalidationChannel = "ptool_invalidated";
+
+        /// <summary>Builds a cache key for provider tools by provider type</summary>
+        /// <param name="providerType">The provider type enum value</param>
+        /// <returns>Full cache key like "providertool:Groq"</returns>
+        public static string ByProvider(string providerType) => $"{Prefix}{providerType.ToLowerInvariant()}";
+    }
+
+    #endregion
+
     #region Ephemeral Key Cache
 
     /// <summary>
@@ -318,6 +340,9 @@ public static class CacheKeys
 
         /// <summary>Service name for IP Filter cache statistics</summary>
         public const string IpFilterService = "ipfilter";
+
+        /// <summary>Service name for Provider Tool cache statistics</summary>
+        public const string ProviderToolService = "providertool";
 
         /// <summary>Builds a hits counter key for a service</summary>
         /// <param name="service">The service name (use constants above)</param>

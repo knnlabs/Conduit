@@ -1,9 +1,11 @@
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Gateway.Extensions;
 
@@ -24,7 +26,14 @@ public static class BillingServicesExtensions
         services.AddScoped<ICostCalculationService, CostCalculationService>();
 
         // Tool cost calculation service for provider tool billing
-        services.AddScoped<IToolCostCalculationService, ToolCostCalculationService>();
+        // Singleton: uses IDbContextFactory for database access and optional IProviderToolCache
+        services.AddSingleton<IToolCostCalculationService>(sp =>
+        {
+            var contextFactory = sp.GetRequiredService<IDbContextFactory<ConduitDbContext>>();
+            var logger = sp.GetRequiredService<ILogger<ToolCostCalculationService>>();
+            var cache = sp.GetService<IProviderToolCache>(); // Optional
+            return new ToolCostCalculationService(contextFactory, logger, cache);
+        });
 
         // Ephemeral key service for direct browser-to-API authentication (used for all direct access including SignalR)
         services.AddScoped<IEphemeralKeyService, EphemeralKeyService>();

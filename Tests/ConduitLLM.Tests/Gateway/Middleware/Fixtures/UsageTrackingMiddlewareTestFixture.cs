@@ -113,7 +113,10 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
         public IToolCostCalculationService GetRealToolCostService()
         {
             var loggerMock = new Mock<ILogger<ToolCostCalculationService>>();
-            return new ToolCostCalculationService(GetDbContext(), loggerMock.Object);
+            var factoryMock = new Mock<IDbContextFactory<ConduitDbContext>>();
+            factoryMock.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(GetDbContext());
+            return new ToolCostCalculationService(factoryMock.Object, loggerMock.Object);
         }
 
         /// <summary>

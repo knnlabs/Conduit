@@ -245,9 +245,22 @@ namespace ConduitLLM.Gateway.Middleware
 
                 if (toolUsageData != null)
                 {
-                    toolCost = await toolCostCalculationService.CalculateToolCostsAsync(toolUsageData, providerTypeEnum);
+                    var calculatedToolCost = await toolCostCalculationService.CalculateToolCostsAsync(toolUsageData, providerTypeEnum);
                     toolUsageJson = toolCostCalculationService.SerializeToolUsage(toolUsageData);
-                    _logger.LogDebug("Tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
+
+                    if (calculatedToolCost >= 0)
+                    {
+                        toolCost = calculatedToolCost;
+                        _logger.LogDebug("Tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
+                    }
+                    else
+                    {
+                        // Cost calculation failed (returned -1) — record usage but log error
+                        toolCost = 0m;
+                        _logger.LogError("Tool cost calculation failed for provider {ProviderType}. " +
+                            "Tool usage recorded but cost set to $0. Review provider tool configuration.",
+                            providerTypeEnum);
+                    }
                 }
 
                 // Extract chat tool calls (user-defined function/tool calls in the response)

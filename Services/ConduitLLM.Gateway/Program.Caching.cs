@@ -91,6 +91,7 @@ public partial class Program
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IGlobalSettingCache, RedisGlobalSettingCache>();
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IModelCostCache, RedisModelCostCache>();
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IIpFilterCache, RedisIpFilterCache>();
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderToolCache, RedisProviderToolCache>();
             
             // Register CachedApiVirtualKeyService with event publishing dependency
             builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(serviceProvider =>
@@ -106,7 +107,7 @@ public partial class Program
             });
             
             Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with PostgreSQL distributed locking");
-            Console.WriteLine("[Conduit] Enabled caches: VirtualKey, Provider, GlobalSetting, ModelCost, IpFilter");
+            Console.WriteLine("[Conduit] Enabled caches: VirtualKey, Provider, GlobalSetting, ModelCost, IpFilter, ProviderTool");
         }
         else
         {

@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Core.Events;
+using MassTransit;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -14,14 +17,19 @@ namespace ConduitLLM.Admin.Controllers
     public class ProviderToolsController : AdminControllerBase
     {
         private readonly ConduitDbContext _context;
+        private readonly IPublishEndpoint? _publishEndpoint;
 
         /// <summary>
         /// Initializes a new instance of the ProviderToolsController.
         /// </summary>
-        public ProviderToolsController(ConduitDbContext context, ILogger<ProviderToolsController> logger)
-            : base(logger)
+        public ProviderToolsController(
+            ConduitDbContext context,
+            ILogger<ProviderToolsController> logger,
+            IPublishEndpoint? publishEndpoint = null)
+            : base(publishEndpoint, logger)
         {
             _context = context;
+            _publishEndpoint = publishEndpoint;
         }
 
         /// <summary>
@@ -96,6 +104,9 @@ namespace ConduitLLM.Admin.Controllers
             return ExecuteAsync(
                 async () =>
                 {
+                    // Validate billing unit
+                    ValidateBillingUnit(dto.BillingUnit);
+
                     // Check if tool already exists for this provider
                     var existingTool = await _context.ProviderTools
                         .FirstOrDefaultAsync(pt => pt.Provider == dto.Provider && pt.ToolName == dto.ToolName);
@@ -122,6 +133,8 @@ namespace ConduitLLM.Admin.Controllers
 
                     Logger.LogInformation("Created provider tool {ToolName} for {Provider}", tool.ToolName, tool.Provider);
 
+                    await PublishToolChangedEventAsync(tool, "Created");
+
                     return ProviderToolDto.FromEntity(tool);
                 },
                 result => CreatedAtAction(nameof(GetProviderTool), new { id = result.Id }, result),
@@ -140,6 +153,9 @@ namespace ConduitLLM.Admin.Controllers
             return ExecuteAsync(
                 async () =>
                 {
+                    // Validate billing unit
+                    ValidateBillingUnit(dto.BillingUnit);
+
                     var tool = await _context.ProviderTools.FindAsync(id);
                     if (tool == null)
                     {
@@ -157,6 +173,8 @@ namespace ConduitLLM.Admin.Controllers
 
                     Logger.LogInformation("Updated provider tool {Id} ({ToolName} for {Provider})",
                         id, tool.ToolName, tool.Provider);
+
+                    await PublishToolChangedEventAsync(tool, "Updated");
 
                     return ProviderToolDto.FromEntity(tool);
                 },
@@ -187,6 +205,8 @@ namespace ConduitLLM.Admin.Controllers
 
                     Logger.LogInformation("Deleted provider tool {Id} ({ToolName} for {Provider})",
                         id, tool.ToolName, tool.Provider);
+
+                    await PublishToolChangedEventAsync(tool, "Deleted");
                 },
                 NoContent(),
                 "DeleteProviderTool",
@@ -219,18 +239,7 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("billing-units")]
         public ActionResult<IEnumerable<string>> GetBillingUnits()
         {
-            var billingUnits = new[]
-            {
-                "requests",
-                "hours",
-                "minutes",
-                "searches",
-                "executions",
-                "characters",
-                "tokens"
-            };
-
-            return Ok(billingUnits);
+            return Ok(ProviderToolBillingUnits.All);
         }
 
         /// <summary>
@@ -247,11 +256,21 @@ namespace ConduitLLM.Admin.Controllers
                     var imported = 0;
                     var skipped = 0;
                     var errors = new List<string>();
+                    var affectedProviders = new HashSet<ProviderType>();
 
                     foreach (var dto in tools)
                     {
                         try
                         {
+                            // Validate billing unit
+                            if (!ProviderToolBillingUnits.IsValid(dto.BillingUnit))
+                            {
+                                errors.Add($"Tool '{dto.ToolName}': Invalid billing unit '{dto.BillingUnit}'. " +
+                                    $"Must be one of: {string.Join(", ", ProviderToolBillingUnits.All)}");
+                                skipped++;
+                                continue;
+                            }
+
                             // Check if tool already exists
                             var exists = await _context.ProviderTools
                                 .AnyAsync(pt => pt.Provider == dto.Provider && pt.ToolName == dto.ToolName);
@@ -277,6 +296,7 @@ namespace ConduitLLM.Admin.Controllers
 
                             _context.ProviderTools.Add(tool);
                             imported++;
+                            affectedProviders.Add(dto.Provider);
                         }
                         catch (Exception ex)
                         {
@@ -287,6 +307,12 @@ namespace ConduitLLM.Admin.Controllers
                     if (imported > 0)
                     {
                         await _context.SaveChangesAsync();
+
+                        // Publish events for each affected provider
+                        foreach (var provider in affectedProviders)
+                        {
+                            await PublishToolChangedEventAsync(provider, "BulkImport");
+                        }
                     }
 
                     Logger.LogInformation("Imported {Imported} provider tools, skipped {Skipped}", imported, skipped);
@@ -296,7 +322,7 @@ namespace ConduitLLM.Admin.Controllers
                         imported,
                         skipped,
                         total = tools.Count,
-                        errors = errors.Any() ? errors : null
+                        errors = errors.Count > 0 ? errors : null
                     };
                 },
                 result => Ok(result),
@@ -325,6 +351,68 @@ namespace ConduitLLM.Admin.Controllers
                 },
                 result => Ok(result),
                 "ExportProviderTools");
+        }
+
+        /// <summary>
+        /// Validates that the billing unit is a recognized value.
+        /// </summary>
+        private static void ValidateBillingUnit(string? billingUnit)
+        {
+            if (!ProviderToolBillingUnits.IsValid(billingUnit))
+            {
+                throw new ArgumentException(
+                    $"Invalid billing unit '{billingUnit}'. Must be one of: {string.Join(", ", ProviderToolBillingUnits.All)}");
+            }
+        }
+
+        /// <summary>
+        /// Publishes a ProviderToolChanged event for cache invalidation.
+        /// </summary>
+        private async Task PublishToolChangedEventAsync(ProviderTool tool, string changeType)
+        {
+            if (_publishEndpoint == null) return;
+
+            try
+            {
+                await _publishEndpoint.Publish(new ProviderToolChanged
+                {
+                    ProviderToolId = tool.Id,
+                    ToolName = tool.ToolName,
+                    ProviderType = tool.Provider?.ToString() ?? "Unknown",
+                    ChangeType = changeType,
+                    CorrelationId = Guid.NewGuid().ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to publish ProviderToolChanged event for {ToolName} — operation completed but cache may be stale",
+                    tool.ToolName);
+            }
+        }
+
+        /// <summary>
+        /// Publishes a ProviderToolChanged event for a provider type (bulk operations).
+        /// </summary>
+        private async Task PublishToolChangedEventAsync(ProviderType providerType, string changeType)
+        {
+            if (_publishEndpoint == null) return;
+
+            try
+            {
+                await _publishEndpoint.Publish(new ProviderToolChanged
+                {
+                    ProviderToolId = 0,
+                    ToolName = "*",
+                    ProviderType = providerType.ToString(),
+                    ChangeType = changeType,
+                    CorrelationId = Guid.NewGuid().ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to publish ProviderToolChanged event for {ProviderType} — operation completed but cache may be stale",
+                    providerType);
+            }
         }
     }
 }
