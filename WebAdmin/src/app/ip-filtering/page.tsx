@@ -33,6 +33,7 @@ import { IpRulesTable } from '@/components/ip-filtering/IpRulesTable';
 import { IpRuleModal } from '@/components/ip-filtering/IpRuleModal';
 import { IpTestModal } from '@/components/ip-filtering/IpTestModal';
 import { IpTemplateModal } from '@/components/ip-filtering/IpTemplateModal';
+import { IpFilterPolicyBanner } from '@/components/ip-filtering/IpFilterPolicyBanner';
 import { ipFilterTemplates, type IpFilterTemplate } from '@/components/ip-filtering/ipFilterTemplates';
 import { useIpFilteringData } from './hooks';
 import { useIpFilteringHandlers } from './handlers';
@@ -268,7 +269,7 @@ export default function IpFilteringPage() {
             
             {/* IP Rules Table */}
             <Card.Section>
-              <IpRulesTable 
+              <IpRulesTable
                 data={filteredRules}
                 selectedRules={selectedRules}
                 onSelectionChange={setSelectedRules}
@@ -277,6 +278,13 @@ export default function IpFilteringPage() {
                 onToggle={(ruleId: string, enabled: boolean) => void handleToggleRule(ruleId, enabled, rules)}
               />
             </Card.Section>
+
+            {/* Effective Policy Banner */}
+            {!isLoading && (
+              <Card.Section p="md">
+                <IpFilterPolicyBanner rules={rules} />
+              </Card.Section>
+            )}
           </div>
         </Tabs>
       </Card>
