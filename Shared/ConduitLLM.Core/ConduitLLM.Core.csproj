@@ -14,8 +14,8 @@
     <PackageReference Include="Polly" Version="8.6.6" />
     <PackageReference Include="prometheus-net" Version="8.2.1" />
     <PackageReference Include="TiktokenSharp" Version="1.2.1" />
-    <PackageReference Include="MassTransit" Version="9.0.1" />
-    <PackageReference Include="MassTransit.Redis" Version="9.0.1" />
+    <PackageReference Include="MassTransit" Version="8.5.7" />
+    <PackageReference Include="MassTransit.Redis" Version="8.5.7" />
   </ItemGroup>
   
   <ItemGroup>
