@@ -55,7 +55,8 @@ namespace ConduitLLM.Core.Interfaces
         /// Clear all errors for a key (used when re-enabling)
         /// </summary>
         /// <param name="keyId">ID of the key to clear errors for</param>
-        Task ClearErrorsForKeyAsync(int keyId);
+        /// <param name="providerId">Optional provider ID to also clean up the provider's disabled keys tracking</param>
+        Task ClearErrorsForKeyAsync(int keyId, int? providerId = null);
         
         /// <summary>
         /// Get detailed error information for a specific key

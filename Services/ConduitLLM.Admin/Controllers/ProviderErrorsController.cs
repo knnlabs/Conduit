@@ -105,25 +105,28 @@ namespace ConduitLLM.Admin.Controllers
                         pageNumber++;
                     } while (allProviders.Count < totalCount);
 
-                    var summaries = new List<ProviderErrorSummaryDto>();
-
-                    foreach (var provider in allProviders)
+                    // Fetch all provider summaries in parallel to avoid N+1
+                    var summaryTasks = allProviders.Select(async provider =>
                     {
                         var summary = await _errorService.GetProviderSummaryAsync(provider.Id);
-                        if (summary != null)
+                        return (provider, summary);
+                    });
+
+                    var results = await Task.WhenAll(summaryTasks);
+
+                    var summaries = results
+                        .Where(r => r.summary != null)
+                        .Select(r => new ProviderErrorSummaryDto
                         {
-                            summaries.Add(new ProviderErrorSummaryDto
-                            {
-                                ProviderId = provider.Id,
-                                ProviderName = provider.ProviderName,
-                                TotalErrors = summary.TotalErrors,
-                                FatalErrors = summary.FatalErrors,
-                                Warnings = summary.Warnings,
-                                DisabledKeyIds = summary.DisabledKeyIds,
-                                LastError = summary.LastError
-                            });
-                        }
-                    }
+                            ProviderId = r.provider.Id,
+                            ProviderName = r.provider.ProviderName,
+                            TotalErrors = r.summary!.TotalErrors,
+                            FatalErrors = r.summary.FatalErrors,
+                            Warnings = r.summary.Warnings,
+                            DisabledKeyIds = r.summary.DisabledKeyIds,
+                            LastError = r.summary.LastError
+                        })
+                        .ToList();
 
                     return summaries;
                 },
@@ -202,38 +205,33 @@ namespace ConduitLLM.Admin.Controllers
             return ExecuteAsync(
                 async () =>
                 {
-                    // Clear errors from Redis
-                    await _errorService.ClearErrorsForKeyAsync(keyId);
+                    // Look up the key to get its providerId for proper cleanup
+                    var key = await _keyRepo.GetByIdAsync(keyId);
+                    int? providerId = key?.ProviderId;
+
+                    // Clear errors from Redis (including provider disabled keys cleanup)
+                    await _errorService.ClearErrorsForKeyAsync(keyId, providerId);
                     Logger.LogInformation("Cleared errors for key {KeyId}", keyId);
 
                     // Re-enable the key if requested
-                    if (request.ReenableKey)
+                    if (request.ReenableKey && key != null && !key.IsEnabled)
                     {
-                        var key = await _keyRepo.GetByIdAsync(keyId);
-                        if (key == null)
+                        key.IsEnabled = true;
+                        await _keyRepo.UpdateAsync(key);
+
+                        // Publish event for UI update
+                        PublishEventFireAndForget(new ProviderKeyReenabledEvent
                         {
-                            throw new KeyNotFoundException($"Key {keyId} not found");
-                        }
+                            KeyId = keyId,
+                            ProviderId = key.ProviderId,
+                            ReenabledBy = User.Identity?.Name ?? "Admin",
+                            Reason = request.Reason ?? "Manual re-enable after error resolution",
+                            ReenabledAt = DateTime.UtcNow
+                        }, "ClearKeyErrors");
 
-                        if (!key.IsEnabled)
-                        {
-                            key.IsEnabled = true;
-                            await _keyRepo.UpdateAsync(key);
-
-                            // Publish event for UI update
-                            PublishEventFireAndForget(new ProviderKeyReenabledEvent
-                            {
-                                KeyId = keyId,
-                                ProviderId = key.ProviderId,
-                                ReenabledBy = User.Identity?.Name ?? "Admin",
-                                Reason = request.Reason ?? "Manual re-enable after error resolution",
-                                ReenabledAt = DateTime.UtcNow
-                            }, "ClearKeyErrors");
-
-                            Logger.LogInformation(
-                                "Re-enabled key {KeyId} for provider {ProviderId} by {User}",
-                                keyId, key.ProviderId, User.Identity?.Name);
-                        }
+                        Logger.LogInformation(
+                            "Re-enabled key {KeyId} for provider {ProviderId} by {User}",
+                            keyId, key.ProviderId, User.Identity?.Name);
                     }
 
                     return new
@@ -268,9 +266,11 @@ namespace ConduitLLM.Admin.Controllers
                     var window = TimeSpan.FromHours(hours);
                     var stats = await _errorService.GetErrorStatisticsAsync(window);
 
-                    // Get provider names for the statistics using efficient lookup
+                    // Map provider IDs to names for the statistics
                     var providerNameMap = await _providerRepo.GetProviderNameMapAsync();
-                    var providerNames = providerNameMap.ToDictionary(p => p.Key.ToString(), p => p.Value);
+                    var errorsByProviderName = stats.ErrorsByProvider.ToDictionary(
+                        kvp => providerNameMap.GetValueOrDefault(int.Parse(kvp.Key), $"Provider {kvp.Key}"),
+                        kvp => kvp.Value);
 
                     var dto = new ErrorStatisticsDto
                     {
@@ -279,7 +279,7 @@ namespace ConduitLLM.Admin.Controllers
                         Warnings = stats.Warnings,
                         DisabledKeys = stats.DisabledKeys,
                         ErrorsByType = stats.ErrorsByType,
-                        ErrorsByProvider = stats.ErrorsByProvider,
+                        ErrorsByProvider = errorsByProviderName,
                         TimeWindow = window,
                         GeneratedAt = DateTime.UtcNow
                     };

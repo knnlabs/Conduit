@@ -211,13 +211,20 @@ namespace ConduitLLM.Core.Services
         }
 
         public async Task<IReadOnlyList<ProviderErrorInfo>> GetRecentErrorsAsync(
-            int? providerId = null, 
+            int? providerId = null,
             int? keyId = null,
             int limit = 100)
         {
-            var entries = await _errorStore.GetRecentErrorsAsync(limit);
+            bool hasFilter = providerId.HasValue || keyId.HasValue;
+            // When filtering, fetch more entries to compensate for post-filter reduction
+            int fetchLimit = hasFilter ? limit * 5 : limit;
+            // Cap to prevent excessive Redis reads
+            if (fetchLimit > 5000)
+                fetchLimit = 5000;
+
+            var entries = await _errorStore.GetRecentErrorsAsync(fetchLimit);
             var errors = new List<ProviderErrorInfo>();
-            
+
             foreach (var entry in entries)
             {
                 // Apply filters
@@ -225,7 +232,7 @@ namespace ConduitLLM.Core.Services
                     continue;
                 if (keyId.HasValue && entry.KeyId != keyId.Value)
                     continue;
-                
+
                 errors.Add(new ProviderErrorInfo
                 {
                     KeyCredentialId = entry.KeyId,
@@ -234,8 +241,11 @@ namespace ConduitLLM.Core.Services
                     ErrorMessage = entry.Message,
                     OccurredAt = entry.Timestamp
                 });
+
+                if (errors.Count >= limit)
+                    break;
             }
-            
+
             return errors;
         }
 
@@ -253,9 +263,9 @@ namespace ConduitLLM.Core.Services
             return errorCounts.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count);
         }
 
-        public async Task ClearErrorsForKeyAsync(int keyId)
+        public async Task ClearErrorsForKeyAsync(int keyId, int? providerId = null)
         {
-            await _errorStore.ClearErrorsForKeyAsync(keyId);
+            await _errorStore.ClearErrorsForKeyAsync(keyId, providerId);
         }
 
         public async Task<KeyErrorDetails?> GetKeyErrorDetailsAsync(int keyId)
@@ -334,7 +344,10 @@ namespace ConduitLLM.Core.Services
                 TotalErrors = statsData.TotalErrors,
                 FatalErrors = statsData.FatalErrors,
                 Warnings = statsData.Warnings,
-                ErrorsByType = statsData.ErrorsByType
+                ErrorsByType = statsData.ErrorsByType,
+                ErrorsByProvider = statsData.ErrorsByProvider.ToDictionary(
+                    kvp => kvp.Key.ToString(),
+                    kvp => kvp.Value)
             };
             
             // Count disabled keys

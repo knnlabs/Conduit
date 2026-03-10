@@ -197,7 +197,22 @@ namespace ConduitLLM.Tests.Services
             await _service.ClearErrorsForKeyAsync(keyId);
 
             // Assert
-            _errorStoreMock.Verify(x => x.ClearErrorsForKeyAsync(keyId), 
+            _errorStoreMock.Verify(x => x.ClearErrorsForKeyAsync(keyId, null),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ClearErrorsForKeyAsync_WithProviderId_PassesProviderIdToStore()
+        {
+            // Arrange
+            var keyId = 123;
+            var providerId = 456;
+
+            // Act
+            await _service.ClearErrorsForKeyAsync(keyId, providerId);
+
+            // Assert
+            _errorStoreMock.Verify(x => x.ClearErrorsForKeyAsync(keyId, providerId),
                 Times.Once);
         }
 
@@ -235,7 +250,7 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            _errorStoreMock.Setup(x => x.GetRecentErrorsAsync(100))
+            _errorStoreMock.Setup(x => x.GetRecentErrorsAsync(It.IsAny<int>()))
                 .ReturnsAsync(feedEntries);
 
             // Act

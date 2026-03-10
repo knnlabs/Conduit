@@ -260,6 +260,11 @@ public static class CacheKeys
         /// <param name="providerId">The provider ID</param>
         /// <returns>Full key like "provider:errors:provider:456:summary"</returns>
         public static string ProviderSummary(int providerId) => $"provider:errors:provider:{providerId}:summary";
+
+        /// <summary>Builds a key for provider-level disabled keys set</summary>
+        /// <param name="providerId">The provider ID</param>
+        /// <returns>Full key like "provider:errors:provider:456:disabled_keys"</returns>
+        public static string DisabledKeysByProvider(int providerId) => $"provider:errors:provider:{providerId}:disabled_keys";
     }
 
     #endregion
