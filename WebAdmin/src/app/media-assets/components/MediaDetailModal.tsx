@@ -20,9 +20,13 @@ export default function MediaDetailModal({
 }: MediaDetailModalProps) {
   if (!media) return null;
 
+  const mediaUrl = media.publicUrl ?? media.storageUrl;
+  const isVideo = media.mediaType.toLowerCase() === 'video';
+  const isImage = media.mediaType.toLowerCase() === 'image';
+
   const handleDownload = () => {
-    if (media.publicUrl) {
-      window.open(media.publicUrl, '_blank');
+    if (mediaUrl) {
+      window.open(mediaUrl, '_blank');
     }
   };
 
@@ -34,9 +38,9 @@ export default function MediaDetailModal({
       size="lg"
     >
       <Stack>
-        {media.mediaType === 'image' && media.publicUrl && (
+        {isImage && mediaUrl && (
           <Image
-            src={media.publicUrl}
+            src={mediaUrl}
             alt={media.prompt ?? 'Generated image'}
             radius="md"
             mah={400}
@@ -44,9 +48,9 @@ export default function MediaDetailModal({
           />
         )}
 
-        {media.mediaType === 'video' && media.publicUrl && (
+        {isVideo && mediaUrl && (
           <video
-            src={media.publicUrl}
+            src={mediaUrl}
             controls
             style={{ width: '100%', maxHeight: 400, borderRadius: 8 }}
           />
@@ -61,7 +65,7 @@ export default function MediaDetailModal({
               <Badge variant="light">
                 {media.model ?? 'Unknown model'}
               </Badge>
-              <Badge variant="light" color={media.mediaType === 'image' ? 'blue' : 'green'}>
+              <Badge variant="light" color={isImage ? 'blue' : 'green'}>
                 {media.mediaType.toUpperCase()}
               </Badge>
             </Group>
@@ -83,7 +87,7 @@ export default function MediaDetailModal({
             >
               Download
             </Button>
-            <CopyButton value={media.publicUrl ?? ''}>
+            <CopyButton value={mediaUrl ?? ''}>
               {({ copied, copy }) => (
                 <Button
                   leftSection={<IconCopy size={16} />}
