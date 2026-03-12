@@ -49,6 +49,9 @@ public static class CacheKeys
         /// <summary>Prefix for model cost entries by ID</summary>
         public const string Prefix = "modelcost:";
 
+        /// <summary>Key for all model costs list cache</summary>
+        public const string All = "modelcost:all";
+
         /// <summary>Prefix for model cost pattern lookups</summary>
         public const string PatternPrefix = "modelcost:pattern:";
 
@@ -70,6 +73,30 @@ public static class CacheKeys
         /// <param name="modelId">The model ID</param>
         /// <returns>Full cache key like "modelcost:pattern:gpt-4-turbo"</returns>
         public static string ByModelId(string modelId) => ByPattern(modelId);
+
+        /// <summary>Builds a cache key for a model cost by its database ID</summary>
+        /// <param name="id">The model cost ID</param>
+        /// <returns>Full cache key like "modelcost:id:123"</returns>
+        public static string ById(int id) => $"modelcost:id:{id}";
+    }
+
+    #endregion
+
+    #region Pricing Rules Cache
+
+    /// <summary>
+    /// Cache keys for parsed pricing rules configurations.
+    /// Used by CachedPricingRulesService for deserialized PricingRulesConfig caching.
+    /// </summary>
+    public static class PricingRules
+    {
+        /// <summary>Prefix for pricing rules cache entries</summary>
+        public const string Prefix = "pricingrules:";
+
+        /// <summary>Builds a cache key for pricing rules by model cost ID</summary>
+        /// <param name="modelCostId">The model cost ID</param>
+        /// <returns>Full cache key like "pricingrules:id:123"</returns>
+        public static string ById(int modelCostId) => $"pricingrules:id:{modelCostId}";
     }
 
     #endregion

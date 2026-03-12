@@ -83,7 +83,7 @@ namespace ConduitLLM.Gateway.Consumers
             {
                 try
                 {
-                    _pricingRulesCache.InvalidateCache(@event.ModelCostId);
+                    await _pricingRulesCache.InvalidateCacheAsync(@event.ModelCostId);
                     _logger.LogInformation(
                         "Pricing rules cache invalidated for ModelCostId: {ModelCostId}",
                         @event.ModelCostId);

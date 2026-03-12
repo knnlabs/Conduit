@@ -19,8 +19,15 @@ public static class BillingServicesExtensions
     /// </summary>
     public static IServiceCollection AddBillingAndPricingServices(this IServiceCollection services)
     {
-        // Model costs tracking service
-        services.AddScoped<IModelCostService, ModelCostService>();
+        // Model costs tracking service with caching decorator pattern
+        services.AddScoped<ModelCostService>();
+        services.AddScoped<IModelCostService>(provider =>
+        {
+            var innerService = provider.GetRequiredService<ModelCostService>();
+            var cacheManager = provider.GetRequiredService<ICacheManager>();
+            var logger = provider.GetRequiredService<ILogger<CachedModelCostService>>();
+            return new CachedModelCostService(innerService, cacheManager, logger);
+        });
 
         // Cost calculation service
         services.AddScoped<ICostCalculationService, CostCalculationService>();
@@ -51,7 +58,7 @@ public static class BillingServicesExtensions
         services.AddScoped<IPricingRulesEvaluator, PricingRulesEvaluator>();
         services.AddScoped<IPricingRulesValidator, PricingRulesValidator>();
 
-        // Cached pricing rules service for parsed configuration caching
+        // Cached pricing rules service for parsed configuration caching (uses ICacheManager)
         services.AddSingleton<ICachedPricingRulesService, CachedPricingRulesService>();
 
         // Pricing audit service for rules-based pricing evaluation tracking - with leader election

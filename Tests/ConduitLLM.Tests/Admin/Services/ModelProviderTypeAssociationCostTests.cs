@@ -7,7 +7,6 @@ using ConduitLLM.Configuration.Services;
 using FluentAssertions;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -22,7 +21,6 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IModelCostRepository> _mockModelCostRepository;
         private readonly Mock<IModelProviderMappingRepository> _mockModelProviderMappingRepository;
         private readonly Mock<ILogger<ModelCostService>> _mockLogger;
-        private readonly IMemoryCache _cache;
         private readonly ModelCostService _service;
         private readonly DbContextOptions<ConduitDbContext> _dbOptions;
 
@@ -31,12 +29,10 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockModelCostRepository = new Mock<IModelCostRepository>();
             _mockModelProviderMappingRepository = new Mock<IModelProviderMappingRepository>();
             _mockLogger = new Mock<ILogger<ModelCostService>>();
-            _cache = new MemoryCache(new MemoryCacheOptions());
-            
+
             _service = new ModelCostService(
                 _mockModelCostRepository.Object,
                 _mockModelProviderMappingRepository.Object,
-                _cache,
                 _mockLogger.Object
             );
 
@@ -297,7 +293,6 @@ namespace ConduitLLM.Tests.Admin.Services
 
         public void Dispose()
         {
-            _cache?.Dispose();
         }
     }
 }
