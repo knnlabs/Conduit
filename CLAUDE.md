@@ -468,7 +468,8 @@ public enum ProviderType
 - **SignalR** provides real-time updates via WebSockets
 - Redis backplane for horizontal scaling
 - Falls back to polling if WebSocket fails
-- Hubs: navigation-state, video-generation, image-generation
+- 15+ specialized hubs: content-generation, task-tracking, spend-notifications, virtual-key-management, webhook-delivery, usage-analytics, metrics, health-monitoring, security-monitoring, and others
+- Hub source: `Services/ConduitLLM.Gateway/Hubs/` and `Services/ConduitLLM.Admin/Hubs/`
 
 **See:** `docs/architecture/real-time/streaming-and-websockets.md`
 

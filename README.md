@@ -19,7 +19,7 @@ Are you juggling multiple LLM provider APIs in your applications? ConduitLLM sol
 
 ## Overview
 
-ConduitLLM is a unified, modular, and extensible platform designed to simplify interaction with multiple Large Language Models (LLMs). It provides a single, consistent OpenAI-compatible REST API endpoint, acting as a gateway or "conduit" to various LLM backends such as OpenAI, Anthropic, Azure OpenAI, Google Gemini, Cohere, and others.
+ConduitLLM is a unified, modular, and extensible platform designed to simplify interaction with multiple Large Language Models (LLMs). It provides a single, consistent OpenAI-compatible REST API endpoint, acting as a gateway or "conduit" to various LLM backends such as OpenAI, Groq, Replicate, Fireworks, MiniMax, Cerebras, SambaNova, DeepInfra, Cloudflare Workers AI, and any OpenAI-compatible API.
 
 Built with .NET and designed for containerization (Docker), ConduitLLM streamlines the development, deployment, and management of LLM-powered applications by abstracting provider-specific complexities.
 
@@ -57,6 +57,9 @@ npm install @knn_labs/conduit-admin-client
 - **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
 - **Enterprise Security Features**: IP filtering, rate limiting, failed login protection, and security headers
 - **Security Dashboard**: Real-time monitoring of security events and access attempts
+- **Function Calling & Tool Execution**: Server-side function execution with configuration management, cost tracking, and agentic mode support
+- **Media Generation Webhooks**: Per-request callback notifications with retry logic, circuit breakers, and delivery tracking for async image/video generation
+- **Observability & Monitoring**: Built-in Prometheus metrics, pre-built Grafana dashboards, multi-layered health checks, and optional OpenTelemetry tracing
 - **Centralized Configuration**: Flexible configuration via database, environment variables, or JSON files
 - **Extensible Architecture**: Easily add support for new LLM providers
 
@@ -166,20 +169,20 @@ Each service is built, tagged, and published as an independent container:
 With Docker Compose:
 
 ```yaml
-docker-compose.yml
+# docker-compose.yml
 
 services:
   webadmin:
     image: ghcr.io/knnlabs/conduit-webadmin:latest
     ports:
-      - "5001:8080"
+      - "3000:3000"
     environment:
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      CONDUIT_API_BASE_URL: http://api:8080
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
-      CONDUIT_USE_ADMIN_API: "true"
-      CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
     depends_on:
       - admin
+      - api
 
   admin:
     image: ghcr.io/knnlabs/conduit-admin:latest
@@ -188,17 +191,22 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
+      REDIS_URL: redis://redis:6379
     depends_on:
       - postgres
+      - redis
 
-  http:
+  api:
     image: ghcr.io/knnlabs/conduit-http:latest
     ports:
       - "5000:8080"
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      REDIS_URL: redis://redis:6379
     depends_on:
       - postgres
+      - redis
+      - rabbitmq
 
   postgres:
     image: postgres:16
@@ -208,6 +216,17 @@ services:
       POSTGRES_DB: conduitdb
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
 
 volumes:
   pgdata:
@@ -258,7 +277,7 @@ For more details, see the per-service README files.
 
 4. **Access ConduitLLM**
    - **Local API**: `http://localhost:5000`
-   - **Local WebAdmin**: `http://localhost:5001`
+   - **Local WebAdmin**: `http://localhost:3000`
    - **Local API Docs**: `http://localhost:5000/swagger` (Development Mode)
    
    *Note: When running locally via `./scripts/start-dev.sh`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
