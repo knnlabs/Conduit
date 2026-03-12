@@ -6,18 +6,19 @@ using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
-    /// Repository for batch operation history
+    /// Repository for batch operation history.
+    /// Uses IDbContextFactory for short-lived contexts, consistent with other repositories.
     /// </summary>
     public class BatchOperationHistoryRepository : IBatchOperationHistoryRepository
     {
-        private readonly ConduitDbContext _context;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<BatchOperationHistoryRepository> _logger;
 
         public BatchOperationHistoryRepository(
-            ConduitDbContext context,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<BatchOperationHistoryRepository> logger)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -25,13 +26,14 @@ namespace ConduitLLM.Configuration.Repositories
         {
             try
             {
-                _context.BatchOperationHistory.Add(history);
-                await _context.SaveChangesAsync();
-                
+                using var context = await _dbContextFactory.CreateDbContextAsync();
+                context.BatchOperationHistory.Add(history);
+                await context.SaveChangesAsync();
+
                 _logger.LogInformation(
                     "Saved batch operation history for {OperationId} - Type: {OperationType}, Status: {Status}",
                     history.OperationId, history.OperationType, history.Status);
-                
+
                 return history;
             }
             catch (Exception ex)
@@ -45,9 +47,10 @@ namespace ConduitLLM.Configuration.Repositories
         {
             try
             {
-                var existing = await _context.BatchOperationHistory
+                using var context = await _dbContextFactory.CreateDbContextAsync();
+                var existing = await context.BatchOperationHistory
                     .FirstOrDefaultAsync(h => h.OperationId == history.OperationId);
-                
+
                 if (existing == null)
                 {
                     _logger.LogWarning("Batch operation history not found for update: {OperationId}", history.OperationId);
@@ -68,12 +71,12 @@ namespace ConduitLLM.Configuration.Repositories
                 existing.CheckpointData = history.CheckpointData;
                 existing.LastProcessedIndex = history.LastProcessedIndex;
 
-                await _context.SaveChangesAsync();
-                
+                await context.SaveChangesAsync();
+
                 _logger.LogInformation(
                     "Updated batch operation history for {OperationId} - Status: {Status}",
                     history.OperationId, history.Status);
-                
+
                 return existing;
             }
             catch (Exception ex)
@@ -85,7 +88,8 @@ namespace ConduitLLM.Configuration.Repositories
 
         public async Task<BatchOperationHistory?> GetByIdAsync(string operationId)
         {
-            return await _context.BatchOperationHistory
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            return await context.BatchOperationHistory
                 .Include(h => h.VirtualKey)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(h => h.OperationId == operationId);
@@ -93,7 +97,8 @@ namespace ConduitLLM.Configuration.Repositories
 
         public async Task<List<BatchOperationHistory>> GetByVirtualKeyIdAsync(int virtualKeyId, int skip = 0, int take = 20)
         {
-            return await _context.BatchOperationHistory
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            return await context.BatchOperationHistory
                 .AsNoTracking()
                 .Where(h => h.VirtualKeyId == virtualKeyId)
                 .OrderByDescending(h => h.StartedAt)
@@ -104,7 +109,8 @@ namespace ConduitLLM.Configuration.Repositories
 
         public async Task<List<BatchOperationHistory>> GetRecentOperationsAsync(int take = 20)
         {
-            return await _context.BatchOperationHistory
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            return await context.BatchOperationHistory
                 .Include(h => h.VirtualKey)
                 .AsNoTracking()
                 .OrderByDescending(h => h.StartedAt)
@@ -114,7 +120,8 @@ namespace ConduitLLM.Configuration.Repositories
 
         public async Task<List<BatchOperationHistory>> GetResumableOperationsAsync(int virtualKeyId)
         {
-            return await _context.BatchOperationHistory
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            return await context.BatchOperationHistory
                 .AsNoTracking()
                 .Where(h => h.VirtualKeyId == virtualKeyId &&
                            h.CanResume &&
@@ -125,35 +132,37 @@ namespace ConduitLLM.Configuration.Repositories
 
         public async Task<int> DeleteOldHistoryAsync(DateTime olderThan)
         {
-            var toDelete = await _context.BatchOperationHistory
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            var toDelete = await context.BatchOperationHistory
                 .Where(h => h.StartedAt < olderThan)
                 .ToListAsync();
-            
+
             if (toDelete.Any())
             {
-                _context.BatchOperationHistory.RemoveRange(toDelete);
-                await _context.SaveChangesAsync();
-                
+                context.BatchOperationHistory.RemoveRange(toDelete);
+                await context.SaveChangesAsync();
+
                 _logger.LogInformation(
                     "Deleted {Count} batch operation history records older than {Date}",
                     toDelete.Count(), olderThan);
             }
-            
+
             return toDelete.Count();
         }
 
         public async Task<BatchOperationStatistics> GetStatisticsAsync(int virtualKeyId, DateTime? since = null)
         {
-            var query = _context.BatchOperationHistory
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            var query = context.BatchOperationHistory
                 .Where(h => h.VirtualKeyId == virtualKeyId);
-            
+
             if (since.HasValue)
             {
                 query = query.Where(h => h.StartedAt >= since.Value);
             }
 
             var operations = await query.ToListAsync();
-            
+
             if (!operations.Any())
             {
                 return new BatchOperationStatistics();

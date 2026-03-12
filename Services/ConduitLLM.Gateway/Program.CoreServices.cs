@@ -72,8 +72,8 @@ public partial class Program
 
         // ========== Provider Services ==========
 
-        // Use DatabaseAwareLLMClientFactory to get provider credentials from database
-        builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
+        // Register LLM client factory and provider services from shared extension
+        builder.Services.AddProviderServices();
 
         // Add Provider Registry - single source of truth for provider metadata
         builder.Services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();

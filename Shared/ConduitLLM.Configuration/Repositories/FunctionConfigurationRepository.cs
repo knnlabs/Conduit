@@ -24,15 +24,23 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    /// Applies the default includes for function configurations (CostMappings → FunctionCost).
+    /// Centralizes the include chain to avoid duplication across query methods.
+    /// </summary>
+    private static IQueryable<FunctionConfiguration> ApplyDefaultIncludes(IQueryable<FunctionConfiguration> query)
+    {
+        return query
+            .Include(f => f.CostMappings)
+                .ThenInclude(cm => cm.FunctionCost);
+    }
+
     public async Task<FunctionConfiguration?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(dbContext.FunctionConfigurations.AsNoTracking())
                 .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         }
         catch (Exception ex)
@@ -52,10 +60,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(dbContext.FunctionConfigurations.AsNoTracking())
                 .Where(f => ids.Contains(f.Id))
                 .ToListAsync(cancellationToken);
         }
@@ -76,10 +81,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(dbContext.FunctionConfigurations.AsNoTracking())
                 .FirstOrDefaultAsync(f => f.ConfigurationName == configurationName, cancellationToken);
         }
         catch (Exception ex)
@@ -107,10 +109,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(dbContext.FunctionConfigurations.AsNoTracking())
                 .OrderBy(f => f.ConfigurationName)
                 .ToListAsync(cancellationToken);
         }
@@ -135,10 +134,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            var query = dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost);
+            var query = ApplyDefaultIncludes(dbContext.FunctionConfigurations.AsNoTracking());
 
             var totalCount = await query.CountAsync(cancellationToken);
 
@@ -162,10 +158,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(dbContext.FunctionConfigurations.AsNoTracking())
                 .Where(f => f.IsEnabled)
                 .OrderBy(f => f.ConfigurationName)
                 .ToListAsync(cancellationToken);
@@ -182,10 +175,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(dbContext.FunctionConfigurations.AsNoTracking())
                 .Where(f => f.ProviderType == providerType)
                 .OrderBy(f => f.ConfigurationName)
                 .ToListAsync(cancellationToken);
@@ -203,10 +193,7 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(dbContext.FunctionConfigurations.AsNoTracking())
                 .Where(f => f.Purpose == purpose)
                 .OrderBy(f => f.ConfigurationName)
                 .ToListAsync(cancellationToken);

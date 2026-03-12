@@ -116,8 +116,8 @@ public static class ServiceCollectionExtensions
             return new AdminMediaService(mediaRepository, mediaLifecycleService, storageService, logger);
         });
 
-        // Register database-aware LLM client factory (must be registered before discovery service)
-        services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
+        // ILLMClientFactory is registered via AddProviderServices() in the shared Providers extension
+        // Do not duplicate here — the shared registration is the single source of truth
 
         // Configure HttpClient for discovery providers
         services.AddHttpClient("DiscoveryProviders", client =>
