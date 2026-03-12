@@ -158,39 +158,13 @@ namespace ConduitLLM.Configuration.Repositories
             int pageSize,
             CancellationToken cancellationToken = default)
         {
-            if (pageNumber < 1)
-            {
-                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
-            }
-
-            if (pageSize < 1)
-            {
-                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
-            }
-
-            if (pageSize > MaxPageSize)
-            {
-                Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    LoggingSanitizer.S(pageSize), LoggingSanitizer.S(MaxPageSize));
-                pageSize = MaxPageSize;
-            }
-
-            return await ExecuteAsync(async context =>
-            {
-                var query = context.VirtualKeys
-                    .AsNoTracking()
-                    .Where(vk => vk.VirtualKeyGroupId == virtualKeyGroupId);
-
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                var items = await query
-                    .OrderBy(vk => vk.KeyName)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (items, totalCount);
-            }, cancellationToken, $"getting paginated by group ID {virtualKeyGroupId}");
+            return await GetFilteredPaginatedAsync(
+                vk => vk.VirtualKeyGroupId == virtualKeyGroupId,
+                pageNumber,
+                pageSize,
+                q => q.OrderBy(vk => vk.KeyName),
+                cancellationToken,
+                $"getting paginated by group ID {virtualKeyGroupId}");
         }
 
         /// <inheritdoc/>

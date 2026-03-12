@@ -76,35 +76,13 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageSize < 1) pageSize = DefaultPageSize;
-        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
-
-        try
-        {
-            return await ExecuteAsync(async context =>
-            {
-                var query = GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(k => k.ProviderId == providerId);
-
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                var items = await query
-                    .OrderByDescending(k => k.IsPrimary)
-                    .ThenBy(k => k.ProviderAccountGroup)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (items, totalCount);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting paginated key credentials for provider {ProviderId}", providerId);
-            throw;
-        }
+        return await GetFilteredPaginatedAsync(
+            k => k.ProviderId == providerId,
+            pageNumber,
+            pageSize,
+            q => q.OrderByDescending(k => k.IsPrimary).ThenBy(k => k.ProviderAccountGroup),
+            cancellationToken,
+            $"getting paginated credentials for provider {providerId}");
     }
 
     /// <inheritdoc/>

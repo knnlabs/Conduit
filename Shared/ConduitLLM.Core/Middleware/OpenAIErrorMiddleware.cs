@@ -15,6 +15,7 @@ namespace ConduitLLM.Core.Middleware
 {
     /// <summary>
     /// Middleware that maps exceptions to OpenAI-compatible error responses with proper HTTP status codes.
+    /// Uses <see cref="ExceptionToResponseMapper"/> as the single source of truth for exception mapping.
     /// </summary>
     public class OpenAIErrorMiddleware
     {
@@ -68,16 +69,21 @@ namespace ConduitLLM.Core.Middleware
                 LoggingSanitizer.S(context.Request.Method),
                 LoggingSanitizer.S(context.Request.Path.ToString()));
 
-            // Map exception to OpenAI error response
-            var (statusCode, errorResponse) = MapExceptionToResponse(exception, traceId);
+            // Map exception using the single source of truth
+            var mapping = ExceptionToResponseMapper.Map(exception);
+
+            // In development, show actual exception messages for redacted responses
+            var message = mapping.IncludeExceptionMessageInLog
+                ? mapping.ResponseMessage
+                : (_environment.IsDevelopment() ? exception.Message : mapping.ResponseMessage);
 
             // Log security-relevant exceptions
-            await LogSecurityExceptionAsync(context, exception, statusCode);
+            await LogSecurityExceptionAsync(context, exception, mapping.StatusCode);
 
             // Set response headers
-            context.Response.StatusCode = statusCode;
+            context.Response.StatusCode = mapping.StatusCode;
             context.Response.ContentType = "application/json";
-            
+
             // Add correlation ID header
             context.Response.Headers["X-Request-Id"] = traceId;
 
@@ -87,7 +93,18 @@ namespace ConduitLLM.Core.Middleware
                 context.Response.Headers["Retry-After"] = rateLimitEx.RetryAfterSeconds.Value.ToString();
             }
 
-            // Serialize and write response
+            // Build and serialize response
+            var errorResponse = new OpenAIErrorResponse
+            {
+                Error = new OpenAIError
+                {
+                    Message = message,
+                    Type = mapping.OpenAIErrorType,
+                    Code = mapping.ErrorCode,
+                    Param = mapping.Param
+                }
+            };
+
             var jsonOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -96,218 +113,6 @@ namespace ConduitLLM.Core.Middleware
 
             var json = JsonSerializer.Serialize(errorResponse, jsonOptions);
             await context.Response.WriteAsync(json);
-        }
-
-        private (int statusCode, OpenAIErrorResponse response) MapExceptionToResponse(Exception exception, string traceId)
-        {
-            switch (exception)
-            {
-                case ModelNotFoundException modelEx:
-                    return (404, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = modelEx.Message,
-                            Type = "invalid_request_error",
-                            Code = "model_not_found",
-                            Param = "model"
-                        }
-                    });
-
-                case InvalidRequestException invalidEx:
-                    return (400, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = invalidEx.Message,
-                            Type = "invalid_request_error",
-                            Code = invalidEx.ErrorCode ?? "invalid_request",
-                            Param = invalidEx.Param
-                        }
-                    });
-
-                case AuthorizationException authEx:
-                    return (403, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = authEx.Message,
-                            Type = "invalid_request_error",
-                            Code = "authorization_required"
-                        }
-                    });
-
-                case RequestTimeoutException timeoutEx:
-                    return (408, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = timeoutEx.Message,
-                            Type = "timeout_error",
-                            Code = "request_timeout"
-                        }
-                    });
-
-                case PayloadTooLargeException payloadEx:
-                    return (413, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = payloadEx.Message,
-                            Type = "invalid_request_error",
-                            Code = "payload_too_large"
-                        }
-                    });
-
-                case RateLimitExceededException rateLimitEx:
-                    return (429, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = rateLimitEx.Message,
-                            Type = "rate_limit_error",
-                            Code = "rate_limit_exceeded"
-                        }
-                    });
-
-                case ServiceUnavailableException serviceEx:
-                    return (503, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = serviceEx.Message,
-                            Type = "service_unavailable",
-                            Code = "service_unavailable"
-                        }
-                    });
-
-                case ConfigurationException configEx:
-                    // Legacy ConfigurationException support - map to 500
-                    return (500, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = _environment.IsDevelopment() ? configEx.Message : "Configuration error occurred",
-                            Type = "server_error",
-                            Code = "configuration_error"
-                        }
-                    });
-
-                case LLMCommunicationException commEx:
-                    // Map based on status code if available
-                    if (commEx.StatusCode.HasValue)
-                    {
-                        var statusCode = (int)commEx.StatusCode.Value;
-                        return (statusCode, new OpenAIErrorResponse
-                        {
-                            Error = new OpenAIError
-                            {
-                                Message = commEx.Message,
-                                Type = statusCode >= 500 ? "server_error" : "invalid_request_error",
-                                Code = "provider_communication_error"
-                            }
-                        });
-                    }
-                    goto default;
-
-                case UnauthorizedAccessException _:
-                    return (401, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Authentication required",
-                            Type = "invalid_request_error",
-                            Code = "unauthorized"
-                        }
-                    });
-
-                case ArgumentNullException argNullEx:
-                    return (400, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = _environment.IsDevelopment() ? argNullEx.Message : "Required parameter is missing",
-                            Type = "invalid_request_error",
-                            Code = "missing_parameter",
-                            Param = argNullEx.ParamName
-                        }
-                    });
-
-                case ArgumentException argEx:
-                    return (400, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = _environment.IsDevelopment() ? argEx.Message : "Invalid parameter value",
-                            Type = "invalid_request_error",
-                            Code = "invalid_parameter",
-                            Param = argEx.ParamName
-                        }
-                    });
-
-                case InvalidOperationException invalidOpEx:
-                    return (400, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = _environment.IsDevelopment() ? invalidOpEx.Message : "Invalid operation",
-                            Type = "invalid_request_error",
-                            Code = "invalid_operation"
-                        }
-                    });
-
-                case TimeoutException _:
-                    return (408, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Request timed out",
-                            Type = "timeout_error",
-                            Code = "timeout"
-                        }
-                    });
-
-                case NotImplementedException _:
-                    return (501, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Feature not implemented",
-                            Type = "server_error",
-                            Code = "not_implemented"
-                        }
-                    });
-
-                case KeyNotFoundException _:
-                    return (404, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Resource not found",
-                            Type = "invalid_request_error",
-                            Code = "not_found"
-                        }
-                    });
-
-                default:
-                    // TODO: Future - Add circuit breaker status tracking here
-                    // TODO: Future - Emit health monitoring events for 5xx errors
-                    
-                    // Log unexpected exceptions at ERROR level
-                    _logger.LogError(exception, "Unexpected exception: {TraceId}", traceId);
-                    
-                    return (500, new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = _environment.IsDevelopment() 
-                                ? exception.Message 
-                                : "An unexpected error occurred",
-                            Type = "server_error",
-                            Code = "internal_error"
-                        }
-                    });
-            }
         }
 
         private async Task LogSecurityExceptionAsync(HttpContext context, Exception exception, int statusCode)
@@ -320,14 +125,14 @@ namespace ConduitLLM.Core.Middleware
             {
                 var virtualKey = context.Request.Headers["X-Virtual-Key"].FirstOrDefault() ?? "Unknown";
                 var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-                
+
                 await _securityEventLogger.LogAuthorizationViolationAsync(
                     virtualKey,
                     context.Request.Path,
                     context.Request.Method,
                     ipAddress);
             }
-            else if (statusCode == 400 && 
+            else if (statusCode == 400 &&
                      (exception is ArgumentException || exception is InvalidRequestException))
             {
                 // Potential injection attempt or malformed input

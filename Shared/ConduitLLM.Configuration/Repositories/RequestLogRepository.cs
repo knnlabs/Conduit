@@ -90,39 +90,13 @@ namespace ConduitLLM.Configuration.Repositories
             int pageSize,
             CancellationToken cancellationToken = default)
         {
-            if (pageNumber < 1)
-            {
-                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
-            }
-
-            if (pageSize < 1)
-            {
-                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
-            }
-
-            if (pageSize > MaxPageSize)
-            {
-                Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    LoggingSanitizer.S(pageSize), LoggingSanitizer.S(MaxPageSize));
-                pageSize = MaxPageSize;
-            }
-
-            return await ExecuteAsync(async context =>
-            {
-                var query = context.RequestLogs
-                    .AsNoTracking()
-                    .Where(r => r.VirtualKeyId == virtualKeyId);
-
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                var logs = await query
-                    .OrderByDescending(r => r.Timestamp)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (logs, totalCount);
-            }, cancellationToken, $"getting paginated by virtual key ID {virtualKeyId}");
+            return await GetFilteredPaginatedAsync(
+                r => r.VirtualKeyId == virtualKeyId,
+                pageNumber,
+                pageSize,
+                q => q.OrderByDescending(r => r.Timestamp),
+                cancellationToken,
+                $"getting paginated by virtual key ID {virtualKeyId}");
         }
 
         /// <inheritdoc/>
@@ -173,39 +147,13 @@ namespace ConduitLLM.Configuration.Repositories
                 throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
             }
 
-            if (pageNumber < 1)
-            {
-                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
-            }
-
-            if (pageSize < 1)
-            {
-                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
-            }
-
-            if (pageSize > MaxPageSize)
-            {
-                Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    LoggingSanitizer.S(pageSize), LoggingSanitizer.S(MaxPageSize));
-                pageSize = MaxPageSize;
-            }
-
-            return await ExecuteAsync(async context =>
-            {
-                var query = context.RequestLogs
-                    .AsNoTracking()
-                    .Where(r => r.ModelName == modelName);
-
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                var logs = await query
-                    .OrderByDescending(r => r.Timestamp)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (logs, totalCount);
-            }, cancellationToken, $"getting paginated by model {LoggingSanitizer.S(modelName)}");
+            return await GetFilteredPaginatedAsync(
+                r => r.ModelName == modelName,
+                pageNumber,
+                pageSize,
+                q => q.OrderByDescending(r => r.Timestamp),
+                cancellationToken,
+                $"getting paginated by model {LoggingSanitizer.S(modelName)}");
         }
 
         /// <inheritdoc/>
@@ -231,46 +179,17 @@ namespace ConduitLLM.Configuration.Repositories
             int pageSize,
             CancellationToken cancellationToken = default)
         {
-            if (pageNumber < 1)
-            {
-                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
-            }
-
-            if (pageSize < 1)
-            {
-                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
-            }
-
-            if (pageSize > MaxPageSize)
-            {
-                Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    LoggingSanitizer.S(pageSize), LoggingSanitizer.S(MaxPageSize));
-                pageSize = MaxPageSize;
-            }
-
             // Ensure dates are UTC for PostgreSQL timestamp with time zone
             var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
             var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
 
-            return await ExecuteAsync(async context =>
-            {
-                // Build the query with date range filter
-                var query = context.RequestLogs
-                    .AsNoTracking()
-                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate);
-
-                // Get total count
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                // Get paginated data
-                var logs = await query
-                    .OrderByDescending(r => r.Timestamp)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (logs, totalCount);
-            }, cancellationToken, $"getting paginated by date range {startDate:d} to {endDate:d}");
+            return await GetFilteredPaginatedAsync(
+                r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate,
+                pageNumber,
+                pageSize,
+                q => q.OrderByDescending(r => r.Timestamp),
+                cancellationToken,
+                $"getting paginated by date range {startDate:d} to {endDate:d}");
         }
 
         /// <inheritdoc/>

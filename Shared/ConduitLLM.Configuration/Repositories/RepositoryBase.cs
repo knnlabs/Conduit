@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 using ConduitLLM.Configuration.Entities.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Functions.Entities.Interfaces;
@@ -261,16 +263,24 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         }, cancellationToken, $"deleting by ID {id}");
     }
 
+    /// <summary>
+    /// Normalizes pagination parameters by clamping to valid ranges.
+    /// </summary>
+    protected (int page, int pageSize) NormalizePagination(int page, int pageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = DefaultPageSize;
+        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+        return (page, pageSize);
+    }
+
     /// <inheritdoc/>
     public virtual async Task<(List<TEntity> Items, int TotalCount)> GetPaginatedAsync(
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        // Validate and normalize pagination parameters
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = DefaultPageSize;
-        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+        (page, pageSize) = NormalizePagination(page, pageSize);
 
         return await ExecuteAsync(async context =>
         {
@@ -287,6 +297,41 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
 
             return (items, totalCount);
         }, cancellationToken, $"getting paginated (page {page}, size {pageSize})");
+    }
+
+    /// <summary>
+    /// Executes a filtered, paginated query with normalized parameters.
+    /// Applies default includes and the specified (or default) ordering.
+    /// </summary>
+    protected async Task<(List<TEntity> Items, int TotalCount)> GetFilteredPaginatedAsync(
+        Expression<Func<TEntity, bool>> filter,
+        int page,
+        int pageSize,
+        Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+        CancellationToken cancellationToken = default,
+        string? operationName = null)
+    {
+        (page, pageSize) = NormalizePagination(page, pageSize);
+
+        return await ExecuteAsync(async context =>
+        {
+            var query = GetDbSet(context).AsNoTracking();
+            query = ApplyDefaultIncludes(query);
+            query = query.Where(filter);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var orderedQuery = orderBy != null
+                ? (IQueryable<TEntity>)orderBy(query)
+                : ApplyDefaultOrdering(query);
+
+            var items = await orderedQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
+        }, cancellationToken, operationName);
     }
 
     /// <inheritdoc/>

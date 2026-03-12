@@ -131,10 +131,7 @@ namespace ConduitLLM.Configuration.Repositories
             int pageSize,
             CancellationToken cancellationToken = default)
         {
-            // Validate and normalize pagination parameters
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1) pageSize = DefaultPageSize;
-            if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+            (pageNumber, pageSize) = NormalizePagination(pageNumber, pageSize);
 
             return await ExecuteAsync(async context =>
             {

@@ -78,8 +78,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequest = (BadRequestObjectResult)result;
             badRequest.Value.Should().BeOfType<ErrorResponseDto>();
             var error = (ErrorResponseDto)badRequest.Value!;
-            error.error.Should().Be(exceptionMessage);
-            error.Code.Should().Be("invalid_argument");
+            error.error.Should().Be("Invalid parameter value");
+            error.Code.Should().Be("invalid_parameter");
         }
 
         [Fact]
@@ -98,7 +98,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequest = (BadRequestObjectResult)result;
             badRequest.Value.Should().BeOfType<ErrorResponseDto>();
             var error = (ErrorResponseDto)badRequest.Value!;
-            error.Code.Should().Be("invalid_argument");
+            error.Code.Should().Be("missing_parameter");
         }
 
         [Fact]
@@ -117,7 +117,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequest = (BadRequestObjectResult)result;
             badRequest.Value.Should().BeOfType<ErrorResponseDto>();
             var error = (ErrorResponseDto)badRequest.Value!;
-            error.error.Should().Be(exceptionMessage);
+            error.error.Should().Be("The requested operation is not valid");
             error.Code.Should().Be("invalid_operation");
         }
 
@@ -140,7 +140,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task ExecuteAsync_OnUnauthorizedAccessException_Returns403Forbidden()
+        public async Task ExecuteAsync_OnUnauthorizedAccessException_Returns401Unauthorized()
         {
             // Arrange
             Func<Task<TestDto>> operation = () => throw new UnauthorizedAccessException();
@@ -152,10 +152,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             result.Should().BeOfType<ObjectResult>();
             var objectResult = (ObjectResult)result;
-            objectResult.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
             objectResult.Value.Should().BeOfType<ErrorResponseDto>();
             var error = (ErrorResponseDto)objectResult.Value!;
-            error.Code.Should().Be("forbidden");
+            error.Code.Should().Be("unauthorized");
         }
 
         [Fact]
@@ -304,7 +304,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             result.Should().BeOfType<BadRequestObjectResult>();
             var badRequest = (BadRequestObjectResult)result;
             var error = (ErrorResponseDto)badRequest.Value!;
-            error.error.Should().Be("Database error");
+            error.error.Should().Be("The requested operation is not valid");
             error.Code.Should().Be("invalid_operation");
         }
 

@@ -112,39 +112,13 @@ namespace ConduitLLM.Configuration.Repositories
             int pageSize,
             CancellationToken cancellationToken = default)
         {
-            if (pageNumber < 1)
-            {
-                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
-            }
-
-            if (pageSize < 1)
-            {
-                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
-            }
-
-            if (pageSize > MaxPageSize)
-            {
-                Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                    pageSize, MaxPageSize);
-                pageSize = MaxPageSize;
-            }
-
-            return await ExecuteAsync(async context =>
-            {
-                var query = GetDbSet(context).AsNoTracking();
-                query = ApplyDefaultIncludes(query);
-                query = query.Where(m => m.ProviderId == providerId);
-
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                var items = await query
-                    .OrderBy(m => m.ModelAlias)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (items, totalCount);
-            }, cancellationToken, $"getting paginated for provider {providerId}");
+            return await GetFilteredPaginatedAsync(
+                m => m.ProviderId == providerId,
+                pageNumber,
+                pageSize,
+                q => q.OrderBy(m => m.ModelAlias),
+                cancellationToken,
+                $"getting paginated for provider {providerId}");
         }
 
         /// <inheritdoc/>

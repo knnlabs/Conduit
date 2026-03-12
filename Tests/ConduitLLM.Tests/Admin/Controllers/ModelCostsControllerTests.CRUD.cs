@@ -95,7 +95,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.ToString().Should().Be("Model cost with this name already exists");
+            errorResponse.error.ToString().Should().Be("The requested operation is not valid");
             errorResponse.Code.Should().Be("invalid_operation");
         }
 

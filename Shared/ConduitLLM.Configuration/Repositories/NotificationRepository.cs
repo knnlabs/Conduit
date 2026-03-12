@@ -90,40 +90,13 @@ public class NotificationRepository : RepositoryBase<Notification, int>, INotifi
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageSize < 1) pageSize = DefaultPageSize;
-        if (pageSize > MaxPageSize)
-        {
-            Logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum",
-                pageSize, MaxPageSize);
-            pageSize = MaxPageSize;
-        }
-
-        try
-        {
-            return await ExecuteAsync(async context =>
-            {
-                var query = GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(n => !n.IsRead);
-
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                var items = await query
-                    .OrderByDescending(n => n.CreatedAt)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (items, totalCount);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting paginated unread notifications for page {PageNumber}, size {PageSize}",
-                pageNumber, pageSize);
-            throw;
-        }
+        return await GetFilteredPaginatedAsync(
+            n => !n.IsRead,
+            pageNumber,
+            pageSize,
+            q => q.OrderByDescending(n => n.CreatedAt),
+            cancellationToken,
+            "getting unread notifications");
     }
 
     /// <inheritdoc/>

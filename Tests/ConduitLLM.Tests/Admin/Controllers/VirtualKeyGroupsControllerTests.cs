@@ -182,7 +182,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
 
             var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Database error", errorResponse.error);
+            Assert.Equal("The requested operation is not valid", errorResponse.error);
             Assert.Equal("invalid_operation", errorResponse.Code);
 
             // Verify the repository method was called

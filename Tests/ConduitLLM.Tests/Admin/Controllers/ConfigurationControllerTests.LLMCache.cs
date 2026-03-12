@@ -109,7 +109,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             statusResult.StatusCode.Should().Be(500);
 
             var errorResponse = statusResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.Should().Be("An unexpected error occurred.");
+            errorResponse.error.Should().Be("An unexpected error occurred");
             errorResponse.Code.Should().Be("internal_error");
         }
 
@@ -315,7 +315,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             statusResult.StatusCode.Should().Be(500);
 
             var errorResponse = statusResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.Should().Be("An unexpected error occurred.");
+            errorResponse.error.Should().Be("An unexpected error occurred");
             errorResponse.Code.Should().Be("internal_error");
         }
 

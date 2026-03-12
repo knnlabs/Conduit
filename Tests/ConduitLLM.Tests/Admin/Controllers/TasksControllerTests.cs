@@ -116,7 +116,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Verify standardized error response structure from AdminControllerBase
             var errorResponse = objectResult.Value.Should().BeOfType<ConduitLLM.Configuration.DTOs.ErrorResponseDto>().Subject;
-            Assert.Equal("An unexpected error occurred.", errorResponse.error);
+            Assert.Equal("An unexpected error occurred", errorResponse.error);
             Assert.Equal("internal_error", errorResponse.Code);
         }
 

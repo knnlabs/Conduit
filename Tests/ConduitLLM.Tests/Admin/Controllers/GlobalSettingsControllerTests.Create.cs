@@ -63,7 +63,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.Should().Be("Setting with key already exists");
+            errorResponse.error.Should().Be("The requested operation is not valid");
             errorResponse.Code.Should().Be("invalid_operation");
         }
 

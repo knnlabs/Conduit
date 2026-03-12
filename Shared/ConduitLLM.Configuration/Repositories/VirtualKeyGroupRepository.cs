@@ -250,26 +250,13 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageSize < 1) pageSize = DefaultPageSize;
-        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
-
-        return await ExecuteAsync(async context =>
-        {
-            var query = GetDbSet(context)
-                .AsNoTracking()
-                .Where(g => g.Balance < threshold);
-
-            var totalCount = await query.CountAsync(cancellationToken);
-
-            var items = await query
-                .OrderBy(g => g.Balance)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(cancellationToken);
-
-            return (items, totalCount);
-        }, cancellationToken, $"getting low balance groups (threshold: {threshold})");
+        return await GetFilteredPaginatedAsync(
+            g => g.Balance < threshold,
+            pageNumber,
+            pageSize,
+            q => q.OrderBy(g => g.Balance),
+            cancellationToken,
+            $"getting low balance groups (threshold: {threshold})");
     }
 
     /// <summary>

@@ -222,7 +222,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert - ExceptionToResponseMapper maps ArgumentException to 400 Bad Request
             var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("invalid_argument", errorResponse.Code);
+            Assert.Equal("invalid_parameter", errorResponse.Code);
         }
 
         [Fact]
@@ -246,7 +246,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert - ExceptionToResponseMapper maps ArgumentException to 400 Bad Request
             var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("invalid_argument", errorResponse.Code);
+            Assert.Equal("invalid_parameter", errorResponse.Code);
         }
 
         [Fact]

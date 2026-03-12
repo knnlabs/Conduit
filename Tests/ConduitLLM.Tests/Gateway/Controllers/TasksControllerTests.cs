@@ -122,7 +122,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(500, objectResult.StatusCode);
 
             var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("An unexpected error occurred.", errorResponse.Error.Message);
+            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
             Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
@@ -180,7 +180,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(500, objectResult.StatusCode);
 
             var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("An unexpected error occurred.", errorResponse.Error.Message);
+            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
             Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
@@ -311,7 +311,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(500, objectResult.StatusCode);
 
             var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("An unexpected error occurred.", errorResponse.Error.Message);
+            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
         }
 
         #endregion

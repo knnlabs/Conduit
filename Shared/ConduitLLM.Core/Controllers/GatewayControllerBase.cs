@@ -128,26 +128,11 @@ namespace ConduitLLM.Core.Controllers
                 Error = new OpenAIError
                 {
                     Message = mapping.ResponseMessage,
-                    Type = MapStatusToOpenAIType(mapping.StatusCode),
-                    Code = mapping.ErrorCode
+                    Type = mapping.OpenAIErrorType,
+                    Code = mapping.ErrorCode,
+                    Param = mapping.Param
                 }
             });
-        }
-
-        /// <summary>
-        /// Maps HTTP status codes to OpenAI error type strings.
-        /// </summary>
-        private static string MapStatusToOpenAIType(int statusCode)
-        {
-            return statusCode switch
-            {
-                400 => "invalid_request_error",
-                401 => "authentication_error",
-                403 => "permission_error",
-                404 => "not_found_error",
-                429 => "rate_limit_error",
-                _ => "server_error"
-            };
         }
     }
 }
