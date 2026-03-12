@@ -8,6 +8,7 @@ using ConduitLLM.Providers.Groq;
 using ConduitLLM.Providers.MiniMax;
 using ConduitLLM.Providers.OpenAI;
 using ConduitLLM.Providers.Replicate;
+using ConduitLLM.Providers.Cloudflare;
 using ConduitLLM.Providers.SambaNova;
 
 using Microsoft.Extensions.Logging;
@@ -73,7 +74,8 @@ namespace ConduitLLM.Providers.Configuration
             [ProviderType.MiniMax] = CreateMiniMaxClient,
             [ProviderType.Cerebras] = CreateCerebrasClient,
             [ProviderType.SambaNova] = CreateSambaNovaClient,
-            [ProviderType.DeepInfra] = CreateDeepInfraClient
+            [ProviderType.DeepInfra] = CreateDeepInfraClient,
+            [ProviderType.Cloudflare] = CreateCloudflareClient
         };
 
         /// <summary>
@@ -280,6 +282,21 @@ namespace ConduitLLM.Providers.Configuration
         {
             var logger = context.LoggerFactory.CreateLogger<DeepInfraClient>();
             return new DeepInfraClient(
+                provider,
+                keyCredential,
+                modelId,
+                logger,
+                context.HttpClientFactory,
+                context.DefaultModels);
+        }
+        private static ILLMClient CreateCloudflareClient(
+            Provider provider,
+            ProviderKeyCredential keyCredential,
+            string modelId,
+            ClientCreationContext context)
+        {
+            var logger = context.LoggerFactory.CreateLogger<CloudflareClient>();
+            return new CloudflareClient(
                 provider,
                 keyCredential,
                 modelId,

@@ -107,6 +107,23 @@ namespace ConduitLLM.Providers.Configuration
                 }
             },
 
+            [ProviderType.Cloudflare] = new ProviderConfiguration
+            {
+                DefaultBaseUrl = "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+                ModelsEndpoint = "/models",
+                ChatCompletionsEndpoint = "/chat/completions",
+                EmbeddingsEndpoint = "/embeddings",
+                SupportsModelsList = false,
+                AuthenticationStrategy = BearerTokenStrategy.Instance,
+                ErrorMessages = new ProviderErrorMessages
+                {
+                    InvalidApiKey = "Invalid API token for Cloudflare. Please verify your Cloudflare API token is correct.",
+                    RateLimitExceeded = "Cloudflare Workers AI rate limit exceeded. Please try again later.",
+                    ModelNotFound = "Model not found. Cloudflare Workers AI models use the @cf/provider/model-name format.",
+                    MissingApiKey = "API token is required for Cloudflare Workers AI"
+                }
+            },
+
             [ProviderType.Replicate] = new ProviderConfiguration
             {
                 DefaultBaseUrl = "https://api.replicate.com/v1",

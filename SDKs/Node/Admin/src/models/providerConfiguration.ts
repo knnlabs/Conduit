@@ -19,6 +19,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.Cerebras]: 'Cerebras',
   [ProviderType.SambaNova]: 'SambaNova Cloud',
   [ProviderType.DeepInfra]: 'DeepInfra',
+  [ProviderType.Cloudflare]: 'Cloudflare Workers AI',
 };
 
 /** Provider categories for grouping in UI */
@@ -44,6 +45,7 @@ export const PROVIDER_CATEGORIES: Record<ProviderType, ProviderCategory[]> = {
   [ProviderType.Cerebras]: [ProviderCategory.Chat],
   [ProviderType.SambaNova]: [ProviderCategory.Chat],
   [ProviderType.DeepInfra]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Embedding],
+  [ProviderType.Cloudflare]: [ProviderCategory.Chat, ProviderCategory.Embedding, ProviderCategory.Image],
 };
 
 /** Provider-specific configuration requirements */
@@ -153,6 +155,15 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRe
     helpUrl: 'https://deepinfra.com/docs/openai_api',
     helpText: 'Get your API key from deepinfra.com - OpenAI-compatible API with advanced reasoning models',
     supportedModelTypes: [ModelType.Chat, ModelType.Image, ModelType.Embedding]
+  },
+  [ProviderType.Cloudflare]: {
+    requiresApiKey: true,
+    requiresEndpoint: true,
+    requiresOrganizationId: false,
+    supportsCustomEndpoint: true,
+    helpUrl: 'https://developers.cloudflare.com/workers-ai/',
+    helpText: 'Create an API token at dash.cloudflare.com/profile/api-tokens. Base URL must include your account ID.',
+    supportedModelTypes: [ModelType.Chat, ModelType.Embedding, ModelType.Image]
   },
 };
 

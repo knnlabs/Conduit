@@ -14,6 +14,7 @@ export enum ProviderType {
   Cerebras = 9,
   SambaNova = 10,
   DeepInfra = 11,
+  Cloudflare = 12,
 }
 
 /**
@@ -31,6 +32,7 @@ export const PROVIDER_TYPE_NAMES: Record<number, string> = {
   [ProviderType.Cerebras]: 'Cerebras',
   [ProviderType.SambaNova]: 'SambaNova',
   [ProviderType.DeepInfra]: 'DeepInfra',
+  [ProviderType.Cloudflare]: 'Cloudflare Workers AI',
 };
 
 /**

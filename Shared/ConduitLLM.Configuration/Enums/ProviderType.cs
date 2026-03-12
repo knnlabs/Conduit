@@ -61,6 +61,11 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// DeepInfra (OpenAI-compatible LLM inference platform)
         /// </summary>
-        DeepInfra = 11
+        DeepInfra = 11,
+
+        /// <summary>
+        /// Cloudflare Workers AI (serverless AI inference on Cloudflare's global network)
+        /// </summary>
+        Cloudflare = 12
     }
 }
