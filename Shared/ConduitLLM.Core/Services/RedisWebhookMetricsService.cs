@@ -1,8 +1,9 @@
+using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Collections.Concurrent;
-using ConduitLLM.Configuration.DTOs.SignalR;
-using ConduitLLM.Core.Extensions;
 
 namespace ConduitLLM.Core.Services
 {
@@ -52,10 +53,6 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public class RedisWebhookMetricsService : RedisWebhookServiceBase, IWebhookMetricsService
     {
-        private const string METRICS_KEY_PREFIX = "webhook:metrics:";
-        private const string RECENT_EVENTS_KEY = "webhook:events:recent";
-        private const string URL_METRICS_HASH = "webhook:metrics:urls:{0}";
-        private const string RESPONSE_TIMES_KEY = "webhook:metrics:response:{0}";
         private const int MAX_RECENT_EVENTS = 1000;
         private const int MAX_RESPONSE_TIMES = 100;
 
@@ -72,7 +69,7 @@ namespace ConduitLLM.Core.Services
             {
                 var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
-                var metricsKey = string.Format(URL_METRICS_HASH, urlHash);
+                var metricsKey = RedisKeys.WebhookMetrics.UrlMetrics(urlHash);
                 
                 var transaction = db.CreateTransaction();
                 
@@ -103,7 +100,7 @@ namespace ConduitLLM.Core.Services
             {
                 var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
-                var metricsKey = string.Format(URL_METRICS_HASH, urlHash);
+                var metricsKey = RedisKeys.WebhookMetrics.UrlMetrics(urlHash);
                 
                 var transaction = db.CreateTransaction();
                 
@@ -112,7 +109,7 @@ namespace ConduitLLM.Core.Services
                 _ = transaction.HashSetAsync(metricsKey, "last_success", DateTime.UtcNow.ToString("O"));
                 
                 // Store response time in sorted set for percentile calculations
-                var responseTimesKey = string.Format(RESPONSE_TIMES_KEY, urlHash);
+                var responseTimesKey = RedisKeys.WebhookMetrics.ResponseTimes(urlHash);
                 _ = transaction.SortedSetAddAsync(responseTimesKey, 
                     $"{Guid.NewGuid()}", responseTimeMs);
                 
@@ -147,7 +144,7 @@ namespace ConduitLLM.Core.Services
             {
                 var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
-                var metricsKey = string.Format(URL_METRICS_HASH, urlHash);
+                var metricsKey = RedisKeys.WebhookMetrics.UrlMetrics(urlHash);
                 
                 var transaction = db.CreateTransaction();
                 
@@ -197,7 +194,7 @@ namespace ConduitLLM.Core.Services
                 
                 // Get all webhook URL metrics keys
                 var server = Redis.GetPrimaryServer();
-                var keys = server.Keys(pattern: "webhook:metrics:urls:*").ToList();
+                var keys = server.Keys(pattern: RedisKeys.WebhookMetrics.UrlMetricsScanPattern).ToList();
                 
                 var tasks = new List<Task<WebhookUrlStatistics?>>();
                 
@@ -251,7 +248,7 @@ namespace ConduitLLM.Core.Services
             {
                 var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
-                var metricsKey = string.Format(URL_METRICS_HASH, urlHash);
+                var metricsKey = RedisKeys.WebhookMetrics.UrlMetrics(urlHash);
                 
                 var hashEntries = await db.HashGetAllAsync(metricsKey);
                 
@@ -279,7 +276,7 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 // Get percentile response times
-                var responseTimesKey = string.Format(RESPONSE_TIMES_KEY, urlHash);
+                var responseTimesKey = RedisKeys.WebhookMetrics.ResponseTimes(urlHash);
                 var p95ResponseTime = await GetPercentileResponseTimeAsync(db, responseTimesKey, 0.95);
                 var p99ResponseTime = await GetPercentileResponseTimeAsync(db, responseTimesKey, 0.99);
                 
@@ -342,14 +339,14 @@ namespace ConduitLLM.Core.Services
             var eventJson = System.Text.Json.JsonSerializer.Serialize(eventData);
             
             // Add to sorted set with timestamp as score
-            _ = transaction.SortedSetAddAsync(RECENT_EVENTS_KEY, eventJson, 
+            _ = transaction.SortedSetAddAsync(RedisKeys.WebhookMetrics.RecentEvents, eventJson, 
                 new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
             
             // Keep only recent events
-            _ = transaction.SortedSetRemoveRangeByRankAsync(RECENT_EVENTS_KEY, 0, -MAX_RECENT_EVENTS - 1);
+            _ = transaction.SortedSetRemoveRangeByRankAsync(RedisKeys.WebhookMetrics.RecentEvents, 0, -MAX_RECENT_EVENTS - 1);
             
             // Set expiry
-            _ = transaction.KeyExpireAsync(RECENT_EVENTS_KEY, TimeSpan.FromDays(1));
+            _ = transaction.KeyExpireAsync(RedisKeys.WebhookMetrics.RecentEvents, TimeSpan.FromDays(1));
             
             await Task.CompletedTask;
         }

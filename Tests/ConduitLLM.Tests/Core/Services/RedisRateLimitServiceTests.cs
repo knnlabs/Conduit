@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using StackExchange.Redis;
 using Xunit;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Services;
 using Xunit.Abstractions;
 
@@ -268,7 +269,7 @@ namespace ConduitLLM.Tests.Core.Services
             
             // Wait for window to expire (simplified test - in production this is 60 seconds)
             // For testing, we can manually clear the key to simulate expiration
-            await _db.KeyDeleteAsync($"rate:vk:{virtualKeyHash}:rpm");
+            await _db.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash));
             
             // Request after window expiration should succeed
             var result4 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
@@ -307,7 +308,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 // Try to get the raw data from Redis to understand what's happening
                 var db = _redis.GetDatabase();
-                var rpmKey = $"rate:vk:{virtualKeyHash}:rpm";
+                var rpmKey = RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash);
                 var rpmCount = await db.SortedSetLengthAsync(rpmKey);
                 Assert.Equal(3, rpmCount); // This will fail with more info
             }

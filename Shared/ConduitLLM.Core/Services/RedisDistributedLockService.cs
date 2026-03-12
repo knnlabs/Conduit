@@ -1,7 +1,6 @@
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
-
 using Microsoft.Extensions.Logging;
-
 using StackExchange.Redis;
 
 namespace ConduitLLM.Core.Services
@@ -13,7 +12,6 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisDistributedLockService> _logger;
-        private const string LOCK_PREFIX = "lock:";
 
         public RedisDistributedLockService(
             IConnectionMultiplexer redis,
@@ -32,7 +30,7 @@ namespace ConduitLLM.Core.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Lock key cannot be null or empty", nameof(key));
 
-            var lockKey = $"{LOCK_PREFIX}{key}";
+            var lockKey = RedisKeys.Lock.For(key);
             var lockValue = Guid.NewGuid().ToString();
             var db = _redis.GetDatabase();
 
@@ -97,7 +95,7 @@ namespace ConduitLLM.Core.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Lock key cannot be null or empty", nameof(key));
 
-            var lockKey = $"{LOCK_PREFIX}{key}";
+            var lockKey = RedisKeys.Lock.For(key);
             var db = _redis.GetDatabase();
 
             try

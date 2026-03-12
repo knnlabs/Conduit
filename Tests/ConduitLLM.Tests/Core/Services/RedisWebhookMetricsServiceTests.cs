@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using StackExchange.Redis;
 using Xunit;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.DTOs.SignalR;
 
@@ -200,8 +201,8 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             var keys = new RedisKey[]
             {
-                "webhook:metrics:urls:hash1",
-                "webhook:metrics:urls:hash2"
+                RedisKeys.WebhookMetrics.UrlMetrics("hash1"),
+                RedisKeys.WebhookMetrics.UrlMetrics("hash2")
             };
 
             // Setup Keys method to return test keys

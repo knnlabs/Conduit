@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Gateway.Models;
 
 using Microsoft.AspNetCore.SignalR;
@@ -106,8 +107,8 @@ namespace ConduitLLM.Gateway.Services
             
             // Redis keys
             var instanceId = Environment.MachineName;
-            _messageStreamKey = "signalr:messages";
-            _deadLetterStreamKey = "signalr:deadletter";
+            _messageStreamKey = RedisKeys.SignalR.MessageStream;
+            _deadLetterStreamKey = RedisKeys.SignalR.DeadLetterStream;
             _consumerGroup = "signalr-processors";
             _consumerName = $"processor-{instanceId}-{Environment.ProcessId}";
 

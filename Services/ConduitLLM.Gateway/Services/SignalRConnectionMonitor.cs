@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Interfaces;
 
@@ -133,8 +134,8 @@ namespace ConduitLLM.Gateway.Services
             _redisConnectionFactory = redisConnectionFactory;
 
             // Redis keys
-            _connectionsKey = "signalr:connections";
-            _groupConnectionsKeyPrefix = "signalr:groups";
+            _connectionsKey = RedisKeys.SignalR.ActiveConnections;
+            _groupConnectionsKeyPrefix = RedisKeys.SignalR.GroupConnectionsPrefix;
 
             _staleConnectionThreshold = TimeSpan.FromMinutes(
                 configuration.GetValue<int>("SignalR:ConnectionMonitor:StaleThresholdMinutes", 60));

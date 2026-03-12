@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Constants;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Collections.Concurrent;
@@ -46,9 +47,6 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public class RedisWebhookConnectionTracker : RedisWebhookServiceBase, IWebhookConnectionTracker
     {
-        private const string CONNECTION_WEBHOOKS_KEY = "webhook:connections:{0}:webhooks";
-        private const string WEBHOOK_CONNECTIONS_KEY = "webhook:webhooks:{0}:connections";
-        private const string CONNECTION_TIMESTAMP_KEY = "webhook:connections:{0}:timestamp";
         private const int CONNECTION_EXPIRY_HOURS = 24;
 
         public RedisWebhookConnectionTracker(
@@ -65,8 +63,8 @@ namespace ConduitLLM.Core.Services
                 var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 
-                var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
-                var timestampKey = string.Format(CONNECTION_TIMESTAMP_KEY, connectionId);
+                var connectionKey = RedisKeys.WebhookConnection.ConnectionWebhooks(connectionId);
+                var timestampKey = RedisKeys.WebhookConnection.ConnectionTimestamp(connectionId);
                 
                 foreach (var webhookUrl in webhookUrls)
                 {
@@ -74,7 +72,7 @@ namespace ConduitLLM.Core.Services
                     _ = transaction.SetAddAsync(connectionKey, webhookUrl);
                     
                     // Add connection to webhook's set
-                    var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
+                    var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(GetUrlHash(webhookUrl));
                     _ = transaction.SetAddAsync(webhookKey, connectionId);
                     _ = transaction.KeyExpireAsync(webhookKey, TimeSpan.FromHours(CONNECTION_EXPIRY_HOURS));
                 }
@@ -102,7 +100,7 @@ namespace ConduitLLM.Core.Services
                 var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 
-                var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
+                var connectionKey = RedisKeys.WebhookConnection.ConnectionWebhooks(connectionId);
                 
                 foreach (var webhookUrl in webhookUrls)
                 {
@@ -110,7 +108,7 @@ namespace ConduitLLM.Core.Services
                     _ = transaction.SetRemoveAsync(connectionKey, webhookUrl);
                     
                     // Remove connection from webhook's set
-                    var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
+                    var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(GetUrlHash(webhookUrl));
                     _ = transaction.SetRemoveAsync(webhookKey, connectionId);
                 }
                 
@@ -130,7 +128,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = Redis.GetDatabase();
-                var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
+                var connectionKey = RedisKeys.WebhookConnection.ConnectionWebhooks(connectionId);
                 var webhooks = await db.SetMembersAsync(connectionKey);
                 
                 return webhooks.Select(w => w.ToString()).ToHashSet();
@@ -147,7 +145,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = Redis.GetDatabase();
-                var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
+                var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(GetUrlHash(webhookUrl));
                 var connections = await db.SetMembersAsync(webhookKey);
                 
                 return connections.Select(c => c.ToString()).ToHashSet();
@@ -166,7 +164,7 @@ namespace ConduitLLM.Core.Services
                 var db = Redis.GetDatabase();
                 
                 // Get all webhooks for this connection
-                var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
+                var connectionKey = RedisKeys.WebhookConnection.ConnectionWebhooks(connectionId);
                 var webhooks = await db.SetMembersAsync(connectionKey);
                 
                 if (webhooks.Length > 0)
@@ -176,7 +174,7 @@ namespace ConduitLLM.Core.Services
                     // Remove connection from all webhook sets
                     foreach (var webhook in webhooks)
                     {
-                        var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, 
+                        var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(
                             GetUrlHash(webhook.ToString()));
                         _ = transaction.SetRemoveAsync(webhookKey, connectionId);
                     }
@@ -185,7 +183,7 @@ namespace ConduitLLM.Core.Services
                     _ = transaction.KeyDeleteAsync(connectionKey);
                     
                     // Remove connection timestamp
-                    var timestampKey = string.Format(CONNECTION_TIMESTAMP_KEY, connectionId);
+                    var timestampKey = RedisKeys.WebhookConnection.ConnectionTimestamp(connectionId);
                     _ = transaction.KeyDeleteAsync(timestampKey);
                     
                     await transaction.ExecuteAsync();
@@ -205,7 +203,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = Redis.GetDatabase();
-                var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
+                var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(GetUrlHash(webhookUrl));
                 var count = await db.SetLengthAsync(webhookKey);
                 
                 return (int)count;

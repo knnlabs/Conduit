@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Services
@@ -35,7 +36,7 @@ namespace ConduitLLM.Core.Services
         
         public async Task<bool> IsDeliveredAsync(string deliveryKey)
         {
-            var cacheKey = $"webhook:delivered:{deliveryKey}";
+            var cacheKey = RedisKeys.WebhookDelivery.Delivered(deliveryKey);
             
             // Check cache first
             if (_cache.TryGetValue<bool>(cacheKey, out var isDelivered))
@@ -61,7 +62,7 @@ namespace ConduitLLM.Core.Services
             await _innerTracker.MarkDeliveredAsync(deliveryKey, webhookUrl);
             
             // Update cache to indicate delivered
-            var cacheKey = $"webhook:delivered:{deliveryKey}";
+            var cacheKey = RedisKeys.WebhookDelivery.Delivered(deliveryKey);
             _cache.Set(cacheKey, true, _cacheOptions);
             
             _logger.LogDebug("Marked webhook as delivered and cached: {DeliveryKey}", deliveryKey);

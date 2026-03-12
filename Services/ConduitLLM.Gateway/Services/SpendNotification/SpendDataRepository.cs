@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ConduitLLM.Core.Constants;
 using StackExchange.Redis;
 
 namespace ConduitLLM.Gateway.Services.SpendNotification
@@ -81,12 +82,6 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         private readonly IDatabase _database;
         private readonly ILogger<SpendDataRepository> _logger;
         
-        // Redis keys
-        private const string SpendingPatternsKey = "spend:patterns";
-        private const string SentAlertsKeyPrefix = "spend:alerts:sent";
-        private const string AlertCooldownKeyPrefix = "spend:alerts:cooldown";
-        private const string SpendHistoryStreamKey = "spend:history:stream";
-        private const string InstancesSetKey = "spend:notification:instances";
         
         private readonly TimeSpan _patternRetentionPeriod = TimeSpan.FromHours(24);
         
@@ -100,7 +95,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         {
             try
             {
-                var patternKey = $"{SpendingPatternsKey}:{virtualKeyId}";
+                var patternKey = RedisKeys.Spend.Patterns(virtualKeyId.ToString());
                 var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 
                 // Get existing pattern data
@@ -131,7 +126,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
                     new("timestamp", now.ToString())
                 };
                 
-                await _database.StreamAddAsync(SpendHistoryStreamKey, streamEntry, maxLength: 10000);
+                await _database.StreamAddAsync(RedisKeys.Spend.HistoryStream, streamEntry, maxLength: 10000);
             }
             catch (Exception ex)
             {
@@ -143,7 +138,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         {
             try
             {
-                var patternKey = $"{SpendingPatternsKey}:{virtualKeyId}";
+                var patternKey = RedisKeys.Spend.Patterns(virtualKeyId.ToString());
                 var patternData = await _database.HashGetAllAsync(patternKey);
                 
                 if (patternData.Length == 0) return null;
@@ -172,7 +167,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
             try
             {
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var patternKeys = server.Keys(pattern: $"{SpendingPatternsKey}:*").ToArray();
+                var patternKeys = server.Keys(pattern: RedisKeys.Spend.PatternsScanPattern()).ToArray();
                 
                 foreach (var key in patternKeys)
                 {
@@ -192,13 +187,13 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
 
         public async Task<bool> IsAlertSentAsync(int virtualKeyId, int threshold)
         {
-            var alertKey = $"{SentAlertsKeyPrefix}:{virtualKeyId}:{threshold}";
+            var alertKey = RedisKeys.Spend.SentAlert(virtualKeyId.ToString(), threshold.ToString());
             return await _database.KeyExistsAsync(alertKey);
         }
 
         public async Task<bool> MarkAlertSentAsync(int virtualKeyId, int threshold, TimeSpan ttl)
         {
-            var alertKey = $"{SentAlertsKeyPrefix}:{virtualKeyId}:{threshold}";
+            var alertKey = RedisKeys.Spend.SentAlert(virtualKeyId.ToString(), threshold.ToString());
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
             var result = await _database.StringSetAsync(alertKey, timestamp, when: When.NotExists);
             
@@ -212,14 +207,14 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
 
         public async Task SetAlertCooldownAsync(int virtualKeyId, string alertType, TimeSpan cooldown)
         {
-            var cooldownKey = $"{AlertCooldownKeyPrefix}:{virtualKeyId}:{alertType}";
+            var cooldownKey = RedisKeys.Spend.Cooldown(virtualKeyId.ToString(), alertType);
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
             await _database.StringSetAsync(cooldownKey, timestamp, cooldown);
         }
 
         public async Task<bool> IsAlertInCooldownAsync(int virtualKeyId, string alertType)
         {
-            var cooldownKey = $"{AlertCooldownKeyPrefix}:{virtualKeyId}:{alertType}";
+            var cooldownKey = RedisKeys.Spend.Cooldown(virtualKeyId.ToString(), alertType);
             return await _database.KeyExistsAsync(cooldownKey);
         }
 
@@ -227,7 +222,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         {
             try
             {
-                var pattern = $"{SentAlertsKeyPrefix}:{virtualKeyId}:*";
+                var pattern = RedisKeys.Spend.SentAlertScanPattern(virtualKeyId.ToString());
                 var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
                 var keys = server.Keys(pattern: pattern).ToArray();
                 
@@ -245,14 +240,14 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
 
         public async Task RegisterInstanceAsync(string instanceId, object instanceData)
         {
-            var key = $"{InstancesSetKey}:{instanceId}";
+            var key = RedisKeys.Spend.Instance(instanceId);
             await _database.HashSetAsync(key, "data", JsonSerializer.Serialize(instanceData));
             await _database.KeyExpireAsync(key, TimeSpan.FromMinutes(2));
         }
 
         public async Task UnregisterInstanceAsync(string instanceId)
         {
-            var key = $"{InstancesSetKey}:{instanceId}";
+            var key = RedisKeys.Spend.Instance(instanceId);
             await _database.KeyDeleteAsync(key);
         }
 

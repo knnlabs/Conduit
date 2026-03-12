@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Constants;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -74,11 +75,6 @@ namespace ConduitLLM.Core.Services
         private readonly ILogger<RedisSignalRRateLimitService> _logger;
         private readonly SlidingWindowRateLimiter _slidingWindow;
 
-        private const string KEY_PREFIX = "signalr:vk:";
-        private const string CONN_SUFFIX = ":connections";
-        private const string RPM_SUFFIX = ":rpm";
-        private const string RPD_SUFFIX = ":rpd";
-
         public RedisSignalRRateLimitService(
             IConnectionMultiplexer redis,
             ILogger<RedisSignalRRateLimitService> logger)
@@ -106,7 +102,7 @@ namespace ConduitLLM.Core.Services
             // Check RPM limit first (more restrictive)
             if (rpmLimit.HasValue && rpmLimit.Value > 0)
             {
-                var rpmKey = $"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}";
+                var rpmKey = RedisKeys.SignalRRateLimit.Rpm(virtualKeyHash);
                 var rpmResult = await _slidingWindow.CheckAsync(rpmKey, now, 60000, rpmLimit.Value);
                 
                 if (!rpmResult.IsAllowed)
@@ -140,7 +136,7 @@ namespace ConduitLLM.Core.Services
             // Check RPD limit
             if (rpdLimit.HasValue && rpdLimit.Value > 0)
             {
-                var rpdKey = $"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}";
+                var rpdKey = RedisKeys.SignalRRateLimit.Rpd(virtualKeyHash);
                 var rpdResult = await _slidingWindow.CheckAsync(rpdKey, now, 86400000, rpdLimit.Value);
                 
                 if (!rpdResult.IsAllowed)
@@ -187,7 +183,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var count = await db.HashIncrementAsync(key, "count");
                 await db.HashSetAsync(key, "last_connected", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -213,7 +209,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var count = await db.HashDecrementAsync(key, "count");
                 
@@ -252,7 +248,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var count = await db.HashGetAsync(key, "count");
                 return count.HasValue ? (int)count : 0;
@@ -272,7 +268,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var lastActivity = await db.HashGetAsync(key, "last_disconnected");
                 if (lastActivity.HasValue)

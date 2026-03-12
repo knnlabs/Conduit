@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Constants;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
@@ -18,11 +19,6 @@ namespace ConduitLLM.Core.Services
         private readonly TimeSpan _openDuration;
         private readonly TimeSpan _halfOpenTestInterval;
 
-        private const string CIRCUIT_STATE_KEY = "webhook:circuit:{0}:state";
-        private const string FAILURE_COUNT_KEY = "webhook:circuit:{0}:failures";
-        private const string SUCCESS_COUNT_KEY = "webhook:circuit:{0}:success";
-        private const string LAST_FAILURE_KEY = "webhook:circuit:{0}:lastfail";
-        private const string CIRCUIT_OPENED_KEY = "webhook:circuit:{0}:opened";
 
         public RedisWebhookCircuitBreaker(
             IConnectionMultiplexer redis,
@@ -42,7 +38,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = Redis.GetDatabase();
-                var stateKey = string.Format(CIRCUIT_STATE_KEY, GetUrlHash(webhookUrl));
+                var stateKey = RedisKeys.WebhookCircuit.State(GetUrlHash(webhookUrl));
                 var state = db.StringGet(stateKey);
                 
                 if (state.HasValue)
@@ -96,15 +92,15 @@ namespace ConduitLLM.Core.Services
                 var transaction = db.CreateTransaction();
                 
                 // Reset failure count
-                transaction.KeyDeleteAsync(string.Format(FAILURE_COUNT_KEY, urlHash));
+                transaction.KeyDeleteAsync(RedisKeys.WebhookCircuit.Failures(urlHash));
                 
                 // Increment success count
-                var successKey = string.Format(SUCCESS_COUNT_KEY, urlHash);
+                var successKey = RedisKeys.WebhookCircuit.Successes(urlHash);
                 transaction.StringIncrementAsync(successKey);
                 transaction.KeyExpireAsync(successKey, TimeSpan.FromHours(1));
                 
                 // Close circuit if it was open or half-open
-                var stateKey = string.Format(CIRCUIT_STATE_KEY, urlHash);
+                var stateKey = RedisKeys.WebhookCircuit.State(urlHash);
                 var currentState = db.StringGet(stateKey);
                 
                 if (currentState.HasValue)
@@ -114,7 +110,7 @@ namespace ConduitLLM.Core.Services
                     {
                         // Close the circuit
                         transaction.KeyDeleteAsync(stateKey);
-                        transaction.KeyDeleteAsync(string.Format(CIRCUIT_OPENED_KEY, urlHash));
+                        transaction.KeyDeleteAsync(RedisKeys.WebhookCircuit.Opened(urlHash));
                         
                         Logger.LogInformation(
                             "Circuit breaker closed for webhook: {WebhookUrl} after successful delivery",
@@ -138,7 +134,7 @@ namespace ConduitLLM.Core.Services
                 var urlHash = GetUrlHash(webhookUrl);
                 
                 // Check current state
-                var stateKey = string.Format(CIRCUIT_STATE_KEY, urlHash);
+                var stateKey = RedisKeys.WebhookCircuit.State(urlHash);
                 var currentState = db.StringGet(stateKey);
                 
                 if (currentState.HasValue)
@@ -153,14 +149,14 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 // Increment failure count atomically
-                var failureKey = string.Format(FAILURE_COUNT_KEY, urlHash);
+                var failureKey = RedisKeys.WebhookCircuit.Failures(urlHash);
                 var failureCount = db.StringIncrement(failureKey);
                 
                 // Set expiry on failure counter
                 db.KeyExpire(failureKey, TimeSpan.FromMinutes(15));
                 
                 // Update last failure time
-                var lastFailureKey = string.Format(LAST_FAILURE_KEY, urlHash);
+                var lastFailureKey = RedisKeys.WebhookCircuit.LastFailure(urlHash);
                 db.StringSet(lastFailureKey, DateTime.UtcNow.ToString("O"), TimeSpan.FromHours(1));
                 
                 // Check if we should open the circuit
@@ -183,10 +179,10 @@ namespace ConduitLLM.Core.Services
                 var urlHash = GetUrlHash(webhookUrl);
                 
                 var batch = db.CreateBatch();
-                var failureTask = batch.StringGetAsync(string.Format(FAILURE_COUNT_KEY, urlHash));
-                var successTask = batch.StringGetAsync(string.Format(SUCCESS_COUNT_KEY, urlHash));
-                var lastFailureTask = batch.StringGetAsync(string.Format(LAST_FAILURE_KEY, urlHash));
-                var stateTask = batch.StringGetAsync(string.Format(CIRCUIT_STATE_KEY, urlHash));
+                var failureTask = batch.StringGetAsync(RedisKeys.WebhookCircuit.Failures(urlHash));
+                var successTask = batch.StringGetAsync(RedisKeys.WebhookCircuit.Successes(urlHash));
+                var lastFailureTask = batch.StringGetAsync(RedisKeys.WebhookCircuit.LastFailure(urlHash));
+                var stateTask = batch.StringGetAsync(RedisKeys.WebhookCircuit.State(urlHash));
                 
                 batch.Execute();
                 
@@ -240,13 +236,13 @@ namespace ConduitLLM.Core.Services
                     WebhookUrl = webhookUrl
                 };
                 
-                var stateKey = string.Format(CIRCUIT_STATE_KEY, urlHash);
+                var stateKey = RedisKeys.WebhookCircuit.State(urlHash);
                 var stateJson = JsonSerializer.Serialize(circuitState);
                 
                 db.StringSet(stateKey, stateJson, _openDuration.Add(TimeSpan.FromMinutes(5)));
                 
                 // Also set a simple flag for quick checks
-                var openedKey = string.Format(CIRCUIT_OPENED_KEY, urlHash);
+                var openedKey = RedisKeys.WebhookCircuit.Opened(urlHash);
                 db.StringSet(openedKey, DateTime.UtcNow.ToString("O"), _openDuration);
                 
                 Logger.LogWarning(

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Models.SignalR;
 using ConduitLLM.Gateway.Models;
 
@@ -83,8 +84,8 @@ namespace ConduitLLM.Gateway.Services
             _redisConnectionFactory = redisConnectionFactory;
 
             // Redis keys
-            _pendingAcknowledgmentsKey = "signalr:acknowledgments";
-            _connectionMessagesKeyPrefix = "signalr:conn_msgs";
+            _pendingAcknowledgmentsKey = RedisKeys.SignalR.PendingAcknowledgments;
+            _connectionMessagesKeyPrefix = RedisKeys.SignalR.ConnectionMessagesPrefix;
 
             _defaultTimeout = TimeSpan.FromSeconds(configuration.GetValue<int>("SignalR:Acknowledgment:TimeoutSeconds", 30));
             _cleanupInterval = TimeSpan.FromMinutes(configuration.GetValue<int>("SignalR:Acknowledgment:CleanupIntervalMinutes", 5));

@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Models.SignalR;
 using ConduitLLM.Gateway.Models;
 
@@ -115,10 +116,10 @@ namespace ConduitLLM.Gateway.Services
             _redisConnectionFactory = redisConnectionFactory;
 
             // Redis keys
-            _activeBatchesKey = "signalr:batches:active";
-            _batchQueueKey = "signalr:batches:queue";
-            _messagesByMethodKey = "signalr:batches:stats:methods";
-            _statisticsKey = "signalr:batches:stats:global";
+            _activeBatchesKey = RedisKeys.SignalR.ActiveBatches;
+            _batchQueueKey = RedisKeys.SignalR.BatchQueue;
+            _messagesByMethodKey = RedisKeys.SignalR.BatchStatsMethods;
+            _statisticsKey = RedisKeys.SignalR.BatchStatsGlobal;
 
             // Load configuration
             _batchWindow = TimeSpan.FromMilliseconds(configuration.GetValue<int>("SignalR:Batching:WindowMs", 100));

@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Constants;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -62,11 +63,6 @@ namespace ConduitLLM.Core.Services
         private readonly ILogger<RedisVirtualKeyRateLimitService> _logger;
         private readonly SlidingWindowRateLimiter _slidingWindow;
 
-        private const string KEY_PREFIX = "rate:vk:";
-        private const string LIMITS_SUFFIX = ":limits";
-        private const string RPM_SUFFIX = ":rpm";
-        private const string RPD_SUFFIX = ":rpd";
-
         public RedisVirtualKeyRateLimitService(
             IConnectionMultiplexer redis,
             ILogger<RedisVirtualKeyRateLimitService> logger)
@@ -89,7 +85,7 @@ namespace ConduitLLM.Core.Services
             // Check RPM limit first (more restrictive)
             if (rpmLimit.HasValue && rpmLimit.Value > 0)
             {
-                var rpmKey = $"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}";
+                var rpmKey = RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash);
                 rpmResult = await _slidingWindow.CheckAsync(rpmKey, now, 60000, rpmLimit.Value); // 60 seconds in ms
                 
                 if (!rpmResult.IsAllowed)
@@ -111,7 +107,7 @@ namespace ConduitLLM.Core.Services
             // Check RPD limit if configured (even if RPM was checked)
             if (rpdLimit.HasValue && rpdLimit.Value > 0)
             {
-                var rpdKey = $"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}";
+                var rpdKey = RedisKeys.RateLimit.VirtualKeyRpd(virtualKeyHash);
                 rpdResult = await _slidingWindow.CheckAsync(rpdKey, now, 86400000, rpdLimit.Value); // 24 hours in ms
                 
                 if (!rpdResult.IsAllowed)
@@ -180,12 +176,12 @@ namespace ConduitLLM.Core.Services
             };
             
             // Get RPM usage
-            var rpmKey = $"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}";
+            var rpmKey = RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash);
             await db.SortedSetRemoveRangeByScoreAsync(rpmKey, 0, now - 60000);
             usage.RequestsThisMinute = (int)await db.SortedSetLengthAsync(rpmKey);
-            
+
             // Get RPD usage
-            var rpdKey = $"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}";
+            var rpdKey = RedisKeys.RateLimit.VirtualKeyRpd(virtualKeyHash);
             await db.SortedSetRemoveRangeByScoreAsync(rpdKey, 0, now - 86400000);
             usage.RequestsToday = (int)await db.SortedSetLengthAsync(rpdKey);
             
@@ -198,7 +194,7 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Virtual key hash cannot be null or empty", nameof(virtualKeyHash));
             
             var db = _redis.GetDatabase();
-            var limitsKey = $"{KEY_PREFIX}{virtualKeyHash}{LIMITS_SUFFIX}";
+            var limitsKey = RedisKeys.RateLimit.VirtualKeyLimits(virtualKeyHash);
             
             var transaction = db.CreateTransaction();
             
@@ -229,11 +225,11 @@ namespace ConduitLLM.Core.Services
             var db = _redis.GetDatabase();
             
             var transaction = db.CreateTransaction();
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{LIMITS_SUFFIX}");
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}");
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}");
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}:seq");
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}:seq");
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyLimits(virtualKeyHash));
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash));
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpd(virtualKeyHash));
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpmSeq(virtualKeyHash));
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpdSeq(virtualKeyHash));
             
             await transaction.ExecuteAsync();
             

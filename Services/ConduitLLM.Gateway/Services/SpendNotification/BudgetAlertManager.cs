@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Hubs;
 
@@ -75,7 +76,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         private async Task ProcessThresholdAlertAsync(
             int virtualKeyId, int threshold, decimal totalSpend, decimal budget, decimal percentageUsed)
         {
-            var lockKey = $"lock:alert:vk:{virtualKeyId}:threshold:{threshold}";
+            var lockKey = RedisKeys.Lock.AlertThreshold(virtualKeyId.ToString(), threshold.ToString());
             
             // Try to acquire distributed lock
             using var lockHandle = await _lockService.AcquireLockAsync(
