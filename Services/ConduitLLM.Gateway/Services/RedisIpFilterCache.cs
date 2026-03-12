@@ -3,39 +3,23 @@ using StackExchange.Redis;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
     /// Redis-based IP Filter cache with event-driven invalidation
     /// </summary>
-    public class RedisIpFilterCache : IIpFilterCache
+    public class RedisIpFilterCache : RedisCacheServiceBase, IIpFilterCache
     {
-        private readonly IDatabase _database;
-        private readonly ILogger<RedisIpFilterCache> _logger;
-        private readonly TimeSpan _defaultExpiry = TimeSpan.FromHours(1); // IP filters need quick updates
-
-        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
+        private static readonly string ServiceName = CacheKeys.Stats.IpFilterService;
 
         public RedisIpFilterCache(
             IConnectionMultiplexer redis,
             ILogger<RedisIpFilterCache> logger)
+            : base(redis, logger, TimeSpan.FromHours(1))
         {
-            _database = redis.GetDatabase();
-            _logger = logger;
-            
-            // Initialize stats reset time if not exists (fire-and-forget, non-blocking)
-            _ = _database.StringSetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.IpFilterService), DateTime.UtcNow.ToString("O"), when: When.NotExists)
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                    {
-                        _logger.LogWarning(t.Exception, "Failed to initialize stats reset time");
-                    }
-                }, TaskContinuationOptions.OnlyOnFaulted);
+            InitializeStatsResetTime(ServiceName);
         }
 
         /// <summary>
@@ -43,47 +27,13 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         public async Task<List<IpFilterEntity>> GetGlobalFiltersAsync(Func<Task<List<IpFilterEntity>>> databaseFallback)
         {
-            try
-            {
-                var cachedValue = await _database.StringGetAsync(CacheKeys.IpFilter.GlobalFilters);
-                
-                if (cachedValue.HasValue)
-                {
-                    var jsonString = (string?)cachedValue;
-                    if (jsonString is not null)
-                    {
-                        var filters = JsonSerializer.Deserialize<List<IpFilterEntity>>(jsonString, _jsonOptions);
-                        
-                        if (filters != null)
-                        {
-                            _logger.LogDebug("Global IP filters cache hit ({Count} filters)", filters.Count);
-                            await _database.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.IpFilterService));
-                            return filters;
-                        }
-                    }
-                }
-                
-                // Cache miss - fallback to database
-                _logger.LogDebug("Global IP filters cache miss, querying database");
-                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.IpFilterService));
-                
-                var dbFilters = await databaseFallback();
-                
-                if (dbFilters != null)
-                {
-                    // Cache the filters
-                    await SetGlobalFiltersAsync(dbFilters);
-                    return dbFilters;
-                }
-                
-                return new List<IpFilterEntity>();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error accessing global IP filters cache, falling back to database");
-                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.IpFilterService));
-                return await databaseFallback() ?? new List<IpFilterEntity>();
-            }
+            var result = await GetOrFallbackAsync<List<IpFilterEntity>>(
+                CacheKeys.IpFilter.GlobalFilters,
+                ServiceName,
+                async () => await databaseFallback() as List<IpFilterEntity>,
+                debugLabel: "Global IP filters");
+
+            return result ?? new List<IpFilterEntity>();
         }
 
         /// <summary>
@@ -95,91 +45,55 @@ namespace ConduitLLM.Gateway.Services
         {
             var cacheKey = CacheKeys.IpFilter.ByVirtualKey(virtualKeyId);
 
-            try
-            {
-                var cachedValue = await _database.StringGetAsync(cacheKey);
-                
-                if (cachedValue.HasValue)
-                {
-                    var jsonString = (string?)cachedValue;
-                    if (jsonString is not null)
-                    {
-                        var filters = JsonSerializer.Deserialize<List<IpFilterEntity>>(jsonString, _jsonOptions);
-                        
-                        if (filters != null)
-                        {
-                            _logger.LogDebug("Virtual key IP filters cache hit for key {VirtualKeyId} ({Count} filters)",
-                                virtualKeyId, filters.Count);
-                            await _database.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.IpFilterService));
-                            return filters;
-                        }
-                    }
-                }
-                
-                // Cache miss - fallback to database
-                _logger.LogDebug("Virtual key IP filters cache miss for key {VirtualKeyId}, querying database", virtualKeyId);
-                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.IpFilterService));
-                
-                var dbFilters = await databaseFallback(virtualKeyId);
-                
-                if (dbFilters != null)
-                {
-                    // Cache the filters
-                    await SetVirtualKeyFiltersAsync(virtualKeyId, dbFilters);
-                    return dbFilters;
-                }
-                
-                return new List<IpFilterEntity>();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error accessing virtual key IP filters cache for key {VirtualKeyId}, falling back to database",
-                    virtualKeyId);
-                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.IpFilterService));
-                return await databaseFallback(virtualKeyId) ?? new List<IpFilterEntity>();
-            }
+            var result = await GetOrFallbackAsync<List<IpFilterEntity>>(
+                cacheKey,
+                ServiceName,
+                async () => await databaseFallback(virtualKeyId) as List<IpFilterEntity>,
+                debugLabel: $"Virtual key IP filters for key {virtualKeyId}");
+
+            return result ?? new List<IpFilterEntity>();
         }
 
         /// <summary>
         /// Check if an IP address is allowed for a virtual key
         /// </summary>
         public async Task<bool> IsIpAllowedAsync(
-            string ipAddress, 
-            int? virtualKeyId, 
+            string ipAddress,
+            int? virtualKeyId,
             Func<string, int?, Task<bool>> databaseFallback)
         {
             var cacheKey = CacheKeys.IpFilter.CheckResult(ipAddress, virtualKeyId);
-            
+
             try
             {
                 // Try cached result first
-                var cachedValue = await _database.StringGetAsync(cacheKey);
-                
+                var cachedValue = await Database.StringGetAsync(cacheKey);
+
                 if (cachedValue.HasValue)
                 {
-                    _logger.LogDebug("IP check cache hit for {IP} (key: {VirtualKeyId})", ipAddress, virtualKeyId);
-                    await _database.StringIncrementAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.IpFilterService));
-                    await _database.StringIncrementAsync(CacheKeys.Stats.IpChecks());
+                    Logger.LogDebug("IP check cache hit for {IP} (key: {VirtualKeyId})", ipAddress, virtualKeyId);
+                    await TrackHitAsync(ServiceName);
+                    await Database.StringIncrementAsync(CacheKeys.Stats.IpChecks());
                     return cachedValue == "1";
                 }
-                
+
                 // Cache miss - perform check
-                _logger.LogDebug("IP check cache miss for {IP} (key: {VirtualKeyId}), performing check", ipAddress, virtualKeyId);
-                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.IpFilterService));
-                
+                Logger.LogDebug("IP check cache miss for {IP} (key: {VirtualKeyId}), performing check", ipAddress, virtualKeyId);
+                await TrackMissAsync(ServiceName);
+
                 var isAllowed = await databaseFallback(ipAddress, virtualKeyId);
-                
+
                 // Cache the result with shorter expiry for IP checks
-                await _database.StringSetAsync(cacheKey, isAllowed ? "1" : "0", TimeSpan.FromMinutes(15));
-                await _database.StringIncrementAsync(CacheKeys.Stats.IpChecks());
-                
+                await Database.StringSetAsync(cacheKey, isAllowed ? "1" : "0", TimeSpan.FromMinutes(15));
+                await Database.StringIncrementAsync(CacheKeys.Stats.IpChecks());
+
                 return isAllowed;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking IP in cache for {IP} (key: {VirtualKeyId}), falling back to database",
+                Logger.LogError(ex, "Error checking IP in cache for {IP} (key: {VirtualKeyId}), falling back to database",
                     ipAddress, virtualKeyId);
-                await _database.StringIncrementAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.IpFilterService));
+                await TrackMissAsync(ServiceName);
                 return await databaseFallback(ipAddress, virtualKeyId);
             }
         }
@@ -191,31 +105,21 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                // We need to invalidate all caches that might contain this filter
-                // This includes global filters, virtual key filters, and IP check results
-                
                 // Clear all IP check results as they might be affected
                 await ClearIpCheckResults();
-                
-                // Since we don't know if it's global or key-specific without querying,
-                // we'll need to check both caches
-                await InvalidateGlobalFiltersAsync();
-                
-                // For virtual key filters, we'd need to scan all keys
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var vkeyFilterKeys = server.Keys(pattern: CacheKeys.IpFilter.VirtualKeyPrefix + "*");
-                
-                foreach (var key in vkeyFilterKeys)
-                {
-                    await _database.KeyDeleteAsync(key);
-                }
 
-                await _database.StringIncrementAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.IpFilterService));
-                _logger.LogInformation("IP filter cache invalidated for filter ID: {FilterId}", filterId);
+                // Invalidate global filters
+                await InvalidateGlobalFiltersAsync();
+
+                // For virtual key filters, scan and delete all
+                await ClearAllByPatternAsync(CacheKeys.IpFilter.VirtualKeyPrefix + "*");
+
+                await TrackInvalidationAsync(ServiceName);
+                Logger.LogInformation("IP filter cache invalidated for filter ID: {FilterId}", filterId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invalidating IP filter cache: {FilterId}", filterId);
+                Logger.LogError(ex, "Error invalidating IP filter cache: {FilterId}", filterId);
             }
         }
 
@@ -226,15 +130,15 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                await _database.KeyDeleteAsync(CacheKeys.IpFilter.GlobalFilters);
+                await Database.KeyDeleteAsync(CacheKeys.IpFilter.GlobalFilters);
                 await ClearIpCheckResults(); // IP checks depend on filters
-                await _database.StringIncrementAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.IpFilterService));
-                
-                _logger.LogInformation("Global IP filters cache invalidated");
+                await TrackInvalidationAsync(ServiceName);
+
+                Logger.LogInformation("Global IP filters cache invalidated");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invalidating global IP filters cache");
+                Logger.LogError(ex, "Error invalidating global IP filters cache");
             }
         }
 
@@ -246,23 +150,17 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var cacheKey = CacheKeys.IpFilter.ByVirtualKey(virtualKeyId);
-                await _database.KeyDeleteAsync(cacheKey);
+                await Database.KeyDeleteAsync(cacheKey);
 
                 // Clear IP check results for this virtual key
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var ipCheckKeys = server.Keys(pattern: CacheKeys.IpFilter.CheckPrefix + $"*:{virtualKeyId}");
-                
-                foreach (var key in ipCheckKeys)
-                {
-                    await _database.KeyDeleteAsync(key);
-                }
+                await ClearAllByPatternAsync(CacheKeys.IpFilter.CheckPrefix + $"*:{virtualKeyId}");
 
-                await _database.StringIncrementAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.IpFilterService));
-                _logger.LogInformation("Virtual key IP filters cache invalidated for key: {VirtualKeyId}", virtualKeyId);
+                await TrackInvalidationAsync(ServiceName);
+                Logger.LogInformation("Virtual key IP filters cache invalidated for key: {VirtualKeyId}", virtualKeyId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invalidating virtual key IP filters cache: {VirtualKeyId}", virtualKeyId);
+                Logger.LogError(ex, "Error invalidating virtual key IP filters cache: {VirtualKeyId}", virtualKeyId);
             }
         }
 
@@ -273,20 +171,12 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                
-                // Clear all filter caches
-                var filterKeys = server.Keys(pattern: "ipfilter:*");
-                foreach (var key in filterKeys)
-                {
-                    await _database.KeyDeleteAsync(key);
-                }
-                
-                _logger.LogWarning("All IP filter cache entries cleared");
+                await ClearAllByPatternAsync("ipfilter:*");
+                Logger.LogWarning("All IP filter cache entries cleared");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error clearing all IP filter cache entries");
+                Logger.LogError(ex, "Error clearing all IP filter cache entries");
             }
         }
 
@@ -297,19 +187,16 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var hits = await _database.StringGetAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.IpFilterService));
-                var misses = await _database.StringGetAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.IpFilterService));
-                var invalidations = await _database.StringGetAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.IpFilterService));
-                var ipChecks = await _database.StringGetAsync(CacheKeys.Stats.IpChecks());
-                var resetTime = await _database.StringGetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.IpFilterService));
-                
-                // Count entries
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
+                var (hits, misses, invalidations, resetTime) = await GetBaseStatsAsync(ServiceName);
+                var ipChecks = await Database.StringGetAsync(CacheKeys.Stats.IpChecks());
+
+                // Count entries with category breakdown
+                var server = Database.Multiplexer.GetServer(Database.Multiplexer.GetEndPoints()[0]);
                 var filterKeys = server.Keys(pattern: "ipfilter:*");
                 var entryCount = 0L;
                 var globalCount = 0L;
                 var keySpecificCount = 0L;
-                
+
                 foreach (var key in filterKeys)
                 {
                     entryCount++;
@@ -319,14 +206,14 @@ namespace ConduitLLM.Gateway.Services
                     else if (keyString?.Contains(":vkey:") == true)
                         keySpecificCount++;
                 }
-                
+
                 return new IpFilterCacheStats
                 {
-                    HitCount = hits.HasValue ? (long)hits : 0,
-                    MissCount = misses.HasValue ? (long)misses : 0,
-                    InvalidationCount = invalidations.HasValue ? (long)invalidations : 0,
+                    HitCount = hits,
+                    MissCount = misses,
+                    InvalidationCount = invalidations,
                     IpCheckCount = ipChecks.HasValue ? (long)ipChecks : 0,
-                    LastResetTime = resetTime.HasValue && DateTime.TryParse(resetTime, out var time) ? time : DateTime.UtcNow,
+                    LastResetTime = resetTime,
                     EntryCount = entryCount,
                     GlobalFilterCount = globalCount,
                     KeySpecificFilterCount = keySpecificCount
@@ -334,46 +221,21 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting IP filter cache statistics");
+                Logger.LogError(ex, "Error getting IP filter cache statistics");
                 return new IpFilterCacheStats { LastResetTime = DateTime.UtcNow };
             }
-        }
-
-        private async Task SetGlobalFiltersAsync(List<IpFilterEntity> filters)
-        {
-            var serialized = JsonSerializer.Serialize(filters, _jsonOptions);
-            await _database.StringSetAsync(CacheKeys.IpFilter.GlobalFilters, serialized, _defaultExpiry);
-            
-            _logger.LogDebug("Global IP filters cached ({Count} filters)", filters.Count);
-        }
-
-        private async Task SetVirtualKeyFiltersAsync(int virtualKeyId, List<IpFilterEntity> filters)
-        {
-            var cacheKey = CacheKeys.IpFilter.ByVirtualKey(virtualKeyId);
-            var serialized = JsonSerializer.Serialize(filters, _jsonOptions);
-            await _database.StringSetAsync(cacheKey, serialized, _defaultExpiry);
-            
-            _logger.LogDebug("Virtual key IP filters cached for key {VirtualKeyId} ({Count} filters)", 
-                virtualKeyId, filters.Count);
         }
 
         private async Task ClearIpCheckResults()
         {
             try
             {
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var ipCheckKeys = server.Keys(pattern: CacheKeys.IpFilter.CheckPrefix + "*");
-
-                foreach (var key in ipCheckKeys)
-                {
-                    await _database.KeyDeleteAsync(key);
-                }
-                
-                _logger.LogDebug("IP check cache results cleared");
+                await ClearAllByPatternAsync(CacheKeys.IpFilter.CheckPrefix + "*");
+                Logger.LogDebug("IP check cache results cleared");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error clearing IP check cache results");
+                Logger.LogError(ex, "Error clearing IP check cache results");
             }
         }
     }

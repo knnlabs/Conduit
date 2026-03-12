@@ -21,11 +21,8 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var hits = await _database.StringGetAsync(CacheKeys.Stats.Hits(CacheKeys.Stats.ModelCostService));
-                var misses = await _database.StringGetAsync(CacheKeys.Stats.Misses(CacheKeys.Stats.ModelCostService));
-                var invalidations = await _database.StringGetAsync(CacheKeys.Stats.Invalidations(CacheKeys.Stats.ModelCostService));
-                var patternMatches = await _database.StringGetAsync(CacheKeys.Stats.PatternMatches());
-                var resetTime = await _database.StringGetAsync(CacheKeys.Stats.ResetTime(CacheKeys.Stats.ModelCostService));
+                var (hits, misses, invalidations, resetTime) = await GetBaseStatsAsync(ServiceName);
+                var patternMatches = await Database.StringGetAsync(CacheKeys.Stats.PatternMatches());
 
                 // Include pending buffered stats that haven't been flushed yet
                 var pendingHits = Interlocked.Read(ref _statsBuffer.Hits);
@@ -33,28 +30,19 @@ namespace ConduitLLM.Gateway.Services
                 var pendingPatternMatches = Interlocked.Read(ref _statsBuffer.PatternMatches);
                 var pendingInvalidations = Interlocked.Read(ref _statsBuffer.Invalidations);
 
-                // Count entries
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: CacheKeys.ModelCost.Prefix + "*");
-                var entryCount = 0L;
-                foreach (var _ in keys)
-                {
-                    entryCount++;
-                }
-
                 return new ModelCostCacheStats
                 {
-                    HitCount = (hits.HasValue ? (long)hits : 0) + pendingHits,
-                    MissCount = (misses.HasValue ? (long)misses : 0) + pendingMisses,
-                    InvalidationCount = (invalidations.HasValue ? (long)invalidations : 0) + pendingInvalidations,
+                    HitCount = hits + pendingHits,
+                    MissCount = misses + pendingMisses,
+                    InvalidationCount = invalidations + pendingInvalidations,
                     PatternMatchCount = (patternMatches.HasValue ? (long)patternMatches : 0) + pendingPatternMatches,
-                    LastResetTime = resetTime.HasValue && DateTime.TryParse(resetTime, out var time) ? time : DateTime.UtcNow,
-                    EntryCount = entryCount
+                    LastResetTime = resetTime,
+                    EntryCount = CountEntries(CacheKeys.ModelCost.Prefix + "*")
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost cache statistics");
+                Logger.LogError(ex, "Error getting model cost cache statistics");
                 return new ModelCostCacheStats { LastResetTime = DateTime.UtcNow };
             }
         }
@@ -62,27 +50,13 @@ namespace ConduitLLM.Gateway.Services
         private async Task SetModelCostAsync(ModelCost cost)
         {
             var patternKey = CacheKeys.ModelCost.PatternPrefix + cost.CostName.ToLowerInvariant();
-            
+
             // Create cached version with pre-parsed configuration
             var cachedCost = ConvertToCachedModelCost(cost);
-            var serialized = JsonSerializer.Serialize(cachedCost, _jsonOptions);
-            
-            await _database.StringSetAsync(patternKey, serialized, _defaultExpiry);
-            
-            _logger.LogDebug("Model cost cached for cost name: {CostName}", cost.CostName);
+            await SetCacheEntryAsync(patternKey, cachedCost);
+
+            Logger.LogDebug("Model cost cached for cost name: {CostName}", cost.CostName);
         }
-
-        /*
-        private async Task SetProviderModelCostsAsync(string providerName, List<ModelCost> costs)
-        {
-            var providerKey = CacheKeys.ModelCost.ProviderPrefix + providerName.ToLowerInvariant();
-            var serialized = JsonSerializer.Serialize(costs, _jsonOptions);
-
-            await _database.StringSetAsync(providerKey, serialized, _defaultExpiry);
-
-            _logger.LogDebug("Model costs cached for provider: {Provider} ({Count} costs)", providerName, costs.Count());
-        }
-        */
 
         /// <summary>
         /// Handle single invalidation messages from other instances
@@ -100,12 +74,12 @@ namespace ConduitLLM.Gateway.Services
                 if (int.TryParse(costId.ToString(), out var id))
                 {
                     await InvalidateModelCostAsync(id);
-                    _logger.LogDebug("Invalidated model cost from pub/sub: {CostId}", id);
+                    Logger.LogDebug("Invalidated model cost from pub/sub: {CostId}", id);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling cost invalidation: {CostId}", costId.ToString());
+                Logger.LogError(ex, "Error handling cost invalidation: {CostId}", costId.ToString());
             }
         }
 
@@ -134,14 +108,14 @@ namespace ConduitLLM.Gateway.Services
 
                     await InvalidateBatchAsync(requests);
 
-                    _logger.LogDebug(
+                    Logger.LogDebug(
                         "Batch invalidated {Count} model costs from pub/sub",
                         batchMessage.CostIds.Length);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling batch cost invalidation");
+                Logger.LogError(ex, "Error handling batch cost invalidation");
             }
         }
 
@@ -176,17 +150,17 @@ namespace ConduitLLM.Gateway.Services
                 {
                     cached.ParsedPricingConfiguration = cost.PricingModel switch
                     {
-                        PricingModel.PerVideo => JsonSerializer.Deserialize<PerVideoPricingConfig>(cost.PricingConfiguration, _jsonOptions),
-                        PricingModel.PerSecondVideo => JsonSerializer.Deserialize<PerSecondVideoPricingConfig>(cost.PricingConfiguration, _jsonOptions),
-                        PricingModel.InferenceSteps => JsonSerializer.Deserialize<InferenceStepsPricingConfig>(cost.PricingConfiguration, _jsonOptions),
-                        PricingModel.TieredTokens => JsonSerializer.Deserialize<TieredTokensPricingConfig>(cost.PricingConfiguration, _jsonOptions),
-                        PricingModel.PerImage => JsonSerializer.Deserialize<PerImagePricingConfig>(cost.PricingConfiguration, _jsonOptions),
+                        PricingModel.PerVideo => JsonSerializer.Deserialize<PerVideoPricingConfig>(cost.PricingConfiguration, JsonOptions),
+                        PricingModel.PerSecondVideo => JsonSerializer.Deserialize<PerSecondVideoPricingConfig>(cost.PricingConfiguration, JsonOptions),
+                        PricingModel.InferenceSteps => JsonSerializer.Deserialize<InferenceStepsPricingConfig>(cost.PricingConfiguration, JsonOptions),
+                        PricingModel.TieredTokens => JsonSerializer.Deserialize<TieredTokensPricingConfig>(cost.PricingConfiguration, JsonOptions),
+                        PricingModel.PerImage => JsonSerializer.Deserialize<PerImagePricingConfig>(cost.PricingConfiguration, JsonOptions),
                         _ => null
                     };
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse PricingConfiguration for cost {CostName} with model {PricingModel}", 
+                    Logger.LogWarning(ex, "Failed to parse PricingConfiguration for cost {CostName} with model {PricingModel}",
                         cost.CostName, cost.PricingModel);
                 }
             }
