@@ -44,29 +44,25 @@ namespace ConduitLLM.Core.Services
     /// Redis-based implementation of webhook connection tracking
     /// Allows distributed tracking of which connections are monitoring which webhooks
     /// </summary>
-    public class RedisWebhookConnectionTracker : IWebhookConnectionTracker
+    public class RedisWebhookConnectionTracker : RedisWebhookServiceBase, IWebhookConnectionTracker
     {
-        private readonly IConnectionMultiplexer _redis;
-        private readonly ILogger<RedisWebhookConnectionTracker> _logger;
-        
         private const string CONNECTION_WEBHOOKS_KEY = "webhook:connections:{0}:webhooks";
         private const string WEBHOOK_CONNECTIONS_KEY = "webhook:webhooks:{0}:connections";
         private const string CONNECTION_TIMESTAMP_KEY = "webhook:connections:{0}:timestamp";
         private const int CONNECTION_EXPIRY_HOURS = 24;
-        
+
         public RedisWebhookConnectionTracker(
             IConnectionMultiplexer redis,
             ILogger<RedisWebhookConnectionTracker> logger)
+            : base(redis, logger)
         {
-            _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         
         public async Task AddWebhooksToConnectionAsync(string connectionId, IEnumerable<string> webhookUrls)
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 
                 var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
@@ -90,12 +86,12 @@ namespace ConduitLLM.Core.Services
                 
                 await transaction.ExecuteAsync();
                 
-                _logger.LogDebug("Added {Count} webhooks to connection {ConnectionId}", 
+                Logger.LogDebug("Added {Count} webhooks to connection {ConnectionId}", 
                     webhookUrls.Count(), connectionId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding webhooks to connection {ConnectionId}", connectionId);
+                Logger.LogError(ex, "Error adding webhooks to connection {ConnectionId}", connectionId);
             }
         }
         
@@ -103,7 +99,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 
                 var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
@@ -120,12 +116,12 @@ namespace ConduitLLM.Core.Services
                 
                 await transaction.ExecuteAsync();
                 
-                _logger.LogDebug("Removed {Count} webhooks from connection {ConnectionId}", 
+                Logger.LogDebug("Removed {Count} webhooks from connection {ConnectionId}", 
                     webhookUrls.Count(), connectionId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing webhooks from connection {ConnectionId}", connectionId);
+                Logger.LogError(ex, "Error removing webhooks from connection {ConnectionId}", connectionId);
             }
         }
         
@@ -133,7 +129,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
                 var webhooks = await db.SetMembersAsync(connectionKey);
                 
@@ -141,7 +137,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting webhooks for connection {ConnectionId}", connectionId);
+                Logger.LogError(ex, "Error getting webhooks for connection {ConnectionId}", connectionId);
                 return new HashSet<string>();
             }
         }
@@ -150,7 +146,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
                 var connections = await db.SetMembersAsync(webhookKey);
                 
@@ -158,7 +154,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting connections for webhook {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error getting connections for webhook {WebhookUrl}", webhookUrl);
                 return new HashSet<string>();
             }
         }
@@ -167,7 +163,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 
                 // Get all webhooks for this connection
                 var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
@@ -195,12 +191,12 @@ namespace ConduitLLM.Core.Services
                     await transaction.ExecuteAsync();
                 }
                 
-                _logger.LogDebug("Removed connection {ConnectionId} and its {Count} webhook subscriptions", 
+                Logger.LogDebug("Removed connection {ConnectionId} and its {Count} webhook subscriptions", 
                     connectionId, webhooks.Length);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing connection {ConnectionId}", connectionId);
+                Logger.LogError(ex, "Error removing connection {ConnectionId}", connectionId);
             }
         }
         
@@ -208,7 +204,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
                 var count = await db.SetLengthAsync(webhookKey);
                 
@@ -216,18 +212,11 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting connection count for webhook {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error getting connection count for webhook {WebhookUrl}", webhookUrl);
                 return 0;
             }
         }
         
-        private string GetUrlHash(string webhookUrl)
-        {
-            // Create a consistent hash for the URL to use as Redis key component
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(webhookUrl));
-            return Convert.ToBase64String(hashBytes).Replace("/", "-").Replace("+", "_").Substring(0, 16);
-        }
     }
     
     /// <summary>
@@ -239,7 +228,7 @@ namespace ConduitLLM.Core.Services
         private readonly ConcurrentDictionary<string, HashSet<string>> _connectionWebhooks = new();
         private readonly ConcurrentDictionary<string, HashSet<string>> _webhookConnections = new();
         private readonly ILogger<InMemoryWebhookConnectionTracker> _logger;
-        
+
         public InMemoryWebhookConnectionTracker(ILogger<InMemoryWebhookConnectionTracker> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

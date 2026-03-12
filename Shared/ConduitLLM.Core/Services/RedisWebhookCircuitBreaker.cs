@@ -12,29 +12,26 @@ namespace ConduitLLM.Core.Services
     /// - Architecture: docs/architecture/webhook-delivery-system.md
     /// - Operations: docs/operations/webhook-monitoring.md
     /// </summary>
-    public class RedisWebhookCircuitBreaker : IWebhookCircuitBreaker
+    public class RedisWebhookCircuitBreaker : RedisWebhookServiceBase, IWebhookCircuitBreaker
     {
-        private readonly IConnectionMultiplexer _redis;
-        private readonly ILogger<RedisWebhookCircuitBreaker> _logger;
         private readonly int _failureThreshold;
         private readonly TimeSpan _openDuration;
         private readonly TimeSpan _halfOpenTestInterval;
-        
+
         private const string CIRCUIT_STATE_KEY = "webhook:circuit:{0}:state";
         private const string FAILURE_COUNT_KEY = "webhook:circuit:{0}:failures";
         private const string SUCCESS_COUNT_KEY = "webhook:circuit:{0}:success";
         private const string LAST_FAILURE_KEY = "webhook:circuit:{0}:lastfail";
         private const string CIRCUIT_OPENED_KEY = "webhook:circuit:{0}:opened";
-        
+
         public RedisWebhookCircuitBreaker(
             IConnectionMultiplexer redis,
             ILogger<RedisWebhookCircuitBreaker> logger,
             int failureThreshold = 5,
             TimeSpan? openDuration = null,
             TimeSpan? halfOpenTestInterval = null)
+            : base(redis, logger)
         {
-            _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _failureThreshold = failureThreshold;
             _openDuration = openDuration ?? TimeSpan.FromMinutes(5);
             _halfOpenTestInterval = halfOpenTestInterval ?? TimeSpan.FromSeconds(30);
@@ -44,7 +41,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var stateKey = string.Format(CIRCUIT_STATE_KEY, GetUrlHash(webhookUrl));
                 var state = db.StringGet(stateKey);
                 
@@ -68,7 +65,7 @@ namespace ConduitLLM.Core.Services
                             
                             if (transaction.Execute())
                             {
-                                _logger.LogInformation(
+                                Logger.LogInformation(
                                     "Circuit breaker transitioned to half-open for webhook: {WebhookUrl}",
                                     webhookUrl);
                                 return false; // Allow one test request
@@ -83,7 +80,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking circuit state for webhook: {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error checking circuit state for webhook: {WebhookUrl}", webhookUrl);
                 // In case of Redis failure, assume circuit is closed to avoid blocking webhooks
                 return false;
             }
@@ -93,7 +90,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
                 
                 var transaction = db.CreateTransaction();
@@ -119,7 +116,7 @@ namespace ConduitLLM.Core.Services
                         transaction.KeyDeleteAsync(stateKey);
                         transaction.KeyDeleteAsync(string.Format(CIRCUIT_OPENED_KEY, urlHash));
                         
-                        _logger.LogInformation(
+                        Logger.LogInformation(
                             "Circuit breaker closed for webhook: {WebhookUrl} after successful delivery",
                             webhookUrl);
                     }
@@ -129,7 +126,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording success for webhook: {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error recording success for webhook: {WebhookUrl}", webhookUrl);
             }
         }
         
@@ -137,7 +134,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
                 
                 // Check current state
@@ -174,7 +171,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording failure for webhook: {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error recording failure for webhook: {WebhookUrl}", webhookUrl);
             }
         }
         
@@ -182,7 +179,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
                 
                 var batch = db.CreateBatch();
@@ -226,7 +223,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting circuit stats for webhook: {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error getting circuit stats for webhook: {WebhookUrl}", webhookUrl);
                 return new CircuitBreakerStats();
             }
         }
@@ -252,23 +249,15 @@ namespace ConduitLLM.Core.Services
                 var openedKey = string.Format(CIRCUIT_OPENED_KEY, urlHash);
                 db.StringSet(openedKey, DateTime.UtcNow.ToString("O"), _openDuration);
                 
-                _logger.LogWarning(
+                Logger.LogWarning(
                     "Circuit breaker opened for webhook: {WebhookUrl} after {FailureCount} failures. " +
                     "Will attempt recovery in {OpenDuration} minutes.",
                     webhookUrl, failureCount, _openDuration.TotalMinutes);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error opening circuit for webhook: {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error opening circuit for webhook: {WebhookUrl}", webhookUrl);
             }
-        }
-        
-        private string GetUrlHash(string webhookUrl)
-        {
-            // Create a consistent hash for the URL to use as Redis key component
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(webhookUrl));
-            return Convert.ToBase64String(hashBytes).Replace("/", "-").Replace("+", "_").Substring(0, 16);
         }
         
         private class CircuitState
