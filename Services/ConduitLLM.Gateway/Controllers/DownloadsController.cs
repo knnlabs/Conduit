@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +13,9 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/downloads")]
     [Authorize]
-    public class DownloadsController : ControllerBase
+    public class DownloadsController : GatewayControllerBase
     {
         private readonly IFileRetrievalService _fileRetrievalService;
-        private readonly ILogger<DownloadsController> _logger;
         private readonly IMediaRecordRepository _mediaRecordRepository;
 
         /// <summary>
@@ -25,9 +25,9 @@ namespace ConduitLLM.Gateway.Controllers
             IFileRetrievalService fileRetrievalService,
             ILogger<DownloadsController> logger,
             IMediaRecordRepository mediaRecordRepository)
+            : base(logger)
         {
             _fileRetrievalService = fileRetrievalService ?? throw new ArgumentNullException(nameof(fileRetrievalService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mediaRecordRepository = mediaRecordRepository ?? throw new ArgumentNullException(nameof(mediaRecordRepository));
         }
 
@@ -38,9 +38,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="inline">Whether to display inline (true) or force download (false).</param>
         /// <returns>The file content.</returns>
         [HttpGet("{**fileId}")]
-        public async Task<IActionResult> DownloadFile(string fileId, [FromQuery] bool inline = false)
+        public Task<IActionResult> DownloadFile(string fileId, [FromQuery] bool inline = false)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Validate ownership
                 var virtualKeyId = GetVirtualKeyId();
@@ -72,17 +72,12 @@ namespace ConduitLLM.Gateway.Controllers
 
                     // Return file with range processing support
                     return File(
-                        result.ContentStream, 
+                        result.ContentStream,
                         result.Metadata.ContentType,
                         result.Metadata.FileName,
                         enableRangeProcessing: result.Metadata.SupportsRangeRequests);
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error downloading file {FileId}", fileId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while downloading the file", "server_error")));
-            }
+            }, nameof(DownloadFile), fileId);
         }
 
         /// <summary>
@@ -91,9 +86,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="fileId">The file identifier.</param>
         /// <returns>File metadata.</returns>
         [HttpGet("metadata/{**fileId}")]
-        public async Task<IActionResult> GetFileMetadata(string fileId)
+        public Task<IActionResult> GetFileMetadata(string fileId)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Validate ownership
                 var virtualKeyId = GetVirtualKeyId();
@@ -120,12 +115,7 @@ namespace ConduitLLM.Gateway.Controllers
                     supports_range_requests = metadata.SupportsRangeRequests,
                     additional_metadata = metadata.AdditionalMetadata
                 });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting metadata for file {FileId}", fileId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while retrieving file metadata", "server_error")));
-            }
+            }, nameof(GetFileMetadata), fileId);
         }
 
         /// <summary>
@@ -134,9 +124,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="request">The URL generation request.</param>
         /// <returns>A temporary download URL.</returns>
         [HttpPost("generate-url")]
-        public async Task<IActionResult> GenerateDownloadUrl([FromBody] GenerateUrlRequest request)
+        public Task<IActionResult> GenerateDownloadUrl([FromBody] GenerateUrlRequest request)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 if (string.IsNullOrWhiteSpace(request.FileId))
                 {
@@ -170,12 +160,7 @@ namespace ConduitLLM.Gateway.Controllers
                     expires_at = DateTime.UtcNow.Add(expiration),
                     expiration_minutes = expirationMinutes
                 });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating download URL for file {FileId}", request.FileId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while generating download URL", "server_error")));
-            }
+            }, nameof(GenerateDownloadUrl), request.FileId);
         }
 
         /// <summary>
@@ -184,9 +169,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="fileId">The file identifier.</param>
         /// <returns>200 OK if exists, 404 if not.</returns>
         [HttpHead("{**fileId}")]
-        public async Task<IActionResult> CheckFileExists(string fileId)
+        public Task<IActionResult> CheckFileExists(string fileId)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Validate ownership
                 var virtualKeyId = GetVirtualKeyId();
@@ -213,12 +198,7 @@ namespace ConduitLLM.Gateway.Controllers
                 }
 
                 return Ok();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking existence of file {FileId}", fileId);
-                return StatusCode(500);
-            }
+            }, nameof(CheckFileExists), fileId);
         }
 
         /// <summary>
@@ -241,7 +221,7 @@ namespace ConduitLLM.Gateway.Controllers
         {
             if (virtualKeyId <= 0)
             {
-                _logger.LogWarning("Invalid Virtual Key ID: {VirtualKeyId}", virtualKeyId);
+                Logger.LogWarning("Invalid Virtual Key ID: {VirtualKeyId}", virtualKeyId);
                 return false;
             }
 
@@ -249,23 +229,23 @@ namespace ConduitLLM.Gateway.Controllers
             if (fileId.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 fileId.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("URL-based file access attempted by Virtual Key {VirtualKeyId}: {FileId}", 
+                Logger.LogWarning("URL-based file access attempted by Virtual Key {VirtualKeyId}: {FileId}",
                     virtualKeyId, fileId);
                 return false;
             }
 
             // Check if the file exists in our media records
             var mediaRecord = await _mediaRecordRepository.GetByStorageKeyAsync(fileId);
-            
+
             if (mediaRecord == null)
             {
-                _logger.LogWarning("Media record not found for storage key: {StorageKey}", fileId);
+                Logger.LogWarning("Media record not found for storage key: {StorageKey}", fileId);
                 return false;
             }
 
             if (mediaRecord.VirtualKeyId != virtualKeyId)
             {
-                _logger.LogWarning("Virtual Key {RequestingKeyId} attempted to access file belonging to Virtual Key {OwnerKeyId}", 
+                Logger.LogWarning("Virtual Key {RequestingKeyId} attempted to access file belonging to Virtual Key {OwnerKeyId}",
                     virtualKeyId, mediaRecord.VirtualKeyId);
                 return false;
             }

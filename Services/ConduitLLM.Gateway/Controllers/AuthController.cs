@@ -1,3 +1,6 @@
+using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Models;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Gateway.Models;
@@ -11,17 +14,16 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/auth")]
     [Tags("Authentication")]
-    public class AuthController : ControllerBase
+    public class AuthController : GatewayControllerBase
     {
         private readonly IEphemeralKeyService _ephemeralKeyService;
-        private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             IEphemeralKeyService ephemeralKeyService,
             ILogger<AuthController> logger)
+            : base(logger)
         {
             _ephemeralKeyService = ephemeralKeyService ?? throw new ArgumentNullException(nameof(ephemeralKeyService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -35,21 +37,25 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpPost("ephemeral-key")]
         [Authorize(AuthenticationSchemes = "VirtualKey")]
         [ProducesResponseType(typeof(EphemeralKeyResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GenerateEphemeralKey([FromBody] GenerateEphemeralKeyRequest? request = null)
+        [ProducesResponseType(typeof(OpenAIErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(OpenAIErrorResponse), StatusCodes.Status500InternalServerError)]
+        public Task<IActionResult> GenerateEphemeralKey([FromBody] GenerateEphemeralKeyRequest? request = null)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Get virtual key ID from claims
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
                 {
-                    _logger.LogWarning("Failed to extract virtual key ID from claims");
-                    return Unauthorized(new ProblemDetails
+                    Logger.LogWarning("Failed to extract virtual key ID from claims");
+                    return Unauthorized(new OpenAIErrorResponse
                     {
-                        Title = "Unauthorized",
-                        Detail = "Virtual key not found in request context"
+                        Error = new OpenAIError
+                        {
+                            Message = "Virtual key not found in request context",
+                            Type = "authentication_error",
+                            Code = "unauthorized"
+                        }
                     });
                 }
 
@@ -57,33 +63,28 @@ namespace ConduitLLM.Gateway.Controllers
                 var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
-                    _logger.LogWarning("Failed to extract virtual key from claims");
-                    return Unauthorized(new ProblemDetails
+                    Logger.LogWarning("Failed to extract virtual key from claims");
+                    return Unauthorized(new OpenAIErrorResponse
                     {
-                        Title = "Unauthorized",
-                        Detail = "Virtual key not found in request context"
+                        Error = new OpenAIError
+                        {
+                            Message = "Virtual key not found in request context",
+                            Type = "authentication_error",
+                            Code = "unauthorized"
+                        }
                     });
                 }
 
                 // Create ephemeral key with the actual virtual key
                 var response = await _ephemeralKeyService.CreateEphemeralKeyAsync(
-                    virtualKeyId, 
+                    virtualKeyId,
                     virtualKey,
                     request?.Metadata);
 
-                _logger.LogInformation("Generated ephemeral key for virtual key {VirtualKeyId}", virtualKeyId);
+                Logger.LogInformation("Generated ephemeral key for virtual key {VirtualKeyId}", virtualKeyId);
 
                 return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to generate ephemeral key");
-                return StatusCode(500, new ProblemDetails
-                {
-                    Title = "Internal Server Error",
-                    Detail = "Failed to generate ephemeral key"
-                });
-            }
+            }, nameof(GenerateEphemeralKey));
         }
     }
 

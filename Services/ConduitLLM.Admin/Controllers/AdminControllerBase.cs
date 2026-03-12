@@ -98,6 +98,29 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
+        /// Executes an async operation that directly returns an IActionResult,
+        /// with standardized error handling.
+        /// </summary>
+        /// <param name="operation">The async operation that returns an IActionResult.</param>
+        /// <param name="operationName">Name of the operation for logging purposes.</param>
+        /// <param name="contextData">Optional context data to include in log messages.</param>
+        /// <returns>The operation's IActionResult, or an error response if an exception occurs.</returns>
+        protected async Task<IActionResult> ExecuteAsync(
+            Func<Task<IActionResult>> operation,
+            string operationName,
+            object? contextData = null)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex)
+            {
+                return HandleOperationException(ex, operationName, contextData);
+            }
+        }
+
+        /// <summary>
         /// Executes an async operation that returns no value with standardized error handling.
         /// </summary>
         /// <param name="operation">The async operation to execute.</param>

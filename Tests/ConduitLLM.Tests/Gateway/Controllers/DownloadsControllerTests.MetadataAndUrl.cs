@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -132,12 +133,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GetFileMetadata(fileId);
 
-            // Assert
+            // Assert — GatewayControllerBase returns OpenAIErrorResponse for unhandled exceptions
             var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusCodeResult.StatusCode.Should().Be(500);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
-            errorDetails.Message.Should().Be("An error occurred while retrieving file metadata");
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            errorResponse.Error.Should().NotBeNull();
+            errorResponse.Error!.Type.Should().Be("server_error");
         }
 
         #endregion
@@ -382,12 +383,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GenerateDownloadUrl(request);
 
-            // Assert
+            // Assert — GatewayControllerBase returns OpenAIErrorResponse for unhandled exceptions
             var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusCodeResult.StatusCode.Should().Be(500);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
-            errorDetails.Message.Should().Be("An error occurred while generating download URL");
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            errorResponse.Error.Should().NotBeNull();
+            errorResponse.Error!.Type.Should().Be("server_error");
         }
 
         #endregion

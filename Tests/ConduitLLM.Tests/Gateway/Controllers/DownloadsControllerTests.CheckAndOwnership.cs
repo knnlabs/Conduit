@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -116,9 +117,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.CheckFileExists(fileId);
 
-            // Assert
-            var statusCodeResult = result.Should().BeOfType<StatusCodeResult>().Subject;
+            // Assert — GatewayControllerBase returns ObjectResult with OpenAIErrorResponse for unhandled exceptions
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
             statusCodeResult.StatusCode.Should().Be(500);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            errorResponse.Error.Should().NotBeNull();
         }
 
         #endregion

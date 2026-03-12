@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Controllers;
 using ConduitLLM.Gateway.Services;
 
 using Microsoft.AspNetCore.Authorization;
@@ -11,17 +12,16 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("api/signalr/batching")]
     [Authorize(Policy = "AdminOnly")]
-    public class SignalRBatchingController : ControllerBase
+    public class SignalRBatchingController : GatewayControllerBase
     {
         private readonly ISignalRMessageBatcher _messageBatcher;
-        private readonly ILogger<SignalRBatchingController> _logger;
 
         public SignalRBatchingController(
             ISignalRMessageBatcher messageBatcher,
             ILogger<SignalRBatchingController> logger)
+            : base(logger)
         {
             _messageBatcher = messageBatcher;
-            _logger = logger;
         }
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace ConduitLLM.Gateway.Controllers
         public ActionResult PauseBatching()
         {
             _messageBatcher.PauseBatching();
-            _logger.LogInformation("Message batching paused by admin");
+            Logger.LogInformation("Message batching paused by admin");
             return Ok(new { message = "Batching paused successfully" });
         }
 
@@ -53,7 +53,7 @@ namespace ConduitLLM.Gateway.Controllers
         public ActionResult ResumeBatching()
         {
             _messageBatcher.ResumeBatching();
-            _logger.LogInformation("Message batching resumed by admin");
+            Logger.LogInformation("Message batching resumed by admin");
             return Ok(new { message = "Batching resumed successfully" });
         }
 
@@ -64,7 +64,7 @@ namespace ConduitLLM.Gateway.Controllers
         public async Task<ActionResult> FlushBatches()
         {
             await _messageBatcher.FlushAllBatchesAsync();
-            _logger.LogInformation("All batches flushed by admin");
+            Logger.LogInformation("All batches flushed by admin");
             return Ok(new { message = "All batches flushed successfully" });
         }
 

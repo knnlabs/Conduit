@@ -1,3 +1,5 @@
+using ConduitLLM.Admin.Extensions;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +14,9 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/admin/media-retention")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class MediaRetentionController : ControllerBase
+    public class MediaRetentionController : AdminControllerBase
     {
         private readonly IConfigurationDbContext _context;
-        private readonly ILogger<MediaRetentionController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MediaRetentionController"/> class.
@@ -25,9 +26,9 @@ namespace ConduitLLM.Admin.Controllers
         public MediaRetentionController(
             IConfigurationDbContext context,
             ILogger<MediaRetentionController> logger)
+            : base(logger)
         {
             _context = context;
-            _logger = logger;
         }
 
         /// <summary>
@@ -36,33 +37,34 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of all retention policies</returns>
         [HttpGet("policies")]
         [ProducesResponseType(typeof(List<MediaRetentionPolicyDto>), 200)]
-        public async Task<IActionResult> GetPolicies()
+        public Task<IActionResult> GetPolicies()
         {
-            var policies = await _context.MediaRetentionPolicies
-                .Include(p => p.VirtualKeyGroups)
-                .OrderBy(p => p.Name)
-                .Select(p => new MediaRetentionPolicyDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    PositiveBalanceRetentionDays = p.PositiveBalanceRetentionDays,
-                    ZeroBalanceRetentionDays = p.ZeroBalanceRetentionDays,
-                    NegativeBalanceRetentionDays = p.NegativeBalanceRetentionDays,
-                    SoftDeleteGracePeriodDays = p.SoftDeleteGracePeriodDays,
-                    RespectRecentAccess = p.RespectRecentAccess,
-                    RecentAccessWindowDays = p.RecentAccessWindowDays,
-                    IsDefault = p.IsDefault,
-                    MaxStorageSizeBytes = p.MaxStorageSizeBytes,
-                    MaxFileCount = p.MaxFileCount,
-                    IsActive = p.IsActive,
-                    CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt,
-                    VirtualKeyGroupCount = p.VirtualKeyGroups.Count
-                })
-                .ToListAsync();
-
-            return Ok(policies);
+            return ExecuteAsync(
+                async () => await _context.MediaRetentionPolicies
+                    .Include(p => p.VirtualKeyGroups)
+                    .OrderBy(p => p.Name)
+                    .Select(p => new MediaRetentionPolicyDto
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Description = p.Description,
+                        PositiveBalanceRetentionDays = p.PositiveBalanceRetentionDays,
+                        ZeroBalanceRetentionDays = p.ZeroBalanceRetentionDays,
+                        NegativeBalanceRetentionDays = p.NegativeBalanceRetentionDays,
+                        SoftDeleteGracePeriodDays = p.SoftDeleteGracePeriodDays,
+                        RespectRecentAccess = p.RespectRecentAccess,
+                        RecentAccessWindowDays = p.RecentAccessWindowDays,
+                        IsDefault = p.IsDefault,
+                        MaxStorageSizeBytes = p.MaxStorageSizeBytes,
+                        MaxFileCount = p.MaxFileCount,
+                        IsActive = p.IsActive,
+                        CreatedAt = p.CreatedAt,
+                        UpdatedAt = p.UpdatedAt,
+                        VirtualKeyGroupCount = p.VirtualKeyGroups.Count
+                    })
+                    .ToListAsync(),
+                policies => Ok(policies),
+                nameof(GetPolicies));
         }
 
         /// <summary>
@@ -73,44 +75,38 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("policies/{id}")]
         [ProducesResponseType(typeof(MediaRetentionPolicyDetailDto), 200)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> GetPolicy(int id)
+        public Task<IActionResult> GetPolicy(int id)
         {
-            var policy = await _context.MediaRetentionPolicies
-                .Include(p => p.VirtualKeyGroups)
-                    .ThenInclude(vkg => vkg.VirtualKeys)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (policy == null)
-            {
-                return NotFound(new { message = $"Policy with ID {id} not found" });
-            }
-
-            var dto = new MediaRetentionPolicyDetailDto
-            {
-                Id = policy.Id,
-                Name = policy.Name,
-                Description = policy.Description,
-                PositiveBalanceRetentionDays = policy.PositiveBalanceRetentionDays,
-                ZeroBalanceRetentionDays = policy.ZeroBalanceRetentionDays,
-                NegativeBalanceRetentionDays = policy.NegativeBalanceRetentionDays,
-                SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
-                RespectRecentAccess = policy.RespectRecentAccess,
-                RecentAccessWindowDays = policy.RecentAccessWindowDays,
-                IsDefault = policy.IsDefault,
-                MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
-                MaxFileCount = policy.MaxFileCount,
-                IsActive = policy.IsActive,
-                CreatedAt = policy.CreatedAt,
-                UpdatedAt = policy.UpdatedAt,
-                VirtualKeyGroups = policy.VirtualKeyGroups.Select(vkg => new VirtualKeyGroupSummaryDto
+            return ExecuteWithNotFoundAsync(
+                () => _context.MediaRetentionPolicies
+                    .Include(p => p.VirtualKeyGroups)
+                        .ThenInclude(vkg => vkg.VirtualKeys)
+                    .FirstOrDefaultAsync(p => p.Id == id),
+                policy => Ok(new MediaRetentionPolicyDetailDto
                 {
-                    Id = vkg.Id,
-                    Balance = vkg.Balance,
-                    VirtualKeyCount = vkg.VirtualKeys.Count
-                }).ToList()
-            };
-
-            return Ok(dto);
+                    Id = policy.Id,
+                    Name = policy.Name,
+                    Description = policy.Description,
+                    PositiveBalanceRetentionDays = policy.PositiveBalanceRetentionDays,
+                    ZeroBalanceRetentionDays = policy.ZeroBalanceRetentionDays,
+                    NegativeBalanceRetentionDays = policy.NegativeBalanceRetentionDays,
+                    SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
+                    RespectRecentAccess = policy.RespectRecentAccess,
+                    RecentAccessWindowDays = policy.RecentAccessWindowDays,
+                    IsDefault = policy.IsDefault,
+                    MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
+                    MaxFileCount = policy.MaxFileCount,
+                    IsActive = policy.IsActive,
+                    CreatedAt = policy.CreatedAt,
+                    UpdatedAt = policy.UpdatedAt,
+                    VirtualKeyGroups = policy.VirtualKeyGroups.Select(vkg => new VirtualKeyGroupSummaryDto
+                    {
+                        Id = vkg.Id,
+                        Balance = vkg.Balance,
+                        VirtualKeyCount = vkg.VirtualKeys.Count
+                    }).ToList()
+                }),
+                "Retention policy", id, nameof(GetPolicy));
         }
 
         /// <summary>
@@ -121,67 +117,73 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("policies")]
         [ProducesResponseType(typeof(MediaRetentionPolicyDto), 201)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> CreatePolicy([FromBody] CreateMediaRetentionPolicyRequest request)
+        public Task<IActionResult> CreatePolicy([FromBody] CreateMediaRetentionPolicyRequest request)
         {
-            // Validate request
             if (request.PositiveBalanceRetentionDays <= 0)
             {
-                return BadRequest(new { message = "Positive balance retention days must be greater than 0" });
+                return Task.FromResult<IActionResult>(
+                    this.BadRequestError("Positive balance retention days must be greater than 0"));
             }
 
-            if (request.IsDefault)
-            {
-                // Ensure only one default policy exists
-                var existingDefault = await _context.MediaRetentionPolicies
-                    .FirstOrDefaultAsync(p => p.IsDefault);
-                if (existingDefault != null)
+            return ExecuteAsync<MediaRetentionPolicyDto>(
+                async () =>
                 {
-                    existingDefault.IsDefault = false;
-                }
-            }
+                    if (request.IsDefault)
+                    {
+                        // Ensure only one default policy exists
+                        var existingDefault = await _context.MediaRetentionPolicies
+                            .FirstOrDefaultAsync(p => p.IsDefault);
+                        if (existingDefault != null)
+                        {
+                            existingDefault.IsDefault = false;
+                        }
+                    }
 
-            var policy = new MediaRetentionPolicy
-            {
-                Name = request.Name,
-                Description = request.Description,
-                PositiveBalanceRetentionDays = request.PositiveBalanceRetentionDays,
-                ZeroBalanceRetentionDays = request.ZeroBalanceRetentionDays,
-                NegativeBalanceRetentionDays = request.NegativeBalanceRetentionDays,
-                SoftDeleteGracePeriodDays = request.SoftDeleteGracePeriodDays,
-                RespectRecentAccess = request.RespectRecentAccess,
-                RecentAccessWindowDays = request.RecentAccessWindowDays,
-                IsDefault = request.IsDefault,
-                MaxStorageSizeBytes = request.MaxStorageSizeBytes,
-                MaxFileCount = request.MaxFileCount,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                    var policy = new MediaRetentionPolicy
+                    {
+                        Name = request.Name,
+                        Description = request.Description,
+                        PositiveBalanceRetentionDays = request.PositiveBalanceRetentionDays,
+                        ZeroBalanceRetentionDays = request.ZeroBalanceRetentionDays,
+                        NegativeBalanceRetentionDays = request.NegativeBalanceRetentionDays,
+                        SoftDeleteGracePeriodDays = request.SoftDeleteGracePeriodDays,
+                        RespectRecentAccess = request.RespectRecentAccess,
+                        RecentAccessWindowDays = request.RecentAccessWindowDays,
+                        IsDefault = request.IsDefault,
+                        MaxStorageSizeBytes = request.MaxStorageSizeBytes,
+                        MaxFileCount = request.MaxFileCount,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
 
-            _context.MediaRetentionPolicies.Add(policy);
-            await _context.SaveChangesAsync();
+                    _context.MediaRetentionPolicies.Add(policy);
+                    await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Created media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
+                    Logger.LogInformation("Created media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
 
-            return CreatedAtAction(nameof(GetPolicy), new { id = policy.Id }, new MediaRetentionPolicyDto
-            {
-                Id = policy.Id,
-                Name = policy.Name,
-                Description = policy.Description,
-                PositiveBalanceRetentionDays = policy.PositiveBalanceRetentionDays,
-                ZeroBalanceRetentionDays = policy.ZeroBalanceRetentionDays,
-                NegativeBalanceRetentionDays = policy.NegativeBalanceRetentionDays,
-                SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
-                RespectRecentAccess = policy.RespectRecentAccess,
-                RecentAccessWindowDays = policy.RecentAccessWindowDays,
-                IsDefault = policy.IsDefault,
-                MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
-                MaxFileCount = policy.MaxFileCount,
-                IsActive = policy.IsActive,
-                CreatedAt = policy.CreatedAt,
-                UpdatedAt = policy.UpdatedAt,
-                VirtualKeyGroupCount = 0
-            });
+                    return new MediaRetentionPolicyDto
+                    {
+                        Id = policy.Id,
+                        Name = policy.Name,
+                        Description = policy.Description,
+                        PositiveBalanceRetentionDays = policy.PositiveBalanceRetentionDays,
+                        ZeroBalanceRetentionDays = policy.ZeroBalanceRetentionDays,
+                        NegativeBalanceRetentionDays = policy.NegativeBalanceRetentionDays,
+                        SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
+                        RespectRecentAccess = policy.RespectRecentAccess,
+                        RecentAccessWindowDays = policy.RecentAccessWindowDays,
+                        IsDefault = policy.IsDefault,
+                        MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
+                        MaxFileCount = policy.MaxFileCount,
+                        IsActive = policy.IsActive,
+                        CreatedAt = policy.CreatedAt,
+                        UpdatedAt = policy.UpdatedAt,
+                        VirtualKeyGroupCount = 0
+                    };
+                },
+                dto => CreatedAtAction(nameof(GetPolicy), new { id = dto.Id }, dto),
+                nameof(CreatePolicy));
         }
 
         /// <summary>
@@ -194,66 +196,65 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(MediaRetentionPolicyDto), 200)]
         [ProducesResponseType(404)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> UpdatePolicy(int id, [FromBody] UpdateMediaRetentionPolicyRequest request)
+        public Task<IActionResult> UpdatePolicy(int id, [FromBody] UpdateMediaRetentionPolicyRequest request)
         {
-            var policy = await _context.MediaRetentionPolicies
-                .Include(p => p.VirtualKeyGroups)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (policy == null)
-            {
-                return NotFound(new { message = $"Policy with ID {id} not found" });
-            }
-
-            if (request.IsDefault == true && !policy.IsDefault)
-            {
-                // Ensure only one default policy exists
-                var existingDefault = await _context.MediaRetentionPolicies
-                    .FirstOrDefaultAsync(p => p.IsDefault && p.Id != id);
-                if (existingDefault != null)
+            return ExecuteWithNotFoundAsync(
+                () => _context.MediaRetentionPolicies
+                    .Include(p => p.VirtualKeyGroups)
+                    .FirstOrDefaultAsync(p => p.Id == id),
+                async policy =>
                 {
-                    existingDefault.IsDefault = false;
-                }
-            }
+                    if (request.IsDefault == true && !policy.IsDefault)
+                    {
+                        // Ensure only one default policy exists
+                        var existingDefault = await _context.MediaRetentionPolicies
+                            .FirstOrDefaultAsync(p => p.IsDefault && p.Id != id);
+                        if (existingDefault != null)
+                        {
+                            existingDefault.IsDefault = false;
+                        }
+                    }
 
-            // Update fields
-            policy.Name = request.Name ?? policy.Name;
-            policy.Description = request.Description ?? policy.Description;
-            policy.PositiveBalanceRetentionDays = request.PositiveBalanceRetentionDays ?? policy.PositiveBalanceRetentionDays;
-            policy.ZeroBalanceRetentionDays = request.ZeroBalanceRetentionDays ?? policy.ZeroBalanceRetentionDays;
-            policy.NegativeBalanceRetentionDays = request.NegativeBalanceRetentionDays ?? policy.NegativeBalanceRetentionDays;
-            policy.SoftDeleteGracePeriodDays = request.SoftDeleteGracePeriodDays ?? policy.SoftDeleteGracePeriodDays;
-            policy.RespectRecentAccess = request.RespectRecentAccess ?? policy.RespectRecentAccess;
-            policy.RecentAccessWindowDays = request.RecentAccessWindowDays ?? policy.RecentAccessWindowDays;
-            policy.IsDefault = request.IsDefault ?? policy.IsDefault;
-            policy.MaxStorageSizeBytes = request.MaxStorageSizeBytes ?? policy.MaxStorageSizeBytes;
-            policy.MaxFileCount = request.MaxFileCount ?? policy.MaxFileCount;
-            policy.IsActive = request.IsActive ?? policy.IsActive;
-            policy.UpdatedAt = DateTime.UtcNow;
+                    // Update fields
+                    policy.Name = request.Name ?? policy.Name;
+                    policy.Description = request.Description ?? policy.Description;
+                    policy.PositiveBalanceRetentionDays = request.PositiveBalanceRetentionDays ?? policy.PositiveBalanceRetentionDays;
+                    policy.ZeroBalanceRetentionDays = request.ZeroBalanceRetentionDays ?? policy.ZeroBalanceRetentionDays;
+                    policy.NegativeBalanceRetentionDays = request.NegativeBalanceRetentionDays ?? policy.NegativeBalanceRetentionDays;
+                    policy.SoftDeleteGracePeriodDays = request.SoftDeleteGracePeriodDays ?? policy.SoftDeleteGracePeriodDays;
+                    policy.RespectRecentAccess = request.RespectRecentAccess ?? policy.RespectRecentAccess;
+                    policy.RecentAccessWindowDays = request.RecentAccessWindowDays ?? policy.RecentAccessWindowDays;
+                    policy.IsDefault = request.IsDefault ?? policy.IsDefault;
+                    policy.MaxStorageSizeBytes = request.MaxStorageSizeBytes ?? policy.MaxStorageSizeBytes;
+                    policy.MaxFileCount = request.MaxFileCount ?? policy.MaxFileCount;
+                    policy.IsActive = request.IsActive ?? policy.IsActive;
+                    policy.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Updated media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
+                    Logger.LogInformation("Updated media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
 
-            return Ok(new MediaRetentionPolicyDto
-            {
-                Id = policy.Id,
-                Name = policy.Name,
-                Description = policy.Description,
-                PositiveBalanceRetentionDays = policy.PositiveBalanceRetentionDays,
-                ZeroBalanceRetentionDays = policy.ZeroBalanceRetentionDays,
-                NegativeBalanceRetentionDays = policy.NegativeBalanceRetentionDays,
-                SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
-                RespectRecentAccess = policy.RespectRecentAccess,
-                RecentAccessWindowDays = policy.RecentAccessWindowDays,
-                IsDefault = policy.IsDefault,
-                MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
-                MaxFileCount = policy.MaxFileCount,
-                IsActive = policy.IsActive,
-                CreatedAt = policy.CreatedAt,
-                UpdatedAt = policy.UpdatedAt,
-                VirtualKeyGroupCount = policy.VirtualKeyGroups.Count
-            });
+                    return Ok(new MediaRetentionPolicyDto
+                    {
+                        Id = policy.Id,
+                        Name = policy.Name,
+                        Description = policy.Description,
+                        PositiveBalanceRetentionDays = policy.PositiveBalanceRetentionDays,
+                        ZeroBalanceRetentionDays = policy.ZeroBalanceRetentionDays,
+                        NegativeBalanceRetentionDays = policy.NegativeBalanceRetentionDays,
+                        SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
+                        RespectRecentAccess = policy.RespectRecentAccess,
+                        RecentAccessWindowDays = policy.RecentAccessWindowDays,
+                        IsDefault = policy.IsDefault,
+                        MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
+                        MaxFileCount = policy.MaxFileCount,
+                        IsActive = policy.IsActive,
+                        CreatedAt = policy.CreatedAt,
+                        UpdatedAt = policy.UpdatedAt,
+                        VirtualKeyGroupCount = policy.VirtualKeyGroups.Count
+                    });
+                },
+                "Retention policy", id, nameof(UpdatePolicy));
         }
 
         /// <summary>
@@ -265,33 +266,33 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(204)]
         [ProducesResponseType(404)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> DeletePolicy(int id)
+        public Task<IActionResult> DeletePolicy(int id)
         {
-            var policy = await _context.MediaRetentionPolicies
-                .Include(p => p.VirtualKeyGroups)
-                .FirstOrDefaultAsync(p => p.Id == id);
+            return ExecuteWithNotFoundAsync(
+                () => _context.MediaRetentionPolicies
+                    .Include(p => p.VirtualKeyGroups)
+                    .FirstOrDefaultAsync(p => p.Id == id),
+                async policy =>
+                {
+                    if (policy.IsDefault)
+                    {
+                        return this.BadRequestError("Cannot delete the default retention policy");
+                    }
 
-            if (policy == null)
-            {
-                return NotFound(new { message = $"Policy with ID {id} not found" });
-            }
+                    if (policy.VirtualKeyGroups.Any())
+                    {
+                        return this.BadRequestError(
+                            $"Cannot delete policy - it is assigned to {policy.VirtualKeyGroups.Count} virtual key group(s)");
+                    }
 
-            if (policy.IsDefault)
-            {
-                return BadRequest(new { message = "Cannot delete the default retention policy" });
-            }
+                    _context.MediaRetentionPolicies.Remove(policy);
+                    await _context.SaveChangesAsync();
 
-            if (policy.VirtualKeyGroups.Any())
-            {
-                return BadRequest(new { message = $"Cannot delete policy - it is assigned to {policy.VirtualKeyGroups.Count} virtual key group(s)" });
-            }
+                    Logger.LogInformation("Deleted media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
 
-            _context.MediaRetentionPolicies.Remove(policy);
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Deleted media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
-
-            return NoContent();
+                    return NoContent();
+                },
+                "Retention policy", id, nameof(DeletePolicy));
         }
 
         /// <summary>
@@ -303,26 +304,29 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("assign/{groupId}/{policyId}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> AssignPolicyToGroup(int groupId, int policyId)
+        public Task<IActionResult> AssignPolicyToGroup(int groupId, int policyId)
         {
-            var group = await _context.VirtualKeyGroups.FindAsync(groupId);
-            if (group == null)
+            return ExecuteAsync(async () =>
             {
-                return NotFound(new { message = $"Virtual key group with ID {groupId} not found" });
-            }
+                var group = await _context.VirtualKeyGroups.FindAsync(groupId);
+                if (group == null)
+                {
+                    return this.NotFoundEntity("Virtual key group", groupId);
+                }
 
-            var policy = await _context.MediaRetentionPolicies.FindAsync(policyId);
-            if (policy == null)
-            {
-                return NotFound(new { message = $"Retention policy with ID {policyId} not found" });
-            }
+                var policy = await _context.MediaRetentionPolicies.FindAsync(policyId);
+                if (policy == null)
+                {
+                    return this.NotFoundEntity("Retention policy", policyId);
+                }
 
-            group.MediaRetentionPolicyId = policyId;
-            await _context.SaveChangesAsync();
+                group.MediaRetentionPolicyId = policyId;
+                await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Assigned retention policy {PolicyId} to virtual key group {GroupId}", policyId, groupId);
+                Logger.LogInformation("Assigned retention policy {PolicyId} to virtual key group {GroupId}", policyId, groupId);
 
-            return Ok(new { message = $"Successfully assigned policy '{policy.Name}' to group {groupId}" });
+                return Ok(new { message = $"Successfully assigned policy '{policy.Name}' to group {groupId}" });
+            }, nameof(AssignPolicyToGroup), new { groupId, policyId });
         }
 
         /// <summary>
@@ -334,35 +338,35 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("policies/{id}/set-default")]
         [ProducesResponseType(200)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> SetDefaultPolicy(int id)
+        public Task<IActionResult> SetDefaultPolicy(int id)
         {
-            var policy = await _context.MediaRetentionPolicies.FindAsync(id);
-            if (policy == null)
-            {
-                return NotFound(new { message = $"Policy with ID {id} not found" });
-            }
+            return ExecuteWithNotFoundAsync(
+                () => _context.MediaRetentionPolicies.FindAsync(id).AsTask(),
+                async policy =>
+                {
+                    if (!policy.IsActive)
+                    {
+                        return this.BadRequestError("Cannot set an inactive policy as default");
+                    }
 
-            if (!policy.IsActive)
-            {
-                return BadRequest(new { message = "Cannot set an inactive policy as default" });
-            }
+                    // Clear existing default
+                    var currentDefault = await _context.MediaRetentionPolicies
+                        .FirstOrDefaultAsync(p => p.IsDefault && p.Id != id);
+                    if (currentDefault != null)
+                    {
+                        currentDefault.IsDefault = false;
+                    }
 
-            // Clear existing default
-            var currentDefault = await _context.MediaRetentionPolicies
-                .FirstOrDefaultAsync(p => p.IsDefault && p.Id != id);
-            if (currentDefault != null)
-            {
-                currentDefault.IsDefault = false;
-            }
+                    // Set new default
+                    policy.IsDefault = true;
+                    policy.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
 
-            // Set new default
-            policy.IsDefault = true;
-            policy.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                    Logger.LogInformation("Set retention policy {PolicyId} '{PolicyName}' as default", policy.Id, policy.Name);
 
-            _logger.LogInformation("Set retention policy {PolicyId} '{PolicyName}' as default", policy.Id, policy.Name);
-
-            return Ok(new { message = $"'{policy.Name}' is now the default retention policy" });
+                    return Ok(new { message = $"'{policy.Name}' is now the default retention policy" });
+                },
+                "Retention policy", id, nameof(SetDefaultPolicy));
         }
 
         /// <summary>
@@ -376,8 +380,7 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(404)]
         public Task<IActionResult> TriggerCleanup(int groupId, [FromQuery] bool dryRun = true)
         {
-            // This would trigger the media cleanup process
-            // For now, return a placeholder response
+            // Placeholder — manual cleanup not yet implemented
             return Task.FromResult<IActionResult>(Ok(new CleanupResultDto
             {
                 VirtualKeyGroupId = groupId,

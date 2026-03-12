@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Controllers;
 using ConduitLLM.Gateway.Services;
 
 using Microsoft.AspNetCore.Authorization;
@@ -17,23 +18,22 @@ namespace ConduitLLM.Gateway.Controllers
     /// </remarks>
     [ApiController]
     [Route("health/signalr")]
-    public class SignalRHealthController : ControllerBase
+    public class SignalRHealthController : GatewayControllerBase
     {
         private readonly ISignalRConnectionMonitor _connectionMonitor;
         private readonly ISignalRMessageQueueService _messageQueueService;
         private readonly ISignalRAcknowledgmentService _acknowledgmentService;
-        private readonly ILogger<SignalRHealthController> _logger;
 
         public SignalRHealthController(
             ISignalRConnectionMonitor connectionMonitor,
             ISignalRMessageQueueService messageQueueService,
             ISignalRAcknowledgmentService acknowledgmentService,
             ILogger<SignalRHealthController> logger)
+            : base(logger)
         {
             _connectionMonitor = connectionMonitor;
             _messageQueueService = messageQueueService;
             _acknowledgmentService = acknowledgmentService;
-            _logger = logger;
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace ConduitLLM.Gateway.Controllers
         public async Task<ActionResult> RequeueDeadLetter(string messageId)
         {
             await _messageQueueService.RequeueDeadLetterAsync(messageId);
-            _logger.LogInformation("Dead letter message {MessageId} requeued by admin", messageId);
+            Logger.LogInformation("Dead letter message {MessageId} requeued by admin", messageId);
             return Ok(new { message = "Message requeued successfully" });
         }
 
