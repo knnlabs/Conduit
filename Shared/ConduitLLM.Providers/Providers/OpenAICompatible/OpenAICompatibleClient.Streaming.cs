@@ -55,9 +55,19 @@ namespace ConduitLLM.Providers.OpenAICompatible
         }
 
         /// <summary>
+        /// Transforms the raw JSON of a streaming chunk before deserialization.
+        /// Override in subclasses to perform provider-specific JSON transformations
+        /// (e.g., extracting usage data from vendor-specific fields).
+        /// </summary>
+        /// <param name="chunk">The raw JSON element from the SSE stream.</param>
+        /// <returns>The JSON string to deserialize into a ChatCompletionChunk.</returns>
+        protected virtual string TransformChunkJson(JsonElement chunk)
+            => chunk.GetRawText();
+
+        /// <summary>
         /// Streams chunks progressively without buffering them into a list
         /// </summary>
-        private async IAsyncEnumerable<CoreModels.ChatCompletionChunk> StreamChunksProgressivelyAsync(
+        protected virtual async IAsyncEnumerable<CoreModels.ChatCompletionChunk> StreamChunksProgressivelyAsync(
             CoreModels.ChatCompletionRequest request,
             string? apiKey = null,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -104,8 +114,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                         yield break;
                     }
 
-                    // Deserialize the raw JSON directly to our chunk type, preserving ALL fields
-                    var chunkJson = chunk.GetRawText();
+                    // Transform the raw JSON (allows subclasses to inject provider-specific processing)
+                    var chunkJson = TransformChunkJson(chunk);
                     var mappedChunk = System.Text.Json.JsonSerializer.Deserialize<CoreModels.ChatCompletionChunk>(
                         chunkJson, DefaultJsonOptions);
                     

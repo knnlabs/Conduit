@@ -1,15 +1,9 @@
-using System.Runtime.CompilerServices;
-
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 
-using CoreUtils = ConduitLLM.Core.Utilities;
-
 using CoreModels = ConduitLLM.Core.Models;
-
-using OpenAI = ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.Groq
 {
@@ -56,115 +50,10 @@ namespace ConduitLLM.Providers.Groq
         }
 
         /// <summary>
-        /// Streams a chat completion with enhanced error handling specific to Groq.
+        /// Transforms raw chunk JSON to extract Groq's x_groq.usage into the standard usage field.
         /// </summary>
-        /// <param name="request">The chat completion request.</param>
-        /// <param name="apiKey">Optional API key to override the one in credentials.</param>
-        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-        /// <returns>An async enumerable of chat completion chunks.</returns>
-        /// <exception cref="LLMCommunicationException">Thrown when there is a communication error with Groq.</exception>
-        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
-            ChatCompletionRequest request,
-            string? apiKey = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            ValidateRequest(request, "StreamChatCompletion");
-
-            // Stream chunks progressively with Groq-specific processing
-            await foreach (var chunk in StreamChunksProgressivelyAsync(request, apiKey, cancellationToken).WithCancellation(cancellationToken))
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    yield break;
-                }
-
-                yield return chunk;
-            }
-        }
-
-        /// <summary>
-        /// Streams chunks progressively with Groq-specific processing to extract usage from x_groq field.
-        /// </summary>
-        private async IAsyncEnumerable<ChatCompletionChunk> StreamChunksProgressivelyAsync(
-            ChatCompletionRequest request,
-            string? apiKey = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            HttpClient? client = null;
-            HttpResponseMessage? response = null;
-            
-            try
-            {
-                client = CreateHttpClient(apiKey);
-                var openAiRequest = PrepareStreamingRequest(request);
-                var endpoint = GetChatCompletionEndpoint();
-
-                Logger.LogDebug("Sending streaming chat completion request to Groq at {Endpoint}", endpoint);
-
-                response = await CoreUtils.HttpClientHelper.SendStreamingRequestAsync(
-                    client,
-                    HttpMethod.Post,
-                    endpoint,
-                    openAiRequest,
-                    CreateStandardHeaders(apiKey),
-                    DefaultJsonOptions,
-                    Logger,
-                    cancellationToken);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Process the error with enhanced error extraction
-                var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
-                Logger.LogError(ex, "Error in streaming chat completion from Groq: {Message}", enhancedErrorMessage);
-
-                var error = CoreUtils.ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
-                
-                // Clean up resources
-                response?.Dispose();
-                client?.Dispose();
-                
-                throw error;
-            }
-            
-            // If we get here, we have a response to stream
-            if (response != null)
-            {
-                // Stream chunks progressively using StreamHelper - use JsonElement for raw passthrough
-                await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<System.Text.Json.JsonElement>(
-                    response, Logger, DefaultJsonOptions, cancellationToken))
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        response.Dispose();
-                        client?.Dispose();
-                        yield break;
-                    }
-
-                    // Process the raw JSON to extract x_groq.usage and map it to standard usage field
-                    var processedJson = ProcessGroqChunkJson(chunk);
-                    
-                    // Deserialize the processed JSON to our chunk type
-                    var mappedChunk = System.Text.Json.JsonSerializer.Deserialize<ChatCompletionChunk>(
-                        processedJson, DefaultJsonOptions);
-                    
-                    if (mappedChunk != null)
-                    {
-                        // Preserve the original model alias if provided
-                        if (!string.IsNullOrEmpty(request.Model))
-                        {
-                            mappedChunk.Model = request.Model;
-                            mappedChunk.OriginalModelAlias = request.Model;
-                        }
-                        
-                        yield return mappedChunk;
-                    }
-                }
-                
-                // Clean up after successful streaming
-                response.Dispose();
-                client?.Dispose();
-            }
-        }
+        protected override string TransformChunkJson(System.Text.Json.JsonElement chunk)
+            => ProcessGroqChunkJson(chunk);
 
         /// <summary>
         /// Processes a Groq chunk JSON to extract x_groq.usage and map it to the standard usage field.
@@ -235,40 +124,6 @@ namespace ConduitLLM.Providers.Groq
             
             // Return original JSON if no x_groq.usage found or processing failed
             return chunk.GetRawText();
-        }
-
-        /// <summary>
-        /// Prepares a request for streaming by ensuring the stream parameter is set to true.
-        /// </summary>
-        private object PrepareStreamingRequest(ChatCompletionRequest request)
-        {
-            var openAiRequest = MapToOpenAIRequest(request);
-
-            // Force stream parameter to true based on the request's type
-            if (openAiRequest is System.Text.Json.JsonElement jsonElement)
-            {
-                var jsonObject = jsonElement.GetRawText();
-                var tempObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jsonObject, DefaultJsonOptions);
-                if (tempObj != null)
-                {
-                    tempObj["stream"] = true;
-                    return tempObj;
-                }
-                return jsonElement;
-            }
-            else if (openAiRequest is Dictionary<string, object> dictObj)
-            {
-                dictObj["stream"] = true;
-                return dictObj;
-            }
-            else if (openAiRequest is OpenAI.OpenAIChatCompletionRequest reqObj)
-            {
-                reqObj = reqObj with { Stream = true };
-                return reqObj;
-            }
-
-            // If we can't determine the type, return the original request
-            return openAiRequest;
         }
 
         /// <summary>
