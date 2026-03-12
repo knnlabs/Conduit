@@ -37,8 +37,8 @@ namespace ConduitLLM.Admin.Services
             IModelCostRepository modelCostRepository,
             IRequestLogRepository requestLogRepository,
             IDbContextFactory<ConduitDbContext> dbContextFactory,
-            IPublishEndpoint? publishEndpoint,
-            ILogger<AdminModelCostService> logger)
+            ILogger<AdminModelCostService> logger,
+            IPublishEndpoint? publishEndpoint = null)
             : base(publishEndpoint, logger)
         {
             _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));

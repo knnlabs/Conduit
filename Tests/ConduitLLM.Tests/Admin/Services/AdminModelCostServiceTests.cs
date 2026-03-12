@@ -42,8 +42,8 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockModelCostRepository.Object,
                 _mockRequestLogRepository.Object,
                 _mockDbContextFactory.Object,
-                _mockPublishEndpoint.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockPublishEndpoint.Object);
         }
 
         public void Dispose()

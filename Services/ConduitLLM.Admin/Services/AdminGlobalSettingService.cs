@@ -26,8 +26,8 @@ namespace ConduitLLM.Admin.Services
         /// <param name="logger">The logger</param>
         public AdminGlobalSettingService(
             IGlobalSettingRepository globalSettingRepository,
-            IPublishEndpoint? publishEndpoint,
-            ILogger<AdminGlobalSettingService> logger)
+            ILogger<AdminGlobalSettingService> logger,
+            IPublishEndpoint? publishEndpoint = null)
             : base(publishEndpoint, logger)
         {
             _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));

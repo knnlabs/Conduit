@@ -43,12 +43,12 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockVirtualKeyRepository.Object,
                 _mockSpendHistoryRepository.Object,
                 _mockGroupRepository.Object,
-                _mockCache.Object,
-                _mockPublishEndpoint.Object,
                 _mockLogger.Object,
                 _mockModelProviderMappingRepository.Object,
                 _mockModelCapabilityService.Object,
                 _mockDbContextFactory.Object,
+                _mockCache.Object,
+                _mockPublishEndpoint.Object,
                 _mockMediaLifecycleService.Object);
         }
     }

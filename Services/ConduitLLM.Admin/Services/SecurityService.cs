@@ -18,7 +18,7 @@ namespace ConduitLLM.Admin.Services
         private readonly ILogger<SecurityService> _logger;
         private readonly IMemoryCache _memoryCache;
         private readonly IDistributedCache? _distributedCache;
-        private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly IServiceScopeFactory? _serviceScopeFactory;
 
         // Cache keys - same as WebAdmin for shared tracking
         private const string RATE_LIMIT_PREFIX = "rate_limit:";
@@ -36,8 +36,8 @@ namespace ConduitLLM.Admin.Services
             IConfiguration configuration,
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
-            IDistributedCache? distributedCache,
-            IServiceScopeFactory serviceScopeFactory)
+            IDistributedCache? distributedCache = null,
+            IServiceScopeFactory? serviceScopeFactory = null)
         {
             _options = options.Value;
             _configuration = configuration;
@@ -403,6 +403,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Also check database-based IP filters
+            if (_serviceScopeFactory == null) return new SecurityCheckResult { IsAllowed = true };
             using var scope = _serviceScopeFactory.CreateScope();
             var ipFilterService = scope.ServiceProvider.GetRequiredService<IAdminIpFilterService>();
             var isAllowedByDb = await ipFilterService.IsIpAllowedAsync(ipAddress);

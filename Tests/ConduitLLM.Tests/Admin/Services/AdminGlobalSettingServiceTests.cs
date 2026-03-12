@@ -24,8 +24,8 @@ public class AdminGlobalSettingServiceTests
 
         _service = new AdminGlobalSettingService(
             _mockGlobalSettingRepository.Object,
-            _mockPublishEndpoint.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockPublishEndpoint.Object);
     }
 
     [Fact]

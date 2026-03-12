@@ -43,8 +43,8 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
         IIpFilterRepository ipFilterRepository,
         IGlobalSettingRepository globalSettingRepository,
         IOptionsMonitor<IpFilterOptions> ipFilterOptions,
-        IPublishEndpoint? publishEndpoint,
-        ILogger<AdminIpFilterService> logger)
+        ILogger<AdminIpFilterService> logger,
+        IPublishEndpoint? publishEndpoint = null)
         : base(publishEndpoint, logger)
     {
         _ipFilterRepository = ipFilterRepository ?? throw new ArgumentNullException(nameof(ipFilterRepository));

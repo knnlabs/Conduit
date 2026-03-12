@@ -34,8 +34,8 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
         IModelProviderMappingRepository mappingRepository,
         IProviderRepository providerRepository,
         IModelRepository modelRepository,
-        IPublishEndpoint? publishEndpoint,
-        ILogger<AdminModelProviderMappingService> logger)
+        ILogger<AdminModelProviderMappingService> logger,
+        IPublishEndpoint? publishEndpoint = null)
         : base(publishEndpoint, logger)
     {
         _mappingRepository = mappingRepository ?? throw new ArgumentNullException(nameof(mappingRepository));

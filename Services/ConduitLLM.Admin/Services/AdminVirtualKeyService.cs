@@ -52,12 +52,12 @@ namespace ConduitLLM.Admin.Services
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IVirtualKeyGroupRepository groupRepository,
-            IVirtualKeyCache? cache,
-            IPublishEndpoint? publishEndpoint,
             ILogger<AdminVirtualKeyService> logger,
             IModelProviderMappingRepository modelProviderMappingRepository,
             IModelCapabilityService modelCapabilityService,
             IDbContextFactory<ConduitDbContext> dbContextFactory,
+            IVirtualKeyCache? cache = null,
+            IPublishEndpoint? publishEndpoint = null,
             IMediaLifecycleService? mediaLifecycleService = null)
             : base(publishEndpoint, logger)
         {
