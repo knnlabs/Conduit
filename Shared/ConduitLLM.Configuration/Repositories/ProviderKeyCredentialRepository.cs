@@ -44,19 +44,6 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
     }
 
     /// <inheritdoc/>
-    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    public async Task<List<ProviderKeyCredential>> GetAllAsync()
-    {
-        return await ExecuteAsync(async context =>
-        {
-            var query = GetDbSet(context).AsNoTracking();
-            query = ApplyDefaultIncludes(query);
-            query = ApplyDefaultOrdering(query);
-            return await query.ToListAsync();
-        });
-    }
-
-    /// <inheritdoc/>
     [Obsolete("Use GetByProviderIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     public async Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int providerId)
     {

@@ -37,14 +37,6 @@ public class IpFilterRepository : RepositoryBase<IpFilterEntity, int>, IIpFilter
     }
 
     /// <inheritdoc/>
-    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries.")]
-    public async Task<IEnumerable<IpFilterEntity>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        // Delegate to the base class GetAllUnboundedAsync to avoid code duplication
-        return await GetAllUnboundedAsync(cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public async Task<IEnumerable<IpFilterEntity>> GetEnabledAsync(CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>

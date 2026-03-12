@@ -10,15 +10,6 @@ namespace ConduitLLM.Configuration.Interfaces
     public interface IRequestLogRepository : IRepositoryBase<RequestLog, int>
     {
         /// <summary>
-        /// Gets all request logs
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A list of all request logs</returns>
-        /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
-        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        Task<List<RequestLog>> GetAllAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets request logs for a specific virtual key
         /// </summary>
         /// <param name="virtualKeyId">The virtual key ID</param>

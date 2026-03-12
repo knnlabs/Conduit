@@ -51,14 +51,6 @@ public class GlobalSettingRepository : RepositoryBase<GlobalSetting, int>, IGlob
     }
 
     /// <inheritdoc/>
-    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries.")]
-    public async Task<List<GlobalSetting>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        // Delegate to the base class GetAllUnboundedAsync to avoid code duplication
-        return await GetAllUnboundedAsync(cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public async Task<bool> UpsertAsync(string key, string value, string? description = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(key))

@@ -9,18 +9,6 @@ namespace ConduitLLM.Configuration.Interfaces;
 public interface IIpFilterRepository : IRepositoryBase<IpFilterEntity, int>
 {
     /// <summary>
-    /// Gets all IP filters ordered by filter type and IP address.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>A collection of all IP filters</returns>
-    /// <remarks>
-    /// DEPRECATED: Use GetAllUnboundedAsync() from IRepositoryBase for unbounded queries,
-    /// or GetPaginatedAsync() for bounded pagination.
-    /// </remarks>
-    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries. This method will be removed in a future version.")]
-    Task<IEnumerable<IpFilterEntity>> GetAllAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets all enabled IP filters ordered by filter type and IP address.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>

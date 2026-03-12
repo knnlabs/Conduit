@@ -369,5 +369,12 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         }, cancellationToken, "getting all (unbounded)");
     }
 
+    /// <inheritdoc/>
+    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries.")]
+    public virtual async Task<List<TEntity>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await GetAllUnboundedAsync(cancellationToken);
+    }
+
     #endregion
 }

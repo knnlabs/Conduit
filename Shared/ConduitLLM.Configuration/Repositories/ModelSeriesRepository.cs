@@ -45,18 +45,6 @@ public class ModelSeriesRepository : RepositoryBase<ModelSeries, int>, IModelSer
     }
 
     /// <inheritdoc/>
-    public async Task<List<ModelSeries>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        return await ExecuteAsync(async context =>
-        {
-            return await GetDbSet(context)
-                .AsNoTracking()
-                .OrderBy(s => s.Name)
-                .ToListAsync(cancellationToken);
-        }, cancellationToken, "getting all");
-    }
-
-    /// <inheritdoc/>
     public async Task<List<ModelSeries>> GetAllWithAuthorAsync(CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>

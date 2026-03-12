@@ -34,19 +34,6 @@ public class ModelAuthorRepository : RepositoryBase<ModelAuthor, int>, IModelAut
     }
 
     /// <inheritdoc/>
-    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    public async Task<List<ModelAuthor>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        return await ExecuteAsync(async context =>
-        {
-            return await GetDbSet(context)
-                .AsNoTracking()
-                .OrderBy(a => a.Name)
-                .ToListAsync(cancellationToken);
-        }, cancellationToken, "getting all");
-    }
-
-    /// <inheritdoc/>
     public async Task<ModelAuthor?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>

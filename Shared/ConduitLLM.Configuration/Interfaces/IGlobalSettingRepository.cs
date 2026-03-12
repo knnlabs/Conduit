@@ -17,18 +17,6 @@ public interface IGlobalSettingRepository : IRepositoryBase<GlobalSetting, int>
     Task<GlobalSetting?> GetByKeyAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all global settings.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>A list of all global settings</returns>
-    /// <remarks>
-    /// DEPRECATED: Use GetAllUnboundedAsync() from IRepositoryBase for unbounded queries,
-    /// or GetPaginatedAsync() for bounded pagination.
-    /// </remarks>
-    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries. This method will be removed in a future version.")]
-    Task<List<GlobalSetting>> GetAllAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Updates or creates a global setting.
     /// </summary>
     /// <param name="key">The setting key</param>

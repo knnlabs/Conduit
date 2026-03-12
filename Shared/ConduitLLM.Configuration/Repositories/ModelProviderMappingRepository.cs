@@ -65,20 +65,6 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        public async Task<List<ModelProviderMapping>> GetAllAsync(
-            CancellationToken cancellationToken = default)
-        {
-            return await ExecuteAsync(async context =>
-            {
-                var query = GetDbSet(context).AsNoTracking();
-                query = ApplyDefaultIncludes(query);
-                query = ApplyDefaultOrdering(query);
-                return await query.ToListAsync(cancellationToken);
-            }, cancellationToken, "getting all");
-        }
-
-        /// <inheritdoc/>
         [Obsolete("Use GetByProviderPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<ModelProviderMapping>> GetByProviderAsync(
             ProviderType providerType,

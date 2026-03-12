@@ -147,19 +147,6 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
     }
 
     /// <inheritdoc />
-    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    public async Task<List<VirtualKeyGroup>> GetAllAsync()
-    {
-        return await ExecuteAsync(async context =>
-        {
-            var query = GetDbSet(context).AsNoTracking();
-            query = ApplyDefaultIncludes(query);
-            query = ApplyDefaultOrdering(query);
-            return await query.ToListAsync();
-        });
-    }
-
-    /// <inheritdoc />
     public async Task<decimal> AdjustBalanceAsync(int groupId, decimal amount)
     {
         return await AdjustBalanceAsync(groupId, amount, null, null, ReferenceType.Manual, null);

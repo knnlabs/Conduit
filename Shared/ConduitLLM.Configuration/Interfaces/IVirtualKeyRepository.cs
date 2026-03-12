@@ -51,33 +51,6 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<VirtualKey?> GetByKeyHashAsync(string keyHash, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Retrieves all virtual key entities in the system.
-        /// </summary>
-        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-        /// <returns>
-        /// A task that represents the asynchronous operation. The task result contains
-        /// a list of all virtual key entities, ordered by key name.
-        /// </returns>
-        /// <remarks>
-        /// <para>
-        /// This method returns all virtual keys sorted alphabetically by their key names.
-        /// It is primarily used by administrative interfaces to display and manage all
-        /// virtual keys in the system.
-        /// </para>
-        /// <para>
-        /// The method performs a non-tracking query, meaning the entities returned are not
-        /// tracked by the Entity Framework change tracker. This is suitable for read-only
-        /// scenarios and improves performance, especially when dealing with potentially
-        /// large numbers of entities.
-        /// </para>
-        /// <para>
-        /// This method is obsolete. Use GetPaginatedAsync instead for better performance.
-        /// </para>
-        /// </remarks>
-        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        Task<List<VirtualKey>> GetAllAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Retrieves all virtual key entities belonging to a specific group.
         /// </summary>
         /// <param name="virtualKeyGroupId">The ID of the virtual key group.</param>

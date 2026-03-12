@@ -41,20 +41,6 @@ public class ProviderRepository : RepositoryBase<Provider, int>, IProviderReposi
     }
 
     /// <inheritdoc/>
-    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    public async Task<List<Provider>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        return await ExecuteAsync(async context =>
-        {
-            return await GetDbSet(context)
-                .Include(p => p.ProviderKeyCredentials)
-                .AsNoTracking()
-                .OrderBy(p => p.ProviderType)
-                .ToListAsync(cancellationToken);
-        }, cancellationToken, "getting all");
-    }
-
-    /// <inheritdoc/>
     public async Task<Dictionary<int, string>> GetProviderNameMapAsync(CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>

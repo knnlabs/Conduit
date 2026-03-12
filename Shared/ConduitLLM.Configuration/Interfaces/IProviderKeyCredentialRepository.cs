@@ -9,13 +9,6 @@ namespace ConduitLLM.Configuration.Interfaces
     public interface IProviderKeyCredentialRepository : IRepositoryBase<ProviderKeyCredential, int>
     {
         /// <summary>
-        /// Get all key credentials across all providers
-        /// </summary>
-        /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
-        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        Task<List<ProviderKeyCredential>> GetAllAsync();
-
-        /// <summary>
         /// Get all key credentials for a provider
         /// </summary>
         /// <remarks>This method is obsolete. Use GetByProviderIdPaginatedAsync instead for better performance.</remarks>

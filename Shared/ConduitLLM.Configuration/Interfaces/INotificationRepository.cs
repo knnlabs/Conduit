@@ -9,15 +9,6 @@ namespace ConduitLLM.Configuration.Interfaces;
 public interface INotificationRepository : IRepositoryBase<Notification, int>
 {
     /// <summary>
-    /// Gets all notifications.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>A list of all notifications</returns>
-    /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
-    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    Task<List<Notification>> GetAllAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets unread notifications.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>

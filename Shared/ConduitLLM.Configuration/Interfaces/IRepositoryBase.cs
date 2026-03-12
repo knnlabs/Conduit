@@ -80,4 +80,12 @@ public interface IRepositoryBase<TEntity, TKey>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of all entities</returns>
     Task<List<TEntity>> GetAllUnboundedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all entities. Delegates to GetAllUnboundedAsync().
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of all entities</returns>
+    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries.")]
+    Task<List<TEntity>> GetAllAsync(CancellationToken cancellationToken = default);
 }

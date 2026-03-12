@@ -18,13 +18,6 @@ public interface IModelSeriesRepository : IRepositoryBase<ModelSeries, int>
     Task<ModelSeries?> GetByIdWithAuthorAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all model series.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of all model series</returns>
-    Task<List<ModelSeries>> GetAllAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets all model series with author information.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>

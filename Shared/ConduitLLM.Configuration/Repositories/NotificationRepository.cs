@@ -42,27 +42,6 @@ public class NotificationRepository : RepositoryBase<Notification, int>, INotifi
     }
 
     /// <inheritdoc/>
-    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    public async Task<List<Notification>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .OrderByDescending(n => n.CreatedAt)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting all notifications");
-            throw;
-        }
-    }
-
-    /// <inheritdoc/>
     [Obsolete("Use GetUnreadPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
     public async Task<List<Notification>> GetUnreadAsync(CancellationToken cancellationToken = default)
     {

@@ -19,13 +19,6 @@ public interface IModelRepository : IRepositoryBase<Model, int>
     Task<Model?> GetByIdWithDetailsAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all models.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of all models</returns>
-    Task<List<Model>> GetAllAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets all models with their details (series, author, identifiers).
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>

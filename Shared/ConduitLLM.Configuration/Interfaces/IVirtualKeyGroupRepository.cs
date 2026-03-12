@@ -24,14 +24,6 @@ public interface IVirtualKeyGroupRepository : IRepositoryBase<VirtualKeyGroup, i
     Task<VirtualKeyGroup?> GetByKeyIdAsync(int virtualKeyId);
 
     /// <summary>
-    /// Gets all virtual key groups
-    /// </summary>
-    /// <returns>List of all virtual key groups</returns>
-    /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
-    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    Task<List<VirtualKeyGroup>> GetAllAsync();
-
-    /// <summary>
     /// Adjusts the balance of a virtual key group
     /// </summary>
     /// <param name="groupId">The group ID</param>

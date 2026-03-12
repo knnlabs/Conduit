@@ -17,15 +17,6 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<ModelCost?> GetByCostNameAsync(string costName, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets all model costs
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A list of all model costs</returns>
-        /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
-        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        Task<List<ModelCost>> GetAllAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets all model costs associated with a specific provider
         /// </summary>
         /// <param name="providerId">The provider ID to filter by</param>

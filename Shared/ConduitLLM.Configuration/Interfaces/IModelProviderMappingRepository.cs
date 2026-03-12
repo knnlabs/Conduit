@@ -33,15 +33,6 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<Entities.ModelProviderMapping?> GetByModelNameAsync(string modelName, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets all model provider mappings
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A list of all model provider mappings</returns>
-        /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
-        [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        Task<List<Entities.ModelProviderMapping>> GetAllAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets all model provider mappings for a specific provider
         /// </summary>
         /// <param name="providerType">The provider type</param>

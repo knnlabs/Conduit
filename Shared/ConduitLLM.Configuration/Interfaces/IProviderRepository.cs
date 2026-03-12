@@ -9,15 +9,6 @@ namespace ConduitLLM.Configuration.Interfaces;
 public interface IProviderRepository : IRepositoryBase<Provider, int>
 {
     /// <summary>
-    /// Gets all providers.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>A list of all providers</returns>
-    /// <remarks>This method is obsolete. Use GetPaginatedAsync instead for better performance.</remarks>
-    [Obsolete("Use GetPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    Task<List<Provider>> GetAllAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets a dictionary mapping provider IDs to their names.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
