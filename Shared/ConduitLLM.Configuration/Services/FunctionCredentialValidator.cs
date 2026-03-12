@@ -1,101 +1,37 @@
+using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Configuration.Services;
 
 /// <summary>
-/// Validates business rules for FunctionCredential operations.
-/// Mirrors the validation patterns used in ProviderKeyCredentialValidator.
+/// Validates business rules for FunctionCredential operations
 /// </summary>
-public class FunctionCredentialValidator
+public class FunctionCredentialValidator : CredentialValidatorBase<FunctionCredential>
 {
-    private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-    private const int MaxCredentialsPerProviderType = 32;
+    protected override int MaxPerGroup => 32;
+    protected override string EntityName => "credential";
+    protected override string GroupName => "Provider type";
+    protected override DbSet<FunctionCredential> GetDbSet(ConduitDbContext context) => context.FunctionCredentials;
 
     public FunctionCredentialValidator(IDbContextFactory<ConduitDbContext> dbContextFactory)
-    {
-        _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-    }
+        : base(dbContextFactory) { }
 
     /// <summary>
     /// Validates if a new credential can be added to a provider type
     /// </summary>
-    public async Task<ValidationResult> ValidateAddCredentialAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
-    {
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var currentCredentialCount = await dbContext.FunctionCredentials
-            .CountAsync(c => c.ProviderType == providerType, cancellationToken);
-
-        if (currentCredentialCount >= MaxCredentialsPerProviderType)
-        {
-            return ValidationResult.Failure($"Provider type already has the maximum of {MaxCredentialsPerProviderType} credentials");
-        }
-
-        return ValidationResult.Success();
-    }
-
-    /// <summary>
-    /// Validates if a credential can be set as primary
-    /// </summary>
-    public async Task<ValidationResult> ValidateSetPrimaryAsync(int credentialId, CancellationToken cancellationToken = default)
-    {
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var credential = await dbContext.FunctionCredentials
-            .FirstOrDefaultAsync(c => c.Id == credentialId, cancellationToken);
-
-        if (credential == null)
-        {
-            return ValidationResult.Failure("Credential not found");
-        }
-
-        if (!credential.IsEnabled)
-        {
-            return ValidationResult.Failure("Cannot set a disabled credential as primary");
-        }
-
-        return ValidationResult.Success();
-    }
+    public Task<ValidationResult> ValidateAddCredentialAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
+        => ValidateAddAsync(c => c.ProviderType == providerType, cancellationToken);
 
     /// <summary>
     /// Validates if a credential can be disabled
     /// </summary>
-    public async Task<ValidationResult> ValidateDisableCredentialAsync(int credentialId, CancellationToken cancellationToken = default)
-    {
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var credential = await dbContext.FunctionCredentials
-            .FirstOrDefaultAsync(c => c.Id == credentialId, cancellationToken);
-
-        if (credential == null)
-        {
-            return ValidationResult.Failure("Credential not found");
-        }
-
-        if (credential.IsPrimary)
-        {
-            return ValidationResult.Failure("Cannot disable a primary credential. Set another credential as primary first.");
-        }
-
-        return ValidationResult.Success();
-    }
+    public Task<ValidationResult> ValidateDisableCredentialAsync(int credentialId, CancellationToken cancellationToken = default)
+        => ValidateDisableAsync(credentialId, cancellationToken);
 
     /// <summary>
     /// Ensures at least one credential is enabled for a provider type
     /// </summary>
-    public async Task<ValidationResult> ValidateProviderTypeHasEnabledCredentialAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
-    {
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var hasEnabledCredential = await dbContext.FunctionCredentials
-            .AnyAsync(c => c.ProviderType == providerType && c.IsEnabled, cancellationToken);
-
-        if (!hasEnabledCredential)
-        {
-            return ValidationResult.Failure("Provider type must have at least one enabled credential");
-        }
-
-        return ValidationResult.Success();
-    }
+    public Task<ValidationResult> ValidateProviderTypeHasEnabledCredentialAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
+        => ValidateHasEnabledAsync(c => c.ProviderType == providerType && c.IsEnabled, cancellationToken);
 }
