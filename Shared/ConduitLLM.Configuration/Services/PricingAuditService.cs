@@ -2,7 +2,6 @@ using System.Text.Json;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services;
@@ -63,31 +62,16 @@ public class PricingAuditService : BatchAuditServiceBase<PricingAuditEvent>, IPr
         int pageNumber = 1,
         int pageSize = 100)
     {
-        using var scope = ServiceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-        var query = context.PricingAuditEvents
-            .AsNoTracking()
-            .Where(e => e.Timestamp >= from && e.Timestamp <= to);
-
-        if (virtualKeyId.HasValue)
-            query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
-
-        if (!string.IsNullOrEmpty(modelId))
-            query = query.Where(e => e.ModelId == modelId);
-
-        if (!string.IsNullOrEmpty(pricingType))
-            query = query.Where(e => e.PricingType == pricingType);
-
-        var totalCount = await query.CountAsync();
-
-        var events = await query
-            .OrderByDescending(e => e.Timestamp)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        return (events, totalCount);
+        return await GetPagedEventsAsync(from, to, pageNumber, pageSize, query =>
+        {
+            if (virtualKeyId.HasValue)
+                query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
+            if (!string.IsNullOrEmpty(modelId))
+                query = query.Where(e => e.ModelId == modelId);
+            if (!string.IsNullOrEmpty(pricingType))
+                query = query.Where(e => e.PricingType == pricingType);
+            return query;
+        });
     }
 
     /// <inheritdoc/>
@@ -96,14 +80,12 @@ public class PricingAuditService : BatchAuditServiceBase<PricingAuditEvent>, IPr
         if (string.IsNullOrEmpty(requestId))
             return new List<PricingAuditEvent>();
 
-        using var scope = ServiceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-        return await context.PricingAuditEvents
-            .AsNoTracking()
-            .Where(e => e.RequestId == requestId)
-            .OrderByDescending(e => e.Timestamp)
-            .ToListAsync();
+        return await ExecuteQueryAsync(context =>
+            context.PricingAuditEvents
+                .AsNoTracking()
+                .Where(e => e.RequestId == requestId)
+                .OrderByDescending(e => e.Timestamp)
+                .ToListAsync());
     }
 
     /// <inheritdoc/>
@@ -112,17 +94,12 @@ public class PricingAuditService : BatchAuditServiceBase<PricingAuditEvent>, IPr
         DateTime to,
         int? virtualKeyId = null)
     {
-        using var scope = ServiceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-        var query = context.PricingAuditEvents
-            .AsNoTracking()
-            .Where(e => e.Timestamp >= from && e.Timestamp <= to);
-
-        if (virtualKeyId.HasValue)
-            query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
-
-        var events = await query.ToListAsync();
+        var events = await GetFilteredEventsAsync(from, to, query =>
+        {
+            if (virtualKeyId.HasValue)
+                query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
+            return query;
+        });
 
         var summary = new PricingAuditSummary
         {

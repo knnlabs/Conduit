@@ -1,9 +1,7 @@
-using ConduitLLM.Configuration;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services;
@@ -92,42 +90,18 @@ public class FunctionCallAuditService : BatchAuditServiceBase<FunctionCallAudit>
         int pageNumber = 1,
         int pageSize = 100)
     {
-        using var scope = ServiceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-        var query = dbContext.FunctionCallAudits
-            .AsNoTracking()
-            .Where(e => e.Timestamp >= from && e.Timestamp <= to);
-
-        if (eventType.HasValue)
+        return await GetPagedEventsAsync(from, to, pageNumber, pageSize, query =>
         {
-            query = query.Where(e => e.EventType == eventType.Value);
-        }
-
-        if (virtualKeyId.HasValue)
-        {
-            query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
-        }
-
-        if (functionConfigurationId.HasValue)
-        {
-            query = query.Where(e => e.FunctionConfigurationId == functionConfigurationId.Value);
-        }
-
-        if (chatCompletionId.HasValue)
-        {
-            query = query.Where(e => e.ChatCompletionId == chatCompletionId.Value);
-        }
-
-        var totalCount = await query.CountAsync();
-
-        var events = await query
-            .OrderByDescending(e => e.Timestamp)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        return (events, totalCount);
+            if (eventType.HasValue)
+                query = query.Where(e => e.EventType == eventType.Value);
+            if (virtualKeyId.HasValue)
+                query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
+            if (functionConfigurationId.HasValue)
+                query = query.Where(e => e.FunctionConfigurationId == functionConfigurationId.Value);
+            if (chatCompletionId.HasValue)
+                query = query.Where(e => e.ChatCompletionId == chatCompletionId.Value);
+            return query;
+        });
     }
 
     /// <inheritdoc/>
@@ -136,42 +110,38 @@ public class FunctionCallAuditService : BatchAuditServiceBase<FunctionCallAudit>
         DateTime to,
         int? virtualKeyId = null)
     {
-        using var scope = ServiceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-        var query = dbContext.FunctionCallAudits
-            .AsNoTracking()
-            .Where(e => e.Timestamp >= from && e.Timestamp <= to);
-
-        if (virtualKeyId.HasValue)
+        return await ExecuteQueryAsync(async context =>
         {
-            query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
-        }
+            var events = await GetFilteredEventsAsync(from, to, query =>
+            {
+                if (virtualKeyId.HasValue)
+                    query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
+                return query;
+            });
 
-        var events = await query.ToListAsync();
+            var summary = new FunctionCallAuditSummary
+            {
+                TotalFunctionCalls = events.Count,
+                SuccessfulCalls = events.Count(e => e.EventType == FunctionCallAuditEventType.FunctionCallExecutionCompleted),
+                FailedCalls = events.Count(e => e.EventType == FunctionCallAuditEventType.FunctionCallExecutionFailed),
+                TotalCost = events.Where(e => e.Cost.HasValue).Sum(e => e.Cost!.Value),
+                CallsByEventType = events.GroupBy(e => e.EventType)
+                    .ToDictionary(g => g.Key, g => g.Count())
+            };
 
-        var summary = new FunctionCallAuditSummary
-        {
-            TotalFunctionCalls = events.Count,
-            SuccessfulCalls = events.Count(e => e.EventType == FunctionCallAuditEventType.FunctionCallExecutionCompleted),
-            FailedCalls = events.Count(e => e.EventType == FunctionCallAuditEventType.FunctionCallExecutionFailed),
-            TotalCost = events.Where(e => e.Cost.HasValue).Sum(e => e.Cost!.Value),
-            CallsByEventType = events.GroupBy(e => e.EventType)
-                .ToDictionary(g => g.Key, g => g.Count())
-        };
+            // Get calls by function configuration
+            var functionConfigs = await context.FunctionConfigurations
+                .Where(fc => events.Select(e => e.FunctionConfigurationId).Contains(fc.Id))
+                .ToDictionaryAsync(fc => fc.Id, fc => fc.ConfigurationName);
 
-        // Get calls by function configuration
-        var functionConfigs = await dbContext.FunctionConfigurations
-            .Where(fc => events.Select(e => e.FunctionConfigurationId).Contains(fc.Id))
-            .ToDictionaryAsync(fc => fc.Id, fc => fc.ConfigurationName);
+            summary.CallsByFunction = events
+                .GroupBy(e => e.FunctionConfigurationId)
+                .ToDictionary(
+                    g => functionConfigs.TryGetValue(g.Key, out var name) ? name : $"Unknown ({g.Key})",
+                    g => g.Count());
 
-        summary.CallsByFunction = events
-            .GroupBy(e => e.FunctionConfigurationId)
-            .ToDictionary(
-                g => functionConfigs.TryGetValue(g.Key, out var name) ? name : $"Unknown ({g.Key})",
-                g => g.Count());
-
-        return summary;
+            return summary;
+        });
     }
 
     #endregion

@@ -338,6 +338,89 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
 
     #endregion
 
+    #region Query Template Methods
+
+    /// <summary>
+    /// Executes a paginated query with time-range filtering and optional domain-specific filters.
+    /// Handles scope creation, AsNoTracking, count, ordering by Timestamp desc, and Skip/Take.
+    /// </summary>
+    /// <param name="from">Start date (inclusive)</param>
+    /// <param name="to">End date (inclusive)</param>
+    /// <param name="pageNumber">Page number (1-based)</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <param name="additionalFilters">Optional function to apply domain-specific filters</param>
+    /// <returns>Tuple of paged events and total count</returns>
+    protected async Task<(List<TEvent> Events, int TotalCount)> GetPagedEventsAsync(
+        DateTime from,
+        DateTime to,
+        int pageNumber,
+        int pageSize,
+        Func<IQueryable<TEvent>, IQueryable<TEvent>>? additionalFilters = null)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+
+        var query = GetDbSet(context)
+            .AsNoTracking()
+            .Where(e => e.Timestamp >= from && e.Timestamp <= to);
+
+        if (additionalFilters != null)
+            query = additionalFilters(query);
+
+        var totalCount = await query.CountAsync();
+
+        var events = await query
+            .OrderByDescending(e => e.Timestamp)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (events, totalCount);
+    }
+
+    /// <summary>
+    /// Executes a query with time-range filtering and optional domain-specific filters,
+    /// returning all matching events materialized to a list. Useful for summary aggregation.
+    /// </summary>
+    /// <param name="from">Start date (inclusive)</param>
+    /// <param name="to">End date (inclusive)</param>
+    /// <param name="additionalFilters">Optional function to apply domain-specific filters</param>
+    /// <returns>List of matching events</returns>
+    protected async Task<List<TEvent>> GetFilteredEventsAsync(
+        DateTime from,
+        DateTime to,
+        Func<IQueryable<TEvent>, IQueryable<TEvent>>? additionalFilters = null)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+
+        var query = GetDbSet(context)
+            .AsNoTracking()
+            .Where(e => e.Timestamp >= from && e.Timestamp <= to);
+
+        if (additionalFilters != null)
+            query = additionalFilters(query);
+
+        return await query.ToListAsync();
+    }
+
+    /// <summary>
+    /// Executes an arbitrary query against the DbContext with automatic scope management.
+    /// Use for domain-specific queries that don't fit the paginated/filtered patterns.
+    /// </summary>
+    /// <typeparam name="TResult">The query result type</typeparam>
+    /// <param name="queryFunc">Function that executes the query against the context</param>
+    /// <returns>The query result</returns>
+    protected async Task<TResult> ExecuteQueryAsync<TResult>(
+        Func<ConduitDbContext, Task<TResult>> queryFunc)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+        return await queryFunc(context);
+    }
+
+    #endregion
+
     #region Private Methods
 
     /// <summary>
