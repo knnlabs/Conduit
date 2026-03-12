@@ -15,7 +15,7 @@ Are you juggling multiple LLM provider APIs in your applications? ConduitLLM sol
 - **Vendor Independence**: Avoid lock-in to any single LLM provider
 - **Simplified API Management**: Centralized key management and usage tracking
 - **Cost Optimization**: Route requests to the most cost-effective or performant models
-- **🚀 Enterprise Scale**: Built to handle **10,000+ concurrent sessions** with a lean, efficient tech stack ([see scaling architecture](docs/Scaling-Architecture.md))
+- **🚀 Enterprise Scale**: Built to handle **10,000+ concurrent sessions** with a lean, efficient tech stack ([see scaling architecture](docs/architecture/infrastructure/scaling-architecture.md))
 
 ## Overview
 
@@ -130,7 +130,7 @@ environment:
   CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
 ```
 
-> **Important**: Direct database access mode (`CONDUIT_USE_ADMIN_API=false`) is deprecated and will be removed after October 2025. See [Migration Guide](docs/admin-api-migration-guide.md) for details.
+> **Important**: Direct database access mode (`CONDUIT_USE_ADMIN_API=false`) is deprecated and will be removed after October 2025.
 
 The WebAdmin includes a built-in health check indicator that monitors the connection to the Admin API:
 
@@ -180,6 +180,11 @@ services:
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
       CONDUIT_API_BASE_URL: http://api:8080
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
+      CONDUIT_API_EXTERNAL_URL: http://localhost:5000
+      CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
+      # Clerk authentication (required for production)
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: your_clerk_publishable_key
+      CLERK_SECRET_KEY: your_clerk_secret_key
     depends_on:
       - admin
       - api
@@ -192,9 +197,14 @@ services:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
       REDIS_URL: redis://redis:6379
+      CONDUITLLM__RABBITMQ__HOST: rabbitmq
+      CONDUITLLM__RABBITMQ__PORT: 5672
+      CONDUITLLM__RABBITMQ__USERNAME: conduit
+      CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
     depends_on:
       - postgres
       - redis
+      - rabbitmq
 
   api:
     image: ghcr.io/knnlabs/conduit-http:latest
@@ -203,6 +213,10 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       REDIS_URL: redis://redis:6379
+      CONDUITLLM__RABBITMQ__HOST: rabbitmq
+      CONDUITLLM__RABBITMQ__PORT: 5672
+      CONDUITLLM__RABBITMQ__USERNAME: conduit
+      CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
     depends_on:
       - postgres
       - redis
@@ -232,7 +246,7 @@ volumes:
   pgdata:
 ```
 
-> **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/docker-release.yml` for examples.
+> **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/release.yml` for examples.
 
 ## Database Configuration (PostgreSQL Only)
 
@@ -261,12 +275,12 @@ For more details, see the per-service README files.
 1. **Clone the repository**
    ```bash
    git clone https://github.com/knnlabs/Conduit.git
-   cd Conduit/WebAdmin
+   cd Conduit
    ```
 
 2. **Configure LLM Providers**
    - Add your provider API keys via:
-     - Environment variables (see `docs/Environment-Variables.md`)
+     - Environment variables (see [Documentation](docs/README.md))
      - Edit `appsettings.json`
      - Use the WebAdmin after startup
 
@@ -280,12 +294,16 @@ For more details, see the per-service README files.
    - **Local WebAdmin**: `http://localhost:3000`
    - **Local API Docs**: `http://localhost:5000/swagger` (Development Mode)
    
-   *Note: When running locally via `./scripts/start-dev.sh`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
+   *Note: When running locally via `./scripts/dev/start-dev.ps1`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
 
 ### Docker Installation
 
+Pull the individual service images:
+
 ```bash
-docker pull ghcr.io/knnlabs/conduit:latest
+docker pull ghcr.io/knnlabs/conduit-webadmin:latest
+docker pull ghcr.io/knnlabs/conduit-admin:latest
+docker pull ghcr.io/knnlabs/conduit-http:latest
 ```
 
 Or use with Docker Compose:
@@ -294,7 +312,7 @@ Or use with Docker Compose:
 docker compose up -d
 ```
 
-*Note: The default Docker configuration assumes ConduitLLM runs behind a reverse proxy that handles HTTPS termination. The container exposes HTTP ports only.*
+*Note: The default Docker configuration assumes ConduitLLM runs behind a reverse proxy that handles HTTPS termination. The containers expose HTTP ports only.*
 
 ### Environment Variables
 
@@ -385,7 +403,7 @@ CONDUIT_IP_BAN_DURATION_MINUTES=30
 2. **Clerk Authentication** - Configure Clerk publishable and secret keys for WebAdmin authentication
 3. **Session security** - Use a strong `SESSION_SECRET` for production deployments
 
-For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).
+For more configuration details, see the [Documentation](docs/README.md).
 
 ## Usage
 
@@ -473,64 +491,22 @@ See [Streaming with Tools Guide](docs/api-guides/streaming-with-tools.md) for co
 
 ## Documentation
 
-See the `docs/` directory for detailed documentation:
+See the **[Documentation Hub](docs/README.md)** for the complete, organized documentation index. Key sections include:
 
+| Area | Description |
+|------|-------------|
+| **[API Guides](docs/api-guides/)** | Gateway API, Admin API, SDK integration, function calling |
+| **[Architecture](docs/architecture/)** | System design, provider system, real-time features |
+| **[Development](docs/development/)** | Contributing, API patterns, LLM client factory |
+| **[Operations](docs/operations/)** | Monitoring, scaling, runbooks, security |
+| **[Model Pricing](docs/model-pricing/)** | Cost information across providers |
 
-### Core Documentation
-- [API Reference](docs/API-Reference.md)
-- [Architecture Overview](docs/Architecture-Overview.md)
-  - [Admin API Adapters](docs/Architecture/Admin-API-Adapters.md)
-  - [DTO Standardization](docs/Architecture/DTO-Standardization.md)
-  - [Repository Pattern](docs/Architecture/Repository-Pattern.md)
-- [🚀 Scaling Architecture](docs/Scaling-Architecture.md) - **10,000+ concurrent sessions architecture and roadmap**
-- [Getting Started](docs/Getting-Started.md)
-- [Current Status](docs/Current-Status.md)
-
-### Development Guides
-- [SDK Migration Guide](docs/development/sdk-migration-guide.md)
-- [API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)
-- [SDK Migration Complete](docs/development/SDK-MIGRATION-COMPLETE.md)
-- [Next.js 15 Migration](docs/development/nextjs15-migration.md)
-- [SDK Feature Gaps](docs/development/sdk-gaps.md)
-
-### Deployment & Configuration
-- [Deployment Configuration](docs/deployment/DEPLOYMENT-CONFIGURATION.md)
-- [Docker Optimization](docs/deployment/docker-optimization.md)
-- [Configuration Guide](docs/Configuration-Guide.md)
-- [Environment Variables](docs/Environment-Variables.md)
-- [Cache Configuration](docs/Cache-Configuration.md)
-- [Distributed Cache Statistics](docs/claude/distributed-cache-statistics.md) - **Horizontal Scaling Guide**
-
-#### Redis Circuit Breaker (Resilience)
+### Redis Circuit Breaker (Resilience)
 ConduitLLM includes automatic circuit breaker protection for Redis operations:
 - **Automatic failure detection**: Opens circuit after 5 consecutive failures or 50% failure rate
 - **Service protection**: Returns 503 Service Unavailable when Redis is down (30-second recovery period)
 - **Health monitoring**: Circuit state exposed via `/health` endpoint under `redis_circuit_breaker`
 - **Manual control**: Emergency trip/reset available via environment variable `REDIS_CIRCUIT_BREAKER_ENABLE_MANUAL_CONTROL=true`
-
-### API Reference
-- [API Reference](docs/api-reference/API-REFERENCE.md)
-- [Admin API Migration Guide](docs/admin-api-migration-guide.md)
-
-### Examples & Integration
-- [Integration Examples](docs/examples/INTEGRATION-EXAMPLES.md)
-- [OpenAI Compatible Example](docs/examples/openai-compatible-example.md)
-
-### Troubleshooting
-- [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md)
-
-### Feature Documentation
-- [Budget Management](docs/Budget-Management.md)
-- [Dashboard Features](docs/Dashboard-Features.md)
-- [LLM Routing](docs/LLM-Routing.md)
-- [Multimodal Vision Support](docs/Multimodal-Vision-Support.md)
-- [Provider Integration](docs/Provider-Integration.md)
-- [Virtual Keys](docs/Virtual-Keys.md)
-- [WebAdmin Guide](docs/WebAdmin-Guide.md)
-
-### Project Documentation
-- [SDK Integration Epic](docs/epics/sdk-integration.md)
-- [Archived Documentation](docs/archive/webadmin-migration/)
 
 ## Contributing
 
