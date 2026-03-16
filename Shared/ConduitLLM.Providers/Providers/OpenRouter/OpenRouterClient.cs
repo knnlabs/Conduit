@@ -1,9 +1,12 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Configuration;
+using InternalModels = ConduitLLM.Providers.Common.Models;
+using CoreUtils = ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -66,6 +69,100 @@ namespace ConduitLLM.Providers.OpenRouter
                 baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenRouter),
                 defaultModels: defaultModels)
         {
+        }
+
+        /// <summary>
+        /// Gets available models from OpenRouter's API.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// OpenRouter's /models endpoint is public and does not validate API keys.
+        /// To ensure the key is valid, this method first calls GET /key which requires
+        /// authentication and returns 401 for invalid keys.
+        /// </para>
+        /// <para>
+        /// OpenRouter's /models response does not include the 'owned_by' field that the base
+        /// OpenAI model data type requires. This override uses a permissive model type
+        /// that only requires the 'id' field.
+        /// </para>
+        /// </remarks>
+        public override async Task<List<InternalModels.ExtendedModelInfo>> GetModelsAsync(
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await ExecuteApiRequestAsync(async () =>
+                {
+                    using var client = CreateHttpClient(apiKey);
+                    var headers = CreateStandardHeaders(apiKey);
+
+                    // Validate the API key first via GET /key (the /models endpoint is public
+                    // and does not require authentication)
+                    await ValidateApiKeyAsync(client, headers, cancellationToken);
+
+                    var endpoint = GetModelsEndpoint();
+
+                    Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
+
+                    var response = await CoreUtils.HttpClientHelper.GetJsonAsync<OpenRouterModelsResponse>(
+                        client,
+                        endpoint,
+                        headers,
+                        DefaultJsonOptions,
+                        Logger,
+                        cancellationToken);
+
+                    return response.Data
+                        .Select(m => InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id))
+                        .ToList();
+                }, "GetModels", cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to retrieve models from {Provider} API.", ProviderName);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Validates the API key by calling OpenRouter's GET /key endpoint.
+        /// </summary>
+        /// <remarks>
+        /// Unlike the /models endpoint which is public, GET /key requires authentication
+        /// and returns 401 for invalid keys.
+        /// </remarks>
+        private async Task ValidateApiKeyAsync(
+            HttpClient client,
+            Dictionary<string, string> headers,
+            CancellationToken cancellationToken)
+        {
+            var keyEndpoint = $"{BaseUrl}/key";
+
+            Logger.LogDebug("Validating API key via {Endpoint}", keyEndpoint);
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, keyEndpoint);
+            foreach (var header in headers)
+            {
+                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+
+            using var response = await client.SendAsync(request, cancellationToken);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                throw new Core.Exceptions.LLMCommunicationException(
+                    "Invalid API key for OpenRouter. Please verify your API key is correct.",
+                    System.Net.HttpStatusCode.Unauthorized,
+                    null);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.LogWarning(
+                    "OpenRouter key validation returned {StatusCode}, proceeding with model listing",
+                    response.StatusCode);
+            }
         }
 
         /// <summary>
@@ -169,5 +266,29 @@ namespace ConduitLLM.Providers.OpenRouter
 
             return $"OpenRouter API error: {msg}";
         }
+    }
+
+    /// <summary>
+    /// OpenRouter-specific models list response.
+    /// Unlike OpenAI, OpenRouter does not include 'owned_by' in model data.
+    /// </summary>
+    internal record OpenRouterModelsResponse
+    {
+        [JsonPropertyName("data")]
+        public required List<OpenRouterModelData> Data { get; init; }
+    }
+
+    /// <summary>
+    /// Minimal model data from OpenRouter's /models endpoint.
+    /// Only requires 'id' — OpenRouter includes many extra fields (pricing, context_length, etc.)
+    /// that are safely ignored during deserialization.
+    /// </summary>
+    internal record OpenRouterModelData
+    {
+        [JsonPropertyName("id")]
+        public required string Id { get; init; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; init; }
     }
 }
