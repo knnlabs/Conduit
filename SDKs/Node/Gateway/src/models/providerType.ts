@@ -37,5 +37,8 @@ export enum ProviderType {
   DeepInfra = 11,
 
   /** Cloudflare Workers AI (serverless AI inference on Cloudflare's global network) */
-  Cloudflare = 12
+  Cloudflare = 12,
+
+  /** OpenRouter (multi-provider routing via OpenAI-compatible API) */
+  OpenRouter = 13
 }

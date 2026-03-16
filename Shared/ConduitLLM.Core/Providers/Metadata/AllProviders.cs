@@ -178,6 +178,42 @@ namespace ConduitLLM.Core.Providers.Metadata
     }
 
     /// <summary>
+    /// Provider metadata for OpenRouter.
+    /// </summary>
+    public class OpenRouterProviderMetadata : BaseProviderMetadata
+    {
+        public override ProviderType ProviderType => ProviderType.OpenRouter;
+        public override string DisplayName => "OpenRouter";
+        public override string DefaultBaseUrl => "https://openrouter.ai/api/v1";
+
+        public OpenRouterProviderMetadata()
+        {
+            // OpenRouter supports chat completions with features dependent on routed model
+            Capabilities.Features.Streaming = true;
+            Capabilities.Features.VisionInput = true;
+
+            // Chat parameters support (dependent on routed model)
+            Capabilities.ChatParameters.Tools = true;
+            Capabilities.ChatParameters.ResponseFormat = true;
+            Capabilities.ChatParameters.Seed = true;
+
+            ConfigurationHints.DocumentationUrl = "https://openrouter.ai/docs";
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Multi-Provider Router",
+                Description = "OpenRouter routes requests to 100+ models from providers like OpenAI, Anthropic, Google, and Meta through a single API",
+                Severity = TipSeverity.Info
+            });
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Model Naming",
+                Description = "OpenRouter models use provider/model-name format (e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet)",
+                Severity = TipSeverity.Info
+            });
+        }
+    }
+
+    /// <summary>
     /// Provider metadata for Cloudflare Workers AI.
     /// </summary>
     public class CloudflareProviderMetadata : BaseProviderMetadata

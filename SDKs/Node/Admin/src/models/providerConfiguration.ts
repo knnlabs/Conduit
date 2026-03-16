@@ -20,6 +20,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.SambaNova]: 'SambaNova Cloud',
   [ProviderType.DeepInfra]: 'DeepInfra',
   [ProviderType.Cloudflare]: 'Cloudflare Workers AI',
+  [ProviderType.OpenRouter]: 'OpenRouter',
 };
 
 /** Provider categories for grouping in UI */
@@ -46,6 +47,7 @@ export const PROVIDER_CATEGORIES: Record<ProviderType, ProviderCategory[]> = {
   [ProviderType.SambaNova]: [ProviderCategory.Chat],
   [ProviderType.DeepInfra]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Embedding],
   [ProviderType.Cloudflare]: [ProviderCategory.Chat, ProviderCategory.Embedding, ProviderCategory.Image],
+  [ProviderType.OpenRouter]: [ProviderCategory.Chat],
 };
 
 /** Provider-specific configuration requirements */
@@ -164,6 +166,15 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRe
     helpUrl: 'https://developers.cloudflare.com/workers-ai/',
     helpText: 'Create an API token at dash.cloudflare.com/profile/api-tokens. Base URL must include your account ID.',
     supportedModelTypes: [ModelType.Chat, ModelType.Embedding, ModelType.Image]
+  },
+  [ProviderType.OpenRouter]: {
+    requiresApiKey: true,
+    requiresEndpoint: false,
+    requiresOrganizationId: false,
+    supportsCustomEndpoint: false,
+    helpUrl: 'https://openrouter.ai/keys',
+    helpText: 'Get your API key from openrouter.ai/keys - Routes to 100+ models from multiple providers',
+    supportedModelTypes: [ModelType.Chat]
   },
 };
 

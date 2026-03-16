@@ -389,7 +389,9 @@ public enum ProviderType
     ElevenLabs = 8,     // Audio provider
     Cerebras = 9,       // High-performance inference
     SambaNova = 10,     // Ultra-fast inference
-    DeepInfra = 11      // OpenAI-compatible LLM inference
+    DeepInfra = 11,     // OpenAI-compatible LLM inference
+    Cloudflare = 12,    // Serverless AI on Cloudflare's global network
+    OpenRouter = 13     // Multi-provider routing via OpenAI-compatible API
 }
 ```
 

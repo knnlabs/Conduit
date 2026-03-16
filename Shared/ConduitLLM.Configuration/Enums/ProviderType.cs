@@ -66,6 +66,11 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Cloudflare Workers AI (serverless AI inference on Cloudflare's global network)
         /// </summary>
-        Cloudflare = 12
+        Cloudflare = 12,
+
+        /// <summary>
+        /// OpenRouter (multi-provider routing via OpenAI-compatible API)
+        /// </summary>
+        OpenRouter = 13
     }
 }

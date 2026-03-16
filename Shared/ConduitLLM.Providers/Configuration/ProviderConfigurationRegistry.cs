@@ -189,6 +189,20 @@ namespace ConduitLLM.Providers.Configuration
                     InvalidApiKey = "Invalid API key for ElevenLabs. Please verify your API key is correct.",
                     RateLimitExceeded = "ElevenLabs API rate limit exceeded. Please try again later."
                 }
+            },
+
+            [ProviderType.OpenRouter] = new ProviderConfiguration
+            {
+                DefaultBaseUrl = "https://openrouter.ai/api/v1",
+                ModelsEndpoint = "/models",
+                ChatCompletionsEndpoint = "/chat/completions",
+                AuthenticationStrategy = BearerTokenStrategy.Instance,
+                ErrorMessages = new ProviderErrorMessages
+                {
+                    InvalidApiKey = "Invalid API key for OpenRouter. Please verify your API key is correct.",
+                    RateLimitExceeded = "OpenRouter API rate limit exceeded. Please try again later.",
+                    ModelNotFound = "Model not found. OpenRouter models use provider/model-name format (e.g., openai/gpt-4o)."
+                }
             }
         };
 
