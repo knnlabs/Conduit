@@ -49,6 +49,9 @@ namespace ConduitLLM.Admin.Controllers
                             modelList
                         );
 
+                        LogAdminAudit("Tested", "Provider", id,
+                            $"Type: {provider.ProviderType}, Result: Success, ResponseTime: {responseTime:F0}ms, Models: {modelList?.Length ?? 0}");
+
                         return Ok(response);
                     }
                     catch (Exception testEx)
@@ -57,6 +60,9 @@ namespace ConduitLLM.Admin.Controllers
                             testEx,
                             provider.ProviderType
                         );
+
+                        LogAdminAudit("Tested", "Provider", id,
+                            $"Type: {provider.ProviderType}, Result: {response.Result}, Error: {response.Message}");
 
                         return Ok(response);
                     }
@@ -208,6 +214,9 @@ namespace ConduitLLM.Admin.Controllers
                             modelList
                         );
 
+                        LogAdminAudit("Tested", "ProviderKeyCredential", keyId,
+                            $"ProviderId: {providerId}, Result: Success, ResponseTime: {responseTime:F0}ms");
+
                         return (IActionResult)Ok(response);
                     }
                     catch (Exception testEx)
@@ -216,6 +225,9 @@ namespace ConduitLLM.Admin.Controllers
                             testEx,
                             provider.ProviderType
                         );
+
+                        LogAdminAudit("Tested", "ProviderKeyCredential", keyId,
+                            $"ProviderId: {providerId}, Result: {response.Result}, Error: {response.Message}");
 
                         return (IActionResult)Ok(response);
                     }

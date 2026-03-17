@@ -62,11 +62,7 @@ namespace ConduitLLM.Admin.Controllers
             return ExecuteAsync(
                 async () =>
                 {
-                    Logger.LogInformation("GetAllGroups called with page={Page}, pageSize={PageSize}", page, pageSize);
-
                     var (groups, totalCount) = await _groupRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
-
-                    Logger.LogInformation("Repository returned {Count} groups out of {TotalCount} total", groups.Count, totalCount);
 
                     var dtos = groups.Select(g => new VirtualKeyGroupDto
                     {
@@ -140,6 +136,9 @@ namespace ConduitLLM.Admin.Controllers
                     var id = await _groupRepository.CreateAsync(group);
                     group.Id = id;
 
+                    LogAdminAudit("Created", "VirtualKeyGroup", id,
+                        $"Name: {group.GroupName}, InitialBalance: {group.Balance}");
+
                     var dto = new VirtualKeyGroupDto
                     {
                         Id = group.Id,
@@ -172,17 +171,23 @@ namespace ConduitLLM.Admin.Controllers
                     if (group == null)
                         throw new KeyNotFoundException();
 
+                    var changes = new List<(string Property, string? OldValue, string? NewValue)>();
+
                     if (!string.IsNullOrEmpty(request.GroupName))
                     {
+                        changes.Add(("GroupName", group.GroupName, request.GroupName));
                         group.GroupName = request.GroupName;
                     }
 
                     if (!string.IsNullOrEmpty(request.ExternalGroupId))
                     {
+                        changes.Add(("ExternalGroupId", group.ExternalGroupId, request.ExternalGroupId));
                         group.ExternalGroupId = request.ExternalGroupId;
                     }
 
                     await _groupRepository.UpdateAsync(group);
+
+                    LogAdminAuditWithChanges("VirtualKeyGroup", id, changes);
                 },
                 NoContent(),
                 "UpdateGroup",
@@ -207,6 +212,9 @@ namespace ConduitLLM.Admin.Controllers
                         request.Description,
                         initiatedBy
                     );
+
+                    LogAdminAudit("AdjustedBalance", "VirtualKeyGroup", id,
+                        $"Amount: {request.Amount}, Description: {request.Description}, NewBalance: {newBalance}");
 
                     var group = await _groupRepository.GetByIdAsync(id);
                     if (group == null)
@@ -248,6 +256,9 @@ namespace ConduitLLM.Admin.Controllers
                         throw new InvalidOperationException("Cannot delete group with existing virtual keys");
 
                     await _groupRepository.DeleteAsync(id);
+
+                    LogAdminAudit("Deleted", "VirtualKeyGroup", id,
+                        $"Name: {group.GroupName}");
                 },
                 NoContent(),
                 "DeleteGroup",
@@ -411,11 +422,8 @@ namespace ConduitLLM.Admin.Controllers
                     // Map to response DTO
                     var responseDto = MapToRefundResultDto(refundResult, group.Balance);
 
-                    Logger.LogInformation(
-                        "Refund processed for group {GroupId}: {RefundAmount:C}, Transaction ID: {TransactionId}",
-                        id,
-                        refundResult.RefundAmount,
-                        refundResult.OriginalTransactionId);
+                    LogAdminAudit("Refunded", "VirtualKeyGroup", id,
+                        $"Amount: {refundResult.RefundAmount:C}, Model: {request.ModelId}, Reason: {request.RefundReason}, TransactionId: {refundResult.OriginalTransactionId}");
 
                     return (object)responseDto;
                 },

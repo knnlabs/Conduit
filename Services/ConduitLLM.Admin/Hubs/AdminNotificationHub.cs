@@ -38,7 +38,7 @@ namespace ConduitLLM.Admin.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task OnConnectedAsync()
         {
-            _logger.LogInformation("Admin client connected to AdminNotificationHub: {ConnectionId}", Context.ConnectionId);
+            _logger.LogDebug("Admin client connected to AdminNotificationHub: {ConnectionId}", Context.ConnectionId);
             
             // Add to admin group for receiving broadcast notifications
             await Groups.AddToGroupAsync(Context.ConnectionId, "admin");
@@ -54,7 +54,7 @@ namespace ConduitLLM.Admin.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            _logger.LogInformation("Admin client disconnected from AdminNotificationHub: {ConnectionId}", Context.ConnectionId);
+            _logger.LogDebug("Admin client disconnected from AdminNotificationHub: {ConnectionId}", Context.ConnectionId);
             
             // Remove from admin group
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, "admin");
@@ -87,7 +87,7 @@ namespace ConduitLLM.Admin.Hubs
                 var groupName = $"admin-vkey-{virtualKeyId}";
                 await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin subscribed to virtual key {VirtualKeyId} notifications", virtualKeyId);
+                _logger.LogDebug("Admin subscribed to virtual key {VirtualKeyId} notifications", virtualKeyId);
                 
                 await Clients.Caller.SendAsync("SubscribedToVirtualKey", virtualKeyId);
             }
@@ -110,7 +110,7 @@ namespace ConduitLLM.Admin.Hubs
                 var groupName = $"admin-vkey-{virtualKeyId}";
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin unsubscribed from virtual key {VirtualKeyId} notifications", virtualKeyId);
+                _logger.LogDebug("Admin unsubscribed from virtual key {VirtualKeyId} notifications", virtualKeyId);
                 
                 await Clients.Caller.SendAsync("UnsubscribedFromVirtualKey", virtualKeyId);
             }
@@ -133,7 +133,7 @@ namespace ConduitLLM.Admin.Hubs
                 var groupName = $"admin-provider-{providerId}";
                 await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin subscribed to provider {ProviderId} notifications", providerId);
+                _logger.LogDebug("Admin subscribed to provider {ProviderId} notifications", providerId);
                 
                 // Provider health tracking has been removed
                 
@@ -158,7 +158,7 @@ namespace ConduitLLM.Admin.Hubs
                 var groupName = $"admin-provider-{providerId}";
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin unsubscribed from provider {ProviderId} notifications", providerId);
+                _logger.LogDebug("Admin unsubscribed from provider {ProviderId} notifications", providerId);
                 
                 await Clients.Caller.SendAsync("UnsubscribedFromProvider", providerId);
             }

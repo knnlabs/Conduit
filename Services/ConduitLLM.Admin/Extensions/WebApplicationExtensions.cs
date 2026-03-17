@@ -32,7 +32,7 @@ public static class WebApplicationExtensions
         // Add security headers middleware
         app.UseAdminSecurityHeaders();
 
-        // Add unified security middleware (replaces AdminAuthenticationMiddleware)
+        // Add unified security middleware (authentication, rate limiting, IP filtering)
         app.UseAdminSecurity();
 
         // Add Ephemeral Master Key cleanup middleware

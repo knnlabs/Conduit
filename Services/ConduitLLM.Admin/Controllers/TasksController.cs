@@ -44,8 +44,8 @@ namespace ConduitLLM.Admin.Controllers
                     olderThanHours = Math.Max(olderThanHours, 1); // Min 1 hour
                     var count = await _taskService.CleanupOldTasksAsync(TimeSpan.FromHours(olderThanHours));
 
-                    Logger.LogInformation("Admin cleaned up {Count} old tasks (older than {Hours} hours)",
-                        count, olderThanHours);
+                    LogAdminAudit("CleanedUp", "Tasks", null,
+                        $"Removed {count} tasks older than {olderThanHours} hours");
 
                     return new { cleaned_up = count, older_than_hours = olderThanHours };
                 },

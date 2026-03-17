@@ -60,7 +60,11 @@ namespace ConduitLLM.Admin.Services
                 {
                     // Record failed auth attempt before returning
                     await RecordFailedAuthAsync(clientIp);
-                    
+
+                    _logger.LogWarning(
+                        "Authentication failed for {Method} {Path} from {ClientIp}",
+                        context.Request.Method, path, clientIp);
+
                     return new SecurityCheckResult
                     {
                         IsAllowed = false,
@@ -73,6 +77,10 @@ namespace ConduitLLM.Admin.Services
             // Check if IP is banned due to failed authentication
             if (await IsIpBannedAsync(clientIp))
             {
+                _logger.LogWarning(
+                    "Banned IP {ClientIp} attempted access to {Method} {Path}",
+                    clientIp, context.Request.Method, path);
+
                 return new SecurityCheckResult
                 {
                     IsAllowed = false,
@@ -251,7 +259,7 @@ namespace ConduitLLM.Admin.Services
                     _memoryCache.Set(key, attempts, TimeSpan.FromMinutes(_options.FailedAuth.BanDurationMinutes));
                 }
 
-                _logger.LogInformation("Failed authentication attempt {Attempts}/{MaxAttempts} for IP {IpAddress}", 
+                _logger.LogWarning("Failed authentication attempt {Attempts}/{MaxAttempts} for IP {IpAddress}",
                     attempts, _options.FailedAuth.MaxAttempts, ipAddress);
             }
 #endif
@@ -547,8 +555,9 @@ namespace ConduitLLM.Admin.Services
 
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogDebug(ex, "Failed to parse CIDR range {CidrRange} for IP {IpAddress}", cidrRange, ipAddress);
                 return false;
             }
         }
