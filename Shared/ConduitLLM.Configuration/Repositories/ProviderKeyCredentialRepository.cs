@@ -125,9 +125,23 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
             {
                 OnBeforeCreate(entity);
 
-                // Check if this should be automatically set as primary
-                if (entity.IsEnabled && !entity.IsPrimary)
+                if (entity.IsEnabled && entity.IsPrimary)
                 {
+                    // Demote existing primary key so the new one can take over
+                    var existingPrimary = await GetDbSet(context)
+                        .FirstOrDefaultAsync(k => k.ProviderId == entity.ProviderId && k.IsPrimary, cancellationToken);
+
+                    if (existingPrimary != null)
+                    {
+                        existingPrimary.IsPrimary = false;
+                        existingPrimary.UpdatedAt = DateTime.UtcNow;
+                        Logger.LogInformation("Demoted existing primary key {KeyId} for provider {ProviderId}",
+                            existingPrimary.Id, entity.ProviderId);
+                    }
+                }
+                else if (entity.IsEnabled && !entity.IsPrimary)
+                {
+                    // Check if this should be automatically set as primary
                     var enabledKeysCount = await GetDbSet(context)
                         .CountAsync(k => k.ProviderId == entity.ProviderId && k.IsEnabled, cancellationToken);
 
@@ -190,9 +204,23 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
                 existingKey.IsEnabled = entity.IsEnabled;
                 existingKey.UpdatedAt = DateTime.UtcNow;
 
-                // Check if this should be automatically set as primary when being enabled
-                if (!wasEnabled && willBeEnabled && !entity.IsPrimary)
+                if (entity.IsPrimary && entity.IsEnabled)
                 {
+                    // Demote existing primary key so this one can become primary
+                    var otherPrimary = await GetDbSet(context)
+                        .FirstOrDefaultAsync(k => k.ProviderId == existingKey.ProviderId && k.IsPrimary && k.Id != existingKey.Id, cancellationToken);
+
+                    if (otherPrimary != null)
+                    {
+                        otherPrimary.IsPrimary = false;
+                        otherPrimary.UpdatedAt = DateTime.UtcNow;
+                        Logger.LogInformation("Demoted existing primary key {KeyId} for provider {ProviderId}",
+                            otherPrimary.Id, existingKey.ProviderId);
+                    }
+                }
+                else if (!wasEnabled && willBeEnabled && !entity.IsPrimary)
+                {
+                    // Check if this should be automatically set as primary when being enabled
                     var enabledKeysCount = await GetDbSet(context)
                         .CountAsync(k => k.ProviderId == existingKey.ProviderId && k.IsEnabled && k.Id != existingKey.Id, cancellationToken);
 

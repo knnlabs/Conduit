@@ -3,6 +3,7 @@ import {
   isChatCompletionChunk,
   isStreamingMetrics,
   isFinalMetrics,
+  isStreamingErrorEvent,
   isReasoningEvent,
   isToolExecutingEvent,
   isToolResultEvent,
@@ -260,6 +261,25 @@ export class SDKChatStreamingAdapter {
             });
           }
           break; // Stream is complete
+        } else if (isStreamingErrorEvent(data as unknown)) {
+          // Handle error event - sent as "event: error" when upstream provider fails
+          // This surfaces provider errors (model not found, auth failure, rate limit, etc.)
+          const errorEvent = data as unknown as { error: string };
+          const streamingError: StreamingError = Object.assign(
+            new Error(errorEvent.error),
+            {
+              status: undefined,
+              code: 'provider_error',
+              context: errorEvent.error,
+              retryable: false
+            }
+          );
+
+          if (callbacks.onError) {
+            callbacks.onError(streamingError);
+          }
+          completionTriggered = true; // Prevent fallback from also firing
+          break; // Stream is done after an error
         } else if (isReasoningEvent(data as unknown)) {
           // Handle reasoning event - sent as "event: reasoning"
           // Cast through unknown to work with SDK stream type

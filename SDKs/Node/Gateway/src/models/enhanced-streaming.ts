@@ -303,6 +303,51 @@ export interface ToolResultEvent {
 }
 
 /**
+ * Error event data - sent as "event: error" when a provider or streaming error occurs.
+ * Contains the error message from the upstream provider or internal processing.
+ *
+ * @interface StreamingErrorEvent
+ * @since 0.5.0
+ *
+ * @example
+ * ```typescript
+ * {
+ *   error: 'Model gpt-oss-120b does not exist or you do not have access to it.'
+ * }
+ * ```
+ */
+export interface StreamingErrorEvent {
+  /** Error message describing what went wrong */
+  error: string;
+}
+
+/**
+ * Type guard to check if data is a StreamingErrorEvent.
+ * Detects error events sent by the backend during streaming when a provider
+ * returns an error (e.g., model not found, rate limit, auth failure).
+ *
+ * @param {unknown} data - The data to check
+ * @returns {boolean} True if data is a StreamingErrorEvent
+ * @since 0.5.0
+ *
+ * @example
+ * ```typescript
+ * if (isStreamingErrorEvent(event.data)) {
+ *   console.error('Streaming error:', event.data.error);
+ * }
+ * ```
+ */
+export function isStreamingErrorEvent(data: unknown): data is StreamingErrorEvent {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'error' in data &&
+    typeof (data as Record<string, unknown>).error === 'string' &&
+    !('object' in data) // Distinguish from OpenAI error responses that have both 'error' and 'object'
+  );
+}
+
+/**
  * Type guard to check if data is a ReasoningEvent.
  *
  * @param {unknown} data - The data to check
