@@ -44,7 +44,9 @@ namespace ConduitLLM.Admin.Services
         private async Task<CacheStatisticsDto> GetOverallStatisticsAsync(CancellationToken cancellationToken)
         {
             var allStats = await _cacheManager.GetAllStatisticsAsync(cancellationToken);
-            
+
+            _logger.LogDebug("Aggregating cache statistics across {RegionCount} regions", allStats.Count);
+
             var totalHits = allStats.Sum(s => s.Value.HitCount);
             var totalMisses = allStats.Sum(s => s.Value.MissCount);
             var totalRequests = totalHits + totalMisses;

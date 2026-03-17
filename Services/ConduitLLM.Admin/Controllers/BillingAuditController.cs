@@ -101,6 +101,9 @@ namespace ConduitLLM.Admin.Controllers
                         PageSize = request.PageSize
                     };
 
+                    Logger.LogDebug("Billing audit query returned {TotalCount} events (page {Page}/{PageSize})",
+                        totalCount, request.PageNumber, request.PageSize);
+
                     BillingAuditQueries.WithLabels("query", "success").Inc();
                     return response;
                 },
@@ -241,6 +244,9 @@ namespace ConduitLLM.Admin.Controllers
                         request.VirtualKeyId,
                         pageNumber: 1,
                         pageSize: int.MaxValue);
+
+                    Logger.LogInformation("Exporting {EventCount} billing audit events as {Format} for period {From:O} to {To:O}",
+                        events.Count, request.Format, request.From, request.To);
 
                     switch (request.Format)
                     {

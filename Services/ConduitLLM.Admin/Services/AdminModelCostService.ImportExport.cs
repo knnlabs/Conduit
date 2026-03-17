@@ -120,6 +120,10 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<string> ExportModelCostsAsync(string format, int? providerId = null)
         {
+            _logger.LogDebug("Exporting model costs as {Format}{ProviderFilter}",
+                format ?? "json",
+                providerId.HasValue ? $" for provider {providerId}" : "");
+
             IEnumerable<ModelCost> modelCosts;
             if (providerId != null)
             {

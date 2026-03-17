@@ -47,7 +47,7 @@ namespace ConduitLLM.Admin.Controllers
                     // Create ephemeral master key
                     var response = await _ephemeralMasterKeyService.CreateEphemeralMasterKeyAsync();
 
-                    Logger.LogInformation("Generated ephemeral master key");
+                    LogAdminAudit("Generated", "EphemeralMasterKey", detail: $"TTL: {response.ExpiresInSeconds}s");
 
                     return response;
                 },

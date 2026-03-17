@@ -150,6 +150,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         {
             // Check connection
             info.Connected = await _dbContext.GetDatabase().CanConnectAsync();
+            _logger.LogDebug("Database connection check: {Connected}, provider: {Provider}", info.Connected, info.Provider);
 
             // Get database version if possible
             if (info.Connected)
@@ -219,7 +220,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Could not get PostgreSQL database size");
+                        _logger.LogWarning(ex, "Could not get PostgreSQL version/size for host {Host}", info.Location);
                         info.Size = "N/A";
                     }
                 }
@@ -253,19 +254,27 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             if (canConnect)
             {
                 // Check migrations
-                bool pendingMigrations = (await _dbContext.GetDatabase().GetPendingMigrationsAsync()).Any();
+                var pendingMigrationsList = (await _dbContext.GetDatabase().GetPendingMigrationsAsync()).ToList();
+                bool pendingMigrations = pendingMigrationsList.Count > 0;
 
                 // Get migration history
-                var migrations = await _dbContext.GetDatabase().GetAppliedMigrationsAsync();
+                var migrations = (await _dbContext.GetDatabase().GetAppliedMigrationsAsync()).ToList();
 
                 health.Status = pendingMigrations ? "degraded" : "healthy";
                 if (pendingMigrations)
                 {
+                    _logger.LogWarning("Database has {PendingCount} pending migrations (applied: {AppliedCount})",
+                        pendingMigrationsList.Count, migrations.Count);
                     health.Description = "Database connected but has pending migrations";
+                }
+                else
+                {
+                    _logger.LogDebug("Database healthy with {AppliedCount} applied migrations", migrations.Count);
                 }
             }
             else
             {
+                _logger.LogWarning("Database health check failed: unable to connect");
                 health.Status = "unhealthy";
                 health.Description = "Database connection failed";
             }
@@ -292,6 +301,9 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             counts.Settings = await _dbContext.GlobalSettings.CountAsync();
             counts.Providers = await _dbContext.Providers.CountAsync();
             counts.ModelMappings = await _dbContext.ModelProviderMappings.CountAsync();
+
+            _logger.LogDebug("Record counts: VirtualKeys={VirtualKeys}, Requests={Requests}, Providers={Providers}, Mappings={Mappings}",
+                counts.VirtualKeys, counts.Requests, counts.Providers, counts.ModelMappings);
         }
         catch (Exception ex)
         {

@@ -95,6 +95,13 @@ namespace ConduitLLM.Admin.Services
                     }
                     return list;
                 });
+
+            // Log slow fetches
+            if (durationMs > 2000)
+            {
+                _logger.LogWarning("Slow data fetch from {DataSource} took {Duration}ms",
+                    dataSource, durationMs);
+            }
         }
 
         /// <inheritdoc/>
