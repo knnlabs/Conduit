@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services
 {
@@ -12,16 +13,19 @@ namespace ConduitLLM.Configuration.Services
     {
         private readonly ConduitDbContext _context;
         private readonly IVirtualKeyGroupRepository _groupRepository;
+        private readonly ILogger<VirtualKeyService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the VirtualKeyService
         /// </summary>
         /// <param name="context">Database context</param>
         /// <param name="groupRepository">Virtual key group repository</param>
-        public VirtualKeyService(ConduitDbContext context, IVirtualKeyGroupRepository groupRepository)
+        /// <param name="logger">The logger</param>
+        public VirtualKeyService(ConduitDbContext context, IVirtualKeyGroupRepository groupRepository, ILogger<VirtualKeyService> logger)
         {
             _context = context;
             _groupRepository = groupRepository;
+            _logger = logger;
         }
 
         /// <inheritdoc/>
@@ -52,13 +56,15 @@ namespace ConduitLLM.Configuration.Services
                     LifetimeCreditsAdded = 0,
                     LifetimeSpent = 0
                 };
-                
+
                 virtualKey.VirtualKeyGroupId = await _groupRepository.CreateAsync(group);
+                _logger.LogDebug("Created new key group {GroupId} for virtual key {KeyName}", virtualKey.VirtualKeyGroupId, virtualKey.KeyName);
             }
 
             _context.VirtualKeys.Add(virtualKey);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("Created virtual key {KeyId} ({KeyName}) in group {GroupId}", virtualKey.Id, virtualKey.KeyName, virtualKey.VirtualKeyGroupId);
             return virtualKey;
         }
 
@@ -70,6 +76,11 @@ namespace ConduitLLM.Configuration.Services
             {
                 _context.VirtualKeys.Remove(virtualKey);
                 await _context.SaveChangesAsync();
+                _logger.LogInformation("Deleted virtual key {KeyId} ({KeyName})", id, virtualKey.KeyName);
+            }
+            else
+            {
+                _logger.LogWarning("Attempted to delete non-existent virtual key {KeyId}", id);
             }
         }
 
@@ -108,6 +119,7 @@ namespace ConduitLLM.Configuration.Services
             _context.VirtualKeys.Update(virtualKey);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("Updated virtual key {KeyId} ({KeyName})", virtualKey.Id, virtualKey.KeyName);
             return virtualKey;
         }
 
@@ -120,6 +132,11 @@ namespace ConduitLLM.Configuration.Services
             if (group != null)
             {
                 await _groupRepository.AdjustBalanceAsync(group.Id, -additionalSpend);
+                _logger.LogDebug("Updated spend for key {KeyId} via group {GroupId}: {Amount:C}", id, group.Id, additionalSpend);
+            }
+            else
+            {
+                _logger.LogWarning("Cannot update spend for key {KeyId}: no associated group found", id);
             }
         }
 
@@ -133,21 +150,24 @@ namespace ConduitLLM.Configuration.Services
 
             if (virtualKey == null)
             {
-                return null; // Key doesn't exist
+                _logger.LogDebug("Authentication validation failed: key not found");
+                return null;
             }
 
             if (!virtualKey.IsEnabled)
             {
-                return null; // Key is disabled
+                _logger.LogDebug("Authentication validation failed: key {KeyId} is disabled", virtualKey.Id);
+                return null;
             }
 
             if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
             {
-                return null; // Key is expired
+                _logger.LogDebug("Authentication validation failed: key {KeyId} expired at {ExpiresAt}", virtualKey.Id, virtualKey.ExpiresAt.Value);
+                return null;
             }
 
             // For authentication, we don't check balance
-            return virtualKey; // Key is valid for authentication
+            return virtualKey;
         }
 
         /// <inheritdoc/>
@@ -160,26 +180,30 @@ namespace ConduitLLM.Configuration.Services
 
             if (virtualKey == null)
             {
-                return false; // Key doesn't exist
+                _logger.LogDebug("Key validation failed: key not found");
+                return false;
             }
 
             if (!virtualKey.IsEnabled)
             {
-                return false; // Key is disabled
+                _logger.LogDebug("Key validation failed: key {KeyId} is disabled", virtualKey.Id);
+                return false;
             }
 
             if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
             {
-                return false; // Key is expired
+                _logger.LogDebug("Key validation failed: key {KeyId} expired at {ExpiresAt}", virtualKey.Id, virtualKey.ExpiresAt.Value);
+                return false;
             }
 
             // Check group balance
             if (virtualKey.VirtualKeyGroup != null && virtualKey.VirtualKeyGroup.Balance <= 0)
             {
-                return false; // No balance available
+                _logger.LogDebug("Key validation failed: key {KeyId} group {GroupId} has insufficient balance", virtualKey.Id, virtualKey.VirtualKeyGroupId);
+                return false;
             }
 
-            return true; // Key is valid
+            return true;
         }
     }
 }

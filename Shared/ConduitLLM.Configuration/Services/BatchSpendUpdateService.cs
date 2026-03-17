@@ -230,9 +230,12 @@ namespace ConduitLLM.Configuration.Services
                 
                 if (!keys.Any())
                 {
+                    _logger.LogDebug("No pending spend updates to flush");
                     return 0;
                 }
-                
+
+                _logger.LogDebug("Flushing {PendingCount} pending spend update keys from Redis", keys.Count);
+
                 // Get and delete all values atomically
                 var groupUpdates = new Dictionary<int, decimal>();
                 var keyUsagePattern = "key_usage:group:*";
@@ -321,8 +324,9 @@ namespace ConduitLLM.Configuration.Services
                     updatedKeyHashes.AddRange(groupKeys.Select(k => k.KeyHash));
                 }
 
-                
-                _logger.LogInformation("Batch updated spend for {Count} groups", groupUpdates.Count());
+                var totalSpend = groupUpdates.Values.Sum();
+                _logger.LogInformation("Batch updated spend for {GroupCount} groups, total amount: {TotalSpend:C}",
+                    groupUpdates.Count, totalSpend);
 
                 // Raise event for cache invalidation (if any subscribers)
                 if (updatedKeyHashes.Any() && SpendUpdatesCompleted != null)
@@ -413,7 +417,21 @@ namespace ConduitLLM.Configuration.Services
                 }
             }
 
-            _logger.LogInformation("BatchSpendUpdateService stopping");
+            // Final flush before stopping
+            try
+            {
+                var finalCount = await FlushPendingUpdatesAsync();
+                if (finalCount > 0)
+                {
+                    _logger.LogInformation("Flushed {Count} pending updates during shutdown", finalCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error flushing pending updates during shutdown");
+            }
+
+            _logger.LogInformation("BatchSpendUpdateService stopped");
         }
 
         /// <summary>

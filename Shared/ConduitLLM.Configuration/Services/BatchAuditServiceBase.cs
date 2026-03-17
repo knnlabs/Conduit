@@ -118,9 +118,12 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
         }
 
         _eventQueue.Enqueue(auditEvent);
+        var queueCount = _eventQueue.Count;
 
-        if (_eventQueue.Count >= BatchSize)
+        if (queueCount >= BatchSize)
         {
+            _logger.LogDebug("{EntityName} audit queue reached batch threshold ({QueueCount}/{BatchSize}), triggering flush",
+                EntityName, queueCount, BatchSize);
             _ = Task.Run(async () => await FlushEventsInternalAsync());
         }
     }

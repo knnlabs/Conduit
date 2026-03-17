@@ -71,6 +71,8 @@ namespace ConduitLLM.Configuration.Services
                     .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt <= warningDate)
                     .ToList();
 
+                _logger.LogInformation("Checking key expiration: found {Count} keys expiring within {Days} days", keys.Count, ExpirationWarningDays);
+
                 foreach (var key in keys)
                 {
                     // ExpiresAt is guaranteed to have a value based on the query above
@@ -190,6 +192,7 @@ namespace ConduitLLM.Configuration.Services
                     existingNotification.CreatedAt = DateTime.UtcNow;
 
                     await _notificationRepository.UpdateAsync(existingNotification);
+                    _logger.LogDebug("Updated expiration notification for key {KeyId}: {Severity}", key.Id, severity);
                 }
                 else
                 {
@@ -205,6 +208,8 @@ namespace ConduitLLM.Configuration.Services
                     };
 
                     await _notificationRepository.CreateAsync(notification);
+                    _logger.LogInformation("Created expiration notification for key {KeyId}: {Severity}, {DaysLeft:F1} days remaining",
+                        key.Id, severity, daysLeft);
                 }
             }
             catch (Exception ex)
@@ -223,6 +228,7 @@ namespace ConduitLLM.Configuration.Services
             try
             {
                 await _notificationRepository.MarkAsReadAsync(id);
+                _logger.LogDebug("Marked notification {NotificationId} as read", id);
             }
             catch (Exception ex)
             {
@@ -249,6 +255,11 @@ namespace ConduitLLM.Configuration.Services
                 {
                     notification.IsRead = true;
                     await _notificationRepository.UpdateAsync(notification);
+                }
+
+                if (notifications.Count > 0)
+                {
+                    _logger.LogDebug("Marked {Count} notifications as read for key {KeyId}", notifications.Count, virtualKeyId);
                 }
             }
             catch (Exception ex)

@@ -118,25 +118,43 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         }
     }
 
+    /// <summary>
+    /// Threshold in milliseconds above which a query is considered slow and logged as a warning.
+    /// Override in derived classes to customize per-entity.
+    /// </summary>
+    protected virtual int SlowQueryThresholdMs => 500;
+
     #region ExecuteAsync helpers
 
     /// <summary>
     /// Executes a database operation. When <paramref name="operationName"/> is provided,
     /// exceptions are logged with the entity type before re-throwing.
+    /// Warns when operations exceed <see cref="SlowQueryThresholdMs"/>.
     /// </summary>
     protected async Task<TResult> ExecuteAsync<TResult>(
         Func<ConduitDbContext, Task<TResult>> operation,
         CancellationToken cancellationToken = default,
         string? operationName = null)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await operation(context);
+            var result = await operation(context);
+            sw.Stop();
+
+            if (sw.ElapsedMilliseconds > SlowQueryThresholdMs && operationName != null)
+            {
+                Logger.LogWarning("Slow repository operation: {OperationName} {EntityType} took {ElapsedMs}ms",
+                    operationName, EntityTypeName, sw.ElapsedMilliseconds);
+            }
+
+            return result;
         }
         catch (Exception ex) when (operationName != null)
         {
-            Logger.LogError(ex, "Error {OperationName} {EntityType}", operationName, EntityTypeName);
+            Logger.LogError(ex, "Error {OperationName} {EntityType} after {ElapsedMs}ms",
+                operationName, EntityTypeName, sw.ElapsedMilliseconds);
             throw;
         }
     }
@@ -144,20 +162,30 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
     /// <summary>
     /// Executes a void database operation. When <paramref name="operationName"/> is provided,
     /// exceptions are logged with the entity type before re-throwing.
+    /// Warns when operations exceed <see cref="SlowQueryThresholdMs"/>.
     /// </summary>
     protected async Task ExecuteAsync(
         Func<ConduitDbContext, Task> operation,
         CancellationToken cancellationToken = default,
         string? operationName = null)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
             await operation(context);
+            sw.Stop();
+
+            if (sw.ElapsedMilliseconds > SlowQueryThresholdMs && operationName != null)
+            {
+                Logger.LogWarning("Slow repository operation: {OperationName} {EntityType} took {ElapsedMs}ms",
+                    operationName, EntityTypeName, sw.ElapsedMilliseconds);
+            }
         }
         catch (Exception ex) when (operationName != null)
         {
-            Logger.LogError(ex, "Error {OperationName} {EntityType}", operationName, EntityTypeName);
+            Logger.LogError(ex, "Error {OperationName} {EntityType} after {ElapsedMs}ms",
+                operationName, EntityTypeName, sw.ElapsedMilliseconds);
             throw;
         }
     }
@@ -223,7 +251,8 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            Logger.LogError(ex, "Concurrency error updating {EntityType} with ID {Id}", EntityTypeName, entity.Id);
+            Logger.LogWarning(ex, "Concurrency conflict updating {EntityType} with ID {Id} — another process modified this entity",
+                EntityTypeName, entity.Id);
             throw;
         }
         catch (Exception ex)
@@ -252,10 +281,12 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
                 softDeletable.IsDeleted = true;
                 softDeletable.DeletedAt = DateTime.UtcNow;
                 dbSet.Update(entity);
+                Logger.LogDebug("Soft-deleted {EntityType} with ID {Id}", EntityTypeName, id);
             }
             else
             {
                 dbSet.Remove(entity);
+                Logger.LogDebug("Hard-deleted {EntityType} with ID {Id}", EntityTypeName, id);
             }
 
             int rowsAffected = await context.SaveChangesAsync(cancellationToken);

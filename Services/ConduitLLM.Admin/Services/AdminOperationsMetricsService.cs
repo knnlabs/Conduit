@@ -136,13 +136,20 @@ namespace ConduitLLM.Admin.Services
         /// <returns>A task that represents the asynchronous operation.</returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Admin operations metrics service starting...");
+            _logger.LogInformation("AdminOperationsMetricsService starting with collection interval {Interval}", _collectionInterval);
+
+            // Brief delay to let other services initialize first
+            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
                     await CollectMetricsAsync();
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -152,7 +159,7 @@ namespace ConduitLLM.Admin.Services
                 await Task.Delay(_collectionInterval, stoppingToken);
             }
 
-            _logger.LogInformation("Admin operations metrics service stopped");
+            _logger.LogInformation("AdminOperationsMetricsService stopped");
         }
 
         private async Task CollectMetricsAsync()
@@ -170,9 +177,14 @@ namespace ConduitLLM.Admin.Services
             await Task.WhenAll(tasks);
             sw.Stop();
 
-            _logger.LogDebug(
-                "Admin metrics collection completed in {ElapsedMs}ms",
-                sw.ElapsedMilliseconds);
+            if (sw.ElapsedMilliseconds > 5000)
+            {
+                _logger.LogWarning("Slow admin metrics collection: took {ElapsedMs}ms (threshold: 5000ms)", sw.ElapsedMilliseconds);
+            }
+            else
+            {
+                _logger.LogDebug("Admin metrics collection completed in {ElapsedMs}ms", sw.ElapsedMilliseconds);
+            }
         }
 
         private async Task CollectVirtualKeyMetrics(IServiceScope scope)

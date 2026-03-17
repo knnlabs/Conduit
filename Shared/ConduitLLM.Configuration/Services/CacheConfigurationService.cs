@@ -92,6 +92,7 @@ namespace ConduitLLM.Configuration.Services
             {
                 if (_cache.TryGetValue(region, out var cached))
                 {
+                    _logger.LogDebug("Cache hit for region {Region}", region);
                     return cached;
                 }
             }
@@ -99,6 +100,8 @@ namespace ConduitLLM.Configuration.Services
             {
                 _lock.Release();
             }
+
+            _logger.LogDebug("Cache miss for region {Region}, loading from database", region);
 
             // Load from database (IsActive filter applied automatically via named query filter)
             var entity = await _dbContext.CacheConfigurations
@@ -113,6 +116,7 @@ namespace ConduitLLM.Configuration.Services
                 {
                     var config = CreateConfigFromSection(region, configSection);
                     await CacheConfigAsync(region, config, cancellationToken);
+                    _logger.LogDebug("Loaded region {Region} configuration from app settings", region);
                     return config;
                 }
 
@@ -179,6 +183,7 @@ namespace ConduitLLM.Configuration.Services
             var validation = await ValidateConfigurationAsync(config, cancellationToken);
             if (!validation.IsValid)
             {
+                _logger.LogWarning("Invalid cache configuration for region {Region}: {Errors}", region, string.Join(", ", validation.Errors));
                 throw new InvalidOperationException($"Invalid configuration: {string.Join(", ", validation.Errors)}");
             }
 
@@ -189,6 +194,7 @@ namespace ConduitLLM.Configuration.Services
 
             if (entity == null)
             {
+                _logger.LogWarning("Attempted to update non-existent cache configuration for region {Region}", region);
                 throw new InvalidOperationException($"No active configuration found for region {region}");
             }
 
@@ -236,11 +242,12 @@ namespace ConduitLLM.Configuration.Services
                     ChangeSource = "API"
                 }, cancellationToken);
 
-                _logger.LogInformation("Updated cache configuration for region {Region}", region);
+                _logger.LogInformation("Updated cache configuration for region {Region} by {ChangedBy}", region, changedBy);
                 return config;
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to update cache configuration for region {Region}", region);
                 audit.Success = false;
                 audit.ErrorMessage = ex.Message;
                 _dbContext.CacheConfigurationAudits.Add(audit);
@@ -315,11 +322,12 @@ namespace ConduitLLM.Configuration.Services
                     ChangeSource = "API"
                 }, cancellationToken);
 
-                _logger.LogInformation("Created cache configuration for region {Region}", region);
+                _logger.LogInformation("Created cache configuration for region {Region} by {CreatedBy}", region, createdBy);
                 return config;
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to create cache configuration for region {Region}", region);
                 audit.Success = false;
                 audit.ErrorMessage = ex.Message;
                 _dbContext.CacheConfigurationAudits.Add(audit);
@@ -393,11 +401,12 @@ namespace ConduitLLM.Configuration.Services
                     ChangeSource = "API"
                 }, cancellationToken);
 
-                _logger.LogInformation("Deleted cache configuration for region {Region}", region);
+                _logger.LogInformation("Deleted cache configuration for region {Region} by {DeletedBy}", region, deletedBy);
                 return true;
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to delete cache configuration for region {Region}", region);
                 audit.Success = false;
                 audit.ErrorMessage = ex.Message;
                 _dbContext.CacheConfigurationAudits.Add(audit);

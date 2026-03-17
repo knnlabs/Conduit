@@ -130,6 +130,8 @@ public class ModelCostService : IModelCostService
             modelCost.UpdatedAt = DateTime.UtcNow;
 
             await _modelCostRepository.CreateAsync(modelCost, cancellationToken);
+            _logger.LogInformation("Created model cost {CostName} (ID: {CostId}) with input={InputCost}/M, output={OutputCost}/M",
+                modelCost.CostName, modelCost.Id, modelCost.InputCostPerMillionTokens, modelCost.OutputCostPerMillionTokens);
         }
         catch (Exception ex)
         {
@@ -152,6 +154,7 @@ public class ModelCostService : IModelCostService
 
             if (existingCost == null)
             {
+                _logger.LogWarning("Attempted to update non-existent model cost {ModelCostId}", modelCost.Id);
                 return false;
             }
 
@@ -164,7 +167,12 @@ public class ModelCostService : IModelCostService
             existingCost.CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens;
             existingCost.UpdatedAt = DateTime.UtcNow;
 
-            return await _modelCostRepository.UpdateAsync(existingCost, cancellationToken);
+            var result = await _modelCostRepository.UpdateAsync(existingCost, cancellationToken);
+            if (result)
+            {
+                _logger.LogInformation("Updated model cost {CostName} (ID: {ModelCostId})", existingCost.CostName, modelCost.Id);
+            }
+            return result;
         }
         catch (Exception ex)
         {
@@ -178,7 +186,16 @@ public class ModelCostService : IModelCostService
     {
         try
         {
-            return await _modelCostRepository.DeleteAsync(id, cancellationToken);
+            var result = await _modelCostRepository.DeleteAsync(id, cancellationToken);
+            if (result)
+            {
+                _logger.LogInformation("Deleted model cost {ModelCostId}", id);
+            }
+            else
+            {
+                _logger.LogWarning("Attempted to delete non-existent model cost {ModelCostId}", id);
+            }
+            return result;
         }
         catch (Exception ex)
         {
