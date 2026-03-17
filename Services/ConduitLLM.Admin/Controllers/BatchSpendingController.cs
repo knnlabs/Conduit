@@ -97,8 +97,8 @@ namespace ConduitLLM.Admin.Controllers
                     // Publish event to Gateway API for processing
                     await _publishEndpoint.Publish(flushEvent);
 
-                    Logger.LogInformation(
-                        "Published BatchSpendFlushRequestedEvent - RequestId: {RequestId}", requestId);
+                    LogAdminAudit("Flushed", "BatchSpending",
+                        detail: $"RequestId: {requestId}, Priority: {priority}, Reason: {reason ?? "Administrative flush operation"}");
 
                     // Return accepted response with tracking information
                     return (object)new

@@ -362,8 +362,8 @@ public class AnalyticsController : AdminControllerBase
             {
                 // TODO: Implement cache invalidation logic
                 _analyticsMetrics?.RecordCacheInvalidation(reason, 0);
-                Logger.LogInformation("Cache invalidation requested: {Reason}", reason);
                 await Task.CompletedTask;
+                LogAdminAudit("Invalidated", "AnalyticsCache", detail: $"Reason: {reason}");
                 return new { message = "Cache invalidation initiated", reason };
             },
             result => Ok(result),

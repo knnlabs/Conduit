@@ -89,7 +89,7 @@ public class SystemInfoController : AdminControllerBase
                     CorrelationId = Guid.NewGuid().ToString()
                 });
 
-                Logger.LogInformation("Published discovery cache invalidation event to all Gateway API instances");
+                LogAdminAudit("Invalidated", "DiscoveryCache");
 
                 return new
                 {
@@ -147,7 +147,7 @@ public class SystemInfoController : AdminControllerBase
                     CorrelationId = Guid.NewGuid().ToString()
                 });
 
-                Logger.LogInformation("Published function discovery cache invalidation event to all Gateway API instances");
+                LogAdminAudit("Invalidated", "FunctionDiscoveryCache");
 
                 return new
                 {

@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Extensions;
 using MassTransit;
 
 namespace ConduitLLM.Admin.Controllers
@@ -131,7 +132,8 @@ namespace ConduitLLM.Admin.Controllers
                     _context.ProviderTools.Add(tool);
                     await _context.SaveChangesAsync();
 
-                    Logger.LogInformation("Created provider tool {ToolName} for {Provider}", tool.ToolName, tool.Provider);
+                    LogAdminAudit("Created", "ProviderTool", tool.Id,
+                        $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
 
                     await PublishToolChangedEventAsync(tool, "Created");
 
@@ -171,8 +173,8 @@ namespace ConduitLLM.Admin.Controllers
 
                     await _context.SaveChangesAsync();
 
-                    Logger.LogInformation("Updated provider tool {Id} ({ToolName} for {Provider})",
-                        id, tool.ToolName, tool.Provider);
+                    LogAdminAudit("Updated", "ProviderTool", id,
+                        $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
 
                     await PublishToolChangedEventAsync(tool, "Updated");
 
@@ -203,8 +205,8 @@ namespace ConduitLLM.Admin.Controllers
                     _context.ProviderTools.Remove(tool);
                     await _context.SaveChangesAsync();
 
-                    Logger.LogInformation("Deleted provider tool {Id} ({ToolName} for {Provider})",
-                        id, tool.ToolName, tool.Provider);
+                    LogAdminAudit("Deleted", "ProviderTool", id,
+                        $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
 
                     await PublishToolChangedEventAsync(tool, "Deleted");
                 },
@@ -315,7 +317,8 @@ namespace ConduitLLM.Admin.Controllers
                         }
                     }
 
-                    Logger.LogInformation("Imported {Imported} provider tools, skipped {Skipped}", imported, skipped);
+                    LogAdminAudit("Imported", "ProviderTool",
+                        detail: $"Imported: {imported}, Skipped: {skipped}, Total: {tools.Count}");
 
                     return new
                     {

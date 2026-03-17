@@ -211,7 +211,6 @@ namespace ConduitLLM.Admin.Controllers
 
                     // Clear errors from Redis (including provider disabled keys cleanup)
                     await _errorService.ClearErrorsForKeyAsync(keyId, providerId);
-                    Logger.LogInformation("Cleared errors for key {KeyId}", keyId);
 
                     // Re-enable the key if requested
                     if (request.ReenableKey && key != null && !key.IsEnabled)
@@ -229,9 +228,12 @@ namespace ConduitLLM.Admin.Controllers
                             ReenabledAt = DateTime.UtcNow
                         }, "ClearKeyErrors");
 
-                        Logger.LogInformation(
-                            "Re-enabled key {KeyId} for provider {ProviderId} by {User}",
-                            keyId, key.ProviderId, User.Identity?.Name);
+                        LogAdminAudit("ClearedErrorsAndReenabled", "ProviderKeyCredential", keyId,
+                            $"ProviderId: {key.ProviderId}");
+                    }
+                    else
+                    {
+                        LogAdminAudit("ClearedErrors", "ProviderKeyCredential", keyId);
                     }
 
                     return new
@@ -338,9 +340,8 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     await _errorService.DisableKeyAsync(keyId, $"Manual disable: {reason}");
 
-                    Logger.LogInformation(
-                        "Manually disabled key {KeyId} by {User}: {Reason}",
-                        keyId, User.Identity?.Name, reason);
+                    LogAdminAudit("Disabled", "ProviderKeyCredential", keyId,
+                        $"Reason: {reason}");
 
                     return new
                     {
