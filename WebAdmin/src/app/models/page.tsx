@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Container, Title, Text, Button, Group, Stack, Tabs, Tooltip } from '@mantine/core';
 import { IconPlus, IconRefresh, IconBrain, IconTags, IconUsers, IconTrash } from '@tabler/icons-react';
 import { ModelsTable } from '@/components/models/ModelsTable';
@@ -16,6 +16,20 @@ export default function ModelsPage() {
   const { executeWithAdmin } = useAdminClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<string | null>('models');
+  // Track which tabs have been visited so we keep them mounted after first visit
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['models']));
+
+  const handleTabChange = useCallback((value: string | null) => {
+    setActiveTab(value);
+    if (value) {
+      setVisitedTabs(prev => {
+        if (prev.has(value)) return prev;
+        const next = new Set(prev);
+        next.add(value);
+        return next;
+      });
+    }
+  }, []);
   const [createModelOpen, setCreateModelOpen] = useState(false);
   const [createSeriesOpen, setCreateSeriesOpen] = useState(false);
   const [createAuthorOpen, setCreateAuthorOpen] = useState(false);
@@ -93,7 +107,7 @@ export default function ModelsPage() {
           </Group>
         </Group>
 
-        <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List>
             <Tabs.Tab value="models" leftSection={<IconBrain size={16} />}>
               Models
@@ -124,37 +138,41 @@ export default function ModelsPage() {
           </Tabs.Panel>
 
           <Tabs.Panel value="series" pt="md">
-            <Stack gap="md">
-              <Group justify="flex-end">
-                <Button
-                  leftSection={<IconPlus size={16} />}
-                  onClick={() => setCreateSeriesOpen(true)}
-                >
-                  Add Series
-                </Button>
-              </Group>
-              <ModelSeriesTable 
-                key={`series-${refreshKey}`}
-                onRefresh={handleRefresh}
-              />
-            </Stack>
+            {visitedTabs.has('series') && (
+              <Stack gap="md">
+                <Group justify="flex-end">
+                  <Button
+                    leftSection={<IconPlus size={16} />}
+                    onClick={() => setCreateSeriesOpen(true)}
+                  >
+                    Add Series
+                  </Button>
+                </Group>
+                <ModelSeriesTable
+                  key={`series-${refreshKey}`}
+                  onRefresh={handleRefresh}
+                />
+              </Stack>
+            )}
           </Tabs.Panel>
 
           <Tabs.Panel value="authors" pt="md">
-            <Stack gap="md">
-              <Group justify="flex-end">
-                <Button
-                  leftSection={<IconPlus size={16} />}
-                  onClick={() => setCreateAuthorOpen(true)}
-                >
-                  Add Author
-                </Button>
-              </Group>
-              <ModelAuthorsTable 
-                key={`authors-${refreshKey}`}
-                onRefresh={handleRefresh}
-              />
-            </Stack>
+            {visitedTabs.has('authors') && (
+              <Stack gap="md">
+                <Group justify="flex-end">
+                  <Button
+                    leftSection={<IconPlus size={16} />}
+                    onClick={() => setCreateAuthorOpen(true)}
+                  >
+                    Add Author
+                  </Button>
+                </Group>
+                <ModelAuthorsTable
+                  key={`authors-${refreshKey}`}
+                  onRefresh={handleRefresh}
+                />
+              </Stack>
+            )}
           </Tabs.Panel>
         </Tabs>
       </Stack>

@@ -20,7 +20,6 @@ import { ViewModelModal } from './ViewModelModal';
 import { DeleteModelModal } from './DeleteModelModal';
 import { ModelCostPreviewModal } from './ModelCostPreviewModal';
 import { ModelCostEditorModal } from './ModelCostEditorModal';
-import { useModelSeries } from '@/hooks/useModelSeries';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
 import type { ModelCostDto, ModelDto } from '@knn_labs/conduit-admin-client';
 import { extractCapabilities, getErrorMessage } from '@/utils/typeGuards';
@@ -63,7 +62,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const [existingModelCost, setExistingModelCost] = useState<ModelCostDto | null>(null);
 
   const { executeWithAdmin } = useAdminClient();
-  const { seriesNames } = useModelSeries(models);
+  const [seriesNames, setSeriesNames] = useState<Record<number, string>>({});
   const { mappings: modelMappings } = useModelMappings();
 
   // Build Set of model aliases for O(1) lookup
@@ -82,42 +81,29 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const loadModels = async () => {
     try {
       setLoading(true);
-      const data = await executeWithAdmin(client => client.models.listWithMappingStatus());
-      
-      // Fetch series parameters for models with series IDs
-      const uniqueSeriesIds = Array.from(
-        new Set(
-          data
-            .map(model => model.modelSeriesId)
-            .filter((id): id is number => id !== undefined && id !== null)
-        )
-      );
-      
+      // Fetch models and all series in parallel (1 + 1 calls instead of 1 + N)
+      const [data, allSeries] = await Promise.all([
+        executeWithAdmin(client => client.models.listWithMappingStatus()),
+        executeWithAdmin(client => client.modelSeries.list()),
+      ]);
+
+      // Build lookup maps from the single series list call
       const seriesParametersMap: Record<number, string | null> = {};
-      
-      if (uniqueSeriesIds.length > 0) {
-        const seriesResults = await Promise.allSettled(
-          uniqueSeriesIds.map(async (seriesId) => {
-            const series = await executeWithAdmin(client => 
-              client.modelSeries.get(seriesId)
-            );
-            return { id: seriesId, parameters: series.parameters ?? null };
-          })
-        );
-        
-        seriesResults.forEach((result) => {
-          if (result.status === 'fulfilled') {
-            seriesParametersMap[result.value.id] = result.value.parameters;
-          }
-        });
+      const seriesNamesMap: Record<number, string> = {};
+      for (const series of allSeries) {
+        if (series.id) {
+          seriesParametersMap[series.id] = series.parameters ?? null;
+          seriesNamesMap[series.id] = series.name ?? `Series ${series.id}`;
+        }
       }
-      
+      setSeriesNames(seriesNamesMap);
+
       // Enhance models with series parameters
       const enhancedModels = data.map(model => ({
         ...model,
         seriesParameters: model.modelSeriesId ? seriesParametersMap[model.modelSeriesId] ?? null : null
       }));
-      
+
       setModels(enhancedModels);
       setFilteredModels(enhancedModels);
     } catch (error) {

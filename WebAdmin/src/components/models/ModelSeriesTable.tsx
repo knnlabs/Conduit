@@ -31,12 +31,22 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
   const loadSeries = async () => {
     try {
       setLoading(true);
-      const data = await executeWithAdmin(client => client.modelSeries.list());
+      // Fetch series and all models in parallel (2 calls instead of 1 + N)
+      const [data, allModels] = await Promise.all([
+        executeWithAdmin(client => client.modelSeries.list()),
+        executeWithAdmin(client => client.models.list()),
+      ]);
       setSeries(data);
       setFilteredSeries(data);
-      
-      // Load model counts for each series
-      await loadModelCounts(data);
+
+      // Count models per series from the full models list
+      const counts: Record<number, number> = {};
+      for (const model of allModels) {
+        if (model.modelSeriesId) {
+          counts[model.modelSeriesId] = (counts[model.modelSeriesId] ?? 0) + 1;
+        }
+      }
+      setModelCounts(counts);
     } catch (error) {
       console.error('Failed to load model series:', error);
       notifications.show({
@@ -47,28 +57,6 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadModelCounts = async (seriesList: ModelSeriesDto[]) => {
-    const counts: Record<number, number> = {};
-    
-    await Promise.all(
-      seriesList.map(async (seriesItem) => {
-        if (seriesItem.id) {
-          try {
-            const models = await executeWithAdmin(client => 
-              client.modelSeries.getModels(seriesItem.id as number)
-            );
-            counts[seriesItem.id] = models.length;
-          } catch (error) {
-            console.error(`Failed to load model count for series ${seriesItem.id}:`, error);
-            counts[seriesItem.id] = 0;
-          }
-        }
-      })
-    );
-    
-    setModelCounts(counts);
   };
 
   useEffect(() => {
