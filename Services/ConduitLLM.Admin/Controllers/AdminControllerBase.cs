@@ -91,7 +91,7 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var result = await operation();
-                Logger.LogDebug("{OperationName} completed successfully", operationName);
+                LogOperationSuccess(operationName);
                 return successAction(result);
             }
             catch (Exception ex)
@@ -116,7 +116,7 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var result = await operation();
-                Logger.LogDebug("{OperationName} completed successfully", operationName);
+                LogOperationSuccess(operationName);
                 return result;
             }
             catch (Exception ex)
@@ -186,8 +186,7 @@ namespace ConduitLLM.Admin.Controllers
                         operationName, entityType, entityId);
                     return this.NotFoundEntity(entityType, entityId);
                 }
-                Logger.LogDebug("{OperationName} completed successfully for {EntityType} {EntityId}",
-                    operationName, entityType, entityId);
+                LogOperationSuccess(operationName, entityType, entityId);
                 return successAction(result);
             }
             catch (Exception ex)
@@ -223,14 +222,54 @@ namespace ConduitLLM.Admin.Controllers
                         operationName, entityType, entityId);
                     return this.NotFoundEntity(entityType, entityId);
                 }
-                Logger.LogDebug("{OperationName} completed successfully for {EntityType} {EntityId}",
-                    operationName, entityType, entityId);
+                LogOperationSuccess(operationName, entityType, entityId);
                 return await successAction(result);
             }
             catch (Exception ex)
             {
                 return HandleOperationException(ex, operationName, new { entityType, entityId });
             }
+        }
+
+        /// <summary>
+        /// Logs operation success at Information level for mutations (POST/PUT/PATCH/DELETE)
+        /// and Debug level for reads (GET/HEAD/OPTIONS).
+        /// </summary>
+        private void LogOperationSuccess(string operationName, string? entityType = null, object? entityId = null)
+        {
+            if (IsMutationRequest())
+            {
+                if (entityType != null)
+                {
+                    Logger.LogInformation("{OperationName} completed successfully for {EntityType} {EntityId}",
+                        operationName, entityType, entityId);
+                }
+                else
+                {
+                    Logger.LogInformation("{OperationName} completed successfully", operationName);
+                }
+            }
+            else
+            {
+                if (entityType != null)
+                {
+                    Logger.LogDebug("{OperationName} completed successfully for {EntityType} {EntityId}",
+                        operationName, entityType, entityId);
+                }
+                else
+                {
+                    Logger.LogDebug("{OperationName} completed successfully", operationName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the current HTTP request is a mutation (POST, PUT, PATCH, DELETE).
+        /// </summary>
+        private bool IsMutationRequest()
+        {
+            var method = HttpContext?.Request?.Method;
+            return method is "POST" or "PUT" or "PATCH" or "DELETE";
         }
 
         /// <summary>

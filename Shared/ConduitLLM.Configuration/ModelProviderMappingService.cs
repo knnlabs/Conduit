@@ -87,7 +87,7 @@ namespace ConduitLLM.Configuration
         {
             try
             {
-                _logger.LogInformation("Getting all model-provider mappings");
+                _logger.LogDebug("Getting all model-provider mappings");
                 return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _repository.GetPaginatedAsync);
             }
@@ -102,7 +102,7 @@ namespace ConduitLLM.Configuration
         {
             try
             {
-                _logger.LogInformation("Getting mapping by ID: {Id}", id);
+                _logger.LogDebug("Getting mapping by ID: {Id}", id);
                 return await _repository.GetByIdAsync(id);
             }
             catch (Exception ex)
@@ -121,7 +121,7 @@ namespace ConduitLLM.Configuration
 
             try
             {
-                _logger.LogInformation("Getting mapping by model alias: {ModelAlias}", LoggingSanitizer.S(modelAlias));
+                _logger.LogDebug("Getting mapping by model alias: {ModelAlias}", LoggingSanitizer.S(modelAlias));
                 return await _repository.GetByModelNameAsync(modelAlias);
             }
             catch (Exception ex)
@@ -300,7 +300,7 @@ namespace ConduitLLM.Configuration
         {
             try
             {
-                _logger.LogInformation("Getting all available providers");
+                _logger.LogDebug("Getting all available providers");
                 var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _providerRepository.GetPaginatedAsync);
                 return providers.Select(p => (p.Id, p.ProviderName)).ToList();

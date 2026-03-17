@@ -83,13 +83,13 @@ namespace ConduitLLM.Configuration
 
         public async Task<List<Provider>> GetAllProvidersAsync()
         {
-            _logger.LogInformation("Getting all providers");
+            _logger.LogDebug("Getting all providers");
 
             try
             {
                 var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _repository.GetPaginatedAsync);
-                _logger.LogInformation("Retrieved {Count} providers", providers.Count);
+                _logger.LogDebug("Retrieved {Count} providers", providers.Count);
                 return providers;
             }
             catch (Exception ex)
@@ -101,18 +101,18 @@ namespace ConduitLLM.Configuration
 
         public async Task<Provider?> GetProviderByIdAsync(int id)
         {
-            _logger.LogInformation("Getting provider by ID: {Id}", id);
-            
+            _logger.LogDebug("Getting provider by ID: {Id}", id);
+
             try
             {
                 var provider = await _repository.GetByIdAsync(id);
                 if (provider == null)
                 {
-                    _logger.LogInformation("Provider with ID {Id} not found", id);
+                    _logger.LogDebug("Provider with ID {Id} not found", id);
                 }
                 else
                 {
-                    _logger.LogInformation("Retrieved provider {ProviderId}: {ProviderName}", provider.Id, provider.ProviderName);
+                    _logger.LogDebug("Retrieved provider {ProviderId}: {ProviderName}", provider.Id, provider.ProviderName);
                 }
                 return provider;
             }
@@ -131,14 +131,14 @@ namespace ConduitLLM.Configuration
 
         public async Task<List<Provider>> GetAllEnabledProvidersAsync()
         {
-            _logger.LogInformation("Getting all enabled providers");
+            _logger.LogDebug("Getting all enabled providers");
 
             try
             {
                 var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _repository.GetPaginatedAsync);
                 var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
-                _logger.LogInformation("Retrieved {Count} enabled providers out of {Total} total", enabledProviders.Count, providers.Count);
+                _logger.LogDebug("Retrieved {Count} enabled providers out of {Total} total", enabledProviders.Count, providers.Count);
                 return enabledProviders;
             }
             catch (Exception ex)
@@ -182,13 +182,13 @@ namespace ConduitLLM.Configuration
         // Provider Key Credential methods
         public async Task<List<ProviderKeyCredential>> GetAllCredentialsAsync()
         {
-            _logger.LogInformation("Getting all key credentials across all providers");
+            _logger.LogDebug("Getting all key credentials across all providers");
 
             try
             {
                 var credentials = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _keyRepository.GetPaginatedAsync);
-                _logger.LogInformation("Retrieved {Count} key credentials across all providers", credentials.Count);
+                _logger.LogDebug("Retrieved {Count} key credentials across all providers", credentials.Count);
                 return credentials;
             }
             catch (Exception ex)
@@ -200,7 +200,7 @@ namespace ConduitLLM.Configuration
 
         public async Task<List<ProviderKeyCredential>> GetKeyCredentialsByProviderIdAsync(int providerId)
         {
-            _logger.LogInformation("Getting key credentials for provider ID: {ProviderId}", providerId);
+            _logger.LogDebug("Getting key credentials for provider ID: {ProviderId}", providerId);
 
             try
             {
@@ -216,7 +216,7 @@ namespace ConduitLLM.Configuration
 
         public async Task<ProviderKeyCredential?> GetKeyCredentialByIdAsync(int keyId)
         {
-            _logger.LogInformation("Getting key credential by ID: {KeyId}", keyId);
+            _logger.LogDebug("Getting key credential by ID: {KeyId}", keyId);
             
             try
             {
