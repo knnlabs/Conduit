@@ -72,7 +72,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<VirtualKeyValidationInfoDto?> GetValidationInfoAsync(int id)
         {
-            _logger.LogInformation("Getting validation info for virtual key ID {KeyId}", id);
+            _logger.LogDebug("Getting validation info for virtual key ID {KeyId}", id);
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)

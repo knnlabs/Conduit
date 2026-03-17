@@ -99,7 +99,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Updating cache configuration");
+                _logger.LogDebug("Updating cache configuration");
 
                 // Update global configuration if specified
                 if (config.ApplyGlobally)

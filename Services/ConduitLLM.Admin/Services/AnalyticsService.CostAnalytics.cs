@@ -30,7 +30,7 @@ namespace ConduitLLM.Admin.Services
                 _metrics?.RecordCacheMiss(cacheKey);
                 entry.AbsoluteExpirationRelativeToNow = ShortCacheDuration;
 
-                _logger.LogInformation("Getting cost summary with timeframe: {Timeframe}", timeframe);
+                _logger.LogDebug("Getting cost summary with timeframe: {Timeframe}", timeframe);
 
                 // Normalize parameters
                 timeframe = NormalizeTimeframe(timeframe);
@@ -142,7 +142,7 @@ namespace ConduitLLM.Admin.Services
                 _metrics?.RecordCacheMiss(cacheKey);
                 entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
 
-                _logger.LogInformation("Getting cost trends with period: {Period}", period);
+                _logger.LogDebug("Getting cost trends with period: {Period}", period);
 
                 period = NormalizeTimeframe(period);
                 startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
@@ -198,7 +198,7 @@ namespace ConduitLLM.Admin.Services
             DateTime? endDate = null,
             int topN = 10)
         {
-            _logger.LogInformation("Getting model costs breakdown");
+            _logger.LogDebug("Getting model costs breakdown");
 
             startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
@@ -224,7 +224,7 @@ namespace ConduitLLM.Admin.Services
             DateTime? endDate = null,
             int topN = 10)
         {
-            _logger.LogInformation("Getting virtual key costs breakdown");
+            _logger.LogDebug("Getting virtual key costs breakdown");
 
             startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;

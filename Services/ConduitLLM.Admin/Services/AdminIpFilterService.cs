@@ -60,7 +60,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting all IP filters");
+            _logger.LogDebug("Getting all IP filters");
 
             var filters = await _ipFilterRepository.GetAllUnboundedAsync();
             return filters.Select(f => f.ToDto());
@@ -77,7 +77,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting enabled IP filters");
+            _logger.LogDebug("Getting enabled IP filters");
 
             var filters = await _ipFilterRepository.GetEnabledAsync();
             return filters.Select(f => f.ToDto());
@@ -94,7 +94,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting IP filter with ID: {FilterId}", id);
+            _logger.LogDebug("Getting IP filter with ID: {FilterId}", id);
 
             var filter = await _ipFilterRepository.GetByIdAsync(id);
             return filter?.ToDto();
@@ -111,7 +111,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Creating new IP filter for {IpAddress}", (LoggingSanitizer.S(createFilter.IpAddressOrCidr ?? "")));
+            _logger.LogDebug("Creating new IP filter for {IpAddress}", (LoggingSanitizer.S(createFilter.IpAddressOrCidr ?? "")));
 
             // Validate the IP address format
             if (string.IsNullOrWhiteSpace(createFilter.IpAddressOrCidr) || !IsValidIpAddressOrCidr(createFilter.IpAddressOrCidr))
@@ -164,7 +164,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Updating IP filter with ID: {FilterId}", updateFilter.Id);
+            _logger.LogDebug("Updating IP filter with ID: {FilterId}", updateFilter.Id);
 
             // Check if the filter exists
             var existingFilter = await _ipFilterRepository.GetByIdAsync(updateFilter.Id);
@@ -255,7 +255,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Deleting IP filter with ID: {FilterId}", id);
+            _logger.LogDebug("Deleting IP filter with ID: {FilterId}", id);
 
             // Check if the filter exists
             var existingFilter = await _ipFilterRepository.GetByIdAsync(id);
@@ -304,7 +304,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting IP filter settings");
+            _logger.LogDebug("Getting IP filter settings");
 
             // Try to get settings from database first
             var enabledSetting = await _globalSettingRepository.GetByKeyAsync(SettingKeyEnabled);
@@ -361,8 +361,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             var endpoints = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json);
             return endpoints ?? new List<string> { "/api/v1/health" };
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to deserialize excluded endpoints JSON, using defaults");
             return new List<string> { "/api/v1/health" };
         }
     }
@@ -372,7 +373,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Updating IP filter settings: Enabled={Enabled}, DefaultAllow={DefaultAllow}",
+            _logger.LogDebug("Updating IP filter settings: Enabled={Enabled}, DefaultAllow={DefaultAllow}",
                 settings.IsEnabled, settings.DefaultAllow);
 
             // Validate settings
@@ -434,7 +435,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
+            _logger.LogDebug("Checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
 
             // Get current IP filter settings
             var settings = await GetIpFilterSettingsAsync();

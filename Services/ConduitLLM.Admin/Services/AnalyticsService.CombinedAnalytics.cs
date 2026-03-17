@@ -31,7 +31,7 @@ namespace ConduitLLM.Admin.Services
                 _metrics?.RecordCacheMiss(cacheKey);
                 entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
 
-                _logger.LogInformation("Getting comprehensive analytics summary");
+                _logger.LogDebug("Getting comprehensive analytics summary");
 
                 timeframe = NormalizeTimeframe(timeframe);
                 startDate ??= DateTime.UtcNow.AddDays(-30);
@@ -138,7 +138,7 @@ namespace ConduitLLM.Admin.Services
             DateTime? startDate = null,
             DateTime? endDate = null)
         {
-            _logger.LogInformation("Getting usage statistics for virtual key {VirtualKeyId}", virtualKeyId);
+            _logger.LogDebug("Getting usage statistics for virtual key {VirtualKeyId}", virtualKeyId);
 
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;

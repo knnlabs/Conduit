@@ -52,6 +52,11 @@ namespace ConduitLLM.Admin.Services
                                 _logger.LogInformation("Disabled expired virtual key {KeyId} ({KeyName})",
                                     key.Id, LoggingSanitizer.S(key.KeyName));
                             }
+                            else
+                            {
+                                _logger.LogWarning("Failed to disable expired virtual key {KeyId} ({KeyName})",
+                                    key.Id, LoggingSanitizer.S(key.KeyName));
+                            }
                         }
                     }
                     catch (Exception ex)

@@ -168,7 +168,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<VirtualKeyDto?> GetVirtualKeyInfoAsync(int id)
         {
-            _logger.LogInformation("Getting virtual key info for ID: {KeyId}", id);
+            _logger.LogDebug("Getting virtual key info for ID: {KeyId}", id);
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)
@@ -185,14 +185,14 @@ namespace ConduitLLM.Admin.Services
         {
             if (virtualKeyGroupId.HasValue)
             {
-                _logger.LogInformation("Listing virtual keys for group {GroupId}", virtualKeyGroupId.Value);
+                _logger.LogDebug("Listing virtual keys for group {GroupId}", virtualKeyGroupId.Value);
                 var keysByGroup = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _virtualKeyRepository.GetByVirtualKeyGroupIdPaginatedAsync, virtualKeyGroupId.Value);
                 return keysByGroup.ConvertAll(k => k.ToDto());
             }
             else
             {
-                _logger.LogInformation("Listing all virtual keys");
+                _logger.LogDebug("Listing all virtual keys");
                 var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _virtualKeyRepository.GetPaginatedAsync);
                 return keys.ConvertAll(k => k.ToDto());
@@ -202,7 +202,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<bool> UpdateVirtualKeyAsync(int id, UpdateVirtualKeyRequestDto request)
         {
-            _logger.LogInformation("Updating virtual key with ID: {KeyId}", id);
+            _logger.LogDebug("Updating virtual key with ID: {KeyId}", id);
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)
@@ -302,7 +302,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<bool> DeleteVirtualKeyAsync(int id)
         {
-            _logger.LogInformation("Deleting virtual key with ID: {KeyId}", id);
+            _logger.LogDebug("Deleting virtual key with ID: {KeyId}", id);
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)

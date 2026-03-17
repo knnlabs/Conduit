@@ -41,11 +41,11 @@ namespace ConduitLLM.Admin.Services
             {
                 if (virtualKeyGroupId.HasValue)
                 {
-                    _logger.LogInformation("Getting storage statistics for virtual key group {GroupId}", virtualKeyGroupId.Value);
+                    _logger.LogDebug("Getting storage statistics for virtual key group {GroupId}", virtualKeyGroupId.Value);
                 }
                 else
                 {
-                    _logger.LogInformation("Getting overall storage statistics");
+                    _logger.LogDebug("Getting overall storage statistics");
                 }
                 return await _mediaLifecycleService.GetOverallStorageStatsAsync(virtualKeyGroupId);
             }
@@ -61,7 +61,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting storage statistics for virtual key {VirtualKeyId}", virtualKeyId);
+                _logger.LogDebug("Getting storage statistics for virtual key {VirtualKeyId}", virtualKeyId);
                 return await _mediaLifecycleService.GetStorageStatsByVirtualKeyAsync(virtualKeyId);
             }
             catch (Exception ex)
@@ -76,7 +76,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting media records for virtual key {VirtualKeyId}", virtualKeyId);
+                _logger.LogDebug("Getting media records for virtual key {VirtualKeyId}", virtualKeyId);
                 return await _mediaLifecycleService.GetMediaByVirtualKeyAsync(virtualKeyId);
             }
             catch (Exception ex)
@@ -147,7 +147,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Deleting media record {MediaId}", mediaId);
+                _logger.LogDebug("Deleting media record {MediaId}", mediaId);
 
                 var mediaRecord = await _mediaRepository.GetByIdAsync(mediaId);
                 if (mediaRecord == null)
@@ -221,7 +221,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting storage statistics by provider");
+                _logger.LogDebug("Getting storage statistics by provider");
                 return await _mediaRepository.GetStorageStatsByProviderAsync();
             }
             catch (Exception ex)
@@ -236,7 +236,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting storage statistics by media type");
+                _logger.LogDebug("Getting storage statistics by media type");
                 return await _mediaRepository.GetStorageStatsByMediaTypeAsync();
             }
             catch (Exception ex)

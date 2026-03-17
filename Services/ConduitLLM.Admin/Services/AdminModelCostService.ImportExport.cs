@@ -29,6 +29,8 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 int importedCount = 0;
+                int failedCount = 0;
+                var totalCount = modelCosts.Count();
 
                 // Process each model cost
                 foreach (var modelCost in modelCosts)
@@ -95,15 +97,16 @@ namespace ConduitLLM.Admin.Services
                     }
                     catch (Exception ex)
                     {
+                        failedCount++;
                         _logger.LogWarning(ex,
-                "Error importing model cost with name '{CostName}'",
-                LoggingSanitizer.S(modelCost.CostName));
+                            "Error importing model cost with name '{CostName}'",
+                            LoggingSanitizer.S(modelCost.CostName));
                         // Continue with next model cost
                     }
                 }
 
-                _logger.LogInformation("Imported {Count} model costs",
-                importedCount);
+                _logger.LogInformation("Imported {Imported} model costs ({Failed} failed out of {Total})",
+                    importedCount, failedCount, totalCount);
                 return importedCount;
             }
             catch (Exception ex)
@@ -201,6 +204,8 @@ namespace ConduitLLM.Admin.Services
                     {
                         result.FailureCount++;
                         result.Errors.Add($"Failed to import model cost '{modelCost.CostName}': {ex.Message}");
+                        _logger.LogWarning(ex, "Error importing model cost '{CostName}' from {Format} data",
+                            LoggingSanitizer.S(modelCost.CostName), format);
                     }
                 }
             }
@@ -208,8 +213,11 @@ namespace ConduitLLM.Admin.Services
             {
                 result.FailureCount++;
                 result.Errors.Add($"Failed to parse import data: {ex.Message}");
+                _logger.LogError(ex, "Failed to parse {Format} import data", format);
             }
 
+            _logger.LogInformation("Model cost {Format} import completed: {Success} succeeded, {Failed} failed",
+                format, result.SuccessCount, result.FailureCount);
             return result;
         }
     }

@@ -41,7 +41,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     /// <inheritdoc />
     public async Task<SystemInfoDto> GetSystemInfoAsync()
     {
-        _logger.LogInformation("Getting system information");
+        _logger.LogDebug("Getting system information");
 
         var systemInfo = new SystemInfoDto
         {
@@ -58,7 +58,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     /// <inheritdoc />
     public async Task<HealthStatusDto> GetHealthStatusAsync()
     {
-        _logger.LogInformation("Getting health status");
+        _logger.LogDebug("Getting health status");
 
         var sw = Stopwatch.StartNew();
         var checks = new Dictionary<string, ComponentHealth>();
