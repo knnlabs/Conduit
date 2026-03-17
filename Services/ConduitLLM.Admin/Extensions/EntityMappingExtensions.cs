@@ -96,7 +96,20 @@ namespace ConduitLLM.Admin.Extensions
                 SupportsStreaming = model.SupportsStreaming,
                 MaxInputTokens = model.MaxInputTokens,
                 MaxOutputTokens = model.MaxOutputTokens,
-                TokenizerType = model.TokenizerType
+                TokenizerType = model.TokenizerType,
+                Identifiers = model.Identifiers?.Select(i => new ModelIdentifierDto
+                {
+                    Id = i.Id,
+                    Identifier = i.Identifier,
+                    Provider = (int?)i.Provider,
+                    IsPrimary = i.IsPrimary,
+                    MaxInputTokens = i.MaxInputTokens,
+                    MaxOutputTokens = i.MaxOutputTokens,
+                    SpeedScore = i.SpeedScore,
+                    QualityScore = i.QualityScore,
+                    ProviderVariation = i.ProviderVariation,
+                    ModelCostId = i.ModelCostId
+                }).ToList()
             };
         }
 

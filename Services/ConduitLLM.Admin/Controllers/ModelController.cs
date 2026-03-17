@@ -49,19 +49,57 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets all models with their capabilities
+        /// Gets all models with their capabilities.
+        /// Supports optional server-side pagination, search, and filtering.
+        /// When page/pageSize are omitted, returns all models (backward compatible).
         /// </summary>
-        /// <returns>List of all models</returns>
+        /// <param name="page">Page number (1-based). Required together with pageSize for pagination.</param>
+        /// <param name="pageSize">Items per page (max 100). Required together with page for pagination.</param>
+        /// <param name="search">Optional search term for model name (case-insensitive partial match)</param>
+        /// <param name="capability">Optional capability filter: chat, vision, image, video, embeddings</param>
+        /// <param name="hasProviders">Optional filter: true = only models with identifiers, false = without</param>
+        /// <returns>List of all models, or paginated result when page/pageSize are provided</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetAllModels()
+        public Task<IActionResult> GetAllModels(
+            [FromQuery] int? page = null,
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? capability = null,
+            [FromQuery] bool? hasProviders = null)
         {
+            // Clamp pagination parameters
+            if (page.HasValue && page.Value < 1) page = 1;
+            if (pageSize.HasValue)
+            {
+                if (pageSize.Value < 1) pageSize = 50;
+                if (pageSize.Value > 100) pageSize = 100;
+            }
+
             return ExecuteAsync(
                 async () =>
                 {
-                    var models = await _modelRepository.GetAllWithDetailsAsync();
-                    return models.Select(m => m.ToDto());
+                    var (models, totalCount) = await _modelRepository.GetPaginatedWithFilterAsync(
+                        page, pageSize, search, capability, hasProviders);
+
+                    var dtos = models.Select(m => m.ToDto()).ToList();
+
+                    // Return paginated result when pagination params are provided
+                    if (page.HasValue && pageSize.HasValue)
+                    {
+                        return (object)new Configuration.DTOs.PagedResult<ModelDto>
+                        {
+                            Items = dtos,
+                            TotalCount = totalCount,
+                            CurrentPage = page.Value,
+                            PageSize = pageSize.Value,
+                            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize.Value)
+                        };
+                    }
+
+                    // Backward compatible: return flat array
+                    return dtos;
                 },
                 result => Ok(result),
                 "GetAllModels");

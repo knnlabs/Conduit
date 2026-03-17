@@ -1,7 +1,25 @@
+using System.Collections.Generic;
 using ConduitLLM.Admin.Models.ModelSeries;
 
 namespace ConduitLLM.Admin.Models.Models
 {
+    /// <summary>
+    /// Lightweight DTO for a model's provider type association (identifier).
+    /// </summary>
+    public class ModelIdentifierDto
+    {
+        public int Id { get; set; }
+        public string Identifier { get; set; } = string.Empty;
+        public int? Provider { get; set; }
+        public bool IsPrimary { get; set; }
+        public int? MaxInputTokens { get; set; }
+        public int? MaxOutputTokens { get; set; }
+        public decimal? SpeedScore { get; set; }
+        public decimal? QualityScore { get; set; }
+        public string? ProviderVariation { get; set; }
+        public int? ModelCostId { get; set; }
+    }
+
     /// <summary>
     /// Data transfer object representing a canonical AI model in the system.
     /// </summary>
@@ -149,5 +167,15 @@ namespace ConduitLLM.Admin.Models.Models
         /// </remarks>
         /// <value>JSON string containing parameter definitions, or null to use series defaults.</value>
         public string? ModelParameters { get; set; }
+
+        /// <summary>
+        /// Gets or sets the provider type associations (identifiers) for this model.
+        /// </summary>
+        /// <remarks>
+        /// Included when the model is fetched with details. Each identifier represents
+        /// a provider-specific mapping showing which providers offer this model and under
+        /// what identifier string.
+        /// </remarks>
+        public List<ModelIdentifierDto>? Identifiers { get; set; }
     }
 }

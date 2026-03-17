@@ -85,6 +85,25 @@ public interface IModelRepository : IRepositoryBase<Model, int>
     Task<bool> DeleteIdentifierAsync(int modelId, int identifierId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets all models with details, supporting optional pagination, search, and capability filtering.
+    /// When page/pageSize are provided, returns paginated results.
+    /// </summary>
+    /// <param name="page">Page number (1-based), or null for all results</param>
+    /// <param name="pageSize">Items per page, or null for all results</param>
+    /// <param name="search">Optional search term for model name (case-insensitive partial match)</param>
+    /// <param name="capability">Optional capability filter (chat, vision, image, video, embeddings)</param>
+    /// <param name="hasProviders">Optional filter for models with/without provider identifiers</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Tuple of models list and total count</returns>
+    Task<(List<Model> Items, int TotalCount)> GetPaginatedWithFilterAsync(
+        int? page = null,
+        int? pageSize = null,
+        string? search = null,
+        string? capability = null,
+        bool? hasProviders = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a new model and returns the created entity.
     /// Use this when you need the full entity back after creation.
     /// </summary>

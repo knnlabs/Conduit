@@ -62,10 +62,75 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
             return await GetDbSet(context)
                 .Include(m => m.Series)
                     .ThenInclude(s => s.Author)
+                .Include(m => m.Identifiers)
                 .AsNoTracking()
                 .OrderBy(m => m.Name)
                 .ToListAsync(cancellationToken);
         }, cancellationToken, "getting all with details");
+    }
+
+    /// <inheritdoc/>
+    public async Task<(List<Model> Items, int TotalCount)> GetPaginatedWithFilterAsync(
+        int? page = null,
+        int? pageSize = null,
+        string? search = null,
+        string? capability = null,
+        bool? hasProviders = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var query = GetDbSet(context)
+                .Include(m => m.Series)
+                    .ThenInclude(s => s.Author)
+                .Include(m => m.Identifiers)
+                .AsNoTracking()
+                .AsQueryable();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+                query = query.Where(m => m.Name.ToLower().Contains(lowerSearch));
+            }
+
+            // Apply capability filter
+            if (!string.IsNullOrWhiteSpace(capability))
+            {
+                query = capability.ToLower() switch
+                {
+                    "chat" => query.Where(m => m.SupportsChat),
+                    "vision" => query.Where(m => m.SupportsVision),
+                    "image" => query.Where(m => m.SupportsImageGeneration),
+                    "video" => query.Where(m => m.SupportsVideoGeneration),
+                    "embeddings" => query.Where(m => m.SupportsEmbeddings),
+                    _ => query
+                };
+            }
+
+            // Apply provider filter
+            if (hasProviders.HasValue)
+            {
+                query = hasProviders.Value
+                    ? query.Where(m => m.Identifiers.Any())
+                    : query.Where(m => !m.Identifiers.Any());
+            }
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            query = query.OrderBy(m => m.Name);
+
+            // Apply pagination if requested
+            if (page.HasValue && pageSize.HasValue)
+            {
+                query = query
+                    .Skip((page.Value - 1) * pageSize.Value)
+                    .Take(pageSize.Value);
+            }
+
+            var items = await query.ToListAsync(cancellationToken);
+            return (items, totalCount);
+        }, cancellationToken, "getting paginated models with filter");
     }
 
     /// <inheritdoc/>
