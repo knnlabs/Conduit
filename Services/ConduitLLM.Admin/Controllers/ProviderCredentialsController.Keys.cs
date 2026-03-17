@@ -196,34 +196,68 @@ namespace ConduitLLM.Admin.Controllers
                     return this.NotFoundEntity("Key credential", keyId);
                 }
 
-                // Update fields
-                if (!string.IsNullOrEmpty(request.KeyName))
+                // Track changes with before/after values
+                var changes = new List<(string Property, string? OldValue, string? NewValue)>();
+
+                if (!string.IsNullOrEmpty(request.KeyName) && key.KeyName != request.KeyName)
+                {
+                    changes.Add(("KeyName", key.KeyName, request.KeyName));
                     key.KeyName = request.KeyName;
+                }
                 if (!string.IsNullOrEmpty(request.ApiKey))
+                {
+                    changes.Add(("ApiKey", "***", "***")); // Never log API key values
                     key.ApiKey = request.ApiKey;
-                if (request.Organization != null)
+                }
+                if (request.Organization != null && key.Organization != request.Organization)
+                {
+                    changes.Add(("Organization", key.Organization, request.Organization));
                     key.Organization = request.Organization;
-                if (request.BaseUrl != null)
+                }
+                if (request.BaseUrl != null && key.BaseUrl != request.BaseUrl)
+                {
+                    changes.Add(("BaseUrl", key.BaseUrl, request.BaseUrl));
                     key.BaseUrl = request.BaseUrl;
-                if (request.IsPrimary.HasValue)
+                }
+                if (request.IsPrimary.HasValue && key.IsPrimary != request.IsPrimary.Value)
+                {
+                    changes.Add(("IsPrimary", key.IsPrimary.ToString(), request.IsPrimary.Value.ToString()));
                     key.IsPrimary = request.IsPrimary.Value;
-                if (request.IsEnabled.HasValue)
+                }
+                if (request.IsEnabled.HasValue && key.IsEnabled != request.IsEnabled.Value)
+                {
+                    changes.Add(("IsEnabled", key.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
                     key.IsEnabled = request.IsEnabled.Value;
-                if (request.ProviderAccountGroup.HasValue)
+                }
+                if (request.ProviderAccountGroup.HasValue && key.ProviderAccountGroup != (short)request.ProviderAccountGroup.Value)
+                {
+                    changes.Add(("ProviderAccountGroup", key.ProviderAccountGroup.ToString(), request.ProviderAccountGroup.Value.ToString()));
                     key.ProviderAccountGroup = (short)request.ProviderAccountGroup.Value;
-                
+                }
+
                 key.UpdatedAt = DateTime.UtcNow;
 
                 await _keyRepository.UpdateAsync(key);
 
-                LogAdminAudit("Updated", "ProviderKeyCredential", keyId, $"Provider: {providerId}");
+                var changedProperties = changes.Count > 0
+                    ? changes.Select(c => c.Property).ToArray()
+                    : Array.Empty<string>();
+
+                if (changes.Count > 0)
+                {
+                    LogAdminAuditWithChanges("ProviderKeyCredential", keyId, changes, $"Provider: {providerId}");
+                }
+                else
+                {
+                    LogAdminAudit("Updated", "ProviderKeyCredential", keyId, $"Provider: {providerId} (no changes detected)");
+                }
 
                 // Publish key updated event
                 PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialUpdated
                 {
                     KeyId = keyId,
                     ProviderId = providerId,
-                    ChangedProperties = new[] { "KeyName", "Organization", "ProviderAccountGroup", "BaseUrl", "IsPrimary", "IsEnabled" },
+                    ChangedProperties = changedProperties,
                     CorrelationId = Guid.NewGuid()
                 }, "update provider key", new { ProviderId = providerId, KeyId = keyId });
 

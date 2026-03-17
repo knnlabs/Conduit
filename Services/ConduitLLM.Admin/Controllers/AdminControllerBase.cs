@@ -331,7 +331,7 @@ namespace ConduitLLM.Admin.Controllers
 
         /// <summary>
         /// Logs a security-sensitive admin operation for audit purposes.
-        /// Captures the operation, entity context, client IP, and trace ID
+        /// Captures the operation, entity context, user identity, client IP, and trace ID
         /// in a structured log entry that can be filtered and queried.
         /// </summary>
         /// <param name="operation">The operation performed (e.g., "Created", "Updated", "Deleted").</param>
@@ -346,14 +346,16 @@ namespace ConduitLLM.Admin.Controllers
         {
             var clientIp = HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "unknown";
             var traceId = HttpContext?.TraceIdentifier ?? "unknown";
+            var adminUser = GetAdminUserIdentity();
 
             if (detail != null)
             {
                 Logger.LogInformation(
-                    "Admin Audit: {Operation} {EntityType} {EntityId} from {ClientIp} [TraceId: {TraceId}] - {Detail}",
+                    "Admin Audit: {Operation} {EntityType} {EntityId} by {AdminUser} from {ClientIp} [TraceId: {TraceId}] - {Detail}",
                     operation,
                     entityType,
                     entityId ?? "N/A",
+                    adminUser,
                     clientIp,
                     traceId,
                     LoggingSanitizer.S(detail));
@@ -361,13 +363,60 @@ namespace ConduitLLM.Admin.Controllers
             else
             {
                 Logger.LogInformation(
-                    "Admin Audit: {Operation} {EntityType} {EntityId} from {ClientIp} [TraceId: {TraceId}]",
+                    "Admin Audit: {Operation} {EntityType} {EntityId} by {AdminUser} from {ClientIp} [TraceId: {TraceId}]",
                     operation,
                     entityType,
                     entityId ?? "N/A",
+                    adminUser,
                     clientIp,
                     traceId);
             }
+        }
+
+        /// <summary>
+        /// Logs an admin audit event with before/after change tracking for update operations.
+        /// </summary>
+        /// <param name="entityType">The type of entity affected (e.g., "Provider", "VirtualKey").</param>
+        /// <param name="entityId">The identifier of the affected entity.</param>
+        /// <param name="changes">List of property changes with old and new values.</param>
+        /// <param name="detail">Optional additional detail about the operation.</param>
+        protected void LogAdminAuditWithChanges(
+            string entityType,
+            object? entityId,
+            IReadOnlyList<(string Property, string? OldValue, string? NewValue)> changes,
+            string? detail = null)
+        {
+            if (changes.Count == 0)
+                return;
+
+            var changeSummary = string.Join(", ", changes.Select(c =>
+                $"{c.Property}: '{LoggingSanitizer.S(c.OldValue ?? "null")}' -> '{LoggingSanitizer.S(c.NewValue ?? "null")}'"));
+
+            var fullDetail = detail != null
+                ? $"{detail}; Changes: [{changeSummary}]"
+                : $"Changes: [{changeSummary}]";
+
+            LogAdminAudit("Updated", entityType, entityId, fullDetail);
+        }
+
+        /// <summary>
+        /// Gets the admin user identity string for audit logging.
+        /// Combines the authentication identity with any forwarded user ID from the WebAdmin.
+        /// </summary>
+        /// <returns>A string identifying the admin user (e.g., "AdminUser", "AdminUser (user:clerk_abc123)").</returns>
+        private string GetAdminUserIdentity()
+        {
+            var identityName = User?.Identity?.Name ?? "Unknown";
+
+            // Check for forwarded user identity from WebAdmin (Clerk user ID)
+            var forwardedUserId = HttpContext?.Request?.Headers["X-Admin-User-Id"].FirstOrDefault();
+
+            if (!string.IsNullOrEmpty(forwardedUserId))
+            {
+                return $"{identityName} (user:{LoggingSanitizer.S(forwardedUserId)})";
+            }
+
+            return identityName;
         }
     }
 }

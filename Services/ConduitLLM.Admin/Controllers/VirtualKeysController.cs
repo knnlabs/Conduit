@@ -111,9 +111,40 @@ public class VirtualKeysController : AdminControllerBase
         return ExecuteAsync(
             async () =>
             {
+                // Fetch pre-state for change tracking
+                var preState = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
+                if (preState == null)
+                    throw new KeyNotFoundException();
+
                 if (!await _virtualKeyService.UpdateVirtualKeyAsync(id, request))
                     throw new KeyNotFoundException();
-                LogAdminAudit("Updated", "VirtualKey", id);
+
+                // Build change list from pre-state vs request
+                var changes = new List<(string Property, string? OldValue, string? NewValue)>();
+
+                if (request.KeyName != null && preState.KeyName != request.KeyName)
+                    changes.Add(("KeyName", preState.KeyName, request.KeyName));
+                if (request.IsEnabled.HasValue && preState.IsEnabled != request.IsEnabled.Value)
+                    changes.Add(("IsEnabled", preState.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
+                if (request.AllowedModels != null && preState.AllowedModels != request.AllowedModels)
+                    changes.Add(("AllowedModels", preState.AllowedModels ?? "null", request.AllowedModels));
+                if (request.ExpiresAt.HasValue && preState.ExpiresAt != request.ExpiresAt)
+                    changes.Add(("ExpiresAt", preState.ExpiresAt?.ToString("o") ?? "null", request.ExpiresAt?.ToString("o") ?? "null"));
+                if (request.RateLimitRpm.HasValue && preState.RateLimitRpm != request.RateLimitRpm)
+                    changes.Add(("RateLimitRpm", preState.RateLimitRpm?.ToString() ?? "null", request.RateLimitRpm?.ToString() ?? "null"));
+                if (request.RateLimitRpd.HasValue && preState.RateLimitRpd != request.RateLimitRpd)
+                    changes.Add(("RateLimitRpd", preState.RateLimitRpd?.ToString() ?? "null", request.RateLimitRpd?.ToString() ?? "null"));
+                if (request.VirtualKeyGroupId.HasValue && preState.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
+                    changes.Add(("VirtualKeyGroupId", preState.VirtualKeyGroupId.ToString(), request.VirtualKeyGroupId.Value.ToString()));
+
+                if (changes.Count > 0)
+                {
+                    LogAdminAuditWithChanges("VirtualKey", id, changes);
+                }
+                else
+                {
+                    LogAdminAudit("Updated", "VirtualKey", id, "No changes detected");
+                }
             },
             NoContent(),
             "UpdateKey",

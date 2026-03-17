@@ -190,24 +190,24 @@ namespace ConduitLLM.Admin.Controllers
                 () => _providerRepository.GetByIdAsync(id),
                 async provider =>
                 {
-                    var changedProperties = new List<string>();
+                    var changes = new List<(string Property, string? OldValue, string? NewValue)>();
 
                     if (!string.IsNullOrEmpty(request.ProviderName) && provider.ProviderName != request.ProviderName)
                     {
+                        changes.Add(("ProviderName", provider.ProviderName, request.ProviderName));
                         provider.ProviderName = request.ProviderName;
-                        changedProperties.Add("ProviderName");
                     }
 
                     if (provider.BaseUrl != request.BaseUrl)
                     {
+                        changes.Add(("BaseUrl", provider.BaseUrl, request.BaseUrl));
                         provider.BaseUrl = request.BaseUrl;
-                        changedProperties.Add("BaseUrl");
                     }
 
                     if (provider.IsEnabled != request.IsEnabled)
                     {
+                        changes.Add(("IsEnabled", provider.IsEnabled.ToString(), request.IsEnabled.ToString()));
                         provider.IsEnabled = request.IsEnabled;
-                        changedProperties.Add("IsEnabled");
                     }
 
                     provider.UpdatedAt = DateTime.UtcNow;
@@ -215,17 +215,18 @@ namespace ConduitLLM.Admin.Controllers
                     await _providerRepository.UpdateAsync(provider);
 
                     // Publish provider updated event
-                    if (changedProperties.Count > 0)
+                    if (changes.Count > 0)
                     {
+                        var changedProperties = changes.Select(c => c.Property).ToArray();
                         PublishEventFireAndForget(new ProviderUpdated
                         {
                             ProviderId = id,
                             IsEnabled = provider.IsEnabled,
-                            ChangedProperties = changedProperties.ToArray(),
+                            ChangedProperties = changedProperties,
                             CorrelationId = Guid.NewGuid().ToString()
                         }, "update provider", new { ProviderId = id, ChangedProperties = string.Join(", ", changedProperties) });
 
-                        LogAdminAudit("Updated", "Provider", id, $"Changed: {string.Join(", ", changedProperties)}");
+                        LogAdminAuditWithChanges("Provider", id, changes);
                     }
 
                     return NoContent();

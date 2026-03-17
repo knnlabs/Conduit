@@ -131,9 +131,31 @@ namespace ConduitLLM.Admin.Controllers
             return ExecuteAsync(
                 async () =>
                 {
+                    // Fetch pre-state for change tracking
+                    var preState = await _globalSettingService.GetSettingByIdAsync(id);
+                    if (preState == null)
+                        throw new KeyNotFoundException();
+
                     if (!await _globalSettingService.UpdateSettingAsync(setting))
                         throw new KeyNotFoundException();
-                    LogAdminAudit("Updated", "GlobalSetting", id);
+
+                    // Build change list from pre-state vs request
+                    var changes = new List<(string Property, string? OldValue, string? NewValue)>();
+
+                    if (setting.Value != null && preState.Value != setting.Value)
+                        changes.Add(("Value", preState.Value, setting.Value));
+                    if (setting.Description != null && preState.Description != setting.Description)
+                        changes.Add(("Description", preState.Description, setting.Description));
+
+                    if (changes.Count > 0)
+                    {
+                        LogAdminAuditWithChanges("GlobalSetting", id, changes,
+                            $"Key: {LoggingSanitizer.S(preState.Key)}");
+                    }
+                    else
+                    {
+                        LogAdminAudit("Updated", "GlobalSetting", id);
+                    }
                 },
                 NoContent(),
                 "UpdateSetting",

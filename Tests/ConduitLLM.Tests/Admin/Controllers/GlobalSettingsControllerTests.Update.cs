@@ -21,6 +21,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Description = "Updated description"
             };
 
+            _mockService.Setup(x => x.GetSettingByIdAsync(1))
+                .ReturnsAsync(new GlobalSettingDto { Id = 1, Key = "test_key", Value = "old_value", Description = "Old description" });
             _mockService.Setup(x => x.UpdateSettingAsync(It.IsAny<UpdateGlobalSettingDto>()))
                 .ReturnsAsync(true);
 
@@ -59,8 +61,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Value = "value"
             };
 
-            _mockService.Setup(x => x.UpdateSettingAsync(It.IsAny<UpdateGlobalSettingDto>()))
-                .ReturnsAsync(false);
+            _mockService.Setup(x => x.GetSettingByIdAsync(999))
+                .ReturnsAsync((GlobalSettingDto?)null);
 
             // Act
             var result = await _controller.UpdateSetting(999, updateDto);

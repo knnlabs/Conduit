@@ -587,6 +587,9 @@ namespace ConduitLLM.Admin.Controllers
                         return (IActionResult)NotFound($"Model with ID {id} not found");
                     }
 
+                    // Capture pre-state for change tracking
+                    var changes = new List<(string Property, string? OldValue, string? NewValue)>();
+
                     // Check for name conflicts if name is being changed
                     if (!string.IsNullOrEmpty(dto.Name) && dto.Name != model.Name)
                     {
@@ -595,35 +598,89 @@ namespace ConduitLLM.Admin.Controllers
                         {
                             return Conflict($"A model with name '{dto.Name}' already exists");
                         }
+                        changes.Add(("Name", model.Name, dto.Name));
                         model.Name = dto.Name;
                     }
 
-                    if (dto.ModelSeriesId.HasValue)
+                    if (dto.ModelSeriesId.HasValue && model.ModelSeriesId != dto.ModelSeriesId.Value)
+                    {
+                        changes.Add(("ModelSeriesId", model.ModelSeriesId.ToString(), dto.ModelSeriesId.Value.ToString()));
                         model.ModelSeriesId = dto.ModelSeriesId.Value;
-                    if (dto.IsActive.HasValue)
-                        model.IsActive = dto.IsActive.Value;
-                    if (dto.ModelParameters != null)
-                        model.ModelParameters = string.IsNullOrWhiteSpace(dto.ModelParameters) ? null : dto.ModelParameters;
+                    }
+                    else if (dto.ModelSeriesId.HasValue)
+                    {
+                        model.ModelSeriesId = dto.ModelSeriesId.Value;
+                    }
 
-                    // Update capability fields
+                    if (dto.IsActive.HasValue && model.IsActive != dto.IsActive.Value)
+                    {
+                        changes.Add(("IsActive", model.IsActive.ToString(), dto.IsActive.Value.ToString()));
+                        model.IsActive = dto.IsActive.Value;
+                    }
+                    else if (dto.IsActive.HasValue)
+                    {
+                        model.IsActive = dto.IsActive.Value;
+                    }
+
+                    if (dto.ModelParameters != null)
+                    {
+                        var newParams = string.IsNullOrWhiteSpace(dto.ModelParameters) ? null : dto.ModelParameters;
+                        if (model.ModelParameters != newParams)
+                            changes.Add(("ModelParameters", model.ModelParameters ?? "null", newParams ?? "null"));
+                        model.ModelParameters = newParams;
+                    }
+
+                    // Update capability fields with change tracking
                     if (dto.SupportsChat.HasValue)
+                    {
+                        if (model.SupportsChat != dto.SupportsChat.Value)
+                            changes.Add(("SupportsChat", model.SupportsChat.ToString(), dto.SupportsChat.Value.ToString()));
                         model.SupportsChat = dto.SupportsChat.Value;
+                    }
                     if (dto.SupportsVision.HasValue)
+                    {
+                        if (model.SupportsVision != dto.SupportsVision.Value)
+                            changes.Add(("SupportsVision", model.SupportsVision.ToString(), dto.SupportsVision.Value.ToString()));
                         model.SupportsVision = dto.SupportsVision.Value;
+                    }
                     if (dto.SupportsFunctionCalling.HasValue)
+                    {
+                        if (model.SupportsFunctionCalling != dto.SupportsFunctionCalling.Value)
+                            changes.Add(("SupportsFunctionCalling", model.SupportsFunctionCalling.ToString(), dto.SupportsFunctionCalling.Value.ToString()));
                         model.SupportsFunctionCalling = dto.SupportsFunctionCalling.Value;
+                    }
                     if (dto.SupportsStreaming.HasValue)
+                    {
+                        if (model.SupportsStreaming != dto.SupportsStreaming.Value)
+                            changes.Add(("SupportsStreaming", model.SupportsStreaming.ToString(), dto.SupportsStreaming.Value.ToString()));
                         model.SupportsStreaming = dto.SupportsStreaming.Value;
+                    }
                     if (dto.SupportsImageGeneration.HasValue)
+                    {
+                        if (model.SupportsImageGeneration != dto.SupportsImageGeneration.Value)
+                            changes.Add(("SupportsImageGeneration", model.SupportsImageGeneration.ToString(), dto.SupportsImageGeneration.Value.ToString()));
                         model.SupportsImageGeneration = dto.SupportsImageGeneration.Value;
+                    }
                     if (dto.SupportsVideoGeneration.HasValue)
+                    {
+                        if (model.SupportsVideoGeneration != dto.SupportsVideoGeneration.Value)
+                            changes.Add(("SupportsVideoGeneration", model.SupportsVideoGeneration.ToString(), dto.SupportsVideoGeneration.Value.ToString()));
                         model.SupportsVideoGeneration = dto.SupportsVideoGeneration.Value;
+                    }
                     if (dto.SupportsEmbeddings.HasValue)
+                    {
+                        if (model.SupportsEmbeddings != dto.SupportsEmbeddings.Value)
+                            changes.Add(("SupportsEmbeddings", model.SupportsEmbeddings.ToString(), dto.SupportsEmbeddings.Value.ToString()));
                         model.SupportsEmbeddings = dto.SupportsEmbeddings.Value;
-                    // For nullable int fields, we need to handle them differently
-                    // The DTO will have the property set if it was included in the JSON
-                    // We always update these fields since the frontend always sends them
+                    }
+
+                    // For nullable int fields, always update since frontend always sends them
+                    if (model.MaxInputTokens != dto.MaxInputTokens)
+                        changes.Add(("MaxInputTokens", model.MaxInputTokens?.ToString() ?? "null", dto.MaxInputTokens?.ToString() ?? "null"));
                     model.MaxInputTokens = dto.MaxInputTokens;
+
+                    if (model.MaxOutputTokens != dto.MaxOutputTokens)
+                        changes.Add(("MaxOutputTokens", model.MaxOutputTokens?.ToString() ?? "null", dto.MaxOutputTokens?.ToString() ?? "null"));
                     model.MaxOutputTokens = dto.MaxOutputTokens;
 
                     model.UpdatedAt = DateTime.UtcNow;
@@ -634,6 +691,10 @@ namespace ConduitLLM.Admin.Controllers
                     var updatedModel = await _modelRepository.UpdateModelAsync(model);
 
                     // Publish ModelUpdated event for cache invalidation
+                    var changedPropertyNames = changes.Count > 0
+                        ? changes.Select(c => c.Property).ToArray()
+                        : GetChangedProperties(dto);
+
                     await _publishEndpoint.Publish(new ModelUpdated
                     {
                         ModelId = updatedModel.Id,
@@ -641,11 +702,19 @@ namespace ConduitLLM.Admin.Controllers
                         ModelSeriesId = updatedModel.ModelSeriesId,
                         ChangeType = "Updated",
                         ParametersChanged = parametersChanged,
-                        ChangedProperties = GetChangedProperties(dto)
+                        ChangedProperties = changedPropertyNames
                     });
 
-                    LogAdminAudit("Updated", "Model", updatedModel.Id,
-                        $"Name: {LoggingSanitizer.S(updatedModel.Name)}, Changed: {string.Join(", ", GetChangedProperties(dto))}");
+                    if (changes.Count > 0)
+                    {
+                        LogAdminAuditWithChanges("Model", updatedModel.Id, changes,
+                            $"Name: {LoggingSanitizer.S(updatedModel.Name)}");
+                    }
+                    else
+                    {
+                        LogAdminAudit("Updated", "Model", updatedModel.Id,
+                            $"Name: {LoggingSanitizer.S(updatedModel.Name)}, no value changes detected");
+                    }
 
                     return (IActionResult)Ok(updatedModel.ToDto());
                 },
