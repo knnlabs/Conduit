@@ -34,39 +34,48 @@ namespace ConduitLLM.Admin.Services
             // Hash the key for lookup
             string keyHash = VirtualKeyUtilities.HashKey(key);
 
-            // Look up the key in the database
-            var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
-            if (virtualKey == null)
+            try
             {
-                result.ErrorMessage = "Key not found";
-                return result;
-            }
-
-            // Delegate core validation to shared helper
-            var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
-                virtualKey, requestedModel, checkBalance: true, _groupRepository, _logger);
-
-            if (!validationResult.IsValid)
-            {
-                // Map helper reasons to admin-specific error messages
-                result.ErrorMessage = validationResult.Reason switch
+                // Look up the key in the database
+                var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
+                if (virtualKey == null)
                 {
-                    "Insufficient balance" => "Budget depleted",
-                    "Model not allowed" when !string.IsNullOrEmpty(requestedModel)
-                        => $"Model {requestedModel} is not allowed for this key",
-                    _ => validationResult.Reason
-                };
+                    result.ErrorMessage = "Key not found";
+                    return result;
+                }
+
+                // Delegate core validation to shared helper
+                var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
+                    virtualKey, requestedModel, checkBalance: true, _groupRepository, _logger);
+
+                if (!validationResult.IsValid)
+                {
+                    // Map helper reasons to admin-specific error messages
+                    result.ErrorMessage = validationResult.Reason switch
+                    {
+                        "Insufficient balance" => "Budget depleted",
+                        "Model not allowed" when !string.IsNullOrEmpty(requestedModel)
+                            => $"Model {requestedModel} is not allowed for this key",
+                        _ => validationResult.Reason
+                    };
+                    return result;
+                }
+
+                // All validations passed
+                result.IsValid = true;
+                result.VirtualKeyId = virtualKey.Id;
+                result.KeyName = virtualKey.KeyName;
+                result.AllowedModels = virtualKey.AllowedModels;
+                // Budget info is now at group level, not included in validation result
+
                 return result;
             }
-
-            // All validations passed
-            result.IsValid = true;
-            result.VirtualKeyId = virtualKey.Id;
-            result.KeyName = virtualKey.KeyName;
-            result.AllowedModels = virtualKey.AllowedModels;
-            // Budget info is now at group level, not included in validation result
-
-            return result;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to validate virtual key for model {Model}", LoggingSanitizer.S(requestedModel ?? "any"));
+                result.ErrorMessage = "Validation failed due to an internal error";
+                return result;
+            }
         }
 
         /// <inheritdoc />
@@ -74,23 +83,31 @@ namespace ConduitLLM.Admin.Services
         {
             _logger.LogDebug("Getting validation info for virtual key ID {KeyId}", id);
 
-            var key = await _virtualKeyRepository.GetByIdAsync(id);
-            if (key == null)
+            try
             {
-                return null;
-            }
+                var key = await _virtualKeyRepository.GetByIdAsync(id);
+                if (key == null)
+                {
+                    return null;
+                }
 
-            return new VirtualKeyValidationInfoDto
+                return new VirtualKeyValidationInfoDto
+                {
+                    Id = key.Id,
+                    KeyName = key.KeyName,
+                    AllowedModels = key.AllowedModels,
+                    VirtualKeyGroupId = key.VirtualKeyGroupId,
+                    IsEnabled = key.IsEnabled,
+                    ExpiresAt = key.ExpiresAt,
+                    RateLimitRpm = key.RateLimitRpm,
+                    RateLimitRpd = key.RateLimitRpd
+                };
+            }
+            catch (Exception ex)
             {
-                Id = key.Id,
-                KeyName = key.KeyName,
-                AllowedModels = key.AllowedModels,
-                VirtualKeyGroupId = key.VirtualKeyGroupId,
-                IsEnabled = key.IsEnabled,
-                ExpiresAt = key.ExpiresAt,
-                RateLimitRpm = key.RateLimitRpm,
-                RateLimitRpd = key.RateLimitRpd
-            };
+                _logger.LogError(ex, "Failed to retrieve validation info for virtual key ID {KeyId}", id);
+                throw;
+            }
         }
     }
 }

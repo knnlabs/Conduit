@@ -109,6 +109,10 @@ namespace ConduitLLM.Admin.Services
                 }
             }
 
+            _logger.LogDebug(
+                "Request authorized: {Method} {Path} from {ClientIp}",
+                context.Request.Method, path, clientIp);
+
             return new SecurityCheckResult { IsAllowed = true };
         }
 

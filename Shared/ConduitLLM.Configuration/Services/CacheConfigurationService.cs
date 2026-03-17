@@ -242,7 +242,12 @@ namespace ConduitLLM.Configuration.Services
                     ChangeSource = "API"
                 }, cancellationToken);
 
-                _logger.LogInformation("Updated cache configuration for region {Region} by {ChangedBy}", region, changedBy);
+                _logger.LogInformation(
+                    "Updated cache configuration for region {Region} by {ChangedBy}. Changes: TTL {OldTtl} → {NewTtl}, MaxEntries {OldMaxEntries} → {NewMaxEntries}, Enabled {OldEnabled} → {NewEnabled}",
+                    region, changedBy,
+                    oldConfig.DefaultTTL, config.DefaultTTL,
+                    oldConfig.MaxEntries, config.MaxEntries,
+                    oldConfig.Enabled, config.Enabled);
                 return config;
             }
             catch (Exception ex)

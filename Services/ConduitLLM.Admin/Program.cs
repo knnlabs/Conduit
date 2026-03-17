@@ -262,9 +262,11 @@ public partial class Program
 
         // Run database migrations
         await app.RunDatabaseMigrationAsync();
+        app.Logger.LogInformation("Database migrations completed successfully");
 
         // Seed default data (e.g., default retention policy)
         await app.SeedDefaultDataAsync();
+        app.Logger.LogInformation("Default data seeding completed");
 
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())
@@ -314,6 +316,8 @@ public partial class Program
             Predicate = check => check.Tags.Contains("ready") || check.Tags.Count == 0
         });
 
+        app.Logger.LogInformation("Health check endpoints registered: /health, /health/live, /health/ready");
+
         // Map Prometheus metrics endpoint
         // Allow unauthenticated access from private networks (Docker internal, localhost)
         // Require authentication for external/public network requests
@@ -329,6 +333,11 @@ public partial class Program
             options.RequestDuration.Enabled = false; // We're using our custom middleware
             options.RequestCount.Enabled = false; // We're using our custom middleware
         });
+
+        app.Logger.LogInformation(
+            "Admin API started — Environment: {Environment}, URLs: {Urls}",
+            app.Environment.EnvironmentName,
+            string.Join(", ", app.Urls));
 
         app.Run();
     }

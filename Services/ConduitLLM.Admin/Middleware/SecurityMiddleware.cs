@@ -44,6 +44,41 @@ namespace ConduitLLM.Admin.Middleware
                 };
             });
         }
+
+        /// <summary>
+        /// Logs granular security events distinguishing auth failures, rate limits, and IP blocks.
+        /// </summary>
+        protected override Task OnSecurityViolationAsync(HttpContext context, SecurityModels.SecurityCheckResult result, string clientIp)
+        {
+            var method = context.Request.Method;
+            var path = context.Request.Path.Value ?? "";
+
+            switch (result.StatusCode)
+            {
+                case 401:
+                    Logger.LogWarning(
+                        "Security event: AuthenticationFailure — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        method, path, clientIp, result.Reason);
+                    break;
+                case 429:
+                    Logger.LogWarning(
+                        "Security event: RateLimitExceeded — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        method, path, clientIp, result.Reason);
+                    break;
+                case 403:
+                    Logger.LogWarning(
+                        "Security event: AccessDenied — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        method, path, clientIp, result.Reason);
+                    break;
+                default:
+                    Logger.LogWarning(
+                        "Security event: Blocked ({StatusCode}) — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        result.StatusCode, method, path, clientIp, result.Reason);
+                    break;
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>

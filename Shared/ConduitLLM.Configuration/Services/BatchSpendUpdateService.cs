@@ -284,6 +284,8 @@ namespace ConduitLLM.Configuration.Services
 
                 // Process each group
                 var updatedKeyHashes = new List<string>();
+                var flushStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var processedCount = 0;
 
                 foreach (var (groupId, totalCost) in groupUpdates)
                 {
@@ -305,28 +307,35 @@ namespace ConduitLLM.Configuration.Services
                     // Update group balance with transaction details
                     // This already creates a transaction record with the correct BalanceAfter
                     var newBalance = await groupRepository.AdjustBalanceAsync(
-                        groupId, 
+                        groupId,
                         -totalCost,
                         description,
                         "System"  // Initiated by system batch process
                     );
-                    
+
+                    processedCount++;
+                    _logger.LogDebug(
+                        "Batch flush: updated group {GroupId} — deducted {Cost:C}, new balance: {NewBalance:C} ({Processed}/{Total})",
+                        groupId, totalCost, newBalance, processedCount, groupUpdates.Count);
+
                     // Note: We don't need to create additional transaction records here
                     // because AdjustBalanceAsync already creates one with the correct balance.
                     // The individual key usage tracking is already handled in the description.
-                    
+
                     // Get keys in this group for cache invalidation
                     var groupKeys = await context.VirtualKeys
                         .Where(vk => vk.VirtualKeyGroupId == groupId)
                         .Select(vk => new { vk.Id, vk.KeyHash })
                         .ToListAsync();
-                    
+
                     updatedKeyHashes.AddRange(groupKeys.Select(k => k.KeyHash));
                 }
 
+                flushStopwatch.Stop();
                 var totalSpend = groupUpdates.Values.Sum();
-                _logger.LogInformation("Batch updated spend for {GroupCount} groups, total amount: {TotalSpend:C}",
-                    groupUpdates.Count, totalSpend);
+                _logger.LogInformation(
+                    "Batch flush completed: {GroupCount} groups, total deducted: {TotalSpend:C}, affected keys: {KeyCount}, elapsed: {ElapsedMs}ms",
+                    groupUpdates.Count, totalSpend, updatedKeyHashes.Count, flushStopwatch.ElapsedMilliseconds);
 
                 // Raise event for cache invalidation (if any subscribers)
                 if (updatedKeyHashes.Any() && SpendUpdatesCompleted != null)
