@@ -78,9 +78,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     await _statusService.SetEnabledAsync(request.Enabled);
 
-                    Logger.LogInformation(
-                        "Media cleanup service enabled state changed to {Enabled} by admin request",
-                        request.Enabled);
+                    LogAdminAudit("SetEnabled", "MediaCleanupService", detail: $"Enabled: {request.Enabled}");
 
                     return new
                     {
@@ -140,9 +138,8 @@ namespace ConduitLLM.Admin.Controllers
                         ? $"Simple retention override set to {request.RetentionDays} days - all media will be deleted after this period"
                         : "Simple retention override cleared - using policy-based retention";
 
-                    Logger.LogInformation(
-                        "Simple retention override changed to {Days} by admin request",
-                        request.RetentionDays?.ToString() ?? "null (cleared)");
+                    LogAdminAudit("SetSimpleRetention", "MediaCleanupService",
+                        detail: $"RetentionDays: {request.RetentionDays?.ToString() ?? "cleared"}");
 
                     return new SimpleRetentionResponse
                     {

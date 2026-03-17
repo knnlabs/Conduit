@@ -184,6 +184,9 @@ public class FunctionExecutionsController : AdminControllerBase
                 var olderThan = DateTime.UtcNow.AddDays(-olderThanDays);
                 var deletedCount = await _executionRepository.DeleteOldExecutionsAsync(olderThan);
 
+                LogAdminAudit("Cleanup", "FunctionExecution",
+                    detail: $"OlderThanDays: {olderThanDays}, DeletedCount: {deletedCount}");
+
                 return new
                 {
                     deletedCount,

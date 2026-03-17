@@ -160,7 +160,7 @@ namespace ConduitLLM.Admin.Controllers
                     _context.MediaRetentionPolicies.Add(policy);
                     await _context.SaveChangesAsync();
 
-                    Logger.LogInformation("Created media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
+                    LogAdminAudit("Created", "MediaRetentionPolicy", policy.Id, $"Name: {policy.Name}");
 
                     return new MediaRetentionPolicyDto
                     {
@@ -232,7 +232,7 @@ namespace ConduitLLM.Admin.Controllers
 
                     await _context.SaveChangesAsync();
 
-                    Logger.LogInformation("Updated media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
+                    LogAdminAudit("Updated", "MediaRetentionPolicy", policy.Id, $"Name: {policy.Name}");
 
                     return Ok(new MediaRetentionPolicyDto
                     {
@@ -288,7 +288,7 @@ namespace ConduitLLM.Admin.Controllers
                     _context.MediaRetentionPolicies.Remove(policy);
                     await _context.SaveChangesAsync();
 
-                    Logger.LogInformation("Deleted media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
+                    LogAdminAudit("Deleted", "MediaRetentionPolicy", policy.Id, $"Name: {policy.Name}");
 
                     return NoContent();
                 },
@@ -323,7 +323,7 @@ namespace ConduitLLM.Admin.Controllers
                 group.MediaRetentionPolicyId = policyId;
                 await _context.SaveChangesAsync();
 
-                Logger.LogInformation("Assigned retention policy {PolicyId} to virtual key group {GroupId}", policyId, groupId);
+                LogAdminAudit("AssignedPolicy", "MediaRetentionPolicy", policyId, $"GroupId: {groupId}");
 
                 return Ok(new { message = $"Successfully assigned policy '{policy.Name}' to group {groupId}" });
             }, nameof(AssignPolicyToGroup), new { groupId, policyId });
@@ -362,7 +362,7 @@ namespace ConduitLLM.Admin.Controllers
                     policy.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
 
-                    Logger.LogInformation("Set retention policy {PolicyId} '{PolicyName}' as default", policy.Id, policy.Name);
+                    LogAdminAudit("SetDefault", "MediaRetentionPolicy", policy.Id, $"Name: {policy.Name}");
 
                     return Ok(new { message = $"'{policy.Name}' is now the default retention policy" });
                 },

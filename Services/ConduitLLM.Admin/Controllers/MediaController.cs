@@ -132,6 +132,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _mediaService.DeleteMediaAsync(mediaId))
                         throw new KeyNotFoundException();
+                    LogAdminAudit("Deleted", "Media", mediaId);
                 },
                 Ok(new { message = "Media deleted successfully" }),
                 "DeleteMedia",
@@ -149,6 +150,7 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     var count = await _mediaService.CleanupExpiredMediaAsync();
+                    LogAdminAudit("CleanedUpExpired", "Media", detail: $"DeletedCount: {count}");
                     return (object)new
                     {
                         message = $"Cleaned up {count} expired media files",
@@ -170,6 +172,7 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     var count = await _mediaService.CleanupOrphanedMediaAsync();
+                    LogAdminAudit("CleanedUpOrphaned", "Media", detail: $"DeletedCount: {count}");
                     return (object)new
                     {
                         message = $"Cleaned up {count} orphaned media files",
@@ -197,6 +200,7 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     var count = await _mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
+                    LogAdminAudit("Pruned", "Media", detail: $"DaysToKeep: {request.DaysToKeep}, DeletedCount: {count}");
                     return (object)new
                     {
                         message = $"Pruned {count} media files older than {request.DaysToKeep} days",

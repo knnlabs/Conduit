@@ -249,9 +249,8 @@ namespace ConduitLLM.Admin.Controllers
             return ExecuteAsync(
                 async () =>
                 {
-                    Logger.LogInformation("Manual cache reload requested");
                     await _cacheService.ReloadAllSettingsAsync();
-                    Logger.LogInformation("Cache reload completed successfully");
+                    LogAdminAudit("Reloaded", "GlobalSettingsCache");
                 },
                 NoContent(),
                 "ReloadCache");
@@ -270,9 +269,8 @@ namespace ConduitLLM.Admin.Controllers
             return ExecuteAsync(
                 async () =>
                 {
-                    Logger.LogInformation("Manual cache invalidation requested for key {Key}", LoggingSanitizer.S(key));
                     await _cacheService.InvalidateSettingAsync(key);
-                    Logger.LogInformation("Cache invalidation completed for key {Key}", LoggingSanitizer.S(key));
+                    LogAdminAudit("Invalidated", "GlobalSettingsCache", detail: $"Key: {LoggingSanitizer.S(key)}");
                 },
                 NoContent(),
                 "InvalidateCacheSetting",

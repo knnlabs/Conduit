@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Extensions;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -367,6 +368,9 @@ namespace ConduitLLM.Admin.Controllers
                     model.Identifiers.Add(identifier);
                     await _modelRepository.UpdateModelAsync(model);
 
+                    LogAdminAudit("Created", "ModelIdentifier", identifier.Id,
+                        $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
+
                     return CreatedAtAction(nameof(GetModelIdentifiers), new { id }, new
                     {
                         id = identifier.Id,
@@ -443,6 +447,9 @@ namespace ConduitLLM.Admin.Controllers
 
                     await _modelRepository.UpdateModelAsync(model);
 
+                    LogAdminAudit("Updated", "ModelIdentifier", identifierId,
+                        $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
+
                     return (IActionResult)NoContent();
                 },
                 result => result,
@@ -471,6 +478,8 @@ namespace ConduitLLM.Admin.Controllers
                     {
                         throw new KeyNotFoundException($"Identifier with ID {identifierId} not found for model {id}");
                     }
+
+                    LogAdminAudit("Deleted", "ModelIdentifier", identifierId, $"ModelId: {id}");
                 },
                 NoContent(),
                 "DeleteModelIdentifier",
@@ -538,6 +547,8 @@ namespace ConduitLLM.Admin.Controllers
                     {
                         return StatusCode(StatusCodes.Status500InternalServerError, "Failed to reload created model");
                     }
+
+                    LogAdminAudit("Created", "Model", model.Id, $"Name: {LoggingSanitizer.S(model.Name)}");
 
                     return CreatedAtAction(
                         nameof(GetModelById),
@@ -633,8 +644,8 @@ namespace ConduitLLM.Admin.Controllers
                         ChangedProperties = GetChangedProperties(dto)
                     });
 
-                    Logger.LogInformation("Published ModelUpdated event for model {ModelId} ({ModelName})",
-                        updatedModel.Id, updatedModel.Name);
+                    LogAdminAudit("Updated", "Model", updatedModel.Id,
+                        $"Name: {LoggingSanitizer.S(updatedModel.Name)}, Changed: {string.Join(", ", GetChangedProperties(dto))}");
 
                     return (IActionResult)Ok(updatedModel.ToDto());
                 },
@@ -672,6 +683,8 @@ namespace ConduitLLM.Admin.Controllers
                     }
 
                     await _modelRepository.DeleteAsync(id);
+
+                    LogAdminAudit("Deleted", "Model", id);
 
                     return (IActionResult)NoContent();
                 },
@@ -751,6 +764,9 @@ namespace ConduitLLM.Admin.Controllers
                     var createdMappings = await _mappingService.GetMappingsByModelIdAsync(id);
                     var createdMapping = createdMappings.FirstOrDefault(m => m.ProviderId == mappingDto.ProviderId);
 
+                    LogAdminAudit("Created", "ModelProviderMapping", createdMapping?.Id,
+                        $"ModelId: {id}, ProviderId: {mappingDto.ProviderId}");
+
                     return CreatedAtAction(
                         nameof(GetModelProviderMappings),
                         new { id = id },
@@ -814,6 +830,8 @@ namespace ConduitLLM.Admin.Controllers
                         return BadRequest("Failed to update provider mapping");
                     }
 
+                    LogAdminAudit("Updated", "ModelProviderMapping", mappingId, $"ModelId: {id}");
+
                     return (IActionResult)NoContent();
                 },
                 result => result,
@@ -861,6 +879,8 @@ namespace ConduitLLM.Admin.Controllers
                     {
                         return BadRequest("Failed to delete provider mapping");
                     }
+
+                    LogAdminAudit("Deleted", "ModelProviderMapping", mappingId, $"ModelId: {id}");
 
                     return (IActionResult)NoContent();
                 },

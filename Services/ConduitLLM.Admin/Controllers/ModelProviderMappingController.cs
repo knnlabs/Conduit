@@ -4,6 +4,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -105,6 +106,10 @@ public class ModelProviderMappingController : AdminControllerBase
                 }
 
                 var createdMapping = await _mappingService.GetMappingByIdAsync(mapping.Id);
+
+                LogAdminAudit("Created", "ModelProviderMapping", createdMapping?.Id,
+                    $"ModelAlias: {LoggingSanitizer.S(mappingDto.ModelAlias)}, ProviderId: {mappingDto.ProviderId}");
+
                 return CreatedAtAction(nameof(GetMappingById), new { id = createdMapping?.Id }, createdMapping?.ToDto());
             },
             result => result,
@@ -145,6 +150,8 @@ public class ModelProviderMappingController : AdminControllerBase
                 {
                     throw new InvalidOperationException("Failed to update model provider mapping");
                 }
+
+                LogAdminAudit("Updated", "ModelProviderMapping", id);
             },
             NoContent(),
             "UpdateMapping",
@@ -177,6 +184,8 @@ public class ModelProviderMappingController : AdminControllerBase
                 {
                     throw new InvalidOperationException("Failed to delete model provider mapping");
                 }
+
+                LogAdminAudit("Deleted", "ModelProviderMapping", id);
             },
             NoContent(),
             "DeleteMapping",
@@ -220,7 +229,7 @@ public class ModelProviderMappingController : AdminControllerBase
                 var mappings = mappingDtos.Select(dto => dto.ToEntity()).ToList();
                 var (created, errors) = await _mappingService.CreateBulkMappingsAsync(mappings);
 
-                return new BulkMappingResult
+                var result = new BulkMappingResult
                 {
                     Created = created.Select(m => m.ToDto()).ToList(),
                     Errors = errors.ToList(),
@@ -228,6 +237,11 @@ public class ModelProviderMappingController : AdminControllerBase
                     SuccessCount = created.Count(),
                     FailureCount = errors.Count()
                 };
+
+                LogAdminAudit("BulkCreated", "ModelProviderMapping",
+                    detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+
+                return result;
             },
             result => Ok(result),
             "CreateBulkMappings");
@@ -283,7 +297,7 @@ public class ModelProviderMappingController : AdminControllerBase
                     }
                 }
 
-                return new BulkDeleteResult
+                var result = new BulkDeleteResult
                 {
                     DeletedIds = deleted,
                     Errors = errors,
@@ -291,6 +305,11 @@ public class ModelProviderMappingController : AdminControllerBase
                     SuccessCount = deleted.Count,
                     FailureCount = errors.Count
                 };
+
+                LogAdminAudit("BulkDeleted", "ModelProviderMapping",
+                    detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+
+                return result;
             },
             result => Ok(result),
             "DeleteBulkMappings");
@@ -367,7 +386,7 @@ public class ModelProviderMappingController : AdminControllerBase
                     }
                 }
 
-                return new BulkUpdateResult
+                var result = new BulkUpdateResult
                 {
                     Updated = updated,
                     Errors = errors,
@@ -375,6 +394,11 @@ public class ModelProviderMappingController : AdminControllerBase
                     SuccessCount = updated.Count,
                     FailureCount = errors.Count
                 };
+
+                LogAdminAudit(isEnabled ? "BulkEnabled" : "BulkDisabled", "ModelProviderMapping",
+                    detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+
+                return result;
             },
             result => Ok(result),
             "UpdateBulkMappingsStatus");
