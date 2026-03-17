@@ -155,6 +155,8 @@ namespace ConduitLLM.Admin.Controllers
                         CorrelationId = Guid.NewGuid().ToString()
                     }, "create provider");
 
+                    LogAdminAudit("Created", "Provider", id, $"Type: {provider.ProviderType}, Name: {provider.ProviderName}");
+
                     return provider;
                 },
                 provider => CreatedAtAction(nameof(GetProviderById), new { id = provider.Id }, new
@@ -222,6 +224,8 @@ namespace ConduitLLM.Admin.Controllers
                             ChangedProperties = changedProperties.ToArray(),
                             CorrelationId = Guid.NewGuid().ToString()
                         }, "update provider", new { ProviderId = id, ChangedProperties = string.Join(", ", changedProperties) });
+
+                        LogAdminAudit("Updated", "Provider", id, $"Changed: {string.Join(", ", changedProperties)}");
                     }
 
                     return NoContent();
@@ -254,6 +258,8 @@ namespace ConduitLLM.Admin.Controllers
                         ProviderId = id,
                         CorrelationId = Guid.NewGuid().ToString()
                     }, "delete provider", new { ProviderId = id });
+
+                    LogAdminAudit("Deleted", "Provider", id);
 
                     return NoContent();
                 },

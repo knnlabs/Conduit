@@ -46,7 +46,11 @@ public class VirtualKeysController : AdminControllerBase
     {
         return ExecuteAsync(
             () => _virtualKeyService.GenerateVirtualKeyAsync(request),
-            response => CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response),
+            response =>
+            {
+                LogAdminAudit("Created", "VirtualKey", response.KeyInfo.Id, $"Name: {LoggingSanitizer.S(request.KeyName)}");
+                return CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response);
+            },
             "GenerateKey",
             new { KeyName = LoggingSanitizer.S(request.KeyName) });
     }
@@ -109,6 +113,7 @@ public class VirtualKeysController : AdminControllerBase
             {
                 if (!await _virtualKeyService.UpdateVirtualKeyAsync(id, request))
                     throw new KeyNotFoundException();
+                LogAdminAudit("Updated", "VirtualKey", id);
             },
             NoContent(),
             "UpdateKey",
@@ -134,6 +139,7 @@ public class VirtualKeysController : AdminControllerBase
             {
                 if (!await _virtualKeyService.DeleteVirtualKeyAsync(id))
                     throw new KeyNotFoundException();
+                LogAdminAudit("Deleted", "VirtualKey", id);
             },
             NoContent(),
             "DeleteKey",

@@ -139,6 +139,8 @@ namespace ConduitLLM.Admin.Controllers
                     CorrelationId = Guid.NewGuid()
                 }, "create provider key", new { ProviderId = providerId, KeyId = createdKeyId });
 
+                LogAdminAudit("Created", "ProviderKeyCredential", createdKeyId, $"Provider: {providerId}, KeyName: {keyCredential.KeyName}");
+
                 return CreatedAtAction(
                     nameof(GetProviderKeyCredential),
                     new { providerId = providerId, keyId = createdKeyId },
@@ -214,6 +216,8 @@ namespace ConduitLLM.Admin.Controllers
 
                 await _keyRepository.UpdateAsync(key);
 
+                LogAdminAudit("Updated", "ProviderKeyCredential", keyId, $"Provider: {providerId}");
+
                 // Publish key updated event
                 PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialUpdated
                 {
@@ -259,6 +263,8 @@ namespace ConduitLLM.Admin.Controllers
                 }
 
                 await _keyRepository.DeleteAsync(keyId);
+
+                LogAdminAudit("Deleted", "ProviderKeyCredential", keyId, $"Provider: {providerId}");
 
                 // Publish key deleted event
                 PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialDeleted
@@ -318,6 +324,8 @@ namespace ConduitLLM.Admin.Controllers
                 key.IsPrimary = true;
                 key.UpdatedAt = DateTime.UtcNow;
                 await _keyRepository.UpdateAsync(key);
+
+                LogAdminAudit("SetPrimary", "ProviderKeyCredential", keyId, $"Provider: {providerId}");
 
                 // Publish primary key changed event
                 PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialPrimaryChanged

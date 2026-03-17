@@ -124,10 +124,14 @@ public class FunctionCredentialsController : AdminControllerBase
 
                 return (id, created);
             },
-            result => CreatedAtAction(
-                nameof(GetCredentialById),
-                new { id = result.id },
-                result.created),
+            result =>
+            {
+                LogAdminAudit("Created", "FunctionCredential", result.id);
+                return CreatedAtAction(
+                    nameof(GetCredentialById),
+                    new { id = result.id },
+                    result.created);
+            },
             "CreateCredential");
     }
 
@@ -171,7 +175,11 @@ public class FunctionCredentialsController : AdminControllerBase
 
                 return updated;
             },
-            Ok,
+            result =>
+            {
+                LogAdminAudit("Updated", "FunctionCredential", id);
+                return Ok(result);
+            },
             "UpdateCredential",
             new { Id = id });
     }
@@ -188,7 +196,11 @@ public class FunctionCredentialsController : AdminControllerBase
     public Task<IActionResult> DeleteCredential(int id)
     {
         return ExecuteAsync(
-            () => _credentialRepository.DeleteAsync(id),
+            async () =>
+            {
+                await _credentialRepository.DeleteAsync(id);
+                LogAdminAudit("Deleted", "FunctionCredential", id);
+            },
             NoContent(),
             "DeleteCredential",
             new { Id = id });

@@ -75,10 +75,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 }
             };
 
-            _mockRepository.Setup(r => r.GetAllWithDetailsAsync())
-                .ReturnsAsync(models);
+            _mockRepository.Setup(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null))
+                .ReturnsAsync((models, models.Count));
 
-            // Act
+            // Act — no pagination params returns flat array
             var result = await _controller.GetAllModels();
 
             // Assert
@@ -90,18 +90,17 @@ namespace ConduitLLM.Tests.Admin.Controllers
             firstDto.Id.Should().Be(1);
             firstDto.Name.Should().Be("test-model-1");
             firstDto.IsActive.Should().BeTrue();
-            // Capabilities are now flat fields on the model - just verify they exist by checking the Id
             firstDto.Id.Should().BePositive();
 
-            _mockRepository.Verify(r => r.GetAllWithDetailsAsync(), Times.Once);
+            _mockRepository.Verify(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null), Times.Once);
         }
 
         [Fact]
         public async Task GetAllModels_WithEmptyList_ShouldReturnOkWithEmptyList()
         {
             // Arrange
-            _mockRepository.Setup(r => r.GetAllWithDetailsAsync())
-                .ReturnsAsync(new List<Model>());
+            _mockRepository.Setup(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null))
+                .ReturnsAsync((new List<Model>(), 0));
 
             // Act
             var result = await _controller.GetAllModels();
@@ -111,7 +110,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>().Subject;
             dtos.Should().BeEmpty();
 
-            _mockRepository.Verify(r => r.GetAllWithDetailsAsync(), Times.Once);
+            _mockRepository.Verify(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null), Times.Once);
         }
 
         [Fact]
@@ -119,7 +118,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Arrange
             var exception = new Exception("Database connection failed");
-            _mockRepository.Setup(r => r.GetAllWithDetailsAsync())
+            _mockRepository.Setup(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null))
                 .ThrowsAsync(exception);
 
             // Act

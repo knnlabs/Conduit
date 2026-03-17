@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Extensions;
 
 using MassTransit;
 
@@ -26,6 +27,7 @@ namespace ConduitLLM.Admin.Controllers
     ///   <item><description>Standardized error responses using <see cref="ControllerErrorExtensions"/></description></item>
     ///   <item><description>Async operation wrappers with automatic exception handling</description></item>
     ///   <item><description>Consistent logging patterns</description></item>
+    ///   <item><description>Admin audit logging for security-sensitive operations</description></item>
     /// </list>
     /// </para>
     /// </remarks>
@@ -89,6 +91,7 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var result = await operation();
+                Logger.LogDebug("{OperationName} completed successfully", operationName);
                 return successAction(result);
             }
             catch (Exception ex)
@@ -112,7 +115,9 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                return await operation();
+                var result = await operation();
+                Logger.LogDebug("{OperationName} completed successfully", operationName);
+                return result;
             }
             catch (Exception ex)
             {
@@ -137,6 +142,15 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 await operation();
+                if (contextData != null)
+                {
+                    Logger.LogInformation("{OperationName} completed successfully with context {ContextData}",
+                        operationName, contextData);
+                }
+                else
+                {
+                    Logger.LogInformation("{OperationName} completed successfully", operationName);
+                }
                 return successResult;
             }
             catch (Exception ex)
@@ -172,6 +186,8 @@ namespace ConduitLLM.Admin.Controllers
                         operationName, entityType, entityId);
                     return this.NotFoundEntity(entityType, entityId);
                 }
+                Logger.LogDebug("{OperationName} completed successfully for {EntityType} {EntityId}",
+                    operationName, entityType, entityId);
                 return successAction(result);
             }
             catch (Exception ex)
@@ -207,6 +223,8 @@ namespace ConduitLLM.Admin.Controllers
                         operationName, entityType, entityId);
                     return this.NotFoundEntity(entityType, entityId);
                 }
+                Logger.LogDebug("{OperationName} completed successfully for {EntityType} {EntityId}",
+                    operationName, entityType, entityId);
                 return await successAction(result);
             }
             catch (Exception ex)
@@ -266,6 +284,47 @@ namespace ConduitLLM.Admin.Controllers
                 404 => new NotFoundObjectResult(errorResponse),
                 _ => new ObjectResult(errorResponse) { StatusCode = statusCode }
             };
+        }
+
+        /// <summary>
+        /// Logs a security-sensitive admin operation for audit purposes.
+        /// Captures the operation, entity context, client IP, and trace ID
+        /// in a structured log entry that can be filtered and queried.
+        /// </summary>
+        /// <param name="operation">The operation performed (e.g., "Created", "Updated", "Deleted").</param>
+        /// <param name="entityType">The type of entity affected (e.g., "VirtualKey", "Provider").</param>
+        /// <param name="entityId">The identifier of the affected entity (can be null for bulk operations).</param>
+        /// <param name="detail">Optional additional detail about the operation.</param>
+        protected void LogAdminAudit(
+            string operation,
+            string entityType,
+            object? entityId = null,
+            string? detail = null)
+        {
+            var clientIp = HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "unknown";
+            var traceId = HttpContext?.TraceIdentifier ?? "unknown";
+
+            if (detail != null)
+            {
+                Logger.LogInformation(
+                    "Admin Audit: {Operation} {EntityType} {EntityId} from {ClientIp} [TraceId: {TraceId}] - {Detail}",
+                    operation,
+                    entityType,
+                    entityId ?? "N/A",
+                    clientIp,
+                    traceId,
+                    LoggingSanitizer.S(detail));
+            }
+            else
+            {
+                Logger.LogInformation(
+                    "Admin Audit: {Operation} {EntityType} {EntityId} from {ClientIp} [TraceId: {TraceId}]",
+                    operation,
+                    entityType,
+                    entityId ?? "N/A",
+                    clientIp,
+                    traceId);
+            }
         }
     }
 }

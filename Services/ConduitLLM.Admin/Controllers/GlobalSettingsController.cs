@@ -101,7 +101,11 @@ namespace ConduitLLM.Admin.Controllers
         {
             return ExecuteAsync(
                 () => _globalSettingService.CreateSettingAsync(setting),
-                createdSetting => CreatedAtAction(nameof(GetSettingById), new { id = createdSetting.Id }, createdSetting),
+                createdSetting =>
+                {
+                    LogAdminAudit("Created", "GlobalSetting", createdSetting.Id, $"Key: {LoggingSanitizer.S(setting.Key)}");
+                    return CreatedAtAction(nameof(GetSettingById), new { id = createdSetting.Id }, createdSetting);
+                },
                 "CreateSetting");
         }
 
@@ -129,6 +133,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _globalSettingService.UpdateSettingAsync(setting))
                         throw new KeyNotFoundException();
+                    LogAdminAudit("Updated", "GlobalSetting", id);
                 },
                 NoContent(),
                 "UpdateSetting",
@@ -151,6 +156,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _globalSettingService.UpdateSettingByKeyAsync(setting))
                         throw new InvalidOperationException("Failed to update or create global setting");
+                    LogAdminAudit("Updated", "GlobalSetting", detail: $"Key: {LoggingSanitizer.S(setting.Key)}");
                 },
                 NoContent(),
                 "UpdateSettingByKey",
@@ -173,6 +179,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _globalSettingService.DeleteSettingAsync(id))
                         throw new KeyNotFoundException();
+                    LogAdminAudit("Deleted", "GlobalSetting", id);
                 },
                 NoContent(),
                 "DeleteSetting",
@@ -195,6 +202,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _globalSettingService.DeleteSettingByKeyAsync(key))
                         throw new KeyNotFoundException();
+                    LogAdminAudit("Deleted", "GlobalSetting", detail: $"Key: {LoggingSanitizer.S(key)}");
                 },
                 NoContent(),
                 "DeleteSettingByKey",

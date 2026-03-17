@@ -105,7 +105,11 @@ public class IpFilterController : AdminControllerBase
 
                 return createdFilter!;
             },
-            createdFilter => CreatedAtAction(nameof(GetFilterById), new { id = createdFilter.Id }, createdFilter),
+            createdFilter =>
+            {
+                LogAdminAudit("Created", "IpFilter", createdFilter.Id, $"CIDR: {LoggingSanitizer.S(filter.IpAddressOrCidr)}, Type: {filter.FilterType}");
+                return CreatedAtAction(nameof(GetFilterById), new { id = createdFilter.Id }, createdFilter);
+            },
             "CreateFilter");
     }
 
@@ -145,6 +149,8 @@ public class IpFilterController : AdminControllerBase
 
                     throw new InvalidOperationException(errorMessage);
                 }
+
+                LogAdminAudit("Updated", "IpFilter", id);
             },
             NoContent(),
             "UpdateFilter",
@@ -179,6 +185,8 @@ public class IpFilterController : AdminControllerBase
 
                     throw new InvalidOperationException(errorMessage);
                 }
+
+                LogAdminAudit("Deleted", "IpFilter", id);
             },
             NoContent(),
             "DeleteFilter",
@@ -223,6 +231,8 @@ public class IpFilterController : AdminControllerBase
                 {
                     throw new InvalidOperationException(errorMessage);
                 }
+
+                LogAdminAudit("Updated", "IpFilterSettings", detail: $"Enabled: {settings.IsEnabled}, DefaultAllow: {settings.DefaultAllow}");
             },
             NoContent(),
             "UpdateSettings");
