@@ -454,3 +454,4 @@ replicate-text-models.sql
 replicate-video-models.sql
 scripts/db/replicate/replicate-text-models.sql
 scripts/db/replicate/replicate-video-models.sql
+scripts/db/providers/openrouter-models.sql
