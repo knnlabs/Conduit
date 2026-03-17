@@ -148,10 +148,15 @@ foreach (var model in dataArray.EnumerateArray())
         ? tok.GetString() ?? "Other" : "Other";
     var tokenizerType = MapTokenizer(tokenizerRaw);
 
+    // Use the slug (part after provider/) as the model name for consistency
+    // with other providers and to enable deduplication across provider types.
+    // The OpenRouter display name (e.g., "OpenAI: gpt-oss-120b") is stored in notes.
+    var slug = id.Split('/', 2)[1];
+
     // Derive family and series from model name/id
     var (family, series) = DeriveSeriesInfo(id, name, owner);
 
-    // Build the model description
+    // Build the model description — prepend display name if it differs from slug
     var description = model.TryGetProperty("description", out var desc)
         ? desc.GetString() : null;
     // Truncate long descriptions
@@ -160,7 +165,7 @@ foreach (var model in dataArray.EnumerateArray())
 
     var modelObj = new JsonObject
     {
-        ["name"] = name,
+        ["name"] = slug,
         ["family"] = family,
         ["series"] = series,
         ["owner"] = owner,
