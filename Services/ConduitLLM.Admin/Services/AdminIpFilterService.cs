@@ -149,6 +149,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 $"create IP filter {createdFilter.Id}",
                 new { IpAddressOrCidr = createdFilter.IpAddressOrCidr, FilterType = createdFilter.FilterType });
 
+            _logger.LogInformation("IP filter created: {FilterId} type={FilterType} target={IpAddress}",
+                createdFilter.Id, createdFilter.FilterType, LoggingSanitizer.S(createdFilter.IpAddressOrCidr));
+
             // Return the created filter
             return (true, null, createdFilter.ToDto());
         }
@@ -220,6 +223,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
 
             if (success)
             {
+                _logger.LogInformation("IP filter updated: {FilterId} changed=[{ChangedProperties}]",
+                    existingFilter.Id, string.Join(", ", changedProperties));
+
                 // Publish IpFilterChanged event for cache invalidation and cross-service coordination
                 await PublishEventAsync(
                     new IpFilterChanged
@@ -240,6 +246,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
             else
             {
+                _logger.LogWarning("Failed to update IP filter {FilterId} in database", updateFilter.Id);
                 return (false, "Failed to update the IP filter");
             }
         }
@@ -269,6 +276,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
 
             if (success)
             {
+                _logger.LogInformation("IP filter deleted: {FilterId} type={FilterType} target={IpAddress}",
+                    existingFilter.Id, existingFilter.FilterType, LoggingSanitizer.S(existingFilter.IpAddressOrCidr));
+
                 // Publish IpFilterChanged event for cache invalidation and cross-service coordination
                 await PublishEventAsync(
                     new IpFilterChanged
@@ -289,6 +299,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
             else
             {
+                _logger.LogWarning("Failed to delete IP filter {FilterId} from database", id);
                 return (false, "Failed to delete the IP filter");
             }
         }

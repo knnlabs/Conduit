@@ -104,6 +104,7 @@ namespace ConduitLLM.Admin.Controllers
                     var result = _pricingValidator.Validate(config);
 
                     PricingValidations.WithLabels(result.IsValid ? "valid" : "invalid").Inc();
+                    LogAdminAudit("Validated", "PricingConfiguration", detail: $"IsValid: {result.IsValid}, Errors: {result.Errors.Count}");
                     return Task.FromResult(new PricingValidationResponse
                     {
                         IsValid = result.IsValid,
@@ -174,6 +175,7 @@ namespace ConduitLLM.Admin.Controllers
                     var result = _pricingEvaluator.Evaluate(config, request.Parameters ?? new Dictionary<string, object>(), usage);
 
                     PricingSimulations.WithLabels("success").Inc();
+                    LogAdminAudit("Simulated", "PricingCalculation", detail: $"Cost: {result.Cost}, UsedDefault: {result.UsedDefaultRate}");
                     return Task.FromResult(new PricingSimulationResponse
                     {
                         CalculatedCost = result.Cost,
@@ -381,6 +383,7 @@ namespace ConduitLLM.Admin.Controllers
                         request.PageNumber,
                         request.PageSize);
 
+                    LogAdminAudit("Queried", "PricingAudit", detail: $"From: {request.From:O}, To: {request.To:O}, Results: {totalCount}");
                     return new PricingAuditQueryResponse
                     {
                         Events = events.Select(e => new PricingAuditEventDto

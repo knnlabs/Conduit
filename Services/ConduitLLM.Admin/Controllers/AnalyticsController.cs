@@ -301,6 +301,7 @@ public class AnalyticsController : AdminControllerBase
                 var contentType = format.ToLower() == "csv" ? "text/csv" : "application/json";
                 var fileName = $"analytics_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{format.ToLower()}";
 
+                LogAdminAudit("Exported", "AnalyticsData", detail: $"Format: {format}, StartDate: {startDate:O}, EndDate: {endDate:O}");
                 return (IActionResult)File(data, contentType, fileName);
             },
             result => result,

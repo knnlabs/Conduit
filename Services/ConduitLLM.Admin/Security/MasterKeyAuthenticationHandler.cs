@@ -99,6 +99,8 @@ namespace ConduitLLM.Admin.Security
 
             if (string.IsNullOrEmpty(providedKey))
             {
+                Logger.LogWarning("Authentication failed: no API key provided for {Path}",
+                    LoggingSanitizer.S(Context.Request.Path.ToString()));
                 return AuthenticateResult.Fail("Missing master key");
             }
 
@@ -176,6 +178,9 @@ namespace ConduitLLM.Admin.Security
 
             if (providedKey != _masterKey)
             {
+                Logger.LogWarning("Authentication failed: invalid master key provided for {Path} from {ClientIp}",
+                    LoggingSanitizer.S(Context.Request.Path.ToString()),
+                    Context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
                 return AuthenticateResult.Fail("Invalid master key");
             }
 
