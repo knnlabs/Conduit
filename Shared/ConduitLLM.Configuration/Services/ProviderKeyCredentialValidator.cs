@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services
 {
@@ -13,8 +14,10 @@ namespace ConduitLLM.Configuration.Services
         protected override string GroupName => "Provider";
         protected override DbSet<ProviderKeyCredential> GetDbSet(ConduitDbContext context) => context.ProviderKeyCredentials;
 
-        public ProviderKeyCredentialValidator(IDbContextFactory<ConduitDbContext> dbContextFactory)
-            : base(dbContextFactory) { }
+        public ProviderKeyCredentialValidator(
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
+            ILogger<ProviderKeyCredentialValidator> logger)
+            : base(dbContextFactory, logger) { }
 
         /// <summary>
         /// Validates if a new key can be added to a provider

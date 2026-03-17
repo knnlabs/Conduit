@@ -117,6 +117,8 @@ namespace ConduitLLM.Admin.Services
             var keyData = await ValidateAndConsumeKeyInternalAsync(key);
             if (keyData == null)
             {
+                Logger.LogWarning("Failed to validate/consume ephemeral master key: {Key}",
+                    SanitizeKeyForLogging(key));
                 return false;
             }
 
@@ -130,6 +132,8 @@ namespace ConduitLLM.Admin.Services
             var keyData = await ConsumeKeyInternalAsync(key);
             if (keyData == null)
             {
+                Logger.LogWarning("Failed to consume ephemeral master key for streaming: {Key}",
+                    SanitizeKeyForLogging(key));
                 return false;
             }
 

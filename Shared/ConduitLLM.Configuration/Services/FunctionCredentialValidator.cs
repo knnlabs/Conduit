@@ -1,6 +1,7 @@
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services;
 
@@ -14,8 +15,10 @@ public class FunctionCredentialValidator : CredentialValidatorBase<FunctionCrede
     protected override string GroupName => "Provider type";
     protected override DbSet<FunctionCredential> GetDbSet(ConduitDbContext context) => context.FunctionCredentials;
 
-    public FunctionCredentialValidator(IDbContextFactory<ConduitDbContext> dbContextFactory)
-        : base(dbContextFactory) { }
+    public FunctionCredentialValidator(
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
+        ILogger<FunctionCredentialValidator> logger)
+        : base(dbContextFactory, logger) { }
 
     /// <summary>
     /// Validates if a new credential can be added to a provider type

@@ -147,6 +147,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _notificationService.MarkNotificationAsReadAsync(id))
                         throw new KeyNotFoundException();
+                    LogAdminAudit("MarkedAsRead", "Notification", id);
                 },
                 NoContent(),
                 "MarkAsRead",
@@ -163,7 +164,12 @@ namespace ConduitLLM.Admin.Controllers
         public Task<IActionResult> MarkAllAsRead()
         {
             return ExecuteAsync(
-                () => _notificationService.MarkAllNotificationsAsReadAsync(),
+                async () =>
+                {
+                    var count = await _notificationService.MarkAllNotificationsAsReadAsync();
+                    LogAdminAudit("MarkedAllAsRead", "Notification", detail: $"Count: {count}");
+                    return count;
+                },
                 result => Ok(result),
                 "MarkAllAsRead");
         }

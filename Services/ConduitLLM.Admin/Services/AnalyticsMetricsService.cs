@@ -45,7 +45,13 @@ namespace ConduitLLM.Admin.Services
         public void RecordCacheMiss(string cacheKey)
         {
             var key = NormalizeCacheKey(cacheKey);
-            _cacheMisses.AddOrUpdate(key, 1, (k, v) => v + 1);
+            var newCount = _cacheMisses.AddOrUpdate(key, 1, (k, v) => v + 1);
+
+            // Log every 100 misses for monitoring
+            if (newCount % 100 == 0)
+            {
+                _logger.LogDebug("Cache key {CacheKey} has {MissCount} misses", key, newCount);
+            }
         }
 
         /// <inheritdoc/>

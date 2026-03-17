@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using ConduitLLM.Functions.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services;
 
@@ -12,6 +13,7 @@ namespace ConduitLLM.Configuration.Services;
 public abstract class CredentialValidatorBase<TEntity> where TEntity : class, ICredentialEntity
 {
     private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
+    private readonly ILogger _logger;
 
     /// <summary>Maximum number of credentials allowed per group.</summary>
     protected abstract int MaxPerGroup { get; }
@@ -25,9 +27,10 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
     /// <summary>Returns the DbSet for this entity type from the given context.</summary>
     protected abstract DbSet<TEntity> GetDbSet(ConduitDbContext context);
 
-    protected CredentialValidatorBase(IDbContextFactory<ConduitDbContext> dbContextFactory)
+    protected CredentialValidatorBase(IDbContextFactory<ConduitDbContext> dbContextFactory, ILogger logger)
     {
         _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -44,6 +47,9 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
 
         if (currentCount >= MaxPerGroup)
         {
+            _logger.LogWarning(
+                "Credential add rejected: {GroupName} already has {CurrentCount}/{MaxPerGroup} {EntityName}s",
+                GroupName, currentCount, MaxPerGroup, EntityName);
             return ValidationResult.Failure(
                 $"{GroupName} already has the maximum of {MaxPerGroup} {EntityName}s");
         }
@@ -65,11 +71,13 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
 
         if (entity == null)
         {
+            _logger.LogWarning("Set-primary rejected: {EntityName} {Id} not found", EntityName, id);
             return ValidationResult.Failure($"{EntityName} not found");
         }
 
         if (!entity.IsEnabled)
         {
+            _logger.LogWarning("Set-primary rejected: {EntityName} {Id} is disabled", EntityName, id);
             return ValidationResult.Failure($"Cannot set a disabled {EntityName} as primary");
         }
 
@@ -90,11 +98,13 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
 
         if (entity == null)
         {
+            _logger.LogWarning("Disable rejected: {EntityName} {Id} not found", EntityName, id);
             return ValidationResult.Failure($"{EntityName} not found");
         }
 
         if (entity.IsPrimary)
         {
+            _logger.LogWarning("Disable rejected: {EntityName} {Id} is primary", EntityName, id);
             return ValidationResult.Failure(
                 $"Cannot disable a primary {EntityName}. Set another {EntityName} as primary first.");
         }
@@ -116,6 +126,9 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
 
         if (!hasEnabled)
         {
+            _logger.LogWarning(
+                "Validation failed: {GroupName} has no enabled {EntityName}s",
+                GroupName, EntityName);
             return ValidationResult.Failure(
                 $"{GroupName} must have at least one enabled {EntityName}");
         }

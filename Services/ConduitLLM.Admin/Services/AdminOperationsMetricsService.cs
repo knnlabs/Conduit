@@ -157,6 +157,7 @@ namespace ConduitLLM.Admin.Services
 
         private async Task CollectMetricsAsync()
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             using var scope = _serviceProvider.CreateScope();
 
             var tasks = new[]
@@ -167,6 +168,11 @@ namespace ConduitLLM.Admin.Services
             };
 
             await Task.WhenAll(tasks);
+            sw.Stop();
+
+            _logger.LogDebug(
+                "Admin metrics collection completed in {ElapsedMs}ms",
+                sw.ElapsedMilliseconds);
         }
 
         private async Task CollectVirtualKeyMetrics(IServiceScope scope)
@@ -188,6 +194,10 @@ namespace ConduitLLM.Admin.Services
                 TotalVirtualKeys.WithLabels("active").Set(activeCount);
                 TotalVirtualKeys.WithLabels("disabled").Set(nonActiveCount);
                 TotalVirtualKeys.WithLabels("expired").Set(0); // Expired keys are included in non-active count
+
+                _logger.LogDebug(
+                    "Virtual key metrics: {ActiveCount} active, {NonActiveCount} non-active",
+                    activeCount, nonActiveCount);
             }
             catch (Exception ex)
             {
@@ -208,6 +218,10 @@ namespace ConduitLLM.Admin.Services
                 // Use simple enabled/disabled labels instead of provider types
                 ConfiguredProviders.WithLabels("all", "true").Set(enabledCount);
                 ConfiguredProviders.WithLabels("all", "false").Set(disabledCount);
+
+                _logger.LogDebug(
+                    "Provider metrics: {EnabledCount} enabled, {DisabledCount} disabled",
+                    enabledCount, disabledCount);
             }
             catch (Exception ex)
             {
@@ -227,6 +241,8 @@ namespace ConduitLLM.Admin.Services
                 
                 // Use a simple "total" label instead of provider-specific labels
                 ActiveModelMappings.WithLabels("total").Set(totalMappings);
+
+                _logger.LogDebug("Model mapping metrics: {TotalMappings} active mappings", totalMappings);
             }
             catch (Exception ex)
             {
