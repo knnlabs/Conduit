@@ -2,6 +2,8 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.SignalR;
 
 using ConduitLLM.Gateway.Interfaces;
+using ConduitLLM.Gateway.Metrics;
+
 namespace ConduitLLM.Gateway.Filters
 {
     /// <summary>
@@ -135,6 +137,8 @@ namespace ConduitLLM.Gateway.Filters
                     "Invoking SignalR hub method {MethodName} on hub {HubName} for connection {ConnectionId}",
                     methodName, hubName, connectionId);
 
+                using var activity = SignalRMetrics.StartMessageActivity(
+                    $"SignalR.{hubName}.{methodName}", hubName, methodName);
                 using var timer = _metrics.RecordHubMethodInvocation(hubName, methodName, virtualKeyId, protocol);
 
                 try
@@ -149,6 +153,8 @@ namespace ConduitLLM.Gateway.Filters
                 }
                 catch (HubException hubEx)
                 {
+                    activity?.SetStatus(ActivityStatusCode.Error, hubEx.Message);
+
                     _logger.LogWarning(hubEx,
                         "Hub exception in method {MethodName} on hub {HubName} for connection {ConnectionId}: {Message}",
                         methodName, hubName, connectionId, hubEx.Message);
@@ -165,6 +171,8 @@ namespace ConduitLLM.Gateway.Filters
                 }
                 catch (Exception ex)
                 {
+                    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+
                     _logger.LogError(ex,
                         "Error invoking SignalR hub method {MethodName} on hub {HubName} for connection {ConnectionId}",
                         methodName, hubName, connectionId);

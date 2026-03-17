@@ -93,7 +93,7 @@ namespace ConduitLLM.Core.Services.Abstractions
             var request = context.Message;
             var stopwatch = Stopwatch.StartNew();
             GenerationModelInfo? modelInfo = null;
-            
+
             // Check if request should be processed
             if (!ShouldProcessRequest(request))
             {
@@ -101,23 +101,32 @@ namespace ConduitLLM.Core.Services.Abstractions
                 return;
             }
 
+            // Start distributed tracing span for the entire generation pipeline
+            using var activity = MediaGenerationMetrics.StartGenerationActivity(
+                $"media.{GetMediaType().ToLowerInvariant()}.generate",
+                GetMediaType(),
+                GetModel(request),
+                "pending"); // Provider not yet known; updated below after model resolution
+            activity?.SetTag("media.request_id", GetRequestId(request));
+            activity?.SetTag("media.virtual_key_id", GetVirtualKeyId(request));
+
             // Create linked cancellation token for this task
             using var taskCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
-            
+
             // Register task for cancellation support
             _taskRegistry.RegisterTask(GetRequestId(request), taskCts);
 
             try
             {
-                _logger.LogInformation("Processing {MediaType} generation task {RequestId} for model {Model}", 
+                _logger.LogInformation("Processing {MediaType} generation task {RequestId} for model {Model}",
                     GetMediaType(), GetRequestId(request), GetModel(request));
-                
+
                 // 1. Update task status to processing
                 await UpdateTaskStatusAsync(GetRequestId(request), TaskState.Processing, taskCts.Token);
-                
+
                 // 2. Publish started event
                 await PublishStartedEventAsync(request);
-                
+
                 // 3. Get and validate model information
                 var virtualKeyIdStr = GetVirtualKeyId(request);
                 if (!int.TryParse(virtualKeyIdStr, out var virtualKeyId))
@@ -129,40 +138,44 @@ namespace ConduitLLM.Core.Services.Abstractions
                 {
                     throw new InvalidOperationException($"Model '{GetModel(request)}' is not configured or mapped to a provider. Please check your model configuration.");
                 }
-                
+
+                // Update the activity with resolved provider information
+                activity?.SetTag("media.provider", modelInfo.ProviderName);
+                activity?.SetTag("media.model", modelInfo.ModelId);
+
                 ValidateModelSupport(modelInfo, request);
-                
+
                 // Record generation started metrics
                 _metrics.RecordGenerationStarted(
-                    GetMediaType(), 
-                    GetModel(request), 
-                    modelInfo.ProviderName, 
+                    GetMediaType(),
+                    GetModel(request),
+                    modelInfo.ProviderName,
                     virtualKeyIdStr);
-                    
+
                 // Update task registry size
                 _metrics.UpdateTaskRegistrySize(1);
-                
+
                 // 4. Extract and validate virtual key
                 var virtualKey = await ExtractAndValidateVirtualKeyAsync(request);
-                
+
                 // 5. Build the generation request
                 var generationRequest = await BuildGenerationRequestAsync(request, modelInfo);
-                
+
                 // 6. Validate parameters
                 ValidateParameters(generationRequest);
-                
+
                 // 7. Log generation details
                 LogGenerationDetails(request, modelInfo, generationRequest);
-                
+
                 // 8. Execute the actual generation
                 var response = await ExecuteGenerationAsync(generationRequest, modelInfo, virtualKey, taskCts.Token);
-                
+
                 // 9. Process and store the generated media
                 var processedMedia = await ProcessMediaAsync(response, request, modelInfo, virtualKey, taskCts.Token);
-                
+
                 // 10. Calculate cost
                 var cost = await CalculateCostAsync(request, modelInfo, processedMedia);
-                
+
                 // 11. Update spend
                 if (cost > 0)
                 {
@@ -171,25 +184,33 @@ namespace ConduitLLM.Core.Services.Abstractions
                         await UpdateSpendAsync(vkId, cost, GetRequestId(request), GetCorrelationId(request));
                     }
                 }
-                
+
                 // 12. Complete the task
                 await CompleteTaskAsync(request, processedMedia, cost, modelInfo, stopwatch);
-                
+
                 // 13. Send webhook notification if configured
                 if (!string.IsNullOrEmpty(GetWebhookUrl(request)))
                 {
                     await SendWebhookNotificationAsync(request, processedMedia, stopwatch, "completed");
                 }
-                
+
+                activity?.SetTag("media.cost", cost);
+                activity?.SetTag("media.duration_seconds", stopwatch.Elapsed.TotalSeconds);
+
                 _logger.LogInformation("Completed {MediaType} generation task {RequestId} in {Duration}s",
                     GetMediaType(), GetRequestId(request), stopwatch.Elapsed.TotalSeconds);
             }
             catch (OperationCanceledException) when (taskCts.Token.IsCancellationRequested)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, "Cancelled");
+                activity?.SetTag("media.outcome", "cancelled");
                 await HandleCancellationAsync(request, stopwatch, modelInfo);
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.SetTag("media.outcome", "failed");
+                activity?.SetTag("media.error_type", ex.GetType().Name);
                 await HandleFailureAsync(request, ex, stopwatch, modelInfo);
             }
             finally

@@ -126,38 +126,8 @@ namespace ConduitLLM.Gateway.Services
         {
             services.AddSingleton<SignalRMetrics>();
             services.AddHostedService<SignalROpenTelemetryService>();
-            
-            return services;
-        }
 
-        /// <summary>
-        /// Records a SignalR operation with metrics
-        /// </summary>
-        public static async Task<T> RecordSignalROperationAsync<T>(
-            this SignalRMetrics metrics,
-            string hub,
-            string method,
-            Func<Task<T>> operation)
-        {
-            using var activity = SignalRMetrics.StartMessageActivity($"SignalR.{method}", hub, method);
-            var startTime = DateTime.UtcNow;
-            
-            try
-            {
-                var result = await operation();
-                
-                var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                metrics.RecordMessageDeliveryDuration(hub, method, duration);
-                metrics.RecordMessageDelivered(hub, method, true);
-                
-                return result;
-            }
-            catch (Exception ex)
-            {
-                metrics.RecordMessageDelivered(hub, method, false);
-                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-                throw;
-            }
+            return services;
         }
     }
 }
