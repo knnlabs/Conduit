@@ -30,6 +30,9 @@ public partial class Program
         // Add correlation ID middleware (earliest — establishes correlation context for all downstream middleware)
         app.UseCorrelationId();
 
+        // Add request tracking middleware (after correlation ID, wraps entire request lifecycle)
+        app.UseGatewayRequestTracking();
+
         // Enable CORS
         app.UseCors();
         Console.WriteLine("[Conduit] CORS configured");

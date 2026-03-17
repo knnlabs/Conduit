@@ -557,7 +557,7 @@ namespace ConduitLLM.Gateway.Services
                 {
                     _processedMessages++;
                     _consecutiveFailures = 0;
-                    _logger.LogDebug(
+                    _logger.LogInformation(
                         "Successfully delivered message {MessageId} after {Attempts} attempts",
                         queuedMessage.Message.MessageId, queuedMessage.DeliveryAttempts);
                 }

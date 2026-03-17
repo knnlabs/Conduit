@@ -156,7 +156,7 @@ namespace ConduitLLM.Gateway.Services
                     await Database.KeyDeleteAsync(CacheKeys.GlobalSetting.AuthKey);
                 }
 
-                Logger.LogInformation("Global setting cache invalidated: {SettingKey}", settingKey);
+                Logger.LogDebug("Global setting cache invalidated: {SettingKey}", settingKey);
             }
             catch (Exception ex)
             {
@@ -181,7 +181,7 @@ namespace ConduitLLM.Gateway.Services
                     await Database.KeyDeleteAsync(CacheKeys.GlobalSetting.AuthKey);
                 }
 
-                Logger.LogInformation("Global settings cache invalidated: {Count} keys", settingKeys.Length);
+                Logger.LogDebug("Global settings cache invalidated: {Count} keys", settingKeys.Length);
             }
             catch (Exception ex)
             {

@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Extensions;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -59,7 +60,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 // Log performance metrics
                 var avgTimePerImage = message.Duration.TotalSeconds / Math.Max(1, message.Images.Count());
                 _logger.LogInformation("Image generation performance - Provider: {Provider}, Model: {Model}, Avg time per image: {AvgTime}s, Total cost: ${Cost}",
-                    message.Provider, message.Model, avgTimePerImage, message.Cost);
+                    LoggingSanitizer.S(message.Provider), LoggingSanitizer.S(message.Model), avgTimePerImage, message.Cost);
                 
                 // Track provider-specific metrics
                 LogProviderMetrics(message.Provider, message.Model, message.Images.Count(), message.Duration, message.Cost);

@@ -1,6 +1,8 @@
 using ConduitLLM.Core;
 using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Metrics;
 
 using MassTransit;
 
@@ -60,10 +62,12 @@ namespace ConduitLLM.Gateway.Controllers
                 });
             }
 
+            using var activity = GatewayRequestMetrics.StartEmbeddingsActivity(request.Model);
+
             return await ExecuteAsync(
                 async () =>
                 {
-                    Logger.LogInformation("Processing embeddings request for model: {Model}", request.Model);
+                    Logger.LogInformation("Processing embeddings request for model: {Model}", LoggingSanitizer.S(request.Model));
 
                     // Get provider info for usage tracking
                     try

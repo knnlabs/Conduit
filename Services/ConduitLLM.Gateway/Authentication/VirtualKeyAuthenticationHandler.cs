@@ -1,9 +1,12 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
 
 namespace ConduitLLM.Gateway.Authentication
@@ -36,6 +39,8 @@ namespace ConduitLLM.Gateway.Authentication
         /// </summary>
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            using var activity = GatewayRequestMetrics.StartAuthenticationActivity("VirtualKey");
+
             try
             {
                 // Skip authentication for excluded paths
@@ -138,14 +143,18 @@ namespace ConduitLLM.Gateway.Authentication
                     Context.Items["AuthType"] = "VirtualKey";
                 }
 
-                Logger.LogDebug("Successfully authenticated Virtual Key {KeyName} for {Path}", 
-                    keyEntity.KeyName, Context.Request.Path);
+                activity?.SetTag("gateway.virtual_key_id", keyEntity.Id);
+                activity?.SetTag("gateway.auth_result", "success");
+                Logger.LogDebug("Successfully authenticated Virtual Key {KeyName} for {Path}",
+                    LoggingSanitizer.S(keyEntity.KeyName), LoggingSanitizer.S(Context.Request.Path.ToString()));
 
                 return AuthenticateResult.Success(ticket);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error during Virtual Key authentication for {Path}", Context.Request.Path);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.SetTag("gateway.auth_result", "error");
+                Logger.LogError(ex, "Error during Virtual Key authentication for {Path}", LoggingSanitizer.S(Context.Request.Path.ToString()));
                 return AuthenticateResult.Fail("Authentication error");
             }
         }

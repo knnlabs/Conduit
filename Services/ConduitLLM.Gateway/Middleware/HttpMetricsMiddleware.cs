@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using ConduitLLM.Core.Extensions;
 using Prometheus;
 
 namespace ConduitLLM.Gateway.Middleware
@@ -159,7 +160,7 @@ namespace ConduitLLM.Gateway.Middleware
                     if (duration > 5.0)
                     {
                         _logger.LogWarning("Slow request detected: {Method} {Path} took {Duration:F2}s with status {StatusCode}",
-                            method, path, duration, statusCode);
+                            method, LoggingSanitizer.S(path), duration, statusCode);
                     }
                 }
             }

@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Text.Json;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Interfaces;
@@ -6,6 +8,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Controllers;
+using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.Utilities;
 using Prometheus;
@@ -59,6 +62,9 @@ namespace ConduitLLM.Gateway.Middleware
                 await _next(context);
                 return;
             }
+
+            using var activity = GatewayRequestMetrics.StartUsageTrackingActivity(
+                UsageExtractor.DetermineRequestType(context.Request.Path));
 
             // For non-streaming responses, intercept the response body
             var originalBodyStream = context.Response.Body;
@@ -183,7 +189,7 @@ namespace ConduitLLM.Gateway.Middleware
                 // Extract usage data if present
                 if (!root.TryGetProperty("usage", out var usageElement))
                 {
-                    _logger.LogDebug("No usage data found in response for {Path}", context.Request.Path);
+                    _logger.LogDebug("No usage data found in response for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                     LogMissingUsageData(context, billingAuditService);
                     return;
                 }
@@ -191,14 +197,14 @@ namespace ConduitLLM.Gateway.Middleware
                 // Extract model name
                 if (!root.TryGetProperty("model", out var modelElement))
                 {
-                    _logger.LogWarning("No model found in response for {Path}", context.Request.Path);
+                    _logger.LogWarning("No model found in response for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                     return;
                 }
 
                 var model = modelElement.GetString();
                 if (string.IsNullOrEmpty(model))
                 {
-                    _logger.LogWarning("Empty model name in response for {Path}", context.Request.Path);
+                    _logger.LogWarning("Empty model name in response for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                     return;
                 }
 
@@ -206,7 +212,7 @@ namespace ConduitLLM.Gateway.Middleware
                 var usage = UsageExtractor.ExtractUsage(usageElement, _logger);
                 if (usage == null)
                 {
-                    _logger.LogWarning("Failed to extract usage data for {Path}", context.Request.Path);
+                    _logger.LogWarning("Failed to extract usage data for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                     return;
                 }
 
@@ -382,16 +388,16 @@ namespace ConduitLLM.Gateway.Middleware
             if (!context.Items.TryGetValue("StreamingUsage", out var usageObj) || 
                 usageObj is not Usage usage)
             {
-                _logger.LogDebug("No streaming usage data found for {Path}", context.Request.Path);
+                _logger.LogDebug("No streaming usage data found for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                 UsageMetrics.UsageTrackingFailures.WithLabels("no_streaming_usage", endpointType).Inc();
                 LogMissingStreamingUsage(context, billingAuditService);
                 return;
             }
 
-            if (!context.Items.TryGetValue("StreamingModel", out var modelObj) || 
+            if (!context.Items.TryGetValue("StreamingModel", out var modelObj) ||
                 modelObj is not string model)
             {
-                _logger.LogWarning("No streaming model found for {Path}", context.Request.Path);
+                _logger.LogWarning("No streaming model found for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                 UsageMetrics.UsageTrackingFailures.WithLabels("no_streaming_model", endpointType).Inc();
                 return;
             }

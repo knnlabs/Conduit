@@ -59,8 +59,8 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var keyHash = VirtualKeyUtilities.HashKey(key);
-                _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}", 
-                    key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
+                _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}",
+                    LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
                 
                 // Use cache with database fallback
                 var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash => 
@@ -106,8 +106,8 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var keyHash = VirtualKeyUtilities.HashKey(key);
-                _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}", 
-                    key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
+                _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}",
+                    LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
                 
                 // Use cache with database fallback
                 var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash => 

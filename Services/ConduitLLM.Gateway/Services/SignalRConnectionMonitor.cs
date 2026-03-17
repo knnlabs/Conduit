@@ -219,7 +219,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to track connection {ConnectionId}", connectionId);
+                _logger.LogError(ex, "Failed to track connection {ConnectionId} on hub {HubName}", connectionId, hubName);
                 // Don't throw - connection tracking failure shouldn't break the connection
             }
         }
@@ -718,7 +718,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to get group count from Redis");
+                _logger.LogWarning(ex, "Failed to get group count from Redis using pattern {Pattern}", $"{_groupConnectionsKeyPrefix}:*");
             }
 
             return Task.FromResult(0);
@@ -827,7 +827,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to cleanup empty groups");
+                _logger.LogError(ex, "Failed to cleanup empty groups from prefix {Prefix}", _groupConnectionsKeyPrefix);
             }
 
             return 0;

@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Hubs;
@@ -153,7 +154,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 
                 // Log performance metrics
                 _logger.LogInformation("Video generation performance - Provider: {Provider}, Model: {Model}, Generation time: {GenerationTime}s, Video duration: {VideoDuration}s, Cost: ${Cost}",
-                    message.Provider, message.Model, message.GenerationDuration.TotalSeconds, message.Duration, message.Cost);
+                    LoggingSanitizer.S(message.Provider), LoggingSanitizer.S(message.Model), message.GenerationDuration.TotalSeconds, message.Duration, message.Cost);
                 
                 // Track provider-specific metrics
                 LogProviderMetrics(message.Provider, message.Model, message.GenerationDuration, message.Duration, message.Cost);

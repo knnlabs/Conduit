@@ -30,6 +30,7 @@ public static class ObservabilityExtensions
                     .AddProcessInstrumentation()
                     .AddMeter("ConduitLLM.SignalR")
                     .AddMeter("ConduitLLM.MediaGeneration")
+                    .AddMeter("ConduitLLM.Gateway.Requests")
                     .AddPrometheusExporter();
             });
 
@@ -56,6 +57,7 @@ public static class ObservabilityExtensions
                     .AddRedisInstrumentation()
                     .AddSource("ConduitLLM.SignalR")
                     .AddSource("ConduitLLM.MediaGeneration")
+                    .AddSource("ConduitLLM.Gateway.Requests")
                     .AddOtlpExporter(options =>
                     {
                         options.Endpoint = new Uri(otlpEndpoint);

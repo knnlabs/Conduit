@@ -39,7 +39,7 @@ namespace ConduitLLM.Gateway.Services
 
             // Wait for the application to fully start using configurable delay
             var startupDelay = TimeSpan.FromSeconds(_options.WarmupStartupDelaySeconds);
-            _logger.LogInformation("Waiting {Seconds} seconds before starting cache warming", _options.WarmupStartupDelaySeconds);
+            _logger.LogDebug("Waiting {Seconds} seconds before starting cache warming", _options.WarmupStartupDelaySeconds);
             await Task.Delay(startupDelay, stoppingToken);
 
             // Try to acquire distributed lock if enabled
@@ -53,7 +53,7 @@ namespace ConduitLLM.Gateway.Services
                     
                     if (lockService != null)
                     {
-                        _logger.LogInformation("Attempting to acquire distributed lock for cache warming");
+                        _logger.LogDebug("Attempting to acquire distributed lock for cache warming");
                         
                         var lockTimeout = TimeSpan.FromSeconds(_options.DistributedLockTimeoutSeconds);
                         distributedLock = await lockService.AcquireLockWithRetryAsync(
@@ -65,7 +65,7 @@ namespace ConduitLLM.Gateway.Services
                         
                         if (distributedLock != null)
                         {
-                            _logger.LogInformation("Acquired distributed lock for cache warming");
+                            _logger.LogDebug("Acquired distributed lock for cache warming");
                         }
                     }
                     else

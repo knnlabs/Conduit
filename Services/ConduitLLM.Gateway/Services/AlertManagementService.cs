@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -143,7 +144,7 @@ namespace ConduitLLM.Gateway.Services
             _alertRules[rule.Id] = rule;
             SaveToCache();
 
-            _logger.LogInformation("Alert rule {RuleId} saved: {RuleName}", rule.Id, rule.Name);
+            _logger.LogInformation("Alert rule {RuleId} saved: {RuleName}", rule.Id, LoggingSanitizer.S(rule.Name));
             return Task.FromResult(rule);
         }
 
@@ -229,7 +230,7 @@ namespace ConduitLLM.Gateway.Services
             // Check if alert should be suppressed
             if (await IsAlertSuppressedAsync(alert))
             {
-                _logger.LogDebug("Alert suppressed: {AlertTitle}", alert.Title);
+                _logger.LogDebug("Alert suppressed: {AlertTitle}", LoggingSanitizer.S(alert.Title));
                 return;
             }
 

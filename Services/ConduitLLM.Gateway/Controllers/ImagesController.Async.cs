@@ -1,7 +1,10 @@
+using System.Diagnostics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Gateway.Metrics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Gateway.Controllers
@@ -19,6 +22,9 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpPost("generations/async")]
         public async Task<IActionResult> CreateImageAsync([FromBody] ConduitLLM.Core.Models.ImageGenerationRequest request)
         {
+            using var activity = GatewayRequestMetrics.StartImageGenerationActivity(
+                request.Model ?? "unknown", isAsync: true);
+
             try
             {
                 // Validate request
@@ -60,12 +66,12 @@ namespace ConduitLLM.Gateway.Controllers
                 if (mapping != null)
                 {
                     supportsImageGen = mapping.ModelProviderTypeAssociation?.Model?.SupportsImageGeneration ?? false;
-                    _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}", 
-                        modelName, supportsImageGen);
+                    _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}",
+                        LoggingSanitizer.S(modelName), supportsImageGen);
                 }
                 else
                 {
-                    _logger.LogWarning("No mapping found for model {Model}. Model must be configured in model mappings.", modelName);
+                    _logger.LogWarning("No mapping found for model {Model}. Model must be configured in model mappings.", LoggingSanitizer.S(modelName));
                     supportsImageGen = false;
                 }
                 
@@ -164,8 +170,8 @@ namespace ConduitLLM.Gateway.Controllers
                 // Publish the event directly to MassTransit for immediate processing
                 PublishEventFireAndForget(generationRequest, "create async image generation", new { TaskId = taskId, Model = modelName });
                 
-                _logger.LogInformation("Created async image generation task {TaskId} for model {Model} and published event", 
-                    taskId, modelName);
+                _logger.LogInformation("Created async image generation task {TaskId} for model {Model} and published event",
+                    taskId, LoggingSanitizer.S(modelName));
 
                 // Return accepted response with task information
                 var response = new AsyncTaskResponse

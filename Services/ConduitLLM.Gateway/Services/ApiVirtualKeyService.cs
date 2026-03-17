@@ -304,7 +304,7 @@ namespace ConduitLLM.Gateway.Services
             // Hash the incoming key before looking it up
             var keyHash = VirtualKeyUtilities.HashKey(key);
             _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}",
-                key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
+                LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
 
             var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
             if (virtualKey == null)
@@ -332,7 +332,7 @@ namespace ConduitLLM.Gateway.Services
             // Hash the incoming key before looking it up
             var keyHash = VirtualKeyUtilities.HashKey(key);
             _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}",
-                key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
+                LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
 
             var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
             if (virtualKey == null)

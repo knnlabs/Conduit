@@ -115,7 +115,7 @@ namespace ConduitLLM.Gateway.Services
                 await ClearAllByPatternAsync(CacheKeys.IpFilter.VirtualKeyPrefix + "*");
 
                 await TrackInvalidationAsync(ServiceName);
-                Logger.LogInformation("IP filter cache invalidated for filter ID: {FilterId}", filterId);
+                Logger.LogDebug("IP filter cache invalidated for filter ID: {FilterId}", filterId);
             }
             catch (Exception ex)
             {
@@ -134,7 +134,7 @@ namespace ConduitLLM.Gateway.Services
                 await ClearIpCheckResults(); // IP checks depend on filters
                 await TrackInvalidationAsync(ServiceName);
 
-                Logger.LogInformation("Global IP filters cache invalidated");
+                Logger.LogDebug("Global IP filters cache invalidated");
             }
             catch (Exception ex)
             {
@@ -156,7 +156,7 @@ namespace ConduitLLM.Gateway.Services
                 await ClearAllByPatternAsync(CacheKeys.IpFilter.CheckPrefix + $"*:{virtualKeyId}");
 
                 await TrackInvalidationAsync(ServiceName);
-                Logger.LogInformation("Virtual key IP filters cache invalidated for key: {VirtualKeyId}", virtualKeyId);
+                Logger.LogDebug("Virtual key IP filters cache invalidated for key: {VirtualKeyId}", virtualKeyId);
             }
             catch (Exception ex)
             {

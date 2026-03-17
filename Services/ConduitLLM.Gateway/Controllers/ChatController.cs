@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -8,6 +9,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Constants;
+using ConduitLLM.Core.Extensions;
+using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
 
 using MassTransit;
@@ -73,7 +76,10 @@ namespace ConduitLLM.Gateway.Controllers
             [FromBody] ChatCompletionRequest request,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Received /v1/chat/completions request for model: {Model}", request.Model);
+            using var activity = GatewayRequestMetrics.StartChatCompletionActivity(
+                request.Model, request.Stream == true);
+
+            _logger.LogInformation("Received /v1/chat/completions request for model: {Model}", LoggingSanitizer.S(request.Model));
 
             // Store streaming flag for middleware
             HttpContext.Items["IsStreamingRequest"] = request.Stream == true;
@@ -86,6 +92,8 @@ namespace ConduitLLM.Gateway.Controllers
                 {
                     HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
                     HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                    activity?.SetTag("gateway.provider_id", modelMapping.ProviderId);
+                    activity?.SetTag("gateway.provider_type", modelMapping.Provider?.ProviderType.ToString());
 
                     // Store ModelCostId for direct cost lookup (preferred over string matching)
                     if (modelMapping.ModelProviderTypeAssociation?.ModelCostId != null)
@@ -96,7 +104,7 @@ namespace ConduitLLM.Gateway.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
+                _logger.LogWarning(ex, "Failed to get provider info for model {Model}", LoggingSanitizer.S(request.Model));
             }
 
             // Validate function calling parameters if provided
@@ -181,7 +189,7 @@ namespace ConduitLLM.Gateway.Controllers
                     // Use provider ID for metrics since it's the stable identifier
                     var providerId = modelMapping?.ProviderId.ToString() ?? "unknown";
                     
-                    _logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", request.Model, providerId);
+                    _logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", LoggingSanitizer.S(request.Model), providerId);
                     var metricsCollector = new StreamingMetricsCollector(
                         requestId,
                         request.Model,
@@ -380,7 +388,7 @@ namespace ConduitLLM.Gateway.Controllers
                         else if (_usageEstimationService != null && contentAccumulator.Length > 0)
                         {
                             // No usage data from provider, estimate it to prevent revenue loss
-                            _logger.LogWarning("No usage data received from provider for streaming response, estimating usage for model {Model}", request.Model);
+                            _logger.LogWarning("No usage data received from provider for streaming response, estimating usage for model {Model}", LoggingSanitizer.S(request.Model));
                             
                             try
                             {
@@ -461,6 +469,8 @@ namespace ConduitLLM.Gateway.Controllers
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.SetTag("error.type", ex.GetType().Name);
                 _logger.LogError(ex, "Error processing request");
                 return StatusCode(500, new OpenAIErrorResponse
                 {

@@ -249,7 +249,7 @@ namespace ConduitLLM.Gateway.Services
                 // Remove from local timeout tracking
                 _pendingTimeouts.TryRemove(messageId, out _);
 
-                _logger.LogDebug(
+                _logger.LogInformation(
                     "Message {MessageId} acknowledged by {ConnectionId}, RTT: {RoundTripTime}ms",
                     messageId, connectionId, pending.RoundTripTime?.TotalMilliseconds ?? 0);
 
@@ -541,11 +541,11 @@ namespace ConduitLLM.Gateway.Services
 
             try
             {
-                _logger.LogTrace("Acknowledgment cleanup timer executed - Redis handles TTL automatically");
+                _logger.LogDebug("Acknowledgment cleanup timer executed - Redis handles TTL automatically");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during acknowledgment cleanup");
+                _logger.LogError(ex, "Error during acknowledgment cleanup, pending count: {PendingCount}", _pendingTimeouts.Count);
             }
         }
 
@@ -573,7 +573,7 @@ namespace ConduitLLM.Gateway.Services
 
                 if (timedOutIds.Count > 0)
                 {
-                    _logger.LogDebug("Timeout scan found {Count} expired messages", timedOutIds.Count);
+                    _logger.LogInformation("Timeout scan found {Count} expired messages", timedOutIds.Count);
                 }
 
                 foreach (var messageId in timedOutIds)
@@ -593,7 +593,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during timeout scan");
+                _logger.LogError(ex, "Error during timeout scan, pending count: {PendingCount}", _pendingTimeouts.Count);
             }
             finally
             {

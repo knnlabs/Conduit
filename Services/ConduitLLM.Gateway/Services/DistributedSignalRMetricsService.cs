@@ -513,7 +513,7 @@ namespace ConduitLLM.Gateway.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse connection info for key {Key}", key);
+                    _logger.LogWarning(ex, "Failed to parse connection info for key {Key}", LoggingSanitizer.S(key));
                 }
             }
 

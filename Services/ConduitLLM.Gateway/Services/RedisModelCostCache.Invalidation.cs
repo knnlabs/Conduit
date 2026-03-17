@@ -47,7 +47,7 @@ namespace ConduitLLM.Gateway.Services
                 }
 
                 Interlocked.Increment(ref _statsBuffer.Invalidations);
-                Logger.LogInformation("Model cost cache invalidated for ID: {ModelCostId}", modelCostId);
+                Logger.LogDebug("Model cost cache invalidated for ID: {ModelCostId}", modelCostId);
             }
             catch (Exception ex)
             {
@@ -79,7 +79,7 @@ namespace ConduitLLM.Gateway.Services
                 }
 
                 Interlocked.Increment(ref _statsBuffer.Invalidations);
-                Logger.LogInformation("Model cost cache invalidated for pattern: {Pattern}", modelIdPattern);
+                Logger.LogDebug("Model cost cache invalidated for pattern: {Pattern}", modelIdPattern);
             }
             catch (Exception ex)
             {

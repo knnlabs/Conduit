@@ -350,7 +350,7 @@ namespace ConduitLLM.Gateway.Services
                 await _redis.HashIncrementAsync(_statisticsKey, "totalMessagesBatched");
                 await _redis.HashIncrementAsync(_messagesByMethodKey, methodName);
 
-                _logger.LogTrace(
+                _logger.LogDebug(
                     "Added message to batch for {HubName}.{MethodName}, batch size: {Size}",
                     hubName, methodName, batch.Messages.Count);
             }
@@ -417,8 +417,9 @@ namespace ConduitLLM.Gateway.Services
                 {
                     return DateTime.FromBinary(binary);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogDebug(ex, "Failed to parse timestamp from binary value, using current time");
                     return DateTime.UtcNow;
                 }
             }
@@ -687,7 +688,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in SendBatchAsync for key {Key}", batchKeyString);
+                _logger.LogError(ex, "Error in SendBatchAsync for key {Key}, hub {HubName}.{MethodName}", batchKeyString, batch.HubName, batch.MethodName);
             }
         }
 

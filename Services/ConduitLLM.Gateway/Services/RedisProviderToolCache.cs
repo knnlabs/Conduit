@@ -41,7 +41,7 @@ public class RedisProviderToolCache : RedisCacheServiceBase, IProviderToolCache,
 
         _flushTimer = new Timer(FlushStatisticsCallback, null, _flushInterval, _flushInterval);
 
-        Logger.LogInformation("RedisProviderToolCache initialized with {Expiry} TTL", DefaultExpiry);
+        Logger.LogDebug("RedisProviderToolCache initialized with {Expiry} TTL", DefaultExpiry);
     }
 
     /// <inheritdoc/>
@@ -68,7 +68,7 @@ public class RedisProviderToolCache : RedisCacheServiceBase, IProviderToolCache,
             var cacheKey = CacheKeys.ProviderTool.ByProvider(providerType.ToString());
             await Database.KeyDeleteAsync(cacheKey);
             Interlocked.Increment(ref _statsBuffer.Invalidations);
-            Logger.LogInformation("Provider tool cache invalidated for {ProviderType}", providerType);
+            Logger.LogDebug("Provider tool cache invalidated for {ProviderType}", providerType);
         }
         catch (Exception ex)
         {

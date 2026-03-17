@@ -153,7 +153,7 @@ namespace ConduitLLM.Gateway.Services
                 await Database.KeyDeleteAsync(cacheKey);
                 await TrackInvalidationAsync(ServiceName);
 
-                Logger.LogInformation("Provider credential cache invalidated: {ProviderId}", providerId);
+                Logger.LogDebug("Provider credential cache invalidated: {ProviderId}", providerId);
             }
             catch (Exception ex)
             {
@@ -167,7 +167,7 @@ namespace ConduitLLM.Gateway.Services
         public Task InvalidateProviderByNameAsync(string providerName)
         {
             // Since we don't cache by name anymore, this is a no-op
-            Logger.LogWarning("InvalidateProviderByNameAsync called but we don't cache by name. Provider: {ProviderName}", providerName);
+            Logger.LogDebug("InvalidateProviderByNameAsync called but we don't cache by name. Provider: {ProviderName}", providerName);
             return Task.CompletedTask;
         }
 

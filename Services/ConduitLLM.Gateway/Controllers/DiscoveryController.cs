@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -71,7 +72,7 @@ namespace ConduitLLM.Gateway.Controllers
                 var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
                 if (cachedResult != null)
                 {
-                    _logger.LogDebug("Returning cached discovery results for capability: {Capability}", capability ?? "all");
+                    _logger.LogDebug("Returning cached discovery results for capability: {Capability}", LoggingSanitizer.S(capability ?? "all"));
                     return Ok(new
                     {
                         data = cachedResult.Data,
@@ -100,7 +101,7 @@ namespace ConduitLLM.Gateway.Controllers
                     // Skip if model is missing
                     if (mapping.ModelProviderTypeAssociation?.Model == null)
                     {
-                        _logger.LogWarning("Model mapping {ModelAlias} has no model data", mapping.ModelAlias);
+                        _logger.LogWarning("Model mapping {ModelAlias} has no model data", LoggingSanitizer.S(mapping.ModelAlias));
                         continue;
                     }
 
@@ -210,8 +211,8 @@ namespace ConduitLLM.Gateway.Controllers
                 
                 await _discoveryCacheService.SetDiscoveryResultsAsync(cacheKey, discoveryResult);
                 
-                _logger.LogInformation("Cached discovery results for capability: {Capability} with {Count} models", 
-                    capability ?? "all", models.Count);
+                _logger.LogInformation("Cached discovery results for capability: {Capability} with {Count} models",
+                    LoggingSanitizer.S(capability ?? "all"), models.Count);
 
                 return Ok(new
                 {
@@ -334,7 +335,7 @@ namespace ConduitLLM.Gateway.Controllers
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to parse parameters for model {Model}", model);
+                        _logger.LogWarning(ex, "Failed to parse parameters for model {Model}", LoggingSanitizer.S(model));
                         parameters = new { };
                     }
                 }
@@ -349,7 +350,7 @@ namespace ConduitLLM.Gateway.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving model parameters for {Model}", model);
+                _logger.LogError(ex, "Error retrieving model parameters for {Model}", LoggingSanitizer.S(model));
                 return StatusCode(500, new ErrorResponseDto("Failed to retrieve model parameters"));
             }
         }

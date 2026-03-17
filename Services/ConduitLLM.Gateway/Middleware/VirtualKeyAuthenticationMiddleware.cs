@@ -1,5 +1,6 @@
 using System.Security.Claims;
 
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Gateway.Middleware
@@ -40,8 +41,8 @@ namespace ConduitLLM.Gateway.Middleware
             
             if (string.IsNullOrEmpty(virtualKey))
             {
-                _logger.LogWarning("Missing Virtual Key in request to {Path} from IP {IP}", 
-                    context.Request.Path, 
+                _logger.LogWarning("Missing Virtual Key in request to {Path} from IP {IP}",
+                    LoggingSanitizer.S(context.Request.Path.ToString()),
                     context.Connection.RemoteIpAddress);
                 
                 context.Response.StatusCode = 401;
@@ -49,8 +50,8 @@ namespace ConduitLLM.Gateway.Middleware
                 return;
             }
             
-            _logger.LogInformation("Extracted Virtual Key: {KeyPrefix}... (length: {Length})", 
-                virtualKey.Length > 10 ? virtualKey.Substring(0, 10) : virtualKey,
+            _logger.LogInformation("Extracted Virtual Key: {KeyPrefix}... (length: {Length})",
+                LoggingSanitizer.S(virtualKey.Length > 10 ? virtualKey.Substring(0, 10) : virtualKey),
                 virtualKey.Length);
 
             // Validate Virtual Key
@@ -58,8 +59,8 @@ namespace ConduitLLM.Gateway.Middleware
             
             if (validatedKey == null)
             {
-                _logger.LogWarning("Invalid Virtual Key attempt for key {Key} from IP {IP}", 
-                    virtualKey.Substring(0, Math.Min(10, virtualKey.Length)) + "...", 
+                _logger.LogWarning("Invalid Virtual Key attempt for key {Key} from IP {IP}",
+                    LoggingSanitizer.S(virtualKey.Substring(0, Math.Min(10, virtualKey.Length)) + "..."),
                     context.Connection.RemoteIpAddress);
                 
                 // Store failed attempt info for security service to track
@@ -75,8 +76,8 @@ namespace ConduitLLM.Gateway.Middleware
             // Check if key is enabled
             if (!validatedKey.IsEnabled)
             {
-                _logger.LogWarning("Disabled Virtual Key attempt for key {KeyName} from IP {IP}", 
-                    validatedKey.KeyName, 
+                _logger.LogWarning("Disabled Virtual Key attempt for key {KeyName} from IP {IP}",
+                    LoggingSanitizer.S(validatedKey.KeyName),
                     context.Connection.RemoteIpAddress);
                 
                 // Store failed attempt info for security service to track
@@ -92,8 +93,8 @@ namespace ConduitLLM.Gateway.Middleware
             // Check if key is expired
             if (validatedKey.ExpiresAt.HasValue && validatedKey.ExpiresAt.Value < DateTime.UtcNow)
             {
-                _logger.LogWarning("Expired Virtual Key attempt for key {KeyName} from IP {IP}", 
-                    validatedKey.KeyName, 
+                _logger.LogWarning("Expired Virtual Key attempt for key {KeyName} from IP {IP}",
+                    LoggingSanitizer.S(validatedKey.KeyName),
                     context.Connection.RemoteIpAddress);
                 
                 // Store failed attempt info for security service to track
@@ -127,9 +128,9 @@ namespace ConduitLLM.Gateway.Middleware
             // Clear any previous failed auth tracking for this IP (will be handled by SecurityService)
             context.Items["AuthSuccess"] = true;
 
-            _logger.LogDebug("Virtual Key {KeyName} authenticated successfully for {Path}", 
-                validatedKey.KeyName, 
-                context.Request.Path);
+            _logger.LogDebug("Virtual Key {KeyName} authenticated successfully for {Path}",
+                LoggingSanitizer.S(validatedKey.KeyName),
+                LoggingSanitizer.S(context.Request.Path.ToString()));
 
             await _next(context);
         }
