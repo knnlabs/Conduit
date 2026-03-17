@@ -16,6 +16,8 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                _logger.LogDebug("Getting cache statistics for region: {RegionId}", regionId ?? "all");
+
                 if (string.IsNullOrEmpty(regionId))
                 {
                     return await GetOverallStatisticsAsync(cancellationToken);

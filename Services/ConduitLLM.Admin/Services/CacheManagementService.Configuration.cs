@@ -17,6 +17,8 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                _logger.LogDebug("Retrieving cache configuration for all regions");
+
                 var regions = _cacheRegistry.GetAllRegions();
                 var cachePolicies = new List<CachePolicyDto>();
                 var cacheRegions = new List<CacheRegionDto>();
@@ -99,7 +101,13 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogDebug("Updating cache configuration");
+                var targetScope = config.ApplyGlobally ? "all regions" : (config.RegionId ?? "unspecified");
+                _logger.LogInformation(
+                    "Updating cache configuration for {Scope}: TTL={TTL}s, EvictionPolicy={EvictionPolicy}, ClearCaches={ClearCaches}",
+                    targetScope,
+                    config.DefaultTTLSeconds?.ToString() ?? "unchanged",
+                    config.EvictionPolicy ?? "unchanged",
+                    config.ClearAffectedCaches);
 
                 // Update global configuration if specified
                 if (config.ApplyGlobally)
@@ -128,10 +136,12 @@ namespace ConduitLLM.Admin.Services
                     if (config.ApplyGlobally)
                     {
                         await _cacheManager.ClearAllAsync(cancellationToken);
+                        _logger.LogInformation("Cleared all cache regions as part of configuration update");
                     }
                     else if (Enum.TryParse<CacheRegion>(config.RegionId, true, out var region))
                     {
                         await _cacheManager.ClearRegionAsync(region, cancellationToken);
+                        _logger.LogInformation("Cleared cache region {Region} as part of configuration update", region);
                     }
                 }
 
@@ -141,6 +151,8 @@ namespace ConduitLLM.Admin.Services
                     Region = config.RegionId ?? "global",
                     ChangedBy = "Admin API"
                 }, cancellationToken);
+
+                _logger.LogInformation("Cache configuration update completed for {Scope}", targetScope);
             }
             catch (Exception ex)
             {
@@ -190,13 +202,19 @@ namespace ConduitLLM.Admin.Services
 
                 // Save updated configuration
                 await _configService.UpdateConfigurationAsync(
-                    region.ToString(), 
-                    config, 
+                    region.ToString(),
+                    config,
                     "Admin API",
                     $"Policy update: {policyUpdate.Reason}",
                     cancellationToken);
 
-                _logger.LogInformation("Updated cache policy for region {Region}", region);
+                _logger.LogInformation(
+                    "Updated cache policy for region {Region}: TTL={TTL}s, MaxSize={MaxSize}, Strategy={Strategy}, Reason={Reason}",
+                    region,
+                    policyUpdate.TTL?.ToString() ?? "unchanged",
+                    policyUpdate.MaxSize?.ToString() ?? "unchanged",
+                    policyUpdate.Strategy ?? "unchanged",
+                    policyUpdate.Reason ?? "not specified");
             }
             catch (Exception ex)
             {

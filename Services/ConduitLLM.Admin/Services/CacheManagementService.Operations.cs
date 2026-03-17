@@ -47,6 +47,8 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                _logger.LogDebug("Getting cache entries for region {RegionId} (skip={Skip}, take={Take})", regionId, skip, take);
+
                 if (!Enum.TryParse<CacheRegion>(regionId, true, out var region))
                 {
                     throw new ArgumentException($"Invalid region ID: {regionId}");
@@ -103,6 +105,8 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                _logger.LogDebug("Refreshing cache for region {RegionId}, key={Key}", regionId, key ?? "all");
+
                 if (!Enum.TryParse<CacheRegion>(regionId, true, out var region))
                 {
                     throw new ArgumentException($"Invalid region ID: {regionId}");
@@ -116,6 +120,7 @@ namespace ConduitLLM.Admin.Services
                     {
                         throw new KeyNotFoundException($"Cache key '{key}' not found in region '{regionId}'");
                     }
+                    _logger.LogInformation("Refreshed cache key {Key} in region {Region}", key, region);
                 }
                 else
                 {

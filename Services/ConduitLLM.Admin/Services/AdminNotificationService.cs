@@ -187,6 +187,9 @@ namespace ConduitLLM.Admin.Services
                     keyName = key?.KeyName;
                 }
 
+                _logger.LogInformation("Created notification {NotificationId} of type {Type}",
+                    createdNotification.Id, createdNotification.Type);
+
                 return createdNotification.ToDto(keyName);
             }
             catch (Exception ex)
@@ -280,6 +283,10 @@ namespace ConduitLLM.Admin.Services
                     _logger.LogWarning("MarkAllNotificationsAsRead: {Marked} marked, {Failed} failed out of {Total}",
                         count, failed, unreadNotifications.Count);
                 }
+                else if (count > 0)
+                {
+                    _logger.LogInformation("Marked {Count} notifications as read", count);
+                }
 
                 return count;
             }
@@ -297,7 +304,12 @@ namespace ConduitLLM.Admin.Services
             {
                 _logger.LogDebug("Deleting notification with ID: {Id}", id);
 
-                return await _notificationRepository.DeleteAsync(id);
+                var result = await _notificationRepository.DeleteAsync(id);
+                if (result)
+                {
+                    _logger.LogInformation("Deleted notification {NotificationId}", id);
+                }
+                return result;
             }
             catch (Exception ex)
             {

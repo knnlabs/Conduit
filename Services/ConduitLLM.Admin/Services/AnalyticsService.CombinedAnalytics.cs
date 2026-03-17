@@ -183,27 +183,43 @@ namespace ConduitLLM.Admin.Services
             string? model = null,
             int? virtualKeyId = null)
         {
-            _logger.LogInformation("Exporting analytics in {Format} format", format);
+            _logger.LogInformation("Exporting analytics in {Format} format, date range {StartDate} to {EndDate}",
+                format, startDate?.ToString("yyyy-MM-dd") ?? "default", endDate?.ToString("yyyy-MM-dd") ?? "default");
 
-            startDate ??= DateTime.UtcNow.AddDays(-30);
-            endDate ??= DateTime.UtcNow;
-
-            // Export requires full entity data — still loads rows, but this is an infrequent operation
-            var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-
-            // Apply filters
-            if (!string.IsNullOrEmpty(model))
-                logs = logs.Where(l => l.ModelName.Contains(model, StringComparison.OrdinalIgnoreCase)).ToList();
-
-            if (virtualKeyId.HasValue)
-                logs = logs.Where(l => l.VirtualKeyId == virtualKeyId.Value).ToList();
-
-            return format.ToLower() switch
+            try
             {
-                "csv" => ExportToCsv(logs),
-                "json" => ExportToJson(logs),
-                _ => throw new ArgumentException($"Unsupported export format: {format}")
-            };
+                startDate ??= DateTime.UtcNow.AddDays(-30);
+                endDate ??= DateTime.UtcNow;
+
+                // Export requires full entity data — still loads rows, but this is an infrequent operation
+                var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
+
+                // Apply filters
+                if (!string.IsNullOrEmpty(model))
+                    logs = logs.Where(l => l.ModelName.Contains(model, StringComparison.OrdinalIgnoreCase)).ToList();
+
+                if (virtualKeyId.HasValue)
+                    logs = logs.Where(l => l.VirtualKeyId == virtualKeyId.Value).ToList();
+
+                _logger.LogInformation("Analytics export completed: {RecordCount} records in {Format} format",
+                    logs.Count, format);
+
+                return format.ToLower() switch
+                {
+                    "csv" => ExportToCsv(logs),
+                    "json" => ExportToJson(logs),
+                    _ => throw new ArgumentException($"Unsupported export format: {format}")
+                };
+            }
+            catch (ArgumentException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting analytics in {Format} format", format);
+                throw;
+            }
         }
 
         #endregion

@@ -294,6 +294,9 @@ namespace ConduitLLM.Admin.Services
                     },
                     $"update virtual key {id}",
                     new { ChangedProperties = string.Join(", ", changedProperties) });
+
+                _logger.LogInformation("Updated virtual key {KeyId} ({KeyName}), changed: [{ChangedProperties}]",
+                    id, LoggingSanitizer.S(key.KeyName), string.Join(", ", changedProperties));
             }
 
             return result;
@@ -348,6 +351,8 @@ namespace ConduitLLM.Admin.Services
                     },
                     $"delete virtual key {key.Id}",
                     new { KeyName = key.KeyName });
+
+                _logger.LogInformation("Deleted virtual key {KeyId} ({KeyName})", id, LoggingSanitizer.S(key.KeyName));
             }
 
             return result;

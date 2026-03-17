@@ -62,7 +62,7 @@ public partial class AnalyticsService : IAnalyticsService
         
         try
         {
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Getting logs - Page: {Page}, PageSize: {PageSize}, Filters: Model={Model}, VirtualKeyId={VirtualKeyId}, Status={Status}",
                 page, pageSize, model ?? "all", virtualKeyId?.ToString() ?? "all", status?.ToString() ?? "all");
 
@@ -136,7 +136,7 @@ public partial class AnalyticsService : IAnalyticsService
     {
         try
         {
-            _logger.LogInformationSecure("Getting log with ID: {LogId}", id);
+            _logger.LogDebugSecure("Getting log with ID: {LogId}", id);
             var log = await _requestLogRepository.GetByIdAsync(id);
             return log != null ? MapToLogRequestDto(log) : null;
         }
@@ -158,7 +158,7 @@ public partial class AnalyticsService : IAnalyticsService
             _metrics?.RecordCacheMiss(CacheKeys.Analytics.Models);
             entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
 
-            _logger.LogInformationSecure("Getting distinct models from request logs");
+            _logger.LogDebugSecure("Getting distinct models from request logs");
 
             var fetchStopwatch = Stopwatch.StartNew();
             // Use repository-level DISTINCT query instead of loading all logs into memory

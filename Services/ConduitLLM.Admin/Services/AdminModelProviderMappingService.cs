@@ -108,7 +108,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
 
             // Add the mapping
             await _mappingRepository.CreateAsync(mapping);
-            
+
             // Publish ModelMappingChanged event for creation
             await PublishEventAsync(
                 new ModelMappingChanged
@@ -122,7 +122,10 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                 },
                 $"create model mapping for {mapping.ModelAlias}",
                 new { ModelAlias = mapping.ModelAlias, ProviderId = mapping.ProviderId });
-            
+
+            _logger.LogInformation("Created model provider mapping {ModelAlias} -> provider {ProviderId}",
+                LoggingSanitizer.S(mapping.ModelAlias), mapping.ProviderId);
+
             return true;
         }
         catch (Exception ex)
@@ -182,8 +185,11 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                     },
                     $"update model mapping {existingMapping.Id}",
                     new { ModelAlias = existingMapping.ModelAlias, ProviderId = existingMapping.ProviderId });
+
+                _logger.LogInformation("Updated model provider mapping {MappingId} ({ModelAlias} -> provider {ProviderId})",
+                    existingMapping.Id, LoggingSanitizer.S(existingMapping.ModelAlias), existingMapping.ProviderId);
             }
-            
+
             return result;
         }
         catch (Exception ex)
@@ -226,8 +232,11 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                     },
                     $"delete model mapping {existingMapping.Id}",
                     new { ModelAlias = existingMapping.ModelAlias, ProviderId = existingMapping.ProviderId });
+
+                _logger.LogInformation("Deleted model provider mapping {MappingId} ({ModelAlias})",
+                    existingMapping.Id, LoggingSanitizer.S(existingMapping.ModelAlias));
             }
-            
+
             return result;
         }
         catch (Exception ex)
