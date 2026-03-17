@@ -16,6 +16,13 @@ public static class WebApplicationExtensions
     /// <returns>The web application for chaining</returns>
     public static WebApplication UseAdminMiddleware(this WebApplication app)
     {
+        // Enable request body buffering so it can be re-read for error diagnostics
+        app.Use(async (context, next) =>
+        {
+            context.Request.EnableBuffering();
+            await next();
+        });
+
         // Add correlation ID middleware (earliest — establishes correlation context for all downstream middleware)
         app.UseCorrelationId();
 

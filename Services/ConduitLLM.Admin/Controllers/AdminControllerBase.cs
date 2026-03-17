@@ -252,24 +252,67 @@ namespace ConduitLLM.Admin.Controllers
 
             var mapping = ExceptionToResponseMapper.Map(ex);
 
-            // Log at appropriate level with operation context
-            if (mapping.IncludeExceptionMessageInLog)
-            {
-                Logger.Log(mapping.LogLevel, ex, "{LogPrefix} in {LogMessage}: {ExceptionMessage}",
-                    mapping.LogPrefix, logMessage, ex.Message);
-            }
-            else if (mapping.LogLevel == LogLevel.Error)
-            {
-                Logger.LogError(ex, "{LogPrefix} in {LogMessage}", mapping.LogPrefix, logMessage);
-            }
-            else
-            {
-                Logger.LogWarning("{LogPrefix} in {LogMessage}", mapping.LogPrefix, logMessage);
-            }
+            // Capture request body for mutation failures (fire-and-forget — don't block error response)
+            _ = LogExceptionWithBodyAsync(mapping, ex, logMessage);
 
             // Return appropriate result type based on status code
             var errorResponse = new ErrorResponseDto(mapping.ResponseMessage) { Code = mapping.ErrorCode };
             return CreateErrorResult(mapping.StatusCode, errorResponse);
+        }
+
+        /// <summary>
+        /// Logs the exception with the request body for mutation requests.
+        /// Falls back to logging without body if capture fails.
+        /// </summary>
+        private async Task LogExceptionWithBodyAsync(
+            ExceptionToResponseMapper.ExceptionMappingResult mapping,
+            Exception ex,
+            string logMessage)
+        {
+            string? requestBody = null;
+            try
+            {
+                requestBody = await RequestBodyCapture.CaptureAsync(HttpContext);
+            }
+            catch
+            {
+                // Body capture should never prevent error logging
+            }
+
+            if (requestBody != null)
+            {
+                if (mapping.IncludeExceptionMessageInLog)
+                {
+                    Logger.Log(mapping.LogLevel, ex, "{LogPrefix} in {LogMessage}: {ExceptionMessage}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, ex.Message, requestBody);
+                }
+                else if (mapping.LogLevel == LogLevel.Error)
+                {
+                    Logger.LogError(ex, "{LogPrefix} in {LogMessage}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, requestBody);
+                }
+                else
+                {
+                    Logger.LogWarning("{LogPrefix} in {LogMessage}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, requestBody);
+                }
+            }
+            else
+            {
+                if (mapping.IncludeExceptionMessageInLog)
+                {
+                    Logger.Log(mapping.LogLevel, ex, "{LogPrefix} in {LogMessage}: {ExceptionMessage}",
+                        mapping.LogPrefix, logMessage, ex.Message);
+                }
+                else if (mapping.LogLevel == LogLevel.Error)
+                {
+                    Logger.LogError(ex, "{LogPrefix} in {LogMessage}", mapping.LogPrefix, logMessage);
+                }
+                else
+                {
+                    Logger.LogWarning("{LogPrefix} in {LogMessage}", mapping.LogPrefix, logMessage);
+                }
+            }
         }
 
         /// <summary>

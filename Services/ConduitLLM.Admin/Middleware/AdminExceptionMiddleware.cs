@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Extensions;
@@ -62,11 +63,26 @@ public class AdminExceptionMiddleware
     {
         var traceId = context.TraceIdentifier;
 
-        _logger.LogError(exception,
-            "Unhandled exception caught by AdminExceptionMiddleware. TraceId: {TraceId}, Method: {Method}, Path: {Path}",
-            traceId,
-            LoggingSanitizer.S(context.Request.Method),
-            LoggingSanitizer.S(context.Request.Path.ToString()));
+        // Capture request body for mutation failures (POST/PUT/PATCH/DELETE)
+        var requestBody = await RequestBodyCapture.CaptureAsync(context);
+
+        if (requestBody != null)
+        {
+            _logger.LogError(exception,
+                "Unhandled exception caught by AdminExceptionMiddleware. TraceId: {TraceId}, Method: {Method}, Path: {Path}, RequestBody: {RequestBody}",
+                traceId,
+                LoggingSanitizer.S(context.Request.Method),
+                LoggingSanitizer.S(context.Request.Path.ToString()),
+                requestBody);
+        }
+        else
+        {
+            _logger.LogError(exception,
+                "Unhandled exception caught by AdminExceptionMiddleware. TraceId: {TraceId}, Method: {Method}, Path: {Path}",
+                traceId,
+                LoggingSanitizer.S(context.Request.Method),
+                LoggingSanitizer.S(context.Request.Path.ToString()));
+        }
 
         // Map exception using the shared mapper
         var mapping = ExceptionToResponseMapper.Map(exception);
