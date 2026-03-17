@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -137,6 +138,7 @@ namespace ConduitLLM.Admin.Controllers
                         throw new InvalidOperationException("Failed to reload created series");
                     }
 
+                    LogAdminAudit("Created", "ModelSeries", reloaded.Id, $"Name: {LoggingSanitizer.S(reloaded.Name)}");
                     return reloaded;
                 },
                 series => CreatedAtAction(
@@ -193,6 +195,7 @@ namespace ConduitLLM.Admin.Controllers
                         series.Parameters = dto.Parameters;
 
                     await _repository.UpdateAsync(series);
+                    LogAdminAudit("Updated", "ModelSeries", id);
                 },
                 NoContent(),
                 "Update",
@@ -228,6 +231,7 @@ namespace ConduitLLM.Admin.Controllers
                     }
 
                     await _repository.DeleteAsync(id);
+                    LogAdminAudit("Deleted", "ModelSeries", id);
                 },
                 NoContent(),
                 "Delete",

@@ -154,7 +154,12 @@ namespace ConduitLLM.Admin.Controllers
         public Task<IActionResult> CreateModelCost([FromBody] CreateModelCostDto modelCost)
         {
             return ExecuteAsync(
-                () => _modelCostService.CreateModelCostAsync(modelCost),
+                async () =>
+                {
+                    var result = await _modelCostService.CreateModelCostAsync(modelCost);
+                    LogAdminAudit("Created", "ModelCost", result.Id, $"CostName: {LoggingSanitizer.S(result.CostName)}");
+                    return result;
+                },
                 result => CreatedAtAction(nameof(GetModelCostById), new { id = result.Id }, result),
                 "CreateModelCost");
         }
@@ -187,6 +192,8 @@ namespace ConduitLLM.Admin.Controllers
                     {
                         throw new KeyNotFoundException($"Model cost with ID '{id}' not found");
                     }
+
+                    LogAdminAudit("Updated", "ModelCost", id);
                 },
                 NoContent(),
                 "UpdateModelCost",
@@ -213,6 +220,8 @@ namespace ConduitLLM.Admin.Controllers
                     {
                         throw new KeyNotFoundException($"Model cost with ID '{id}' not found");
                     }
+
+                    LogAdminAudit("Deleted", "ModelCost", id);
                 },
                 NoContent(),
                 "DeleteModelCost",
@@ -262,7 +271,12 @@ namespace ConduitLLM.Admin.Controllers
             }
 
             return ExecuteAsync(
-                () => _modelCostService.ImportModelCostsAsync(modelCosts),
+                async () =>
+                {
+                    var result = await _modelCostService.ImportModelCostsAsync(modelCosts);
+                    LogAdminAudit("Imported", "ModelCost", detail: $"Count: {result}");
+                    return result;
+                },
                 result => Ok(result),
                 "ImportModelCosts");
         }
@@ -349,6 +363,7 @@ namespace ConduitLLM.Admin.Controllers
                             }));
                     }
 
+                    LogAdminAudit("ImportedCsv", "ModelCost", detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
                     return result;
                 },
                 result => Ok(result),
@@ -395,6 +410,7 @@ namespace ConduitLLM.Admin.Controllers
                             }));
                     }
 
+                    LogAdminAudit("ImportedJson", "ModelCost", detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
                     return result;
                 },
                 result => Ok(result),

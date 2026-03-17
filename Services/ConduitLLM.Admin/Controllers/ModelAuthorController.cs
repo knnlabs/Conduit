@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -129,6 +130,7 @@ namespace ConduitLLM.Admin.Controllers
                     };
 
                     await _repository.CreateAsync(author);
+                    LogAdminAudit("Created", "ModelAuthor", author.Id, $"Name: {LoggingSanitizer.S(author.Name)}");
 
                     return author;
                 },
@@ -184,6 +186,7 @@ namespace ConduitLLM.Admin.Controllers
                         author.WebsiteUrl = dto.WebsiteUrl;
 
                     await _repository.UpdateAsync(author);
+                    LogAdminAudit("Updated", "ModelAuthor", id);
                 },
                 NoContent(),
                 "Update",
@@ -219,6 +222,7 @@ namespace ConduitLLM.Admin.Controllers
                     }
 
                     await _repository.DeleteAsync(id);
+                    LogAdminAudit("Deleted", "ModelAuthor", id);
                 },
                 NoContent(),
                 "Delete",

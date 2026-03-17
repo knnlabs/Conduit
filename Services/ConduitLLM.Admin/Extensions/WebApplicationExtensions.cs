@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Middleware;
+using ConduitLLM.Core.Middleware;
 using ConduitLLM.Security.Middleware;
 
 namespace ConduitLLM.Admin.Extensions;
@@ -15,6 +16,9 @@ public static class WebApplicationExtensions
     /// <returns>The web application for chaining</returns>
     public static WebApplication UseAdminMiddleware(this WebApplication app)
     {
+        // Add correlation ID middleware (earliest — establishes correlation context for all downstream middleware)
+        app.UseCorrelationId();
+
         // Add CORS middleware
         app.UseCors("AdminCorsPolicy");
 
@@ -26,6 +30,9 @@ public static class WebApplicationExtensions
 
         // Add Ephemeral Master Key cleanup middleware
         app.UseMiddleware<EphemeralMasterKeyCleanupMiddleware>();
+
+        // Add global exception handling middleware (catches exceptions from downstream middleware and controllers)
+        app.UseAdminExceptionHandling();
 
         // Add HTTP metrics middleware
         app.UseMiddleware<AdminHttpMetricsMiddleware>();

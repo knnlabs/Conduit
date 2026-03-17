@@ -5,6 +5,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Extensions
 {
@@ -18,8 +19,9 @@ namespace ConduitLLM.Admin.Extensions
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="configuration">The application configuration</param>
+        /// <param name="startupLogger">Optional logger for startup diagnostics</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration, ILogger? startupLogger = null)
         {
             // Register unified cache manager (required by CacheManagementService)
             services.AddCacheManager(configuration);
@@ -30,17 +32,17 @@ namespace ConduitLLM.Admin.Extensions
             // Register DbContext Factory (using connection string from environment variables)
             var connectionStringManager = new ConnectionStringManager();
             // Pass "AdminAPI" to get Admin API-specific connection pool settings
-            var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("AdminAPI", msg => Console.WriteLine(msg));
-            
+            var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("AdminAPI", msg => startupLogger?.LogInformation("{Message}", msg));
+
             // Log the connection pool settings for verification
             if (dbProvider == "postgres" && dbConnectionString.Contains("MaxPoolSize"))
             {
-                Console.WriteLine($"[ConduitLLM.Admin] Admin API database connection pool configured:");
                 var match = System.Text.RegularExpressions.Regex.Match(dbConnectionString, @"MinPoolSize=(\d+);MaxPoolSize=(\d+)");
                 if (match.Success)
                 {
-                    Console.WriteLine($"[ConduitLLM.Admin]   Min Pool Size: {match.Groups[1].Value}");
-                    Console.WriteLine($"[ConduitLLM.Admin]   Max Pool Size: {match.Groups[2].Value}");
+                    startupLogger?.LogInformation(
+                        "Admin API database connection pool configured — MinPoolSize: {MinPoolSize}, MaxPoolSize: {MaxPoolSize}",
+                        match.Groups[1].Value, match.Groups[2].Value);
                 }
             }
 
@@ -61,7 +63,7 @@ namespace ConduitLLM.Admin.Extensions
                 options.UseNpgsql(dbConnectionString)
                        .AddInterceptors(interceptor);
             });
-            Console.WriteLine("[ConduitLLM.Admin] Query monitoring interceptor configured for performance tracking");
+            startupLogger?.LogInformation("Query monitoring interceptor configured for performance tracking");
             
             // Also add scoped registration from factory for services that need direct injection
             // Note: This creates contexts from the factory on demand
@@ -84,11 +86,14 @@ namespace ConduitLLM.Admin.Extensions
 
             // Add Function Discovery Cache for function tool definition caching
             services.AddFunctionDiscoveryCache(configuration);
-            Console.WriteLine("[ConduitLLM.Admin] Function Discovery Cache registered - function tool definitions will be cached based on per-function TTL");
+            startupLogger?.LogInformation("Function Discovery Cache registered — function tool definitions will be cached based on per-function TTL");
 
             // Add Provider Registry - single source of truth for provider metadata
             services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
-            Console.WriteLine("[ConduitLLM.Admin] Provider Registry registered - centralized provider metadata management enabled");
+            startupLogger?.LogInformation("Provider Registry registered — centralized provider metadata management enabled");
+
+            // Add correlation context services for cross-service request tracing
+            services.AddCorrelationContext();
 
             return services;
         }

@@ -133,9 +133,10 @@ public class FunctionConfigurationsController : AdminControllerBase
                 // Fetch the created entity to return
                 var created = await _configurationRepository.GetByIdAsync(id);
 
-                // Publish FunctionConfigurationChanged event for cache invalidation
+                // Audit log and publish event for cache invalidation
                 if (created != null)
                 {
+                    LogAdminAudit("Created", "FunctionConfiguration", created.Id, $"Name: {LoggingSanitizer.S(created.ConfigurationName)}");
                     PublishEventFireAndForget(new FunctionConfigurationChanged
                     {
                         FunctionConfigurationId = created.Id,
@@ -214,6 +215,9 @@ public class FunctionConfigurationsController : AdminControllerBase
                     return NotFound(new ErrorResponseDto("Function configuration not found after update"));
                 }
 
+                LogAdminAudit("Updated", "FunctionConfiguration", id,
+                    changedProperties.Count > 0 ? $"Changed: {string.Join(", ", changedProperties)}" : null);
+
                 // Publish FunctionConfigurationChanged event for cache invalidation
                 if (changedProperties.Count > 0)
                 {
@@ -255,6 +259,7 @@ public class FunctionConfigurationsController : AdminControllerBase
             async toDelete =>
             {
                 await _configurationRepository.DeleteAsync(id);
+                LogAdminAudit("Deleted", "FunctionConfiguration", id, $"Name: {LoggingSanitizer.S(toDelete.ConfigurationName)}");
 
                 // Publish FunctionConfigurationChanged event for cache invalidation
                 PublishEventFireAndForget(new FunctionConfigurationChanged

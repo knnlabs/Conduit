@@ -90,7 +90,12 @@ namespace ConduitLLM.Admin.Controllers
         public Task<IActionResult> CreateNotification([FromBody] CreateNotificationDto notification)
         {
             return ExecuteAsync(
-                () => _notificationService.CreateNotificationAsync(notification),
+                async () =>
+                {
+                    var result = await _notificationService.CreateNotificationAsync(notification);
+                    LogAdminAudit("Created", "Notification", result.Id);
+                    return result;
+                },
                 createdNotification => CreatedAtAction(nameof(GetNotificationById), new { id = createdNotification.Id }, createdNotification),
                 "CreateNotification");
         }
@@ -119,6 +124,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _notificationService.UpdateNotificationAsync(notification))
                         throw new KeyNotFoundException();
+                    LogAdminAudit("Updated", "Notification", id);
                 },
                 NoContent(),
                 "UpdateNotification",
@@ -178,6 +184,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _notificationService.DeleteNotificationAsync(id))
                         throw new KeyNotFoundException();
+                    LogAdminAudit("Deleted", "Notification", id);
                 },
                 NoContent(),
                 "DeleteNotification",

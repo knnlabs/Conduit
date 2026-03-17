@@ -44,6 +44,10 @@ public partial class Program
         builder.Services.AddMemoryCache();
         builder.Services.AddCacheInfrastructure(builder.Configuration);
 
+        // ========== Correlation Context ==========
+
+        builder.Services.AddCorrelationContext();
+
         // ========== Observability ==========
 
         builder.Services.AddObservabilityServices(builder.Configuration);

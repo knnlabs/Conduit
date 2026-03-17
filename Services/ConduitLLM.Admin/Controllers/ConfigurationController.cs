@@ -151,7 +151,11 @@ namespace ConduitLLM.Admin.Controllers
             }
 
             return ExecuteAsync(
-                async () => { await _cacheManagementService.UpdateConfigurationAsync(config, cancellationToken); },
+                async () =>
+                {
+                    await _cacheManagementService.UpdateConfigurationAsync(config, cancellationToken);
+                    LogAdminAudit("Updated", "CachingConfig");
+                },
                 Ok(new { message = "Caching configuration updated successfully" }),
                 "UpdateCachingConfig");
         }
@@ -174,6 +178,7 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     await _cacheManagementService.ClearCacheAsync(cacheId, cancellationToken);
+                    LogAdminAudit("Cleared", "Cache", cacheId);
                     return new { message = $"Cache '{cacheId}' cleared successfully" };
                 },
                 Ok,
@@ -276,6 +281,7 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     await _cacheManagementService.RefreshCacheAsync(regionId, key, cancellationToken);
+                    LogAdminAudit("Refreshed", "Cache", regionId, key != null ? $"Key: {key}" : null);
                     var message = string.IsNullOrEmpty(key)
                         ? $"Cache region '{regionId}' refreshed successfully"
                         : $"Cache key '{key}' in region '{regionId}' refreshed successfully";
@@ -302,7 +308,11 @@ namespace ConduitLLM.Admin.Controllers
             }
 
             return ExecuteAsync(
-                async () => { await _cacheManagementService.UpdatePolicyAsync(regionId, policyUpdate, cancellationToken); },
+                async () =>
+                {
+                    await _cacheManagementService.UpdatePolicyAsync(regionId, policyUpdate, cancellationToken);
+                    LogAdminAudit("Updated", "CachePolicy", regionId);
+                },
                 Ok(new { message = $"Cache policy for region '{regionId}' updated successfully" }),
                 "UpdateCachePolicy",
                 new { RegionId = regionId });
@@ -383,11 +393,13 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     var userName = User?.Identity?.Name ?? "Unknown";
-                    return await _llmCacheManagementService.ToggleLLMCacheAsync(
+                    var result = await _llmCacheManagementService.ToggleLLMCacheAsync(
                         request.Enabled,
                         userName,
                         request.Reason,
                         cancellationToken);
+                    LogAdminAudit("Toggled", "LLMCache", detail: $"Enabled: {request.Enabled}, Reason: {request.Reason}");
+                    return result;
                 },
                 Ok,
                 "ToggleLLMCache");

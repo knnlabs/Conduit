@@ -1,10 +1,17 @@
 using System.Diagnostics;
 using ConduitLLM.Core.Extensions;
 
-namespace ConduitLLM.Gateway.Middleware
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+
+namespace ConduitLLM.Core.Middleware
 {
     /// <summary>
     /// Middleware for managing correlation IDs across distributed requests.
+    /// Extracts correlation IDs from incoming headers (X-Correlation-ID, X-Request-ID, traceparent, etc.)
+    /// or generates new ones, then propagates them through the request pipeline via logging scopes,
+    /// OpenTelemetry Activity baggage, and response headers.
     /// </summary>
     public class CorrelationIdMiddleware
     {
@@ -46,11 +53,11 @@ namespace ConduitLLM.Gateway.Middleware
         public async Task InvokeAsync(HttpContext context)
         {
             var correlationId = GetOrCreateCorrelationId(context);
-            
+
             // Set correlation ID in various contexts
             context.TraceIdentifier = correlationId;
             context.Items[CorrelationIdOptions.CorrelationIdItemsKey] = correlationId;
-            
+
             // Add to response headers
             if (_options.IncludeInResponse)
             {
@@ -65,7 +72,7 @@ namespace ConduitLLM.Gateway.Middleware
             }
 
             // Set logging scope
-            using (_logger.BeginScope("{CorrelationId}", correlationId))
+            using (_logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId }))
             {
                 // Update Activity (for OpenTelemetry integration)
                 var activity = Activity.Current;
@@ -76,8 +83,8 @@ namespace ConduitLLM.Gateway.Middleware
                 }
 
                 _logger.LogDebug("Processing request with correlation ID: {CorrelationId}, Path: {Path}",
-                correlationId,
-                LoggingSanitizer.S(context.Request.Path.ToString()));
+                    correlationId,
+                    LoggingSanitizer.S(context.Request.Path.ToString()));
 
                 try
                 {
@@ -86,8 +93,8 @@ namespace ConduitLLM.Gateway.Middleware
                 finally
                 {
                     _logger.LogDebug("Completed request with correlation ID: {CorrelationId}, Status: {StatusCode}",
-                correlationId,
-                context.Response.StatusCode);
+                        correlationId,
+                        context.Response.StatusCode);
                 }
             }
         }
@@ -103,8 +110,8 @@ namespace ConduitLLM.Gateway.Middleware
                     if (!string.IsNullOrWhiteSpace(correlationId))
                     {
                         _logger.LogDebug("Using incoming correlation ID from header {HeaderName}: {CorrelationId}",
-                LoggingSanitizer.S(headerName),
-                correlationId);
+                            LoggingSanitizer.S(headerName),
+                            correlationId);
                         return correlationId;
                     }
                 }
@@ -119,7 +126,7 @@ namespace ConduitLLM.Gateway.Middleware
                     // Use the trace ID portion
                     var traceId = parts[1];
                     _logger.LogDebug("Using trace ID from traceparent header as correlation ID: {CorrelationId}",
-                traceId);
+                        traceId);
                     return traceId;
                 }
             }
@@ -130,7 +137,7 @@ namespace ConduitLLM.Gateway.Middleware
             {
                 var activityTraceId = currentActivity.TraceId.ToString();
                 _logger.LogDebug("Using Activity trace ID as correlation ID: {CorrelationId}",
-                activityTraceId);
+                    activityTraceId);
                 return activityTraceId;
             }
 
@@ -143,8 +150,8 @@ namespace ConduitLLM.Gateway.Middleware
 
         private string GenerateCorrelationId()
         {
-            return _options.UseShortIds 
-                ? Guid.NewGuid().ToString("N").Substring(0, 8) 
+            return _options.UseShortIds
+                ? Guid.NewGuid().ToString("N")[..8]
                 : Guid.NewGuid().ToString();
         }
     }

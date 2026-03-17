@@ -123,6 +123,7 @@ public class FunctionCostsController : AdminControllerBase
                 var created = await _functionCostService.GetCostByIdAsync(id);
                 var dto = created?.ToDto();
 
+                LogAdminAudit("Created", "FunctionCost", id, $"CostName: {LoggingSanitizer.S(createDto.CostName)}");
                 return (id, dto);
             },
             result => CreatedAtAction(
@@ -173,6 +174,7 @@ public class FunctionCostsController : AdminControllerBase
 
                 // Fetch the updated entity to return
                 var updated = await _functionCostService.GetCostByIdAsync(id);
+                LogAdminAudit("Updated", "FunctionCost", id);
                 return updated?.ToDto();
             },
             dto => Ok(dto),
@@ -192,7 +194,11 @@ public class FunctionCostsController : AdminControllerBase
     public Task<IActionResult> DeleteFunctionCost(int id)
     {
         return ExecuteAsync(
-            () => _functionCostService.DeleteCostAsync(id),
+            async () =>
+            {
+                await _functionCostService.DeleteCostAsync(id);
+                LogAdminAudit("Deleted", "FunctionCost", id);
+            },
             NoContent(),
             "DeleteFunctionCost",
             new { Id = id });
@@ -211,6 +217,7 @@ public class FunctionCostsController : AdminControllerBase
             async () =>
             {
                 await _functionCostService.ClearCacheAsync();
+                LogAdminAudit("Cleared", "FunctionCostCache");
                 return new { message = "Function cost cache cleared successfully" };
             },
             Ok,

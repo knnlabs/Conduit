@@ -34,6 +34,10 @@ public partial class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // Create a startup logger for structured logging during service registration
+        using var startupLoggerFactory = LoggerFactory.Create(b => b.AddConsole());
+        var startupLogger = startupLoggerFactory.CreateLogger("ConduitLLM.Admin.Startup");
+
         // Add services to the container
         builder.Services.AddControllers()
             .AddJsonOptions(options =>
@@ -65,10 +69,10 @@ public partial class Program
 
         // Add leader election service for distributed background service coordination
         builder.Services.AddLeaderElection();
-        Console.WriteLine("[ConduitLLM.Admin] Leader election service configured for background service coordination");
+        startupLogger.LogInformation("Leader election service configured for background service coordination");
 
         // Add Core services
-        builder.Services.AddCoreServices(builder.Configuration);
+        builder.Services.AddCoreServices(builder.Configuration, startupLogger);
 
         // Add Configuration services
         builder.Services.AddConfigurationServices(builder.Configuration);
@@ -92,13 +96,13 @@ public partial class Program
                 options.Configuration = redisConnectionString;
                 options.InstanceName = "conduit:";
             });
-            Console.WriteLine("[ConduitLLM.Admin] Distributed cache configured with Redis");
+            startupLogger.LogInformation("Distributed cache configured with Redis");
         }
         else
         {
             // Fallback to in-memory cache if Redis is not configured
             builder.Services.AddDistributedMemoryCache();
-            Console.WriteLine("[ConduitLLM.Admin] WARNING: Using in-memory cache - ephemeral keys will not work across instances");
+            startupLogger.LogWarning("Using in-memory cache — ephemeral keys will not work across instances");
         }
 
         // Add SignalR with shared configuration (MessagePack, Redis backplane)
@@ -158,15 +162,9 @@ public partial class Program
                     cfg.ConfigureEndpoints(context);
                 });
                 
-                Console.WriteLine($"[ConduitLLM.Admin] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
-                Console.WriteLine("[ConduitLLM.Admin] Event publishing ENABLED - Admin services will publish:");
-                Console.WriteLine("  - VirtualKeyUpdated events (triggers cache invalidation in Gateway API)");
-                Console.WriteLine("  - VirtualKeyDeleted events (triggers cache cleanup in Gateway API)");
-                Console.WriteLine("  - ProviderUpdated events (triggers capability refresh)");
-                Console.WriteLine("  - ProviderDeleted events (triggers cache cleanup)");
-                Console.WriteLine("  - GlobalSettingChanged events (triggers cache invalidation in all instances)");
-                Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
-                Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
+                startupLogger.LogInformation(
+                    "Event bus configured with RabbitMQ transport (multi-instance mode) — Host: {Host}:{Port}. Publishing and consuming enabled",
+                    rabbitMqConfig.Host, rabbitMqConfig.Port);
             }
             else
             {
@@ -185,13 +183,8 @@ public partial class Program
                     cfg.ConfigureEndpoints(context);
                 });
                 
-                Console.WriteLine("[ConduitLLM.Admin] Event bus configured with in-memory transport (single-instance mode)");
-                Console.WriteLine("[ConduitLLM.Admin] Event publishing and consuming ENABLED - Events will be processed locally");
-                Console.WriteLine("[ConduitLLM.Admin] WARNING: For production multi-instance deployments, configure RabbitMQ");
-                Console.WriteLine("  - This ensures Gateway API instances receive cache invalidation events");
-                Console.WriteLine("  - Without RabbitMQ, only the local Gateway API instance will be notified");
-                Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
-                Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
+                startupLogger.LogInformation("Event bus configured with in-memory transport (single-instance mode). Events will be processed locally");
+                startupLogger.LogWarning("For production multi-instance deployments, configure RabbitMQ to ensure cross-instance cache invalidation");
             }
         });
 
@@ -241,11 +234,11 @@ public partial class Program
                         options.Endpoint = new Uri(otlpEndpoint);
                     });
             });
-            Console.WriteLine($"[ConduitLLM.Admin] OpenTelemetry tracing enabled - exporting to {otlpEndpoint}");
+            startupLogger.LogInformation("OpenTelemetry tracing enabled — exporting to {OtlpEndpoint}", otlpEndpoint);
         }
         else
         {
-            Console.WriteLine("[ConduitLLM.Admin] OpenTelemetry tracing disabled (set Telemetry:TracingEnabled=true to enable)");
+            startupLogger.LogInformation("OpenTelemetry tracing disabled (set Telemetry:TracingEnabled=true to enable)");
         }
 
         // Add monitoring services - with leader election
@@ -282,7 +275,7 @@ public partial class Program
             // Map Scalar UI for interactive API documentation
             app.MapScalarApiReference();
 
-            Console.WriteLine("[ConduitLLM.Admin] Scalar UI available at /scalar/v1");
+            app.Logger.LogInformation("Scalar UI available at /scalar/v1");
         }
 
         // Only use HTTPS redirection if explicitly enabled

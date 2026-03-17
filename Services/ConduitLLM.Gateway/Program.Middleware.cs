@@ -13,7 +13,7 @@ public partial class Program
         {
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
             ConduitLLM.Configuration.Extensions.DeprecationWarnings.LogEnvironmentVariableDeprecations(logger);
-            
+
             // Validate Redis URL if provided
             var envRedisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
             if (!string.IsNullOrEmpty(envRedisUrl))
@@ -26,6 +26,9 @@ public partial class Program
         await app.RunDatabaseMigrationAsync();
 
         Console.WriteLine("[Conduit] Database initialization phase completed, configuring middleware...");
+
+        // Add correlation ID middleware (earliest — establishes correlation context for all downstream middleware)
+        app.UseCorrelationId();
 
         // Enable CORS
         app.UseCors();
