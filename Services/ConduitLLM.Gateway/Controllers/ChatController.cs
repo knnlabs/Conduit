@@ -12,6 +12,7 @@ using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
+using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using MassTransit;
 
@@ -78,6 +79,8 @@ namespace ConduitLLM.Gateway.Controllers
         {
             using var activity = GatewayRequestMetrics.StartChatCompletionActivity(
                 request.Model, request.Stream == true);
+            var operationStopwatch = Stopwatch.StartNew();
+            var isStreaming = request.Stream == true;
 
             _logger.LogInformation("Received /v1/chat/completions request for model: {Model}", LoggingSanitizer.S(request.Model));
 
@@ -165,11 +168,13 @@ namespace ConduitLLM.Gateway.Controllers
                             functionExecutionResults.Count, response.AgenticMetrics.TotalFunctionCost);
                     }
 
+                    GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "success", operationStopwatch.Elapsed.TotalSeconds);
                     return Ok(response);
                 }
                 else
                 {
                     _logger.LogInformation("Handling streaming request.");
+                    GatewayOpsMetrics.RecordStreamingRequest(request.Model, "started");
                     
                     // Disable response buffering for true streaming
                     var bufferingFeature = HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpResponseBodyFeature>();
@@ -455,13 +460,17 @@ namespace ConduitLLM.Gateway.Controllers
                         // Write [DONE] to signal the end of the stream
                         await sseWriter.WriteDoneEventAsync();
                         
-                        _logger.LogInformation("Streaming completed: {ChunkCount} chunks over {Duration}ms", 
+                        _logger.LogInformation("Streaming completed: {ChunkCount} chunks over {Duration}ms",
                             chunkCount, (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
+                        GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "success", operationStopwatch.Elapsed.TotalSeconds);
+                        GatewayOpsMetrics.RecordStreamingRequest(request.Model, "completed");
                     }
                     catch (Exception streamEx)
                     {
                         _logger.LogError(streamEx, "Error in stream processing");
                         await sseWriter.WriteErrorEventAsync(streamEx.Message);
+                        GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "error", operationStopwatch.Elapsed.TotalSeconds);
+                        GatewayOpsMetrics.RecordStreamingRequest(request.Model, "error");
                     }
 
                     return new EmptyResult();
@@ -472,6 +481,7 @@ namespace ConduitLLM.Gateway.Controllers
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 activity?.SetTag("error.type", ex.GetType().Name);
                 _logger.LogError(ex, "Error processing request");
+                GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "error", operationStopwatch.Elapsed.TotalSeconds);
                 return StatusCode(500, new OpenAIErrorResponse
                 {
                     Error = new OpenAIError

@@ -5,6 +5,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Configuration.DTOs.BatchOperations;
 using ConduitLLM.Core.Services.BatchOperations;
+using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 namespace ConduitLLM.Gateway.Controllers
 {
@@ -112,6 +113,7 @@ namespace ConduitLLM.Gateway.Controllers
                     request.Updates.Count(),
                     !string.IsNullOrWhiteSpace(idempotencyToken));
 
+                GatewayOpsMetrics.RecordBatchOperation("spend_update", "accepted", request.Updates.Count());
                 return Accepted(new BatchOperationStartResponse
                 {
                     OperationId = result.OperationId,

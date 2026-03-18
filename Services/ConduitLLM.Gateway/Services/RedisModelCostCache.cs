@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Gateway.Metrics;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -87,6 +88,7 @@ namespace ConduitLLM.Gateway.Services
                         {
                             Logger.LogDebug("Model cost cache hit for pattern: {Pattern}", modelIdPattern);
                             Interlocked.Increment(ref _statsBuffer.Hits);
+                            GatewayCacheMetrics.RecordHit("modelcost");
                             return cost;
                         }
                     }
@@ -95,6 +97,7 @@ namespace ConduitLLM.Gateway.Services
                 // Cache miss - use stampede prevention to avoid multiple concurrent DB queries
                 Logger.LogDebug("Model cost cache miss for pattern, querying database: {Pattern}", modelIdPattern);
                 Interlocked.Increment(ref _statsBuffer.Misses);
+                GatewayCacheMetrics.RecordMiss("modelcost");
 
                 var dbCost = await _cachePopulator.GetOrPopulateAsync(
                     lockKey: $"populate:modelcost:pattern:{modelIdPattern.ToLowerInvariant()}",
@@ -127,6 +130,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 Logger.LogError(ex, "Error accessing Model Cost cache for pattern, falling back to database: {Pattern}", modelIdPattern);
                 Interlocked.Increment(ref _statsBuffer.Misses);
+                GatewayCacheMetrics.RecordError("modelcost", "get");
                 return await databaseFallback(modelIdPattern);
             }
         }
@@ -155,6 +159,7 @@ namespace ConduitLLM.Gateway.Services
                             Logger.LogDebug("Model cost cache hit for exact model ID: {ModelId}", modelId);
                             Interlocked.Increment(ref _statsBuffer.Hits);
                             Interlocked.Increment(ref _statsBuffer.PatternMatches);
+                            GatewayCacheMetrics.RecordHit("modelcost");
                             return cost;
                         }
                     }
@@ -163,6 +168,7 @@ namespace ConduitLLM.Gateway.Services
                 // If no exact match, use stampede prevention to avoid multiple concurrent DB queries
                 Logger.LogDebug("Model cost cache miss for model ID, querying database for pattern match: {ModelId}", modelId);
                 Interlocked.Increment(ref _statsBuffer.Misses);
+                GatewayCacheMetrics.RecordMiss("modelcost");
 
                 var dbCost = await _cachePopulator.GetOrPopulateAsync(
                     lockKey: $"populate:modelcost:modelid:{modelId.ToLowerInvariant()}",
@@ -198,6 +204,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 Logger.LogError(ex, "Error accessing Model Cost cache for model ID, falling back to database: {ModelId}", modelId);
                 Interlocked.Increment(ref _statsBuffer.Misses);
+                GatewayCacheMetrics.RecordError("modelcost", "get");
                 return await databaseFallback(modelId);
             }
         }

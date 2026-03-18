@@ -5,6 +5,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Metrics;
+using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Gateway.Controllers
@@ -182,11 +183,13 @@ namespace ConduitLLM.Gateway.Controllers
                     CreatedAt = DateTime.UtcNow
                 };
 
+                GatewayOpsMetrics.RecordMediaOperation("generate", "image_async", "queued");
                 return Accepted(response);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating async image generation task");
+                GatewayOpsMetrics.RecordMediaOperation("generate", "image_async", "error");
                 return StatusCode(500, new OpenAIErrorResponse
                 {
                     Error = new OpenAIError

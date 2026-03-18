@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using Prometheus;
+
 namespace ConduitLLM.Core.Middleware
 {
     /// <summary>
@@ -23,6 +25,13 @@ namespace ConduitLLM.Core.Middleware
         private readonly ILogger<OpenAIErrorMiddleware> _logger;
         private readonly IWebHostEnvironment _environment;
         private readonly ISecurityEventLogger? _securityEventLogger;
+
+        private static readonly Counter ExceptionsHandled = Prometheus.Metrics
+            .CreateCounter("conduit_error_middleware_exceptions_total", "Total exceptions handled by error middleware",
+                new CounterConfiguration
+                {
+                    LabelNames = new[] { "exception_type", "status_code", "endpoint" }
+                });
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OpenAIErrorMiddleware"/> class.
@@ -94,6 +103,13 @@ namespace ConduitLLM.Core.Middleware
             // Map exception using the single source of truth
             var mapping = ExceptionToResponseMapper.Map(exception);
 
+            // Record exception metrics
+            var normalizedEndpoint = NormalizeEndpointForMetrics(context.Request.Path.Value ?? "/");
+            ExceptionsHandled.WithLabels(
+                exception.GetType().Name,
+                mapping.StatusCode.ToString(),
+                normalizedEndpoint).Inc();
+
             // In development, show actual exception messages for redacted responses
             var message = mapping.IncludeExceptionMessageInLog
                 ? mapping.ResponseMessage
@@ -135,6 +151,28 @@ namespace ConduitLLM.Core.Middleware
 
             var json = JsonSerializer.Serialize(errorResponse, jsonOptions);
             await context.Response.WriteAsync(json);
+        }
+
+        private static string NormalizeEndpointForMetrics(string path)
+        {
+            // Reduce cardinality by normalizing to known endpoint patterns
+            if (path.StartsWith("/v1/chat/completions", StringComparison.OrdinalIgnoreCase))
+                return "/v1/chat/completions";
+            if (path.StartsWith("/v1/embeddings", StringComparison.OrdinalIgnoreCase))
+                return "/v1/embeddings";
+            if (path.StartsWith("/v1/images", StringComparison.OrdinalIgnoreCase))
+                return "/v1/images";
+            if (path.StartsWith("/v1/videos", StringComparison.OrdinalIgnoreCase))
+                return "/v1/videos";
+            if (path.StartsWith("/v1/models", StringComparison.OrdinalIgnoreCase))
+                return "/v1/models";
+            if (path.StartsWith("/v1/batch", StringComparison.OrdinalIgnoreCase))
+                return "/v1/batch";
+            if (path.StartsWith("/v1/audio", StringComparison.OrdinalIgnoreCase))
+                return "/v1/audio";
+            if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
+                return "/api/*";
+            return "/other";
         }
 
         private async Task LogSecurityExceptionAsync(HttpContext context, Exception exception, int statusCode)

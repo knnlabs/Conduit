@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Constants;
+using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +20,7 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpPost("generations")]
         public async Task<IActionResult> CreateImage([FromBody] ConduitLLM.Core.Models.ImageGenerationRequest request)
         {
+            var sw = Stopwatch.StartNew();
             try
             {
                 // Validate request
@@ -321,11 +324,13 @@ namespace ConduitLLM.Gateway.Controllers
                     }
                 }
 
+                GatewayOpsMetrics.RecordMediaOperation("generate", "image", "success", sw.Elapsed.TotalSeconds, request.Model);
                 return Ok(response);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating images");
+                GatewayOpsMetrics.RecordMediaOperation("generate", "image", "error", sw.Elapsed.TotalSeconds, request.Model);
                 return StatusCode(500, new OpenAIErrorResponse
                 {
                     Error = new OpenAIError

@@ -96,5 +96,15 @@ public partial class Program
                 return new ConduitLLM.Gateway.Services.BusinessMetricsService(scopeFactory, logger);
             },
             "BusinessMetricsService");
+
+        // Add gateway operations metrics service for operation-level metrics
+        // Tracks LLM operations, batch operations, media operations, function executions, and routing decisions
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.GatewayOperationsMetricsService>(
+            serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.GatewayOperationsMetricsService>>();
+                return new ConduitLLM.Gateway.Services.GatewayOperationsMetricsService(serviceProvider, logger);
+            },
+            "GatewayOperationsMetricsService");
     }
 }

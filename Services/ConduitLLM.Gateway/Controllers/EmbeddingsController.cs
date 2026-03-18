@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Metrics;
+using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using MassTransit;
 
@@ -63,6 +65,7 @@ namespace ConduitLLM.Gateway.Controllers
             }
 
             using var activity = GatewayRequestMetrics.StartEmbeddingsActivity(request.Model);
+            var sw = Stopwatch.StartNew();
 
             return await ExecuteAsync(
                 async () =>
@@ -86,7 +89,9 @@ namespace ConduitLLM.Gateway.Controllers
 
                     // Get the client for the specified model and create embeddings
                     var client = await _conduit.GetClientAsync(request.Model, cancellationToken);
-                    return await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
+                    var result = await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
+                    GatewayOpsMetrics.RecordLlmOperation("embedding", request.Model, "success", sw.Elapsed.TotalSeconds);
+                    return result;
                 },
                 result => Ok(result),
                 "CreateEmbedding",

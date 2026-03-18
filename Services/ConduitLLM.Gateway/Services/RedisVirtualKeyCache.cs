@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Text.Json;
 using StackExchange.Redis;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Gateway.Metrics;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -47,6 +49,7 @@ namespace ConduitLLM.Gateway.Services
             Func<string, Task<VirtualKey?>> databaseFallback)
         {
             var cacheKey = CacheKeys.VirtualKey.ByHash(keyHash);
+            var sw = Stopwatch.StartNew();
 
             try
             {
@@ -65,6 +68,8 @@ namespace ConduitLLM.Gateway.Services
                         {
                             Logger.LogDebug("Virtual Key cache hit: {KeyHash}", keyHash);
                             await TrackHitAsync(CacheKeys.Stats.VirtualKeyService);
+                            GatewayCacheMetrics.RecordHit("virtualkey");
+                            GatewayCacheMetrics.RecordLatency("virtualkey", "get", sw.Elapsed.TotalSeconds);
                             return virtualKey;
                         }
                         else
@@ -79,6 +84,7 @@ namespace ConduitLLM.Gateway.Services
                 // Cache miss or invalid key - fallback to database
                 Logger.LogDebug("Virtual Key cache miss, querying database: {KeyHash}", keyHash);
                 await TrackMissAsync(CacheKeys.Stats.VirtualKeyService);
+                GatewayCacheMetrics.RecordMiss("virtualkey");
                 var dbKey = await databaseFallback(keyHash);
 
                 if (dbKey != null && IsKeyValid(dbKey))
@@ -87,11 +93,13 @@ namespace ConduitLLM.Gateway.Services
                     return dbKey;
                 }
 
+                GatewayCacheMetrics.RecordLatency("virtualkey", "get", sw.Elapsed.TotalSeconds);
                 return null;
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error accessing Virtual Key cache, falling back to database: {KeyHash}", keyHash);
+                GatewayCacheMetrics.RecordError("virtualkey", "get");
                 return await databaseFallback(keyHash);
             }
         }
@@ -133,12 +141,14 @@ namespace ConduitLLM.Gateway.Services
                 await Database.KeyDeleteAsync(cacheKey);
                 await _subscriber.PublishAsync(RedisChannel.Literal(CacheKeys.VirtualKey.InvalidationChannel), keyHash);
                 await TrackInvalidationAsync(CacheKeys.Stats.VirtualKeyService);
+                GatewayCacheMetrics.RecordInvalidation("virtualkey", "explicit");
 
                 Logger.LogInformation("Invalidated Virtual Key across all instances: {KeyHash}", keyHash);
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error invalidating Virtual Key: {KeyHash}", keyHash);
+                GatewayCacheMetrics.RecordError("virtualkey", "invalidate");
                 throw; // This is critical for security - must not fail silently
             }
         }
