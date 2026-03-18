@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Functions.Interfaces;
@@ -137,6 +138,7 @@ public class FunctionConfigurationsController : AdminControllerBase
                 if (created != null)
                 {
                     LogAdminAudit("Created", "FunctionConfiguration", created.Id, $"Name: {LoggingSanitizer.S(created.ConfigurationName)}");
+                    AdminOperationsMetricsService.RecordConfigurationChange("functionconfiguration", "create");
                     PublishEventFireAndForget(new FunctionConfigurationChanged
                     {
                         FunctionConfigurationId = created.Id,
@@ -217,6 +219,7 @@ public class FunctionConfigurationsController : AdminControllerBase
 
                 LogAdminAudit("Updated", "FunctionConfiguration", id,
                     changedProperties.Count > 0 ? $"Changed: {string.Join(", ", changedProperties)}" : null);
+                AdminOperationsMetricsService.RecordConfigurationChange("functionconfiguration", "update");
 
                 // Publish FunctionConfigurationChanged event for cache invalidation
                 if (changedProperties.Count > 0)
@@ -260,6 +263,7 @@ public class FunctionConfigurationsController : AdminControllerBase
             {
                 await _configurationRepository.DeleteAsync(id);
                 LogAdminAudit("Deleted", "FunctionConfiguration", id, $"Name: {LoggingSanitizer.S(toDelete.ConfigurationName)}");
+                AdminOperationsMetricsService.RecordConfigurationChange("functionconfiguration", "delete");
 
                 // Publish FunctionConfigurationChanged event for cache invalidation
                 PublishEventFireAndForget(new FunctionConfigurationChanged

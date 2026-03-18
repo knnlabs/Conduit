@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
@@ -140,6 +141,7 @@ namespace ConduitLLM.Admin.Controllers
                 }, "create provider key", new { ProviderId = providerId, KeyId = createdKeyId });
 
                 LogAdminAudit("Created", "ProviderKeyCredential", createdKeyId, $"Provider: {providerId}, KeyName: {keyCredential.KeyName}");
+                AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "create");
 
                 return CreatedAtAction(
                     nameof(GetProviderKeyCredential),
@@ -251,6 +253,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     LogAdminAudit("Updated", "ProviderKeyCredential", keyId, $"Provider: {providerId} (no changes detected)");
                 }
+                AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "update");
 
                 // Publish key updated event
                 PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialUpdated
@@ -299,6 +302,7 @@ namespace ConduitLLM.Admin.Controllers
                 await _keyRepository.DeleteAsync(keyId);
 
                 LogAdminAudit("Deleted", "ProviderKeyCredential", keyId, $"Provider: {providerId}");
+                AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "delete");
 
                 // Publish key deleted event
                 PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialDeleted
@@ -360,6 +364,7 @@ namespace ConduitLLM.Admin.Controllers
                 await _keyRepository.UpdateAsync(key);
 
                 LogAdminAudit("SetPrimary", "ProviderKeyCredential", keyId, $"Provider: {providerId}");
+                AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "set_primary");
 
                 // Publish primary key changed event
                 PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialPrimaryChanged

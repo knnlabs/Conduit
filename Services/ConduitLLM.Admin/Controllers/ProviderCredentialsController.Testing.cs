@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Admin.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,6 +38,7 @@ namespace ConduitLLM.Admin.Controllers
                     var client = await _clientFactory.GetClientByProviderIdAsync(id);
 
                     // Perform a simple test - list models
+                    using var activity = AdminRequestMetrics.StartProviderTestActivity(provider.ProviderType.ToString(), id);
                     var startTime = DateTime.UtcNow;
                     try
                     {
@@ -204,6 +206,7 @@ namespace ConduitLLM.Admin.Controllers
                     // Test the connection with this specific key
                     var client = _clientFactory.CreateTestClient(provider, key);
 
+                    using var activity = AdminRequestMetrics.StartProviderTestActivity(provider.ProviderType.ToString(), providerId);
                     var startTime = DateTime.UtcNow;
                     try
                     {

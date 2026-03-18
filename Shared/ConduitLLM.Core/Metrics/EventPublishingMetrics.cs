@@ -12,7 +12,7 @@ namespace ConduitLLM.Core.Metrics
         /// Total event publish operations by event type and status.
         /// </summary>
         public static readonly Counter EventsPublished = Prometheus.Metrics
-            .CreateCounter("conduit_admin_events_published_total", "Total event publish operations",
+            .CreateCounter("conduit_events_published_total", "Total event publish operations",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "event_type", "status" } // status: success, failure, skipped
@@ -22,7 +22,7 @@ namespace ConduitLLM.Core.Metrics
         /// Event publish duration in seconds.
         /// </summary>
         public static readonly Histogram EventPublishDuration = Prometheus.Metrics
-            .CreateHistogram("conduit_admin_event_publish_duration_seconds", "Event publish duration",
+            .CreateHistogram("conduit_event_publish_duration_seconds", "Event publish duration",
                 new HistogramConfiguration
                 {
                     LabelNames = new[] { "event_type" },

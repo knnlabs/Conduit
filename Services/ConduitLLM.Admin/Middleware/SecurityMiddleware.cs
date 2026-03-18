@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Security.Middleware;
 using SecurityModels = ConduitLLM.Security.Models;
 
@@ -59,21 +60,25 @@ namespace ConduitLLM.Admin.Middleware
                     Logger.LogWarning(
                         "Security event: AuthenticationFailure — {Method} {Path} from {ClientIp}. Reason: {Reason}",
                         method, path, clientIp, result.Reason);
+                    AdminSecurityMetrics.RecordAuthFailure();
                     break;
                 case 429:
                     Logger.LogWarning(
                         "Security event: RateLimitExceeded — {Method} {Path} from {ClientIp}. Reason: {Reason}",
                         method, path, clientIp, result.Reason);
+                    AdminSecurityMetrics.RecordRateLimitHit();
                     break;
                 case 403:
                     Logger.LogWarning(
                         "Security event: AccessDenied — {Method} {Path} from {ClientIp}. Reason: {Reason}",
                         method, path, clientIp, result.Reason);
+                    AdminSecurityMetrics.RecordAccessDenied();
                     break;
                 default:
                     Logger.LogWarning(
                         "Security event: Blocked ({StatusCode}) — {Method} {Path} from {ClientIp}. Reason: {Reason}",
                         result.StatusCode, method, path, clientIp, result.Reason);
+                    AdminSecurityMetrics.RecordBlocked();
                     break;
             }
 

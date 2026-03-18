@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Admin.Models.ModelCapabilities;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -549,6 +550,7 @@ namespace ConduitLLM.Admin.Controllers
                     }
 
                     LogAdminAudit("Created", "Model", model.Id, $"Name: {LoggingSanitizer.S(model.Name)}");
+                    AdminOperationsMetricsService.RecordConfigurationChange("model", "create");
 
                     return CreatedAtAction(
                         nameof(GetModelById),
@@ -715,6 +717,7 @@ namespace ConduitLLM.Admin.Controllers
                         LogAdminAudit("Updated", "Model", updatedModel.Id,
                             $"Name: {LoggingSanitizer.S(updatedModel.Name)}, no value changes detected");
                     }
+                    AdminOperationsMetricsService.RecordConfigurationChange("model", "update");
 
                     return (IActionResult)Ok(updatedModel.ToDto());
                 },
@@ -754,6 +757,7 @@ namespace ConduitLLM.Admin.Controllers
                     await _modelRepository.DeleteAsync(id);
 
                     LogAdminAudit("Deleted", "Model", id);
+                    AdminOperationsMetricsService.RecordConfigurationChange("model", "delete");
 
                     return (IActionResult)NoContent();
                 },

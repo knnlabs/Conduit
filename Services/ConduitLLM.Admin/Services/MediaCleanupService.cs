@@ -165,6 +165,7 @@ namespace ConduitLLM.Admin.Services
         private async Task RunCleanupAsync(CancellationToken stoppingToken)
         {
             var stopwatch = Stopwatch.StartNew();
+            using var activity = AdminRequestMetrics.StartMediaCleanupActivity(_instanceId, _options.DryRunMode);
             var status = "Completed";
 
             using var scope = _serviceScopeFactory.CreateScope();

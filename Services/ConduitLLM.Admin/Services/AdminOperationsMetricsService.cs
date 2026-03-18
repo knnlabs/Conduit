@@ -82,17 +82,6 @@ namespace ConduitLLM.Admin.Services
                     LabelNames = new[] { "entity_type", "change_type" } // entity_type: virtualkey, provider, mapping
                 });
 
-        // Admin API usage metrics
-        private static readonly Counter AdminApiAuthentications = Prometheus.Metrics
-            .CreateCounter("conduit_admin_authentications_total", "Total authentication attempts",
-                new CounterConfiguration
-                {
-                    LabelNames = new[] { "status" } // status: success, failed
-                });
-
-        private static readonly Gauge ActiveAdminSessions = Prometheus.Metrics
-            .CreateGauge("conduit_admin_sessions_active", "Number of active admin sessions");
-
         // CSV import/export metrics
         private static readonly Counter CsvOperations = Prometheus.Metrics
             .CreateCounter("conduit_admin_csv_operations_total", "Total CSV operations",
@@ -312,24 +301,6 @@ namespace ConduitLLM.Admin.Services
         public static void RecordConfigurationChange(string entityType, string changeType)
         {
             ConfigurationChanges.WithLabels(entityType, changeType).Inc();
-        }
-
-        /// <summary>
-        /// Records an authentication attempt metric.
-        /// </summary>
-        /// <param name="status">The authentication status (e.g., success, failure).</param>
-        public static void RecordAuthentication(string status)
-        {
-            AdminApiAuthentications.WithLabels(status).Inc();
-        }
-
-        /// <summary>
-        /// Sets the current count of active admin sessions.
-        /// </summary>
-        /// <param name="count">The number of active sessions.</param>
-        public static void SetActiveSessions(int count)
-        {
-            ActiveAdminSessions.Set(count);
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
@@ -138,6 +139,7 @@ namespace ConduitLLM.Admin.Controllers
 
                     LogAdminAudit("Created", "VirtualKeyGroup", id,
                         $"Name: {group.GroupName}, InitialBalance: {group.Balance}");
+                    AdminOperationsMetricsService.RecordConfigurationChange("virtualkeygroup", "create");
 
                     var dto = new VirtualKeyGroupDto
                     {
@@ -188,6 +190,7 @@ namespace ConduitLLM.Admin.Controllers
                     await _groupRepository.UpdateAsync(group);
 
                     LogAdminAuditWithChanges("VirtualKeyGroup", id, changes);
+                    AdminOperationsMetricsService.RecordConfigurationChange("virtualkeygroup", "update");
                 },
                 NoContent(),
                 "UpdateGroup",
@@ -259,6 +262,7 @@ namespace ConduitLLM.Admin.Controllers
 
                     LogAdminAudit("Deleted", "VirtualKeyGroup", id,
                         $"Name: {group.GroupName}");
+                    AdminOperationsMetricsService.RecordConfigurationChange("virtualkeygroup", "delete");
                 },
                 NoContent(),
                 "DeleteGroup",

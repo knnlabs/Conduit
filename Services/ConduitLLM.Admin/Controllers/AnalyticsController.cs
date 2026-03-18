@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Metrics;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Costs;
 
@@ -296,12 +298,14 @@ public class AnalyticsController : AdminControllerBase
         return ExecuteAsync(
             async () =>
             {
+                using var activity = AdminRequestMetrics.StartCsvActivity("export", "analytics");
                 var data = await _analyticsService.ExportAnalyticsAsync(format, startDate, endDate, model, virtualKeyId);
 
                 var contentType = format.ToLower() == "csv" ? "text/csv" : "application/json";
                 var fileName = $"analytics_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{format.ToLower()}";
 
                 LogAdminAudit("Exported", "AnalyticsData", detail: $"Format: {format}, StartDate: {startDate:O}, EndDate: {endDate:O}");
+                AdminOperationsMetricsService.RecordCsvOperation("export", "analytics", "success");
                 return (IActionResult)File(data, contentType, fileName);
             },
             result => result,

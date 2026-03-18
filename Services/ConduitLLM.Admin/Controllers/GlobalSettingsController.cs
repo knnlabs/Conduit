@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 
@@ -104,6 +105,7 @@ namespace ConduitLLM.Admin.Controllers
                 createdSetting =>
                 {
                     LogAdminAudit("Created", "GlobalSetting", createdSetting.Id, $"Key: {LoggingSanitizer.S(setting.Key)}");
+                    AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "create");
                     return CreatedAtAction(nameof(GetSettingById), new { id = createdSetting.Id }, createdSetting);
                 },
                 "CreateSetting");
@@ -156,6 +158,7 @@ namespace ConduitLLM.Admin.Controllers
                     {
                         LogAdminAudit("Updated", "GlobalSetting", id);
                     }
+                    AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "update");
                 },
                 NoContent(),
                 "UpdateSetting",
@@ -179,6 +182,7 @@ namespace ConduitLLM.Admin.Controllers
                     if (!await _globalSettingService.UpdateSettingByKeyAsync(setting))
                         throw new InvalidOperationException("Failed to update or create global setting");
                     LogAdminAudit("Updated", "GlobalSetting", detail: $"Key: {LoggingSanitizer.S(setting.Key)}");
+                    AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "update");
                 },
                 NoContent(),
                 "UpdateSettingByKey",
@@ -202,6 +206,7 @@ namespace ConduitLLM.Admin.Controllers
                     if (!await _globalSettingService.DeleteSettingAsync(id))
                         throw new KeyNotFoundException();
                     LogAdminAudit("Deleted", "GlobalSetting", id);
+                    AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "delete");
                 },
                 NoContent(),
                 "DeleteSetting",
@@ -225,6 +230,7 @@ namespace ConduitLLM.Admin.Controllers
                     if (!await _globalSettingService.DeleteSettingByKeyAsync(key))
                         throw new KeyNotFoundException();
                     LogAdminAudit("Deleted", "GlobalSetting", detail: $"Key: {LoggingSanitizer.S(key)}");
+                    AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "delete");
                 },
                 NoContent(),
                 "DeleteSettingByKey",
