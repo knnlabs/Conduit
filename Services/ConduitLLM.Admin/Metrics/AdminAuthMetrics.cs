@@ -39,17 +39,23 @@ namespace ConduitLLM.Admin.Metrics
                     LabelNames = new[] { "scheme", "reason" } // reason: missing_key, invalid_key, not_configured, expired, not_found, already_used, error
                 });
 
-        // Convenience methods
-
+        /// <summary>Records a successful authentication attempt.</summary>
+        /// <param name="scheme">The authentication scheme (e.g., "MasterKey", "EphemeralKey", "HealthCheck").</param>
         public static void RecordSuccess(string scheme)
             => AuthAttempts.WithLabels(scheme, "success").Inc();
 
+        /// <summary>Records a failed authentication attempt, incrementing both the attempt and failure counters.</summary>
+        /// <param name="scheme">The authentication scheme (e.g., "MasterKey", "EphemeralKey", "HealthCheck").</param>
+        /// <param name="reason">The failure reason (e.g., "missing_key", "invalid_key", "expired").</param>
         public static void RecordFailure(string scheme, string reason)
         {
             AuthAttempts.WithLabels(scheme, "failure").Inc();
             AuthFailures.WithLabels(scheme, reason).Inc();
         }
 
+        /// <summary>Records the duration of an authentication operation.</summary>
+        /// <param name="scheme">The authentication scheme.</param>
+        /// <param name="durationSeconds">The authentication duration in seconds.</param>
         public static void RecordDuration(string scheme, double durationSeconds)
             => AuthDuration.WithLabels(scheme).Observe(durationSeconds);
     }
