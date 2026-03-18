@@ -210,6 +210,11 @@ export const ENDPOINTS = {
     DOWNLOAD: (backupId: string) => `/api/database/download/${backupId}`,
   },
 
+  // Prompt Caching
+  PROMPT_CACHING: {
+    CONFIG: '/api/prompt-caching/config',
+  },
+
   // Configuration endpoints
   CONFIG: {
     ROUTING: '/api/config/routing',

@@ -21,7 +21,8 @@ import {
   IconTool,
   IconSettings,
   IconActivity,
-  IconListDetails
+  IconListDetails,
+  IconBolt
 } from '@tabler/icons-react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -43,6 +44,7 @@ const navigationSections = [
       { id: 'llm-providers', label: 'LLM Providers', href: '/llm-providers', icon: IconServer },
       { id: 'model-mappings', label: 'Model Mappings', href: '/model-mappings', icon: IconRoute },
       { id: 'provider-tools', label: 'Provider Tools', href: '/provider-tools', icon: IconTool },
+      { id: 'prompt-caching', label: 'Prompt Caching', href: '/prompt-caching', icon: IconBolt },
     ]
   },
   {

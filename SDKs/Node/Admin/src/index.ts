@@ -27,6 +27,7 @@ export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/media';
 export * from './models/functions';
+export * from './models/promptCaching';
 // Re-export model types except ModelCapabilities (conflicts with providerModels)
 export {
   ModelType,
