@@ -79,14 +79,14 @@ public partial class Program
         app.UseUsageTracking();
         Console.WriteLine("[Conduit] Usage tracking middleware configured");
 
-        // Add HTTP metrics middleware for comprehensive request tracking
-        app.UseMiddleware<ConduitLLM.Gateway.Middleware.HttpMetricsMiddleware>();
-
         // Add security middleware (IP filtering, rate limiting, ban checks)
         app.UseCoreApiSecurity();
 
-        // Enable rate limiting (now that Virtual Keys are authenticated)
+        // Enable rate limiting before metrics so rejected requests aren't counted as served
         app.UseRateLimiter();
+
+        // Add HTTP metrics middleware for comprehensive request tracking
+        app.UseMiddleware<ConduitLLM.Gateway.Middleware.HttpMetricsMiddleware>();
 
         // Add timeout diagnostics middleware
         app.UseMiddleware<ConduitLLM.Core.Middleware.TimeoutDiagnosticsMiddleware>();

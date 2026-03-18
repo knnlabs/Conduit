@@ -296,10 +296,8 @@ public partial class Program
         app.UseHealthEndpointAuthorization();
 
         // Add middleware for authentication and request tracking
+        // (includes CORS, security headers, metrics, request tracking)
         app.UseAdminMiddleware();
-
-        // Enable CORS for SignalR
-        app.UseCors("AdminCorsPolicy");
 
         app.UseAuthentication();
         app.UseAuthorization();

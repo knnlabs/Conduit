@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Gateway.Hubs;
+using ConduitLLM.Gateway.Interfaces;
 using ConduitLLM.Core.Constants;
-namespace ConduitLLM.Gateway.Interfaces
+namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
     /// Implementation of image generation notification service using SignalR

@@ -143,7 +143,7 @@ namespace ConduitLLM.Gateway.Services
                 return new SecurityCheckResult { IsAllowed = true };
             }
 
-            // Check if authentication failed (set by VirtualKeyAuthenticationMiddleware)
+            // Check if authentication failed (set by VirtualKeyAuthenticationHandler)
             if (context.Items.ContainsKey("FailedAuth") && context.Items["FailedAuth"] is bool failedAuth && failedAuth)
             {
                 // Record the failed attempt

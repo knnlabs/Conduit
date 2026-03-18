@@ -73,7 +73,7 @@ namespace ConduitLLM.Gateway.Controllers
         {
             try
             {
-                // Get virtual key and ID from HttpContext (set by VirtualKeyAuthenticationMiddleware)
+                // Get virtual key and ID from HttpContext (set by VirtualKeyAuthenticationHandler)
                 var virtualKey = HttpContext.Items["VirtualKey"]?.ToString();
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
                 
@@ -211,7 +211,7 @@ namespace ConduitLLM.Gateway.Controllers
         {
             try
             {
-                // Get virtual key ID from claims (set by VirtualKeyAuthenticationMiddleware)
+                // Get virtual key ID from claims (set by VirtualKeyAuthenticationHandler)
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
                 {
@@ -319,7 +319,7 @@ namespace ConduitLLM.Gateway.Controllers
         {
             try
             {
-                // Get virtual key ID from claims (set by VirtualKeyAuthenticationMiddleware)
+                // Get virtual key ID from claims (set by VirtualKeyAuthenticationHandler)
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
                 {
@@ -443,7 +443,7 @@ namespace ConduitLLM.Gateway.Controllers
         {
             try
             {
-                // Get virtual key ID from claims (set by VirtualKeyAuthenticationMiddleware)
+                // Get virtual key ID from claims (set by VirtualKeyAuthenticationHandler)
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
                 {

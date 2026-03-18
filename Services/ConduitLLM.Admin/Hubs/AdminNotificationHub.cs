@@ -15,22 +15,18 @@ namespace ConduitLLM.Admin.Hubs
     {
         private readonly ILogger<AdminNotificationHub> _logger;
         private readonly IAdminVirtualKeyService _virtualKeyService;
-        private readonly IAdminNotificationService _notificationService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AdminNotificationHub"/> class.
         /// </summary>
         /// <param name="logger">Logger instance.</param>
         /// <param name="virtualKeyService">Virtual key service for key management notifications.</param>
-        /// <param name="notificationService">Notification service for administrative alerts.</param>
         public AdminNotificationHub(
             ILogger<AdminNotificationHub> logger,
-            IAdminVirtualKeyService virtualKeyService,
-            IAdminNotificationService notificationService)
+            IAdminVirtualKeyService virtualKeyService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
-            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         }
 
         /// <summary>
