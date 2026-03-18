@@ -71,6 +71,9 @@ namespace ConduitLLM.Core.Services
         /// <returns>A truncated version of the key safe for logging</returns>
         protected static string SanitizeKeyForLogging(string key)
         {
+            if (string.IsNullOrEmpty(key))
+                return "[empty]";
+
             if (key.Length <= 10)
                 return key;
 

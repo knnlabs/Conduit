@@ -105,7 +105,7 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Listing virtual keys for group {groupId}")),
                     It.IsAny<Exception>(),
