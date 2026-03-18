@@ -33,7 +33,10 @@ namespace ConduitLLM.Gateway.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Health monitoring background service started");
+            _logger.LogInformation(
+                "Health monitoring background service started with {IntervalSeconds}s check interval, " +
+                "consecutive failure threshold: {FailureThreshold}",
+                _options.CheckIntervalSeconds, _options.ConsecutiveFailureThreshold);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -54,6 +57,8 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task MonitorHealthAsync(CancellationToken cancellationToken)
         {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             var healthReport = await _healthCheckService.CheckHealthAsync(cancellationToken);
 
             // Check overall system health
@@ -71,6 +76,34 @@ namespace ConduitLLM.Gateway.Services
             var snapshot = await healthMonitoringService.GetSystemHealthSnapshotAsync();
             await CheckResourceMetricsAsync(snapshot.Resources, scope.ServiceProvider);
             await CheckPerformanceMetricsAsync(snapshot.Performance, scope.ServiceProvider);
+
+            stopwatch.Stop();
+
+            var unhealthyCount = healthReport.Entries
+                .Count(e => e.Value.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy);
+            var degradedCount = healthReport.Entries
+                .Count(e => e.Value.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded);
+
+            if (unhealthyCount > 0 || degradedCount > 0)
+            {
+                _logger.LogWarning(
+                    "Health check cycle completed in {ElapsedMs}ms — overall: {OverallStatus}, " +
+                    "components: {TotalCount} total, {UnhealthyCount} unhealthy, {DegradedCount} degraded",
+                    stopwatch.ElapsedMilliseconds,
+                    healthReport.Status,
+                    healthReport.Entries.Count,
+                    unhealthyCount,
+                    degradedCount);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "Health check cycle completed in {ElapsedMs}ms — overall: {OverallStatus}, " +
+                    "{ComponentCount} components all healthy",
+                    stopwatch.ElapsedMilliseconds,
+                    healthReport.Status,
+                    healthReport.Entries.Count);
+            }
         }
 
         private async Task CheckOverallHealthAsync(HealthReport healthReport)
@@ -121,8 +154,15 @@ namespace ConduitLLM.Gateway.Services
             }
 
             // Check if status changed or consecutive failures exceed threshold
-            if (currentStatus != previousStatus || 
-                (_consecutiveFailures[componentName] >= _options.ConsecutiveFailureThreshold && 
+            if (currentStatus != previousStatus)
+            {
+                _logger.LogInformation(
+                    "Health status change for {Component}: {PreviousStatus} → {CurrentStatus} (check duration: {DurationMs:F1}ms)",
+                    componentName, previousStatus, currentStatus, entry.Duration.TotalMilliseconds);
+            }
+
+            if (currentStatus != previousStatus ||
+                (_consecutiveFailures[componentName] >= _options.ConsecutiveFailureThreshold &&
                  _consecutiveFailures[componentName] % _options.ConsecutiveFailureThreshold == 0))
             {
                 AlertSeverity severity;

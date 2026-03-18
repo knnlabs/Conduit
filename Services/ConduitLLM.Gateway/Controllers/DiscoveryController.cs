@@ -92,7 +92,8 @@ namespace ConduitLLM.Gateway.Controllers
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
                 
-                _logger.LogInformation($"Found {modelMappings.Count} enabled model mappings");
+                _logger.LogDebug("Found {Count} enabled model mappings for discovery (capability filter: {Capability})",
+                    modelMappings.Count, LoggingSanitizer.S(capability ?? "all"));
 
                 var models = new List<object>();
 

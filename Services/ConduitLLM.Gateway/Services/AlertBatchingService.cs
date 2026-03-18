@@ -68,7 +68,11 @@ namespace ConduitLLM.Gateway.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Alert batching service started");
+            _logger.LogInformation(
+                "Alert batching service started — batching {Enabled}, interval: {IntervalSeconds}s, max batch size: {MaxBatchSize}",
+                _options.EnableBatching ? "enabled" : "disabled",
+                _options.BatchIntervalSeconds,
+                _options.MaxBatchSize);
 
             // Start the batch timer task
             var timerTask = RunBatchTimerAsync(stoppingToken);
@@ -150,11 +154,14 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
+                _logger.LogDebug("Sending immediate alert: {AlertType} [{Severity}] for {Component}",
+                    alert.Type, alert.Severity, alert.Component);
                 await _notificationService.SendAlertAsync(alert);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send immediate alert");
+                _logger.LogError(ex, "Failed to send immediate alert: {AlertType} [{Severity}] for {Component}",
+                    alert.Type, alert.Severity, alert.Component);
             }
         }
 
@@ -178,16 +185,18 @@ namespace ConduitLLM.Gateway.Services
 
                 if (alerts.Any())
                 {
-                    _logger.LogInformation("Processing batch of {Count} alerts", alerts.Count);
-                    
+                    _logger.LogInformation("Processing batch of {Count} alerts (queue remaining: {QueueRemaining})",
+                        alerts.Count, _alertQueue.Count);
+
                     try
                     {
                         await _notificationService.SendBatchAlertsAsync(alerts);
+                        _logger.LogDebug("Successfully delivered batch of {Count} alerts", alerts.Count);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to send alert batch");
-                        
+                        _logger.LogError(ex, "Failed to send alert batch of {Count} alerts — re-queuing", alerts.Count);
+
                         // Re-queue failed alerts
                         foreach (var alert in alerts)
                         {

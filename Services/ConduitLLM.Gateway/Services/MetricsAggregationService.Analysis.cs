@@ -83,6 +83,10 @@ namespace ConduitLLM.Gateway.Services
 
             if (alerts.Any())
             {
+                _logger.LogWarning("Metrics threshold alerts triggered: {AlertCount} alert(s) — {AlertSummary}",
+                    alerts.Count,
+                    string.Join(", ", alerts.Select(a => $"{a.MetricName}={a.CurrentValue:F1} [{a.Severity}]")));
+
                 await _hubContext.Clients.Group("metrics-subscribers")
                     .SendAsync("MetricAlerts", alerts, cancellationToken);
             }

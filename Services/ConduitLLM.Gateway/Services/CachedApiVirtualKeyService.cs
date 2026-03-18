@@ -134,6 +134,9 @@ namespace ConduitLLM.Gateway.Services
 
                 if (!validationResult.IsValid)
                 {
+                    _logger.LogWarning("Virtual key {KeyId} validation failed: {Reason}",
+                        virtualKey.Id, validationResult.Reason ?? "unknown");
+
                     // Handle 402 status code for insufficient balance
                     if (validationResult.StatusCode == 402)
                     {
@@ -249,6 +252,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _virtualKeyRepository.GetPaginatedAsync);
+                _logger.LogDebug("Listed {Count} virtual keys", virtualKeys.Count);
                 return [..virtualKeys.Select(VirtualKeyUtilities.MapToDto)];
             }
             catch (Exception ex)

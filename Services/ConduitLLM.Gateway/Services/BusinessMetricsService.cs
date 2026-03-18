@@ -142,7 +142,8 @@ namespace ConduitLLM.Gateway.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Business metrics service starting...");
+            _logger.LogInformation("Business metrics service starting with {IntervalSeconds}s collection interval",
+                _collectionInterval.TotalSeconds);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -163,6 +164,8 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task CollectMetricsAsync()
         {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             using var scope = _serviceScopeFactory.CreateScope();
 
             var tasks = new[]
@@ -174,6 +177,9 @@ namespace ConduitLLM.Gateway.Services
             };
 
             await Task.WhenAll(tasks);
+
+            stopwatch.Stop();
+            _logger.LogDebug("Business metrics collection cycle completed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
         }
 
         private async Task CollectVirtualKeyMetrics(IServiceScope scope)

@@ -39,31 +39,46 @@ namespace ConduitLLM.Gateway.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Metrics aggregation service starting...");
+            _logger.LogInformation("Metrics aggregation service starting with {IntervalSeconds}s collection interval",
+                _updateInterval.TotalSeconds);
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
+                    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
                     var snapshot = await CollectMetricsSnapshotAsync();
                     _lastSnapshot = snapshot;
-                    
+
                     // Store historical data
                     StoreHistoricalData(snapshot);
-                    
+
                     // Broadcast to all subscribers
                     await _hubContext.Clients.Group("metrics-subscribers")
                         .SendAsync("MetricsSnapshot", snapshot, stoppingToken);
-                    
+
                     // Send targeted updates
                     await SendTargetedUpdates(snapshot, stoppingToken);
-                    
+
                     // Check for alerts
                     await CheckAndSendAlerts(snapshot, stoppingToken);
+
+                    stopwatch.Stop();
+                    _logger.LogDebug(
+                        "Metrics aggregation cycle completed in {ElapsedMs}ms — " +
+                        "HTTP requests/s: {RequestsPerSec:F1}, error rate: {ErrorRate:F1}%, " +
+                        "active requests: {ActiveRequests}, CPU: {Cpu:F1}%, memory: {MemoryMB:F0}MB",
+                        stopwatch.ElapsedMilliseconds,
+                        snapshot.Http.RequestsPerSecond,
+                        snapshot.Http.ErrorRate,
+                        snapshot.Http.ActiveRequests,
+                        snapshot.System.CpuUsagePercent,
+                        snapshot.System.MemoryUsageMB);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error in metrics aggregation");
+                    _logger.LogError(ex, "Error in metrics aggregation cycle");
                 }
 
                 await Task.Delay(_updateInterval, stoppingToken);

@@ -49,6 +49,10 @@ namespace ConduitLLM.Gateway.Services
             {
                 using var scope = _serviceProvider.CreateScope();
 
+                int totalConnections = 0;
+                int pendingMessages = 0;
+                int deadLetterMessages = 0;
+
                 // Collect connection metrics
                 var connectionMonitor = scope.ServiceProvider.GetService<ISignalRConnectionMonitor>();
                 if (connectionMonitor != null)
@@ -59,13 +63,15 @@ namespace ConduitLLM.Gateway.Services
                     foreach (var hub in stats.ConnectionsByHub)
                     {
                         _metrics.UpdateActiveConnections(hub.Key, 0); // Reset to current value
+                        totalConnections += hub.Value;
                     }
 
                     // Record acknowledgment rate
                     if (stats.TotalMessagesSent > 0)
                     {
                         var ackRate = (double)stats.TotalMessagesAcknowledged / stats.TotalMessagesSent * 100;
-                        _logger.LogDebug("Acknowledgment rate: {Rate}%", ackRate);
+                        _logger.LogDebug("SignalR acknowledgment rate: {Rate:F1}%, messages sent: {Sent}, acknowledged: {Acked}",
+                            ackRate, stats.TotalMessagesSent, stats.TotalMessagesAcknowledged);
                     }
                 }
 
@@ -74,8 +80,10 @@ namespace ConduitLLM.Gateway.Services
                 if (queueService != null)
                 {
                     var stats = queueService.GetStatistics();
-                    _metrics.UpdateQueueDepth(stats.PendingMessages);
-                    _metrics.UpdateDeadLetterQueueDepth(stats.DeadLetterMessages);
+                    pendingMessages = stats.PendingMessages;
+                    deadLetterMessages = stats.DeadLetterMessages;
+                    _metrics.UpdateQueueDepth(pendingMessages);
+                    _metrics.UpdateDeadLetterQueueDepth(deadLetterMessages);
                 }
 
                 // Collect batching metrics
@@ -87,8 +95,17 @@ namespace ConduitLLM.Gateway.Services
 
                     if (stats.BatchEfficiencyPercentage > 0)
                     {
-                        _logger.LogDebug("Batch efficiency: {Efficiency}%", stats.BatchEfficiencyPercentage);
+                        _logger.LogDebug("SignalR batch efficiency: {Efficiency:F1}%", stats.BatchEfficiencyPercentage);
                     }
+                }
+
+                _logger.LogDebug(
+                    "SignalR metrics collection completed — connections: {Connections}, pending: {Pending}, dead letters: {DeadLetters}",
+                    totalConnections, pendingMessages, deadLetterMessages);
+
+                if (deadLetterMessages > 0)
+                {
+                    _logger.LogWarning("SignalR dead letter queue has {DeadLetterCount} messages", deadLetterMessages);
                 }
             }
             catch (Exception ex)

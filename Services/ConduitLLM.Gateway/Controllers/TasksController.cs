@@ -70,6 +70,7 @@ namespace ConduitLLM.Gateway.Controllers
                 try
                 {
                     await _taskService.CancelTaskAsync(taskId);
+                    Logger.LogInformation("Task {TaskId} cancelled successfully", taskId);
                     return NoContent();
                 }
                 catch (InvalidOperationException ex)

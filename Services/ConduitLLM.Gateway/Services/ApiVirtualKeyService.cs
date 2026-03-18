@@ -136,6 +136,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     _virtualKeyRepository.GetPaginatedAsync);
+                _logger.LogDebug("Listed {Count} virtual keys", virtualKeys.Count);
                 return [..virtualKeys.Select(VirtualKeyUtilities.MapToDto)];
             }
             catch (Exception ex)
@@ -345,7 +346,16 @@ namespace ConduitLLM.Gateway.Services
             var result = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
                 virtualKey, requestedModel, checkBalance: true, _groupRepository, _logger);
 
-            return result.IsValid ? virtualKey : null;
+            if (!result.IsValid)
+            {
+                _logger.LogWarning("Virtual key {KeyId} validation failed: {Reason}",
+                    virtualKey.Id, result.Reason ?? "unknown");
+                return null;
+            }
+
+            _logger.LogDebug("Virtual key {KeyId} validated successfully for model: {Model}",
+                virtualKey.Id, LoggingSanitizer.S(requestedModel ?? "any"));
+            return virtualKey;
         }
 
         /// <inheritdoc />
