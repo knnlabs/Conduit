@@ -13,9 +13,19 @@ namespace ConduitLLM.Core.Controllers
     /// error handling and event publishing.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Mirrors <see cref="ConduitLLM.Admin.Controllers.AdminControllerBase"/> but returns
     /// <see cref="OpenAIErrorResponse"/> instead of ErrorResponseDto for OpenAI API compatibility.
     /// Uses <see cref="ExceptionToResponseMapper"/> for consistent exception-to-response mapping.
+    /// </para>
+    /// <para>
+    /// Features:
+    /// <list type="bullet">
+    ///   <item><description>Success logging with mutation/read differentiation</description></item>
+    ///   <item><description>Structured error logging using ExceptionToResponseMapper's LogPrefix and IncludeExceptionMessageInLog</description></item>
+    ///   <item><description>Fire-and-forget event publishing via MassTransit</description></item>
+    /// </list>
+    /// </para>
     /// </remarks>
     public abstract class GatewayControllerBase : EventPublishingControllerBase
     {
@@ -55,6 +65,7 @@ namespace ConduitLLM.Core.Controllers
             try
             {
                 var result = await operation();
+                LogOperationSuccess(operationName, contextData);
                 return successAction(result);
             }
             catch (Exception ex)
@@ -74,7 +85,9 @@ namespace ConduitLLM.Core.Controllers
         {
             try
             {
-                return await operation();
+                var result = await operation();
+                LogOperationSuccess(operationName, contextData);
+                return result;
             }
             catch (Exception ex)
             {
@@ -94,6 +107,7 @@ namespace ConduitLLM.Core.Controllers
             try
             {
                 await operation();
+                LogOperationSuccess(operationName, contextData);
                 return successResult;
             }
             catch (Exception ex)
@@ -103,7 +117,49 @@ namespace ConduitLLM.Core.Controllers
         }
 
         /// <summary>
+        /// Logs operation success at Information level for mutations (POST/PUT/PATCH/DELETE)
+        /// and Debug level for reads (GET/HEAD/OPTIONS).
+        /// </summary>
+        private void LogOperationSuccess(string operationName, object? contextData = null)
+        {
+            if (IsMutationRequest())
+            {
+                if (contextData != null)
+                {
+                    Logger.LogInformation("{OperationName} completed successfully with context {ContextData}",
+                        operationName, contextData);
+                }
+                else
+                {
+                    Logger.LogInformation("{OperationName} completed successfully", operationName);
+                }
+            }
+            else
+            {
+                if (contextData != null)
+                {
+                    Logger.LogDebug("{OperationName} completed successfully with context {ContextData}",
+                        operationName, contextData);
+                }
+                else
+                {
+                    Logger.LogDebug("{OperationName} completed successfully", operationName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the current HTTP request is a mutation (POST, PUT, PATCH, DELETE).
+        /// </summary>
+        private bool IsMutationRequest()
+        {
+            var method = HttpContext?.Request?.Method;
+            return method is "POST" or "PUT" or "PATCH" or "DELETE";
+        }
+
+        /// <summary>
         /// Maps an exception to an OpenAI-compatible error response using <see cref="ExceptionToResponseMapper"/>.
+        /// Uses the mapper's LogPrefix and IncludeExceptionMessageInLog for structured, consistent error logging.
         /// </summary>
         private IActionResult HandleOpenAIException(
             Exception ex,
@@ -116,12 +172,31 @@ namespace ConduitLLM.Core.Controllers
                 ? $"{operationName} (context: {contextData})"
                 : operationName;
 
-            Logger.Log(
-                mapping.LogLevel,
-                ex,
-                "Error in {Operation}: {Message}",
-                logMessage,
-                ex.Message);
+            if (mapping.IncludeExceptionMessageInLog)
+            {
+                Logger.Log(
+                    mapping.LogLevel,
+                    ex,
+                    "{LogPrefix} in {Operation}: {Message}",
+                    mapping.LogPrefix,
+                    logMessage,
+                    ex.Message);
+            }
+            else if (mapping.LogLevel == LogLevel.Error)
+            {
+                Logger.LogError(
+                    ex,
+                    "{LogPrefix} in {Operation}",
+                    mapping.LogPrefix,
+                    logMessage);
+            }
+            else
+            {
+                Logger.LogWarning(
+                    "{LogPrefix} in {Operation}",
+                    mapping.LogPrefix,
+                    logMessage);
+            }
 
             return StatusCode(mapping.StatusCode, new OpenAIErrorResponse
             {

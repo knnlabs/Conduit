@@ -148,8 +148,8 @@ public partial class Program
             {
                 var logger = sp.GetRequiredService<ILogger<Program>>();
                 logger.LogWarning("No Redis connection configured. Webhook delivery tracking and deduplication will not be available.");
-                // Return a simple no-op implementation
-                return new ConduitLLM.Gateway.Services.NoOpWebhookDeliveryTracker();
+                var noOpLogger = sp.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.NoOpWebhookDeliveryTracker>>();
+                return new ConduitLLM.Gateway.Services.NoOpWebhookDeliveryTracker(noOpLogger);
             });
         }
     }

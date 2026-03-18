@@ -45,15 +45,46 @@ namespace ConduitLLM.Gateway.Middleware
         }
 
         /// <summary>
-        /// Records security events when a violation occurs (Gateway-specific).
+        /// Logs granular security events and records them via the monitoring service.
+        /// Categorizes violations by type (auth failure, rate limit, access denied) for
+        /// structured log filtering and alerting.
         /// </summary>
         protected override Task OnSecurityViolationAsync(HttpContext context, SecurityModels.SecurityCheckResult result, string clientIp)
         {
+            var method = context.Request.Method;
+            var path = context.Request.Path.Value ?? "";
+            var virtualKey = context.Items["AttemptedKey"] as string ?? "";
+
+            // Granular security event logging matching Admin service patterns
+            switch (result.StatusCode)
+            {
+                case 401:
+                    Logger.LogWarning(
+                        "Security event: AuthenticationFailure — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        method, path, clientIp, result.Reason);
+                    break;
+                case 429:
+                    Logger.LogWarning(
+                        "Security event: RateLimitExceeded — {Method} {Path} from {ClientIp} [VirtualKey: {VirtualKey}]. Reason: {Reason}",
+                        method, path, clientIp, virtualKey, result.Reason);
+                    break;
+                case 403:
+                    Logger.LogWarning(
+                        "Security event: AccessDenied — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        method, path, clientIp, result.Reason);
+                    break;
+                default:
+                    Logger.LogWarning(
+                        "Security event: Blocked ({StatusCode}) — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        result.StatusCode, method, path, clientIp, result.Reason);
+                    break;
+            }
+
+            // Record to monitoring service if available
             if (_securityEventMonitoring == null)
                 return Task.CompletedTask;
 
-            var endpoint = context.Request.Path.Value ?? "";
-            var virtualKey = context.Items["AttemptedKey"] as string ?? "";
+            var endpoint = path;
 
             if (result.Reason.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
             {

@@ -150,7 +150,10 @@ namespace ConduitLLM.Gateway.Services
                                 httpContext.Response.StatusCode = 402;
                             }
                         }
-                        catch { /* Ignore if no HTTP context */ }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Could not set 402 status — HTTP context not available for insufficient balance response");
+                        }
                     }
                     return null;
                 }

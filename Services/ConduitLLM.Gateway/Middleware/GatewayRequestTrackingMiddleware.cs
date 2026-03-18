@@ -52,8 +52,16 @@ namespace ConduitLLM.Gateway.Middleware
                 var elapsedMs = stopwatch.ElapsedMilliseconds;
                 var virtualKeyId = GetVirtualKeyId(context);
 
-                // Log mutations and slow requests (>1s) at Information, reads at Debug
-                if (isMutation || elapsedMs > 1000)
+                // Warn on very slow requests (>5s) — may indicate provider issues or timeouts
+                if (elapsedMs > 5000)
+                {
+                    _logger.LogWarning(
+                        "Slow Gateway request: {Method} {Path} took {ElapsedMs}ms with status {StatusCode} [VirtualKey: {VirtualKeyId}]",
+                        requestMethod, LoggingSanitizer.S(requestPath.ToString()),
+                        elapsedMs, context.Response.StatusCode, virtualKeyId);
+                }
+                // Log mutations and moderately slow requests (>1s) at Information, reads at Debug
+                else if (isMutation || elapsedMs > 1000)
                 {
                     _logger.LogInformation(
                         "Gateway API Request: {Method} {Path} completed with status {StatusCode} in {ElapsedMs}ms [VirtualKey: {VirtualKeyId}]",
