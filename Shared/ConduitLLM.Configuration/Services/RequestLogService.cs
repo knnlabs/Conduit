@@ -99,6 +99,8 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
         RequestType = request.RequestType,
         InputTokens = request.InputTokens,
         OutputTokens = request.OutputTokens,
+        CachedInputTokens = request.CachedInputTokens,
+        CachedWriteTokens = request.CachedWriteTokens,
         Cost = request.Cost,
         ResponseTimeMs = request.ResponseTimeMs,
         Timestamp = DateTime.UtcNow,

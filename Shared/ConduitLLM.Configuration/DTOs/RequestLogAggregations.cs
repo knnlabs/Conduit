@@ -35,6 +35,12 @@ public class ModelAggregation
 
     /// <summary>Sum of output tokens</summary>
     public long OutputTokens { get; set; }
+
+    /// <summary>Sum of cached input tokens (read from cache)</summary>
+    public long CachedInputTokens { get; set; }
+
+    /// <summary>Sum of cached write tokens</summary>
+    public long CachedWriteTokens { get; set; }
 }
 
 /// <summary>
@@ -76,6 +82,12 @@ public class RequestLogSummary
     /// <summary>Sum of output tokens</summary>
     public long TotalOutputTokens { get; set; }
 
+    /// <summary>Sum of cached input tokens</summary>
+    public long TotalCachedInputTokens { get; set; }
+
+    /// <summary>Sum of cached write tokens</summary>
+    public long TotalCachedWriteTokens { get; set; }
+
     /// <summary>Average response time in milliseconds</summary>
     public double AverageResponseTimeMs { get; set; }
 
@@ -106,6 +118,12 @@ public class DailyStatisticsAggregation
 
     /// <summary>Sum of output tokens for this date</summary>
     public long OutputTokens { get; set; }
+
+    /// <summary>Sum of cached input tokens for this date</summary>
+    public long CachedInputTokens { get; set; }
+
+    /// <summary>Sum of cached write tokens for this date</summary>
+    public long CachedWriteTokens { get; set; }
 
     /// <summary>Average response time in milliseconds for this date</summary>
     public double AverageResponseTime { get; set; }

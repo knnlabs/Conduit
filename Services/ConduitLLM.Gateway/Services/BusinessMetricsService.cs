@@ -357,7 +357,8 @@ namespace ConduitLLM.Gateway.Services
             CostPerRequest.WithLabels(model, provider).Observe(costDollars);
         }
 
-        public static void RecordTokens(string model, string provider, int promptTokens, int completionTokens)
+        public static void RecordTokens(string model, string provider, int promptTokens, int completionTokens,
+            int? cachedInputTokens = null, int? cachedWriteTokens = null)
         {
             if (promptTokens > 0)
             {
@@ -366,6 +367,14 @@ namespace ConduitLLM.Gateway.Services
             if (completionTokens > 0)
             {
                 ModelTokensProcessed.WithLabels(model, provider, "completion").Inc(completionTokens);
+            }
+            if (cachedInputTokens.HasValue && cachedInputTokens.Value > 0)
+            {
+                ModelTokensProcessed.WithLabels(model, provider, "cached_input").Inc(cachedInputTokens.Value);
+            }
+            if (cachedWriteTokens.HasValue && cachedWriteTokens.Value > 0)
+            {
+                ModelTokensProcessed.WithLabels(model, provider, "cached_write").Inc(cachedWriteTokens.Value);
             }
         }
 

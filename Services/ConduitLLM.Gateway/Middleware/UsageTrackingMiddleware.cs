@@ -322,12 +322,18 @@ namespace ConduitLLM.Gateway.Middleware
                 if (usage.CompletionTokens.HasValue)
                     UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
 
+                if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0)
+                    UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "cached_input").Inc(usage.CachedInputTokens.Value);
+
+                if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0)
+                    UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "cached_write").Inc(usage.CachedWriteTokens.Value);
+
                 UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType).Inc(Convert.ToDouble(totalCost));
 
                 // Record business metrics for Grafana dashboards (real-time counters)
                 var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
                 BusinessMetricsService.RecordModelRequest(model, providerType, requestStatus);
-                BusinessMetricsService.RecordTokens(model, providerType, usage.PromptTokens ?? 0, usage.CompletionTokens ?? 0);
+                BusinessMetricsService.RecordTokens(model, providerType, usage.PromptTokens ?? 0, usage.CompletionTokens ?? 0, usage.CachedInputTokens, usage.CachedWriteTokens);
                 BusinessMetricsService.RecordResponseTime(model, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
                 if (totalCost > 0)
                 {
@@ -522,12 +528,18 @@ namespace ConduitLLM.Gateway.Middleware
             if (usage.CompletionTokens.HasValue)
                 UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
 
+            if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0)
+                UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "cached_input").Inc(usage.CachedInputTokens.Value);
+
+            if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0)
+                UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "cached_write").Inc(usage.CachedWriteTokens.Value);
+
             UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType + "_stream").Inc(Convert.ToDouble(cost));
 
             // Record business metrics for Grafana dashboards (real-time counters)
             var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
             BusinessMetricsService.RecordModelRequest(model, providerType, requestStatus);
-            BusinessMetricsService.RecordTokens(model, providerType, usage.PromptTokens ?? 0, usage.CompletionTokens ?? 0);
+            BusinessMetricsService.RecordTokens(model, providerType, usage.PromptTokens ?? 0, usage.CompletionTokens ?? 0, usage.CachedInputTokens, usage.CachedWriteTokens);
             BusinessMetricsService.RecordResponseTime(model, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
             if (cost > 0)
             {
@@ -583,6 +595,8 @@ namespace ConduitLLM.Gateway.Middleware
                     RequestType = requestType,
                     InputTokens = usage.PromptTokens ?? 0,
                     OutputTokens = usage.CompletionTokens ?? 0,
+                    CachedInputTokens = usage.CachedInputTokens,
+                    CachedWriteTokens = usage.CachedWriteTokens,
                     Cost = cost,
                     ResponseTimeMs = UsageExtractor.GetResponseTime(context),
                     UserId = context.User?.Identity?.Name,
@@ -595,8 +609,8 @@ namespace ConduitLLM.Gateway.Middleware
                 await requestLogService.LogRequestAsync(logRequest);
 
                 _logger.LogInformation(
-                    "Tracked usage for VirtualKey {VirtualKeyId}: Model={Model}, PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, Cost={Cost:C}",
-                    virtualKeyId, model, usage.PromptTokens, usage.CompletionTokens, cost);
+                    "Tracked usage for VirtualKey {VirtualKeyId}: Model={Model}, PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, CachedInput={CachedInput}, CachedWrite={CachedWrite}, Cost={Cost:C}",
+                    virtualKeyId, model, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens, usage.CachedWriteTokens, cost);
             }
             catch (Exception ex)
             {

@@ -260,7 +260,9 @@ namespace ConduitLLM.Configuration.Repositories
                         TotalCost = g.Sum(r => r.Cost),
                         RequestCount = g.Count(),
                         InputTokens = g.Sum(r => (long)r.InputTokens),
-                        OutputTokens = g.Sum(r => (long)r.OutputTokens)
+                        OutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        CachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        CachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0))
                     })
                     .OrderByDescending(m => m.TotalCost)
                     .ToListAsync(cancellationToken);
@@ -286,7 +288,9 @@ namespace ConduitLLM.Configuration.Repositories
                         TotalCost = g.Sum(r => r.Cost),
                         RequestCount = g.Count(),
                         InputTokens = g.Sum(r => (long)r.InputTokens),
-                        OutputTokens = g.Sum(r => (long)r.OutputTokens)
+                        OutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        CachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        CachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0))
                     })
                     .OrderByDescending(m => m.TotalCost)
                     .ToListAsync(cancellationToken);
@@ -338,6 +342,8 @@ namespace ConduitLLM.Configuration.Repositories
                         TotalCost = g.Sum(r => r.Cost),
                         TotalInputTokens = g.Sum(r => (long)r.InputTokens),
                         TotalOutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        TotalCachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        TotalCachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0)),
                         AverageResponseTimeMs = g.Average(r => r.ResponseTimeMs),
                         SuccessCount = g.Sum(r => (r.StatusCode ?? 0) >= 200 && (r.StatusCode ?? 0) < 300 ? 1 : 0),
                         ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
@@ -367,6 +373,8 @@ namespace ConduitLLM.Configuration.Repositories
                         TotalCost = g.Sum(r => r.Cost),
                         TotalInputTokens = g.Sum(r => (long)r.InputTokens),
                         TotalOutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        TotalCachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        TotalCachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0)),
                         AverageResponseTimeMs = g.Average(r => r.ResponseTimeMs),
                         SuccessCount = g.Sum(r => (r.StatusCode ?? 0) >= 200 && (r.StatusCode ?? 0) < 300 ? 1 : 0),
                         ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
@@ -397,6 +405,8 @@ namespace ConduitLLM.Configuration.Repositories
                         Cost = g.Sum(r => r.Cost),
                         InputTokens = g.Sum(r => (long)r.InputTokens),
                         OutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        CachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        CachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0)),
                         AverageResponseTime = g.Average(r => r.ResponseTimeMs),
                         ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
                     })
