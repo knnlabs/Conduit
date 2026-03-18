@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using MassTransit;
@@ -156,6 +157,8 @@ namespace ConduitLLM.Admin.Controllers
                     }, "create provider");
 
                     LogAdminAudit("Created", "Provider", id, $"Type: {provider.ProviderType}, Name: {provider.ProviderName}");
+                    AdminOperationsMetricsService.RecordProviderOperation("create", provider.ProviderType.ToString(), "success");
+                    AdminOperationsMetricsService.RecordConfigurationChange("provider", "create");
 
                     return provider;
                 },
@@ -229,6 +232,9 @@ namespace ConduitLLM.Admin.Controllers
                         LogAdminAuditWithChanges("Provider", id, changes);
                     }
 
+                    AdminOperationsMetricsService.RecordProviderOperation("update", provider.ProviderType.ToString(), "success");
+                    AdminOperationsMetricsService.RecordConfigurationChange("provider", "update");
+
                     return NoContent();
                 },
                 "Provider",
@@ -261,6 +267,8 @@ namespace ConduitLLM.Admin.Controllers
                     }, "delete provider", new { ProviderId = id });
 
                     LogAdminAudit("Deleted", "Provider", id);
+                    AdminOperationsMetricsService.RecordProviderOperation("delete", provider.ProviderType.ToString(), "success");
+                    AdminOperationsMetricsService.RecordConfigurationChange("provider", "delete");
 
                     return NoContent();
                 },

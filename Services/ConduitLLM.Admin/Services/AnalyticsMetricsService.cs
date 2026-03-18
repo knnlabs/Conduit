@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Metrics;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -33,7 +34,8 @@ namespace ConduitLLM.Admin.Services
         {
             var key = NormalizeCacheKey(cacheKey);
             _cacheHits.AddOrUpdate(key, 1, (k, v) => v + 1);
-            
+            AdminCacheMetrics.RecordHit(key);
+
             // Log every 100 hits for monitoring
             if (_cacheHits[key] % 100 == 0)
             {
@@ -46,6 +48,7 @@ namespace ConduitLLM.Admin.Services
         {
             var key = NormalizeCacheKey(cacheKey);
             var newCount = _cacheMisses.AddOrUpdate(key, 1, (k, v) => v + 1);
+            AdminCacheMetrics.RecordMiss(key);
 
             // Log every 100 misses for monitoring
             if (newCount % 100 == 0)
@@ -121,7 +124,8 @@ namespace ConduitLLM.Admin.Services
         public void RecordCacheInvalidation(string reason, int keysInvalidated)
         {
             Interlocked.Increment(ref _totalCacheInvalidations);
-            _logger.LogInformation("Cache invalidated: {Reason}, {KeyCount} keys cleared", 
+            AdminCacheMetrics.RecordInvalidation("analytics", reason);
+            _logger.LogInformation("Cache invalidated: {Reason}, {KeyCount} keys cleared",
                 reason, keysInvalidated);
         }
 

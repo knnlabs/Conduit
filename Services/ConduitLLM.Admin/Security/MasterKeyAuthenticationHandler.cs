@@ -1,8 +1,10 @@
 using ConduitLLM.Core.Extensions;
+using System.Diagnostics;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Core.Utilities;
 
@@ -44,6 +46,8 @@ namespace ConduitLLM.Admin.Security
         /// <returns>The result of the authentication attempt</returns>
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            var sw = Stopwatch.StartNew();
+
             // Allow health check endpoints without authentication
             if (Context.Request.Path.StartsWithSegments("/health/live") || 
                 Context.Request.Path.StartsWithSegments("/health/ready") ||
@@ -59,6 +63,7 @@ namespace ConduitLLM.Admin.Security
                 var principal = new ClaimsPrincipal(identity);
                 var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
+                AdminAuthMetrics.RecordSuccess("HealthCheck");
                 return AuthenticateResult.Success(ticket);
             }
 
@@ -101,6 +106,9 @@ namespace ConduitLLM.Admin.Security
             {
                 Logger.LogWarning("Authentication failed: no API key provided for {Path}",
                     LoggingSanitizer.S(Context.Request.Path.ToString()));
+                sw.Stop();
+                AdminAuthMetrics.RecordFailure("MasterKey", "missing_key");
+                AdminAuthMetrics.RecordDuration("MasterKey", sw.Elapsed.TotalSeconds);
                 return AuthenticateResult.Fail("Missing master key");
             }
 
@@ -122,10 +130,16 @@ namespace ConduitLLM.Admin.Security
                         if (!keyExists)
                         {
                             Logger.LogWarning("Ephemeral master key not found: {Key}", SanitizeKeyForLogging(providedKey));
+                            sw.Stop();
+                            AdminAuthMetrics.RecordFailure("EphemeralKey", "not_found");
+                            AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
                             return AuthenticateResult.Fail("Ephemeral master key not found");
                         }
-                        
+
                         Logger.LogWarning("Ephemeral master key already used or expired: {Key}", SanitizeKeyForLogging(providedKey));
+                        sw.Stop();
+                        AdminAuthMetrics.RecordFailure("EphemeralKey", "already_used");
+                        AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
                         return AuthenticateResult.Fail("Ephemeral master key already used");
                     }
                 }
@@ -140,10 +154,16 @@ namespace ConduitLLM.Admin.Security
                         if (!keyExists)
                         {
                             Logger.LogWarning("Ephemeral master key not found: {Key}", SanitizeKeyForLogging(providedKey));
+                            sw.Stop();
+                            AdminAuthMetrics.RecordFailure("EphemeralKey", "not_found");
+                            AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
                             return AuthenticateResult.Fail("Ephemeral master key not found");
                         }
-                        
+
                         Logger.LogWarning("Ephemeral master key validation failed: {Key}", SanitizeKeyForLogging(providedKey));
+                        sw.Stop();
+                        AdminAuthMetrics.RecordFailure("EphemeralKey", "expired");
+                        AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
                         return AuthenticateResult.Fail("Ephemeral master key expired");
                     }
                     
@@ -166,6 +186,9 @@ namespace ConduitLLM.Admin.Security
                 var emkPrincipal = new ClaimsPrincipal(emkIdentity);
                 var emkTicket = new AuthenticationTicket(emkPrincipal, Scheme.Name);
 
+                sw.Stop();
+                AdminAuthMetrics.RecordSuccess("EphemeralKey");
+                AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
                 return AuthenticateResult.Success(emkTicket);
             }
 
@@ -173,6 +196,9 @@ namespace ConduitLLM.Admin.Security
             if (string.IsNullOrEmpty(_masterKey))
             {
                 Logger.LogError("Backend auth key is not configured. Set CONDUIT_API_TO_API_BACKEND_AUTH_KEY environment variable.");
+                sw.Stop();
+                AdminAuthMetrics.RecordFailure("MasterKey", "not_configured");
+                AdminAuthMetrics.RecordDuration("MasterKey", sw.Elapsed.TotalSeconds);
                 return AuthenticateResult.Fail("Master key not configured");
             }
 
@@ -181,6 +207,9 @@ namespace ConduitLLM.Admin.Security
                 Logger.LogWarning("Authentication failed: invalid master key provided for {Path} from {ClientIp}",
                     LoggingSanitizer.S(Context.Request.Path.ToString()),
                     Context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+                sw.Stop();
+                AdminAuthMetrics.RecordFailure("MasterKey", "invalid_key");
+                AdminAuthMetrics.RecordDuration("MasterKey", sw.Elapsed.TotalSeconds);
                 return AuthenticateResult.Fail("Invalid master key");
             }
 
@@ -196,6 +225,9 @@ namespace ConduitLLM.Admin.Security
             var authPrincipal = new ClaimsPrincipal(authIdentity);
             var authTicket = new AuthenticationTicket(authPrincipal, Scheme.Name);
 
+            sw.Stop();
+            AdminAuthMetrics.RecordSuccess("MasterKey");
+            AdminAuthMetrics.RecordDuration("MasterKey", sw.Elapsed.TotalSeconds);
             return AuthenticateResult.Success(authTicket);
         }
 

@@ -7,6 +7,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Admin.Metrics;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -196,6 +197,7 @@ namespace ConduitLLM.Admin.Services
                     await statusService.RecordRunCompletionAsync(
                         0, 0, stopwatch.Elapsed.TotalSeconds, "No groups", _instanceId, stoppingToken);
                 }
+                AdminMediaCleanupMetrics.CleanupCycles.WithLabels("no_groups").Inc();
                 return;
             }
 
@@ -250,6 +252,17 @@ namespace ConduitLLM.Admin.Services
                         _instanceId,
                         stoppingToken);
                 }
+
+                // Record Prometheus metrics
+                AdminMediaCleanupMetrics.CleanupDuration.Observe(stopwatch.Elapsed.TotalSeconds);
+                AdminMediaCleanupMetrics.GroupsProcessed.Observe(groupIds.Count);
+                if (totalDeleted > 0)
+                    AdminMediaCleanupMetrics.FilesDeleted.Inc(totalDeleted);
+                if (totalBytesFreed > 0)
+                    AdminMediaCleanupMetrics.BytesFreed.Inc(totalBytesFreed);
+                var cleanupStatus = status.StartsWith("Failed") ? "failed"
+                    : status == "Cancelled" ? "cancelled" : "completed";
+                AdminMediaCleanupMetrics.CleanupCycles.WithLabels(cleanupStatus).Inc();
             }
         }
 
@@ -290,6 +303,7 @@ namespace ConduitLLM.Admin.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing cleanup for group {GroupId}", groupId);
+                AdminMediaCleanupMetrics.CleanupErrors.WithLabels("group_processing").Inc();
                 return (0, 0);
             }
         }

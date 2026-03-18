@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 
@@ -49,6 +50,8 @@ public class VirtualKeysController : AdminControllerBase
             response =>
             {
                 LogAdminAudit("Created", "VirtualKey", response.KeyInfo.Id, $"Name: {LoggingSanitizer.S(request.KeyName)}");
+                AdminOperationsMetricsService.RecordVirtualKeyOperation("create", "success");
+                AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "create");
                 return CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response);
             },
             "GenerateKey",
@@ -145,6 +148,8 @@ public class VirtualKeysController : AdminControllerBase
                 {
                     LogAdminAudit("Updated", "VirtualKey", id, "No changes detected");
                 }
+                AdminOperationsMetricsService.RecordVirtualKeyOperation("update", "success");
+                AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "update");
             },
             NoContent(),
             "UpdateKey",
@@ -171,6 +176,8 @@ public class VirtualKeysController : AdminControllerBase
                 if (!await _virtualKeyService.DeleteVirtualKeyAsync(id))
                     throw new KeyNotFoundException();
                 LogAdminAudit("Deleted", "VirtualKey", id);
+                AdminOperationsMetricsService.RecordVirtualKeyOperation("delete", "success");
+                AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "delete");
             },
             NoContent(),
             "DeleteKey",

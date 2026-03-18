@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Prometheus;
 
 namespace ConduitLLM.Configuration.Interceptors;
 
@@ -15,6 +16,29 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
 {
     private readonly ILogger<QueryMonitoringInterceptor> _logger;
     private readonly QueryMonitoringOptions _options;
+
+    // Prometheus metrics for query monitoring
+    private static readonly Counter QueryExecutions = Prometheus.Metrics
+        .CreateCounter("conduit_db_query_executions_total", "Total database query executions",
+            new CounterConfiguration
+            {
+                LabelNames = new[] { "type" } // type: select, non_query, scalar
+            });
+
+    private static readonly Histogram QueryDuration = Prometheus.Metrics
+        .CreateHistogram("conduit_db_query_duration_seconds", "Database query duration",
+            new HistogramConfiguration
+            {
+                LabelNames = new[] { "type" },
+                Buckets = Histogram.ExponentialBuckets(0.001, 2, 14) // 1ms to ~16s
+            });
+
+    private static readonly Counter SlowQueries = Prometheus.Metrics
+        .CreateCounter("conduit_db_slow_queries_total", "Total slow database queries",
+            new CounterConfiguration
+            {
+                LabelNames = new[] { "type" }
+            });
 
     /// <summary>
     /// Creates a new instance of the QueryMonitoringInterceptor.
@@ -40,7 +64,7 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
             return result;
         }
 
-        LogSlowQueryIfNeeded(command, eventData);
+        RecordQueryMetrics(command, eventData, IsSelectQuery(command) ? "select" : "non_query");
 
         // Only wrap SELECT queries - INSERT/UPDATE/DELETE with RETURNING clauses
         // return readers that Npgsql internally casts to NpgsqlDataReader, which fails
@@ -65,7 +89,7 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
             return result;
         }
 
-        LogSlowQueryIfNeeded(command, eventData);
+        RecordQueryMetrics(command, eventData, IsSelectQuery(command) ? "select" : "non_query");
 
         // Only wrap SELECT queries - INSERT/UPDATE/DELETE with RETURNING clauses
         // return readers that Npgsql internally casts to NpgsqlDataReader, which fails
@@ -86,7 +110,7 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
     {
         if (_options.Enabled)
         {
-            LogSlowQueryIfNeeded(command, eventData);
+            RecordQueryMetrics(command, eventData, "non_query");
         }
 
         return result;
@@ -101,7 +125,7 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
     {
         if (_options.Enabled)
         {
-            LogSlowQueryIfNeeded(command, eventData);
+            RecordQueryMetrics(command, eventData, "non_query");
         }
 
         return result;
@@ -115,7 +139,7 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
     {
         if (_options.Enabled)
         {
-            LogSlowQueryIfNeeded(command, eventData);
+            RecordQueryMetrics(command, eventData, "scalar");
         }
 
         return result;
@@ -130,17 +154,22 @@ public class QueryMonitoringInterceptor : DbCommandInterceptor
     {
         if (_options.Enabled)
         {
-            LogSlowQueryIfNeeded(command, eventData);
+            RecordQueryMetrics(command, eventData, "scalar");
         }
 
         return result;
     }
 
-    private void LogSlowQueryIfNeeded(DbCommand command, CommandExecutedEventData eventData)
+    private void RecordQueryMetrics(DbCommand command, CommandExecutedEventData eventData, string queryType)
     {
+        var durationSeconds = eventData.Duration.TotalSeconds;
+        QueryExecutions.WithLabels(queryType).Inc();
+        QueryDuration.WithLabels(queryType).Observe(durationSeconds);
+
         var durationMs = eventData.Duration.TotalMilliseconds;
         if (durationMs >= _options.SlowQueryThresholdMs)
         {
+            SlowQueries.WithLabels(queryType).Inc();
             var commandSummary = GetCommandSummary(command);
             _logger.LogWarning(
                 "Slow query detected ({DurationMs:F1}ms, threshold: {ThresholdMs}ms). Command: {CommandSummary}",

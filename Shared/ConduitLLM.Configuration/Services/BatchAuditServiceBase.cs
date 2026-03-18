@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Prometheus;
 
 namespace ConduitLLM.Configuration.Services;
 
@@ -21,6 +22,42 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
     private readonly Timer _flushTimer;
     private readonly SemaphoreSlim _flushSemaphore;
     private bool _disposed;
+
+    // Prometheus metrics for audit service operations
+    private static readonly Counter AuditEventsQueued = Prometheus.Metrics
+        .CreateCounter("conduit_audit_events_queued_total", "Total audit events queued",
+            new CounterConfiguration
+            {
+                LabelNames = new[] { "service" }
+            });
+
+    private static readonly Counter AuditEventsFlushed = Prometheus.Metrics
+        .CreateCounter("conduit_audit_events_flushed_total", "Total audit events flushed to database",
+            new CounterConfiguration
+            {
+                LabelNames = new[] { "service", "status" } // status: success, failure
+            });
+
+    private static readonly Gauge AuditQueueDepth = Prometheus.Metrics
+        .CreateGauge("conduit_audit_queue_depth", "Current audit event queue depth",
+            new GaugeConfiguration
+            {
+                LabelNames = new[] { "service" }
+            });
+
+    private static readonly Counter AuditCleanupEvents = Prometheus.Metrics
+        .CreateCounter("conduit_audit_cleanup_events_deleted_total", "Total audit events deleted during cleanup",
+            new CounterConfiguration
+            {
+                LabelNames = new[] { "service" }
+            });
+
+    private static readonly Counter AuditCleanupRuns = Prometheus.Metrics
+        .CreateCounter("conduit_audit_cleanup_runs_total", "Total audit cleanup runs",
+            new CounterConfiguration
+            {
+                LabelNames = new[] { "service", "status" } // status: success, failure
+            });
 
     /// <summary>
     /// Creates a new instance of the batch audit service base.
@@ -97,6 +134,8 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
             throw new ArgumentNullException(nameof(auditEvent));
 
         _eventQueue.Enqueue(auditEvent);
+        AuditEventsQueued.WithLabels(EntityName).Inc();
+        AuditQueueDepth.WithLabels(EntityName).Set(_eventQueue.Count);
 
         if (_eventQueue.Count >= BatchSize)
         {
@@ -118,7 +157,9 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
         }
 
         _eventQueue.Enqueue(auditEvent);
+        AuditEventsQueued.WithLabels(EntityName).Inc();
         var queueCount = _eventQueue.Count;
+        AuditQueueDepth.WithLabels(EntityName).Set(queueCount);
 
         if (queueCount >= BatchSize)
         {
@@ -161,7 +202,9 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
                 {
                     _logger.LogInformation("Cleanup completed: Deleted {TotalDeleted} {EntityName} audit events older than {CutoffDate}",
                         deletedCount, EntityName, cutoffDate);
+                    AuditCleanupEvents.WithLabels(EntityName).Inc(deletedCount);
                 }
+                AuditCleanupRuns.WithLabels(EntityName, "success").Inc();
             }
             else
             {
@@ -196,12 +239,15 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
                 {
                     _logger.LogInformation("Cleanup completed: Deleted {TotalDeleted} {EntityName} audit events older than {CutoffDate}",
                         totalDeleted, EntityName, cutoffDate);
+                    AuditCleanupEvents.WithLabels(EntityName).Inc(totalDeleted);
                 }
+                AuditCleanupRuns.WithLabels(EntityName, "success").Inc();
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to cleanup old {EntityName} audit events", EntityName);
+            AuditCleanupRuns.WithLabels(EntityName, "failure").Inc();
             throw;
         }
     }
@@ -465,10 +511,13 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
             await context.SaveChangesAsync();
 
             _logger.LogDebug("Flushed {Count} {EntityName} audit events to database", events.Count, EntityName);
+            AuditEventsFlushed.WithLabels(EntityName, "success").Inc(events.Count);
+            AuditQueueDepth.WithLabels(EntityName).Set(_eventQueue.Count);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to flush {EntityName} audit events to database", EntityName);
+            AuditEventsFlushed.WithLabels(EntityName, "failure").Inc();
         }
         finally
         {

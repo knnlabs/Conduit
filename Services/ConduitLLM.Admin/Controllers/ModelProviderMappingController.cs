@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Interfaces;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
@@ -109,6 +110,8 @@ public class ModelProviderMappingController : AdminControllerBase
 
                 LogAdminAudit("Created", "ModelProviderMapping", createdMapping?.Id,
                     $"ModelAlias: {LoggingSanitizer.S(mappingDto.ModelAlias)}, ProviderId: {mappingDto.ProviderId}");
+                AdminOperationsMetricsService.RecordModelMappingOperation("create", "success");
+                AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "create");
 
                 return CreatedAtAction(nameof(GetMappingById), new { id = createdMapping?.Id }, createdMapping?.ToDto());
             },
@@ -152,6 +155,8 @@ public class ModelProviderMappingController : AdminControllerBase
                 }
 
                 LogAdminAudit("Updated", "ModelProviderMapping", id);
+                AdminOperationsMetricsService.RecordModelMappingOperation("update", "success");
+                AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "update");
             },
             NoContent(),
             "UpdateMapping",
@@ -186,6 +191,8 @@ public class ModelProviderMappingController : AdminControllerBase
                 }
 
                 LogAdminAudit("Deleted", "ModelProviderMapping", id);
+                AdminOperationsMetricsService.RecordModelMappingOperation("delete", "success");
+                AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "delete");
             },
             NoContent(),
             "DeleteMapping",
@@ -240,6 +247,7 @@ public class ModelProviderMappingController : AdminControllerBase
 
                 LogAdminAudit("BulkCreated", "ModelProviderMapping",
                     detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+                AdminOperationsMetricsService.RecordModelMappingOperation("bulk_create", "success");
 
                 return result;
             },
@@ -308,6 +316,7 @@ public class ModelProviderMappingController : AdminControllerBase
 
                 LogAdminAudit("BulkDeleted", "ModelProviderMapping",
                     detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+                AdminOperationsMetricsService.RecordModelMappingOperation("bulk_delete", "success");
 
                 return result;
             },
@@ -397,6 +406,7 @@ public class ModelProviderMappingController : AdminControllerBase
 
                 LogAdminAudit(isEnabled ? "BulkEnabled" : "BulkDisabled", "ModelProviderMapping",
                     detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+                AdminOperationsMetricsService.RecordModelMappingOperation(isEnabled ? "bulk_enable" : "bulk_disable", "success");
 
                 return result;
             },

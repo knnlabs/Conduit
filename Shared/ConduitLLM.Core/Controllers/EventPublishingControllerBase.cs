@@ -1,3 +1,7 @@
+using System.Diagnostics;
+
+using ConduitLLM.Core.Metrics;
+
 using MassTransit;
 
 using Microsoft.AspNetCore.Mvc;
@@ -61,24 +65,30 @@ namespace ConduitLLM.Core.Controllers
                 _logger.LogWarning(
                     "Event publishing not configured - skipping {EventType} for {Operation}",
                     nameof(TEvent), operationName);
+                EventPublishingMetrics.RecordSkipped(typeof(TEvent).Name);
                 return;
             }
 
             // Fire and forget - don't await
             _ = Task.Run(async () =>
             {
+                var sw = Stopwatch.StartNew();
                 try
                 {
                     await _publishEndpoint.Publish(domainEvent);
+                    sw.Stop();
                     _logger.LogDebug(
                         "Published {EventType} event for {Operation}",
                         nameof(TEvent), operationName);
+                    EventPublishingMetrics.RecordSuccess(typeof(TEvent).Name, sw.Elapsed.TotalSeconds);
                 }
                 catch (Exception ex)
                 {
+                    sw.Stop();
                     _logger.LogWarning(ex,
                         "Failed to publish {EventType} event for {Operation} - operation completed but event not sent",
                         nameof(TEvent), operationName);
+                    EventPublishingMetrics.RecordFailure(typeof(TEvent).Name);
                     // Don't rethrow - event publishing should not fail business operations
                 }
             });
@@ -110,24 +120,30 @@ namespace ConduitLLM.Core.Controllers
                 _logger.LogDebug(
                     "Event publishing not configured - skipping {EventType} for {Operation} with context {ContextData}",
                     nameof(TEvent), operationName, contextData);
+                EventPublishingMetrics.RecordSkipped(typeof(TEvent).Name);
                 return;
             }
 
             // Fire and forget - don't await
             _ = Task.Run(async () =>
             {
+                var sw = Stopwatch.StartNew();
                 try
                 {
                     await _publishEndpoint.Publish(domainEvent);
+                    sw.Stop();
                     _logger.LogDebug(
                         "Published {EventType} event for {Operation} with context {ContextData}",
                         nameof(TEvent), operationName, contextData);
+                    EventPublishingMetrics.RecordSuccess(typeof(TEvent).Name, sw.Elapsed.TotalSeconds);
                 }
                 catch (Exception ex)
                 {
+                    sw.Stop();
                     _logger.LogWarning(ex,
                         "Failed to publish {EventType} event for {Operation} with context {ContextData} - operation completed but event not sent",
                         nameof(TEvent), operationName, contextData);
+                    EventPublishingMetrics.RecordFailure(typeof(TEvent).Name);
                     // Don't rethrow - event publishing should not fail business operations
                 }
             });
