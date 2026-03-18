@@ -76,6 +76,8 @@ namespace ConduitLLM.Gateway.Controllers
                             @object = "model"
                         }).ToList();
 
+                    Logger.LogDebug("Returning {ModelCount} available models", basicModelData.Count);
+
                     // Create the response envelope
                     var response = new
                     {

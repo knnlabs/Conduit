@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Models;
 
 using MassTransit;
@@ -160,6 +161,7 @@ namespace ConduitLLM.Core.Controllers
         /// <summary>
         /// Maps an exception to an OpenAI-compatible error response using <see cref="ExceptionToResponseMapper"/>.
         /// Uses the mapper's LogPrefix and IncludeExceptionMessageInLog for structured, consistent error logging.
+        /// Captures request body for mutation failures (fire-and-forget) for post-mortem diagnostics.
         /// </summary>
         private IActionResult HandleOpenAIException(
             Exception ex,
@@ -172,31 +174,8 @@ namespace ConduitLLM.Core.Controllers
                 ? $"{operationName} (context: {contextData})"
                 : operationName;
 
-            if (mapping.IncludeExceptionMessageInLog)
-            {
-                Logger.Log(
-                    mapping.LogLevel,
-                    ex,
-                    "{LogPrefix} in {Operation}: {Message}",
-                    mapping.LogPrefix,
-                    logMessage,
-                    ex.Message);
-            }
-            else if (mapping.LogLevel == LogLevel.Error)
-            {
-                Logger.LogError(
-                    ex,
-                    "{LogPrefix} in {Operation}",
-                    mapping.LogPrefix,
-                    logMessage);
-            }
-            else
-            {
-                Logger.LogWarning(
-                    "{LogPrefix} in {Operation}",
-                    mapping.LogPrefix,
-                    logMessage);
-            }
+            // Capture request body for mutation failures (fire-and-forget — don't block error response)
+            _ = LogExceptionWithBodyAsync(mapping, ex, logMessage);
 
             return StatusCode(mapping.StatusCode, new OpenAIErrorResponse
             {
@@ -208,6 +187,69 @@ namespace ConduitLLM.Core.Controllers
                     Param = mapping.Param
                 }
             });
+        }
+
+        /// <summary>
+        /// Logs the exception with the request body for mutation requests.
+        /// Falls back to logging without body if capture fails.
+        /// </summary>
+        private async Task LogExceptionWithBodyAsync(
+            ExceptionToResponseMapper.ExceptionMappingResult mapping,
+            Exception ex,
+            string logMessage)
+        {
+            string? requestBody = null;
+            try
+            {
+                requestBody = await RequestBodyCapture.CaptureAsync(HttpContext);
+            }
+            catch
+            {
+                // Body capture should never prevent error logging
+            }
+
+            if (requestBody != null)
+            {
+                if (mapping.IncludeExceptionMessageInLog)
+                {
+                    Logger.Log(mapping.LogLevel, ex,
+                        "{LogPrefix} in {Operation}: {Message}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, ex.Message, requestBody);
+                }
+                else if (mapping.LogLevel == LogLevel.Error)
+                {
+                    Logger.LogError(ex,
+                        "{LogPrefix} in {Operation}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, requestBody);
+                }
+                else
+                {
+                    Logger.LogWarning(
+                        "{LogPrefix} in {Operation}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, requestBody);
+                }
+            }
+            else
+            {
+                if (mapping.IncludeExceptionMessageInLog)
+                {
+                    Logger.Log(mapping.LogLevel, ex,
+                        "{LogPrefix} in {Operation}: {Message}",
+                        mapping.LogPrefix, logMessage, ex.Message);
+                }
+                else if (mapping.LogLevel == LogLevel.Error)
+                {
+                    Logger.LogError(ex,
+                        "{LogPrefix} in {Operation}",
+                        mapping.LogPrefix, logMessage);
+                }
+                else
+                {
+                    Logger.LogWarning(
+                        "{LogPrefix} in {Operation}",
+                        mapping.LogPrefix, logMessage);
+                }
+            }
         }
     }
 }

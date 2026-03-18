@@ -61,13 +61,35 @@ namespace ConduitLLM.Core.Middleware
 
         private async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
-            // Log the exception with full details
+            // Log the exception with full details including request body for mutations
             var traceId = context.TraceIdentifier;
-            _logger.LogError(exception,
-                "Exception handled by OpenAIErrorMiddleware {TraceId} {Method} {Path}",
-                traceId,
-                LoggingSanitizer.S(context.Request.Method),
-                LoggingSanitizer.S(context.Request.Path.ToString()));
+            string? requestBody = null;
+            try
+            {
+                requestBody = await RequestBodyCapture.CaptureAsync(context);
+            }
+            catch
+            {
+                // Body capture should never prevent error handling
+            }
+
+            if (requestBody != null)
+            {
+                _logger.LogError(exception,
+                    "Exception handled by OpenAIErrorMiddleware {TraceId} {Method} {Path}. RequestBody: {RequestBody}",
+                    traceId,
+                    LoggingSanitizer.S(context.Request.Method),
+                    LoggingSanitizer.S(context.Request.Path.ToString()),
+                    requestBody);
+            }
+            else
+            {
+                _logger.LogError(exception,
+                    "Exception handled by OpenAIErrorMiddleware {TraceId} {Method} {Path}",
+                    traceId,
+                    LoggingSanitizer.S(context.Request.Method),
+                    LoggingSanitizer.S(context.Request.Path.ToString()));
+            }
 
             // Map exception using the single source of truth
             var mapping = ExceptionToResponseMapper.Map(exception);

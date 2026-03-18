@@ -1,13 +1,12 @@
 using System.Text.RegularExpressions;
 
-using ConduitLLM.Core.Extensions;
+using Microsoft.AspNetCore.Http;
 
-namespace ConduitLLM.Admin.Extensions;
+namespace ConduitLLM.Core.Extensions;
 
 /// <summary>
 /// Provides methods for capturing and sanitizing HTTP request bodies for error diagnostics.
-/// Used by both <see cref="Controllers.AdminControllerBase"/> and
-/// <see cref="Middleware.AdminExceptionMiddleware"/> to log request payloads on failure.
+/// Used by controller base classes and exception middleware to log request payloads on failure.
 /// </summary>
 public static partial class RequestBodyCapture
 {

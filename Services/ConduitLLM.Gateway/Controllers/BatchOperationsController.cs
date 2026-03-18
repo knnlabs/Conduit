@@ -310,9 +310,11 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(404)]
         public IActionResult GetOperationStatus(string operationId)
         {
+            Logger.LogDebug("Getting status for batch operation {OperationId}", operationId);
             var status = _batchOperationService.GetOperationStatus(operationId);
             if (status == null)
             {
+                Logger.LogWarning("Batch operation {OperationId} not found", operationId);
                 return NotFound(new OpenAIErrorResponse
                 {
                     Error = new OpenAIError

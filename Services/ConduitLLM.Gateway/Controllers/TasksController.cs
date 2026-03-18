@@ -37,6 +37,7 @@ namespace ConduitLLM.Gateway.Controllers
         {
             return await ExecuteAsync(async () =>
             {
+                Logger.LogDebug("Getting status for task {TaskId}", taskId);
                 try
                 {
                     var status = await _taskService.GetTaskStatusAsync(taskId);
@@ -103,6 +104,9 @@ namespace ConduitLLM.Gateway.Controllers
                 // Validate and clamp parameters
                 timeout = Math.Clamp(timeout, 1, 600); // Max 10 minutes
                 interval = Math.Max(interval, 1); // Min 1 second
+
+                Logger.LogDebug("Polling task {TaskId} with timeout {TimeoutSeconds}s, interval {IntervalSeconds}s",
+                    taskId, timeout, interval);
 
                 try
                 {

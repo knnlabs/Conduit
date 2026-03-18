@@ -37,9 +37,10 @@ namespace ConduitLLM.Gateway.Hubs
                 throw new HubException("Unauthorized access to task");
             }
             
-            await Groups.AddToGroupAsync(Context.ConnectionId, SignalRConstants.Groups.VideoTask(taskId));
-            Logger.LogDebug("Virtual Key {KeyId} subscribed to video task {TaskId}", 
-                virtualKeyId, taskId);
+            var groupName = SignalRConstants.Groups.VideoTask(taskId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            Logger.LogInformation("Virtual Key {KeyId} subscribed to video task {TaskId} in group {GroupName}, ConnectionId: {ConnectionId}",
+                virtualKeyId, taskId, groupName, Context.ConnectionId);
         }
 
         /// <summary>

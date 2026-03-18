@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -42,8 +43,11 @@ namespace ConduitLLM.Gateway.Controllers
         {
             return ExecuteAsync(async () =>
             {
-                // Validate ownership
                 var virtualKeyId = GetVirtualKeyId();
+                Logger.LogDebug("File download requested by Virtual Key {VirtualKeyId}: {FileId}, inline: {Inline}",
+                    virtualKeyId, LoggingSanitizer.S(fileId), inline);
+
+                // Validate ownership
                 if (!await ValidateFileOwnership(fileId, virtualKeyId))
                 {
                     return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
@@ -133,8 +137,11 @@ namespace ConduitLLM.Gateway.Controllers
                     return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("File ID is required", "invalid_request_error")));
                 }
 
-                // Validate ownership
                 var virtualKeyId = GetVirtualKeyId();
+                Logger.LogInformation("Download URL generation requested by Virtual Key {VirtualKeyId} for {FileId}, expiration: {ExpirationMinutes}m",
+                    virtualKeyId, LoggingSanitizer.S(request.FileId), request.ExpirationMinutes ?? 60);
+
+                // Validate ownership
                 if (!await ValidateFileOwnership(request.FileId, virtualKeyId))
                 {
                     return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
