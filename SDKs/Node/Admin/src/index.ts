@@ -182,6 +182,7 @@ export * from './models/pricing';
 
 // Utilities
 export * from './utils/errors';
+export * from './utils/costFormatters';
 
 // Models
 export * from './models/metadata';

@@ -360,9 +360,23 @@ export function getErrorStatusCode(error: unknown): number {
   if (isConduitError(error)) {
     return error.statusCode;
   }
-  
+
   return 500;
 }
+
+// User-friendly error message mapping
+export {
+  ERROR_MESSAGES,
+  getDefaultErrorConfig,
+  getErrorConfig,
+  getErrorSeverity,
+  extractRetryAfter
+} from './error-messages';
+export type {
+  OpenAIError,
+  OpenAIErrorResponse,
+  ErrorMessageConfig
+} from './error-messages';
 
 /**
  * Handle API errors and convert them to appropriate ConduitError types
