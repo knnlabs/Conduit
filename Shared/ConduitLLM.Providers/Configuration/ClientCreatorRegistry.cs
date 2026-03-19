@@ -68,16 +68,16 @@ namespace ConduitLLM.Providers.Configuration
         private static readonly Dictionary<ProviderType, ClientCreatorDelegate> Creators = new()
         {
             [ProviderType.OpenAI] = CreateOpenAIClient,
-            [ProviderType.Groq] = CreateGroqClient,
-            [ProviderType.Replicate] = CreateReplicateClient,
-            [ProviderType.Fireworks] = CreateFireworksClient,
-            [ProviderType.OpenAICompatible] = CreateOpenAICompatibleClient,
-            [ProviderType.MiniMax] = CreateMiniMaxClient,
-            [ProviderType.Cerebras] = CreateCerebrasClient,
-            [ProviderType.SambaNova] = CreateSambaNovaClient,
-            [ProviderType.DeepInfra] = CreateDeepInfraClient,
-            [ProviderType.Cloudflare] = CreateCloudflareClient,
-            [ProviderType.OpenRouter] = CreateOpenRouterClient
+            [ProviderType.Groq] = CreateStandardClient<GroqClient>,
+            [ProviderType.Replicate] = CreateStandardClient<ReplicateClient>,
+            [ProviderType.Fireworks] = CreateStandardClient<FireworksClient>,
+            [ProviderType.OpenAICompatible] = CreateStandardClient<OpenAICompatibleGenericClient>,
+            [ProviderType.MiniMax] = CreateStandardClient<MiniMaxClient>,
+            [ProviderType.Cerebras] = CreateStandardClient<CerebrasClient>,
+            [ProviderType.SambaNova] = CreateStandardClient<SambaNovaClient>,
+            [ProviderType.DeepInfra] = CreateStandardClient<DeepInfraClient>,
+            [ProviderType.Cloudflare] = CreateStandardClient<CloudflareClient>,
+            [ProviderType.OpenRouter] = CreateStandardClient<OpenRouterClient>
         };
 
         /// <summary>
@@ -145,7 +145,27 @@ namespace ConduitLLM.Providers.Configuration
             return Creators.Keys;
         }
 
-        // Individual client creator methods
+        /// <summary>
+        /// Creates a standard client with the 6-parameter constructor (provider, keyCredential, modelId, logger, httpClientFactory, defaultModels).
+        /// Used by all providers except OpenAI which also requires CapabilityService.
+        /// </summary>
+        private static ILLMClient CreateStandardClient<TClient>(
+            Provider provider,
+            ProviderKeyCredential keyCredential,
+            string modelId,
+            ClientCreationContext context)
+            where TClient : ILLMClient
+        {
+            var logger = context.LoggerFactory.CreateLogger<TClient>();
+            return (ILLMClient)Activator.CreateInstance(
+                typeof(TClient),
+                provider,
+                keyCredential,
+                modelId,
+                logger,
+                context.HttpClientFactory,
+                context.DefaultModels)!;
+        }
 
         private static ILLMClient CreateOpenAIClient(
             Provider provider,
@@ -161,165 +181,6 @@ namespace ConduitLLM.Providers.Configuration
                 logger,
                 context.HttpClientFactory,
                 context.CapabilityService,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateGroqClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<GroqClient>();
-            return new GroqClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateReplicateClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<ReplicateClient>();
-            return new ReplicateClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateFireworksClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<FireworksClient>();
-            return new FireworksClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateOpenAICompatibleClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<OpenAICompatibleGenericClient>();
-            return new OpenAICompatibleGenericClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateMiniMaxClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<MiniMaxClient>();
-            return new MiniMaxClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateCerebrasClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<CerebrasClient>();
-            return new CerebrasClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateSambaNovaClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<SambaNovaClient>();
-            return new SambaNovaClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateDeepInfraClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<DeepInfraClient>();
-            return new DeepInfraClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-        private static ILLMClient CreateCloudflareClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<CloudflareClient>();
-            return new CloudflareClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
-        }
-
-        private static ILLMClient CreateOpenRouterClient(
-            Provider provider,
-            ProviderKeyCredential keyCredential,
-            string modelId,
-            ClientCreationContext context)
-        {
-            var logger = context.LoggerFactory.CreateLogger<OpenRouterClient>();
-            return new OpenRouterClient(
-                provider,
-                keyCredential,
-                modelId,
-                logger,
-                context.HttpClientFactory,
                 context.DefaultModels);
         }
     }

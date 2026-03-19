@@ -90,18 +90,7 @@ namespace ConduitLLM.Providers
                 throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
             }
 
-            // Get key credentials for this provider
-            var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
-
-            // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)
-                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-
-            if (primaryKey == null)
-            {
-                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
-                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
-            }
+            var primaryKey = await GetPrimaryKeyCredentialAsync(provider);
 
             // Create the appropriate client based on provider type
             return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId);
@@ -127,18 +116,7 @@ namespace ConduitLLM.Providers
                 throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
             }
 
-            // Get key credentials for this provider
-            var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
-
-            // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)
-                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-
-            if (primaryKey == null)
-            {
-                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
-                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
-            }
+            var primaryKey = await GetPrimaryKeyCredentialAsync(provider);
 
             // Use a default model ID for operations that don't require a specific model
             return CreateClientForProvider(provider, primaryKey, "default-model-id");
@@ -173,18 +151,7 @@ namespace ConduitLLM.Providers
                 throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' of type '{providerType}' is currently disabled.", provider.ProviderName);
             }
 
-            // Get key credentials for this provider
-            var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
-
-            // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)
-                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-
-            if (primaryKey == null)
-            {
-                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
-                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
-            }
+            var primaryKey = await GetPrimaryKeyCredentialAsync(provider);
 
             // Use a default model ID for operations that don't require a specific model
             return CreateClientForProvider(provider, primaryKey, "default-model-id");
@@ -214,6 +181,22 @@ namespace ConduitLLM.Providers
             const string testModelId = "test-model";
 
             return CreateClientForProvider(provider, keyCredential, testModelId);
+        }
+
+        private async Task<ProviderKeyCredential> GetPrimaryKeyCredentialAsync(Provider provider)
+        {
+            var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
+
+            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)
+                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
+
+            if (primaryKey == null)
+            {
+                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
+                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
+            }
+
+            return primaryKey;
         }
 
         private ILLMClient CreateClientForProvider(Provider provider, ProviderKeyCredential keyCredential, string modelId)
