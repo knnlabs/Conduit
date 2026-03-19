@@ -134,9 +134,6 @@ public partial class Program
             x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
 
-            // Register consumers for Admin API SignalR notifications
-            // Provider health consumer removed
-
             if (useRabbitMq)
             {
                 x.UsingRabbitMq((context, cfg) =>

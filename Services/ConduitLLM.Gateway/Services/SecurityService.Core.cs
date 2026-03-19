@@ -1,119 +1,49 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Security.Options;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Security.Interfaces;
+using ConduitLLM.Security.Models;
+using ConduitLLM.Security.Options;
+using ConduitLLM.Security.Services;
 
 namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
-    /// Unified security service for Gateway API
+    /// Gateway-specific security service interface.
+    /// Extends the shared security service with Virtual Key rate limiting.
     /// </summary>
-    public interface ISecurityService
+    public interface IGatewaySecurityService : ConduitLLM.Security.Interfaces.ISecurityService
     {
         /// <summary>
-        /// Checks if a request is allowed based on all security rules
-        /// </summary>
-        Task<SecurityCheckResult> IsRequestAllowedAsync(HttpContext context);
-
-        /// <summary>
-        /// Records a failed authentication attempt for an IP
-        /// </summary>
-        Task RecordFailedAuthAsync(string ipAddress, string attemptedKey);
-
-        /// <summary>
-        /// Clears failed authentication attempts for an IP
-        /// </summary>
-        Task ClearFailedAuthAttemptsAsync(string ipAddress);
-
-        /// <summary>
-        /// Checks if an IP is banned due to failed authentication
-        /// </summary>
-        Task<bool> IsIpBannedAsync(string ipAddress);
-
-        /// <summary>
-        /// Checks Virtual Key rate limits
+        /// Checks Virtual Key rate limits (RPM and RPD)
         /// </summary>
         Task<RateLimitCheckResult> CheckVirtualKeyRateLimitAsync(HttpContext context, string virtualKeyId, string endpoint);
     }
 
     /// <summary>
-    /// Result of a security check
+    /// Implementation of security service for Gateway API.
+    /// Handles Virtual Key authentication, IP banning, rate limiting, IP filtering,
+    /// discovery-specific rate limits, and security event monitoring.
     /// </summary>
-    public class SecurityCheckResult
-    {
-        /// <summary>
-        /// Whether the request is allowed
-        /// </summary>
-        public bool IsAllowed { get; set; }
-        
-        /// <summary>
-        /// Reason for denial if not allowed
-        /// </summary>
-        public string Reason { get; set; } = "";
-        
-        /// <summary>
-        /// HTTP status code to return
-        /// </summary>
-        public int? StatusCode { get; set; }
-        
-        /// <summary>
-        /// Additional headers to include in response
-        /// </summary>
-        public Dictionary<string, string> Headers { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Result of a rate limit check
-    /// </summary>
-    public class RateLimitCheckResult
-    {
-        /// <summary>
-        /// Whether the request is allowed
-        /// </summary>
-        public bool IsAllowed { get; set; }
-        
-        /// <summary>
-        /// Requests remaining in current window
-        /// </summary>
-        public int? Remaining { get; set; }
-        
-        /// <summary>
-        /// Total limit for the window
-        /// </summary>
-        public int? Limit { get; set; }
-        
-        /// <summary>
-        /// Window reset time
-        /// </summary>
-        public DateTime? ResetsAt { get; set; }
-    }
-
-    /// <summary>
-    /// Implementation of unified security service for Gateway API
-    /// </summary>
-    public partial class SecurityService : ISecurityService
+    public partial class SecurityService : SecurityServiceBase, IGatewaySecurityService
     {
         private readonly GatewaySecurityOptions _options;
         private readonly IConfiguration _configuration;
-        private readonly ILogger<SecurityService> _logger;
-        private readonly IMemoryCache _memoryCache;
-        private readonly IDistributedCache? _distributedCache;
         private readonly IServiceProvider _serviceProvider;
         private readonly ISecurityEventMonitoringService? _securityEventMonitoring;
 
-        // Cache keys - same as WebAdmin/Admin for shared tracking
-        private const string RATE_LIMIT_PREFIX = "rate_limit:";
-        private const string FAILED_LOGIN_PREFIX = "failed_login:";
-        private const string BAN_PREFIX = "ban:";
-        private const string VKEY_RATE_LIMIT_PREFIX = "vkey_rate:";
+        // Gateway-specific cache prefix
+        private const string VkeyRateLimitPrefix = "vkey_rate:";
 
-        // Service identifier for tracking
-        private const string SERVICE_NAME = "core-api";
+        /// <inheritdoc/>
+        protected override string ServiceName => "core-api";
+
+        /// <inheritdoc/>
+        protected override SecurityOptionsBase Options => _options;
 
         /// <summary>
-        /// Initializes a new instance of the SecurityService
+        /// Initializes a new instance of the Gateway SecurityService
         /// </summary>
         public SecurityService(
             IOptions<GatewaySecurityOptions> options,
@@ -121,18 +51,16 @@ namespace ConduitLLM.Gateway.Services
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
             IServiceProvider serviceProvider)
+            : base(logger, memoryCache, serviceProvider.GetService<IDistributedCache>())
         {
             _options = options.Value;
             _configuration = configuration;
-            _logger = logger;
-            _memoryCache = memoryCache;
-            _distributedCache = serviceProvider.GetService<IDistributedCache>();
             _serviceProvider = serviceProvider;
             _securityEventMonitoring = serviceProvider.GetService<ISecurityEventMonitoringService>();
         }
 
         /// <inheritdoc/>
-        public async Task<SecurityCheckResult> IsRequestAllowedAsync(HttpContext context)
+        public override async Task<SecurityCheckResult> IsRequestAllowedAsync(HttpContext context)
         {
             var clientIp = GetClientIpAddress(context);
             var path = context.Request.Path.Value ?? "";
@@ -140,52 +68,42 @@ namespace ConduitLLM.Gateway.Services
             // Skip security checks for excluded paths
             if (IsPathExcluded(path, new List<string> { "/health", "/metrics" }))
             {
-                return new SecurityCheckResult { IsAllowed = true };
+                return SecurityCheckResult.Allowed();
             }
 
             // Check if authentication failed (set by VirtualKeyAuthenticationHandler)
             if (context.Items.ContainsKey("FailedAuth") && context.Items["FailedAuth"] is bool failedAuth && failedAuth)
             {
-                // Record the failed attempt
                 var attemptedKey = context.Items["AttemptedKey"] as string ?? "unknown";
                 await RecordFailedAuthAsync(clientIp, attemptedKey);
-                
-                // Record in security event monitoring
                 _securityEventMonitoring?.RecordAuthenticationFailure(clientIp, attemptedKey, path);
             }
 
-            // Check if IP is banned due to failed authentication
+            // Check if IP is banned
             if (await IsIpBannedAsync(clientIp))
             {
-                return new SecurityCheckResult
-                {
-                    IsAllowed = false,
-                    Reason = "IP is banned due to excessive failed authentication attempts",
-                    StatusCode = 403
-                };
+                return SecurityCheckResult.Denied("IP is banned due to excessive failed authentication attempts");
             }
 
-            // If authentication succeeded, clear failed attempts for this IP
+            // If authentication succeeded, clear failed attempts
             if (context.Items.ContainsKey("AuthSuccess") && context.Items["AuthSuccess"] is bool authSuccess && authSuccess)
             {
                 await ClearFailedAuthAttemptsAsync(clientIp);
-                
-                // Record successful authentication
                 var virtualKey = context.Items["VirtualKey"] as string ?? "";
                 _securityEventMonitoring?.RecordAuthenticationSuccess(clientIp, virtualKey, path);
             }
 
-            // Check IP-based rate limiting (if enabled)
+            // Check IP-based rate limiting
             if (_options.RateLimiting.Enabled && !IsPathExcluded(path, _options.RateLimiting.ExcludedPaths))
             {
-                var rateLimitResult = await CheckIpRateLimitAsync(clientIp, path);
+                var rateLimitResult = await CheckIpRateLimitWithDiscoveryAsync(clientIp, path);
                 if (!rateLimitResult.IsAllowed)
                 {
                     return rateLimitResult;
                 }
             }
 
-            // Check IP filtering (if enabled)
+            // Check IP filtering
             if (_options.IpFiltering.Enabled && !IsPathExcluded(path, _options.IpFiltering.ExcludedPaths))
             {
                 var ipFilterResult = await CheckIpFilterAsync(clientIp);
@@ -195,14 +113,14 @@ namespace ConduitLLM.Gateway.Services
                 }
             }
 
-            // Check Virtual Key rate limits (if authenticated and enabled)
+            // Check Virtual Key rate limits
             if (_options.VirtualKey.EnforceRateLimits && context.Items.ContainsKey("VirtualKeyEntity"))
             {
                 var virtualKey = context.Items["VirtualKeyEntity"] as VirtualKey;
                 if (virtualKey != null && (virtualKey.RateLimitRpm.HasValue || virtualKey.RateLimitRpd.HasValue))
                 {
-                    var vkeyRateLimitResult = await CheckVirtualKeyRateLimitAsync(context, virtualKey.Id.ToString(), path);
-                    if (!vkeyRateLimitResult.IsAllowed)
+                    var vkeyResult = await CheckVirtualKeyRateLimitAsync(context, virtualKey.Id.ToString(), path);
+                    if (!vkeyResult.IsAllowed)
                     {
                         return new SecurityCheckResult
                         {
@@ -211,16 +129,38 @@ namespace ConduitLLM.Gateway.Services
                             StatusCode = 429,
                             Headers = new Dictionary<string, string>
                             {
-                                ["X-RateLimit-Limit"] = vkeyRateLimitResult.Limit?.ToString() ?? "0",
-                                ["X-RateLimit-Remaining"] = vkeyRateLimitResult.Remaining?.ToString() ?? "0",
-                                ["X-RateLimit-Reset"] = vkeyRateLimitResult.ResetsAt?.ToUnixTimeSeconds().ToString() ?? ""
+                                ["X-RateLimit-Limit"] = vkeyResult.Limit?.ToString() ?? "0",
+                                ["X-RateLimit-Remaining"] = vkeyResult.Remaining?.ToString() ?? "0",
+                                ["X-RateLimit-Reset"] = vkeyResult.ResetsAt?.ToUnixTimeSeconds().ToString() ?? ""
                             }
                         };
                     }
                 }
             }
 
-            return new SecurityCheckResult { IsAllowed = true };
+            return SecurityCheckResult.Allowed();
+        }
+
+        /// <inheritdoc/>
+        protected override void OnIpBanned(string ipAddress, BannedIpInfo banInfo, int attempts)
+        {
+            _securityEventMonitoring?.RecordIpBan(ipAddress, banInfo.Reason, attempts);
+        }
+
+        /// <inheritdoc/>
+        protected override async Task<SecurityCheckResult> CheckDatabaseIpFilterAsync(string ipAddress)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var ipFilterService = scope.ServiceProvider.GetRequiredService<Interfaces.IIpFilterService>();
+            var isAllowedByDb = await ipFilterService.IsIpAllowedAsync(ipAddress);
+
+            if (!isAllowedByDb)
+            {
+                Logger.LogWarning("IP {IpAddress} blocked by database IP filter", ipAddress);
+                return SecurityCheckResult.Denied("IP address not allowed");
+            }
+
+            return SecurityCheckResult.Allowed();
         }
     }
 }

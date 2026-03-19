@@ -67,10 +67,6 @@ public partial class Program
                     tags: new[] { "leader_election", "background_services", "distributed" });
             }
 
-            // Audio health checks removed per YAGNI principle
-            
-            // Add advanced health monitoring checks (includes SignalR and HTTP connection pool checks)
-            healthChecksBuilder.AddAdvancedHealthMonitoring(builder.Configuration);
         }
 
         // Add health monitoring services

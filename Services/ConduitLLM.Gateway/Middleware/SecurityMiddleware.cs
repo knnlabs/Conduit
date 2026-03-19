@@ -1,8 +1,7 @@
-using ConduitLLM.Core.Utilities;
-using ConduitLLM.Gateway.Services;
 using ConduitLLM.Security.Interfaces;
 using ConduitLLM.Security.Middleware;
-using SecurityModels = ConduitLLM.Security.Models;
+using ConduitLLM.Security.Models;
+using ISecurityService = ConduitLLM.Security.Interfaces.ISecurityService;
 
 namespace ConduitLLM.Gateway.Middleware
 {
@@ -28,34 +27,18 @@ namespace ConduitLLM.Gateway.Middleware
         public async Task InvokeAsync(HttpContext context, ISecurityService securityService, ISecurityEventMonitoringService? securityEventMonitoring = null)
         {
             _securityEventMonitoring = securityEventMonitoring;
-
-            await ProcessRequestAsync(context, async ctx =>
-            {
-                var result = await securityService.IsRequestAllowedAsync(ctx);
-
-                // Gateway SecurityCheckResult already has Headers, convert to shared type
-                return new SecurityModels.SecurityCheckResult
-                {
-                    IsAllowed = result.IsAllowed,
-                    Reason = result.Reason,
-                    StatusCode = result.StatusCode,
-                    Headers = result.Headers
-                };
-            });
+            await ProcessRequestAsync(context, ctx => securityService.IsRequestAllowedAsync(ctx));
         }
 
         /// <summary>
         /// Logs granular security events and records them via the monitoring service.
-        /// Categorizes violations by type (auth failure, rate limit, access denied) for
-        /// structured log filtering and alerting.
         /// </summary>
-        protected override Task OnSecurityViolationAsync(HttpContext context, SecurityModels.SecurityCheckResult result, string clientIp)
+        protected override Task OnSecurityViolationAsync(HttpContext context, SecurityCheckResult result, string clientIp)
         {
             var method = context.Request.Method;
             var path = context.Request.Path.Value ?? "";
             var virtualKey = context.Items["AttemptedKey"] as string ?? "";
 
-            // Granular security event logging matching Admin service patterns
             switch (result.StatusCode)
             {
                 case 401:
@@ -95,7 +78,6 @@ namespace ConduitLLM.Gateway.Middleware
             }
             else if (!result.Reason.Contains("banned", StringComparison.OrdinalIgnoreCase))
             {
-                // IP bans are already recorded by SecurityService
                 _securityEventMonitoring.RecordSuspiciousActivity(clientIp, "Access Denied", result.Reason);
             }
 

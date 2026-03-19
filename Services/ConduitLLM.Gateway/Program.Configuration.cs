@@ -40,6 +40,5 @@ public partial class Program
             .Bind(builder.Configuration.GetSection("Conduit"))
             .ValidateDataAnnotations(); // Add validation if using DataAnnotations in settings classes
 
-        // Database settings loading removed - provider configuration is now entirely database-driven
     }
 }

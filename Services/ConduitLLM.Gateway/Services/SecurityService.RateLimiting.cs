@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Security.Models;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -10,7 +11,6 @@ namespace ConduitLLM.Gateway.Services
         /// <inheritdoc/>
         public async Task<RateLimitCheckResult> CheckVirtualKeyRateLimitAsync(HttpContext context, string virtualKeyId, string endpoint)
         {
-            // Get the Virtual Key entity from context to check its limits
             if (!context.Items.ContainsKey("VirtualKeyEntity"))
             {
                 return new RateLimitCheckResult { IsAllowed = true };
@@ -28,14 +28,14 @@ namespace ConduitLLM.Gateway.Services
             // Check RPM (Requests Per Minute) limit
             if (virtualKey.RateLimitRpm.HasValue && virtualKey.RateLimitRpm.Value > 0)
             {
-                var rpmKey = $"{VKEY_RATE_LIMIT_PREFIX}rpm:{virtualKeyId}";
-                var rpmCount = await GetRateLimitCountAsync(rpmKey, 60); // 60 seconds window
-                
+                var rpmKey = $"{VkeyRateLimitPrefix}rpm:{virtualKeyId}";
+                var rpmCount = await GetRateLimitCountAsync(rpmKey, 60);
+
                 if (rpmCount >= virtualKey.RateLimitRpm.Value)
                 {
-                    _logger.LogWarning("Virtual Key {KeyId} exceeded RPM limit: {Count}/{Limit}", 
+                    Logger.LogWarning("Virtual Key {KeyId} exceeded RPM limit: {Count}/{Limit}",
                         virtualKeyId, rpmCount, virtualKey.RateLimitRpm.Value);
-                    
+
                     result.IsAllowed = false;
                     result.Limit = virtualKey.RateLimitRpm.Value;
                     result.Remaining = 0;
@@ -43,7 +43,6 @@ namespace ConduitLLM.Gateway.Services
                     return result;
                 }
 
-                // Increment counter
                 await IncrementRateLimitCountAsync(rpmKey, 60);
                 result.Limit = virtualKey.RateLimitRpm.Value;
                 result.Remaining = virtualKey.RateLimitRpm.Value - (rpmCount + 1);
@@ -52,25 +51,23 @@ namespace ConduitLLM.Gateway.Services
             // Check RPD (Requests Per Day) limit
             if (virtualKey.RateLimitRpd.HasValue && virtualKey.RateLimitRpd.Value > 0)
             {
-                var rpdKey = $"{VKEY_RATE_LIMIT_PREFIX}rpd:{virtualKeyId}";
-                var rpdCount = await GetRateLimitCountAsync(rpdKey, 86400); // 24 hours in seconds
-                
+                var rpdKey = $"{VkeyRateLimitPrefix}rpd:{virtualKeyId}";
+                var rpdCount = await GetRateLimitCountAsync(rpdKey, 86400);
+
                 if (rpdCount >= virtualKey.RateLimitRpd.Value)
                 {
-                    _logger.LogWarning("Virtual Key {KeyId} exceeded RPD limit: {Count}/{Limit}", 
+                    Logger.LogWarning("Virtual Key {KeyId} exceeded RPD limit: {Count}/{Limit}",
                         virtualKeyId, rpdCount, virtualKey.RateLimitRpd.Value);
-                    
+
                     result.IsAllowed = false;
                     result.Limit = virtualKey.RateLimitRpd.Value;
                     result.Remaining = 0;
-                    result.ResetsAt = now.Date.AddDays(1); // Next day
+                    result.ResetsAt = now.Date.AddDays(1);
                     return result;
                 }
 
-                // Increment counter
                 await IncrementRateLimitCountAsync(rpdKey, 86400);
-                
-                // If we have RPM limit, that takes precedence for response headers
+
                 if (!virtualKey.RateLimitRpm.HasValue)
                 {
                     result.Limit = virtualKey.RateLimitRpd.Value;
@@ -84,15 +81,14 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task<int> GetRateLimitCountAsync(string key, int windowSeconds)
         {
-            if (_options.UseDistributedTracking && _distributedCache != null)
+            if (_options.UseDistributedTracking && DistributedCache != null)
             {
-                var cachedValue = await _distributedCache.GetStringAsync(key);
+                var cachedValue = await DistributedCache.GetStringAsync(key);
                 if (!string.IsNullOrEmpty(cachedValue))
                 {
                     if (int.TryParse(cachedValue, out var count))
                         return count;
-                    
-                    // Try to deserialize as complex object for backward compatibility
+
                     try
                     {
                         var data = JsonSerializer.Deserialize<RateLimitData>(cachedValue);
@@ -106,9 +102,9 @@ namespace ConduitLLM.Gateway.Services
             }
             else
             {
-                return _memoryCache.Get<int>(key);
+                return MemoryCache.Get<int>(key);
             }
-            
+
             return 0;
         }
 
@@ -117,9 +113,9 @@ namespace ConduitLLM.Gateway.Services
             var currentCount = await GetRateLimitCountAsync(key, windowSeconds);
             currentCount++;
 
-            if (_options.UseDistributedTracking && _distributedCache != null)
+            if (_options.UseDistributedTracking && DistributedCache != null)
             {
-                await _distributedCache.SetStringAsync(
+                await DistributedCache.SetStringAsync(
                     key,
                     currentCount.ToString(),
                     new DistributedCacheEntryOptions
@@ -129,11 +125,14 @@ namespace ConduitLLM.Gateway.Services
             }
             else
             {
-                _memoryCache.Set(key, currentCount, TimeSpan.FromSeconds(windowSeconds));
+                MemoryCache.Set(key, currentCount, TimeSpan.FromSeconds(windowSeconds));
             }
         }
 
-        private async Task<SecurityCheckResult> CheckIpRateLimitAsync(string ipAddress, string path = "")
+        /// <summary>
+        /// Checks IP rate limiting with discovery-specific overrides
+        /// </summary>
+        private async Task<SecurityCheckResult> CheckIpRateLimitWithDiscoveryAsync(string ipAddress, string path)
         {
             // Check discovery-specific rate limiting first
             if (_options.RateLimiting.Discovery.Enabled && IsDiscoveryPath(path))
@@ -145,97 +144,26 @@ namespace ConduitLLM.Gateway.Services
                 }
             }
 
-            // Check general IP rate limiting
-            var key = $"{RATE_LIMIT_PREFIX}{SERVICE_NAME}:{ipAddress}";
-            var now = DateTime.UtcNow;
-
-            // Get current request count
-            var requestCount = 0;
-            if (_options.UseDistributedTracking && _distributedCache != null)
-            {
-                var cachedValue = await _distributedCache.GetStringAsync(key);
-                if (!string.IsNullOrEmpty(cachedValue))
-                {
-                    var data = JsonSerializer.Deserialize<RateLimitData>(cachedValue);
-                    requestCount = data?.Count ?? 0;
-                }
-            }
-            else
-            {
-                requestCount = _memoryCache.Get<int>(key);
-            }
-
-            requestCount++;
-
-            if (requestCount > _options.RateLimiting.MaxRequests)
-            {
-                _logger.LogWarning("IP rate limit exceeded for {IpAddress}: {Count} requests in {Window} seconds",
-                    ipAddress, requestCount, _options.RateLimiting.WindowSeconds);
-
-                return new SecurityCheckResult
-                {
-                    IsAllowed = false,
-                    Reason = $"Rate limit exceeded for path {path}",
-                    StatusCode = 429,
-                    Headers = new Dictionary<string, string>
-                    {
-                        ["Retry-After"] = _options.RateLimiting.WindowSeconds.ToString(),
-                        ["X-RateLimit-Limit"] = _options.RateLimiting.MaxRequests.ToString(),
-                        ["X-RateLimit-Scope"] = "general"
-                    }
-                };
-            }
-
-            // Update the counter
-            var rateLimitData = new RateLimitData
-            {
-                Count = requestCount,
-                Source = SERVICE_NAME,
-                WindowStart = now
-            };
-
-            if (_options.UseDistributedTracking && _distributedCache != null)
-            {
-                await _distributedCache.SetStringAsync(
-                    key,
-                    JsonSerializer.Serialize(rateLimitData),
-                    new DistributedCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_options.RateLimiting.WindowSeconds)
-                    });
-            }
-            else
-            {
-                _memoryCache.Set(key, requestCount, TimeSpan.FromSeconds(_options.RateLimiting.WindowSeconds));
-            }
-
-            return new SecurityCheckResult { IsAllowed = true };
+            // Fall through to base IP rate limiting
+            return await CheckIpRateLimitAsync(ipAddress);
         }
 
-        /// <summary>
-        /// Checks if the path is a discovery-related endpoint
-        /// </summary>
         private bool IsDiscoveryPath(string path)
         {
             return _options.RateLimiting.Discovery.DiscoveryPaths
                 .Any(discoveryPath => path.Contains(discoveryPath, StringComparison.OrdinalIgnoreCase));
         }
 
-        /// <summary>
-        /// Checks discovery-specific rate limits
-        /// </summary>
         private async Task<SecurityCheckResult> CheckDiscoveryRateLimitAsync(string ipAddress, string path)
         {
-            var discoveryKey = $"{RATE_LIMIT_PREFIX}discovery:{ipAddress}";
-            var now = DateTime.UtcNow;
+            var discoveryKey = $"{RateLimitPrefix}discovery:{ipAddress}";
 
-            // Get current discovery request count
             var discoveryCount = await GetRateLimitCountAsync(discoveryKey, _options.RateLimiting.Discovery.WindowSeconds);
             discoveryCount++;
 
             if (discoveryCount > _options.RateLimiting.Discovery.MaxRequests)
             {
-                _logger.LogWarning("Discovery rate limit exceeded for {IpAddress}: {Count} requests in {Window} seconds for path {Path}",
+                Logger.LogWarning("Discovery rate limit exceeded for {IpAddress}: {Count} requests in {Window} seconds for path {Path}",
                     ipAddress, discoveryCount, _options.RateLimiting.Discovery.WindowSeconds, path);
 
                 return new SecurityCheckResult
@@ -253,7 +181,7 @@ namespace ConduitLLM.Gateway.Services
                 };
             }
 
-            // Check per-model capability rate limiting for capability endpoints
+            // Check per-model capability rate limiting
             if (path.Contains("/capabilities/", StringComparison.OrdinalIgnoreCase))
             {
                 var modelMatch = ExtractModelFromPath(path);
@@ -267,26 +195,20 @@ namespace ConduitLLM.Gateway.Services
                 }
             }
 
-            // Increment discovery counter
             await IncrementRateLimitCountAsync(discoveryKey, _options.RateLimiting.Discovery.WindowSeconds);
-
-            return new SecurityCheckResult { IsAllowed = true };
+            return SecurityCheckResult.Allowed();
         }
 
-        /// <summary>
-        /// Checks per-model capability rate limits
-        /// </summary>
         private async Task<SecurityCheckResult> CheckModelCapabilityRateLimitAsync(string ipAddress, string modelName)
         {
-            var capabilityKey = $"{RATE_LIMIT_PREFIX}capability:{ipAddress}:{modelName}";
-            var now = DateTime.UtcNow;
+            var capabilityKey = $"{RateLimitPrefix}capability:{ipAddress}:{modelName}";
 
             var capabilityCount = await GetRateLimitCountAsync(capabilityKey, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
             capabilityCount++;
 
             if (capabilityCount > _options.RateLimiting.Discovery.MaxCapabilityChecksPerModel)
             {
-                _logger.LogWarning("Model capability rate limit exceeded for {IpAddress} and model {Model}: {Count} requests in {Window} seconds",
+                Logger.LogWarning("Model capability rate limit exceeded for {IpAddress} and model {Model}: {Count} requests in {Window} seconds",
                     ipAddress, modelName, capabilityCount, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
 
                 return new SecurityCheckResult
@@ -304,25 +226,19 @@ namespace ConduitLLM.Gateway.Services
                 };
             }
 
-            // Increment capability counter
             await IncrementRateLimitCountAsync(capabilityKey, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
-
-            return new SecurityCheckResult { IsAllowed = true };
+            return SecurityCheckResult.Allowed();
         }
 
-        /// <summary>
-        /// Extracts model name from capability path
-        /// </summary>
-        private string ExtractModelFromPath(string path)
+        private static string ExtractModelFromPath(string path)
         {
             try
             {
-                // Match patterns like /v1/discovery/models/{model}/capabilities/{capability}
                 var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 for (int i = 0; i < segments.Length - 2; i++)
                 {
-                    if (segments[i].Equals("models", StringComparison.OrdinalIgnoreCase) && 
-                        i + 2 < segments.Length && 
+                    if (segments[i].Equals("models", StringComparison.OrdinalIgnoreCase) &&
+                        i + 2 < segments.Length &&
                         segments[i + 2].Equals("capabilities", StringComparison.OrdinalIgnoreCase))
                     {
                         return segments[i + 1];

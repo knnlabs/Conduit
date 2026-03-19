@@ -55,8 +55,6 @@ public partial class Program
             x.AddConsumer<ConduitLLM.Gateway.Consumers.ModelCostCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Gateway.Consumers.ProviderToolCacheInvalidationHandler>();
             
-            // Navigation state event consumers removed - WebAdmin uses React Query instead of SignalR for model mapping updates
-
             // Add cache invalidation consumers for runtime configuration updates
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ModelCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ProviderCacheInvalidationHandler>();
@@ -77,9 +75,6 @@ public partial class Program
             // Add batch spend flush handler for admin operations and integration testing
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.BatchSpendFlushRequestedHandler>();
             
-            // Note: Media lifecycle consumers moved to Admin API
-            // See ConduitLLM.Admin.Consumers.MediaRetentionConsumer and MediaDeletionConsumer
-
             if (useRabbitMq)
             {
                 x.UsingRabbitMq((context, cfg) =>
@@ -158,9 +153,6 @@ public partial class Program
                         // This ensures VideoGenerationRequested events are routed to this endpoint
                         e.ConfigureConsumeTopology = true;
                         e.SetQuorumQueue();
-                        // Note: Removed x-single-active-consumer as it conflicts with partitioned processing
-                        // Ordering is maintained through partition keys in the event messages
-                        
                         // Retry policy for transient failures
                         e.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)));
                         
@@ -213,9 +205,6 @@ public partial class Program
                         
                         e.ConfigureConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>(context);
                     });
-
-                    // Note: Media lifecycle endpoints moved to Admin API
-                    // Retention checks, cleanup batches, and deletion are now handled by Admin API consumers
 
                     // Configure remaining endpoints with automatic topology
                     cfg.ConfigureEndpoints(context);

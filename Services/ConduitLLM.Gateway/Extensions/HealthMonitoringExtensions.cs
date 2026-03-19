@@ -54,8 +54,6 @@ namespace ConduitLLM.Gateway.Extensions
                 provider.GetRequiredService<ISecurityEventMonitoringService>() as ConduitLLM.Security.Services.SecurityEventMonitoringService
                 ?? throw new InvalidOperationException("SecurityEventMonitoringService not registered correctly"));
 
-            // System resources health check removed per YAGNI principle
-
             // Register notification services
             services.Configure<AlertNotificationOptions>(configuration.GetSection("HealthMonitoring:Notifications"));
             services.Configure<WebhookNotificationOptions>(configuration.GetSection("HealthMonitoring:Notifications:Webhook"));
@@ -81,16 +79,5 @@ namespace ConduitLLM.Gateway.Extensions
             return services;
         }
 
-        /// <summary>
-        /// Adds advanced health monitoring checks (currently empty - removed unnecessary checks)
-        /// </summary>
-        public static IHealthChecksBuilder AddAdvancedHealthMonitoring(
-            this IHealthChecksBuilder healthChecksBuilder,
-            IConfiguration configuration)
-        {
-            // All advanced health checks have been removed per YAGNI principle
-            // Basic health checks are sufficient for monitoring service health
-            return healthChecksBuilder;
-        }
     }
 }

@@ -20,7 +20,6 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
-        private readonly ICacheManagementService? _cacheManagementService;
         private readonly ILLMCacheManagementService _llmCacheManagementService;
 
         /// <summary>
@@ -30,21 +29,18 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
         /// <param name="configuration">Application configuration.</param>
-        /// <param name="cacheManagementService">Service for cache maintenance operations (optional - required only for general cache endpoints).</param>
         /// <param name="llmCacheManagementService">Service for LLM cache toggle operations.</param>
         public ConfigurationController(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ConfigurationController> logger,
             IMemoryCache cache,
             IConfiguration configuration,
-            ILLMCacheManagementService llmCacheManagementService,
-            ICacheManagementService? cacheManagementService = null)
+            ILLMCacheManagementService llmCacheManagementService)
             : base(logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _cacheManagementService = cacheManagementService; // Optional - may be null
             _llmCacheManagementService = llmCacheManagementService ?? throw new ArgumentNullException(nameof(llmCacheManagementService));
         }
 
@@ -114,208 +110,6 @@ namespace ConduitLLM.Admin.Controllers
                 },
                 Ok,
                 "GetRoutingConfig");
-        }
-
-        /// <summary>
-        /// Gets caching configuration and statistics.
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Caching configuration data.</returns>
-        [HttpGet("caching")]
-        public Task<IActionResult> GetCachingConfig(CancellationToken cancellationToken = default)
-        {
-            if (_cacheManagementService == null)
-            {
-                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
-            }
-
-            return ExecuteAsync(
-                () => _cacheManagementService.GetConfigurationAsync(cancellationToken),
-                Ok,
-                "GetCachingConfig");
-        }
-
-
-        /// <summary>
-        /// Updates caching configuration.
-        /// </summary>
-        /// <param name="config">Updated caching configuration.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Success response.</returns>
-        [HttpPut("caching")]
-        public Task<IActionResult> UpdateCachingConfig([FromBody] UpdateCacheConfigDto config, CancellationToken cancellationToken = default)
-        {
-            if (_cacheManagementService == null)
-            {
-                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
-            }
-
-            return ExecuteAsync(
-                async () =>
-                {
-                    await _cacheManagementService.UpdateConfigurationAsync(config, cancellationToken);
-                    LogAdminAudit("Updated", "CachingConfig");
-                },
-                Ok(new { message = "Caching configuration updated successfully" }),
-                "UpdateCachingConfig");
-        }
-
-        /// <summary>
-        /// Clears specific cache by ID.
-        /// </summary>
-        /// <param name="cacheId">Cache policy ID.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Success response.</returns>
-        [HttpPost("caching/{cacheId}/clear")]
-        public Task<IActionResult> ClearCache(string cacheId, CancellationToken cancellationToken = default)
-        {
-            if (_cacheManagementService == null)
-            {
-                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
-            }
-
-            return ExecuteAsync(
-                async () =>
-                {
-                    await _cacheManagementService.ClearCacheAsync(cacheId, cancellationToken);
-                    LogAdminAudit("Cleared", "Cache", cacheId);
-                    return new { message = $"Cache '{cacheId}' cleared successfully" };
-                },
-                Ok,
-                "ClearCache",
-                new { CacheId = cacheId });
-        }
-
-        /// <summary>
-        /// Gets cache statistics for all regions or a specific region.
-        /// </summary>
-        /// <param name="regionId">Optional region ID.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Cache statistics.</returns>
-        [HttpGet("caching/statistics")]
-        public Task<IActionResult> GetCacheStatistics([FromQuery] string? regionId = null, CancellationToken cancellationToken = default)
-        {
-            if (_cacheManagementService == null)
-            {
-                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
-            }
-
-            return ExecuteAsync(
-                () => _cacheManagementService.GetStatisticsAsync(regionId, cancellationToken),
-                Ok,
-                "GetCacheStatistics",
-                new { RegionId = regionId });
-        }
-
-        /// <summary>
-        /// Lists all cache regions.
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>List of cache regions.</returns>
-        [HttpGet("caching/regions")]
-        public Task<IActionResult> GetCacheRegions(CancellationToken cancellationToken = default)
-        {
-            if (_cacheManagementService == null)
-            {
-                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
-            }
-
-            return ExecuteAsync(
-                async () =>
-                {
-                    var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
-                    return (object)new
-                    {
-                        Regions = configuration.CacheRegions,
-                        Timestamp = DateTime.UtcNow
-                    };
-                },
-                Ok,
-                "GetCacheRegions");
-        }
-
-        /// <summary>
-        /// Gets entries from a specific cache region.
-        /// </summary>
-        /// <param name="regionId">Region ID.</param>
-        /// <param name="skip">Number of entries to skip.</param>
-        /// <param name="take">Number of entries to return.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Cache entries.</returns>
-        [HttpGet("caching/{regionId}/entries")]
-        public Task<IActionResult> GetCacheEntries(string regionId, [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken cancellationToken = default)
-        {
-            if (_cacheManagementService == null)
-            {
-                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
-            }
-
-            if (take > 1000)
-            {
-                return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("Cannot retrieve more than 1000 entries at once")));
-            }
-
-            return ExecuteAsync(
-                () => _cacheManagementService.GetEntriesAsync(regionId, skip, take, cancellationToken),
-                Ok,
-                "GetCacheEntries",
-                new { RegionId = regionId });
-        }
-
-        /// <summary>
-        /// Forces a refresh of cache entries in a region.
-        /// </summary>
-        /// <param name="regionId">Region ID.</param>
-        /// <param name="key">Optional specific key to refresh.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Success response.</returns>
-        [HttpPost("caching/{regionId}/refresh")]
-        public Task<IActionResult> RefreshCache(string regionId, [FromQuery] string? key = null, CancellationToken cancellationToken = default)
-        {
-            if (_cacheManagementService == null)
-            {
-                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
-            }
-
-            return ExecuteAsync(
-                async () =>
-                {
-                    await _cacheManagementService.RefreshCacheAsync(regionId, key, cancellationToken);
-                    LogAdminAudit("Refreshed", "Cache", regionId, key != null ? $"Key: {key}" : null);
-                    var message = string.IsNullOrEmpty(key)
-                        ? $"Cache region '{regionId}' refreshed successfully"
-                        : $"Cache key '{key}' in region '{regionId}' refreshed successfully";
-                    return new { message };
-                },
-                Ok,
-                "RefreshCache",
-                new { RegionId = regionId, Key = key });
-        }
-
-        /// <summary>
-        /// Updates the policy for a specific cache region.
-        /// </summary>
-        /// <param name="regionId">Region ID.</param>
-        /// <param name="policyUpdate">Policy update details.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Success response.</returns>
-        [HttpPut("caching/{regionId}/policy")]
-        public Task<IActionResult> UpdateCachePolicy(string regionId, [FromBody] UpdateCachePolicyDto policyUpdate, CancellationToken cancellationToken = default)
-        {
-            if (_cacheManagementService == null)
-            {
-                return Task.FromResult<IActionResult>(StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." }));
-            }
-
-            return ExecuteAsync(
-                async () =>
-                {
-                    await _cacheManagementService.UpdatePolicyAsync(regionId, policyUpdate, cancellationToken);
-                    LogAdminAudit("Updated", "CachePolicy", regionId);
-                },
-                Ok(new { message = $"Cache policy for region '{regionId}' updated successfully" }),
-                "UpdateCachePolicy",
-                new { RegionId = regionId });
         }
 
         private async Task<List<object>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)

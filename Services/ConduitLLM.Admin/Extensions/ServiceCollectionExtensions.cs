@@ -29,8 +29,10 @@ public static class ServiceCollectionExtensions
         // Configure security options from environment variables
         services.ConfigureAdminSecurityOptions(configuration);
 
-        // Register security service as singleton (optional deps use default parameter values)
-        services.AddSingleton<ISecurityService, SecurityService>();
+        // Register security service as singleton for both shared and admin-specific interfaces
+        services.AddSingleton<Admin.Services.SecurityService>();
+        services.AddSingleton<ConduitLLM.Security.Interfaces.ISecurityService>(sp => sp.GetRequiredService<Admin.Services.SecurityService>());
+        services.AddSingleton<IAdminSecurityService>(sp => sp.GetRequiredService<Admin.Services.SecurityService>());
 
         // Add memory cache if not already registered
         services.AddMemoryCache();
@@ -173,8 +175,6 @@ public static class ServiceCollectionExtensions
             EnableMultipleHttp2Connections = true
         });
 
-        // Model discovery providers have been removed - capabilities now come from ModelProviderMapping
-
         // Register Media Services using shared configuration from Core
         services.AddMediaServices(configuration);
 
@@ -187,11 +187,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostCalculationService, ConduitLLM.Functions.Services.FunctionCostCalculationService>();
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionClientFactory, ConduitLLM.Functions.Services.FunctionClientFactory>();
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionExecutionService, ConduitLLM.Functions.Services.FunctionExecutionService>();
-
-        // NOTE: ICacheManagementService registration is commented out because it requires
-        // cache infrastructure services (ICacheRegistry, ICacheStatisticsCollector, ICachePolicyEngine)
-        // that are not currently implemented. General cache management endpoints will return 501.
-        // services.AddScoped<ICacheManagementService, CacheManagementService>();
 
         // Register billing audit service for comprehensive billing event tracking - with leader election
         services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();

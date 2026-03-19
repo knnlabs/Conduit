@@ -119,13 +119,8 @@ public partial class Program
                 options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeySignalRRateLimitFilter>();
             });
 
-        // Navigation state notification service removed - WebAdmin uses React Query instead of SignalR for model mapping updates
-
         // Register settings refresh service for runtime configuration updates
         builder.Services.AddSingleton<ISettingsRefreshService, SettingsRefreshService>();
-
-        // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
-        // Migration: 20250827194408_ConsolidateMediaTables.cs
 
         // Register video generation notification service
         builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerationNotificationService>();
@@ -141,8 +136,6 @@ public partial class Program
 
         // Register usage analytics notification service
         builder.Services.AddSingleton<IUsageAnalyticsNotificationService, UsageAnalyticsNotificationService>();
-
-        // Model discovery notification services removed - capabilities now come from ModelProviderMapping
 
         // Register billing alerting service for critical failure notifications
         builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAlertingService, ConduitLLM.Configuration.Services.BillingAlertingService>();

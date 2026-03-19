@@ -20,8 +20,10 @@ namespace ConduitLLM.Gateway.Extensions
             // Note: Distributed cache should be registered in Program.cs before calling this method
             // to ensure proper Redis configuration for production environments
 
-            // Register security service (all deps resolved by DI, including IServiceProvider)
-            services.AddSingleton<ISecurityService, SecurityService>();
+            // Register security service for both shared and gateway-specific interfaces
+            services.AddSingleton<SecurityService>();
+            services.AddSingleton<ConduitLLM.Security.Interfaces.ISecurityService>(sp => sp.GetRequiredService<SecurityService>());
+            services.AddSingleton<IGatewaySecurityService>(sp => sp.GetRequiredService<SecurityService>());
             
             // Register IP filter service as scoped since it depends on scoped repository
             services.AddScoped<IIpFilterService, IpFilterService>();

@@ -1,7 +1,7 @@
-using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Security.Middleware;
-using SecurityModels = ConduitLLM.Security.Models;
+using ConduitLLM.Security.Models;
+using ISecurityService = ConduitLLM.Security.Interfaces.ISecurityService;
 
 namespace ConduitLLM.Admin.Middleware
 {
@@ -24,32 +24,13 @@ namespace ConduitLLM.Admin.Middleware
         /// </summary>
         public async Task InvokeAsync(HttpContext context, ISecurityService securityService)
         {
-            await ProcessRequestAsync(context, async ctx =>
-            {
-                var result = await securityService.IsRequestAllowedAsync(ctx);
-
-                // Convert Admin SecurityCheckResult to shared SecurityCheckResult
-                return new SecurityModels.SecurityCheckResult
-                {
-                    IsAllowed = result.IsAllowed,
-                    Reason = result.Reason,
-                    StatusCode = result.StatusCode,
-                    // Admin doesn't have Headers, but we can add rate limit headers here
-                    Headers = result.StatusCode == 429
-                        ? new Dictionary<string, string>
-                        {
-                            ["Retry-After"] = "60",
-                            ["X-RateLimit-Limit"] = "100"
-                        }
-                        : new Dictionary<string, string>()
-                };
-            });
+            await ProcessRequestAsync(context, ctx => securityService.IsRequestAllowedAsync(ctx));
         }
 
         /// <summary>
         /// Logs granular security events distinguishing auth failures, rate limits, and IP blocks.
         /// </summary>
-        protected override Task OnSecurityViolationAsync(HttpContext context, SecurityModels.SecurityCheckResult result, string clientIp)
+        protected override Task OnSecurityViolationAsync(HttpContext context, SecurityCheckResult result, string clientIp)
         {
             var method = context.Request.Method;
             var path = context.Request.Path.Value ?? "";
