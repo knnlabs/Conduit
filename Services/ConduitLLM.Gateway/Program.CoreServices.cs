@@ -19,13 +19,11 @@ public partial class Program
 
         // Add leader election service for distributed background service coordination
         builder.Services.AddLeaderElection();
-        Console.WriteLine("[Conduit] Leader election service configured for background service coordination");
 
         // Global settings cache service - loads settings at startup and provides fast access
         builder.Services.AddSingleton<IGlobalSettingsCacheService, GlobalSettingsCacheService>();
         builder.Services.AddHostedService(provider => provider.GetRequiredService<IGlobalSettingsCacheService>() as GlobalSettingsCacheService
             ?? throw new InvalidOperationException("GlobalSettingsCacheService must be registered as singleton"));
-        Console.WriteLine("[Conduit] Global settings cache service configured");
 
         // Rate Limiter registration
         builder.Services.AddRateLimiter(options =>
@@ -81,7 +79,6 @@ public partial class Program
 
         // Add Provider Registry - single source of truth for provider metadata
         builder.Services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
-        Console.WriteLine("[ConduitLLM.Gateway] Provider Registry registered - centralized provider metadata management enabled");
 
         // Provider error tracking service
         builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
@@ -93,7 +90,6 @@ public partial class Program
         // ========== Billing & Pricing ==========
 
         builder.Services.AddBillingAndPricingServices();
-        Console.WriteLine("[Conduit] Pricing rules engine services registered");
 
         // ========== Token Management ==========
 
@@ -119,7 +115,6 @@ public partial class Program
             var logger = provider.GetRequiredService<ILogger<CachedModelProviderMappingService>>();
             return new CachedModelProviderMappingService(innerService, cacheManager, logger);
         });
-        Console.WriteLine("[Conduit] Model provider mapping service registered with caching - reduces database queries by 80-95%");
 
         builder.Services.AddScoped<IProviderService, ConduitLLM.Configuration.ProviderService>();
 
@@ -184,7 +179,6 @@ public partial class Program
 
         // Register Function Discovery Cache service for function tool definition caching
         builder.Services.AddFunctionDiscoveryCache(builder.Configuration);
-        Console.WriteLine("[Conduit] Function Discovery Cache registered - function tool definitions will be cached based on per-function TTL");
 
         // Register Redis batch operations for optimized cache management
         builder.Services.AddSingleton<IRedisBatchOperations, RedisBatchOperations>();

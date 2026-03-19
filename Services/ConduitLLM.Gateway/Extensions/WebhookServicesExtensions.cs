@@ -129,8 +129,8 @@ public static class WebhookServicesExtensions
                 KeepAlivePingTimeout = TimeSpan.FromSeconds(20),
                 KeepAlivePingDelay = TimeSpan.FromSeconds(30)
             })
-            .AddPolicyHandler(GetWebhookRetryPolicy())
-            .AddPolicyHandler(GetWebhookCircuitBreakerPolicy())
+            .AddPolicyHandler((sp, _) => GetWebhookRetryPolicy(sp.GetRequiredService<ILogger<WebhookNotificationService>>()))
+            .AddPolicyHandler((sp, _) => GetWebhookCircuitBreakerPolicy(sp.GetRequiredService<ILogger<WebhookNotificationService>>()))
             .AddHttpMessageHandler<WebhookMetricsHandler>();
 
         return services;
@@ -139,7 +139,7 @@ public static class WebhookServicesExtensions
     /// <summary>
     /// Polly retry policy for webhook delivery
     /// </summary>
-    private static IAsyncPolicy<HttpResponseMessage> GetWebhookRetryPolicy()
+    private static IAsyncPolicy<HttpResponseMessage> GetWebhookRetryPolicy(ILogger logger)
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
@@ -149,14 +149,15 @@ public static class WebhookServicesExtensions
                 retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 onRetry: (outcome, timespan, retryCount, context) =>
                 {
-                    Console.WriteLine($"[Webhook Retry] Attempt {retryCount} after {timespan.TotalMilliseconds}ms. Status: {outcome.Result?.StatusCode.ToString() ?? "N/A"}");
+                    logger.LogWarning("Webhook retry attempt {RetryCount} after {DelayMs}ms. Status: {StatusCode}",
+                        retryCount, timespan.TotalMilliseconds, outcome.Result?.StatusCode.ToString() ?? "N/A");
                 });
     }
 
     /// <summary>
     /// Polly circuit breaker policy for webhook delivery
     /// </summary>
-    private static IAsyncPolicy<HttpResponseMessage> GetWebhookCircuitBreakerPolicy()
+    private static IAsyncPolicy<HttpResponseMessage> GetWebhookCircuitBreakerPolicy(ILogger logger)
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
@@ -165,11 +166,11 @@ public static class WebhookServicesExtensions
                 durationOfBreak: TimeSpan.FromMinutes(1),
                 onBreak: (result, duration) =>
                 {
-                    Console.WriteLine($"[Webhook Circuit Breaker] Opened for {duration.TotalSeconds} seconds");
+                    logger.LogWarning("Webhook circuit breaker opened for {DurationSeconds} seconds", duration.TotalSeconds);
                 },
                 onReset: () =>
                 {
-                    Console.WriteLine("[Webhook Circuit Breaker] Reset");
+                    logger.LogInformation("Webhook circuit breaker reset");
                 });
     }
 }

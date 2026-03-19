@@ -104,6 +104,10 @@ public static class ExceptionToResponseMapper
                 => new(408, "Request timed out", "timeout", LogLevel.Warning,
                     "Request timeout", false, "timeout_error"),
 
+            NotSupportedException
+                => new(400, "The requested feature is not supported", "not_supported", LogLevel.Warning,
+                    "Not supported", false, "invalid_request_error"),
+
             NotImplementedException
                 => new(501, "Feature not implemented", "not_implemented", LogLevel.Warning,
                     "Not implemented", false, "server_error"),

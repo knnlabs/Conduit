@@ -157,20 +157,7 @@ namespace ConduitLLM.Gateway
                 }).RequireAuthorization("AdminPolicy");
             });
 
-            // Log application startup
-            lifetime.ApplicationStarted.Register(() =>
-            {
-                // Log.Information("Conduit Audio Service started successfully in {Environment} environment", 
-                //     env.EnvironmentName);
-                Console.WriteLine($"Conduit Audio Service started successfully in {env.EnvironmentName} environment");
-            });
-
-            // Log application stopping
-            lifetime.ApplicationStopping.Register(() =>
-            {
-                // Log.Information("Conduit Audio Service is shutting down");
-                Console.WriteLine("Conduit Audio Service is shutting down");
-            });
+            // Application lifecycle logging handled by the framework
         }
     }
 }

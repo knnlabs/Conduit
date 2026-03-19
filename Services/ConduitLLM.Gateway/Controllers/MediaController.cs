@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -13,17 +14,16 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/media")]
     [Authorize]
-    public class MediaController : ControllerBase
+    public class MediaController : GatewayControllerBase
     {
         private readonly IMediaStorageService _storageService;
-        private readonly ILogger<MediaController> _logger;
 
         public MediaController(
             IMediaStorageService storageService,
             ILogger<MediaController> logger)
+            : base(logger)
         {
             _storageService = storageService;
-            _logger = logger;
         }
 
         /// <summary>
@@ -36,16 +36,16 @@ namespace ConduitLLM.Gateway.Controllers
         [Authorize]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(524288000)] // 500MB limit
-        public async Task<IActionResult> UploadMedia(
+        public Task<IActionResult> UploadMedia(
             IFormFile file,
             [FromForm] string? mediaType = null)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Validate file
                 if (file == null || file.Length == 0)
                 {
-                    return BadRequest(new { error = "No file provided or file is empty" });
+                    return OpenAIError(400, "No file provided or file is empty", "invalid_request");
                 }
 
                 // Validate file extension
@@ -60,7 +60,7 @@ namespace ConduitLLM.Gateway.Controllers
                 {
                     if (!Enum.TryParse<MediaType>(mediaType, true, out determinedMediaType))
                     {
-                        return BadRequest(new { error = "Invalid media type. Must be Image, Video, or Audio" });
+                        return OpenAIError(400, "Invalid media type. Must be Image, Video, or Audio", "invalid_parameter");
                     }
                 }
                 else if (allowedImageExtensions.Contains(extension))
@@ -77,7 +77,7 @@ namespace ConduitLLM.Gateway.Controllers
                 }
                 else
                 {
-                    return BadRequest(new { error = $"Unsupported file extension: {extension}" });
+                    return OpenAIError(400, $"Unsupported file extension: {extension}", "invalid_parameter");
                 }
 
                 // Validate file size based on type
@@ -92,7 +92,7 @@ namespace ConduitLLM.Gateway.Controllers
                 if (file.Length > maxSizeBytes)
                 {
                     var maxSizeMB = maxSizeBytes / (1024 * 1024);
-                    return BadRequest(new { error = $"File size exceeds maximum allowed size of {maxSizeMB}MB for {determinedMediaType}" });
+                    return OpenAIError(400, $"File size exceeds maximum allowed size of {maxSizeMB}MB for {determinedMediaType}", "invalid_request");
                 }
 
                 // Create metadata
@@ -107,7 +107,7 @@ namespace ConduitLLM.Gateway.Controllers
                 using var stream = file.OpenReadStream();
                 var result = await _storageService.StoreAsync(stream, metadata);
 
-                _logger.LogInformation("Media uploaded successfully. Type: {MediaType}, Size: {Size} bytes, Key: {StorageKey}",
+                Logger.LogInformation("Media uploaded successfully. Type: {MediaType}, Size: {Size} bytes, Key: {StorageKey}",
                     determinedMediaType, file.Length, result.StorageKey);
 
                 // Return result with full URL
@@ -123,18 +123,14 @@ namespace ConduitLLM.Gateway.Controllers
                     fileName = file.FileName,
                     sizeBytes = file.Length
                 });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error uploading media file");
-                return StatusCode(500, new { error = "An error occurred while uploading the media file" });
-            }
+            },
+            "UploadMedia");
         }
 
         /// <summary>
         /// Gets content type from file extension.
         /// </summary>
-        private string GetContentTypeFromExtension(string extension)
+        private static string GetContentTypeFromExtension(string extension)
         {
             return extension.ToLowerInvariant() switch
             {
@@ -169,14 +165,14 @@ namespace ConduitLLM.Gateway.Controllers
         /// <returns>The media file.</returns>
         [HttpGet("{**storageKey}")]
         [AllowAnonymous] // Media URLs should work without auth
-        public async Task<IActionResult> GetMedia(string storageKey)
+        public Task<IActionResult> GetMedia(string storageKey)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Validate storage key
                 if (string.IsNullOrWhiteSpace(storageKey))
                 {
-                    return BadRequest("Invalid storage key");
+                    return OpenAIError(400, "Invalid storage key", "invalid_parameter");
                 }
 
                 // Get media info
@@ -214,12 +210,9 @@ namespace ConduitLLM.Gateway.Controllers
 
                 // Return file with proper content type
                 return File(stream, mediaInfo.ContentType, enableRangeProcessing: true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving media with key {StorageKey}", storageKey);
-                return StatusCode(500, "An error occurred while retrieving the media");
-            }
+            },
+            "GetMedia",
+            storageKey);
         }
 
         /// <summary>
@@ -228,9 +221,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="storageKey">The unique storage key.</param>
         /// <returns>Media metadata.</returns>
         [HttpGet("info/{**storageKey}")]
-        public async Task<IActionResult> GetMediaInfo(string storageKey)
+        public Task<IActionResult> GetMediaInfo(string storageKey)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 var mediaInfo = await _storageService.GetInfoAsync(storageKey);
                 if (mediaInfo == null)
@@ -239,12 +232,9 @@ namespace ConduitLLM.Gateway.Controllers
                 }
 
                 return Ok(mediaInfo);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving media info for key {StorageKey}", storageKey);
-                return StatusCode(500, "An error occurred while retrieving media information");
-            }
+            },
+            "GetMediaInfo",
+            storageKey);
         }
 
         /// <summary>
@@ -254,9 +244,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// <returns>True if the media exists.</returns>
         [HttpHead("{**storageKey}")]
         [AllowAnonymous]
-        public async Task<IActionResult> CheckMediaExists(string storageKey)
+        public Task<IActionResult> CheckMediaExists(string storageKey)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 var exists = await _storageService.ExistsAsync(storageKey);
                 if (!exists)
@@ -272,12 +262,9 @@ namespace ConduitLLM.Gateway.Controllers
                 }
 
                 return Ok();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking media existence for key {StorageKey}", storageKey);
-                return StatusCode(500);
-            }
+            },
+            "CheckMediaExists",
+            storageKey);
         }
 
         /// <summary>
@@ -285,58 +272,50 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         private async Task<IActionResult> HandleVideoRangeRequest(string storageKey, MediaInfo mediaInfo)
         {
-            try
+            var rangeHeader = Request.Headers[HeaderNames.Range].FirstOrDefault();
+            if (string.IsNullOrEmpty(rangeHeader))
             {
-                var rangeHeader = Request.Headers[HeaderNames.Range].FirstOrDefault();
-                if (string.IsNullOrEmpty(rangeHeader))
-                {
-                    return BadRequest("Invalid range header");
-                }
-
-                // Parse range header (e.g., "bytes=0-1023")
-                var range = ParseRangeHeader(rangeHeader, mediaInfo.SizeBytes);
-                if (range == null)
-                {
-                    return StatusCode(416, "Requested Range Not Satisfiable"); // 416 Range Not Satisfiable
-                }
-
-                // Get video stream with range
-                var rangedStream = await _storageService.GetVideoStreamAsync(
-                    storageKey, 
-                    range.Value.Start, 
-                    range.Value.End);
-
-                if (rangedStream == null)
-                {
-                    return NotFound();
-                }
-
-                // Set response headers for partial content
-                Response.StatusCode = 206; // Partial Content
-                Response.Headers["Accept-Ranges"] = "bytes";
-                Response.Headers["Content-Range"] = $"bytes {rangedStream.RangeStart}-{rangedStream.RangeEnd}/{rangedStream.TotalSize}";
-                Response.Headers["Content-Length"] = rangedStream.ContentLength.ToString();
-                Response.Headers["Cache-Control"] = "public, max-age=3600";
-                Response.Headers["ETag"] = $"\"{storageKey}\"";
-                
-                // CORS headers for video playback
-                Response.Headers["Access-Control-Allow-Origin"] = "*";
-                Response.Headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS";
-                Response.Headers["Access-Control-Allow-Headers"] = "Range";
-
-                return File(rangedStream.Stream, rangedStream.ContentType);
+                return OpenAIError(400, "Invalid range header", "invalid_request");
             }
-            catch (Exception ex)
+
+            // Parse range header (e.g., "bytes=0-1023")
+            var range = ParseRangeHeader(rangeHeader, mediaInfo.SizeBytes);
+            if (range == null)
             {
-                _logger.LogError(ex, "Error handling video range request for key {StorageKey}", storageKey);
-                return StatusCode(500, "An error occurred while streaming the video");
+                return StatusCode(416, "Requested Range Not Satisfiable"); // 416 Range Not Satisfiable
             }
+
+            // Get video stream with range
+            var rangedStream = await _storageService.GetVideoStreamAsync(
+                storageKey,
+                range.Value.Start,
+                range.Value.End);
+
+            if (rangedStream == null)
+            {
+                return NotFound();
+            }
+
+            // Set response headers for partial content
+            Response.StatusCode = 206; // Partial Content
+            Response.Headers["Accept-Ranges"] = "bytes";
+            Response.Headers["Content-Range"] = $"bytes {rangedStream.RangeStart}-{rangedStream.RangeEnd}/{rangedStream.TotalSize}";
+            Response.Headers["Content-Length"] = rangedStream.ContentLength.ToString();
+            Response.Headers["Cache-Control"] = "public, max-age=3600";
+            Response.Headers["ETag"] = $"\"{storageKey}\"";
+
+            // CORS headers for video playback
+            Response.Headers["Access-Control-Allow-Origin"] = "*";
+            Response.Headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS";
+            Response.Headers["Access-Control-Allow-Headers"] = "Range";
+
+            return File(rangedStream.Stream, rangedStream.ContentType);
         }
 
         /// <summary>
         /// Parses HTTP range header.
         /// </summary>
-        private (long Start, long End)? ParseRangeHeader(string rangeHeader, long totalSize)
+        private static (long Start, long End)? ParseRangeHeader(string rangeHeader, long totalSize)
         {
             try
             {

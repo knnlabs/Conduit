@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.Http.Builders;
 using Xunit.Abstractions;
@@ -32,9 +32,10 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetModelParameters("gpt-4");
 
             // Assert
-            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-            var errorDto = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Virtual key not found", errorDto.error.ToString());
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Virtual key not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -114,9 +115,10 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetModelParameters("non-existent");
 
             // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorDto = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Model 'non-existent' not found or has no parameter information", errorDto.error.ToString());
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Model 'non-existent' not found or has no parameter information", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -160,8 +162,8 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             // Assert
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            var errorDto = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Failed to retrieve model parameters", errorDto.error.ToString());
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
         }
     }
 }

@@ -25,7 +25,6 @@ await Program.ConfigureMiddleware(app);
 // Configure endpoints
 Program.ConfigureEndpoints(app);
 
-Console.WriteLine("[Conduit] All endpoints configured, starting application...");
 app.Run();
 
 // Make Program class accessible for testing

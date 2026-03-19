@@ -325,8 +325,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GetMedia(storageKey);
 
-            // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
+            // Assert - OpenAIError returns ObjectResult with status 400
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
         }
 
         #endregion

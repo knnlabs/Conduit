@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Controllers;
@@ -215,9 +215,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("non-existent-model");
 
             // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Contains("not found", errorResponse.error.ToString()?.ToLower() ?? "");
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Contains("not found", errorResponse.Error.Message.ToLower());
         }
 
         [Fact]
@@ -231,9 +232,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("test-model");
 
             // Assert
-            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-            var errorResponse = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Invalid virtual key", errorResponse.error.ToString());
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid virtual key", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -246,9 +248,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("test-model");
 
             // Assert
-            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-            var errorResponse = unauthorizedResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Virtual key not found", errorResponse.error.ToString());
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Virtual key not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -421,9 +424,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetModelParameters("disabled-model");
 
             // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Contains("not found", errorResponse.error.ToString()?.ToLower() ?? "");
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Contains("not found", errorResponse.Error.Message.ToLower());
         }
 
         protected override void Dispose(bool disposing)

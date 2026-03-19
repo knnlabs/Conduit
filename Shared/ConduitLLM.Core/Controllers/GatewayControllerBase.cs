@@ -134,6 +134,27 @@ namespace ConduitLLM.Core.Controllers
         }
 
         /// <summary>
+        /// Creates an OpenAI-compatible error response for explicit (non-exception) error returns.
+        /// Use this when returning validation errors or other expected failures from action methods.
+        /// </summary>
+        protected IActionResult OpenAIError(
+            int statusCode,
+            string message,
+            string code,
+            string type = "invalid_request_error")
+        {
+            return StatusCode(statusCode, new OpenAIErrorResponse
+            {
+                Error = new OpenAIError
+                {
+                    Message = message,
+                    Type = type,
+                    Code = code
+                }
+            });
+        }
+
+        /// <summary>
         /// Maps an exception to an OpenAI-compatible error response using <see cref="ExceptionToResponseMapper"/>.
         /// Uses the mapper's LogPrefix and IncludeExceptionMessageInLog for structured, consistent error logging.
         /// Captures request body for mutation failures (fire-and-forget) for post-mortem diagnostics.

@@ -19,7 +19,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -65,7 +65,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -90,10 +90,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
-            var problemDetails = conflictResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Cannot Cancel Task", problemDetails.Title);
-            Assert.Contains("already completed", problemDetails.Detail);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(409, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Contains("already completed", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -118,9 +118,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var problemDetails = notFoundResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Task Not Found", problemDetails.Title);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("The requested task was not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -129,7 +130,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -160,9 +161,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
-            var problemDetails = conflictResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Cancellation Failed", problemDetails.Title);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(409, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Unable to cancel the video generation task", errorResponse.Error.Message);
         }
 
         #endregion

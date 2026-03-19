@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interceptors;
 using ConduitLLM.Core.Data;
@@ -19,19 +18,7 @@ public static class DatabaseServicesExtensions
         // Get connection string from environment variables
         var connectionStringManager = new ConnectionStringManager();
         // Pass "CoreAPI" to get Gateway API-specific connection pool settings
-        var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI", msg => Console.WriteLine(msg));
-
-        // Log the connection pool settings for verification
-        if (dbProvider == "postgres" && dbConnectionString.Contains("MaxPoolSize"))
-        {
-            Console.WriteLine($"[Conduit] Gateway API database connection pool configured:");
-            var match = Regex.Match(dbConnectionString, @"MinPoolSize=(\d+);MaxPoolSize=(\d+)");
-            if (match.Success)
-            {
-                Console.WriteLine($"[Conduit]   Min Pool Size: {match.Groups[1].Value}");
-                Console.WriteLine($"[Conduit]   Max Pool Size: {match.Groups[2].Value}");
-            }
-        }
+        var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI");
 
         // Only PostgreSQL is supported
         if (dbProvider != "postgres")
@@ -46,7 +33,6 @@ public static class DatabaseServicesExtensions
             options.UseNpgsql(dbConnectionString)
                    .AddInterceptors(interceptor);
         });
-        Console.WriteLine("[Conduit] Query monitoring interceptor configured for performance tracking");
 
         // Also add scoped registration from factory for services that need direct injection
         services.AddScoped<ConduitDbContext>(provider =>

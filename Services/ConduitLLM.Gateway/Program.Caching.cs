@@ -38,20 +38,16 @@ public partial class Program
         // Configure Redis connection multiplexer FIRST (shared across all Redis services)
         if (!string.IsNullOrEmpty(redisConnectionString))
         {
-            Console.WriteLine($"[Conduit] Redis connection string configured: {redisConnectionString}");
-
             // Register Redis connection factory for proper connection pooling
             builder.Services.AddSingleton<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
 
             // Use Redis-cached Virtual Key service for high-performance validation
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
-                Console.WriteLine("[Conduit] Creating Redis connection during service registration...");
+                // TODO: Convert to ILogger
                 var factory = sp.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
                 var connectionTask = factory.GetConnectionAsync(redisConnectionString);
-                Console.WriteLine("[Conduit] Waiting for Redis connection to complete...");
                 var connection = connectionTask.GetAwaiter().GetResult();
-                Console.WriteLine("[Conduit] Redis connection established successfully");
                 return connection;
             });
 
@@ -63,13 +59,11 @@ public partial class Program
                 options.Configuration = redisConnectionString;
                 options.InstanceName = "conduit-tasks:";
             });
-            Console.WriteLine("[Conduit] Configured Redis distributed cache for async task storage");
         }
         else
         {
             // Fall back to in-memory distributed cache
             builder.Services.AddDistributedMemoryCache();
-            Console.WriteLine("[Conduit] Using in-memory distributed cache for async task storage (development mode)");
         }
 
         // Register Virtual Key service with optional Redis caching
@@ -105,19 +99,14 @@ public partial class Program
                 
                 return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger);
             });
-            
-            Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with PostgreSQL distributed locking");
-            Console.WriteLine("[Conduit] Enabled caches: VirtualKey, Provider, GlobalSetting, ModelCost, IpFilter, ProviderTool");
         }
         else
         {
             // Fall back to direct database Virtual Key service
             builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Gateway.Services.ApiVirtualKeyService>();
-            
+
             // Register PostgreSQL distributed lock service (works even without Redis)
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.PostgresDistributedLockService>();
-            
-            Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode) with PostgreSQL distributed locking");
         }
 
         // Register Webhook Delivery Tracker for deduplication and statistics
@@ -138,8 +127,6 @@ public partial class Program
                 
                 return new ConduitLLM.Core.Services.CachedWebhookDeliveryTracker(redisTracker, memoryCache, logger);
             });
-            
-            Console.WriteLine("[Conduit] Webhook delivery tracking configured with Redis backend and in-memory cache");
         }
         else
         {

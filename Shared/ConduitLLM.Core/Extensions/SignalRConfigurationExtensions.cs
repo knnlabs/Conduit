@@ -54,12 +54,6 @@ namespace ConduitLLM.Core.Extensions
                         .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray)
                         .WithCompressionMinLength(256);
                 });
-                Console.WriteLine($"[{serviceName}] SignalR configured with MessagePack protocol (LZ4 compression enabled)");
-                Console.WriteLine($"[{serviceName}] SignalR supports both JSON and MessagePack protocols for backward compatibility");
-            }
-            else
-            {
-                Console.WriteLine($"[{serviceName}] SignalR configured with JSON protocol only (MessagePack disabled)");
             }
 
             // Configure SignalR Redis backplane for horizontal scaling
@@ -70,11 +64,6 @@ namespace ConduitLLM.Core.Extensions
                     options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel(redisChannelPrefix, StackExchange.Redis.RedisChannel.PatternMode.Literal);
                     options.Configuration.DefaultDatabase = redisDatabase;
                 });
-                Console.WriteLine($"[{serviceName}] SignalR configured with Redis backplane for horizontal scaling");
-            }
-            else
-            {
-                Console.WriteLine($"[{serviceName}] SignalR configured without Redis backplane (single-instance mode)");
             }
 
             return signalRBuilder;

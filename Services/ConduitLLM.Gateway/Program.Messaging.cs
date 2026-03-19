@@ -209,20 +209,6 @@ public partial class Program
                     // Configure remaining endpoints with automatic topology
                     cfg.ConfigureEndpoints(context);
                 });
-                
-                Console.WriteLine($"[Conduit] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
-                Console.WriteLine("[Conduit] Event-driven architecture ENABLED - Services will publish events for:");
-                Console.WriteLine("  - Virtual Key updates (cache invalidation across instances)");
-                Console.WriteLine("  - Spend updates (ordered processing with race condition prevention)");
-                Console.WriteLine("  - Provider credential changes (automatic capability refresh)");
-                Console.WriteLine("  - Model capability discovery (shared across all instances)");
-                Console.WriteLine("  - Model mapping changes (real-time WebAdmin updates via SignalR)");
-                Console.WriteLine("  - Provider health changes (real-time WebAdmin updates via SignalR)");
-                Console.WriteLine("  - Global settings changes (system-wide configuration updates)");
-                Console.WriteLine("  - IP filter changes (security policy updates)");
-                Console.WriteLine("  - Model cost changes (pricing updates)");
-                Console.WriteLine("  - Video generation tasks (partitioned processing per virtual key)");
-                Console.WriteLine("  - Image generation tasks (partitioned processing per virtual key)");
             }
             else
             {
@@ -259,13 +245,11 @@ public partial class Program
                     // Configure endpoints with automatic topology
                     cfg.ConfigureEndpoints(context);
                 });
-                
-                Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
-                Console.WriteLine("[Conduit] Event-driven architecture ENABLED - Services will publish events locally");
-                Console.WriteLine("[Conduit] WARNING: For production multi-instance deployments, configure RabbitMQ:");
-                Console.WriteLine("  - Set CONDUITLLM__RABBITMQ__HOST to your RabbitMQ host");
-                Console.WriteLine("  - Set CONDUITLLM__RABBITMQ__USERNAME and CONDUITLLM__RABBITMQ__PASSWORD");
-                Console.WriteLine("  - This enables cache consistency and ordered processing across instances");
+
+                Console.Error.WriteLine("[Conduit] WARNING: For production multi-instance deployments, configure RabbitMQ:");
+                Console.Error.WriteLine("  - Set CONDUITLLM__RABBITMQ__HOST to your RabbitMQ host");
+                Console.Error.WriteLine("  - Set CONDUITLLM__RABBITMQ__USERNAME and CONDUITLLM__RABBITMQ__PASSWORD");
+                Console.Error.WriteLine("  - This enables cache consistency and ordered processing across instances");
             }
         });
 
@@ -278,7 +262,6 @@ public partial class Program
                 options.MaxBatchDelay = TimeSpan.FromMilliseconds(100);
                 options.ConcurrentPublishers = 3;
             });
-            Console.WriteLine("[Conduit] Batch webhook publisher configured for high-throughput delivery");
         }
     }
 }

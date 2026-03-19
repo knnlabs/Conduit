@@ -28,7 +28,7 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             var virtualKey = "condt_test_key_123456";
             var taskId = "task-video-123";
-            
+
             var videoResponse = new VideoGenerationResponse
             {
                 Data = new List<VideoData>
@@ -42,8 +42,6 @@ namespace ConduitLLM.Tests.Http.Controllers
                     virtualKey,
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(videoResponse);
-
-            // Token generation removed - using ephemeral keys
 
             _controller.ControllerContext = CreateControllerContext();
             _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
@@ -62,7 +60,6 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(taskId, taskResponse.TaskId);
             Assert.Equal(TaskStateConstants.Pending, taskResponse.Status);
             Assert.Contains(taskId, taskResponse.CheckStatusUrl);
-            // SignalRToken removed - clients use ephemeral keys
             _mockTaskRegistry.Verify(x => x.RegisterTask(taskId, It.IsAny<CancellationTokenSource>()), Times.Once);
         }
 
@@ -82,10 +79,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-            var problemDetails = unauthorizedResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Unauthorized", problemDetails.Title);
-            Assert.Equal("Virtual key not found in request context", problemDetails.Detail);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Virtual key not found in request context", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -99,7 +96,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             var virtualKey = "condt_test_key_123456";
-            
+
             _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
                     It.IsAny<VideoGenerationRequest>(),
                     It.IsAny<string>(),
@@ -117,15 +114,15 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GenerateVideoAsync(request);
 
-            // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Invalid Request", problemDetails.Title);
-            Assert.Equal("Invalid model specified", problemDetails.Detail);
+            // Assert - ExceptionToResponseMapper maps ArgumentException to 400
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
-        public async Task GenerateVideoAsync_WithUnauthorizedAccessException_ShouldReturnForbidden()
+        public async Task GenerateVideoAsync_WithUnauthorizedAccessException_ShouldReturnUnauthorized()
         {
             // Arrange
             var request = new VideoGenerationRequest
@@ -135,7 +132,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             var virtualKey = "condt_test_key_123456";
-            
+
             _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
                     It.IsAny<VideoGenerationRequest>(),
                     It.IsAny<string>(),
@@ -153,11 +150,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GenerateVideoAsync(request);
 
-            // Assert
-            var forbiddenResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(403, forbiddenResult.StatusCode);
-            var problemDetails = forbiddenResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Forbidden", problemDetails.Title);
+            // Assert - ExceptionToResponseMapper maps UnauthorizedAccessException to 401
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -171,7 +168,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             var virtualKey = "condt_test_key_123456";
-            
+
             _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
                     It.IsAny<VideoGenerationRequest>(),
                     It.IsAny<string>(),
@@ -189,11 +186,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GenerateVideoAsync(request);
 
-            // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Not Supported", problemDetails.Title);
-            Assert.Equal("Model does not support video generation", problemDetails.Detail);
+            // Assert - ExceptionToResponseMapper maps NotSupportedException to 400
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -207,7 +204,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             var virtualKey = "condt_test_key_123456";
-            
+
             _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
                     It.IsAny<VideoGenerationRequest>(),
                     It.IsAny<string>(),
@@ -226,10 +223,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            var internalServerErrorResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, internalServerErrorResult.StatusCode);
-            var problemDetails = internalServerErrorResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Internal Server Error", problemDetails.Title);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(500, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         #endregion

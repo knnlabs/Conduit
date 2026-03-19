@@ -21,7 +21,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var failedTaskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -87,7 +87,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -112,10 +112,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Invalid Task State", problemDetails.Title);
-            Assert.Contains("failed tasks can be retried", problemDetails.Detail);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Contains("Only failed tasks can be retried", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -150,9 +150,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Task Not Retryable", problemDetails.Title);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("This task has been marked as non-retryable", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -161,7 +162,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -189,10 +190,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Max Retries Exceeded", problemDetails.Title);
-            Assert.Contains("already been retried", problemDetails.Detail);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Contains("already been retried", errorResponse.Error.Message);
         }
 
         #endregion

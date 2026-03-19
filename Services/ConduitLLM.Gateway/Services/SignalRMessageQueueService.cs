@@ -653,20 +653,8 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
-        private IHubContext<Hub>? GetHubContext(IServiceScope scope, string hubName)
-        {
-            // This is a simplified version - in production, you'd want a more robust hub resolution mechanism
-            var hubType = Type.GetType($"ConduitLLM.Gateway.Hubs.{hubName}, ConduitLLM.Gateway") ??
-                          Type.GetType($"ConduitLLM.Gateway.Hubs.{hubName}, ConduitLLM.Gateway");
-            
-            if (hubType == null)
-            {
-                return null;
-            }
-
-            var contextType = typeof(IHubContext<>).MakeGenericType(hubType);
-            return scope.ServiceProvider.GetService(contextType) as IHubContext<Hub>;
-        }
+        private static IHubContext<Hub>? GetHubContext(IServiceScope scope, string hubName)
+            => Utilities.SignalRHubContextResolver.Resolve(scope.ServiceProvider, hubName);
 
         private DateTime CalculateNextDeliveryTime(int attempts)
         {

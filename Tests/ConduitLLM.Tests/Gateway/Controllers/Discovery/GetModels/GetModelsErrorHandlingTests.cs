@@ -1,8 +1,7 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
@@ -28,35 +27,12 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             // Act
             var result = await Controller.GetModels();
 
-            // Assert
+            // Assert - GatewayControllerBase returns OpenAIErrorResponse via ExceptionToResponseMapper
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            var errorDto = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("Failed to retrieve model discovery information", errorDto.error.ToString());
-        }
-
-        [Fact]
-        public async Task GetModels_WhenExceptionOccurs_LogsError()
-        {
-            // Arrange
-            SetupValidVirtualKey("valid-key");
-            var exception = new Exception("Test exception");
-
-            MockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ThrowsAsync(exception);
-
-            // Act
-            await Controller.GetModels();
-
-            // Assert
-            MockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Error retrieving model discovery information")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
     }
 }

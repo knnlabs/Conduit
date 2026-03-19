@@ -63,11 +63,6 @@ public static class ObservabilityExtensions
                         options.Endpoint = new Uri(otlpEndpoint);
                     });
             });
-            Console.WriteLine($"[Conduit] OpenTelemetry tracing enabled - exporting to {otlpEndpoint}");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] OpenTelemetry tracing disabled (set Telemetry:TracingEnabled=true to enable)");
         }
 
         // Configure query monitoring for performance tracking

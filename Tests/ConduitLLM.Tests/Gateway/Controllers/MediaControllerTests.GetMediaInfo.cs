@@ -72,10 +72,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GetMediaInfo(storageKey);
 
-            // Assert
+            // Assert - GatewayControllerBase returns OpenAIErrorResponse via ExceptionToResponseMapper
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            Assert.Equal("An error occurred while retrieving media information", objectResult.Value);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         #endregion

@@ -108,9 +108,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.CheckMediaExists(storageKey);
 
-            // Assert
-            var statusCodeResult = result.Should().BeOfType<StatusCodeResult>().Subject;
-            Assert.Equal(500, statusCodeResult.StatusCode);
+            // Assert - GatewayControllerBase returns OpenAIErrorResponse via ExceptionToResponseMapper
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(500, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         #endregion

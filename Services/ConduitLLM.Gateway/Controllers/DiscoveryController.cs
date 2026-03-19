@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
@@ -16,13 +17,12 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/discovery")]
     [Authorize]
-    public class DiscoveryController : ControllerBase
+    public class DiscoveryController : GatewayControllerBase
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IDiscoveryCacheService _discoveryCacheService;
-        private readonly ILogger<DiscoveryController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DiscoveryController"/> class.
@@ -33,12 +33,12 @@ namespace ConduitLLM.Gateway.Controllers
             IVirtualKeyService virtualKeyService,
             IDiscoveryCacheService discoveryCacheService,
             ILogger<DiscoveryController> logger)
+            : base(logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -47,32 +47,32 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="capability">Optional capability filter (e.g., "video_generation", "vision")</param>
         /// <returns>List of models with their capabilities.</returns>
         [HttpGet("models")]
-        public async Task<IActionResult> GetModels([FromQuery] string? capability = null)
+        public Task<IActionResult> GetModels([FromQuery] string? capability = null)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Get virtual key from user claims
                 var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyValue))
                 {
-                    return Unauthorized(new ErrorResponseDto("Virtual key not found"));
+                    return OpenAIError(401, "Virtual key not found", "unauthorized");
                 }
 
                 // Validate virtual key is active
                 var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
+                    return OpenAIError(401, "Invalid virtual key", "unauthorized");
                 }
 
                 // Build cache key based on capability filter
                 var cacheKey = DiscoveryCacheService.BuildCacheKey(capability);
-                
+
                 // Try to get from cache first
                 var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
                 if (cachedResult != null)
                 {
-                    _logger.LogDebug("Returning cached discovery results for capability: {Capability}", LoggingSanitizer.S(capability ?? "all"));
+                    Logger.LogDebug("Returning cached discovery results for capability: {Capability}", LoggingSanitizer.S(capability ?? "all"));
                     return Ok(new
                     {
                         data = cachedResult.Data,
@@ -81,7 +81,7 @@ namespace ConduitLLM.Gateway.Controllers
                 }
 
                 using var context = await _dbContextFactory.CreateDbContextAsync();
-                
+
                 // Get all enabled model mappings with their related data
                 var modelMappings = await context.ModelProviderMappings
                     .Include(m => m.Provider)
@@ -91,8 +91,8 @@ namespace ConduitLLM.Gateway.Controllers
                     .AsNoTracking()
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
-                
-                _logger.LogDebug("Found {Count} enabled model mappings for discovery (capability filter: {Capability})",
+
+                Logger.LogDebug("Found {Count} enabled model mappings for discovery (capability filter: {Capability})",
                     modelMappings.Count, LoggingSanitizer.S(capability ?? "all"));
 
                 var models = new List<object>();
@@ -102,7 +102,7 @@ namespace ConduitLLM.Gateway.Controllers
                     // Skip if model is missing
                     if (mapping.ModelProviderTypeAssociation?.Model == null)
                     {
-                        _logger.LogWarning("Model mapping {ModelAlias} has no model data", LoggingSanitizer.S(mapping.ModelAlias));
+                        Logger.LogWarning("Model mapping {ModelAlias} has no model data", LoggingSanitizer.S(mapping.ModelAlias));
                         continue;
                     }
 
@@ -134,22 +134,6 @@ namespace ConduitLLM.Gateway.Controllers
                     // Currently commented out as we're moving to full parameter pass-through
                     // and ApiParameters field is being deprecated. Parameters should be derived
                     // from the UI-focused Parameters JSON object instead.
-                    /*
-                    // Parse parameters from mapping (priority) or series (fallback)
-                    string[]? supportedParameters = null;
-                    var parametersJson = mapping.ApiParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters;
-                    if (!string.IsNullOrEmpty(parametersJson))
-                    {
-                        try
-                        {
-                            supportedParameters = System.Text.Json.JsonSerializer.Deserialize<string[]>(parametersJson);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to parse parameters for model {ModelAlias}", mapping.ModelAlias);
-                        }
-                    }
-                    */
 
                     // Use overrides from association first, then fall back to model defaults
                     var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
@@ -161,7 +145,7 @@ namespace ConduitLLM.Gateway.Controllers
                         id = mapping.ModelAlias,
                         provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
                         display_name = mapping.ModelAlias,
-                        
+
                         // Metadata
                         description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
                         model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
@@ -169,13 +153,10 @@ namespace ConduitLLM.Gateway.Controllers
                         max_input_tokens = maxInputTokens,
                         max_output_tokens = maxOutputTokens,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
-                        
-                        // Configuration
-                        // supported_parameters = supportedParameters ?? Array.Empty<string>(), // TODO: Re-implement based on Parameters field
-                        
+
                         // UI Parameters from Model or Series
                         parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
-                        
+
                         // Capabilities (nested object as expected by SDK)
                         capabilities = new
                         {
@@ -192,13 +173,6 @@ namespace ConduitLLM.Gateway.Controllers
                             max_tokens = maxInputTokens + maxOutputTokens,
                             max_output_tokens = maxOutputTokens
                         }
-                        
-                        // TODO: Future additions to consider:
-                        // - context_window (from capabilities or series metadata)
-                        // - training_cutoff date
-                        // - pricing_tier or cost information
-                        // - rate_limits
-                        // - model_version
                     });
                 }
 
@@ -209,10 +183,10 @@ namespace ConduitLLM.Gateway.Controllers
                     Count = models.Count,
                     CapabilityFilter = capability
                 };
-                
+
                 await _discoveryCacheService.SetDiscoveryResultsAsync(cacheKey, discoveryResult);
-                
-                _logger.LogInformation("Cached discovery results for capability: {Capability} with {Count} models",
+
+                Logger.LogInformation("Cached discovery results for capability: {Capability} with {Count} models",
                     LoggingSanitizer.S(capability ?? "all"), models.Count);
 
                 return Ok(new
@@ -220,12 +194,9 @@ namespace ConduitLLM.Gateway.Controllers
                     data = models,
                     count = models.Count
                 });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving model discovery information");
-                return StatusCode(500, new ErrorResponseDto("Failed to retrieve model discovery information"));
-            }
+            },
+            "GetModels",
+            capability);
         }
 
         /// <summary>
@@ -235,7 +206,7 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpGet("capabilities")]
         public Task<IActionResult> GetCapabilities()
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Return all known capabilities
                 var capabilities = new[]
@@ -251,16 +222,12 @@ namespace ConduitLLM.Gateway.Controllers
                     "json_mode"
                 };
 
-                return Task.FromResult<IActionResult>(Ok(new
+                return await Task.FromResult<IActionResult>(Ok(new
                 {
                     capabilities = capabilities
                 }));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving capabilities list");
-                return Task.FromResult<IActionResult>(StatusCode(500, new ErrorResponseDto("Failed to retrieve capabilities")));
-            }
+            },
+            "GetCapabilities");
         }
 
         /// <summary>
@@ -268,32 +235,27 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         /// <param name="model">The model alias or identifier to get parameters for</param>
         /// <returns>JSON object containing UI parameter definitions for the model.</returns>
-        /// <remarks>
-        /// This endpoint returns the UI-focused parameter definitions from the ModelSeries.Parameters field,
-        /// which contains JSON objects defining sliders, selects, textareas, and other UI controls.
-        /// This allows clients to dynamically generate appropriate UI controls without Admin API access.
-        /// </remarks>
         [HttpGet("models/{model}/parameters")]
-        public async Task<IActionResult> GetModelParameters(string model)
+        public Task<IActionResult> GetModelParameters(string model)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Get virtual key from user claims
                 var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyValue))
                 {
-                    return Unauthorized(new ErrorResponseDto("Virtual key not found"));
+                    return OpenAIError(401, "Virtual key not found", "unauthorized");
                 }
 
                 // Validate virtual key is active
                 var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
+                    return OpenAIError(401, "Invalid virtual key", "unauthorized");
                 }
 
                 using var context = await _dbContextFactory.CreateDbContextAsync();
-                
+
                 // Find the model mapping by alias
                 var modelMapping = await context.ModelProviderMappings
                     .Include(m => m.ModelProviderTypeAssociation)
@@ -320,14 +282,14 @@ namespace ConduitLLM.Gateway.Controllers
 
                 if (modelMapping?.ModelProviderTypeAssociation?.Model == null)
                 {
-                    return NotFound(new ErrorResponseDto($"Model '{model}' not found or has no parameter information"));
+                    return OpenAIError(404, $"Model '{model}' not found or has no parameter information", "model_not_found");
                 }
 
                 // Parse the Parameters JSON - check model-specific parameters first, then fall back to series
                 object? parameters = null;
-                var parametersJson = modelMapping.ModelProviderTypeAssociation.Model.ModelParameters 
+                var parametersJson = modelMapping.ModelProviderTypeAssociation.Model.ModelParameters
                     ?? modelMapping.ModelProviderTypeAssociation.Model.Series?.Parameters;
-                    
+
                 if (!string.IsNullOrEmpty(parametersJson))
                 {
                     try
@@ -336,7 +298,7 @@ namespace ConduitLLM.Gateway.Controllers
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to parse parameters for model {Model}", LoggingSanitizer.S(model));
+                        Logger.LogWarning(ex, "Failed to parse parameters for model {Model}", LoggingSanitizer.S(model));
                         parameters = new { };
                     }
                 }
@@ -348,12 +310,9 @@ namespace ConduitLLM.Gateway.Controllers
                     series_name = modelMapping.ModelProviderTypeAssociation.Model.Series?.Name ?? string.Empty,
                     parameters = parameters ?? new { }
                 });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving model parameters for {Model}", LoggingSanitizer.S(model));
-                return StatusCode(500, new ErrorResponseDto("Failed to retrieve model parameters"));
-            }
+            },
+            "GetModelParameters",
+            model);
         }
 
         /// <summary>
@@ -363,24 +322,24 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="providerType">Optional provider type filter (e.g., "Exa", "Perplexity")</param>
         /// <returns>List of available function configurations</returns>
         [HttpGet("functions")]
-        public async Task<IActionResult> GetFunctions(
+        public Task<IActionResult> GetFunctions(
             [FromQuery] string? purpose = null,
             [FromQuery] string? providerType = null)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Get virtual key from user claims
                 var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyValue))
                 {
-                    return Unauthorized(new ErrorResponseDto("Virtual key not found"));
+                    return OpenAIError(401, "Virtual key not found", "unauthorized");
                 }
 
                 // Validate virtual key is active
                 var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
+                    return OpenAIError(401, "Invalid virtual key", "unauthorized");
                 }
 
                 // Build cache key based on filters
@@ -390,7 +349,7 @@ namespace ConduitLLM.Gateway.Controllers
                 var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
                 if (cachedResult != null)
                 {
-                    _logger.LogDebug("Returning cached function discovery results");
+                    Logger.LogDebug("Returning cached function discovery results");
                     return Ok(cachedResult.Data);
                 }
 
@@ -445,15 +404,11 @@ namespace ConduitLLM.Gateway.Controllers
 
                 await _discoveryCacheService.SetDiscoveryResultsAsync(cacheKey, discoveryResult);
 
-                _logger.LogInformation("Cached function discovery results with {Count} functions", result.Count);
+                Logger.LogInformation("Cached function discovery results with {Count} functions", result.Count);
 
                 return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving function discovery information");
-                return StatusCode(500, new ErrorResponseDto("Failed to retrieve function discovery information"));
-            }
+            },
+            "GetFunctions");
         }
 
         /// <summary>
@@ -463,22 +418,22 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="functionConfigurationId">The function configuration ID</param>
         /// <returns>JSON schema defining required and optional parameters</returns>
         [HttpGet("functions/{functionConfigurationId}/parameters")]
-        public async Task<IActionResult> GetFunctionParameters(int functionConfigurationId)
+        public Task<IActionResult> GetFunctionParameters(int functionConfigurationId)
         {
-            try
+            return ExecuteAsync(async () =>
             {
                 // Get virtual key from user claims
                 var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyValue))
                 {
-                    return Unauthorized(new ErrorResponseDto("Virtual key not found"));
+                    return OpenAIError(401, "Virtual key not found", "unauthorized");
                 }
 
                 // Validate virtual key is active
                 var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
+                    return OpenAIError(401, "Invalid virtual key", "unauthorized");
                 }
 
                 // Build cache key
@@ -488,7 +443,7 @@ namespace ConduitLLM.Gateway.Controllers
                 var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
                 if (cachedResult != null)
                 {
-                    _logger.LogDebug("Returning cached function parameter schema for config {ConfigId}", functionConfigurationId);
+                    Logger.LogDebug("Returning cached function parameter schema for config {ConfigId}", functionConfigurationId);
                     return Ok(cachedResult.Data);
                 }
 
@@ -502,7 +457,7 @@ namespace ConduitLLM.Gateway.Controllers
 
                 if (configuration == null)
                 {
-                    return NotFound(new ErrorResponseDto($"Function configuration {functionConfigurationId} not found or is disabled"));
+                    return OpenAIError(404, $"Function configuration {functionConfigurationId} not found or is disabled", "not_found");
                 }
 
                 // Parse the parameter schema
@@ -524,7 +479,7 @@ namespace ConduitLLM.Gateway.Controllers
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to parse parameter schema for function config {ConfigId}", functionConfigurationId);
+                        Logger.LogWarning(ex, "Failed to parse parameter schema for function config {ConfigId}", functionConfigurationId);
                         parameterSchema = new { };
                     }
                 }
@@ -548,18 +503,12 @@ namespace ConduitLLM.Gateway.Controllers
 
                 await _discoveryCacheService.SetDiscoveryResultsAsync(cacheKey, discoveryResult);
 
-                _logger.LogInformation("Cached function parameter schema for config {ConfigId}", functionConfigurationId);
+                Logger.LogInformation("Cached function parameter schema for config {ConfigId}", functionConfigurationId);
 
                 return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving function parameters for config {ConfigId}", functionConfigurationId);
-                return StatusCode(500, new ErrorResponseDto("Failed to retrieve function parameters"));
-            }
+            },
+            "GetFunctionParameters",
+            functionConfigurationId);
         }
     }
-
-    // TODO: Add audit logging for discovery requests to track which virtual keys are querying model information
-    // TODO: Consider adding pricing information to model discovery responses once pricing data is available in the system
 }

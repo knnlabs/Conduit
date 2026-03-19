@@ -153,10 +153,7 @@ namespace ConduitLLM.Core.Extensions
             var directEnvVar = Environment.GetEnvironmentVariable("CONDUIT_MEDIA_STORAGE_TYPE");
             
             var storageProvider = configProvider ?? configEnvVar ?? directEnvVar ?? "InMemory";
-            
-            // Log the selected storage provider for debugging (will be logged when first service is resolved)
-            Console.WriteLine($"[MediaServices] Storage Provider Selected: {storageProvider}");
-            
+
             // Configure media storage based on provider
             if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
             {

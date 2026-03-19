@@ -25,8 +25,6 @@ public partial class Program
         // Run database migrations
         await app.RunDatabaseMigrationAsync();
 
-        Console.WriteLine("[Conduit] Database initialization phase completed, configuring middleware...");
-
         // Add correlation ID middleware (earliest — establishes correlation context for all downstream middleware)
         app.UseCorrelationId();
 
@@ -35,12 +33,10 @@ public partial class Program
 
         // Enable CORS
         app.UseCors();
-        Console.WriteLine("[Conduit] CORS configured");
 
         // Add health endpoint authorization (early in pipeline, before authentication)
         // This protects health endpoints from external access without valid key
         app.UseHealthEndpointAuthorization();
-        Console.WriteLine("[Conduit] Health endpoint authorization configured");
 
         // Enable Scalar API documentation in development
         if (app.Environment.IsDevelopment())
@@ -50,8 +46,6 @@ public partial class Program
 
             // Map Scalar UI for interactive API documentation
             app.MapScalarApiReference();
-
-            Console.WriteLine("[Conduit] Scalar UI available at /scalar/v1");
         }
 
         // Add security headers
@@ -59,7 +53,6 @@ public partial class Program
 
         // Add Redis availability check middleware (must be early in pipeline)
         app.UseRedisAvailability();
-        Console.WriteLine("[Conduit] Redis circuit breaker middleware configured");
 
         // Add authentication and authorization middleware
         app.UseAuthentication();
@@ -73,11 +66,9 @@ public partial class Program
 
         // Add OpenAI error handling middleware to map exceptions to proper HTTP status codes
         app.UseOpenAIErrorHandling();
-        Console.WriteLine("[Conduit] OpenAI error handling middleware configured");
 
         // Add usage tracking middleware to capture LLM usage from responses
         app.UseUsageTracking();
-        Console.WriteLine("[Conduit] Usage tracking middleware configured");
 
         // Add security middleware (IP filtering, rate limiting, ban checks)
         app.UseCoreApiSecurity();
@@ -99,6 +90,5 @@ public partial class Program
 
         // Add controllers to the app
         app.MapControllers();
-        Console.WriteLine("[Gateway API] Controllers registered");
     }
 }

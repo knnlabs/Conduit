@@ -69,10 +69,6 @@ public static class MediaGenerationExtensions
             services.AddScoped<VideoGenerationOrchestrator>();
         }
 
-        Console.WriteLine("[Conduit] Image generation configured with database-first architecture");
-        Console.WriteLine("[Conduit] Image generation supports multi-instance deployment with lease-based task processing");
-        Console.WriteLine("[Conduit] Image generation performance tracking and optimization enabled");
-
         return services;
     }
 }

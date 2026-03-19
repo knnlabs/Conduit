@@ -21,7 +21,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -90,10 +90,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var problemDetails = notFoundResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Task Not Found", problemDetails.Title);
-            Assert.Equal("The requested task was not found", problemDetails.Detail);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("The requested task was not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -107,9 +107,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var unauthorizedResult = result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-            var problemDetails = unauthorizedResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Unauthorized", problemDetails.Title);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Virtual key not found in request context", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -134,10 +135,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var internalServerErrorResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, internalServerErrorResult.StatusCode);
-            var problemDetails = internalServerErrorResult.Value.Should().BeOfType<ProblemDetails>().Subject;
-            Assert.Equal("Internal Server Error", problemDetails.Title);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(500, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
         }
 
         #endregion

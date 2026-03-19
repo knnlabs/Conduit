@@ -171,8 +171,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia("");
 
             // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            Assert.Equal("Invalid storage key", badRequestResult.Value);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid storage key", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -182,8 +184,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(null);
 
             // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            Assert.Equal("Invalid storage key", badRequestResult.Value);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid storage key", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -193,8 +197,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia("   ");
 
             // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            Assert.Equal("Invalid storage key", badRequestResult.Value);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid storage key", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -209,10 +215,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GetMedia(storageKey);
 
-            // Assert
+            // Assert - GatewayControllerBase returns OpenAIErrorResponse via ExceptionToResponseMapper
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            Assert.Equal("An error occurred while retrieving the media", objectResult.Value);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         [Fact]
