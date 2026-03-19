@@ -581,6 +581,39 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
+        /// Extracts a user-friendly error message from a JSON string by checking common error paths:
+        /// error.message, error (as string), and message.
+        /// </summary>
+        /// <param name="jsonContent">The JSON content to parse.</param>
+        /// <param name="fallback">The fallback message if parsing fails.</param>
+        /// <returns>The extracted error message or the fallback.</returns>
+        protected static string ExtractErrorFromJson(string jsonContent, string fallback)
+        {
+            try
+            {
+                var json = JsonDocument.Parse(jsonContent);
+
+                if (json.RootElement.TryGetProperty("error", out var error))
+                {
+                    if (error.TryGetProperty("message", out var message))
+                        return message.GetString() ?? fallback;
+
+                    if (error.ValueKind == JsonValueKind.String)
+                        return error.GetString() ?? fallback;
+                }
+
+                if (json.RootElement.TryGetProperty("message", out var directMessage))
+                    return directMessage.GetString() ?? fallback;
+            }
+            catch
+            {
+                // Not JSON or parsing failed
+            }
+
+            return fallback;
+        }
+
+        /// <summary>
         /// Extracts a user-friendly error message from an HTTP response.
         /// </summary>
         /// <param name="response">The HTTP response.</param>
@@ -602,34 +635,14 @@ namespace ConduitLLM.Providers
                 }
             }
 
-            // Try to parse JSON error message
+            var fallback = $"{response.StatusCode}: {response.ReasonPhrase ?? "Unknown error"}";
+
             if (!string.IsNullOrEmpty(responseBody))
             {
-                try
-                {
-                    var json = JsonDocument.Parse(responseBody);
-                    
-                    // Common error message patterns
-                    if (json.RootElement.TryGetProperty("error", out var error))
-                    {
-                        if (error.TryGetProperty("message", out var message))
-                            return message.GetString() ?? responseBody;
-                        
-                        if (error.ValueKind == JsonValueKind.String)
-                            return error.GetString() ?? responseBody;
-                    }
-                    
-                    if (json.RootElement.TryGetProperty("message", out var directMessage))
-                        return directMessage.GetString() ?? responseBody;
-                }
-                catch
-                {
-                    // Not JSON or parsing failed
-                }
+                return ExtractErrorFromJson(responseBody, fallback);
             }
 
-            // Fallback to status code description
-            return $"{response.StatusCode}: {response.ReasonPhrase ?? "Unknown error"}";
+            return fallback;
         }
 
         /// <summary>

@@ -158,35 +158,7 @@ namespace ConduitLLM.Providers
                 return $"HTTP error {(int)response.StatusCode}: {response.ReasonPhrase}";
             }
 
-            // Try to parse as JSON to extract error message
-            try
-            {
-                var errorJson = JsonDocument.Parse(errorJsonContent);
-                var errorRoot = errorJson.RootElement;
-
-                // Try common error message paths
-                if (errorRoot.TryGetProperty("error", out var errorObj))
-                {
-                    if (errorObj.TryGetProperty("message", out var messageObj))
-                    {
-                        return messageObj.GetString() ?? errorJsonContent;
-                    }
-                }
-
-                // Try other common patterns
-                if (errorRoot.TryGetProperty("message", out var directMessageObj))
-                {
-                    return directMessageObj.GetString() ?? errorJsonContent;
-                }
-
-                // Just return the raw content if we couldn't extract
-                return errorJsonContent;
-            }
-            catch
-            {
-                // If parsing fails, return the raw content
-                return errorJsonContent;
-            }
+            return ExtractErrorFromJson(errorJsonContent, errorJsonContent);
         }
 
         /// <summary>
