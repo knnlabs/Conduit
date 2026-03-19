@@ -34,11 +34,6 @@ namespace ConduitLLM.Admin.Controllers
     public abstract class AdminControllerBase : EventPublishingControllerBase
     {
         /// <summary>
-        /// Logger instance for derived controllers.
-        /// </summary>
-        protected readonly ILogger Logger;
-
-        /// <summary>
         /// Initializes a new instance of the <see cref="AdminControllerBase"/> class.
         /// </summary>
         /// <param name="publishEndpoint">Optional MassTransit publish endpoint for event publishing.</param>
@@ -48,7 +43,6 @@ namespace ConduitLLM.Admin.Controllers
             ILogger logger)
             : base(publishEndpoint, logger)
         {
-            Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -264,15 +258,6 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Returns true if the current HTTP request is a mutation (POST, PUT, PATCH, DELETE).
-        /// </summary>
-        private bool IsMutationRequest()
-        {
-            var method = HttpContext?.Request?.Method;
-            return method is "POST" or "PUT" or "PATCH" or "DELETE";
-        }
-
-        /// <summary>
         /// Handles exceptions from operations with standardized logging and response formatting.
         /// Uses <see cref="ExceptionToResponseMapper"/> for consistent exception-to-response mapping.
         /// </summary>
@@ -297,61 +282,6 @@ namespace ConduitLLM.Admin.Controllers
             // Return appropriate result type based on status code
             var errorResponse = new ErrorResponseDto(mapping.ResponseMessage) { Code = mapping.ErrorCode };
             return CreateErrorResult(mapping.StatusCode, errorResponse);
-        }
-
-        /// <summary>
-        /// Logs the exception with the request body for mutation requests.
-        /// Falls back to logging without body if capture fails.
-        /// </summary>
-        private async Task LogExceptionWithBodyAsync(
-            ExceptionToResponseMapper.ExceptionMappingResult mapping,
-            Exception ex,
-            string logMessage)
-        {
-            string? requestBody = null;
-            try
-            {
-                requestBody = await RequestBodyCapture.CaptureAsync(HttpContext);
-            }
-            catch
-            {
-                // Body capture should never prevent error logging
-            }
-
-            if (requestBody != null)
-            {
-                if (mapping.IncludeExceptionMessageInLog)
-                {
-                    Logger.Log(mapping.LogLevel, ex, "{LogPrefix} in {LogMessage}: {ExceptionMessage}. RequestBody: {RequestBody}",
-                        mapping.LogPrefix, logMessage, ex.Message, requestBody);
-                }
-                else if (mapping.LogLevel == LogLevel.Error)
-                {
-                    Logger.LogError(ex, "{LogPrefix} in {LogMessage}. RequestBody: {RequestBody}",
-                        mapping.LogPrefix, logMessage, requestBody);
-                }
-                else
-                {
-                    Logger.LogWarning("{LogPrefix} in {LogMessage}. RequestBody: {RequestBody}",
-                        mapping.LogPrefix, logMessage, requestBody);
-                }
-            }
-            else
-            {
-                if (mapping.IncludeExceptionMessageInLog)
-                {
-                    Logger.Log(mapping.LogLevel, ex, "{LogPrefix} in {LogMessage}: {ExceptionMessage}",
-                        mapping.LogPrefix, logMessage, ex.Message);
-                }
-                else if (mapping.LogLevel == LogLevel.Error)
-                {
-                    Logger.LogError(ex, "{LogPrefix} in {LogMessage}", mapping.LogPrefix, logMessage);
-                }
-                else
-                {
-                    Logger.LogWarning("{LogPrefix} in {LogMessage}", mapping.LogPrefix, logMessage);
-                }
-            }
         }
 
         /// <summary>

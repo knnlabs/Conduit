@@ -1,5 +1,4 @@
 using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Models;
 
 using MassTransit;
@@ -14,27 +13,13 @@ namespace ConduitLLM.Core.Controllers
     /// error handling and event publishing.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Mirrors <see cref="ConduitLLM.Admin.Controllers.AdminControllerBase"/> but returns
-    /// <see cref="OpenAIErrorResponse"/> instead of ErrorResponseDto for OpenAI API compatibility.
+    /// Returns <see cref="OpenAIErrorResponse"/> for OpenAI API compatibility.
     /// Uses <see cref="ExceptionToResponseMapper"/> for consistent exception-to-response mapping.
-    /// </para>
-    /// <para>
-    /// Features:
-    /// <list type="bullet">
-    ///   <item><description>Success logging with mutation/read differentiation</description></item>
-    ///   <item><description>Structured error logging using ExceptionToResponseMapper's LogPrefix and IncludeExceptionMessageInLog</description></item>
-    ///   <item><description>Fire-and-forget event publishing via MassTransit</description></item>
-    /// </list>
-    /// </para>
+    /// Shared utility methods (IsMutationRequest, LogExceptionWithBodyAsync) are in
+    /// <see cref="EventPublishingControllerBase"/>.
     /// </remarks>
     public abstract class GatewayControllerBase : EventPublishingControllerBase
     {
-        /// <summary>
-        /// Logger instance for derived controllers.
-        /// </summary>
-        protected readonly ILogger Logger;
-
         /// <summary>
         /// Initializes a new instance with event publishing support.
         /// </summary>
@@ -43,7 +28,6 @@ namespace ConduitLLM.Core.Controllers
             ILogger logger)
             : base(publishEndpoint, logger)
         {
-            Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -150,15 +134,6 @@ namespace ConduitLLM.Core.Controllers
         }
 
         /// <summary>
-        /// Returns true if the current HTTP request is a mutation (POST, PUT, PATCH, DELETE).
-        /// </summary>
-        private bool IsMutationRequest()
-        {
-            var method = HttpContext?.Request?.Method;
-            return method is "POST" or "PUT" or "PATCH" or "DELETE";
-        }
-
-        /// <summary>
         /// Maps an exception to an OpenAI-compatible error response using <see cref="ExceptionToResponseMapper"/>.
         /// Uses the mapper's LogPrefix and IncludeExceptionMessageInLog for structured, consistent error logging.
         /// Captures request body for mutation failures (fire-and-forget) for post-mortem diagnostics.
@@ -189,67 +164,5 @@ namespace ConduitLLM.Core.Controllers
             });
         }
 
-        /// <summary>
-        /// Logs the exception with the request body for mutation requests.
-        /// Falls back to logging without body if capture fails.
-        /// </summary>
-        private async Task LogExceptionWithBodyAsync(
-            ExceptionToResponseMapper.ExceptionMappingResult mapping,
-            Exception ex,
-            string logMessage)
-        {
-            string? requestBody = null;
-            try
-            {
-                requestBody = await RequestBodyCapture.CaptureAsync(HttpContext);
-            }
-            catch
-            {
-                // Body capture should never prevent error logging
-            }
-
-            if (requestBody != null)
-            {
-                if (mapping.IncludeExceptionMessageInLog)
-                {
-                    Logger.Log(mapping.LogLevel, ex,
-                        "{LogPrefix} in {Operation}: {Message}. RequestBody: {RequestBody}",
-                        mapping.LogPrefix, logMessage, ex.Message, requestBody);
-                }
-                else if (mapping.LogLevel == LogLevel.Error)
-                {
-                    Logger.LogError(ex,
-                        "{LogPrefix} in {Operation}. RequestBody: {RequestBody}",
-                        mapping.LogPrefix, logMessage, requestBody);
-                }
-                else
-                {
-                    Logger.LogWarning(
-                        "{LogPrefix} in {Operation}. RequestBody: {RequestBody}",
-                        mapping.LogPrefix, logMessage, requestBody);
-                }
-            }
-            else
-            {
-                if (mapping.IncludeExceptionMessageInLog)
-                {
-                    Logger.Log(mapping.LogLevel, ex,
-                        "{LogPrefix} in {Operation}: {Message}",
-                        mapping.LogPrefix, logMessage, ex.Message);
-                }
-                else if (mapping.LogLevel == LogLevel.Error)
-                {
-                    Logger.LogError(ex,
-                        "{LogPrefix} in {Operation}",
-                        mapping.LogPrefix, logMessage);
-                }
-                else
-                {
-                    Logger.LogWarning(
-                        "{LogPrefix} in {Operation}",
-                        mapping.LogPrefix, logMessage);
-                }
-            }
-        }
     }
 }

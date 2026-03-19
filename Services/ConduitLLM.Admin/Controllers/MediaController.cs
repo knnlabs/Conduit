@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
@@ -6,7 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace ConduitLLM.Admin.Controllers
 {
     /// <summary>
-    /// Administrative controller for media lifecycle management.
+    /// Administrative controller for media lifecycle management including
+    /// statistics, search, cleanup operations, and cleanup service configuration.
     /// </summary>
     [ApiController]
     [Route("api/admin/[controller]")]
@@ -14,18 +16,22 @@ namespace ConduitLLM.Admin.Controllers
     public class MediaController : AdminControllerBase
     {
         private readonly IAdminMediaService _mediaService;
+        private readonly IMediaCleanupStatusService _cleanupStatusService;
 
         /// <summary>
         /// Initializes a new instance of the MediaController class.
         /// </summary>
         /// <param name="mediaService">The admin media service.</param>
+        /// <param name="cleanupStatusService">The media cleanup status service.</param>
         /// <param name="logger">The logger instance.</param>
         public MediaController(
             IAdminMediaService mediaService,
+            IMediaCleanupStatusService cleanupStatusService,
             ILogger<MediaController> logger)
             : base(logger)
         {
             _mediaService = mediaService ?? throw new ArgumentNullException(nameof(mediaService));
+            _cleanupStatusService = cleanupStatusService ?? throw new ArgumentNullException(nameof(cleanupStatusService));
         }
 
         /// <summary>
@@ -210,6 +216,111 @@ namespace ConduitLLM.Admin.Controllers
                 Ok,
                 "PruneOldMedia",
                 new { DaysToKeep = request?.DaysToKeep });
+        }
+
+        // ─── Cleanup Service Configuration ──────────────────────────────
+        // Routes use absolute paths to maintain backward compatibility with api/admin/media-cleanup
+
+        /// <summary>
+        /// Gets the current status of the media cleanup service.
+        /// </summary>
+        [HttpGet("/api/admin/media-cleanup/status")]
+        [ProducesResponseType(typeof(MediaCleanupStatusDto), StatusCodes.Status200OK)]
+        public Task<IActionResult> GetCleanupStatus()
+        {
+            return ExecuteAsync(
+                () => _cleanupStatusService.GetStatusAsync(),
+                Ok,
+                "GetCleanupStatus");
+        }
+
+        /// <summary>
+        /// Gets whether the media cleanup service is currently enabled.
+        /// </summary>
+        [HttpGet("/api/admin/media-cleanup/enabled")]
+        public Task<IActionResult> GetCleanupEnabled()
+        {
+            return ExecuteAsync(
+                async () =>
+                {
+                    var isEnabled = await _cleanupStatusService.IsEnabledAsync();
+                    return new { enabled = isEnabled };
+                },
+                Ok,
+                "GetCleanupEnabled");
+        }
+
+        /// <summary>
+        /// Enables or disables the media cleanup service at runtime.
+        /// This setting persists across restarts via GlobalSettings.
+        /// </summary>
+        [HttpPost("/api/admin/media-cleanup/enabled")]
+        public Task<IActionResult> SetCleanupEnabled([FromBody] UpdateMediaCleanupEnabledRequest request)
+        {
+            return ExecuteAsync(
+                async () =>
+                {
+                    await _cleanupStatusService.SetEnabledAsync(request.Enabled);
+                    LogAdminAudit("SetEnabled", "MediaCleanupService", detail: $"Enabled: {request.Enabled}");
+                    return new
+                    {
+                        enabled = request.Enabled,
+                        message = request.Enabled
+                            ? "Media cleanup service has been enabled"
+                            : "Media cleanup service has been disabled"
+                    };
+                },
+                Ok,
+                "SetCleanupEnabled");
+        }
+
+        /// <summary>
+        /// Gets the simple retention override setting.
+        /// </summary>
+        [HttpGet("/api/admin/media-cleanup/simple-retention")]
+        [ProducesResponseType(typeof(SimpleRetentionResponse), StatusCodes.Status200OK)]
+        public Task<IActionResult> GetSimpleRetention()
+        {
+            return ExecuteAsync(
+                async () =>
+                {
+                    var days = await _cleanupStatusService.GetSimpleRetentionOverrideAsync();
+                    return new SimpleRetentionResponse
+                    {
+                        RetentionDays = days,
+                        IsOverrideActive = days.HasValue
+                    };
+                },
+                Ok,
+                "GetSimpleRetention");
+        }
+
+        /// <summary>
+        /// Sets or clears the simple retention override.
+        /// Pass null for RetentionDays to clear the override and use policy-based retention.
+        /// </summary>
+        [HttpPost("/api/admin/media-cleanup/simple-retention")]
+        [ProducesResponseType(typeof(SimpleRetentionResponse), StatusCodes.Status200OK)]
+        public Task<IActionResult> SetSimpleRetention([FromBody] UpdateSimpleRetentionRequest request)
+        {
+            return ExecuteAsync(
+                async () =>
+                {
+                    await _cleanupStatusService.SetSimpleRetentionOverrideAsync(request.RetentionDays);
+                    var message = request.RetentionDays.HasValue
+                        ? $"Simple retention override set to {request.RetentionDays} days - all media will be deleted after this period"
+                        : "Simple retention override cleared - using policy-based retention";
+                    LogAdminAudit("SetSimpleRetention", "MediaCleanupService",
+                        detail: $"RetentionDays: {request.RetentionDays?.ToString() ?? "cleared"}");
+                    return new SimpleRetentionResponse
+                    {
+                        RetentionDays = request.RetentionDays,
+                        IsOverrideActive = request.RetentionDays.HasValue,
+                        Message = message
+                    };
+                },
+                Ok,
+                "SetSimpleRetention");
         }
     }
 

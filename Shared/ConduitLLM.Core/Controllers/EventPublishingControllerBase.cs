@@ -1,5 +1,7 @@
 using System.Diagnostics;
 
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Metrics;
 
 using MassTransit;
@@ -11,12 +13,18 @@ namespace ConduitLLM.Core.Controllers
 {
     /// <summary>
     /// Base class for controllers that publish domain events using MassTransit.
-    /// Provides fire-and-forget event publishing patterns with consistent error handling and logging.
+    /// Provides fire-and-forget event publishing patterns, shared utility methods,
+    /// and consistent error handling and logging.
     /// </summary>
     public abstract class EventPublishingControllerBase : ControllerBase
     {
         private readonly IPublishEndpoint? _publishEndpoint;
         private readonly ILogger _logger;
+
+        /// <summary>
+        /// Logger instance for derived controllers.
+        /// </summary>
+        protected ILogger Logger => _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventPublishingControllerBase"/> class.
@@ -166,6 +174,81 @@ namespace ConduitLLM.Core.Controllers
                 _logger.LogWarning(
                     "{ControllerName}: Event bus NOT configured - events will not be published",
                     controllerName);
+            }
+        }
+
+        // ─── Shared Utility Methods ─────────────────────────────────────
+
+        /// <summary>
+        /// Returns true if the current HTTP request is a mutation (POST, PUT, PATCH, DELETE).
+        /// </summary>
+        protected bool IsMutationRequest()
+        {
+            var method = HttpContext?.Request?.Method;
+            return method is "POST" or "PUT" or "PATCH" or "DELETE";
+        }
+
+        /// <summary>
+        /// Logs an exception with the request body for mutation requests (fire-and-forget).
+        /// Falls back to logging without body if capture fails.
+        /// Used by both Admin and Gateway controller bases for consistent error diagnostics.
+        /// </summary>
+        protected async Task LogExceptionWithBodyAsync(
+            ExceptionToResponseMapper.ExceptionMappingResult mapping,
+            Exception ex,
+            string logMessage)
+        {
+            string? requestBody = null;
+            try
+            {
+                requestBody = await RequestBodyCapture.CaptureAsync(HttpContext);
+            }
+            catch
+            {
+                // Body capture should never prevent error logging
+            }
+
+            if (requestBody != null)
+            {
+                if (mapping.IncludeExceptionMessageInLog)
+                {
+                    _logger.Log(mapping.LogLevel, ex,
+                        "{LogPrefix} in {Operation}: {Message}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, ex.Message, requestBody);
+                }
+                else if (mapping.LogLevel == LogLevel.Error)
+                {
+                    _logger.LogError(ex,
+                        "{LogPrefix} in {Operation}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, requestBody);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "{LogPrefix} in {Operation}. RequestBody: {RequestBody}",
+                        mapping.LogPrefix, logMessage, requestBody);
+                }
+            }
+            else
+            {
+                if (mapping.IncludeExceptionMessageInLog)
+                {
+                    _logger.Log(mapping.LogLevel, ex,
+                        "{LogPrefix} in {Operation}: {Message}",
+                        mapping.LogPrefix, logMessage, ex.Message);
+                }
+                else if (mapping.LogLevel == LogLevel.Error)
+                {
+                    _logger.LogError(ex,
+                        "{LogPrefix} in {Operation}",
+                        mapping.LogPrefix, logMessage);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "{LogPrefix} in {Operation}",
+                        mapping.LogPrefix, logMessage);
+                }
             }
         }
     }
