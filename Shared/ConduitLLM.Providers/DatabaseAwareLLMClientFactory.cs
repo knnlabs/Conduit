@@ -7,6 +7,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Providers.Configuration;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
@@ -245,6 +246,14 @@ namespace ConduitLLM.Providers
             catch (ArgumentException ex)
             {
                 throw new ConfigurationException($"Unsupported provider type: {provider.ProviderType}", ex);
+            }
+
+            // Apply prompt caching decorator (before context/perf so it modifies request early)
+            var settingsService = _serviceProvider.GetService<IGlobalSettingsCacheService>();
+            if (settingsService != null)
+            {
+                var cachingLogger = _loggerFactory.CreateLogger<PromptCachingLLMClient>();
+                client = new PromptCachingLLMClient(client, settingsService, cachingLogger);
             }
 
             // Apply context decorator to set provider key context for error tracking

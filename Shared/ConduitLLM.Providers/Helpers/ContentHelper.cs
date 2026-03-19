@@ -289,6 +289,74 @@ namespace ConduitLLM.Providers.Helpers
         }
 
         /// <summary>
+        /// Determines if the content should be preserved as a JSON array rather than collapsed to a string.
+        /// Returns true if any content block has structured metadata like <c>cache_control</c>,
+        /// even if the content is otherwise text-only.
+        /// </summary>
+        /// <param name="content">The message content</param>
+        /// <returns>True if the content has structured metadata that would be lost by collapsing to a string</returns>
+        public static bool ShouldPreserveAsArray(object? content)
+        {
+            if (content == null || content is string)
+                return false;
+
+            // Handle JSON Element
+            if (content is JsonElement jsonElement)
+            {
+                if (jsonElement.ValueKind != JsonValueKind.Array)
+                    return false;
+
+                foreach (var element in jsonElement.EnumerateArray())
+                {
+                    if (element.ValueKind != JsonValueKind.Object)
+                        continue;
+
+                    // Check for cache_control or other structured metadata beyond type/text/image_url
+                    if (element.TryGetProperty("cache_control", out _))
+                        return true;
+                }
+
+                return false;
+            }
+
+            // Handle IEnumerable<object> of dictionaries (from PromptCacheInjectionService)
+            if (content is IEnumerable<object> contentList)
+            {
+                foreach (var part in contentList)
+                {
+                    if (part is IDictionary<string, object?> dict && dict.ContainsKey("cache_control"))
+                        return true;
+                    if (part is IDictionary<string, object> dictNonNull && dictNonNull.ContainsKey("cache_control"))
+                        return true;
+                }
+                return false;
+            }
+
+            // Try to serialize and check
+            try
+            {
+                var json = JsonSerializer.Serialize(content);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                if (root.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var element in root.EnumerateArray())
+                    {
+                        if (element.TryGetProperty("cache_control", out _))
+                            return true;
+                    }
+                }
+            }
+            catch
+            {
+                // If we can't process it, no structured metadata
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Extracts image URLs from multimodal content.
         /// </summary>
         /// <param name="content">The message content (can be string or content parts)</param>

@@ -152,6 +152,13 @@ namespace ConduitLLM.Providers.OpenAI
         [JsonPropertyName("reasoning_tokens")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? ReasoningTokens { get; init; }
+
+        /// <summary>
+        /// Captures provider-specific usage fields not explicitly modeled
+        /// (e.g., prompt_tokens_details, cache_creation_input_tokens, prompt_cache_hit_tokens).
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; init; }
     }
 
     // --- Internal Models for Streaming Chunks ---

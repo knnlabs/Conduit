@@ -127,7 +127,10 @@ namespace ConduitLLM.Providers.OpenAICompatible
                             mappedChunk.Model = request.Model;
                             mappedChunk.OriginalModelAlias = request.Model;
                         }
-                        
+
+                        // Extract cached token counts from provider-specific extension data
+                        ExtractCachedTokensFromExtensionData(mappedChunk.Usage);
+
                         yield return mappedChunk;
                     }
                 }

@@ -47,6 +47,14 @@ public interface IGlobalSettingsCacheService
     Task<bool> GetLLMCachingEnabledAsync();
 
     /// <summary>
+    /// Gets a raw setting value by key from the cache.
+    /// Returns null if the key does not exist.
+    /// </summary>
+    /// <param name="key">The setting key to retrieve.</param>
+    /// <returns>The setting value, or null if not found.</returns>
+    Task<string?> GetSettingValueAsync(string key);
+
+    /// <summary>
     /// Invalidates a specific cached setting, forcing it to be reloaded from the database on next access.
     /// </summary>
     /// <param name="settingKey">The key of the setting to invalidate.</param>

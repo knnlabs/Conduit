@@ -212,6 +212,12 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
         return DEFAULT_LLM_CACHING_ENABLED;
     }
 
+    /// <inheritdoc />
+    public Task<string?> GetSettingValueAsync(string key)
+    {
+        return GetSettingAsync(key);
+    }
+
     public async Task InvalidateSettingAsync(string settingKey)
     {
         if (string.IsNullOrWhiteSpace(settingKey))
