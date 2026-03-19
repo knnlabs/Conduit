@@ -26,6 +26,7 @@ namespace ConduitLLM.Gateway.Controllers
         private readonly ConduitLLM.Core.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IProviderErrorTrackingService _errorTrackingService;
 
         public ImagesController(
             ILLMClientFactory clientFactory,
@@ -36,7 +37,8 @@ namespace ConduitLLM.Gateway.Controllers
             IPublishEndpoint publishEndpoint,
             ConduitLLM.Core.Interfaces.IVirtualKeyService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            IProviderErrorTrackingService errorTrackingService)
             : base(publishEndpoint, logger)
         {
             _clientFactory = clientFactory;
@@ -47,6 +49,7 @@ namespace ConduitLLM.Gateway.Controllers
             _virtualKeyService = virtualKeyService;
             _mediaLifecycleService = mediaLifecycleService;
             _httpClientFactory = httpClientFactory;
+            _errorTrackingService = errorTrackingService;
         }
     }
 }

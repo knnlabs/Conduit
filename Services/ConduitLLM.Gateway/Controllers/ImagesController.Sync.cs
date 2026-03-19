@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Net;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Constants;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
@@ -16,11 +18,15 @@ namespace ConduitLLM.Gateway.Controllers
         /// Creates one or more images given a prompt.
         /// </summary>
         /// <param name="request">The image generation request.</param>
+        /// <param name="cancellationToken">Cancellation token from the HTTP request.</param>
         /// <returns>Generated images.</returns>
         [HttpPost("generations")]
-        public async Task<IActionResult> CreateImage([FromBody] ConduitLLM.Core.Models.ImageGenerationRequest request)
+        public async Task<IActionResult> CreateImage(
+            [FromBody] ConduitLLM.Core.Models.ImageGenerationRequest request,
+            CancellationToken cancellationToken = default)
         {
             var sw = Stopwatch.StartNew();
+            ConduitLLM.Configuration.Entities.ModelProviderMapping? mapping = null;
             try
             {
                 // Validate request
@@ -63,7 +69,7 @@ namespace ConduitLLM.Gateway.Controllers
                 HttpContext.Items[HttpContextKeys.ImageRequestN] = request.N;
 
                 // First check model mappings for image generation capability
-                var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
+                mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
                 bool supportsImageGen = false;
                 
                 if (mapping != null)
@@ -121,7 +127,7 @@ namespace ConduitLLM.Gateway.Controllers
                 }
                 
                 // Generate images
-                var response = await client.CreateImageAsync(request);
+                var response = await client.CreateImageAsync(request, cancellationToken: cancellationToken);
 
                 // Store generated images if they're base64 or external URLs
                 for (int i = 0; i < response.Data.Count; i++)
@@ -327,20 +333,93 @@ namespace ConduitLLM.Gateway.Controllers
                 GatewayOpsMetrics.RecordMediaOperation("generate", "image", "success", sw.Elapsed.TotalSeconds, request.Model);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Error generating images");
+                _logger.LogError(ex, "Image generation failed for model {Model}: {ErrorType} - {Message}",
+                    request.Model, ex.GetType().Name, ex.Message);
                 GatewayOpsMetrics.RecordMediaOperation("generate", "image", "error", sw.Elapsed.TotalSeconds, request.Model);
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "An error occurred while generating images",
-                        Type = "server_error",
-                        Code = "internal_error"
-                    }
-                });
+
+                // Track error in the provider error system for dashboard visibility and auto-disable
+                var keyCredentialId = mapping?.Provider?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary)?.Id
+                    ?? mapping?.Provider?.ProviderKeyCredentials?.FirstOrDefault()?.Id;
+                await TrackProviderErrorAsync(ex, request.Model, mapping?.ProviderId, keyCredentialId);
+
+                // Rethrow — OpenAIErrorMiddleware maps exceptions to proper HTTP responses
+                // via ExceptionToResponseMapper (e.g., 429 for RateLimitExceeded, 408 for Timeout, etc.)
+                throw;
             }
+        }
+
+        /// <summary>
+        /// Classifies an exception and tracks it in the provider error system.
+        /// </summary>
+        private async Task TrackProviderErrorAsync(Exception ex, string? modelName, int? providerId, int? keyCredentialId)
+        {
+            try
+            {
+                if (providerId == null || keyCredentialId == null)
+                {
+                    _logger.LogWarning("Cannot track provider error — missing provider context (ProviderId={ProviderId}, KeyCredentialId={KeyCredentialId})",
+                        providerId, keyCredentialId);
+                    return;
+                }
+
+                var errorType = ClassifyExceptionToProviderErrorType(ex);
+                int? httpStatusCode = (ex as LLMCommunicationException)?.StatusCode.HasValue == true
+                    ? (int)(ex as LLMCommunicationException)!.StatusCode!.Value
+                    : null;
+
+                var errorInfo = new ConduitLLM.Core.Models.ProviderErrorInfo
+                {
+                    KeyCredentialId = keyCredentialId.Value,
+                    ProviderId = providerId.Value,
+                    ErrorType = errorType,
+                    ErrorMessage = ex.Message,
+                    HttpStatusCode = httpStatusCode,
+                    ModelName = modelName,
+                    OccurredAt = DateTime.UtcNow,
+                    RequestId = HttpContext.TraceIdentifier
+                };
+
+                await _errorTrackingService.TrackErrorAsync(errorInfo);
+
+                _logger.LogInformation("Tracked provider error: Type={ErrorType}, Provider={ProviderId}, Key={KeyCredentialId}, Model={Model}",
+                    errorType, providerId, keyCredentialId, modelName);
+            }
+            catch (Exception trackEx)
+            {
+                // Never let error tracking prevent the original error from propagating
+                _logger.LogWarning(trackEx, "Failed to track provider error for model {Model}", modelName);
+            }
+        }
+
+        /// <summary>
+        /// Maps an exception to a <see cref="ConduitLLM.Core.Models.ProviderErrorType"/> for error tracking.
+        /// </summary>
+        private static ConduitLLM.Core.Models.ProviderErrorType ClassifyExceptionToProviderErrorType(Exception ex)
+        {
+            return ex switch
+            {
+                LLMCommunicationException commEx when commEx.StatusCode.HasValue => commEx.StatusCode.Value switch
+                {
+                    HttpStatusCode.Unauthorized => ConduitLLM.Core.Models.ProviderErrorType.InvalidApiKey,
+                    HttpStatusCode.PaymentRequired => ConduitLLM.Core.Models.ProviderErrorType.InsufficientBalance,
+                    HttpStatusCode.Forbidden => ConduitLLM.Core.Models.ProviderErrorType.AccessForbidden,
+                    HttpStatusCode.TooManyRequests => ConduitLLM.Core.Models.ProviderErrorType.RateLimitExceeded,
+                    HttpStatusCode.NotFound => ConduitLLM.Core.Models.ProviderErrorType.ModelNotFound,
+                    HttpStatusCode.ServiceUnavailable => ConduitLLM.Core.Models.ProviderErrorType.ServiceUnavailable,
+                    HttpStatusCode.BadGateway => ConduitLLM.Core.Models.ProviderErrorType.ServiceUnavailable,
+                    HttpStatusCode.GatewayTimeout => ConduitLLM.Core.Models.ProviderErrorType.Timeout,
+                    HttpStatusCode.RequestTimeout => ConduitLLM.Core.Models.ProviderErrorType.Timeout,
+                    _ => ConduitLLM.Core.Models.ProviderErrorType.Unknown
+                },
+                RateLimitExceededException => ConduitLLM.Core.Models.ProviderErrorType.RateLimitExceeded,
+                RequestTimeoutException => ConduitLLM.Core.Models.ProviderErrorType.Timeout,
+                ModelNotFoundException => ConduitLLM.Core.Models.ProviderErrorType.ModelNotFound,
+                ServiceUnavailableException => ConduitLLM.Core.Models.ProviderErrorType.ServiceUnavailable,
+                HttpRequestException => ConduitLLM.Core.Models.ProviderErrorType.NetworkError,
+                _ => ConduitLLM.Core.Models.ProviderErrorType.Unknown
+            };
         }
     }
 }

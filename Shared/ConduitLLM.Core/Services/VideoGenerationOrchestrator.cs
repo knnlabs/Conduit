@@ -59,10 +59,12 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
+            IProviderErrorTrackingService errorTrackingService,
             ILogger<VideoGenerationOrchestrator> logger)
             : base(clientFactory, taskService, storageService, publishEndpoint,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics,
+                   errorTrackingService, logger)
         {
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
             

@@ -29,9 +29,14 @@ namespace ConduitLLM.Providers.Replicate
                 // Process the final result
                 return MapToImageGenerationResponse(finalPrediction, request.Model);
             }
-            catch (LLMCommunicationException)
+            catch (ConduitException)
             {
-                // Re-throw LLMCommunicationException directly
+                // Re-throw all classified Conduit exceptions directly (LLMCommunicationException,
+                // RequestTimeoutException, RateLimitExceededException, InvalidRequestException, etc.)
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
                 throw;
             }
             catch (Exception ex)
@@ -79,16 +84,20 @@ namespace ConduitLLM.Providers.Replicate
                 // Process the final result
                 return MapToVideoGenerationResponse(finalPrediction, request.Model);
             }
-            catch (LLMCommunicationException ex)
+            catch (ConduitException ex)
             {
-                Logger.LogError(ex, "Video generation failed with LLMCommunicationException for model {ModelId}, prompt: '{Prompt}'", 
-                    ProviderModelId, request.Prompt);
-                // Re-throw LLMCommunicationException directly
+                Logger.LogError(ex, "Video generation failed for model {ModelId}, prompt: '{Prompt}': {ErrorType}",
+                    ProviderModelId, request.Prompt, ex.GetType().Name);
+                // Re-throw all classified Conduit exceptions directly
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
                 throw;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "An unexpected error occurred while processing Replicate video generation for model {ModelId}, prompt: '{Prompt}'", 
+                Logger.LogError(ex, "An unexpected error occurred while processing Replicate video generation for model {ModelId}, prompt: '{Prompt}'",
                     ProviderModelId, request.Prompt);
                 throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
             }

@@ -30,6 +30,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
+        private readonly Mock<IProviderErrorTrackingService> _mockErrorTrackingService;
         private readonly Mock<ILLMClient> _mockLLMClient;
         private readonly Mock<IUrlHelper> _mockUrlHelper;
         private readonly ImagesController _controller;
@@ -45,6 +46,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockMediaLifecycleService = new Mock<IMediaLifecycleService>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
+            _mockErrorTrackingService = new Mock<IProviderErrorTrackingService>();
             _mockLLMClient = new Mock<ILLMClient>();
             _mockUrlHelper = new Mock<IUrlHelper>();
 
@@ -57,7 +59,8 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockPublishEndpoint.Object,
                 _mockVirtualKeyService.Object,
                 _mockMediaLifecycleService.Object,
-                _mockHttpClientFactory.Object);
+                _mockHttpClientFactory.Object,
+                _mockErrorTrackingService.Object);
 
             // Setup default controller context
             _controller.ControllerContext = CreateControllerContext();
@@ -121,7 +124,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         }
 
         [Fact]
-        public async Task CreateImage_WithServiceException_ShouldReturn500()
+        public async Task CreateImage_WithServiceException_ShouldPropagateToMiddleware()
         {
             // Arrange
             var request = new ConduitLLM.Core.Models.ImageGenerationRequest
@@ -133,16 +136,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(It.IsAny<string>()))
                 .ThrowsAsync(new Exception("Service error"));
 
-            // Act
-            var result = await _controller.CreateImage(request);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while generating images", errorResponse.Error.Message);
-            Assert.Equal("server_error", errorResponse.Error.Type);
+            // Act & Assert
+            // Exceptions now propagate to OpenAIErrorMiddleware for proper status code mapping
+            var ex = await Assert.ThrowsAsync<Exception>(() => _controller.CreateImage(request));
+            Assert.Equal("Service error", ex.Message);
         }
 
         #endregion

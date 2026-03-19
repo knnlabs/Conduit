@@ -44,6 +44,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected readonly Mock<IHttpClientFactory> HttpClientFactoryMock;
         protected readonly Mock<MinimalParameterValidator> ParameterValidatorMock;
         protected readonly MediaGenerationMetrics Metrics;
+        protected readonly Mock<IProviderErrorTrackingService> ErrorTrackingServiceMock;
         protected readonly Mock<ILogger> LoggerMock;
 
         // System under test
@@ -77,6 +78,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             TaskRegistryMock = new Mock<ICancellableTaskRegistry>();
             WebhookServiceMock = new Mock<IWebhookNotificationService>();
             HttpClientFactoryMock = new Mock<IHttpClientFactory>();
+            ErrorTrackingServiceMock = new Mock<IProviderErrorTrackingService>();
             LoggerMock = new Mock<ILogger>();
             
             // MinimalParameterValidator requires a logger in its constructor

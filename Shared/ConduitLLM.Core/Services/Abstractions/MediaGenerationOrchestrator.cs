@@ -9,6 +9,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Validation;
 using MassTransit;
 using Microsoft.Extensions.Logging;
@@ -53,6 +54,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected readonly IHttpClientFactory _httpClientFactory;
         protected readonly MinimalParameterValidator _parameterValidator;
         protected readonly MediaGenerationMetrics _metrics;
+        protected readonly IProviderErrorTrackingService _errorTrackingService;
         protected readonly ILogger _logger;
 
         protected MediaGenerationOrchestrator(
@@ -68,6 +70,7 @@ namespace ConduitLLM.Core.Services.Abstractions
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
+            IProviderErrorTrackingService errorTrackingService,
             ILogger logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -82,6 +85,7 @@ namespace ConduitLLM.Core.Services.Abstractions
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _parameterValidator = parameterValidator ?? throw new ArgumentNullException(nameof(parameterValidator));
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+            _errorTrackingService = errorTrackingService ?? throw new ArgumentNullException(nameof(errorTrackingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -505,13 +509,95 @@ namespace ConduitLLM.Core.Services.Abstractions
                 GetRequestId(request),
                 TaskState.Failed,
                 error: ex.Message);
-            
+
+            // Track in provider error system for dashboard visibility and auto-disable policies
+            await TrackProviderErrorFromExceptionAsync(ex, modelInfo);
+
             await PublishFailedEventAsync(request, ex, isRetryable, 0, 0);
-            
+
             if (!string.IsNullOrEmpty(GetWebhookUrl(request)))
             {
                 await SendWebhookNotificationAsync(request, null, stopwatch, "failed", ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Tracks a provider error from an exception using the provider error tracking system.
+        /// </summary>
+        private async Task TrackProviderErrorFromExceptionAsync(Exception ex, GenerationModelInfo? modelInfo)
+        {
+            try
+            {
+                if (modelInfo?.Provider == null)
+                {
+                    _logger.LogDebug("Cannot track provider error — no provider context available");
+                    return;
+                }
+
+                var keyCredentialId = modelInfo.Provider.ProviderKeyCredentials?
+                    .FirstOrDefault(k => k.IsPrimary)?.Id
+                    ?? modelInfo.Provider.ProviderKeyCredentials?.FirstOrDefault()?.Id;
+
+                if (keyCredentialId == null)
+                {
+                    _logger.LogDebug("Cannot track provider error — no key credential found for provider {ProviderId}",
+                        modelInfo.ProviderId);
+                    return;
+                }
+
+                var errorType = ClassifyExceptionToProviderErrorType(ex);
+
+                var errorInfo = new ProviderErrorInfo
+                {
+                    KeyCredentialId = keyCredentialId.Value,
+                    ProviderId = modelInfo.ProviderId,
+                    ErrorType = errorType,
+                    ErrorMessage = ex.Message,
+                    HttpStatusCode = (ex as LLMCommunicationException)?.StatusCode.HasValue == true
+                        ? (int)(ex as LLMCommunicationException)!.StatusCode!.Value
+                        : null,
+                    ModelName = modelInfo.ModelId,
+                    OccurredAt = DateTime.UtcNow
+                };
+
+                await _errorTrackingService.TrackErrorAsync(errorInfo);
+
+                _logger.LogInformation("Tracked {MediaType} generation provider error: Type={ErrorType}, Provider={ProviderId}, Key={KeyCredentialId}, Model={Model}",
+                    GetMediaType(), errorType, modelInfo.ProviderId, keyCredentialId, modelInfo.ModelId);
+            }
+            catch (Exception trackEx)
+            {
+                _logger.LogWarning(trackEx, "Failed to track provider error for {MediaType} generation", GetMediaType());
+            }
+        }
+
+        /// <summary>
+        /// Classifies an exception into a <see cref="ProviderErrorType"/> for error tracking.
+        /// </summary>
+        private static ProviderErrorType ClassifyExceptionToProviderErrorType(Exception ex)
+        {
+            return ex switch
+            {
+                LLMCommunicationException commEx when commEx.StatusCode.HasValue => commEx.StatusCode.Value switch
+                {
+                    System.Net.HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
+                    System.Net.HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
+                    System.Net.HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
+                    System.Net.HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
+                    System.Net.HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
+                    System.Net.HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
+                    System.Net.HttpStatusCode.BadGateway => ProviderErrorType.ServiceUnavailable,
+                    System.Net.HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
+                    System.Net.HttpStatusCode.RequestTimeout => ProviderErrorType.Timeout,
+                    _ => ProviderErrorType.Unknown
+                },
+                RateLimitExceededException => ProviderErrorType.RateLimitExceeded,
+                Exceptions.RequestTimeoutException => ProviderErrorType.Timeout,
+                ModelNotFoundException => ProviderErrorType.ModelNotFound,
+                ServiceUnavailableException => ProviderErrorType.ServiceUnavailable,
+                HttpRequestException => ProviderErrorType.NetworkError,
+                _ => ProviderErrorType.Unknown
+            };
         }
 
         protected virtual async Task UpdateSpendAsync(int virtualKeyId, decimal amount, string requestId, string? correlationId)

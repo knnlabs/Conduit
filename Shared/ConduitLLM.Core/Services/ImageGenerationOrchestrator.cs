@@ -54,10 +54,12 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
+            IProviderErrorTrackingService errorTrackingService,
             ILogger<ImageGenerationOrchestrator> logger)
             : base(clientFactory, taskService, storageService, publishEndpoint,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics,
+                   errorTrackingService, logger)
         {
             
             // Initialize processing strategies
