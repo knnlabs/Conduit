@@ -1,5 +1,5 @@
 # Optimized multi-stage Dockerfile for WebAdmin
-# Features: Multi-stage build, Alpine base, non-root user, health checks
+# Features: Multi-stage build, standalone output, Alpine base, non-root user, health checks
 
 FROM node:22-alpine AS builder
 WORKDIR /app
@@ -34,15 +34,15 @@ RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>
 RUN npm run build
 
 # Build WebAdmin last (depends on Admin and Gateway SDKs via file: references)
-# The WebAdmin's npm install will symlink to the local Admin and Gateway packages
 WORKDIR /app/WebAdmin
-# Create public directory if it doesn't exist (Next.js 15 doesn't require it)
+# Create public directory if it doesn't exist (Next.js 16 doesn't require it)
 RUN mkdir -p public
 # npm install here will resolve file: dependencies to the already-built SDKs above
 RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>/dev/null && exit 1)
 RUN npm run build
 
-# Production stage - smaller final image
+# Production stage - minimal image using standalone output
+# next.config.js has output: 'standalone' which bundles only needed dependencies
 FROM node:22-alpine AS runner
 WORKDIR /app
 
@@ -56,18 +56,13 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy only what's needed from builder
-COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/package*.json ./
-COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/public ./public
-
-# IMPORTANT: We must also copy the SDK packages because WebAdmin's node_modules contains
-# symlinks to these local packages (due to file: references in package.json)
-# Without these, the runtime will fail to resolve the packages
-COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Common /app/SDKs/Node/Common
-COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Admin /app/SDKs/Node/Admin
-COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Gateway /app/SDKs/Node/Gateway
+# Copy standalone output — self-contained server with all dependencies bundled
+# No need for node_modules or SDK symlinks; standalone includes everything
+# outputFileTracingRoot is set to repo root, so standalone preserves monorepo structure:
+#   .next/standalone/WebAdmin/server.js, .next/standalone/SDKs/Node/...
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next/static ./WebAdmin/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/public ./WebAdmin/public
 
 # Switch to non-root user
 USER nextjs
@@ -78,5 +73,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -q -O /dev/null http://localhost:3000/api/health || exit 1
 
-# Start the application
-CMD ["npm", "start"]
+# Start using the standalone server directly (faster startup than npm start)
+# server.js is nested under WebAdmin/ due to outputFileTracingRoot preserving monorepo structure
+CMD ["node", "WebAdmin/server.js"]

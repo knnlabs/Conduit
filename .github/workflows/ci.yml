@@ -13,7 +13,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   # Quick validation that everything builds
@@ -189,8 +189,8 @@ jobs:
           npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
           npm publish --tag next --access public
           
-          # Update version and publish Core
-          cd ../Core
+          # Update version and publish Gateway
+          cd ../Gateway
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
           npm publish --tag next --access public
