@@ -341,11 +341,11 @@ export class FetchModelService {
     totalPages: number;
   }> {
     const params = new URLSearchParams();
-    if (options.page != null) params.set('page', String(options.page));
-    if (options.pageSize != null) params.set('pageSize', String(options.pageSize));
+    if (options.page !== undefined) params.set('page', String(options.page));
+    if (options.pageSize !== undefined) params.set('pageSize', String(options.pageSize));
     if (options.search) params.set('search', options.search);
     if (options.capability) params.set('capability', options.capability);
-    if (options.hasProviders != null) params.set('hasProviders', String(options.hasProviders));
+    if (options.hasProviders !== undefined) params.set('hasProviders', String(options.hasProviders));
 
     const queryString = params.toString();
     const url = queryString ? `${ENDPOINTS.MODELS.BASE}?${queryString}` : ENDPOINTS.MODELS.BASE;
