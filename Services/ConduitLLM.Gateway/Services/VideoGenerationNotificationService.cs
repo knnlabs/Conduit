@@ -91,9 +91,9 @@ namespace ConduitLLM.Gateway.Services
         public async Task NotifyVideoGenerationCancelledAsync(string requestId, string? reason)
         {
             var taskId = requestId;
-            var groupName = $"video-{taskId}";
+            var groupName = SignalRConstants.Groups.VideoTask(taskId);
 
-            await SendToGroupAsync(groupName, "VideoGenerationCancelled", new
+            await SendToGroupAsync(groupName, SignalRConstants.ClientMethods.VideoGenerationCancelled, new
             {
                 taskId,
                 reason,
