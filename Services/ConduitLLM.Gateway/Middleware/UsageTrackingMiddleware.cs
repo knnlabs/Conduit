@@ -340,6 +340,10 @@ namespace ConduitLLM.Gateway.Middleware
                     BusinessMetricsService.RecordCost(providerType, model, endpointType, Convert.ToDouble(totalCost));
                 }
 
+                // Record prompt caching metrics
+                RecordPromptCachingMetrics(usage, model, providerType);
+                await RecordPromptCachingSavingsAsync(context, costCalculationService, model, usage);
+
                 // Update spend using batch service only if there's a cost
                 if (totalCost > 0)
                 {
@@ -545,6 +549,10 @@ namespace ConduitLLM.Gateway.Middleware
             {
                 BusinessMetricsService.RecordCost(providerType, model, endpointType, Convert.ToDouble(cost));
             }
+
+            // Record prompt caching metrics
+            RecordPromptCachingMetrics(usage, model, providerType);
+            await RecordPromptCachingSavingsAsync(context, costCalculationService, model, usage);
 
             // Update spend only if there's a cost
             if (cost > 0)
@@ -1125,6 +1133,67 @@ namespace ConduitLLM.Gateway.Middleware
         private void LogUnexpectedError(HttpContext context, Exception ex, IBillingAuditService billingAuditService)
         {
             BillingPolicyHandler.LogUnexpectedError(context, ex, billingAuditService);
+        }
+
+        #endregion
+
+        #region Prompt Caching Metrics
+
+        /// <summary>
+        /// Records prompt caching request-level metrics (hit/miss/disabled).
+        /// </summary>
+        private static void RecordPromptCachingMetrics(Usage usage, string model, string provider)
+        {
+            if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0)
+            {
+                PromptCachingMetrics.RecordCacheHit(model, provider);
+            }
+            else if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0)
+            {
+                // Cache write but no read — first request building the cache
+                PromptCachingMetrics.RecordCacheMiss(model, provider);
+            }
+            else
+            {
+                PromptCachingMetrics.RecordCacheDisabled(model, provider);
+            }
+        }
+
+        /// <summary>
+        /// Calculates and records prompt caching cost savings.
+        /// </summary>
+        private static async Task RecordPromptCachingSavingsAsync(
+            HttpContext context,
+            ICostCalculationService costCalculationService,
+            string model,
+            Usage usage)
+        {
+            if (!usage.CachedInputTokens.HasValue || usage.CachedInputTokens.Value <= 0)
+                return;
+
+            try
+            {
+                decimal savings;
+                var providerType = context.Items.TryGetValue("ProviderType", out var pt)
+                    ? pt?.ToString() ?? "unknown"
+                    : "unknown";
+
+                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var mcIdObj) &&
+                    mcIdObj is int mcId)
+                {
+                    savings = await costCalculationService.CalculateCacheSavingsByIdAsync(mcId, usage);
+                }
+                else
+                {
+                    savings = await costCalculationService.CalculateCacheSavingsAsync(model, usage);
+                }
+
+                PromptCachingMetrics.RecordSavings(model, providerType, Convert.ToDouble(savings));
+            }
+            catch
+            {
+                // Non-critical — don't fail the request pipeline for savings calculation
+            }
         }
 
         #endregion
