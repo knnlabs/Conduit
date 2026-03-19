@@ -33,19 +33,19 @@ namespace ConduitLLM.Gateway.Consumers
     /// This ensures that all API endpoints using cached mappings will get fresh data
     /// on the next request after a configuration change.
     /// </remarks>
-    public class ModelMappingCacheInvalidationConsumer : IConsumer<ModelMappingChanged>
+    public class ModelMappingCacheInvalidationHandler : IConsumer<ModelMappingChanged>
     {
         private readonly ICacheManager _cacheManager;
         private readonly IDiscoveryCacheService _discoveryCacheService;
-        private readonly ILogger<ModelMappingCacheInvalidationConsumer> _logger;
+        private readonly ILogger<ModelMappingCacheInvalidationHandler> _logger;
 
         // Cache configuration - must match CachedModelProviderMappingService
         private const CacheRegion Region = CacheRegion.ModelMetadata;
 
-        public ModelMappingCacheInvalidationConsumer(
+        public ModelMappingCacheInvalidationHandler(
             ICacheManager cacheManager,
             IDiscoveryCacheService discoveryCacheService,
-            ILogger<ModelMappingCacheInvalidationConsumer> logger)
+            ILogger<ModelMappingCacheInvalidationHandler> logger)
         {
             _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));

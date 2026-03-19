@@ -300,7 +300,7 @@ public static class CacheKeys
 
     /// <summary>
     /// Cache keys for model-to-provider mapping lookups.
-    /// Used by CachedModelProviderMappingService and ModelMappingCacheInvalidationConsumer.
+    /// Used by CachedModelProviderMappingService and ModelMappingCacheInvalidationHandler.
     /// </summary>
     public static class ModelMapping
     {

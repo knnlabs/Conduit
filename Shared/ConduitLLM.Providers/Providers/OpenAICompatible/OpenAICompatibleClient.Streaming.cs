@@ -142,40 +142,6 @@ namespace ConduitLLM.Providers.OpenAICompatible
         }
 
         /// <summary>
-        /// Helper method to fetch all stream chunks without yielding in a try block
-        /// </summary>
-        private async Task<List<CoreModels.ChatCompletionChunk>> FetchStreamChunksAsync(
-            CoreModels.ChatCompletionRequest request,
-            string? apiKey = null,
-            CancellationToken cancellationToken = default)
-        {
-            var chunks = new List<CoreModels.ChatCompletionChunk>();
-
-            try
-            {
-                using var client = CreateHttpClient(apiKey);
-                var openAiRequest = PrepareStreamingRequest(request);
-                var endpoint = GetChatCompletionEndpoint();
-
-                Logger.LogDebug("Sending streaming chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
-
-                using var response = await SendStreamingRequestAsync(client, endpoint, openAiRequest, apiKey, cancellationToken);
-                chunks = await ProcessStreamingResponseAsync(response, request.Model, cancellationToken);
-
-                return chunks;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Process the error with enhanced error extraction
-                var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
-                Logger.LogError(ex, "Error in streaming chat completion from {Provider}: {Message}", ProviderName, enhancedErrorMessage);
-
-                var error = CoreUtils.ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
-                throw error;
-            }
-        }
-
-        /// <summary>
         /// Prepares a request for streaming by ensuring the stream parameter is set to true
         /// and stream_options includes usage data if not already set
         /// </summary>

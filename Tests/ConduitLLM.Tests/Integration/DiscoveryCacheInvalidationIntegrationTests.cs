@@ -33,13 +33,13 @@ namespace ConduitLLM.Tests.Integration
             // Add MassTransit test harness
             services.AddMassTransitTestHarness(cfg =>
             {
-                cfg.AddConsumer<ModelMappingCacheInvalidationConsumer>();
+                cfg.AddConsumer<ModelMappingCacheInvalidationHandler>();
             });
 
             // Add mock services
             services.AddSingleton(Mock.Of<ICacheManager>());
             services.AddSingleton(Mock.Of<IDiscoveryCacheService>());
-            services.AddSingleton(Mock.Of<ILogger<ModelMappingCacheInvalidationConsumer>>());
+            services.AddSingleton(Mock.Of<ILogger<ModelMappingCacheInvalidationHandler>>());
 
             _serviceProvider = services.BuildServiceProvider();
             _harness = _serviceProvider.GetRequiredService<ITestHarness>();
@@ -93,7 +93,7 @@ namespace ConduitLLM.Tests.Integration
                 x.Context.Message.MappingId == @event.MappingId));
 
             // Assert
-            var consumerHarness = _harness.GetConsumerHarness<ModelMappingCacheInvalidationConsumer>();
+            var consumerHarness = _harness.GetConsumerHarness<ModelMappingCacheInvalidationHandler>();
             Assert.True(await consumerHarness.Consumed.Any<ModelMappingChanged>());
 
             // Verify the consumer called the cache services

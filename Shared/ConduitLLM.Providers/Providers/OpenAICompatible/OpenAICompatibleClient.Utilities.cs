@@ -533,68 +533,6 @@ namespace ConduitLLM.Providers.OpenAICompatible
             });
         }
 
-        /// <summary>
-        /// Extracts a more helpful error message from exception details.
-        /// </summary>
-        /// <param name="ex">The exception to extract information from.</param>
-        /// <returns>An enhanced error message.</returns>
-        /// <remarks>
-        /// This method attempts to extract more helpful error information from exceptions.
-        /// It looks for patterns in error messages and extracts the most relevant information.
-        /// </remarks>
-        protected virtual string ExtractEnhancedErrorMessage(Exception ex)
-        {
-            // Try to extract error details in order of preference:
-
-            // 1. Look for "Response:" pattern in the message
-            var msg = ex.Message;
-            var responseIdx = msg.IndexOf("Response:");
-            if (responseIdx >= 0)
-            {
-                var extracted = msg.Substring(responseIdx + "Response:".Length).Trim();
-                if (!string.IsNullOrEmpty(extracted))
-                {
-                    return extracted;
-                }
-            }
-
-            // 2. Look for JSON content in the message
-            var jsonStart = msg.IndexOf("{");
-            var jsonEnd = msg.LastIndexOf("}");
-            if (jsonStart >= 0 && jsonEnd > jsonStart)
-            {
-                var jsonPart = msg.Substring(jsonStart, jsonEnd - jsonStart + 1);
-                try
-                {
-                    var json = JsonDocument.Parse(jsonPart);
-                    if (json.RootElement.TryGetProperty("error", out var errorElement))
-                    {
-                        if (errorElement.TryGetProperty("message", out var messageElement))
-                        {
-                            return messageElement.GetString() ?? msg;
-                        }
-                    }
-                }
-                catch
-                {
-                    // If parsing fails, continue to the next method
-                }
-            }
-
-            // 3. Look for Body data in the exception's Data dictionary
-            if (ex.Data.Contains("Body") && ex.Data["Body"] is string body && !string.IsNullOrEmpty(body))
-            {
-                return body;
-            }
-
-            // 4. Try inner exception
-            if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
-            {
-                return ex.InnerException.Message;
-            }
-
-            // 5. Fallback to original message
-            return msg;
-        }
+        // ExtractEnhancedErrorMessage is inherited from BaseLLMClient
     }
 }

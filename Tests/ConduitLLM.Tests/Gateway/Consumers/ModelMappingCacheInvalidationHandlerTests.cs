@@ -14,20 +14,20 @@ using ConduitLLM.Gateway.Consumers;
 namespace ConduitLLM.Tests.Http.Consumers
 {
     [Trait("Category", "Unit")]
-    public class ModelMappingCacheInvalidationConsumerTests
+    public class ModelMappingCacheInvalidationHandlerTests
     {
         private readonly Mock<ICacheManager> _mockCacheManager;
         private readonly Mock<IDiscoveryCacheService> _mockDiscoveryCacheService;
-        private readonly Mock<ILogger<ModelMappingCacheInvalidationConsumer>> _mockLogger;
-        private readonly ModelMappingCacheInvalidationConsumer _consumer;
+        private readonly Mock<ILogger<ModelMappingCacheInvalidationHandler>> _mockLogger;
+        private readonly ModelMappingCacheInvalidationHandler _consumer;
 
-        public ModelMappingCacheInvalidationConsumerTests()
+        public ModelMappingCacheInvalidationHandlerTests()
         {
             _mockCacheManager = new Mock<ICacheManager>();
             _mockDiscoveryCacheService = new Mock<IDiscoveryCacheService>();
-            _mockLogger = new Mock<ILogger<ModelMappingCacheInvalidationConsumer>>();
+            _mockLogger = new Mock<ILogger<ModelMappingCacheInvalidationHandler>>();
 
-            _consumer = new ModelMappingCacheInvalidationConsumer(
+            _consumer = new ModelMappingCacheInvalidationHandler(
                 _mockCacheManager.Object,
                 _mockDiscoveryCacheService.Object,
                 _mockLogger.Object);
@@ -310,7 +310,7 @@ namespace ConduitLLM.Tests.Http.Consumers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new ModelMappingCacheInvalidationConsumer(
+                new ModelMappingCacheInvalidationHandler(
                     null!,
                     _mockDiscoveryCacheService.Object,
                     _mockLogger.Object));
@@ -321,7 +321,7 @@ namespace ConduitLLM.Tests.Http.Consumers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new ModelMappingCacheInvalidationConsumer(
+                new ModelMappingCacheInvalidationHandler(
                     _mockCacheManager.Object,
                     null!,
                     _mockLogger.Object));
@@ -332,7 +332,7 @@ namespace ConduitLLM.Tests.Http.Consumers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new ModelMappingCacheInvalidationConsumer(
+                new ModelMappingCacheInvalidationHandler(
                     _mockCacheManager.Object,
                     _mockDiscoveryCacheService.Object,
                     null!));

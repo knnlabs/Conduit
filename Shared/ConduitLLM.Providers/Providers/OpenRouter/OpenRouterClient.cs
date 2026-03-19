@@ -210,18 +210,21 @@ namespace ConduitLLM.Providers.OpenRouter
 
         /// <summary>
         /// Extracts enhanced error messages for OpenRouter-specific error patterns.
+        /// Adds OpenRouter-specific keyword matching on top of base extraction.
         /// </summary>
         protected override string ExtractEnhancedErrorMessage(Exception ex)
         {
-            var baseErrorMessage = base.ExtractEnhancedErrorMessage(ex);
+            var baseResult = base.ExtractEnhancedErrorMessage(ex);
 
-            if (!string.IsNullOrEmpty(baseErrorMessage) &&
-                !baseErrorMessage.Equals(ex.Message) &&
-                !baseErrorMessage.Contains("Exception of type"))
+            // If the base found something useful beyond the raw message, use it
+            if (!string.IsNullOrEmpty(baseResult) &&
+                !baseResult.Equals(ex.Message) &&
+                !baseResult.Contains("Exception of type"))
             {
-                return baseErrorMessage;
+                return baseResult;
             }
 
+            // OpenRouter-specific keyword matching
             var msg = ex.Message;
 
             if (msg.Contains("model not found", StringComparison.OrdinalIgnoreCase) ||
@@ -254,17 +257,8 @@ namespace ConduitLLM.Providers.OpenRouter
                 return "Request was flagged by OpenRouter content moderation.";
             }
 
-            if (ex.Data.Contains("Body") && ex.Data["Body"] is string body && !string.IsNullOrEmpty(body))
-            {
-                return $"OpenRouter API error: {body}";
-            }
-
-            if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
-            {
-                return $"OpenRouter API error: {ex.InnerException.Message}";
-            }
-
-            return $"OpenRouter API error: {msg}";
+            // Fallback: use base result with provider prefix
+            return $"OpenRouter API error: {baseResult}";
         }
     }
 

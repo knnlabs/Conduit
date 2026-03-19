@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -13,27 +14,27 @@ namespace ConduitLLM.Gateway.Services
         /// Sends usage metrics for a virtual key.
         /// </summary>
         Task SendUsageMetricsAsync(int virtualKeyId, UsageMetricsNotification metrics);
-        
+
         /// <summary>
         /// Sends cost analytics for a virtual key.
         /// </summary>
         Task SendCostAnalyticsAsync(int virtualKeyId, CostAnalyticsNotification analytics);
-        
+
         /// <summary>
         /// Sends performance metrics for a virtual key.
         /// </summary>
         Task SendPerformanceMetricsAsync(int virtualKeyId, PerformanceMetricsNotification metrics);
-        
+
         /// <summary>
         /// Sends error analytics for a virtual key.
         /// </summary>
         Task SendErrorAnalyticsAsync(int virtualKeyId, ErrorAnalyticsNotification analytics);
-        
+
         /// <summary>
         /// Sends global usage metrics to admin subscribers.
         /// </summary>
         Task SendGlobalUsageMetricsAsync(UsageMetricsNotification metrics);
-        
+
         /// <summary>
         /// Sends global cost analytics to admin subscribers.
         /// </summary>
@@ -42,174 +43,127 @@ namespace ConduitLLM.Gateway.Services
 
     /// <summary>
     /// Implementation of usage analytics notification service using SignalR.
+    /// Inherits from SignalRNotificationServiceBase for standardized error handling.
     /// </summary>
-    public class UsageAnalyticsNotificationService : IUsageAnalyticsNotificationService
+    public class UsageAnalyticsNotificationService
+        : SignalRNotificationServiceBase<UsageAnalyticsHub>,
+          IUsageAnalyticsNotificationService
     {
-        private readonly IHubContext<UsageAnalyticsHub> _hubContext;
-        private readonly ILogger<UsageAnalyticsNotificationService> _logger;
-
         public UsageAnalyticsNotificationService(
             IHubContext<UsageAnalyticsHub> hubContext,
             ILogger<UsageAnalyticsNotificationService> logger)
+            : base(hubContext, logger)
         {
-            _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task SendUsageMetricsAsync(int virtualKeyId, UsageMetricsNotification metrics)
         {
-            try
+            await SendToGroupAsync($"analytics-usage-{virtualKeyId}", "UsageMetrics", metrics);
+
+            // If significant usage, also send to global analytics
+            if (metrics.RequestsPerMinute > 100 || metrics.TokensPerMinute > 10000)
             {
-                // Send to virtual key's usage analytics group
-                await _hubContext.Clients.Group($"analytics-usage-{virtualKeyId}").SendAsync("UsageMetrics", metrics);
-                
-                // If significant usage, also send to global analytics
-                if (metrics.RequestsPerMinute > 100 || metrics.TokensPerMinute > 10000)
+                await SendToGroupAsync("analytics-global-usage", "GlobalUsageMetrics", new
                 {
-                    await _hubContext.Clients.Group("analytics-global-usage").SendAsync("GlobalUsageMetrics", new
-                    {
-                        VirtualKeyId = virtualKeyId,
-                        Metrics = metrics
-                    });
-                }
-                
-                _logger.LogDebug(
-                    "Sent usage metrics for virtual key {VirtualKeyId}: {RequestsPerMinute} RPM, {TokensPerMinute} TPM",
-                    virtualKeyId,
-                    metrics.RequestsPerMinute,
-                    metrics.TokensPerMinute);
+                    VirtualKeyId = virtualKeyId,
+                    Metrics = metrics
+                });
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send usage metrics for virtual key {VirtualKeyId}", virtualKeyId);
-            }
+
+            Logger.LogDebug(
+                "Sent usage metrics for virtual key {VirtualKeyId}: {RequestsPerMinute} RPM, {TokensPerMinute} TPM",
+                virtualKeyId,
+                metrics.RequestsPerMinute,
+                metrics.TokensPerMinute);
         }
 
         public async Task SendCostAnalyticsAsync(int virtualKeyId, CostAnalyticsNotification analytics)
         {
-            try
+            await SendToGroupAsync($"analytics-cost-{virtualKeyId}", "CostAnalytics", analytics);
+
+            // If high cost rate, also send to global analytics
+            if (analytics.CostPerHour > 10.0m)
             {
-                // Send to virtual key's cost analytics group
-                await _hubContext.Clients.Group($"analytics-cost-{virtualKeyId}").SendAsync("CostAnalytics", analytics);
-                
-                // If high cost rate, also send to global analytics
-                if (analytics.CostPerHour > 10.0m)
+                await SendToGroupAsync("analytics-global-cost", "GlobalCostAnalytics", new
                 {
-                    await _hubContext.Clients.Group("analytics-global-cost").SendAsync("GlobalCostAnalytics", new
-                    {
-                        VirtualKeyId = virtualKeyId,
-                        Analytics = analytics
-                    });
-                }
-                
-                _logger.LogInformation(
-                    "Sent cost analytics for virtual key {VirtualKeyId}: ${TotalCost:F2} total, ${CostPerHour:F2}/hr",
-                    virtualKeyId,
-                    analytics.TotalCost,
-                    analytics.CostPerHour);
+                    VirtualKeyId = virtualKeyId,
+                    Analytics = analytics
+                });
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send cost analytics for virtual key {VirtualKeyId}", virtualKeyId);
-            }
+
+            Logger.LogInformation(
+                "Sent cost analytics for virtual key {VirtualKeyId}: ${TotalCost:F2} total, ${CostPerHour:F2}/hr",
+                virtualKeyId,
+                analytics.TotalCost,
+                analytics.CostPerHour);
         }
 
         public async Task SendPerformanceMetricsAsync(int virtualKeyId, PerformanceMetricsNotification metrics)
         {
-            try
+            await SendToGroupAsync($"analytics-performance-{virtualKeyId}", "PerformanceMetrics", metrics);
+
+            // If poor performance, also send to global analytics
+            if (metrics.AverageLatencyMs > 5000 || metrics.ErrorRate > 0.05)
             {
-                // Send to virtual key's performance analytics group
-                await _hubContext.Clients.Group($"analytics-performance-{virtualKeyId}").SendAsync("PerformanceMetrics", metrics);
-                
-                // If poor performance, also send to global analytics
-                if (metrics.AverageLatencyMs > 5000 || metrics.ErrorRate > 0.05)
+                await SendToGroupAsync("analytics-global-performance", "GlobalPerformanceMetrics", new
                 {
-                    await _hubContext.Clients.Group("analytics-global-performance").SendAsync("GlobalPerformanceMetrics", new
-                    {
-                        VirtualKeyId = virtualKeyId,
-                        Metrics = metrics
-                    });
-                }
-                
-                _logger.LogDebug(
-                    "Sent performance metrics for virtual key {VirtualKeyId}, model {Model}: {LatencyMs}ms avg latency",
-                    virtualKeyId,
-                    metrics.ModelName,
-                    metrics.AverageLatencyMs);
+                    VirtualKeyId = virtualKeyId,
+                    Metrics = metrics
+                });
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send performance metrics for virtual key {VirtualKeyId}", virtualKeyId);
-            }
+
+            Logger.LogDebug(
+                "Sent performance metrics for virtual key {VirtualKeyId}, model {Model}: {LatencyMs}ms avg latency",
+                virtualKeyId,
+                metrics.ModelName,
+                metrics.AverageLatencyMs);
         }
 
         public async Task SendErrorAnalyticsAsync(int virtualKeyId, ErrorAnalyticsNotification analytics)
         {
-            try
+            await SendToGroupAsync($"analytics-errors-{virtualKeyId}", "ErrorAnalytics", analytics);
+
+            // If high error rate, also send to global analytics
+            if (analytics.ErrorRate > 0.1 || analytics.TotalErrors > 100)
             {
-                // Send to virtual key's error analytics group
-                await _hubContext.Clients.Group($"analytics-errors-{virtualKeyId}").SendAsync("ErrorAnalytics", analytics);
-                
-                // If high error rate, also send to global analytics
-                if (analytics.ErrorRate > 0.1 || analytics.TotalErrors > 100)
+                await SendToGroupAsync("analytics-global-errors", "GlobalErrorAnalytics", new
                 {
-                    await _hubContext.Clients.Group("analytics-global-errors").SendAsync("GlobalErrorAnalytics", new
-                    {
-                        VirtualKeyId = virtualKeyId,
-                        Analytics = analytics
-                    });
-                }
-                
-                _logger.LogWarning(
-                    "Sent error analytics for virtual key {VirtualKeyId}: {ErrorCount} errors, {ErrorRate:P} error rate",
-                    virtualKeyId,
-                    analytics.TotalErrors,
-                    analytics.ErrorRate);
+                    VirtualKeyId = virtualKeyId,
+                    Analytics = analytics
+                });
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send error analytics for virtual key {VirtualKeyId}", virtualKeyId);
-            }
+
+            Logger.LogWarning(
+                "Sent error analytics for virtual key {VirtualKeyId}: {ErrorCount} errors, {ErrorRate:P} error rate",
+                virtualKeyId,
+                analytics.TotalErrors,
+                analytics.ErrorRate);
         }
 
         public async Task SendGlobalUsageMetricsAsync(UsageMetricsNotification metrics)
         {
-            try
+            await SendToGroupAsync("analytics-global-usage", "GlobalUsageMetrics", new
             {
-                await _hubContext.Clients.Group("analytics-global-usage").SendAsync("GlobalUsageMetrics", new
-                {
-                    Metrics = metrics
-                });
-                
-                _logger.LogInformation(
-                    "Sent global usage metrics: {RequestsPerMinute} RPM, {TokensPerMinute} TPM",
-                    metrics.RequestsPerMinute,
-                    metrics.TokensPerMinute);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send global usage metrics");
-            }
+                Metrics = metrics
+            });
+
+            Logger.LogInformation(
+                "Sent global usage metrics: {RequestsPerMinute} RPM, {TokensPerMinute} TPM",
+                metrics.RequestsPerMinute,
+                metrics.TokensPerMinute);
         }
 
         public async Task SendGlobalCostAnalyticsAsync(CostAnalyticsNotification analytics)
         {
-            try
+            await SendToGroupAsync("analytics-global-cost", "GlobalCostAnalytics", new
             {
-                await _hubContext.Clients.Group("analytics-global-cost").SendAsync("GlobalCostAnalytics", new
-                {
-                    Analytics = analytics
-                });
-                
-                _logger.LogInformation(
-                    "Sent global cost analytics: ${TotalCost:F2} total, ${CostPerHour:F2}/hr",
-                    analytics.TotalCost,
-                    analytics.CostPerHour);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send global cost analytics");
-            }
+                Analytics = analytics
+            });
+
+            Logger.LogInformation(
+                "Sent global cost analytics: ${TotalCost:F2} total, ${CostPerHour:F2}/hr",
+                analytics.TotalCost,
+                analytics.CostPerHour);
         }
     }
 }

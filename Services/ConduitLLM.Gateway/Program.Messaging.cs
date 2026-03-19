@@ -61,7 +61,7 @@ public partial class Program
 
             // Add model mapping cache invalidation consumer - handles both model mapping cache
             // (CacheRegion.ModelMetadata) and discovery cache (CacheRegion.ModelDiscovery)
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.ModelMappingCacheInvalidationConsumer>();
+            x.AddConsumer<ConduitLLM.Gateway.Consumers.ModelMappingCacheInvalidationHandler>();
             
             // Add media lifecycle handler for tracking generated media
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.MediaLifecycleHandler>();

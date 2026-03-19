@@ -132,8 +132,7 @@ All events use `PartitionKey = VirtualKeyId.ToString()`:
   - Consumed by `ModelCacheInvalidationHandler`
 
 - **ModelMappingChanged** - Provider-to-model mappings
-  - Consumed by `ModelMappingCacheInvalidationHandler`
-  - Consumed by `ModelMappingCacheInvalidationConsumer` (cache manager invalidation)
+  - Consumed by `ModelMappingCacheInvalidationHandler` (cache manager invalidation)
 
 - **IpFilterChanged** - Security policy updates
   - Consumed by `IpFilterCacheInvalidationHandler`
