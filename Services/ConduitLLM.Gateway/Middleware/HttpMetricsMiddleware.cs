@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Middleware;
 using Prometheus;
@@ -7,13 +6,10 @@ namespace ConduitLLM.Gateway.Middleware
 {
     /// <summary>
     /// Middleware for tracking HTTP request metrics using Prometheus.
-    /// Provides comprehensive metrics for monitoring API performance at scale.
+    /// Provides comprehensive metrics for monitoring Gateway API performance at scale.
     /// </summary>
-    public class HttpMetricsMiddleware
+    public class HttpMetricsMiddleware : HttpMetricsMiddlewareBase
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<HttpMetricsMiddleware> _logger;
-
         // Prometheus metrics
         private static readonly Counter RequestsTotal = Prometheus.Metrics
             .CreateCounter("conduit_http_requests_total", "Total number of HTTP requests",
@@ -84,101 +80,17 @@ namespace ConduitLLM.Gateway.Middleware
                 });
 
         public HttpMetricsMiddleware(RequestDelegate next, ILogger<HttpMetricsMiddleware> logger)
+            : base(next, logger) { }
+
+        protected override bool ShouldSkipMetrics(HttpContext context)
         {
-            _next = next;
-            _logger = logger;
+            return context.Request.Path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase);
         }
 
-        public async Task InvokeAsync(HttpContext context)
+        protected override string GetNormalizedPath(HttpContext context)
         {
-            var path = GetNormalizedPath(context.Request.Path);
-            var method = context.Request.Method;
+            var pathValue = context.Request.Path.Value ?? "/";
 
-            // Skip metrics for health checks to avoid noise
-            if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase))
-            {
-                await _next(context);
-                return;
-            }
-
-            // Track request size
-            if (context.Request.ContentLength.HasValue)
-            {
-                RequestSize.WithLabels(method, path).Observe(context.Request.ContentLength.Value);
-            }
-
-            // Start timing the request
-            var stopwatch = Stopwatch.StartNew();
-
-            // Track active requests
-            using (ActiveRequests.WithLabels(method, path).TrackInProgress())
-            {
-                // Use CountingStream to measure response size without buffering
-                // the entire response in memory (critical for large streaming responses)
-                var originalBodyStream = context.Response.Body;
-                using var countingStream = new CountingStream(originalBodyStream);
-                context.Response.Body = countingStream;
-
-                try
-                {
-                    await _next(context);
-                }
-                catch (TaskCanceledException)
-                {
-                    context.Response.StatusCode = 499; // Client closed request
-                    ErrorsTotal.WithLabels(method, path, "499", "client_cancelled").Inc();
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    var errorType = ex.GetType().Name;
-                    ErrorsTotal.WithLabels(method, path, context.Response.StatusCode.ToString(), errorType).Inc();
-                    _logger.LogError(ex, "Unhandled exception in request pipeline");
-                    if (context.Response.StatusCode == 200)
-                    {
-                        context.Response.StatusCode = 500;
-                    }
-                    throw;
-                }
-                finally
-                {
-                    context.Response.Body = originalBodyStream;
-
-                    // Track response size from counting stream (no buffering overhead)
-                    ResponseSize.WithLabels(method, path, context.Response.StatusCode.ToString())
-                        .Observe(countingStream.BytesWritten);
-
-                    stopwatch.Stop();
-                    var duration = stopwatch.Elapsed.TotalSeconds;
-                    var statusCode = context.Response.StatusCode.ToString();
-                    var virtualKeyId = GetVirtualKeyId(context);
-
-                    // Record metrics
-                    RequestsTotal.WithLabels(method, path, statusCode, virtualKeyId).Inc();
-                    RequestDuration.WithLabels(method, path, statusCode).Observe(duration);
-                    RequestDurationSummary.WithLabels(method, path).Observe(duration);
-
-                    // Track rate limit hits
-                    if (context.Response.StatusCode == 429)
-                    {
-                        RateLimitHits.WithLabels(path, virtualKeyId).Inc();
-                    }
-
-                    // Log slow requests
-                    if (duration > 5.0)
-                    {
-                        _logger.LogWarning("Slow request detected: {Method} {Path} took {Duration:F2}s with status {StatusCode}",
-                            method, LoggingSanitizer.S(path), duration, statusCode);
-                    }
-                }
-            }
-        }
-
-        private static string GetNormalizedPath(PathString path)
-        {
-            var pathValue = path.Value ?? "/";
-
-            // Normalize common path patterns to reduce cardinality
             // Replace GUIDs with {id}
             pathValue = System.Text.RegularExpressions.Regex.Replace(
                 pathValue,
@@ -208,19 +120,54 @@ namespace ConduitLLM.Gateway.Middleware
             return pathValue.ToLowerInvariant();
         }
 
+        protected override void IncrementActiveRequests(string method, string path)
+            => ActiveRequests.WithLabels(method, path).Inc();
+
+        protected override void DecrementActiveRequests(string method, string path)
+            => ActiveRequests.WithLabels(method, path).Dec();
+
+        protected override void RecordRequestSize(string method, string path, long bytes)
+            => RequestSize.WithLabels(method, path).Observe(bytes);
+
+        protected override void RecordError(string method, string path, int statusCode, string errorType)
+            => ErrorsTotal.WithLabels(method, path, statusCode.ToString(), errorType).Inc();
+
+        protected override void OnException(HttpContext context)
+        {
+            if (context.Response.StatusCode == 200)
+            {
+                context.Response.StatusCode = 500;
+            }
+        }
+
+        protected override void RecordResponseMetrics(
+            string method, string path, int statusCode, double durationSeconds,
+            long responseBytes, HttpContext context)
+        {
+            var statusCodeStr = statusCode.ToString();
+            var virtualKeyId = GetVirtualKeyId(context);
+
+            ResponseSize.WithLabels(method, path, statusCodeStr).Observe(responseBytes);
+            RequestsTotal.WithLabels(method, path, statusCodeStr, virtualKeyId).Inc();
+            RequestDuration.WithLabels(method, path, statusCodeStr).Observe(durationSeconds);
+            RequestDurationSummary.WithLabels(method, path).Observe(durationSeconds);
+
+            if (statusCode == 429)
+            {
+                RateLimitHits.WithLabels(path, virtualKeyId).Inc();
+            }
+        }
+
         private static string GetVirtualKeyId(HttpContext context)
         {
-            // Try to get virtual key ID from the authenticated user
             var virtualKeyId = context.User?.FindFirst("VirtualKeyId")?.Value;
             if (!string.IsNullOrEmpty(virtualKeyId))
                 return virtualKeyId;
 
-            // Try to get it from a custom header set by authentication
             if (context.Items.TryGetValue("VirtualKeyId", out var keyId) && keyId is string strKeyId)
                 return strKeyId;
 
             return "anonymous";
         }
     }
-
 }
