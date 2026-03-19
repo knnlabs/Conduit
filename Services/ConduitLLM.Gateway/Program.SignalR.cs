@@ -100,9 +100,6 @@ public partial class Program
             },
             "MetricsAggregationService");
 
-        // Register Business Metrics Background Service - with leader election
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.BusinessMetricsService>("BusinessMetricsService");
-
         // Add SignalR with shared configuration (MessagePack, Redis backplane)
         var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
         builder.Services.AddConduitSignalR(

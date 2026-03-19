@@ -75,9 +75,11 @@ public static class ObservabilityExtensions
             configuration.GetSection(QueryMonitoringOptions.SectionName));
         services.AddSingleton<QueryMonitoringInterceptor>();
 
-        // Register background metrics services
+        // Register task processing metrics (per-instance)
         services.AddHostedService<Services.TaskProcessingMetricsService>();
-        services.AddHostedService<Services.BusinessMetricsService>();
+
+        // Note: BusinessMetricsService and GatewayOperationsMetricsService are registered
+        // in Program.Monitoring.cs with leader election to avoid duplicate metrics in scaled deployments
 
         return services;
     }
