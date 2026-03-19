@@ -100,14 +100,16 @@ public interface IFunctionConfigurationRepository
     /// </summary>
     /// <param name="functionConfiguration">The function configuration to update</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task UpdateAsync(FunctionConfiguration functionConfiguration, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was updated</returns>
+    Task<bool> UpdateAsync(FunctionConfiguration functionConfiguration, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a function configuration by ID
     /// </summary>
     /// <param name="id">The function configuration ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task DeleteAsync(int id, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was deleted</returns>
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a function configuration name already exists

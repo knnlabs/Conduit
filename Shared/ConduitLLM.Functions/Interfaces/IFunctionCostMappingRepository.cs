@@ -44,14 +44,16 @@ public interface IFunctionCostMappingRepository
     /// </summary>
     /// <param name="mapping">The mapping to update</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task UpdateAsync(FunctionCostMapping mapping, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was updated</returns>
+    Task<bool> UpdateAsync(FunctionCostMapping mapping, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a cost mapping by ID
     /// </summary>
     /// <param name="id">The mapping ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task DeleteAsync(int id, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was deleted</returns>
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deactivates all cost mappings for a function configuration

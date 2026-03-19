@@ -12,7 +12,7 @@ namespace ConduitLLM.Functions.Entities;
 /// Credentials are shared across all function configurations of the same provider type.
 /// </summary>
 [Table("FunctionCredentials")]
-public class FunctionCredential : ICredentialEntity
+public class FunctionCredential : ICredentialEntity, IIdentifiableEntity<int>
 {
     /// <summary>
     /// Unique identifier for this credential
