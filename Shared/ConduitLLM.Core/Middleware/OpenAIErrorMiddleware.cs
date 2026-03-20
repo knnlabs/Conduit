@@ -1,14 +1,12 @@
 using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Prometheus;
@@ -19,11 +17,8 @@ namespace ConduitLLM.Core.Middleware
     /// Middleware that maps exceptions to OpenAI-compatible error responses with proper HTTP status codes.
     /// Uses <see cref="ExceptionToResponseMapper"/> as the single source of truth for exception mapping.
     /// </summary>
-    public class OpenAIErrorMiddleware
+    public class OpenAIErrorMiddleware : ExceptionHandlingMiddlewareBase
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<OpenAIErrorMiddleware> _logger;
-        private readonly IWebHostEnvironment _environment;
         private readonly ISecurityEventLogger? _securityEventLogger;
 
         private static readonly Counter ExceptionsHandled = Prometheus.Metrics
@@ -32,6 +27,8 @@ namespace ConduitLLM.Core.Middleware
                 {
                     LabelNames = new[] { "exception_type", "status_code", "endpoint" }
                 });
+
+        protected override string MiddlewareName => "OpenAIErrorMiddleware";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OpenAIErrorMiddleware"/> class.
@@ -45,64 +42,17 @@ namespace ConduitLLM.Core.Middleware
             ILogger<OpenAIErrorMiddleware> logger,
             IWebHostEnvironment environment,
             ISecurityEventLogger? securityEventLogger = null)
+            : base(next, logger, environment)
         {
-            _next = next ?? throw new ArgumentNullException(nameof(next));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _securityEventLogger = securityEventLogger;
         }
 
-        /// <summary>
-        /// Invokes the middleware.
-        /// </summary>
-        /// <param name="context">The HTTP context.</param>
-        public async Task InvokeAsync(HttpContext context)
+        /// <inheritdoc/>
+        protected override async Task OnExceptionMappedAsync(
+            HttpContext context,
+            Exception exception,
+            ExceptionToResponseMapper.ExceptionMappingResult mapping)
         {
-            try
-            {
-                await _next(context);
-            }
-            catch (Exception ex)
-            {
-                await HandleExceptionAsync(context, ex);
-            }
-        }
-
-        private async Task HandleExceptionAsync(HttpContext context, Exception exception)
-        {
-            // Log the exception with full details including request body for mutations
-            var traceId = context.TraceIdentifier;
-            string? requestBody = null;
-            try
-            {
-                requestBody = await RequestBodyCapture.CaptureAsync(context);
-            }
-            catch
-            {
-                // Body capture should never prevent error handling
-            }
-
-            if (requestBody != null)
-            {
-                _logger.LogError(exception,
-                    "Exception handled by OpenAIErrorMiddleware {TraceId} {Method} {Path}. RequestBody: {RequestBody}",
-                    traceId,
-                    LoggingSanitizer.S(context.Request.Method),
-                    LoggingSanitizer.S(context.Request.Path.ToString()),
-                    requestBody);
-            }
-            else
-            {
-                _logger.LogError(exception,
-                    "Exception handled by OpenAIErrorMiddleware {TraceId} {Method} {Path}",
-                    traceId,
-                    LoggingSanitizer.S(context.Request.Method),
-                    LoggingSanitizer.S(context.Request.Path.ToString()));
-            }
-
-            // Map exception using the single source of truth
-            var mapping = ExceptionToResponseMapper.Map(exception);
-
             // Record exception metrics
             var normalizedEndpoint = NormalizeEndpointForMetrics(context.Request.Path.Value ?? "/");
             ExceptionsHandled.WithLabels(
@@ -110,28 +60,15 @@ namespace ConduitLLM.Core.Middleware
                 mapping.StatusCode.ToString(),
                 normalizedEndpoint).Inc();
 
-            // In development, show actual exception messages for redacted responses
-            var message = mapping.IncludeExceptionMessageInLog
-                ? mapping.ResponseMessage
-                : (_environment.IsDevelopment() ? exception.Message : mapping.ResponseMessage);
-
             // Log security-relevant exceptions
             await LogSecurityExceptionAsync(context, exception, mapping.StatusCode);
+        }
 
-            // Set response headers
-            context.Response.StatusCode = mapping.StatusCode;
-            context.Response.ContentType = "application/json";
-
-            // Add correlation ID header
-            context.Response.Headers["X-Request-Id"] = traceId;
-
-            // Add Retry-After header for rate limit exceptions
-            if (exception is RateLimitExceededException rateLimitEx && rateLimitEx.RetryAfterSeconds.HasValue)
-            {
-                context.Response.Headers["Retry-After"] = rateLimitEx.RetryAfterSeconds.Value.ToString();
-            }
-
-            // Build and serialize response
+        /// <inheritdoc/>
+        protected override string CreateErrorResponseJson(
+            string message,
+            ExceptionToResponseMapper.ExceptionMappingResult mapping)
+        {
             var errorResponse = new OpenAIErrorResponse
             {
                 Error = new OpenAIError
@@ -143,14 +80,7 @@ namespace ConduitLLM.Core.Middleware
                 }
             };
 
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = false
-            };
-
-            var json = JsonSerializer.Serialize(errorResponse, jsonOptions);
-            await context.Response.WriteAsync(json);
+            return JsonSerializer.Serialize(errorResponse, ErrorJsonOptions);
         }
 
         private static string NormalizeEndpointForMetrics(string path)

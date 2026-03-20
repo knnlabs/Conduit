@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type {
   IpFilterDto,
@@ -91,22 +91,14 @@ export function useSecurityApi() {
         client.ipFilters.create(createDto)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'IP rule created successfully',
-        color: 'green',
-      });
+      notify.success('IP rule created successfully');
 
       // Convert back to legacy format
       return ipFilterToLegacyRule(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create IP rule';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -136,11 +128,7 @@ export function useSecurityApi() {
         client.ipFilters.update(numericId, updateDto)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'IP rule updated successfully',
-        color: 'green',
-      });
+      notify.success('IP rule updated successfully');
 
       // Return the updated rule (we need to fetch it to get the complete data)
       const updatedFilter = await withAdminClient(client =>
@@ -151,11 +139,7 @@ export function useSecurityApi() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update IP rule';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -176,19 +160,11 @@ export function useSecurityApi() {
         client.ipFilters.deleteById(numericId)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'IP rule deleted successfully',
-        color: 'green',
-      });
+      notify.success('IP rule deleted successfully');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete IP rule';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);

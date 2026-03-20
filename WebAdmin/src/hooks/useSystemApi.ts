@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import type {
   SystemInfoDto,
   HealthStatusDto,
@@ -56,21 +56,13 @@ export function useSystemApi() {
       // TODO: Implement settings update once SDK supports it
       const result = await Promise.resolve(settings);
 
-      notifications.show({
-        title: 'Success',
-        message: 'System settings updated successfully',
-        color: 'green',
-      });
+      notify.success('System settings updated successfully');
 
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update system settings';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -102,19 +94,11 @@ export function useSystemApi() {
       // TODO: Implement service restart once SDK supports it
       await Promise.resolve();
 
-      notifications.show({
-        title: 'Success',
-        message: `Service ${serviceName} restarted successfully`,
-        color: 'green',
-      });
+      notify.success(`Service ${serviceName} restarted successfully`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to restart service';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -139,21 +123,13 @@ export function useSystemApi() {
         status: 'completed' as const
       } as unknown as BackupDto);
 
-      notifications.show({
-        title: 'Success',
-        message: 'Backup created successfully',
-        color: 'green',
-      });
+      notify.success('Backup created successfully');
 
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create backup';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -188,19 +164,11 @@ export function useSystemApi() {
       // TODO: Implement backup restore once SDK supports it
       await Promise.resolve();
 
-      notifications.show({
-        title: 'Success',
-        message: 'Backup restored successfully. System will restart.',
-        color: 'green',
-      });
+      notify.success('Backup restored successfully. System will restart.');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to restore backup';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);

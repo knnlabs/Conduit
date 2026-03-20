@@ -22,7 +22,7 @@ import {
   IconToggleRight,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { formatters } from '@/lib/utils/formatters';
 import type { IpRule } from '@/hooks/useSecurityApi';
 
@@ -45,11 +45,7 @@ export function IpRulesTable({
 }: IpRulesTableProps) {
   const handleCopyIp = (ipAddress: string) => {
     void navigator.clipboard.writeText(ipAddress);
-    notifications.show({
-      title: 'Copied',
-      message: 'IP address copied to clipboard',
-      color: 'green',
-    });
+    notify.success('IP address copied to clipboard', 'Copied');
   };
 
   const handleDelete = (rule: IpRule) => {

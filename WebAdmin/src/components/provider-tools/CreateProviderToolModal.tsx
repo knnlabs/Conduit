@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, NumberInput, Select, Switch, Button, Stack, Group, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { notify } from '@/lib/notifications';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
 import type { CreateProviderTool, ToolProviderOption } from '@knn_labs/conduit-admin-client';
 
 interface CreateProviderToolModalProps {
@@ -14,10 +15,8 @@ interface CreateProviderToolModalProps {
 }
 
 export function CreateProviderToolModal({ isOpen, onClose, onSuccess }: CreateProviderToolModalProps) {
-  const { executeWithAdmin } = useAdminClient();
   const [providers, setProviders] = useState<ToolProviderOption[]>([]);
   const [billingUnits, setBillingUnits] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
 
   const form = useForm<CreateProviderTool>({
     initialValues: {
@@ -36,64 +35,45 @@ export function CreateProviderToolModal({ isOpen, onClose, onSuccess }: CreatePr
     },
   });
 
-  useEffect(() => {
-    const loadOptions = async () => {
-      try {
-        const [providersData, unitsData] = await Promise.all([
-          executeWithAdmin(client => client.providerTools.getToolProviders()),
-          executeWithAdmin(client => client.providerTools.getBillingUnits()),
-        ]);
-        setProviders(providersData);
-        setBillingUnits(unitsData);
-      } catch (error) {
-        console.error('Failed to load options:', error);
-        notifications.show({
-          title: 'Failed to Load Options',
-          message: 'Could not load provider and billing unit options',
-          color: 'red',
-        });
-      }
-    };
-
-    if (isOpen) {
-      void loadOptions();
-    }
-  }, [isOpen, executeWithAdmin]);
-
-  const handleSubmit = async (values: CreateProviderTool) => {
-    try {
-      setLoading(true);
-      await executeWithAdmin(client =>
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction: (values) =>
+      withAdminClient(client =>
         client.providerTools.createProviderTool({
           ...values,
           toolParameters: values.toolParameters?.trim() ?? null,
           costDescription: values.costDescription?.trim() ?? null,
           billingUnit: values.billingUnit?.trim() ?? null,
         })
-      );
-      notifications.show({
-        title: 'Tool Created',
-        message: `Successfully created ${values.toolName}`,
-        color: 'green',
-      });
-      form.reset();
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to create tool:', error);
-      notifications.show({
-        title: 'Creation Failed',
-        message: error instanceof Error ? error.message : 'Failed to create provider tool',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
+      ),
+    successMessage: 'Successfully created provider tool',
+  });
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const [providersData, unitsData] = await Promise.all([
+          withAdminClient(client => client.providerTools.getToolProviders()),
+          withAdminClient(client => client.providerTools.getBillingUnits()),
+        ]);
+        setProviders(providersData);
+        setBillingUnits(unitsData);
+      } catch (error) {
+        notify.error(error, 'Could not load provider and billing unit options');
+      }
+    };
+
+    if (isOpen) {
+      void loadOptions();
     }
-  };
+  }, [isOpen]);
 
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Add Provider Tool"
       size="md"
     >
@@ -155,7 +135,7 @@ export function CreateProviderToolModal({ isOpen, onClose, onSuccess }: CreatePr
           />
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" loading={loading}>

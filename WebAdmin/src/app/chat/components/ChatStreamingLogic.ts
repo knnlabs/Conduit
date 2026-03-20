@@ -14,6 +14,9 @@ import {
   ChatMessage,
   ChatErrorType
 } from '../types';
+// Needs raw notifications API: .show is passed as callback to SDK's createToastErrorHandler,
+// .hide is used for dismissing retry notifications, and custom options (id, loading, autoClose,
+// withCloseButton) are used for retry notifications that notify doesn't support.
 import { notifications } from '@mantine/notifications';
 
 interface ChatStreamingLogicParams {

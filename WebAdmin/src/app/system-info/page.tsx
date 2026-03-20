@@ -27,7 +27,7 @@ import {
   IconSettings,
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatUptime } from './helpers';
@@ -75,11 +75,7 @@ export default function SystemInfoPage() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error fetching system info:', errorMessage);
       setError(errorMessage);
-      notifications.show({
-        title: 'Error',
-        message: errorMessage,
-        color: 'red',
-      });
+      notify.error(new Error(errorMessage));
     } finally {
       setIsLoading(false);
     }
@@ -106,11 +102,7 @@ export default function SystemInfoPage() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error fetching global settings:', errorMessage);
-      notifications.show({
-        title: 'Error',
-        message: `Failed to load global settings: ${errorMessage}`,
-        color: 'red',
-      });
+      notify.error(new Error(`Failed to load global settings: ${errorMessage}`));
     } finally {
       setIsLoadingSettings(false);
     }
@@ -125,11 +117,7 @@ export default function SystemInfoPage() {
     setIsRefreshing(true);
     await fetchSystemInfo();
     setIsRefreshing(false);
-    notifications.show({
-      title: 'Refreshed',
-      message: 'System information updated',
-      color: 'green',
-    });
+    notify.success('System information updated', 'Refreshed');
   };
 
   const handleExport = () => {
@@ -146,11 +134,7 @@ export default function SystemInfoPage() {
     a.click();
     URL.revokeObjectURL(url);
 
-    notifications.show({
-      title: 'Exported',
-      message: 'System information exported successfully',
-      color: 'green',
-    });
+    notify.success('System information exported successfully', 'Exported');
   };
 
   const handleCacheToggle = (newValue: boolean) => {
@@ -184,20 +168,12 @@ export default function SystemInfoPage() {
 
             setCacheStatus(updatedStatus);
 
-          notifications.show({
-            title: 'Success',
-            message: `LLM cache ${newValue ? 'enabled' : 'disabled'} successfully`,
-            color: 'green',
-          });
+          notify.success(`LLM cache ${newValue ? 'enabled' : 'disabled'} successfully`);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           console.error('Error toggling cache:', errorMessage);
 
-          notifications.show({
-            title: 'Error',
-            message: `Failed to ${action} cache: ${errorMessage}`,
-            color: 'red',
-          });
+          notify.error(new Error(`Failed to ${action} cache: ${errorMessage}`));
         } finally {
           setIsTogglingCache(false);
         }
@@ -218,21 +194,13 @@ export default function SystemInfoPage() {
         client.settings.updateGlobalSetting(setting.key, value, description)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: `Setting "${setting.key}" updated successfully`,
-        color: 'green',
-      });
+      notify.success(`Setting "${setting.key}" updated successfully`);
 
       // Refresh settings
       await fetchGlobalSettings();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      notifications.show({
-        title: 'Error',
-        message: `Failed to update setting: ${errorMessage}`,
-        color: 'red',
-      });
+      notify.error(new Error(`Failed to update setting: ${errorMessage}`));
       throw error;
     }
   };
@@ -243,21 +211,13 @@ export default function SystemInfoPage() {
         client.settings.createGlobalSetting({ key, value, description })
       );
 
-      notifications.show({
-        title: 'Success',
-        message: `Setting "${key}" created successfully`,
-        color: 'green',
-      });
+      notify.success(`Setting "${key}" created successfully`);
 
       // Refresh settings
       await fetchGlobalSettings();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      notifications.show({
-        title: 'Error',
-        message: `Failed to create setting: ${errorMessage}`,
-        color: 'red',
-      });
+      notify.error(new Error(`Failed to create setting: ${errorMessage}`));
       throw error;
     }
   };
@@ -279,21 +239,13 @@ export default function SystemInfoPage() {
           try {
             await withAdminClient(client => client.settings.deleteGlobalSetting(key));
 
-            notifications.show({
-              title: 'Success',
-              message: `Setting "${key}" deleted successfully`,
-              color: 'green',
-            });
+            notify.success(`Setting "${key}" deleted successfully`);
 
             // Refresh settings
             await fetchGlobalSettings();
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            notifications.show({
-              title: 'Error',
-              message: `Failed to delete setting: ${errorMessage}`,
-              color: 'red',
-            });
+            notify.error(new Error(`Failed to delete setting: ${errorMessage}`));
           }
         })();
       },
@@ -304,22 +256,14 @@ export default function SystemInfoPage() {
     try {
       await withAdminClient(client => client.settings.reloadCache());
 
-      notifications.show({
-        title: 'Success',
-        message: 'Cache reloaded successfully',
-        color: 'green',
-      });
+      notify.success('Cache reloaded successfully');
 
       // Refresh cache stats
       const stats = await withAdminClient(client => client.settings.getCacheStats());
       setGlobalSettingsCacheStats(stats);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      notifications.show({
-        title: 'Error',
-        message: `Failed to reload cache: ${errorMessage}`,
-        color: 'red',
-      });
+      notify.error(new Error(`Failed to reload cache: ${errorMessage}`));
       throw error;
     }
   };
@@ -328,21 +272,13 @@ export default function SystemInfoPage() {
     try {
       await withAdminClient(client => client.system.invalidateDiscoveryCache());
 
-      notifications.show({
-        title: 'Success',
-        message: 'Function discovery cache invalidated successfully',
-        color: 'green',
-      });
+      notify.success('Function discovery cache invalidated successfully');
 
       // Refresh cache stats
       await fetchFunctionDiscoveryCache();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      notifications.show({
-        title: 'Error',
-        message: `Failed to invalidate function discovery cache: ${errorMessage}`,
-        color: 'red',
-      });
+      notify.error(new Error(`Failed to invalidate function discovery cache: ${errorMessage}`));
       throw error;
     }
   };

@@ -26,7 +26,7 @@ import {
   IconClock,
   IconCheck,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { RequestLogsTable } from '@/components/analytics/RequestLogsTable';
 import { RequestLogsFilters } from '@/components/analytics/RequestLogsFilters';
@@ -100,11 +100,7 @@ export default function RequestLogsPage() {
   // Export handlers
   const handleExportCSV = useCallback(() => {
     if (logs.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no request logs to export with the current filters',
-        color: 'orange',
-      });
+      notify.warning('There are no request logs to export with the current filters', 'No data to export');
       return;
     }
 
@@ -142,30 +138,18 @@ export default function RequestLogsPage() {
       { key: 'requestPath', label: 'Request Path' },
     ]);
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${logs.length} request logs`,
-      color: 'green',
-    });
+    notify.success(`Exported ${logs.length} request logs`, 'Export successful');
   }, [logs]);
 
   const handleExportJSON = useCallback(() => {
     if (logs.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no request logs to export with the current filters',
-        color: 'orange',
-      });
+      notify.warning('There are no request logs to export with the current filters', 'No data to export');
       return;
     }
 
     exportToJSON(logs, `request-logs-${new Date().toISOString().split('T')[0]}`);
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${logs.length} request logs`,
-      color: 'green',
-    });
+    notify.success(`Exported ${logs.length} request logs`, 'Export successful');
   }, [logs]);
 
   // Statistics cards

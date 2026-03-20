@@ -40,15 +40,23 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
         return query.OrderBy(m => m.Name);
     }
 
+    /// <summary>
+    /// Applies includes for Series (with Author) and Identifiers — the full detail set.
+    /// </summary>
+    private static IQueryable<Model> ApplyDetailIncludes(IQueryable<Model> query)
+    {
+        return query
+            .Include(m => m.Series)
+                .ThenInclude(s => s.Author)
+            .Include(m => m.Identifiers);
+    }
+
     /// <inheritdoc/>
     public async Task<Model?> GetByIdWithDetailsAsync(int id, CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>
         {
-            return await GetDbSet(context)
-                .Include(m => m.Series)
-                    .ThenInclude(s => s.Author)
-                .Include(m => m.Identifiers)
+            return await ApplyDetailIncludes(GetDbSet(context))
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
         }, cancellationToken, $"getting with details for ID {id}");
@@ -59,10 +67,7 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
     {
         return await ExecuteAsync(async context =>
         {
-            return await GetDbSet(context)
-                .Include(m => m.Series)
-                    .ThenInclude(s => s.Author)
-                .Include(m => m.Identifiers)
+            return await ApplyDetailIncludes(GetDbSet(context))
                 .AsNoTracking()
                 .OrderBy(m => m.Name)
                 .ToListAsync(cancellationToken);
@@ -80,10 +85,7 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
     {
         return await ExecuteAsync(async context =>
         {
-            var query = GetDbSet(context)
-                .Include(m => m.Series)
-                    .ThenInclude(s => s.Author)
-                .Include(m => m.Identifiers)
+            var query = ApplyDetailIncludes(GetDbSet(context))
                 .AsNoTracking()
                 .AsQueryable();
 
@@ -238,10 +240,7 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
                 .ToListAsync(cancellationToken);
 
             // Return models with those IDs, including series, author, and identifiers
-            return await GetDbSet(context)
-                .Include(m => m.Series)
-                    .ThenInclude(s => s.Author)
-                .Include(m => m.Identifiers)
+            return await ApplyDetailIncludes(GetDbSet(context))
                 .AsNoTracking()
                 .Where(m => modelIds.Contains(m.Id))
                 .OrderBy(m => m.Name)

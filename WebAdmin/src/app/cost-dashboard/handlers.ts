@@ -1,4 +1,4 @@
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { safeLog } from '@/lib/utils/logging';
 import type { DateRange } from './types';
@@ -11,18 +11,10 @@ export function useCostDashboardHandlers(
   const handleRefresh = async () => {
     try {
       await refetchAll();
-      notifications.show({
-        title: 'Data Refreshed',
-        message: 'Cost data has been updated',
-        color: 'green',
-      });
+      notify.success('Cost data has been updated', 'Data Refreshed');
     } catch (err) {
       safeLog('error', 'Failed to refresh cost data', err);
-      notifications.show({
-        title: 'Refresh Failed',
-        message: 'Failed to refresh cost data',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to refresh cost data');
     }
   };
 
@@ -73,18 +65,10 @@ export function useCostDashboardHandlers(
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      notifications.show({
-        title: 'Export Successful',
-        message: 'Cost report has been downloaded',
-        color: 'green',
-      });
+      notify.success('Cost report has been downloaded', 'Export Successful');
     } catch (err) {
       safeLog('error', 'Failed to export cost data', err);
-      notifications.show({
-        title: 'Export Failed',
-        message: 'Failed to export cost data',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to export cost data');
     } finally {
       setIsExporting(false);
     }

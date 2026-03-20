@@ -1,7 +1,7 @@
 import { useForm } from '@mantine/form';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { 
   type ProviderDto
 } from '@knn_labs/conduit-admin-client';
@@ -104,20 +104,12 @@ export function useProviderFormLogic(
           setAvailableProviders(providers);
           
           if (providers.length === 0) {
-            notifications.show({
-              title: 'No Providers Available',
-              message: 'All provider types have already been configured.',
-              color: 'orange',
-            });
+            notify.warning('All provider types have already been configured.', 'No Providers Available');
             router.push('/llm-providers');
           }
         } catch (error) {
           console.error('Error fetching available providers:', error);
-          notifications.show({
-            title: 'Error',
-            message: 'Failed to load available providers',
-            color: 'red',
-          });
+          notify.error('Failed to load available providers');
         } finally {
           setIsLoadingProviders(false);
         }
@@ -155,11 +147,7 @@ export function useProviderFormLogic(
           setInitialFormValues(newFormValues);
         } catch (error) {
           console.error('Error fetching provider:', error);
-          notifications.show({
-            title: 'Error',
-            message: 'Failed to load provider',
-            color: 'red',
-          });
+          notify.error('Failed to load provider');
           router.push('/llm-providers');
         } finally {
           setIsLoadingProvider(false);

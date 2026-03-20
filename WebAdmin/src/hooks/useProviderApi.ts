@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useQuery } from '@tanstack/react-query';
 
 import type {
@@ -94,21 +94,13 @@ export function useProviderApi() {
         client.providers.create(provider)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Provider created successfully',
-        color: 'green',
-      });
+      notify.success('Provider created successfully');
 
       return result;
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -124,21 +116,13 @@ export function useProviderApi() {
         client.providers.update(id, updates)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Provider updated successfully',
-        color: 'green',
-      });
+      notify.success('Provider updated successfully');
 
       return result;
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -154,19 +138,11 @@ export function useProviderApi() {
         client.providers.deleteById(id)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Provider deleted successfully',
-        color: 'green',
-      });
+      notify.success('Provider deleted successfully');
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -189,21 +165,17 @@ export function useProviderApi() {
       const success = (result.result as string) === 'success';
       const message = result.message ?? (success ? 'Test successful' : 'Test failed');
       
-      notifications.show({
-        title: success ? 'Success' : 'Failed',
-        message,
-        color: success ? 'green' : 'red',
-      });
+      if (success) {
+        notify.success(message);
+      } else {
+        notify.error(message);
+      }
 
       return { success, message };
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -256,21 +228,13 @@ export function useProviderApi() {
         client.providers.createKey(providerId, keyData as CreateProviderKeyCredentialDto)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'API key created successfully',
-        color: 'green',
-      });
+      notify.success('API key created successfully');
 
       return result;
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -286,19 +250,11 @@ export function useProviderApi() {
         client.providers.setPrimaryKey(providerId, keyId)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Primary key updated successfully',
-        color: 'green',
-      });
+      notify.success('Primary key updated successfully');
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -314,19 +270,11 @@ export function useProviderApi() {
         client.providers.deleteKey(providerId, keyId)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'API key deleted successfully',
-        color: 'green',
-      });
+      notify.success('API key deleted successfully');
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);

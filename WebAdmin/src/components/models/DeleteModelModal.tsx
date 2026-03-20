@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
 import { Modal, Text, Button, Group, Stack, Alert } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useConfirmModal } from '@/hooks/useFormModal';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -16,31 +16,17 @@ interface DeleteModelModalProps {
 }
 
 export function DeleteModelModal({ isOpen, model, onClose, onSuccess }: DeleteModelModalProps) {
-  const [loading, setLoading] = useState(false);
-  const { executeWithAdmin } = useAdminClient();
+  const confirmAction = useCallback(async () => {
+    if (!model.id) throw new Error('Model ID is required');
+    await withAdminClient(client => client.models.delete(model.id as number));
+  }, [model.id]);
 
-  const handleDelete = async () => {
-    try {
-      setLoading(true);
-      if (!model.id) throw new Error('Model ID is required');
-      await executeWithAdmin(client => client.models.delete(model.id as number));
-      notifications.show({
-        title: 'Success',
-        message: `Model "${model.name}" deleted successfully`,
-        color: 'green',
-      });
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to delete model:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete model',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { loading, handleConfirm } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction,
+    successMessage: `Model "${model.name}" deleted successfully`,
+  });
 
   return (
     <Modal
@@ -66,7 +52,7 @@ export function DeleteModelModal({ isOpen, model, onClose, onSuccess }: DeleteMo
           <Button variant="subtle" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button color="red" onClick={() => void handleDelete()} loading={loading}>
+          <Button color="red" onClick={() => void handleConfirm()} loading={loading}>
             Delete Model
           </Button>
         </Group>

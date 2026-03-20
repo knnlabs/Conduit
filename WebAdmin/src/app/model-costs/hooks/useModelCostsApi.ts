@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { 
   ModelCost, 
   CreateModelCostDto, 
@@ -41,19 +41,11 @@ export function useModelCostsApi() {
         client.modelCosts.create(data)
       );
       
-      notifications.show({
-        title: 'Success',
-        message: 'Model pricing created successfully',
-        color: 'green',
-      });
+      notify.success('Model pricing created successfully');
 
       return result;
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to create model pricing',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to create model pricing');
       throw error;
     } finally {
       setIsLoading(false);
@@ -67,19 +59,11 @@ export function useModelCostsApi() {
         client.modelCosts.update(id, data)
       );
       
-      notifications.show({
-        title: 'Success',
-        message: 'Model pricing updated successfully',
-        color: 'green',
-      });
+      notify.success('Model pricing updated successfully');
 
       return result;
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to update model pricing',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to update model pricing');
       throw error;
     } finally {
       setIsLoading(false);
@@ -93,17 +77,9 @@ export function useModelCostsApi() {
         client.modelCosts.deleteById(id)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Model pricing deleted successfully',
-        color: 'green',
-      });
+      notify.success('Model pricing deleted successfully');
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to delete model pricing',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to delete model pricing');
       throw error;
     } finally {
       setIsLoading(false);
@@ -119,19 +95,11 @@ export function useModelCostsApi() {
       
       const importCount = result.success || costs.length;
       
-      notifications.show({
-        title: 'Success',
-        message: `Successfully imported ${importCount} model costs`,
-        color: 'green',
-      });
+      notify.success(`Successfully imported ${importCount} model costs`);
 
       return { imported: importCount };
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to import model costs',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to import model costs');
       throw error;
     } finally {
       setIsLoading(false);
@@ -171,31 +139,19 @@ export function useModelCostsApi() {
       })) ?? [];
       
       if (success > 0) {
-        notifications.show({
-          title: 'Success',
-          message: `Successfully imported ${success} model costs`,
-          color: 'green',
-        });
+        notify.success(`Successfully imported ${success} model costs`);
       }
 
       if (failed > 0) {
         const errorMessage = errors
           .map(e => `${e.costName}: ${e.error}`)
           .join('\n');
-        notifications.show({
-          title: 'Warning',
-          message: `Failed to import ${failed} costs:\n${errorMessage}`,
-          color: 'orange',
-        });
+        notify.warning(`Failed to import ${failed} costs:\n${errorMessage}`);
       }
 
       return { success, failed, errors };
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to import model costs',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to import model costs');
       throw error;
     } finally {
       setIsLoading(false);
@@ -214,17 +170,9 @@ export function useModelCostsApi() {
       const filename = `model-costs-${new Date().toISOString().split('T')[0]}.${format}`;
       downloadFile(blob, filename);
 
-      notifications.show({
-        title: 'Success',
-        message: 'Model costs exported successfully',
-        color: 'green',
-      });
+      notify.success('Model costs exported successfully');
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to export model costs',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to export model costs');
       throw error;
     } finally {
       setIsExporting(false);

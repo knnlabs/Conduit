@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 export type ExportFormat = 'csv' | 'json' | 'excel';
@@ -84,21 +84,13 @@ export function useExportApi() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      notifications.show({
-        title: 'Export Completed',
-        message: 'Your export has been downloaded',
-        color: 'green',
-      });
+      notify.success('Your export has been downloaded');
 
       return { exportId };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start export';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -151,19 +143,11 @@ export function useExportApi() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      notifications.show({
-        title: 'Success',
-        message: 'Export downloaded successfully',
-        color: 'green',
-      });
+      notify.success('Export downloaded successfully');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to download export';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     }
   }, []);
@@ -189,19 +173,11 @@ export function useExportApi() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      notifications.show({
-        title: 'Success',
-        message: 'Analytics exported successfully',
-        color: 'green',
-      });
+      notify.success('Analytics exported successfully');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to export analytics';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);

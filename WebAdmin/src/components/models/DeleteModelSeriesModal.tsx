@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
 import { Modal, Text, Button, Group, Stack, Alert } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useConfirmModal } from '@/hooks/useFormModal';
 import type { ModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -16,31 +16,17 @@ interface DeleteModelSeriesModalProps {
 }
 
 export function DeleteModelSeriesModal({ isOpen, series, onClose, onSuccess }: DeleteModelSeriesModalProps) {
-  const [loading, setLoading] = useState(false);
-  const { executeWithAdmin } = useAdminClient();
+  const confirmAction = useCallback(async () => {
+    if (!series.id) throw new Error('Series ID is required');
+    await withAdminClient(client => client.modelSeries.delete(series.id as number));
+  }, [series.id]);
 
-  const handleDelete = async () => {
-    try {
-      setLoading(true);
-      if (!series.id) throw new Error('Series ID is required');
-      await executeWithAdmin(client => client.modelSeries.delete(series.id as number));
-      notifications.show({
-        title: 'Success',
-        message: `Model series "${series.name}" deleted successfully`,
-        color: 'green',
-      });
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to delete model series:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete model series',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { loading, handleConfirm } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction,
+    successMessage: `Model series "${series.name}" deleted successfully`,
+  });
 
   return (
     <Modal
@@ -68,7 +54,7 @@ export function DeleteModelSeriesModal({ isOpen, series, onClose, onSuccess }: D
           <Button variant="subtle" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button color="red" onClick={() => void handleDelete()} loading={loading}>
+          <Button color="red" onClick={() => void handleConfirm()} loading={loading}>
             Delete Series
           </Button>
         </Group>

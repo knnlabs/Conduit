@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useSecurityApi, type IpRule, type IpStats } from '@/hooks/useSecurityApi';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 
 export function useIpFilteringData() {
   const [isLoading, setIsLoading] = useState(true);
@@ -27,11 +27,7 @@ export function useIpFilteringData() {
       };
       setStats(calculatedStats);
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load IP rules',
-        color: 'red',
-      });
+      notify.error('Failed to load IP rules');
     } finally {
       setIsLoading(false);
     }

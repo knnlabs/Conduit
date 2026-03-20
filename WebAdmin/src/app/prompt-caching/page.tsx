@@ -18,7 +18,7 @@ import {
   Tooltip,
   Skeleton,
 } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { IconTrash, IconPlus } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
 
@@ -169,11 +169,7 @@ export default function PromptCachingPage() {
       setOriginalConfig(snapshot);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      notifications.show({
-        title: 'Error',
-        message: `Failed to load prompt caching config: ${message}`,
-        color: 'red',
-      });
+      notify.error(`Failed to load prompt caching config: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -230,18 +226,10 @@ export default function PromptCachingPage() {
         injectionPoints: result.injectionPoints,
       });
       setOriginalConfig(snapshot);
-      notifications.show({
-        title: 'Saved',
-        message: 'Prompt caching configuration updated successfully',
-        color: 'green',
-      });
+      notify.success('Prompt caching configuration updated successfully', 'Saved');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      notifications.show({
-        title: 'Error',
-        message: `Failed to save config: ${message}`,
-        color: 'red',
-      });
+      notify.error(`Failed to save config: ${message}`);
     } finally {
       setSaving(false);
     }

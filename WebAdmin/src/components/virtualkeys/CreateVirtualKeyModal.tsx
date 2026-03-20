@@ -21,7 +21,7 @@ import { useForm } from '@mantine/form';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 
@@ -152,22 +152,14 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         client.virtualKeys.create(payload)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Virtual key created successfully',
-        color: 'green',
-      });
+      notify.success('Virtual key created successfully');
       
       handleClose();
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to create virtual key',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to create virtual key');
     } finally {
       setIsSubmitting(false);
     }

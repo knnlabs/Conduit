@@ -1,4 +1,4 @@
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import {
   getErrorDisplayMessage,
   isNetworkError,
@@ -34,17 +34,9 @@ export function setupGlobalErrorHandler() {
         
         // Use SDK's type checking instead of string matching
         if (isNetworkError(error)) {
-          notifications.show({
-            title: 'Connection Error',
-            message: getErrorDisplayMessage(error) || 'Unable to connect to the server. Please check your connection.',
-            color: 'red',
-          });
+          notify.error(getErrorDisplayMessage(error) || 'Unable to connect to the server. Please check your connection.');
         } else if (isAuthError(error)) {
-          notifications.show({
-            title: 'Authentication Error',
-            message: getErrorDisplayMessage(error) || 'Your session may have expired. Please try logging in again.',
-            color: 'red',
-          });
+          notify.error(getErrorDisplayMessage(error) || 'Your session may have expired. Please try logging in again.');
         } else if (!error.message.includes('QueryErrorResetBoundary')) {
           // Don't show notifications for React Query boundary resets
           // Use SDK's error message formatting for all ConduitErrors
@@ -52,11 +44,7 @@ export function setupGlobalErrorHandler() {
             ? getErrorDisplayMessage(error) 
             : (error.message || 'Something went wrong. Please try again.');
           
-          notifications.show({
-            title: 'An error occurred',
-            message,
-            color: 'red',
-          });
+          notify.error(message);
         }
       }
       

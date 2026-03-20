@@ -1,5 +1,5 @@
 import { useRouter } from 'next/navigation';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { ApiKeyTestResult } from '@knn_labs/conduit-admin-client';
 import type { ProviderFormData, ProviderFormLogicResult } from './ProviderFormLogic';
@@ -57,21 +57,13 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           } catch (keyError) {
             // If key creation fails, we should inform the user
             console.warn('Failed to create API key:', keyError);
-            notifications.show({
-              title: 'Warning',
-              message: 'Provider created but failed to save API key. Please add it manually in the provider settings.',
-              color: 'orange',
-            });
+            notify.warning('Provider created but failed to save API key. Please add it manually in the provider settings.');
             router.push('/llm-providers');
             return;
           }
         }
 
-        notifications.show({
-          title: 'Success',
-          message: 'Provider and API key created successfully',
-          color: 'green',
-        });
+        notify.success('Provider and API key created successfully');
       } else {
         // Edit mode - Note: API keys cannot be updated here, only through the keys management page
         const payload = {
@@ -85,11 +77,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           client.providers.update(providerId as number, payload)
         );
 
-        notifications.show({
-          title: 'Success',
-          message: 'Provider updated successfully',
-          color: 'green',
-        });
+        notify.success('Provider updated successfully');
       }
       
       router.push('/llm-providers');
@@ -97,17 +85,9 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
       const errorMessage = error instanceof Error ? error.message : `Failed to ${mode} provider`;
       
       if (mode === 'add' && errorMessage.includes('already exists')) {
-        notifications.show({
-          title: 'Provider Already Exists',
-          message: `A provider of type "${values.providerType}" already exists. Please edit the existing provider or delete it first.`,
-          color: 'orange',
-        });
+        notify.warning(`A provider of type "${values.providerType}" already exists. Please edit the existing provider or delete it first.`, 'Provider Already Exists');
       } else {
-        notifications.show({
-          title: 'Error',
-          message: errorMessage,
-          color: 'red',
-        });
+        notify.error(errorMessage);
       }
     } finally {
       setIsSubmitting(false);

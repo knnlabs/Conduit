@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { MediaRecord, MediaFilters } from '../types';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 
 export function useMediaAssets(virtualKeyId?: number) {
   const [media, setMedia] = useState<MediaRecord[]>([]);
@@ -27,11 +27,7 @@ export function useMediaAssets(virtualKeyId?: number) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load media assets',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to load media assets');
     } finally {
       setLoading(false);
     }
@@ -45,20 +41,12 @@ export function useMediaAssets(virtualKeyId?: number) {
 
       setMedia(prev => prev.filter(m => m.id !== mediaId));
       if (showNotification) {
-        notifications.show({
-          title: 'Success',
-          message: 'Media deleted successfully',
-          color: 'green',
-        });
+        notify.success('Media deleted successfully');
       }
       return true;
-    } catch {
+    } catch (err) {
       if (showNotification) {
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to delete media',
-          color: 'red',
-        });
+        notify.error(err, 'Failed to delete media');
       }
       return false;
     }
@@ -76,12 +64,8 @@ export function useMediaAssets(virtualKeyId?: number) {
         client.media.searchMedia(pattern)
       );
       setMedia(data);
-    } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to search media',
-        color: 'red',
-      });
+    } catch (err) {
+      notify.error(err, 'Failed to search media');
     } finally {
       setLoading(false);
     }

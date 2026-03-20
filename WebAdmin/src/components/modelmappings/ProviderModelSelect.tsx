@@ -9,7 +9,7 @@ import {
   Loader,
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 
 interface ProviderModel {
   id: string;
@@ -81,11 +81,7 @@ export function ProviderModelSelect({
       }
     } catch (error) {
       console.error('Failed to fetch provider models:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to fetch provider models. You can still enter a model ID manually.',
-        color: 'orange',
-      });
+      notify.warning('Failed to fetch provider models. You can still enter a model ID manually.');
       setUseCustomInput(true);
     } finally {
       setIsLoading(false);

@@ -9,7 +9,7 @@ import { ModelAuthorsTable } from '@/components/models/ModelAuthorsTable';
 import { CreateModelModal } from '@/components/models/CreateModelModal';
 import { CreateModelSeriesModal } from '@/components/models/CreateModelSeriesModal';
 import { CreateModelAuthorModal } from '@/components/models/CreateModelAuthorModal';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 
 export default function ModelsPage() {
@@ -40,38 +40,26 @@ export default function ModelsPage() {
 
   const handleInvalidateCache = async () => {
     try {
-      notifications.show({
-        id: 'invalidating-cache',
-        title: 'Invalidating Discovery Cache',
-        message: 'Please wait...',
-        loading: true,
-        autoClose: false,
-      });
+      notify.loading('invalidating-cache', 'Please wait...', 'Invalidating Discovery Cache');
 
-      const result = await executeWithAdmin(client => 
+      const result = await executeWithAdmin(client =>
         client.system.invalidateDiscoveryCache()
       );
-      
-      notifications.update({
-        id: 'invalidating-cache',
-        title: 'Cache Invalidated',
+
+      notify.updateLoading('invalidating-cache', {
+        success: true,
         message: (result as { message?: string })?.message ?? 'Discovery cache has been successfully cleared',
-        color: 'green',
-        loading: false,
-        autoClose: 5000,
+        title: 'Cache Invalidated',
       });
 
       // Refresh the tables after cache invalidation
       handleRefresh();
     } catch (error) {
       console.error('Failed to invalidate cache:', error);
-      notifications.update({
-        id: 'invalidating-cache',
-        title: 'Failed to Invalidate Cache',
+      notify.updateLoading('invalidating-cache', {
+        success: false,
         message: error instanceof Error ? error.message : 'An error occurred while invalidating the cache',
-        color: 'red',
-        loading: false,
-        autoClose: 5000,
+        title: 'Failed to Invalidate Cache',
       });
     }
   };

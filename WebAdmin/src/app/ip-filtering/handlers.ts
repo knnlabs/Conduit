@@ -1,6 +1,6 @@
 import { useSecurityApi, type IpRule } from '@/hooks/useSecurityApi';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import type { IpFilterTemplate, IpTemplateRule } from '@/components/ip-filtering/ipFilterTemplates';
 
 export function useIpFilteringHandlers(
@@ -42,21 +42,12 @@ export function useIpFilteringHandlers(
 
       await Promise.all(promises);
 
-      notifications.show({
-        title: 'Success',
-        message: `Successfully ${operation}d ${selectedRules.length} rule(s)`,
-        color: 'green',
-      });
+      notify.success(`Successfully ${operation}d ${selectedRules.length} rule(s)`);
 
       await fetchIpRules();
       setSelectedRules([]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : `Failed to ${operation} rules`;
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(error, `Failed to ${operation} rules`);
     }
   };
 
@@ -102,18 +93,9 @@ export function useIpFilteringHandlers(
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      notifications.show({
-        title: 'Success',
-        message: `IP rules exported as ${format.toUpperCase()}`,
-        color: 'green',
-      });
+      notify.success(`IP rules exported as ${format.toUpperCase()}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to export IP rules';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(error, 'Failed to export IP rules');
     }
   };
 
@@ -191,20 +173,11 @@ export function useIpFilteringHandlers(
           }
         }
 
-        notifications.show({
-          title: 'Success',
-          message: `Imported ${imported} rule(s) successfully${failed > 0 ? `, ${failed} failed` : ''}`,
-          color: 'green',
-        });
+        notify.success(`Imported ${imported} rule(s) successfully${failed > 0 ? `, ${failed} failed` : ''}`);
 
         await fetchIpRules();
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to import IP rules';
-        notifications.show({
-          title: 'Error',
-          message,
-          color: 'red',
-        });
+        notify.error(error, 'Failed to import IP rules');
       }
     };
 
@@ -286,20 +259,15 @@ export function useIpFilteringHandlers(
         }
       }
 
-      notifications.show({
-        title: 'Template Applied',
-        message: `Created ${created} rule${created !== 1 ? 's' : ''} from "${template.label}"${failed > 0 ? `, ${failed} failed` : ''}`,
-        color: failed > 0 ? 'yellow' : 'green',
-      });
+      if (failed > 0) {
+        notify.warning(`Created ${created} rule${created !== 1 ? 's' : ''} from "${template.label}", ${failed} failed`);
+      } else {
+        notify.success(`Created ${created} rule${created !== 1 ? 's' : ''} from "${template.label}"`, 'Template Applied');
+      }
 
       await fetchIpRules();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to apply template';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(error, 'Failed to apply template');
     } finally {
       setIsSubmitting(false);
     }

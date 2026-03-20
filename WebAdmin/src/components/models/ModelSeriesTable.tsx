@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Table, TextInput, Group, ActionIcon, Badge, Text, Tooltip, Stack } from '@mantine/core';
 import { IconEdit, IconTrash, IconSearch, IconEye } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { EditModelSeriesModal } from './EditModelSeriesModal';
 import { ViewModelSeriesModal } from './ViewModelSeriesModal';
 import { DeleteModelSeriesModal } from './DeleteModelSeriesModal';
@@ -49,11 +49,7 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
       setModelCounts(counts);
     } catch (error) {
       console.error('Failed to load model series:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load model series',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load model series');
     } finally {
       setLoading(false);
     }

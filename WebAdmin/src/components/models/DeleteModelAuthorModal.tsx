@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
 import { Modal, Text, Button, Group, Stack, Alert } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useConfirmModal } from '@/hooks/useFormModal';
 import type { ModelAuthorDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -16,31 +16,17 @@ interface DeleteModelAuthorModalProps {
 }
 
 export function DeleteModelAuthorModal({ isOpen, author, onClose, onSuccess }: DeleteModelAuthorModalProps) {
-  const [loading, setLoading] = useState(false);
-  const { executeWithAdmin } = useAdminClient();
+  const confirmAction = useCallback(async () => {
+    if (!author.id) throw new Error('Author ID is required');
+    await withAdminClient(client => client.modelAuthors.delete(author.id as number));
+  }, [author.id]);
 
-  const handleDelete = async () => {
-    try {
-      setLoading(true);
-      if (!author.id) throw new Error('Author ID is required');
-      await executeWithAdmin(client => client.modelAuthors.delete(author.id as number));
-      notifications.show({
-        title: 'Success',
-        message: `Author "${author.name}" deleted successfully`,
-        color: 'green',
-      });
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to delete author:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete author',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { loading, handleConfirm } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction,
+    successMessage: `Author "${author.name}" deleted successfully`,
+  });
 
   return (
     <Modal
@@ -68,7 +54,7 @@ export function DeleteModelAuthorModal({ isOpen, author, onClose, onSuccess }: D
           <Button variant="subtle" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button color="red" onClick={() => void handleDelete()} loading={loading}>
+          <Button color="red" onClick={() => void handleConfirm()} loading={loading}>
             Delete Author
           </Button>
         </Group>

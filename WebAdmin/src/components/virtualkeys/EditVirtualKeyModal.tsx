@@ -15,11 +15,11 @@ import {
 import { useForm } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { validators } from '@/lib/utils/form-validators';
-import { notifications } from '@mantine/notifications';
 import { useState, useEffect, useRef } from 'react';
 
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
 
 interface EditVirtualKeyModalProps {
   opened: boolean;
@@ -37,7 +37,6 @@ interface EditVirtualKeyForm {
 }
 
 export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: EditVirtualKeyModalProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialFormValues, setInitialFormValues] = useState<EditVirtualKeyForm>(() => ({
     keyName: '',
     description: '',
@@ -53,17 +52,39 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       keyName: (value) => {
         const requiredError = validators.required('Key name')(value);
         if (requiredError) return requiredError;
-        
+
         const minLengthError = validators.minLength('Key name', 3)(value);
         if (minLengthError) return minLengthError;
-        
+
         const maxLengthError = validators.maxLength('Key name', 100)(value);
         if (maxLengthError) return maxLengthError;
-        
+
         return null;
       },
       virtualKeyGroupId: validators.positiveNumber('Virtual Key Group'),
     },
+  });
+
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction: (values) => {
+      if (!virtualKey) return Promise.resolve();
+
+      const payload = {
+        keyName: values.keyName.trim(),
+        virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
+        isEnabled: values.isEnabled,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
+        metadata: values.description?.trim() ?? undefined,
+      };
+
+      return withAdminClient(client =>
+        client.virtualKeys.update(virtualKey.id.toString(), payload)
+      );
+    },
+    successMessage: 'Virtual key updated successfully',
   });
 
   // Reset tracking when modal closes
@@ -76,16 +97,16 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
   // Update form when virtualKey changes
   useEffect(() => {
     if (!virtualKey) return;
-    
+
     // Only update if this is a different virtualKey than last time
     if (lastVirtualKeyId.current === virtualKey.id) return;
     lastVirtualKeyId.current = virtualKey.id;
-    
+
     // Parse allowedModels from string to array (it's stored as comma-separated in the DTO)
-    const models = virtualKey.allowedModels 
+    const models = virtualKey.allowedModels
       ? virtualKey.allowedModels.split(',').map(m => m.trim()).filter(m => m)
       : ['*']; // Default to all models if none specified
-    
+
     const newFormValues: EditVirtualKeyForm = {
       keyName: virtualKey.keyName,
       description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
@@ -93,58 +114,11 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       isEnabled: virtualKey.isEnabled,
       allowedModels: models,
     };
-    
+
     setInitialFormValues(newFormValues);
     form.setValues(newFormValues);
     form.resetDirty();
   }, [virtualKey, form]);
-
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
-  const handleSubmit = async (values: EditVirtualKeyForm) => {
-    if (!virtualKey) return;
-
-    setIsSubmitting(true);
-    try {
-      
-      const payload = {
-        keyName: values.keyName.trim(),
-        virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
-        isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
-        // Note: description is stored in metadata for virtual keys
-        metadata: values.description?.trim() ?? undefined,
-      };
-
-      await withAdminClient(client => 
-        client.virtualKeys.update(virtualKey.id.toString(), payload)
-      );
-      
-      // Response was successful
-
-      notifications.show({
-        title: 'Success',
-        message: 'Virtual key updated successfully',
-        color: 'green',
-      });
-      
-      handleClose();
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to update virtual key',
-        color: 'red',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (!virtualKey) {
     return null;
@@ -200,12 +174,12 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
             Virtual Key Group ID: {virtualKey.virtualKeyGroupId}
           </Text>
         </Alert>
-        
+
         <Group justify="flex-end" mt="md">
           <Button variant="subtle" onClick={handleClose}>
             Cancel
           </Button>
-          <Button type="submit" loading={isSubmitting}>
+          <Button type="submit" loading={loading}>
             Save Changes
           </Button>
         </Group>

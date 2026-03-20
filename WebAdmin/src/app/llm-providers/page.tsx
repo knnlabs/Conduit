@@ -29,7 +29,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { ProvidersTable } from '@/components/providers/ProvidersTable';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useRouter } from 'next/navigation';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
@@ -110,20 +110,16 @@ export default function ProvidersPage() {
         client.providers.testConnectionById(providerId)
       );
       
-      notifications.show({
-        title: result.result === ApiKeyTestResult.SUCCESS ? 'Connection Successful' : 'Connection Failed',
-        message: result.message ?? (result.result === ApiKeyTestResult.SUCCESS ? 'Provider is working correctly' : 'Failed to connect to provider'),
-        color: result.result === ApiKeyTestResult.SUCCESS ? 'green' : 'red',
-      });
+      if (result.result === ApiKeyTestResult.SUCCESS) {
+        notify.success(result.message ?? 'Provider is working correctly', 'Connection Successful');
+      } else {
+        notify.error(new Error(result.message ?? 'Failed to connect to provider'), 'Connection Failed');
+      }
       
       // Refresh providers to get updated health status
       void fetchProviders();
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to test provider connection',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to test provider connection'));
     } finally {
       setTestingProviders(prev => {
         const newSet = new Set(prev);
@@ -138,18 +134,10 @@ export default function ProvidersPage() {
       await withAdminClient(client => 
         client.providers.deleteById(providerId)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Provider deleted successfully',
-        color: 'green',
-      });
+      notify.success('Provider deleted successfully');
       void fetchProviders();
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete provider',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to delete provider'));
     }
   };
 
@@ -192,17 +180,13 @@ export default function ProvidersPage() {
 
   const handleExportCSV = () => {
     if (filteredProviders.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no providers to export',
-        color: 'orange',
-      });
+      notify.warning('There are no providers to export', 'No data to export');
       return;
     }
 
     const exportData = filteredProviders.map((provider) => {
       const displayName = provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider';
-      
+
       return {
         name: provider.providerName ?? displayName,
         type: displayName,
@@ -230,20 +214,12 @@ export default function ProvidersPage() {
       ]
     );
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${filteredProviders.length} providers`,
-      color: 'green',
-    });
+    notify.success(`Exported ${filteredProviders.length} providers`, 'Export successful');
   };
 
   const handleExportJSON = () => {
     if (filteredProviders.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no providers to export',
-        color: 'orange',
-      });
+      notify.warning('There are no providers to export', 'No data to export');
       return;
     }
 
@@ -252,11 +228,7 @@ export default function ProvidersPage() {
       `providers-${new Date().toISOString().split('T')[0]}`
     );
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${filteredProviders.length} providers`,
-      color: 'green',
-    });
+    notify.success(`Exported ${filteredProviders.length} providers`, 'Export successful');
   };
 
   const statCards = [

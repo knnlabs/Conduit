@@ -1,6 +1,6 @@
 'use client';
 
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 
 // Simple data fetching result interface (React Query alternative)
 export interface DataResult<T> {
@@ -45,11 +45,7 @@ export function useTableData<T>({
   
   const handleRefresh = () => {
     void refetch();
-    notifications.show({
-      title: 'Refreshing',
-      message: refreshMessage,
-      color: 'blue',
-    });
+    notify.info(refreshMessage, 'Refreshing');
   };
 
   const handleDelete = async (id: string) => {
@@ -59,19 +55,11 @@ export function useTableData<T>({
 
     try {
       await deleteMutation.mutateAsync(id);
-      notifications.show({
-        title: 'Success',
-        message: deleteSuccessMessage,
-        color: 'green',
-      });
+      notify.success(deleteSuccessMessage);
       // Refresh data after successful delete
       void refetch();
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: deleteErrorMessage,
-        color: 'red',
-      });
+      notify.error(deleteErrorMessage);
       throw error;
     }
   };

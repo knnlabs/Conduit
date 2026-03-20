@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Stack, Group, Button, Select, Text } from '@mantine/core';
 import { IconRefresh, IconTrash } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useMediaAssets } from '../hooks/useMediaAssets';
@@ -58,11 +58,7 @@ export default function MediaAssetsContent() {
         setKeyGroups(groups);
       } catch (error) {
         console.error('Failed to fetch key groups:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load key groups',
-          color: 'red',
-        });
+        notify.error('Failed to load key groups');
       } finally {
         setLoadingKeyGroups(false);
       }
@@ -103,11 +99,7 @@ export default function MediaAssetsContent() {
         }
       } catch (error) {
         console.error('Failed to fetch virtual keys:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load virtual keys',
-          color: 'red',
-        });
+        notify.error('Failed to load virtual keys');
       } finally {
         setLoadingVirtualKeys(false);
       }
@@ -161,23 +153,11 @@ export default function MediaAssetsContent() {
           deselectAll();
 
           if (failCount === 0) {
-            notifications.show({
-              title: 'Success',
-              message: `Deleted ${successCount} media items`,
-              color: 'green',
-            });
+            notify.success(`Deleted ${successCount} media items`);
           } else if (successCount === 0) {
-            notifications.show({
-              title: 'Error',
-              message: `Failed to delete ${failCount} media items`,
-              color: 'red',
-            });
+            notify.error(`Failed to delete ${failCount} media items`);
           } else {
-            notifications.show({
-              title: 'Partial Success',
-              message: `Deleted ${successCount} of ${count} items. ${failCount} failed.`,
-              color: 'orange',
-            });
+            notify.warning(`Deleted ${successCount} of ${count} items. ${failCount} failed.`, 'Partial Success');
           }
         })();
       },
@@ -201,11 +181,7 @@ export default function MediaAssetsContent() {
       }
     }
     
-    notifications.show({
-      title: 'Success',
-      message: `Downloaded ${selectedCount} files`,
-      color: 'green',
-    });
+    notify.success(`Downloaded ${selectedCount} files`);
   };
 
   // Get unique providers from media

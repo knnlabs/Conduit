@@ -15,7 +15,7 @@ import {
   IconReceiptDollar
 } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { EditModelModal } from './EditModelModal';
 import { ViewModelModal } from './ViewModelModal';
 import { DeleteModelModal } from './DeleteModelModal';
@@ -129,13 +129,8 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
       setTotalPages(data.totalPages);
       setTotalCount(data.totalCount);
     } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      console.warn('Failed to load models:', errorMessage);
-      notifications.show({
-        title: 'Error',
-        message: `Failed to load models: ${errorMessage}`,
-        color: 'red',
-      });
+      console.warn('Failed to load models:', getErrorMessage(error));
+      notify.error(error, 'Failed to load models');
     } finally {
       setLoading(false);
     }

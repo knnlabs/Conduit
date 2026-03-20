@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Table, Badge, Group, Text, ActionIcon, LoadingOverlay } from '@mantine/core';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { EditProviderToolModal } from './EditProviderToolModal';
 import { modals } from '@mantine/modals';
@@ -29,11 +29,7 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
         setTools(data);
       } catch (error) {
         console.error('Failed to load provider tools:', error);
-        notifications.show({
-          title: 'Failed to Load Tools',
-          message: error instanceof Error ? error.message : 'Failed to load provider tools',
-          color: 'red',
-        });
+        notify.error(error, 'Failed to load provider tools');
       } finally {
         setLoading(false);
       }
@@ -51,11 +47,7 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
       setTools(data);
     } catch (error) {
       console.error('Failed to load provider tools:', error);
-      notifications.show({
-        title: 'Failed to Load Tools',
-        message: error instanceof Error ? error.message : 'Failed to load provider tools',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load provider tools');
     } finally {
       setLoading(false);
     }
@@ -77,20 +69,12 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
             await executeWithAdmin(client =>
               client.providerTools.deleteProviderTool(tool.id)
             );
-            notifications.show({
-              title: 'Tool Deleted',
-              message: `Successfully deleted ${tool.toolName}`,
-              color: 'green',
-            });
+            notify.success(`Successfully deleted ${tool.toolName}`);
             onRefresh();
             void loadTools();
           } catch (error) {
             console.error('Failed to delete tool:', error);
-            notifications.show({
-              title: 'Delete Failed',
-              message: error instanceof Error ? error.message : 'Failed to delete provider tool',
-              color: 'red',
-            });
+            notify.error(error, 'Failed to delete provider tool');
           }
         })();
       },

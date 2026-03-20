@@ -31,7 +31,7 @@ import {
   IconDots,
   IconTestPipe,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 import {
   FunctionConfigurationDto,
@@ -80,11 +80,7 @@ export default function FunctionConfigurationsPage() {
       setConfigurations(response);
     } catch (err) {
       console.warn('Error loading configurations:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to load configurations',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to load configurations');
     } finally {
       setLoading(false);
     }
@@ -99,11 +95,7 @@ export default function FunctionConfigurationsPage() {
       await executeWithAdmin(client =>
         client.functionConfigurations.create(formData)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Configuration created successfully',
-        color: 'green',
-      });
+      notify.success('Configuration created successfully');
       setShowModal(false);
       resetForm();
 
@@ -114,11 +106,7 @@ export default function FunctionConfigurationsPage() {
       await loadConfigurations();
     } catch (err) {
       console.warn('Error creating configuration:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to create configuration',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to create configuration');
     }
   };
 
@@ -140,22 +128,14 @@ export default function FunctionConfigurationsPage() {
       await executeWithAdmin(client =>
         client.functionConfigurations.update(editingConfig.id, updateData)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Configuration updated successfully',
-        color: 'green',
-      });
+      notify.success('Configuration updated successfully');
       setShowModal(false);
       setEditingConfig(null);
       resetForm();
       await loadConfigurations();
     } catch (err) {
       console.warn('Error updating configuration:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to update configuration',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to update configuration');
     }
   };
 
@@ -164,19 +144,11 @@ export default function FunctionConfigurationsPage() {
       await executeWithAdmin(client =>
         client.functionConfigurations.deleteById(id)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Configuration deleted successfully',
-        color: 'green',
-      });
+      notify.success('Configuration deleted successfully');
       await loadConfigurations();
     } catch (err) {
       console.warn('Error deleting configuration:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to delete configuration',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to delete configuration');
     }
   };
 
@@ -188,19 +160,11 @@ export default function FunctionConfigurationsPage() {
           isEnabled: !config.isEnabled,
         })
       );
-      notifications.show({
-        title: 'Success',
-        message: `Configuration ${config.isEnabled ? 'disabled' : 'enabled'}`,
-        color: 'green',
-      });
+      notify.success(`Configuration ${config.isEnabled ? 'disabled' : 'enabled'}`);
       await loadConfigurations();
     } catch (err) {
       console.warn('Error toggling configuration:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to toggle configuration',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to toggle configuration');
     }
   };
 

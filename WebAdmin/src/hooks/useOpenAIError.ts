@@ -3,6 +3,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+// Uses notifications.show directly for custom autoClose behavior based on retryAfter
 import { notifications } from '@mantine/notifications';
 import { 
   parseApiError, 

@@ -35,7 +35,7 @@ import {
   LazyViewVirtualKeyModal as ViewVirtualKeyModal
 } from '@/components/lazy/LazyModals';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
 import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
@@ -150,29 +150,17 @@ export default function VirtualKeysPage() {
         client.virtualKeys.delete(keyId)
       );
       
-      notifications.show({
-        title: 'Success',
-        message: 'Virtual key deleted successfully',
-        color: 'green',
-      });
+      notify.success('Virtual key deleted successfully');
       void fetchVirtualKeys();
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete virtual key',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to delete virtual key'));
     }
   }, [fetchVirtualKeys]);
 
 
   const handleExportCSV = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no virtual keys to export',
-        color: 'orange',
-      });
+      notify.warning('There are no virtual keys to export', 'No data to export');
       return;
     }
 
@@ -212,20 +200,12 @@ export default function VirtualKeysPage() {
       ]
     );
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${filteredKeys.length} virtual keys`,
-      color: 'green',
-    });
+    notify.success(`Exported ${filteredKeys.length} virtual keys`, 'Export successful');
   }, [filteredKeys, virtualKeyGroups]);
 
   const handleExportJSON = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no virtual keys to export',
-        color: 'orange',
-      });
+      notify.warning('There are no virtual keys to export', 'No data to export');
       return;
     }
 
@@ -246,11 +226,7 @@ export default function VirtualKeysPage() {
       `virtual-keys-${new Date().toISOString().split('T')[0]}`
     );
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${filteredKeys.length} virtual keys`,
-      color: 'green',
-    });
+    notify.success(`Exported ${filteredKeys.length} virtual keys`, 'Export successful');
   }, [filteredKeys, virtualKeyGroups]);
 
   const statCards = useMemo(() => stats ? [

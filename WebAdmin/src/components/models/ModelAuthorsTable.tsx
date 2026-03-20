@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Table, TextInput, Group, ActionIcon, Badge, Text, Tooltip, Stack } from '@mantine/core';
 import { IconEdit, IconTrash, IconSearch, IconEye } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { EditModelAuthorModal } from './EditModelAuthorModal';
 import { ViewModelAuthorModal } from './ViewModelAuthorModal';
 import { DeleteModelAuthorModal } from './DeleteModelAuthorModal';
@@ -63,11 +63,7 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
       setModelCounts(modelCountsMap);
     } catch (error) {
       console.error('Failed to load authors:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load authors',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load authors');
     } finally {
       setLoading(false);
     }

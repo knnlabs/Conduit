@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 import type {
   ImageGenerationRequest,
@@ -24,21 +24,13 @@ export function useCoreApi() {
       const client = await getBrowserCoreClient();
       const result = await client.images.generate(data);
 
-      notifications.show({
-        title: 'Success',
-        message: 'Image generated successfully',
-        color: 'green',
-      });
+      notify.success('Image generated successfully');
 
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Image generation failed';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(message);
       throw err;
     } finally {
       setIsLoading(false);
@@ -53,21 +45,13 @@ export function useCoreApi() {
       const client = await getBrowserCoreClient();
       const result = await client.videos.generateAsync(data);
 
-      notifications.show({
-        title: 'Success',
-        message: 'Video generation started',
-        color: 'green',
-      });
+      notify.success('Video generation started');
 
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Video generation failed';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(message);
       throw err;
     } finally {
       setIsLoading(false);
@@ -91,11 +75,7 @@ export function useCoreApi() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Chat completion failed';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(message);
       throw err;
     } finally {
       setIsLoading(false);
@@ -121,11 +101,7 @@ export function useCoreApi() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Chat stream failed';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(message);
       throw err;
     } finally {
       setIsLoading(false);

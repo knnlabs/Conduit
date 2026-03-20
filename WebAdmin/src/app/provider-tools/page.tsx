@@ -5,7 +5,7 @@ import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
 import { IconPlus, IconRefresh } from '@tabler/icons-react';
 import { ProviderToolsTable } from '@/components/provider-tools/ProviderToolsTable';
 import { CreateProviderToolModal } from '@/components/provider-tools/CreateProviderToolModal';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 
 export default function ProviderToolsPage() {
@@ -19,11 +19,7 @@ export default function ProviderToolsPage() {
 
   const handleImport = async () => {
     // TODO: Implement import functionality
-    notifications.show({
-      title: 'Import Coming Soon',
-      message: 'Bulk import functionality will be available soon',
-      color: 'blue',
-    });
+    notify.info('Bulk import functionality will be available soon', 'Import Coming Soon');
   };
 
   const handleExport = async () => {
@@ -40,18 +36,10 @@ export default function ProviderToolsPage() {
       a.click();
       URL.revokeObjectURL(url);
       
-      notifications.show({
-        title: 'Export Successful',
-        message: `Exported ${(tools as unknown[]).length} provider tools`,
-        color: 'green',
-      });
+      notify.success(`Exported ${(tools as unknown[]).length} provider tools`, 'Export Successful');
     } catch (error) {
       console.error('Failed to export tools:', error);
-      notifications.show({
-        title: 'Export Failed',
-        message: error instanceof Error ? error.message : 'Failed to export provider tools',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to export provider tools');
     }
   };
 

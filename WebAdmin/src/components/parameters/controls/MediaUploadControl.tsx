@@ -2,8 +2,8 @@
 
 import { useRef, useState, useCallback } from 'react';
 import { Button, Text, Group, Stack, Progress, Badge, Tooltip, ActionIcon } from '@mantine/core';
-import { IconUpload, IconPhoto, IconVideo, IconMusic, IconX, IconCheck, IconAlertCircle } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { IconUpload, IconPhoto, IconVideo, IconMusic, IconX } from '@tabler/icons-react';
+import { notify } from '@/lib/notifications';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 import type { DynamicParameter } from '../types/parameters';
 
@@ -121,12 +121,7 @@ export function MediaUploadControl({
 
 
       // Show success notification
-      notifications.show({
-        title: 'Upload successful',
-        message: `${file.name} has been uploaded successfully`,
-        color: 'green',
-        icon: <IconCheck size={16} />,
-      });
+      notify.success(`${file.name} has been uploaded successfully`, 'Upload successful');
 
       // Reset status after a delay
       setTimeout(() => {
@@ -143,12 +138,7 @@ export function MediaUploadControl({
       setErrorMessage(message);
 
       // Show error notification
-      notifications.show({
-        title: 'Upload failed',
-        message,
-        color: 'red',
-        icon: <IconAlertCircle size={16} />,
-      });
+      notify.error(message);
     }
 
     // Clear the input so the same file can be selected again

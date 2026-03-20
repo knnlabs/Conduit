@@ -13,7 +13,7 @@ import {
   Stack,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { 
@@ -89,20 +89,12 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         
         // If no providers are available, show a notification
         if (providers.length === 0) {
-          notifications.show({
-            title: 'No Providers Available',
-            message: 'All provider types have already been configured.',
-            color: 'orange',
-          });
+          notify.warning('All provider types have already been configured.', 'No Providers Available');
           onClose();
         }
       } catch (error) {
         console.error('Error fetching available providers:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load available providers',
-          color: 'red',
-        });
+        notify.error(error, 'Failed to load available providers');
       } finally {
         setIsLoadingProviders(false);
       }
@@ -143,11 +135,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         client.providers.create(payload)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Provider created successfully',
-        color: 'green',
-      });
+      notify.success('Provider created successfully');
       
       handleClose();
       if (onSuccess) {
@@ -158,17 +146,9 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
       
       // Check if it's a duplicate provider error
       if (errorMessage.includes('already exists')) {
-        notifications.show({
-          title: 'Provider Already Exists',
-          message: `A provider of type "${values.providerType}" already exists. Please edit the existing provider or delete it first.`,
-          color: 'orange',
-        });
+        notify.warning(`A provider of type "${values.providerType}" already exists. Please edit the existing provider or delete it first.`, 'Provider Already Exists');
       } else {
-        notifications.show({
-          title: 'Error',
-          message: errorMessage,
-          color: 'red',
-        });
+        notify.error(error, 'Failed to create provider');
       }
     } finally {
       setIsSubmitting(false);

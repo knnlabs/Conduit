@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { notifications } from '@mantine/notifications';
-import type { 
-  ModelProviderMappingDto, 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { notify } from '@/lib/notifications';
+import { useAdminMutation } from '@/hooks/useAdminMutation';
+import type {
+  ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto
 } from '@knn_labs/conduit-admin-client';
@@ -11,7 +12,7 @@ import { withAdminClient } from '@/lib/client/adminClient';
 const QUERY_KEY = 'model-mappings';
 
 export function useModelMappings() {
-  
+
   const { data: mappings = [], isLoading, error, refetch } = useQuery({
     queryKey: [QUERY_KEY],
     queryFn: () => withAdminClient(client => client.modelMappings.list()),
@@ -43,173 +44,56 @@ export function useModelMapping(id: number | null) {
 }
 
 export function useCreateModelMapping() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateModelProviderMappingDto) => 
-      withAdminClient(client => client.modelMappings.create(data)),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      notifications.show({
-        title: 'Success',
-        message: 'Model mapping created successfully',
-        color: 'green',
-      });
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (data: CreateModelProviderMappingDto) => client => client.modelMappings.create(data),
+    successMessage: 'Model mapping created successfully',
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useUpdateModelMapping() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateModelProviderMappingDto }) => 
-      withAdminClient(client => client.modelMappings.update(id, data)),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      notifications.show({
-        title: 'Success',
-        message: 'Model mapping updated successfully',
-        color: 'green',
-      });
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateModelProviderMappingDto }) => client => client.modelMappings.update(id, data),
+    successMessage: 'Model mapping updated successfully',
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useDeleteModelMapping() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => 
-      withAdminClient(client => client.modelMappings.deleteById(id)),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      notifications.show({
-        title: 'Success',
-        message: 'Model mapping deleted successfully',
-        color: 'green',
-      });
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (id: number) => client => client.modelMappings.deleteById(id),
+    successMessage: 'Model mapping deleted successfully',
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useBulkDeleteModelMappings() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ids: number[]) => 
-      withAdminClient(client => client.modelMappings.bulkDelete(ids)),
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      
-      if (result.failureCount > 0) {
-        notifications.show({
-          title: 'Partial Success',
-          message: `Deleted ${result.successCount} mappings. ${result.failureCount} failed.`,
-          color: 'yellow',
-        });
-      } else {
-        notifications.show({
-          title: 'Success',
-          message: `Successfully deleted ${result.successCount} mappings`,
-          color: 'green',
-        });
-      }
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (ids: number[]) => client => client.modelMappings.bulkDelete(ids),
+    successMessage: (result) => result.failureCount > 0
+      ? `Deleted ${result.successCount} mappings. ${result.failureCount} failed.`
+      : `Successfully deleted ${result.successCount} mappings`,
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useBulkEnableModelMappings() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ids: number[]) => 
-      withAdminClient(client => client.modelMappings.bulkEnable(ids)),
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      
-      if (result.failureCount > 0) {
-        notifications.show({
-          title: 'Partial Success',
-          message: `Enabled ${result.successCount} mappings. ${result.failureCount} failed.`,
-          color: 'yellow',
-        });
-      } else {
-        notifications.show({
-          title: 'Success',
-          message: `Successfully enabled ${result.successCount} mappings`,
-          color: 'green',
-        });
-      }
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (ids: number[]) => client => client.modelMappings.bulkEnable(ids),
+    successMessage: (result) => result.failureCount > 0
+      ? `Enabled ${result.successCount} mappings. ${result.failureCount} failed.`
+      : `Successfully enabled ${result.successCount} mappings`,
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useBulkDisableModelMappings() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ids: number[]) => 
-      withAdminClient(client => client.modelMappings.bulkDisable(ids)),
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      
-      if (result.failureCount > 0) {
-        notifications.show({
-          title: 'Partial Success',
-          message: `Disabled ${result.successCount} mappings. ${result.failureCount} failed.`,
-          color: 'yellow',
-        });
-      } else {
-        notifications.show({
-          title: 'Success', 
-          message: `Successfully disabled ${result.successCount} mappings`,
-          color: 'green',
-        });
-      }
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (ids: number[]) => client => client.modelMappings.bulkDisable(ids),
+    successMessage: (result) => result.failureCount > 0
+      ? `Disabled ${result.successCount} mappings. ${result.failureCount} failed.`
+      : `Successfully disabled ${result.successCount} mappings`,
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
@@ -251,7 +135,7 @@ export function useBulkDiscoverModels() {
     setIsDiscovering(true);
     try {
       // Fetch models available from this specific provider using the new SDK method
-      const providerModels = await withAdminClient(client => 
+      const providerModels = await withAdminClient(client =>
         client.models.getByProvider(providerName.toLowerCase())
       );
 
@@ -269,7 +153,7 @@ export function useBulkDiscoverModels() {
         models: providerModels.map(model => {
           // The backend now returns providerModelId for provider-specific endpoints
           const providerModelId = (model as { providerModelId?: string }).providerModelId ?? model.name ?? undefined;
-          
+
           return {
             modelId: model.id?.toString() ?? '',
             displayName: model.name ?? model.id?.toString() ?? '',
@@ -300,11 +184,7 @@ export function useBulkDiscoverModels() {
       return result;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to discover models');
-      notifications.show({
-        title: 'Discovery Failed',
-        message: error.message,
-        color: 'red',
-      });
+      notify.error(err, 'Failed to discover models');
       throw error;
     } finally {
       setIsDiscovering(false);
@@ -376,11 +256,11 @@ export function useBulkCreateMappings() {
         })),
         replaceExisting: false,
       };
-      
-      const sdkResult = await withAdminClient(client => 
+
+      const sdkResult = await withAdminClient(client =>
         client.modelMappings.bulkCreate(bulkRequest)
       );
-      
+
       // Transform result back to expected format
       const result: BulkCreateResult = {
         success: sdkResult.failureCount === 0,
@@ -394,18 +274,14 @@ export function useBulkCreateMappings() {
           })),
         },
       };
-      
+
       // Invalidate cache to show new mappings
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      
+
       return result;
-    } catch (error) {
-      notifications.show({
-        title: 'Bulk Creation Failed',
-        message: error instanceof Error ? error.message : 'Failed to create mappings',
-        color: 'red',
-      });
-      throw error;
+    } catch (err) {
+      notify.error(err, 'Failed to create mappings');
+      throw err;
     } finally {
       setIsCreating(false);
     }
