@@ -89,8 +89,6 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex, "Error processing image generation progress for task {TaskId}", message.TaskId);
                 throw; // Let MassTransit handle retry
             }
-
-            await Task.CompletedTask;
         }
     }
 }

@@ -14,11 +14,11 @@ import {
   IconCurrencyDollar,
   IconReceiptDollar
 } from '@tabler/icons-react';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { useAdminClient, withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
 import { EditModelModal } from './EditModelModal';
 import { ViewModelModal } from './ViewModelModal';
-import { DeleteModelModal } from './DeleteModelModal';
+import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
 import { ModelCostPreviewModal } from './ModelCostPreviewModal';
 import { ModelCostEditorModal } from './ModelCostEditorModal';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
@@ -506,9 +506,15 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             }}
           />
 
-          <DeleteModelModal
+          <DeleteConfirmationModal
             isOpen={deleteModalOpen}
-            model={selectedModel}
+            title="Delete Model"
+            itemLabel="model"
+            itemName={selectedModel.name ?? ''}
+            description="This will permanently remove the model from the system. Any model mappings referencing this model may be affected."
+            confirmButtonText="Delete Model"
+            successMessage={`Model "${selectedModel.name}" deleted successfully`}
+            deleteAction={() => withAdminClient(client => client.models.delete(selectedModel.id as number))}
             onClose={() => {
               setDeleteModalOpen(false);
               setSelectedModel(null);

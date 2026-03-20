@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Table, TextInput, Group, ActionIcon, Badge, Text, Tooltip, Stack } from '@mantine/core';
 import { IconEdit, IconTrash, IconSearch, IconEye } from '@tabler/icons-react';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { useAdminClient, withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
 import { EditModelAuthorModal } from './EditModelAuthorModal';
 import { ViewModelAuthorModal } from './ViewModelAuthorModal';
-import { DeleteModelAuthorModal } from './DeleteModelAuthorModal';
+import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
 import type { ModelAuthorDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -233,9 +233,15 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             }}
           />
 
-          <DeleteModelAuthorModal
+          <DeleteConfirmationModal
             isOpen={deleteModalOpen}
-            author={selectedAuthor}
+            title="Delete Author"
+            itemLabel="author"
+            itemName={selectedAuthor.name ?? ''}
+            description="This will permanently remove the author from the system. Model series created by this author will remain but will no longer be associated with this author."
+            confirmButtonText="Delete Author"
+            successMessage={`Author "${selectedAuthor.name}" deleted successfully`}
+            deleteAction={() => withAdminClient(client => client.modelAuthors.delete(selectedAuthor.id as number))}
             onClose={() => {
               setDeleteModalOpen(false);
               setSelectedAuthor(null);

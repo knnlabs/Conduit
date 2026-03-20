@@ -4,11 +4,10 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Gateway.Hubs;
+using ConduitLLM.Gateway.Interfaces;
 
 using MassTransit;
 
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ConduitLLM.Gateway.EventHandlers
@@ -22,7 +21,7 @@ namespace ConduitLLM.Gateway.EventHandlers
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IRequestLogRepository _requestLogRepository;
         private readonly IMemoryCache _progressCache;
-        private readonly IHubContext<VideoGenerationHub> _hubContext;
+        private readonly IVideoGenerationNotificationService _notificationService;
         private readonly ILogger<VideoGenerationCompletedHandler> _logger;
         private const string CompletedTasksCacheKey = "completed_video_tasks";
 
@@ -30,21 +29,21 @@ namespace ConduitLLM.Gateway.EventHandlers
             IAsyncTaskService asyncTaskService,
             IRequestLogRepository requestLogRepository,
             IMemoryCache progressCache,
-            IHubContext<VideoGenerationHub> hubContext,
+            IVideoGenerationNotificationService notificationService,
             ILogger<VideoGenerationCompletedHandler> logger)
         {
             _asyncTaskService = asyncTaskService;
             _requestLogRepository = requestLogRepository;
             _progressCache = progressCache;
-            _hubContext = hubContext;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
         public async Task Consume(ConsumeContext<VideoGenerationCompleted> context)
         {
             var message = context.Message;
-            
-            _logger.LogInformation("Processing video generation completion for request {RequestId}: Video generated in {Duration}s (cost: ${Cost})", 
+
+            _logger.LogInformation("Processing video generation completion for request {RequestId}: Video generated in {Duration}s (cost: ${Cost})",
                 message.RequestId, message.GenerationDuration.TotalSeconds, message.Cost);
 
             try
@@ -132,7 +131,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 // Clear progress cache for this task
                 var progressCacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
                 _progressCache.Remove(progressCacheKey);
-                
+
                 // Store completion info for analytics and audit
                 var completionData = new
                 {
@@ -148,34 +147,31 @@ namespace ConduitLLM.Gateway.EventHandlers
                     Cost = message.Cost,
                     CompletedAt = message.CompletedAt
                 };
-                
+
                 // Cache completion data for recent tasks (24 hours)
                 UpdateCompletedTasksCache(completionData);
-                
+
                 // Log performance metrics
                 _logger.LogInformation("Video generation performance - Provider: {Provider}, Model: {Model}, Generation time: {GenerationTime}s, Video duration: {VideoDuration}s, Cost: ${Cost}",
                     LoggingSanitizer.S(message.Provider), LoggingSanitizer.S(message.Model), message.GenerationDuration.TotalSeconds, message.Duration, message.Cost);
-                
+
                 // Track provider-specific metrics
                 LogProviderMetrics(message.Provider, message.Model, message.GenerationDuration, message.Duration, message.Cost);
-                
-                // Send completion notification via SignalR
-                await _hubContext.Clients.Group($"video-{message.RequestId}").SendAsync("VideoGenerationCompleted", new
-                {
-                    taskId = message.RequestId,
-                    status = "completed",
-                    videoUrl = message.VideoUrl,
-                    previewUrl = message.PreviewUrl,
-                    duration = message.Duration,
-                    resolution = message.Resolution,
-                    fileSize = message.FileSize,
-                    cost = message.Cost,
-                    provider = message.Provider,
-                    model = message.Model,
-                    completedAt = message.CompletedAt,
-                    generationDuration = message.GenerationDuration.TotalSeconds
-                });
-                
+
+                // Send completion notification via notification service
+                await _notificationService.NotifyVideoGenerationCompletedAsync(
+                    message.RequestId,
+                    message.VideoUrl,
+                    message.GenerationDuration,
+                    message.Cost,
+                    previewUrl: message.PreviewUrl,
+                    resolution: message.Resolution,
+                    fileSize: message.FileSize,
+                    provider: message.Provider,
+                    model: message.Model,
+                    completedAt: message.CompletedAt,
+                    generationDurationSeconds: message.GenerationDuration.TotalSeconds);
+
                 _logger.LogInformation("Video generation completed for request {RequestId}", message.RequestId);
             }
             catch (Exception ex)
@@ -189,16 +185,16 @@ namespace ConduitLLM.Gateway.EventHandlers
         {
             // Maintain a rolling list of recently completed tasks
             var completedTasks = _progressCache.Get<List<object>>(CompletedTasksCacheKey) ?? new List<object>();
-            
+
             // Add new completion
             completedTasks.Add(completionData);
-            
+
             // Keep only last 100 completed tasks
             if (completedTasks.Count() > 100)
             {
                 completedTasks = completedTasks.Skip(completedTasks.Count() - 100).ToList();
             }
-            
+
             // Cache for 24 hours
             _progressCache.Set(CompletedTasksCacheKey, completedTasks, TimeSpan.FromHours(24));
         }
@@ -216,7 +212,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 ["cost_per_second"] = videoDuration > 0 ? cost / (decimal)videoDuration : 0,
                 ["generation_speed_ratio"] = generationDuration.TotalSeconds > 0 ? videoDuration / generationDuration.TotalSeconds : 0
             };
-            
+
             _logger.LogInformation("Video generation metrics: {Metrics}", metrics);
         }
     }

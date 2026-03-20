@@ -23,84 +23,93 @@ namespace ConduitLLM.Gateway.Services
 
         public async Task NotifyVideoGenerationStartedAsync(string requestId, string provider, DateTime startedAt, int? estimatedSeconds)
         {
-            var taskId = requestId;
-            var groupName = SignalRConstants.Groups.VideoTask(taskId);
+            var groupName = SignalRConstants.Groups.VideoTask(requestId);
 
             await SendToGroupAsync(groupName, SignalRConstants.ClientMethods.VideoGenerationStarted, new
             {
-                taskId,
+                taskId = requestId,
                 provider,
                 startedAt,
                 estimatedSeconds
             });
 
-            Logger.LogDebug("Sent VideoGenerationStarted notification for task {TaskId}", taskId);
+            Logger.LogDebug("Sent VideoGenerationStarted notification for task {TaskId}", requestId);
         }
 
-        public async Task NotifyVideoGenerationProgressAsync(string requestId, int progressPercentage, string status, string? message = null)
+        public async Task NotifyVideoGenerationProgressAsync(string requestId, int progressPercentage, string status, string? message = null, int? framesCompleted = null, int? totalFrames = null)
         {
-            var taskId = requestId;
-            var groupName = SignalRConstants.Groups.VideoTask(taskId);
+            var groupName = SignalRConstants.Groups.VideoTask(requestId);
 
             await SendToGroupAsync(groupName, SignalRConstants.ClientMethods.VideoGenerationProgress, new
             {
-                taskId,
+                taskId = requestId,
                 progressPercentage,
                 status,
                 message,
+                framesCompleted,
+                totalFrames,
                 timestamp = DateTime.UtcNow
             });
 
             Logger.LogDebug("Sent VideoGenerationProgress notification for task {TaskId}: {Progress}%",
-                taskId, progressPercentage);
+                requestId, progressPercentage);
         }
 
-        public async Task NotifyVideoGenerationCompletedAsync(string requestId, string videoUrl, TimeSpan duration, decimal cost)
+        public async Task NotifyVideoGenerationCompletedAsync(string requestId, string videoUrl, TimeSpan duration, decimal cost, string? previewUrl = null, string? resolution = null, long? fileSize = null, string? provider = null, string? model = null, DateTime? completedAt = null, double? generationDurationSeconds = null)
         {
-            var taskId = requestId;
-            var groupName = SignalRConstants.Groups.VideoTask(taskId);
+            var groupName = SignalRConstants.Groups.VideoTask(requestId);
 
             await SendToGroupAsync(groupName, SignalRConstants.ClientMethods.VideoGenerationCompleted, new
             {
-                taskId,
+                taskId = requestId,
+                status = "completed",
                 videoUrl,
-                durationSeconds = duration.TotalSeconds,
+                previewUrl,
+                duration = duration.TotalSeconds,
+                resolution,
+                fileSize,
                 cost,
-                completedAt = DateTime.UtcNow
+                provider,
+                model,
+                completedAt = completedAt ?? DateTime.UtcNow,
+                generationDuration = generationDurationSeconds
             });
 
-            Logger.LogDebug("Sent VideoGenerationCompleted notification for task {TaskId}", taskId);
+            Logger.LogDebug("Sent VideoGenerationCompleted notification for task {TaskId}", requestId);
         }
 
-        public async Task NotifyVideoGenerationFailedAsync(string requestId, string error, bool isRetryable)
+        public async Task NotifyVideoGenerationFailedAsync(string requestId, string error, bool isRetryable, string? errorCode = null, int? retryCount = null, int? maxRetries = null, DateTime? nextRetryAt = null, DateTime? failedAt = null)
         {
-            var taskId = requestId;
-            var groupName = SignalRConstants.Groups.VideoTask(taskId);
+            var groupName = SignalRConstants.Groups.VideoTask(requestId);
 
             await SendToGroupAsync(groupName, SignalRConstants.ClientMethods.VideoGenerationFailed, new
             {
-                taskId,
+                taskId = requestId,
+                status = "failed",
                 error,
+                errorCode,
                 isRetryable,
-                failedAt = DateTime.UtcNow
+                retryCount,
+                maxRetries,
+                nextRetryAt,
+                failedAt = failedAt ?? DateTime.UtcNow
             });
 
-            Logger.LogDebug("Sent VideoGenerationFailed notification for task {TaskId}", taskId);
+            Logger.LogDebug("Sent VideoGenerationFailed notification for task {TaskId}", requestId);
         }
 
         public async Task NotifyVideoGenerationCancelledAsync(string requestId, string? reason)
         {
-            var taskId = requestId;
-            var groupName = SignalRConstants.Groups.VideoTask(taskId);
+            var groupName = SignalRConstants.Groups.VideoTask(requestId);
 
             await SendToGroupAsync(groupName, SignalRConstants.ClientMethods.VideoGenerationCancelled, new
             {
-                taskId,
+                taskId = requestId,
                 reason,
                 cancelledAt = DateTime.UtcNow
             });
 
-            Logger.LogDebug("Sent VideoGenerationCancelled notification for task {TaskId}", taskId);
+            Logger.LogDebug("Sent VideoGenerationCancelled notification for task {TaskId}", requestId);
         }
     }
 }

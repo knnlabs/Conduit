@@ -3,7 +3,8 @@
 import { Card, Image, Text, Group, Badge, Checkbox, ActionIcon, Stack } from '@mantine/core';
 import { IconDownload, IconEye, IconTrash } from '@tabler/icons-react';
 import { MediaRecord } from '../types';
-import { formatBytes, formatDate, getProviderColor } from '../utils/formatters';
+import { getProviderColor } from '../utils/formatters';
+import { formatters } from '@/lib/utils/formatters';
 
 interface MediaCardProps {
   media: MediaRecord;
@@ -110,7 +111,7 @@ export default function MediaCard({
             {media.provider ?? 'Unknown'}
           </Badge>
           <Text size="xs" c="dimmed">
-            {formatBytes(media.sizeBytes ?? 0)}
+            {formatters.fileSize(media.sizeBytes ?? 0)}
           </Text>
         </Group>
 
@@ -122,7 +123,7 @@ export default function MediaCard({
 
         <Group justify="space-between" align="center">
           <Text size="xs" c="dimmed">
-            {formatDate(media.createdAt)}
+            {formatters.date(media.createdAt)}
           </Text>
           <Group gap="xs">
             <ActionIcon

@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Interfaces;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -12,16 +13,19 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// </summary>
     public class ImageGenerationCompletedHandler : IConsumer<ImageGenerationCompleted>
     {
+        private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
         private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationCompletedHandler> _logger;
         private const string CompletedTasksCacheKey = "completed_image_tasks";
 
         public ImageGenerationCompletedHandler(
+            IAsyncTaskService asyncTaskService,
             IMemoryCache progressCache,
             IImageGenerationNotificationService notificationService,
             ILogger<ImageGenerationCompletedHandler> logger)
         {
+            _asyncTaskService = asyncTaskService;
             _progressCache = progressCache;
             _notificationService = notificationService;
             _logger = logger;
@@ -36,10 +40,33 @@ namespace ConduitLLM.Gateway.EventHandlers
 
             try
             {
+                // Update task status to completed (if async task record exists)
+                var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.TaskId, context.CancellationToken);
+                if (taskStatus != null)
+                {
+                    var result = new
+                    {
+                        images = message.Images.Select(img => new { url = img.Url, revisedPrompt = img.RevisedPrompt }).ToList(),
+                        imageCount = message.Images.Count(),
+                        provider = message.Provider,
+                        model = message.Model,
+                        duration = message.Duration.TotalSeconds,
+                        cost = message.Cost
+                    };
+
+                    await _asyncTaskService.UpdateTaskStatusAsync(
+                        message.TaskId,
+                        TaskState.Completed,
+                        progress: 100,
+                        result: result,
+                        error: null,
+                        cancellationToken: context.CancellationToken);
+                }
+
                 // Clear progress cache for this task
                 var progressCacheKey = CacheKeys.MediaProgress.ImageProgress(message.TaskId);
                 _progressCache.Remove(progressCacheKey);
-                
+
                 // Store completion info for analytics and audit
                 var completionData = new
                 {
@@ -65,29 +92,18 @@ namespace ConduitLLM.Gateway.EventHandlers
                 // Track provider-specific metrics
                 LogProviderMetrics(message.Provider, message.Model, message.Images.Count(), message.Duration, message.Cost);
                 
-                // Future: Trigger post-processing workflows
-                // - Image optimization
-                // - Metadata extraction
-                // - CDN cache warming
-                
                 // Send completion notification to WebAdmin
                 await _notificationService.NotifyImageGenerationCompletedAsync(
                     message.TaskId,
                     message.Images.Select(img => img.Url ?? string.Empty).ToArray(),
                     message.Duration,
                     message.Cost);
-                
-                // Future: Send webhook notification if configured
-                // await _webhookService.SendImageGenerationCompletedWebhook(message);
-                
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing image generation completion for task {TaskId}", message.TaskId);
                 throw; // Let MassTransit handle retry
             }
-
-            await Task.CompletedTask;
         }
 
         private void UpdateCompletedTasksCache(object completionData)

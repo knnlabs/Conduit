@@ -3,7 +3,8 @@
 import { Modal, Image, Stack, Group, Text, Badge, Button, CopyButton, Divider, Anchor } from '@mantine/core';
 import { IconDownload, IconCopy, IconExternalLink } from '@tabler/icons-react';
 import { MediaRecord } from '../types';
-import { formatBytes, formatDate, getProviderColor } from '../utils/formatters';
+import { getProviderColor } from '../utils/formatters';
+import { formatters } from '@/lib/utils/formatters';
 
 interface MediaDetailModalProps {
   media: MediaRecord | null;
@@ -108,11 +109,11 @@ export default function MediaDetailModal({
         <Stack gap="xs">
           <Group justify="space-between">
             <Text size="sm" c="dimmed">File Size:</Text>
-            <Text size="sm">{formatBytes(media.sizeBytes ?? 0)}</Text>
+            <Text size="sm">{formatters.fileSize(media.sizeBytes ?? 0)}</Text>
           </Group>
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Created:</Text>
-            <Text size="sm">{formatDate(media.createdAt)}</Text>
+            <Text size="sm">{formatters.date(media.createdAt)}</Text>
           </Group>
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Virtual Key ID:</Text>
@@ -137,13 +138,13 @@ export default function MediaDetailModal({
           {media.lastAccessedAt && (
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Last Accessed:</Text>
-              <Text size="sm">{formatDate(media.lastAccessedAt)}</Text>
+              <Text size="sm">{formatters.date(media.lastAccessedAt)}</Text>
             </Group>
           )}
           {media.expiresAt && (
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Expires:</Text>
-              <Text size="sm" c="orange">{formatDate(media.expiresAt)}</Text>
+              <Text size="sm" c="orange">{formatters.date(media.expiresAt)}</Text>
             </Group>
           )}
           <Group justify="space-between">

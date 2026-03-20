@@ -3,7 +3,7 @@
 import { Grid, Card, Text, Group, Stack, RingProgress, Skeleton } from '@mantine/core';
 import { IconPhoto, IconVideo, IconDatabase, IconCloud } from '@tabler/icons-react';
 import { useMediaStats } from '../hooks/useMediaStats';
-import { formatBytes } from '../utils/formatters';
+import { formatters } from '@/lib/utils/formatters';
 
 export default function MediaStatsCards() {
   const { stats, loading } = useMediaStats();
@@ -34,7 +34,7 @@ export default function MediaStatsCards() {
             <Text size="sm" c="dimmed">Total Storage</Text>
             <IconDatabase size={20} opacity={0.5} />
           </Group>
-          <Text fw={700} size="xl">{formatBytes(stats.totalSizeBytes)}</Text>
+          <Text fw={700} size="xl">{formatters.fileSize(stats.totalSizeBytes)}</Text>
           <Text size="xs" c="dimmed" mt="xs">
             {stats.totalFiles} files
           </Text>
@@ -55,7 +55,7 @@ export default function MediaStatsCards() {
           </Group>
           <Text fw={700} size="xl">{stats.byMediaType.image?.fileCount ?? 0}</Text>
           <Text size="xs" c="dimmed" mt="xs">
-            {formatBytes(stats.byMediaType.image?.sizeBytes ?? 0)}
+            {formatters.fileSize(stats.byMediaType.image?.sizeBytes ?? 0)}
           </Text>
           <Text size="xs" c="blue" mt="md">
             {stats.totalSizeBytes > 0 ? ((stats.byMediaType.image?.sizeBytes ?? 0) / stats.totalSizeBytes * 100).toFixed(1) : '0'}% of total
@@ -71,7 +71,7 @@ export default function MediaStatsCards() {
           </Group>
           <Text fw={700} size="xl">{stats.byMediaType.video?.fileCount ?? 0}</Text>
           <Text size="xs" c="dimmed" mt="xs">
-            {formatBytes(stats.byMediaType.video?.sizeBytes ?? 0)}
+            {formatters.fileSize(stats.byMediaType.video?.sizeBytes ?? 0)}
           </Text>
           <Text size="xs" c="green" mt="md">
             {stats.totalSizeBytes > 0 ? ((stats.byMediaType.video?.sizeBytes ?? 0) / stats.totalSizeBytes * 100).toFixed(1) : '0'}% of total

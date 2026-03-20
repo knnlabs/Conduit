@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Table, TextInput, Group, ActionIcon, Badge, Text, Tooltip, Stack } from '@mantine/core';
 import { IconEdit, IconTrash, IconSearch, IconEye } from '@tabler/icons-react';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { useAdminClient, withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
 import { EditModelSeriesModal } from './EditModelSeriesModal';
 import { ViewModelSeriesModal } from './ViewModelSeriesModal';
-import { DeleteModelSeriesModal } from './DeleteModelSeriesModal';
+import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
 import type { ModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -214,9 +214,15 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
             }}
           />
 
-          <DeleteModelSeriesModal
+          <DeleteConfirmationModal
             isOpen={deleteModalOpen}
-            series={selectedSeries}
+            title="Delete Model Series"
+            itemLabel="model series"
+            itemName={selectedSeries.name ?? ''}
+            description="This will permanently remove the model series from the system. Models in this series will remain but will no longer be associated with this series."
+            confirmButtonText="Delete Series"
+            successMessage={`Model series "${selectedSeries.name}" deleted successfully`}
+            deleteAction={() => withAdminClient(client => client.modelSeries.delete(selectedSeries.id as number))}
             onClose={() => {
               setDeleteModalOpen(false);
               setSelectedSeries(null);
