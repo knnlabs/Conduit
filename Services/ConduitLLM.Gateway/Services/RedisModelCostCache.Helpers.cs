@@ -23,18 +23,13 @@ namespace ConduitLLM.Gateway.Services
             {
                 var (hits, misses, invalidations, resetTime) = await GetBaseStatsAsync(ServiceName);
                 var patternMatches = await Database.StringGetAsync(CacheKeys.Stats.PatternMatches());
-
-                // Include pending buffered stats that haven't been flushed yet
-                var pendingHits = Interlocked.Read(ref _statsBuffer.Hits);
-                var pendingMisses = Interlocked.Read(ref _statsBuffer.Misses);
-                var pendingPatternMatches = Interlocked.Read(ref _statsBuffer.PatternMatches);
-                var pendingInvalidations = Interlocked.Read(ref _statsBuffer.Invalidations);
+                var pendingPatternMatches = Interlocked.Read(ref _bufferedPatternMatches);
 
                 return new ModelCostCacheStats
                 {
-                    HitCount = hits + pendingHits,
-                    MissCount = misses + pendingMisses,
-                    InvalidationCount = invalidations + pendingInvalidations,
+                    HitCount = hits + PendingHits,
+                    MissCount = misses + PendingMisses,
+                    InvalidationCount = invalidations + PendingInvalidations,
                     PatternMatchCount = (patternMatches.HasValue ? (long)patternMatches : 0) + pendingPatternMatches,
                     LastResetTime = resetTime,
                     EntryCount = CountEntries(CacheKeys.ModelCost.Prefix + "*")

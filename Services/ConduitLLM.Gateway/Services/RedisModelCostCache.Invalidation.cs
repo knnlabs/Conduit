@@ -46,7 +46,7 @@ namespace ConduitLLM.Gateway.Services
                     }
                 }
 
-                Interlocked.Increment(ref _statsBuffer.Invalidations);
+                await TrackInvalidationAsync(ServiceName);
                 Logger.LogDebug("Model cost cache invalidated for ID: {ModelCostId}", modelCostId);
             }
             catch (Exception ex)
@@ -78,7 +78,7 @@ namespace ConduitLLM.Gateway.Services
                     }
                 }
 
-                Interlocked.Increment(ref _statsBuffer.Invalidations);
+                await TrackInvalidationAsync(ServiceName);
                 Logger.LogDebug("Model cost cache invalidated for pattern: {Pattern}", modelIdPattern);
             }
             catch (Exception ex)
@@ -185,7 +185,7 @@ namespace ConduitLLM.Gateway.Services
                 await Task.WhenAll(deleteTasks);
 
                 // Update invalidation statistics
-                Interlocked.Add(ref _statsBuffer.Invalidations, keysToDelete.Count);
+                await TrackInvalidationAsync(ServiceName, keysToDelete.Count);
 
                 // Publish batch invalidation message to other instances
                 var batchMessage = new ModelCostBatchInvalidation
