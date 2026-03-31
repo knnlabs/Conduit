@@ -2,7 +2,6 @@ using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.DTOs.IpFilter;
-using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Functions.Entities;
@@ -14,28 +13,6 @@ namespace ConduitLLM.Admin.Extensions
     /// </summary>
     public static class EntityMappingExtensions
     {
-        /// <summary>
-        /// Maps a VirtualKey entity to a VirtualKeyDto
-        /// </summary>
-        public static VirtualKeyDto ToDto(this VirtualKey key)
-        {
-            return new VirtualKeyDto
-            {
-                Id = key.Id,
-                KeyName = key.KeyName,
-                KeyPrefix = GenerateKeyPrefix(key.KeyHash),
-                AllowedModels = key.AllowedModels,
-                VirtualKeyGroupId = key.VirtualKeyGroupId,
-                IsEnabled = key.IsEnabled,
-                ExpiresAt = key.ExpiresAt,
-                CreatedAt = key.CreatedAt,
-                UpdatedAt = key.UpdatedAt,
-                Metadata = key.Metadata,
-                RateLimitRpm = key.RateLimitRpm,
-                RateLimitRpd = key.RateLimitRpd
-            };
-        }
-
         /// <summary>
         /// Maps an IpFilterEntity to an IpFilterDto
         /// </summary>
@@ -190,19 +167,5 @@ namespace ConduitLLM.Admin.Extensions
             };
         }
 
-        /// <summary>
-        /// Generates a key prefix for display purposes
-        /// </summary>
-        private static string GenerateKeyPrefix(string keyHash)
-        {
-            if (string.IsNullOrEmpty(keyHash))
-            {
-                return "condt_******...";
-            }
-
-            var prefixLength = Math.Min(6, keyHash.Length);
-            var shortPrefix = keyHash.Substring(0, prefixLength).ToLower();
-            return $"condt_{shortPrefix}...";
-        }
     }
 }

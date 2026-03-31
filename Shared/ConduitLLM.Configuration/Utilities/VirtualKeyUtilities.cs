@@ -90,7 +90,7 @@ namespace ConduitLLM.Configuration.Utilities
             {
                 Id = virtualKey.Id,
                 KeyName = virtualKey.KeyName,
-                KeyPrefix = "condt_****", // Don't expose the actual key
+                KeyPrefix = GenerateKeyPrefix(virtualKey.KeyHash),
                 AllowedModels = virtualKey.AllowedModels,
                 VirtualKeyGroupId = virtualKey.VirtualKeyGroupId,
                 IsEnabled = virtualKey.IsEnabled,
@@ -102,6 +102,21 @@ namespace ConduitLLM.Configuration.Utilities
                 RateLimitRpd = virtualKey.RateLimitRpd,
                 Description = virtualKey.Description,
             };
+        }
+
+        /// <summary>
+        /// Generates a masked key prefix for display purposes using the hash
+        /// </summary>
+        private static string GenerateKeyPrefix(string keyHash)
+        {
+            if (string.IsNullOrEmpty(keyHash))
+            {
+                return "condt_******...";
+            }
+
+            var prefixLength = Math.Min(6, keyHash.Length);
+            var shortPrefix = keyHash.Substring(0, prefixLength).ToLower();
+            return $"condt_{shortPrefix}...";
         }
     }
 }

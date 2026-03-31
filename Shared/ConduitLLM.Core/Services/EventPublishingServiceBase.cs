@@ -14,6 +14,11 @@ namespace ConduitLLM.Core.Services
         private readonly ILogger _logger;
 
         /// <summary>
+        /// Gets the logger instance for use by derived classes.
+        /// </summary>
+        protected ILogger Logger => _logger;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="EventPublishingServiceBase"/> class.
         /// </summary>
         /// <param name="publishEndpoint">The optional MassTransit publish endpoint for event publishing.</param>

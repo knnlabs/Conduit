@@ -45,9 +45,6 @@ public static class BillingServicesExtensions
         // Ephemeral key service for direct browser-to-API authentication (used for all direct access including SignalR)
         services.AddScoped<IEphemeralKeyService, EphemeralKeyService>();
 
-        // Virtual key service (Configuration layer - used by RealtimeUsageTracker)
-        services.AddScoped<ConduitLLM.Configuration.Interfaces.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
-
         // Billing audit service for comprehensive billing event tracking - with leader election
         services.AddSingleton<IBillingAuditService, BillingAuditService>();
         services.AddLeaderElectedHostedService<BillingAuditService>(

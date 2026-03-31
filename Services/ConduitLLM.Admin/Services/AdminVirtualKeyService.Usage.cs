@@ -83,7 +83,7 @@ namespace ConduitLLM.Admin.Services
             {
                 return null;
             }
-            return key.ToDto();
+            return VirtualKeyUtilities.MapToDto(key);
         }
 
         /// <inheritdoc />

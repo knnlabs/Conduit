@@ -102,7 +102,16 @@ public partial class Program
         else
         {
             // Fall back to direct database Virtual Key service
-            builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Gateway.Services.ApiVirtualKeyService>();
+            builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(sp =>
+            {
+                var virtualKeyRepository = sp.GetRequiredService<IVirtualKeyRepository>();
+                var groupRepository = sp.GetRequiredService<IVirtualKeyGroupRepository>();
+                var spendHistoryRepository = sp.GetRequiredService<IVirtualKeySpendHistoryRepository>();
+                var publishEndpoint = sp.GetService<IPublishEndpoint>(); // Optional
+                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.DirectApiVirtualKeyService>>();
+                return new ConduitLLM.Gateway.Services.DirectApiVirtualKeyService(
+                    virtualKeyRepository, groupRepository, spendHistoryRepository, publishEndpoint, logger);
+            });
 
             // Register PostgreSQL distributed lock service (works even without Redis)
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.PostgresDistributedLockService>();
