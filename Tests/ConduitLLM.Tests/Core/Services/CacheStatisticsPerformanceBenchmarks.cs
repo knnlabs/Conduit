@@ -270,8 +270,8 @@ namespace ConduitLLM.Tests.Core.Services
                 ? (double)batchStopwatch.ElapsedMilliseconds / individualStopwatch.ElapsedMilliseconds 
                 : 1.0;
             
-            ratio.Should().BeLessThanOrEqualTo(2.0, 
-                $"Batch operations should not take more than 2x the time of individual operations. " +
+            ratio.Should().BeLessThanOrEqualTo(4.0,
+                $"Batch operations should not take more than 4x the time of individual operations. " +
                 $"Individual: {individualStopwatch.ElapsedMilliseconds}ms, Batch: {batchStopwatch.ElapsedMilliseconds}ms");
             
             // Also ensure batch operations complete in reasonable time

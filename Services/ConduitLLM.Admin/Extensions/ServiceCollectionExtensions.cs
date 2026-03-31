@@ -9,7 +9,6 @@ using ConduitLLM.Security.Authorization;
 using ConduitLLM.Security.Options;
 
 using Microsoft.AspNetCore.Authorization;
-using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Extensions;
 
@@ -121,59 +120,8 @@ public static class ServiceCollectionExtensions
         // ILLMClientFactory is registered via AddProviderServices() in the shared Providers extension
         // Do not duplicate here — the shared registration is the single source of truth
 
-        // Configure HttpClient for discovery providers
-        services.AddHttpClient("DiscoveryProviders", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
-        });
-
-        // Register HTTP client for external image fetching (used by IImageDownloadService)
-        services.AddHttpClient(ConduitLLM.Core.Services.ImageDownloadService.HttpClientName, client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
-            client.DefaultRequestHeaders.Add("Accept", "image/*");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 20,
-            EnableMultipleHttp2Connections = true
-        });
-
-        // Register IImageDownloadService for DI-friendly image downloading
-        services.AddScoped<ConduitLLM.Core.Interfaces.IImageDownloadService, ConduitLLM.Core.Services.ImageDownloadService>();
-
-        // Register HTTP clients for function providers (Exa and Tavily)
-        services.AddHttpClient("ExaFunctionClient", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 10,
-            EnableMultipleHttp2Connections = true
-        });
-
-        services.AddHttpClient("TavilyFunctionClient", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 10,
-            EnableMultipleHttp2Connections = true
-        });
+        // Register shared HTTP clients (DiscoveryProviders, ImageDownload, Exa, Tavily)
+        services.AddSharedHttpClients();
 
         // Register Media Services using shared configuration from Core
         services.AddMediaServices(configuration);

@@ -84,15 +84,7 @@ namespace ConduitLLM.Providers
                 throw new ServiceUnavailableException($"Provider for model '{modelName}' is not available.", "Provider");
             }
 
-            if (!provider.IsEnabled)
-            {
-                _logger.LogWarning("Provider {ProviderId} is disabled", mapping.ProviderId);
-                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
-            }
-
-            var primaryKey = await GetPrimaryKeyCredentialAsync(provider);
-
-            // Create the appropriate client based on provider type
+            var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
             return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId);
         }
 
@@ -101,7 +93,6 @@ namespace ConduitLLM.Providers
         {
             _logger.LogDebug("Getting client for provider ID {ProviderId} using database credentials", providerId);
 
-            // Get provider from database
             var provider = await _credentialService.GetProviderByIdAsync(providerId);
 
             if (provider == null)
@@ -110,15 +101,7 @@ namespace ConduitLLM.Providers
                 throw new InvalidRequestException($"Provider with ID '{providerId}' not found.", "provider_not_found", "providerId");
             }
 
-            if (!provider.IsEnabled)
-            {
-                _logger.LogWarning("Provider {ProviderId} is disabled", providerId);
-                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
-            }
-
-            var primaryKey = await GetPrimaryKeyCredentialAsync(provider);
-
-            // Use a default model ID for operations that don't require a specific model
+            var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
             return CreateClientForProvider(provider, primaryKey, "default-model-id");
         }
 
@@ -135,7 +118,6 @@ namespace ConduitLLM.Providers
         {
             _logger.LogDebug("Getting client for provider type {ProviderType} using database credentials", providerType);
 
-            // Get first enabled provider of this type from database
             var allProviders = await _credentialService.GetAllProvidersAsync();
             var provider = allProviders.FirstOrDefault(p => p.ProviderType == providerType);
 
@@ -145,15 +127,7 @@ namespace ConduitLLM.Providers
                 throw new InvalidRequestException($"No provider configured for type '{providerType}'.", "provider_type_not_found", "providerType");
             }
 
-            if (!provider.IsEnabled)
-            {
-                _logger.LogWarning("Provider {ProviderId} of type {ProviderType} is disabled", provider.Id, providerType);
-                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' of type '{providerType}' is currently disabled.", provider.ProviderName);
-            }
-
-            var primaryKey = await GetPrimaryKeyCredentialAsync(provider);
-
-            // Use a default model ID for operations that don't require a specific model
+            var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
             return CreateClientForProvider(provider, primaryKey, "default-model-id");
         }
 
@@ -181,6 +155,21 @@ namespace ConduitLLM.Providers
             const string testModelId = "test-model";
 
             return CreateClientForProvider(provider, keyCredential, testModelId);
+        }
+
+        /// <summary>
+        /// Validates that a provider is enabled, then retrieves its primary key credential.
+        /// </summary>
+        private async Task<ProviderKeyCredential> ValidateProviderAndGetCredentialAsync(Provider provider)
+        {
+            if (!provider.IsEnabled)
+            {
+                _logger.LogWarning("Provider {ProviderId} is disabled", provider.Id);
+                throw new ServiceUnavailableException(
+                    $"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
+            }
+
+            return await GetPrimaryKeyCredentialAsync(provider);
         }
 
         private async Task<ProviderKeyCredential> GetPrimaryKeyCredentialAsync(Provider provider)
