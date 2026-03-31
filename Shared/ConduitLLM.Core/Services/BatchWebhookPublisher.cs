@@ -74,7 +74,11 @@ namespace ConduitLLM.Core.Services
             // If we've reached the batch size, trigger immediate publishing
             if (_queue.Count() >= _options.Value.MaxBatchSize)
             {
-                _ = Task.Run(async () => await PublishBatchAsync());
+                _ = Task.Run(async () =>
+                {
+                    try { await PublishBatchAsync(); }
+                    catch (Exception ex) { _logger.LogError(ex, "Unhandled error during webhook batch publish (threshold)"); }
+                });
             }
             else
             {
@@ -93,7 +97,11 @@ namespace ConduitLLM.Core.Services
                 _queue.Enqueue(webhook);
             }
             
-            _ = Task.Run(async () => await PublishBatchAsync());
+            _ = Task.Run(async () =>
+            {
+                try { await PublishBatchAsync(); }
+                catch (Exception ex) { _logger.LogError(ex, "Unhandled error during webhook bulk batch publish"); }
+            });
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

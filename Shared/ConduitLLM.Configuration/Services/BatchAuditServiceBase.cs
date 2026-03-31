@@ -165,7 +165,11 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
         {
             _logger.LogDebug("{EntityName} audit queue reached batch threshold ({QueueCount}/{BatchSize}), triggering flush",
                 EntityName, queueCount, BatchSize);
-            _ = Task.Run(async () => await FlushEventsInternalAsync());
+            _ = Task.Run(async () =>
+            {
+                try { await FlushEventsInternalAsync(); }
+                catch (Exception ex) { _logger.LogError(ex, "Unhandled error during {EntityName} audit batch-threshold flush", EntityName); }
+            });
         }
     }
 
@@ -268,7 +272,11 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
             TimeSpan.FromSeconds(FlushIntervalSeconds));
 
         // Schedule data retention cleanup
-        _ = Task.Run(async () => await ScheduleDataRetentionAsync(cancellationToken), cancellationToken);
+        _ = Task.Run(async () =>
+        {
+            try { await ScheduleDataRetentionAsync(cancellationToken); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { _logger.LogError(ex, "Unhandled error during {EntityName} data retention scheduling", EntityName); }
+        }, cancellationToken);
 
         return Task.CompletedTask;
     }
@@ -477,7 +485,11 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
     /// </summary>
     private void FlushTimerCallback(object? state)
     {
-        _ = Task.Run(async () => await FlushEventsInternalAsync());
+        _ = Task.Run(async () =>
+        {
+            try { await FlushEventsInternalAsync(); }
+            catch (Exception ex) { _logger.LogError(ex, "Unhandled error during {EntityName} audit timer flush", EntityName); }
+        });
     }
 
     /// <summary>

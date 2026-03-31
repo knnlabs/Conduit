@@ -266,7 +266,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse max agentic iterations")),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse Max agentic iterations")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -408,7 +408,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse default agentic enabled")),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse Default agentic enabled")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);

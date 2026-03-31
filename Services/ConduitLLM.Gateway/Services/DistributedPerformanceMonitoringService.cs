@@ -148,26 +148,38 @@ namespace ConduitLLM.Gateway.Services
 
         public void RecordRequestMetric(string endpoint, double responseTimeMs, bool isSuccess)
         {
-            // Use fire-and-forget async call to maintain interface compatibility
-            _ = Task.Run(() => RecordRequestMetricAsync(endpoint, responseTimeMs, isSuccess));
+            _ = Task.Run(async () =>
+            {
+                try { await RecordRequestMetricAsync(endpoint, responseTimeMs, isSuccess); }
+                catch (Exception ex) { _logger.LogError(ex, "Error recording request metric for {Endpoint}", endpoint); }
+            });
         }
 
         public void RecordDatabaseQueryMetric(string operation, double executionTimeMs)
         {
-            // Use fire-and-forget async call to maintain interface compatibility
-            _ = Task.Run(() => RecordDatabaseQueryMetricAsync(operation, executionTimeMs));
+            _ = Task.Run(async () =>
+            {
+                try { await RecordDatabaseQueryMetricAsync(operation, executionTimeMs); }
+                catch (Exception ex) { _logger.LogError(ex, "Error recording database query metric for {Operation}", operation); }
+            });
         }
 
         public void RecordCacheMetric(string operation, bool isHit)
         {
-            // Use fire-and-forget async call to maintain interface compatibility
-            _ = Task.Run(() => RecordCacheMetricAsync(operation, isHit));
+            _ = Task.Run(async () =>
+            {
+                try { await RecordCacheMetricAsync(operation, isHit); }
+                catch (Exception ex) { _logger.LogError(ex, "Error recording cache metric for {Operation}", operation); }
+            });
         }
 
         public void RecordConnectionPoolMetric(string poolName, int active, int idle, int waitQueue)
         {
-            // Use fire-and-forget async call to maintain interface compatibility
-            _ = Task.Run(() => RecordConnectionPoolMetricAsync(poolName, active, idle, waitQueue));
+            _ = Task.Run(async () =>
+            {
+                try { await RecordConnectionPoolMetricAsync(poolName, active, idle, waitQueue); }
+                catch (Exception ex) { _logger.LogError(ex, "Error recording connection pool metric for {PoolName}", poolName); }
+            });
         }
 
         public async Task<PerformanceMetrics> GetCurrentMetricsAsync()
