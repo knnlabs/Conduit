@@ -67,7 +67,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Assert - Should use direct update instead of batch
             Fixture.BatchSpendService.Verify(
-                x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
                 Times.Never);
             UsageTrackingAssertions.VerifyDirectSpendUpdate(
                 Fixture.VirtualKeyService,
@@ -116,7 +116,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
             Fixture.BatchSpendService.Verify(
-                x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
                 Times.Never);
         }
 
@@ -138,7 +138,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert - No cost calculation or spend update should occur
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
             Fixture.BatchSpendService.Verify(
-                x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
                 Times.Never);
 
             // Assert - Debug log should indicate billing was skipped due to error response
@@ -171,7 +171,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert - No billing should occur for any error status
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
             Fixture.BatchSpendService.Verify(
-                x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
                 Times.Never);
 
             // Assert - Appropriate debug logging

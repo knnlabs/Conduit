@@ -74,7 +74,7 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
             await LogEventAsync(log);
 
             // Queue spend update for batching instead of immediate database write
-            batchSpendService.QueueSpendUpdate(request.VirtualKeyId, request.Cost);
+            await batchSpendService.QueueSpendUpdateAsync(request.VirtualKeyId, request.Cost);
 
             Logger.LogDebug("Request logged and spend update queued for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, ProviderId={ProviderId}",
                 request.VirtualKeyId, request.Cost, request.ProviderId);

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,8 @@ namespace ConduitLLM.Configuration.Services
         private readonly TimeSpan _flushInterval;
         private readonly TimeSpan _redisTtl;
         private readonly string _redisKeyPrefix = "pending_spend:group:";
-        
+        private readonly ConcurrentQueue<(int VirtualKeyId, decimal Cost)> _fallbackQueue = new();
+
         /// <summary>
         /// Event raised after successful batch spend updates with the key hashes that were updated
         /// Allows external cache invalidation without tight coupling
@@ -80,89 +82,60 @@ namespace ConduitLLM.Configuration.Services
         private CancellationTokenSource? _cancellationTokenSource;
 
         /// <summary>
-        /// Add a spend update to the batch queue
+        /// Queues a spend update to Redis for batch processing.
+        /// Throws on failure so the caller can fall back to alternative paths.
         /// </summary>
         /// <param name="virtualKeyId">Virtual Key ID to update</param>
         /// <param name="cost">Cost to add to the current spend</param>
-        public void QueueSpendUpdate(int virtualKeyId, decimal cost)
+        public async Task QueueSpendUpdateAsync(int virtualKeyId, decimal cost)
         {
-            // Fire and forget pattern for non-blocking updates
-            _ = Task.Run(async () =>
+            // Check circuit breaker if available
+            if (_circuitBreaker?.IsOpen == true)
             {
-                try
-                {
-                    // Check circuit breaker if available
-                    if (_circuitBreaker?.IsOpen == true)
-                    {
-                        _logger.LogWarning("Redis circuit breaker is open. Skipping spend update for Virtual Key {VirtualKeyId}", virtualKeyId);
-                        throw new RedisCircuitBreakerOpenException(
-                            "Cannot update spend - Redis circuit breaker is open",
-                            CircuitState.Open);
-                    }
+                throw new RedisCircuitBreakerOpenException(
+                    "Cannot update spend - Redis circuit breaker is open",
+                    CircuitState.Open);
+            }
 
-                    // Need to get the group ID for this key
-                    using var scope = _serviceScopeFactory.CreateScope();
-                    var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
-                    
-                    var virtualKey = await context.VirtualKeys
-                        .Where(vk => vk.Id == virtualKeyId)
-                        .Select(vk => new { vk.VirtualKeyGroupId })
-                        .FirstOrDefaultAsync();
-                    
-                    if (virtualKey == null)
-                    {
-                        _logger.LogWarning("Virtual Key {VirtualKeyId} not found for spend update", virtualKeyId);
-                        await _alertingService.SendCriticalAlertAsync(
-                            $"Virtual Key {virtualKeyId} not found for spend update", 
-                            virtualKeyId);
-                        return;
-                    }
+            // Need to get the group ID for this key
+            using var scope = _serviceScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
 
-                    // Execute Redis operations through circuit breaker if available
-                    if (_circuitBreaker != null)
-                    {
-                        await _circuitBreaker.ExecuteAsync(async () =>
-                        {
-                            await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
-                        });
-                    }
-                    else
-                    {
-                        await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
-                    }
-                    
-                    _logger.LogDebug("Queued spend update to Redis for Virtual Key {VirtualKeyId} (Group {GroupId}): {Cost:C}", 
-                        virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
-                }
-                catch (RedisCircuitBreakerOpenException ex)
+            var virtualKey = await context.VirtualKeys
+                .Where(vk => vk.Id == virtualKeyId)
+                .Select(vk => new { vk.VirtualKeyGroupId })
+                .FirstOrDefaultAsync();
+
+            if (virtualKey == null)
+            {
+                _logger.LogWarning("Virtual Key {VirtualKeyId} not found for spend update", virtualKeyId);
+                return;
+            }
+
+            // Execute Redis operations through circuit breaker if available
+            if (_circuitBreaker != null)
+            {
+                await _circuitBreaker.ExecuteAsync(async () =>
                 {
-                    _logger.LogError(ex, "Redis circuit breaker prevented spend update for Virtual Key {VirtualKeyId}", virtualKeyId);
-                    
-                    // Don't alert for circuit breaker - it's already handling the issue
-                    throw new BillingSystemException(
-                        $"Unable to process billing update. Redis service is currently unavailable.",
-                        virtualKeyId,
-                        BillingSystemException.ErrorCodes.ServiceUnavailable,
-                        ex);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to queue spend update to Redis for Virtual Key {VirtualKeyId}", virtualKeyId);
-                    
-                    // Send critical alert
-                    await _alertingService.SendCriticalAlertAsync(
-                        $"Failed to queue spend update to Redis for Virtual Key {virtualKeyId}: {ex.Message}", 
-                        virtualKeyId,
-                        new { error = ex.GetType().Name, cost = cost });
-                    
-                    // Re-throw as BillingSystemException to prevent silent failures
-                    throw new BillingSystemException(
-                        $"Unable to process billing update for Virtual Key {virtualKeyId}. Service temporarily unavailable.",
-                        virtualKeyId,
-                        BillingSystemException.ErrorCodes.RedisUpdateFailed,
-                        ex);
-                }
-            });
+                    await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+                });
+            }
+            else
+            {
+                await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+            }
+
+            _logger.LogDebug("Queued spend update to Redis for Virtual Key {VirtualKeyId} (Group {GroupId}): {Cost:C}",
+                virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+        }
+
+        /// <inheritdoc />
+        public void QueueFallbackUpdate(int virtualKeyId, decimal cost)
+        {
+            _fallbackQueue.Enqueue((virtualKeyId, cost));
+            _logger.LogWarning(
+                "Spend update for Virtual Key {VirtualKeyId} ({Cost:C}) queued to in-memory fallback. Will be flushed on next cycle.",
+                virtualKeyId, cost);
         }
 
         private async Task PerformRedisUpdate(int virtualKeyId, int groupId, decimal cost)
@@ -309,6 +282,49 @@ namespace ConduitLLM.Configuration.Services
                 _logger.LogInformation(
                     "Batch flush completed: {GroupCount} groups, total deducted: {TotalSpend:C}, affected keys: {KeyCount}, elapsed: {ElapsedMs}ms",
                     groupUpdates.Count, totalSpend, updatedKeyHashes.Count, flushStopwatch.ElapsedMilliseconds);
+
+                // Drain in-memory fallback queue
+                var fallbackCount = 0;
+                while (_fallbackQueue.TryDequeue(out var fallbackItem))
+                {
+                    try
+                    {
+                        var fallbackKey = await context.VirtualKeys
+                            .Where(vk => vk.Id == fallbackItem.VirtualKeyId)
+                            .Select(vk => new { vk.VirtualKeyGroupId, vk.KeyHash })
+                            .FirstOrDefaultAsync();
+
+                        if (fallbackKey != null)
+                        {
+                            await groupRepository.AdjustBalanceAsync(
+                                fallbackKey.VirtualKeyGroupId,
+                                -fallbackItem.Cost,
+                                $"API usage by virtual key #{fallbackItem.VirtualKeyId} (recovered from fallback queue)",
+                                "System");
+                            updatedKeyHashes.Add(fallbackKey.KeyHash);
+                            fallbackCount++;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Virtual Key {VirtualKeyId} from fallback queue not found — spend update lost",
+                                fallbackItem.VirtualKeyId);
+                        }
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        _logger.LogError(fallbackEx,
+                            "Failed to process fallback spend update for Virtual Key {VirtualKeyId}. Re-queuing.",
+                            fallbackItem.VirtualKeyId);
+                        // Re-queue for the next flush cycle
+                        _fallbackQueue.Enqueue(fallbackItem);
+                        break; // Stop processing fallback queue on error to avoid infinite loop
+                    }
+                }
+
+                if (fallbackCount > 0)
+                {
+                    _logger.LogInformation("Recovered {Count} spend updates from in-memory fallback queue", fallbackCount);
+                }
 
                 // Raise event for cache invalidation (if any subscribers)
                 if (updatedKeyHashes.Any() && SpendUpdatesCompleted != null)

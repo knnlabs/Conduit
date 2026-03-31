@@ -325,7 +325,7 @@ namespace ConduitLLM.Tests.Configuration.Services
         }
 
         [Fact]
-        public async Task QueueSpendUpdate_ShouldAccumulateSpendInRedis()
+        public async Task QueueSpendUpdateAsync_ShouldAccumulateSpendInRedis()
         {
             // Arrange
             var virtualKeyId = 1;
@@ -362,10 +362,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 .ReturnsAsync(true);
             
             // Act
-            _service.QueueSpendUpdate(virtualKeyId, cost);
-            
-            // Give the async task time to complete
-            await Task.Delay(100);
+            await _service.QueueSpendUpdateAsync(virtualKeyId, cost);
             
             // Assert
             _mockRedisDb.Verify(x => x.StringIncrementAsync(
