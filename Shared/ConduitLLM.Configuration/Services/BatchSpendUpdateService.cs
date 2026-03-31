@@ -245,9 +245,8 @@ namespace ConduitLLM.Configuration.Services
                 // Process group spend updates
                 foreach (var key in keys)
                 {
-                    var keyString = key.ToString();
-                    var groupId = int.Parse(keyString.Substring(_redisKeyPrefix.Length));
-                    
+                    var groupId = ParseGroupIdFromKey(key.ToString());
+
                     // Get and delete atomically
                     var value = await db.StringGetDeleteAsync(key);
                     if (value.HasValue && double.TryParse(value.ToString(), out var cost))
@@ -257,21 +256,7 @@ namespace ConduitLLM.Configuration.Services
                 }
                 
                 // Process key usage data
-                foreach (var key in keyUsageKeys)
-                {
-                    var keyString = key.ToString();
-                    var parts = keyString.Split(':');
-                    if (parts.Length == 5 && int.TryParse(parts[2], out var groupId) && int.TryParse(parts[4], out var keyId))
-                    {
-                        var value = await db.StringGetDeleteAsync(key);
-                        if (value.HasValue && double.TryParse(value.ToString(), out var cost))
-                        {
-                            if (!keyUsageByGroup.ContainsKey(groupId))
-                                keyUsageByGroup[groupId] = new Dictionary<int, decimal>();
-                            keyUsageByGroup[groupId][keyId] = (decimal)cost;
-                        }
-                    }
-                }
+                await ParseKeyUsageData(keyUsageKeys, db, keyUsageByGroup);
                 
                 if (!groupUpdates.Any())
                 {
@@ -290,19 +275,7 @@ namespace ConduitLLM.Configuration.Services
                 foreach (var (groupId, totalCost) in groupUpdates)
                 {
                     // Create a description that includes which keys were used
-                    var description = "API usage";
-                    if (keyUsageByGroup.ContainsKey(groupId))
-                    {
-                        var keyIds = keyUsageByGroup[groupId].Keys.ToList();
-                        if (keyIds.Count() == 1)
-                        {
-                            description = $"API usage by virtual key #{keyIds[0]}";
-                        }
-                        else
-                        {
-                            description = $"API usage by {keyIds.Count()} virtual keys";
-                        }
-                    }
+                    var description = BuildUsageDescription(groupId, keyUsageByGroup);
 
                     // Update group balance with transaction details
                     // This already creates a transaction record with the correct BalanceAfter
@@ -359,6 +332,68 @@ namespace ConduitLLM.Configuration.Services
                 _logger.LogError(ex, "Error during batch spend update");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Parses a group ID from a Redis key string by stripping the key prefix.
+        /// </summary>
+        /// <param name="keyString">The full Redis key string (e.g., "pending_spend:group:42")</param>
+        /// <returns>The parsed group ID</returns>
+        private int ParseGroupIdFromKey(string keyString)
+        {
+            return int.Parse(keyString.Substring(_redisKeyPrefix.Length));
+        }
+
+        /// <summary>
+        /// Parses key usage data from Redis, reading and deleting each key atomically,
+        /// and populates the keyUsageByGroup dictionary.
+        /// </summary>
+        /// <param name="keyUsageKeys">List of Redis keys matching the key_usage pattern</param>
+        /// <param name="db">The Redis database instance</param>
+        /// <param name="keyUsageByGroup">Dictionary to populate with group ID -> (key ID -> cost) mappings</param>
+        private async Task ParseKeyUsageData(
+            List<StackExchange.Redis.RedisKey> keyUsageKeys,
+            StackExchange.Redis.IDatabase db,
+            Dictionary<int, Dictionary<int, decimal>> keyUsageByGroup)
+        {
+            foreach (var key in keyUsageKeys)
+            {
+                var keyString = key.ToString();
+                var parts = keyString.Split(':');
+                if (parts.Length == 5 && int.TryParse(parts[2], out var groupId) && int.TryParse(parts[4], out var keyId))
+                {
+                    var value = await db.StringGetDeleteAsync(key);
+                    if (value.HasValue && double.TryParse(value.ToString(), out var cost))
+                    {
+                        if (!keyUsageByGroup.ContainsKey(groupId))
+                            keyUsageByGroup[groupId] = new Dictionary<int, decimal>();
+                        keyUsageByGroup[groupId][keyId] = (decimal)cost;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Builds a human-readable description of API usage for a given group,
+        /// including which virtual keys contributed to the spend.
+        /// </summary>
+        /// <param name="groupId">The group ID to build the description for</param>
+        /// <param name="keyUsageByGroup">Dictionary of group ID -> (key ID -> cost) mappings</param>
+        /// <returns>A description string such as "API usage by virtual key #5"</returns>
+        private static string BuildUsageDescription(int groupId, Dictionary<int, Dictionary<int, decimal>> keyUsageByGroup)
+        {
+            if (!keyUsageByGroup.ContainsKey(groupId))
+            {
+                return "API usage";
+            }
+
+            var keyIds = keyUsageByGroup[groupId].Keys.ToList();
+            if (keyIds.Count == 1)
+            {
+                return $"API usage by virtual key #{keyIds[0]}";
+            }
+
+            return $"API usage by {keyIds.Count} virtual keys";
         }
 
         /// <summary>

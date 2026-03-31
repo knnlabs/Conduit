@@ -81,7 +81,6 @@ public partial class Program
         });
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.MetricsAggregationService>(
             sp => {
-                // TODO: Convert to ILogger
                 var service = (ConduitLLM.Gateway.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Gateway.Hubs.IMetricsAggregationService>();
                 return service;
             },
@@ -169,7 +168,6 @@ public partial class Program
         });
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(
             sp => {
-                // TODO: Convert to ILogger
                 var service = (ConduitLLM.Configuration.Services.BatchSpendUpdateService)sp.GetRequiredService<IBatchSpendUpdateService>();
                 return service;
             },

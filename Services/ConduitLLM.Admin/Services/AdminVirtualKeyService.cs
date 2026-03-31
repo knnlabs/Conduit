@@ -1,6 +1,5 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Core.Extensions;
-using System.Security.Cryptography;
 
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
@@ -33,7 +32,6 @@ namespace ConduitLLM.Admin.Services
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<AdminVirtualKeyService> _logger;
-        private const int KeyLengthBytes = 32; // Generate a 256-bit key
 
         /// <summary>
         /// Initializes a new instance of the AdminVirtualKeyService class
@@ -80,14 +78,8 @@ namespace ConduitLLM.Admin.Services
         {
             _logger.LogInformation("Generating new virtual key with name: {KeyName}", (LoggingSanitizer.S(request.KeyName ?? "")));
 
-            // Generate a secure random key
-            var keyBytes = new byte[KeyLengthBytes];
-            using var rng = RandomNumberGenerator.Create();
-            rng.GetBytes(keyBytes);
-            var apiKey = Convert.ToBase64String(keyBytes);
-
-            // Add the standard prefix
-            apiKey = VirtualKeyConstants.KeyPrefix + apiKey;
+            // Generate a secure random key using the shared utility for consistency
+            var apiKey = VirtualKeyConstants.KeyPrefix + VirtualKeyUtilities.GenerateSecureKey();
 
             // Hash the key for storage
             var keyHash = VirtualKeyUtilities.HashKey(apiKey);

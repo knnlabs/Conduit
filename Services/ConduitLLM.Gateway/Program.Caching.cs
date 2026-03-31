@@ -44,7 +44,6 @@ public partial class Program
             // Use Redis-cached Virtual Key service for high-performance validation
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
-                // TODO: Convert to ILogger
                 var factory = sp.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
                 var connectionTask = factory.GetConnectionAsync(redisConnectionString);
                 var connection = connectionTask.GetAwaiter().GetResult();

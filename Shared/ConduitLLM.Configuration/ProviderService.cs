@@ -339,7 +339,7 @@ namespace ConduitLLM.Configuration
             }
 
             _logger.LogInformation("Updating key credential ID: {KeyId}", keyId);
-            
+
             try
             {
                 // Validate the update
@@ -352,28 +352,42 @@ namespace ConduitLLM.Configuration
                     }
                 }
 
+                // Fetch the existing entity to track actual changes
+                var existing = await _keyRepository.GetByIdAsync(keyId);
+                if (existing == null)
+                {
+                    _logger.LogWarning("Failed to update key credential {KeyId} - not found", keyId);
+                    return false;
+                }
+
+                var changedProperties = new List<string>();
+                if (keyCredential.ApiKey != existing.ApiKey) changedProperties.Add(nameof(ProviderKeyCredential.ApiKey));
+                if (keyCredential.BaseUrl != existing.BaseUrl) changedProperties.Add(nameof(ProviderKeyCredential.BaseUrl));
+                if (keyCredential.Organization != existing.Organization) changedProperties.Add(nameof(ProviderKeyCredential.Organization));
+                if (keyCredential.IsEnabled != existing.IsEnabled) changedProperties.Add(nameof(ProviderKeyCredential.IsEnabled));
+                if (keyCredential.IsPrimary != existing.IsPrimary) changedProperties.Add(nameof(ProviderKeyCredential.IsPrimary));
+                if (keyCredential.KeyName != existing.KeyName) changedProperties.Add(nameof(ProviderKeyCredential.KeyName));
+                if (keyCredential.ProviderAccountGroup != existing.ProviderAccountGroup) changedProperties.Add(nameof(ProviderKeyCredential.ProviderAccountGroup));
+
                 keyCredential.Id = keyId;
                 var success = await _keyRepository.UpdateAsync(keyCredential);
-                
+
                 if (success)
                 {
-                    _logger.LogInformation("Successfully updated key credential {KeyId}", keyId);
-                    
-                    // Publish domain event
+                    _logger.LogInformation("Successfully updated key credential {KeyId}, changed: [{ChangedProperties}]",
+                        keyId, string.Join(", ", changedProperties));
+
+                    // Publish domain event with actual changed properties
                     await _publishEndpoint.Publish(new ProviderKeyCredentialUpdated
                     {
                         KeyId = keyId,
                         ProviderId = keyCredential.ProviderId,
-                        ChangedProperties = new[] { "ApiKey", "BaseUrl", "ApiVersion", "IsEnabled", "IsPrimary" }, // TODO: Track actual changes
+                        ChangedProperties = changedProperties.ToArray(),
                         Timestamp = DateTime.UtcNow,
                         CorrelationId = Guid.NewGuid()
                     });
                 }
-                else
-                {
-                    _logger.LogWarning("Failed to update key credential {KeyId} - not found", keyId);
-                }
-                
+
                 return success;
             }
             catch (Exception ex)
