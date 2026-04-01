@@ -166,10 +166,9 @@ const connection = new HubConnectionBuilder()
 
 ## Related Documentation
 
-- [Real-Time API Guide](../real-time-api-guide.md)
-- [WebSocket Protocol](../api-reference/README.md#websocket)
-- [Performance Metrics](../performance-metrics.md)
-- [Redis Configuration](../cache-configuration.md)
+- [Streaming & WebSockets](../../architecture/real-time/streaming-and-websockets.md)
+- [SignalR Configuration](../../operations/signalr/configuration.md)
+- [Redis Resilience](../../operations/infrastructure/redis-resilience.md)
 
 ## Migration from Older Versions
 

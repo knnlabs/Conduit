@@ -58,11 +58,9 @@ Configure providers, manage virtual keys, and monitor usage programmatically.
 - **[Authentication](./api-guides/signalr/authentication.md)** — Auth patterns for SignalR
 - **[MessagePack Protocol](./api-guides/signalr/messagepack-protocol.md)** — Binary protocol for performance
 
-### API Reference (Endpoint Specs)
+### WebAdmin Proxy Layer
 
-- **[Admin API Endpoints](./api-reference/admin-api-endpoints.md)** — Full admin endpoint reference
-- **[WebAdmin API Reference](./api-reference/webui-api-reference.md)** — WebAdmin-specific endpoints
-- **[WebAdmin Gateway API](./api-reference/webui-core-api.md)** — Gateway endpoints via WebAdmin
+- **[WebAdmin Gateway Endpoints](./api-guides/gateway/webadmin-endpoints.md)** — Gateway API via the WebAdmin Next.js proxy
 
 ## Architecture
 

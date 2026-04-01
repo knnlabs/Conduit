@@ -521,7 +521,5 @@ await batchSpendUpdate(updates, { idempotencyToken: token });
 
 ## Related Documentation
 
-- [Batch Operations API Reference](/docs/api-reference/batch-operations)
-- [Batch Operation Framework](/docs/architecture/patterns/batch-operation-framework.md)
-- [Error Handling Guide](/docs/api-guides/error-handling)
-- [Rate Limiting](/docs/api-guides/rate-limiting)
+- [Batch Operation Framework](../architecture/patterns/batch-operation-framework.md)
+- [Admin API Reference](./admin/api-reference.md)

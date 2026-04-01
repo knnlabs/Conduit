@@ -225,12 +225,10 @@ dotnet ef database update PreviousMigration --project ConduitLLM.Infrastructure
 - **[CLAUDE.md](../../CLAUDE.md)** - **PRIMARY** development workflow, Docker setup, build verification
 - **[Architecture Overview](../architecture-overview.md)** - System design and components
 - **[Database Migration Guide](../claude/database-migration-guide.md)** - PostgreSQL migration procedures
-- **[XML Documentation Standards](../claude/xml-documentation-standards.md)** - Documentation requirements
-
 ### API Documentation
-- **[Gateway API Guide](../api-guides/core-api-guide.md)** - Gateway API reference
-- **[Admin API Guide](../api-guides/admin-api-guide.md)** - Admin API overview
-- **[API Reference](../api-reference/)** - Complete endpoint specifications
+- **[Gateway API Guide](../api-guides/gateway/README.md)** - Gateway API reference
+- **[Admin API Guide](../api-guides/admin/README.md)** - Admin API overview
+- **[Admin API Reference](../api-guides/admin/api-reference.md)** - Complete endpoint specifications
 
 ### SDK Usage (Not Development)
 - **[SDK Documentation](../api-guides/sdk/)** - For using SDKs in applications

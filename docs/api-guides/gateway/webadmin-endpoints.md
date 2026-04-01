@@ -1,17 +1,12 @@
-# WebAdmin Gateway API Endpoints
+# WebAdmin Gateway Endpoints
 
-Documentation for Gateway API endpoints provided by the Conduit WebAdmin that offer direct access to AI capabilities via the Core SDK.
-
-## Overview
-
-Gateway API endpoints provide direct access to AI capabilities through the Conduit WebAdmin, serving as abstractions for the Node SDK functions. These endpoints support multiple authentication methods and provide enhanced features like real-time metrics and streaming.
+The Conduit WebAdmin exposes Gateway API endpoints as a proxy layer over the Node SDK. These endpoints support multiple authentication methods and provide enhanced features like real-time streaming metrics.
 
 ## Related Documentation
 
-- [WebAdmin API Reference](./webadmin-api-reference.md) - Main API reference and overview
-- [WebAdmin Admin API](./webadmin-admin-api.md) - Administrative endpoints
-- [WebAdmin Authentication](./webadmin-authentication.md) - Authentication methods and setup
-- [Real-Time API Guide](../real-time-api-guide.md) - Real-time features and SignalR
+- [Gateway API Reference](./api-reference.md) - Direct Gateway API endpoints
+- [Getting Started](./getting-started.md) - Gateway API authentication and setup
+- [SignalR Real-Time](../signalr/README.md) - Real-time features and WebSocket connections
 
 ## Authentication
 
@@ -524,6 +519,6 @@ interface CoreAPIError {
 
 ## Next Steps
 
-- [WebAdmin Admin API](./webadmin-admin-api.md) - Administrative endpoint documentation
-- [WebAdmin Authentication](./webadmin-authentication.md) - Authentication setup and methods
-- [Real-Time API Guide](../real-time-api-guide.md) - Real-time features and SignalR integration
+- [Admin API Reference](../admin/api-reference.md) - Administrative endpoint documentation
+- [Gateway API Getting Started](./getting-started.md) - Authentication setup
+- [SignalR Real-Time](../signalr/README.md) - Real-time features and WebSocket connections

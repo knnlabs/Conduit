@@ -537,6 +537,6 @@ describe('Webhook Handler', () => {
 
 ## Related Documentation
 
-- [JavaScript Client](./real-time/javascript-client.md) - Complete TypeScript client implementation
-- [Integration Examples](./examples/INTEGRATION-EXAMPLES.md) - Real-world integration patterns
-- [WebAdmin API Reference](./api-reference/webadmin-api-reference.md) - WebAdmin real-time features
+- [Client Examples](./client-examples.md) - Integration examples
+- [Hub Reference](./hub-reference.md) - Available hubs and events
+- [WebAdmin Gateway Endpoints](../gateway/webadmin-endpoints.md) - WebAdmin real-time features

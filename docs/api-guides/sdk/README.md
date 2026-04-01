@@ -220,11 +220,11 @@ test('fetches virtual keys', async () => {
 
 - **[Troubleshooting Guide](./troubleshooting.md)** - Common issues and solutions
 - **[GitHub Issues](https://github.com/knnlabs/Conduit/issues)** - Report bugs or request features
-- **[API Reference](../../api-reference/)** - Complete endpoint documentation
 
 ## 📖 Related Documentation
 
-- **[API Reference](../../api-reference/)** - Endpoint specifications and parameters
+- **[Gateway API Reference](../gateway/api-reference.md)** - Gateway endpoint documentation
+- **[Admin API Reference](../admin/api-reference.md)** - Admin endpoint documentation
 - **[Architecture](../../architecture/)** - System design and patterns
 - **[Development](../../development/)** - Contributing to Conduit codebase
 

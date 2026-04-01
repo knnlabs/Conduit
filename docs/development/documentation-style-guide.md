@@ -8,14 +8,11 @@ This guide establishes standards for creating and maintaining Conduit documentat
 ```
 docs/
 ├── README.md                    # Main index
-├── getting-started/            # New user guides
-├── api-reference/              # API documentation
+├── api-guides/                 # API guides, references, SDKs, SignalR
 ├── architecture/               # System design docs
-├── deployment/                 # Operations guides
 ├── development/                # Developer guides
 ├── model-pricing/              # Pricing information
-├── runbooks/                   # Operational procedures
-└── archive/                    # Deprecated content
+└── operations/                 # Deployment, monitoring, runbooks, security
 ```
 
 ### File Naming Conventions
