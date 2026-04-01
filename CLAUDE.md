@@ -488,106 +488,22 @@ public enum ProviderType
 
 # Documentation Index
 
-## Quick Start by Role
-| Role | Start Here |
-|------|------------|
-| New to Conduit | [Main Documentation Hub](docs/README.md) |
-| API User | [API Guides Overview](docs/api-guides/README.md) |
-| Administrator | [Operations Guide](docs/operations/README.md) |
-| Developer/Contributor | [Development Guide](docs/development/README.md) |
+The full documentation lives in **[docs/README.md](docs/README.md)**. Key entry points:
 
-## Core Architecture
-- **[Architecture Overview](docs/architecture/README.md)** - Complete system design index
-- **[Provider System](docs/architecture/provider-system/provider-architecture.md)** - Multi-instance provider support
-- **[Model & Cost Mapping](docs/architecture/provider-system/model-and-cost-mapping.md)** - Cost tracking details
-- **[Scaling Architecture](docs/architecture/infrastructure/scaling-architecture.md)** - 10,000+ concurrent sessions
-- **[Cache Usage Patterns](docs/architecture/infrastructure/cache-usage.md)** - IMemoryCache vs IDistributedCache
-- **[Repository & Data Access](docs/architecture/patterns/repository-and-data-access.md)** - EF Core patterns
-- **[Background Services](docs/architecture/patterns/background-services-and-workers.md)** - Worker patterns
+| Topic | Start Here |
+|-------|------------|
+| API usage | [docs/api-guides/](docs/api-guides/README.md) — Gateway API, Admin API, SDKs, SignalR |
+| Architecture | [docs/architecture/](docs/architecture/README.md) — Provider system, patterns, infrastructure |
+| Operations | [docs/operations/](docs/operations/README.md) — Deployment, monitoring, runbooks, security |
+| Model pricing | [docs/model-pricing/](docs/model-pricing/README.md) — Per-provider pricing reference |
+| Development | [docs/development/](docs/development/README.md) — Contributing, API patterns, testing |
 
-## API Documentation
-
-### Gateway API (OpenAI-Compatible)
-- **[Getting Started](docs/api-guides/gateway/getting-started.md)** - Authentication, quick start
-- **[API Reference](docs/api-guides/gateway/api-reference.md)** - Complete endpoint documentation
-- **[Streaming with Tools](docs/api-guides/streaming-with-tools.md)** - Function calling with streaming
-
-### Admin API (Management)
-- **[Getting Started](docs/api-guides/admin/getting-started.md)** - Auth setup, first steps
-- **[TypeScript SDK](docs/api-guides/admin/typescript-sdk.md)** - Complete SDK guide
-- **[API Reference](docs/api-guides/admin/api-reference.md)** - Endpoint documentation
-
-### Feature Guides
-- **[Function Calling](docs/api-guides/features/function-calling.md)** - LLM tool execution
-- **[Multimodal Vision](docs/api-guides/features/multimodal-vision.md)** - Image analysis
-- **[LLM Routing](docs/api-guides/features/llm-routing.md)** - Load balancing, failover
-- **[Webhooks](docs/api-guides/features/webhooks.md)** - Event notifications
-
-### SDK Integration
-- **[SDK Overview](docs/api-guides/sdk/README.md)** - Client library capabilities
-- **[Best Practices](docs/api-guides/sdk/best-practices.md)** - Security, performance
-- **[Next.js Integration](docs/api-guides/sdk/nextjs-integration.md)** - WebAdmin patterns
-- **[Troubleshooting](docs/api-guides/sdk/troubleshooting.md)** - Common issues
-
-## Real-Time Communication
-- **[SignalR Overview](docs/api-guides/signalr/README.md)** - Real-time features
-- **[Getting Started](docs/api-guides/signalr/getting-started.md)** - Setup and usage
-- **[Hub Reference](docs/api-guides/signalr/hub-reference.md)** - Available hubs and events
-- **[Client Examples](docs/api-guides/signalr/client-examples.md)** - Integration examples
-- **[Streaming & WebSockets](docs/architecture/real-time/streaming-and-websockets.md)** - Architecture details
-- **[Webhook Delivery](docs/architecture/real-time/webhook-delivery.md)** - Distributed delivery
-
-## Media Generation
-- **[Async Media Generation](docs/architecture/media-generation/async-media-generation.md)** - Event-driven image/video
-- **[Progress & Notifications](docs/architecture/media-generation/progress-and-notifications.md)** - Real-time progress
-- **[Media Cleanup](docs/operations/deployment/media-cleanup-configuration.md)** - S3/R2 cleanup (CRITICAL)
-
-## Development Guides
-- **[Development Overview](docs/development/README.md)** - Contributing to Conduit
-- **[API Patterns](docs/development/API-PATTERNS-BEST-PRACTICES.md)** - RESTful design patterns
-- **[LLM Client Factory](docs/development/llm-client-factory-guide.md)** - Provider client creation
-- **[WebAdmin Development](docs/development/webui/README.md)** - WebAdmin contribution guide
-- **[DTO Guidelines](docs/architecture/data-transfer/dto-guidelines.md)** - Data transfer patterns
-
-## Operations & Deployment
-- **[Operations Hub](docs/operations/README.md)** - Production operations index
-- **[Deployment Configuration](docs/operations/deployment/DEPLOYMENT-CONFIGURATION.md)** - Production guide
-- **[Docker Optimization](docs/operations/deployment/docker-optimization.md)** - Container optimization
-- **[CI/CD Maintenance](docs/operations/deployment/ci-cd-maintenance-guide.md)** - Pipeline maintenance
-
-### Infrastructure Scaling
-- **[PostgreSQL Scaling](docs/operations/infrastructure/postgresql-scaling.md)** - Database optimization
-- **[RabbitMQ Scaling](docs/operations/infrastructure/rabbitmq-scaling.md)** - 1,000+ tasks/min
-- **[Redis Resilience](docs/operations/infrastructure/redis-resilience.md)** - High availability
-- **[HTTP Connection Pooling](docs/operations/infrastructure/http-connection-pooling.md)** - Connection optimization
-
-### Monitoring & Observability
-- **[Monitoring Setup](docs/operations/monitoring/setup-guide.md)** - Prometheus/Grafana
-- **[Health Checks](docs/operations/monitoring/health-checks.md)** - Health monitoring
-- **[Cost Tracking](docs/operations/monitoring/cost-tracking.md)** - Cost observability
-- **[Performance Metrics](docs/operations/monitoring/performance-metrics.md)** - Token/sec, latency
-
-### Runbooks (Incident Response)
-- **[Runbook Index](docs/operations/runbooks/README.md)** - Alert catalog with severity
-- **[High Error Rate](docs/operations/runbooks/high-error-rate.md)** - Error spike response
-- **[High Response Time](docs/operations/runbooks/high-response-time.md)** - Latency incidents
-- **[DB Connection Pool](docs/operations/runbooks/db-connection-pool.md)** - Pool exhaustion
-
-### Security
-- **[Security Guidelines](docs/operations/security/Security-Guidelines.md)** - API key security, auth patterns
-- **[Pre-commit Hooks](docs/operations/security/Security-Pre-commit-Hooks.md)** - Secret detection
-
-## Provider Configuration
-- **[Provider Architecture](docs/architecture/provider-system/provider-architecture.md)** - Multi-instance design
-- **[Error Tracking](docs/architecture/provider-system/error-tracking.md)** - Provider error registry
-- **[Usage Mappings](docs/operations/providers/usage-mappings.md)** - Usage tracking config
-- **[Compatibility Report](docs/operations/providers/compatibility-report.md)** - Provider compatibility
-
-## Model Pricing
-- **[Pricing Overview](docs/model-pricing/README.md)** - Import process, configuration
-- **[Quick Reference](docs/model-pricing/pricing-quick-reference.md)** - Common model lookup
-- **[OpenAI Pricing](docs/model-pricing/openai-pricing.md)** - GPT-4, DALL-E, Whisper
-- **[Anthropic Pricing](docs/model-pricing/anthropic-pricing.md)** - Claude models
+### Frequently Referenced Docs
+- **[Provider Architecture](docs/architecture/provider-system/provider-architecture.md)** — Multi-instance provider design
+- **[Repository & Data Access](docs/architecture/patterns/repository-and-data-access.md)** — EF Core patterns
+- **[API Patterns](docs/development/API-PATTERNS-BEST-PRACTICES.md)** — Backend API conventions
+- **[LLM Client Factory](docs/development/llm-client-factory-guide.md)** — Adding LLM providers
+- **[Media Cleanup](docs/operations/deployment/media-cleanup-configuration.md)** — S3/R2 cleanup (CRITICAL)
 
 ---
 

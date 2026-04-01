@@ -1,238 +1,212 @@
 # Conduit Documentation
 
-*Last Updated: 2025-08-01*
+Conduit is an LLM gateway that provides a unified, OpenAI-compatible API across multiple AI providers. It handles routing, cost tracking, virtual API keys, rate limiting, and real-time streaming — so you can switch providers or add new ones without changing your application code.
 
-Welcome to the Conduit documentation! This consolidated guide helps you navigate through all available documentation with improved organization and reduced duplication.
+## Getting Started
 
-## 🚀 Quick Start
+- **[Configuration Guide](./operations/configuration/configuration-guide.md)** — Database, environment variables, and provider setup
+- **[Budget Management](./operations/configuration/budget-management.md)** — Cost controls and spending limits
+- **[Versioning](./Versioning.md)** — Semantic versioning and release process
 
-- **[Getting Started](./user-guides/getting-started.md)** - Installation and first steps
-- **[Configuration Guide](./user-guides/configuration.md)** - Essential configuration options
-- **[API Reference](./api-reference/)** - Complete API documentation
+## API Guides
 
-## 👥 User Guides
+### Gateway API (OpenAI-Compatible)
 
-Perfect starting point for developers and administrators:
+The primary API for interacting with LLMs. Drop-in compatible with OpenAI client libraries.
 
-- **[Getting Started](./user-guides/getting-started.md)** - Installation and setup
-- **[Configuration](./user-guides/configuration.md)** - System configuration
-- **[Virtual Keys](./user-guides/virtual-keys.md)** - API key management
-- **[Budget Management](./user-guides/budget-management.md)** - Cost control and limits
-- **[WebAdmin Guide](./user-guides/webadmin-guide.md)** - Admin dashboard usage
+- **[Getting Started](./api-guides/gateway/getting-started.md)** — Authentication, first request
+- **[API Reference](./api-guides/gateway/api-reference.md)** — Chat completions, embeddings, images, streaming
 
-## 🎯 Features
+### Admin API (Management)
 
-Comprehensive guides for major Conduit features:
+Configure providers, manage virtual keys, and monitor usage programmatically.
 
-### Audio API
-- **[Audio Overview](./features/audio/README.md)** - Complete audio capabilities guide
-- **[Audio Architecture](./features/audio/architecture.md)** - Technical implementation
-- **[Audio API Guide](./features/audio/api-guide.md)** - Detailed API reference
-- **[Audio Migration](./features/audio/migration.md)** - Provider type migration
+- **[Getting Started](./api-guides/admin/getting-started.md)** — Authentication and setup
+- **[TypeScript SDK](./api-guides/admin/typescript-sdk.md)** — SDK guide with examples
+- **[API Reference](./api-guides/admin/api-reference.md)** — Endpoint documentation
+- **[Provider Error Tracking](./api-guides/admin/provider-error-tracking.md)** — Auto-disable failing keys
 
-### Real-Time Communication (SignalR)
-- **[SignalR Overview](./features/signalr/README.md)** - Real-time features and setup
-- **[Implementation Guide](./features/signalr/implementation.md)** - Hub architecture and patterns
-- **[Quick Reference](./features/signalr/quick-reference.md)** - Common tasks and examples
-- **[Troubleshooting](./features/signalr/troubleshooting.md)** - Debug and fix issues
+### Features
 
-### Provider Management
-- **[Provider Integration](./features/providers.md)** - Multi-instance provider architecture
-- **[Security Features](./features/security.md)** - Authentication, IP filtering, audit logging
-- **[Model Costs](./model-costs.md)** - Pricing and cost management
+- **[Function Calling](./api-guides/features/function-calling.md)** — Tool use with LLMs
+- **[Multimodal Vision](./api-guides/features/multimodal-vision.md)** — Image analysis
+- **[LLM Routing](./api-guides/features/llm-routing.md)** — Load balancing and failover
+- **[Webhooks](./api-guides/features/webhooks.md)** — Event notifications
+- **[Streaming with Tools](./api-guides/streaming-with-tools.md)** — Function calling in streaming mode
+- **[Batch Operations](./api-guides/batch-operations-idempotency.md)** — Idempotent batch requests
 
-## 🏗️ Architecture & Development
+### Functions (External Tool Execution)
 
-System design and development resources:
+- **[Getting Started](./api-guides/functions/getting-started.md)** — Function system setup
+- **[Exa Provider Guide](./api-guides/functions/exa-provider-guide.md)** — Web search integration
 
-### Architecture
-- **[Architecture Overview](./architecture-overview.md)** - System design and components
-- **[Clean Architecture Guide](./clean-architecture-guide.md)** - Development principles
-- **[Provider Multi-Instance](./architecture/provider-multi-instance.md)** - Provider architecture
-- **[Model Cost Mapping](./architecture/model-cost-mapping.md)** - Cost configuration system
-- **[DTO Guidelines](./architecture/dto-guidelines.md)** - Data transfer patterns
-- **[Repository Pattern](./architecture/Repository-Pattern.md)** - Data access patterns
+### SDKs
 
-### Development
-- **[Development Guide](./development/README.md)** - Developer setup and workflows for contributing to Conduit
-- **[API Patterns](./development/API-PATTERNS-BEST-PRACTICES.md)** - Backend API development best practices
-- **[LLM Client Factory Guide](./development/llm-client-factory-guide.md)** - Critical guide for adding LLM providers
-- **[Provider API Research](./development/provider-api-research.md)** - Provider integration research
+- **[SDK Overview](./api-guides/sdk/README.md)** — Available client libraries
+- **[Next.js Integration](./api-guides/sdk/nextjs-integration.md)** — WebAdmin patterns
+- **[Best Practices](./api-guides/sdk/best-practices.md)** — Security and performance
+- **[Connection Management](./api-guides/sdk/connection-management.md)** — HTTP client lifecycle
+- **[Health Checks](./api-guides/sdk/health-checks.md)** — SDK health monitoring
+- **[Troubleshooting](./api-guides/sdk/troubleshooting.md)** — Common issues
 
-### Claude-Specific Documentation
-High-quality technical documentation for AI assistant context:
+### Real-Time (SignalR)
 
-- **[Claude Documentation](./claude/README.md)** - Overview of Claude-specific docs
-- **[Database Migration Guide](./claude/database-migration-guide.md)** - PostgreSQL migration procedures
-- **[Event-Driven Architecture](./claude/event-driven-architecture.md)** - MassTransit and domain events
-- **[Media Storage Configuration](./claude/media-storage-configuration.md)** - S3/CDN setup
-- **[RabbitMQ High-Throughput](./claude/rabbitmq-high-throughput.md)** - Production scaling
-- **[SignalR Configuration](./claude/signalr-configuration.md)** - Real-time setup
-- **[XML Documentation Standards](./claude/xml-documentation-standards.md)** - Documentation requirements
+- **[Overview](./api-guides/signalr/README.md)** — Real-time features and capabilities
+- **[Getting Started](./api-guides/signalr/getting-started.md)** — Connection setup
+- **[Hub Reference](./api-guides/signalr/hub-reference.md)** — Available hubs and events
+- **[Client Examples](./api-guides/signalr/client-examples.md)** — Integration examples
+- **[Authentication](./api-guides/signalr/authentication.md)** — Auth patterns for SignalR
+- **[MessagePack Protocol](./api-guides/signalr/messagepack-protocol.md)** — Binary protocol for performance
 
-## 📚 API Documentation
+### API Reference (Endpoint Specs)
 
-Complete API references and SDK guides:
+- **[Admin API Endpoints](./api-reference/admin-api-endpoints.md)** — Full admin endpoint reference
+- **[WebAdmin API Reference](./api-reference/webui-api-reference.md)** — WebAdmin-specific endpoints
+- **[WebAdmin Gateway API](./api-reference/webui-core-api.md)** — Gateway endpoints via WebAdmin
 
-- **[API Guides](./api-guides/)** - Feature guides and tutorials for using Conduit APIs
-  - **[SDK Documentation](./api-guides/sdk/)** - Complete SDK integration guides (Next.js, best practices, troubleshooting)
-  - **[Gateway API Detailed](./api-guides/core-api-detailed.md)** - Chat, completions, embeddings
-  - **[Admin SDK TypeScript](./api-guides/admin-sdk-typescript.md)** - Complete TypeScript SDK guide
-  - **[Function Calling](./api-guides/function-calling.md)** - Function calling with LLMs
-  - **[Multimodal Vision](./api-guides/multimodal-vision.md)** - Vision capabilities
-  - **[Webhooks](./api-guides/webhooks.md)** - Event notifications
-- **[API Reference](./api-reference/)** - Endpoint specifications and parameters
-- **[Real-Time API Guide](./real-time-api-guide.md)** - WebSocket/SignalR integration
+## Architecture
 
-## 🔧 Operations
+System design documentation for understanding how Conduit works internally.
 
-Production deployment, monitoring, and incident response:
+- **[Architecture Overview](./architecture/README.md)** — Full architecture index
 
-### Operations Hub
-- **[Operations Guide](./operations/README.md)** - Complete operational documentation hub with monitoring, scaling, and runbooks
+### Provider System
 
-### Monitoring & Observability
-- **[Monitoring Guide](./operations/monitoring.md)** - Prometheus/Grafana setup, metrics catalog, and dashboards
-- **[Health Monitoring](./operations/health-monitoring.md)** - Real-time health checks and alerting
-- **[Cost Observability](./operations/cost-observability.md)** - Cost tracking, budget management, and financial metrics
-- **[Performance Metrics](./operations/performance-metrics.md)** - Performance tracking architecture (tokens/sec, latency, TTFT)
+- **[Provider Architecture](./architecture/provider-system/provider-architecture.md)** — Multi-instance provider design
+- **[Model & Cost Mapping](./architecture/provider-system/model-and-cost-mapping.md)** — How costs are tracked
+- **[Error Tracking](./architecture/provider-system/error-tracking.md)** — Provider error detection
+- **[System Analysis](./architecture/provider-system/provider-system-analysis.md)** — Provider system internals
 
-### Infrastructure Scaling
-- **[PostgreSQL Connection Pool Scaling](./operations/PostgreSQL-Connection-Pool-Scaling.md)** - Database optimization for high concurrency
-- **[RabbitMQ Scaling Guide](./operations/RabbitMQ-Scaling-Guide.md)** - High-throughput message queue configuration
-- **[Redis Resilience](./operations/Redis-Resilience-Improvements.md)** - Cache clustering and high availability
-- **[HTTP Connection Pooling](./operations/HTTP-Connection-Pooling-Guide.md)** - Provider API connection optimization
+### Patterns
 
-### Security
-- **[Security Guidelines](./operations/security/Security-Guidelines.md)** - Log injection prevention, API key security, authentication
-- **[Secret Detection](./operations/security/Security-Pre-commit-Hooks.md)** - Pre-commit hooks to prevent credential leaks
-- **[CodeQL Suppressions](./operations/security/CodeQL-Suppressions.md)** - Security scan false positive tracking
+- **[Repository & Data Access](./architecture/patterns/repository-and-data-access.md)** — EF Core patterns
+- **[Background Services](./architecture/patterns/background-services-and-workers.md)** — Worker patterns
+- **[Batch Operations](./architecture/patterns/batch-operation-framework.md)** — Batch processing framework
+- **[Naming Conventions](./architecture/patterns/naming-conventions.md)** — Codebase naming standards
+- **[Utility Classes](./architecture/patterns/utility-classes.md)** — Shared utilities
 
-### Incident Response (Runbooks)
-- **[Runbooks Overview](./operations/runbooks/README.md)** - Complete alert catalog and response procedures
-- **[High Error Rate](./operations/runbooks/high-error-rate.md)** - Error rate spike response
-- **[High Response Time](./operations/runbooks/high-response-time.md)** - Latency incident response
-- **[Cost Observability Alerts](./operations/runbooks/cost-observability-alerts.md)** - Budget and cost alert handling
+### Infrastructure
+
+- **[Scaling Architecture](./architecture/infrastructure/scaling-architecture.md)** — 10,000+ concurrent sessions
+- **[Cache Usage](./architecture/infrastructure/cache-usage.md)** — IMemoryCache vs IDistributedCache
+
+### Other
+
+- **[DTO Guidelines](./architecture/data-transfer/dto-guidelines.md)** — Data transfer patterns
+- **[Streaming & WebSockets](./architecture/real-time/streaming-and-websockets.md)** — Real-time architecture
+- **[Webhook Delivery](./architecture/real-time/webhook-delivery.md)** — Distributed delivery system
+- **[Async Media Generation](./architecture/media-generation/async-media-generation.md)** — Event-driven image/video generation
+- **[Media Progress](./architecture/media-generation/progress-and-notifications.md)** — Real-time generation progress
+- **[Functions System](./architecture/functions/functions-system-architecture.md)** — External tool execution architecture
+- **[MassTransit Events](./architecture/events/masstransit-event-inventory.md)** — Event inventory
+- **[Admin API Integration](./architecture/api/admin-api-integration.md)** — Admin API internals
+
+## Operations
+
+Production deployment, monitoring, scaling, and incident response.
+
+- **[Operations Overview](./operations/README.md)** — Full operations index
 
 ### Deployment
-- **[Deployment Configuration](./deployment/DEPLOYMENT-CONFIGURATION.md)** - Production setup
-- **[Docker Optimization](./deployment/docker-optimization.md)** - Container best practices
-- **[Environment Variables](./environment-variables.md)** - Configuration options
 
-### General Troubleshooting
-- **[Troubleshooting Guide](./troubleshooting/TROUBLESHOOTING-GUIDE.md)** - Common issues and solutions
+- **[Deployment Configuration](./operations/deployment/DEPLOYMENT-CONFIGURATION.md)** — Production setup
+- **[Docker Optimization](./operations/deployment/docker-optimization.md)** — Container best practices
+- **[CI/CD Maintenance](./operations/deployment/ci-cd-maintenance-guide.md)** — Pipeline maintenance
+- **[Media Cleanup](./operations/deployment/media-cleanup-configuration.md)** — S3/R2 storage cleanup
 
-## 💰 Pricing & Models
+### Configuration
 
-Cost management and model information:
+- **[Configuration Guide](./operations/configuration/configuration-guide.md)** — System configuration
+- **[Budget Management](./operations/configuration/budget-management.md)** — Cost controls
+- **[Cache Configuration](./operations/configuration/cache-configuration.md)** — Redis/memory cache setup
+- **[Timeout Configuration](./operations/configuration/timeout-configuration.md)** — Request timeout tuning
 
-- **[Model Pricing Overview](./model-pricing/README.md)** - Cost information across providers
-- **[Model Costs](./model-costs.md)** - Detailed pricing configuration
-- **[Comprehensive Pricing Analysis](./model-pricing/comprehensive-pricing-patterns-analysis.md)** - Complex pricing patterns
+### Monitoring
 
-## 📖 Additional Topics
+- **[Monitoring Setup](./operations/monitoring/setup-guide.md)** — Prometheus/Grafana
+- **[Health Checks](./operations/monitoring/health-checks.md)** — Health monitoring and alerting
+- **[Cost Tracking](./operations/monitoring/cost-tracking.md)** — Cost observability
+- **[Performance Metrics](./operations/monitoring/performance-metrics.md)** — Token/sec, latency, TTFT
+- **[Audio Metrics](./operations/monitoring/audio-metrics.md)** — Audio-specific metrics
+- **[Webhook Monitoring](./operations/monitoring/webhooks.md)** — Delivery tracking
 
-### Media Generation
-- **[Video Architecture](./VIDEO_ARCHITECTURE.md)** - Video generation system
-- **[Media Generation Analysis](./media-generation-analysis.md)** - Implementation details
+### Infrastructure Scaling
 
-### Testing & Quality
-- **[Test Coverage](./test-coverage-report.md)** - Quality metrics
-- **[Mutation Testing Guide](./Mutation-Testing-Guide.md)** - Advanced testing strategies
+- **[PostgreSQL Scaling](./operations/infrastructure/postgresql-scaling.md)** — Connection pool optimization
+- **[RabbitMQ Scaling](./operations/infrastructure/rabbitmq-scaling.md)** — High-throughput messaging
+- **[Redis Resilience](./operations/infrastructure/redis-resilience.md)** — Cache high availability
+- **[HTTP Connection Pooling](./operations/infrastructure/http-connection-pooling.md)** — Provider API connections
 
-### Integration Examples
-- **[Integration Examples](./examples/INTEGRATION-EXAMPLES.md)** - Usage patterns
-- **[OpenAI Compatible Example](./examples/openai-compatible-example.md)** - Custom provider setup
+### Security
 
-## 🗂️ Archived Documentation
+- **[Security Guidelines](./operations/security/Security-Guidelines.md)** — API key security, authentication
+- **[Pre-commit Hooks](./operations/security/Security-Pre-commit-Hooks.md)** — Secret detection
+- **[CodeQL Suppressions](./operations/security/CodeQL-Suppressions.md)** — Security scan tracking
 
-Historical and reference material:
+### Runbooks
 
-- **[Implementation Summaries](./archive/implementation-summaries/)** - Completed implementation docs
-- **[Technical Debt](./archive/technical-debt/)** - Known technical debt and future migrations
-- **[Migration Notes](./archive/migration-notes/)** - Historical migration information
-- **[SignalR Consolidation](./archive/signalr-consolidation/)** - Original SignalR documentation
-- **[Audio Consolidation](./archive/audio-consolidation/)** - Original audio documentation
+- **[Runbook Index](./operations/runbooks/README.md)** — Alert catalog and response procedures
+- **[High Error Rate](./operations/runbooks/high-error-rate.md)** — Error spike response
+- **[High Response Time](./operations/runbooks/high-response-time.md)** — Latency incidents
+- **[DB Connection Pool](./operations/runbooks/db-connection-pool.md)** — Pool exhaustion
+- **[Cost Alerts](./operations/runbooks/cost-observability-alerts.md)** — Budget alert handling
+- **[Cost Troubleshooting](./operations/runbooks/cost-observability-troubleshooting.md)** — Cost tracking issues
+- **[Cache Statistics](./operations/runbooks/cache-statistics.md)** — Cache diagnostics
+- **[Error Tracking](./operations/error-tracking-runbook.md)** — Provider error investigation
 
-## 🔍 Finding Information
+### Providers
 
-### By User Role
-- **SDK Users**: Start with [SDK Documentation](./api-guides/sdk/) for integration guides
-- **API Users**: See [API Guides](./api-guides/) for tutorials and [API Reference](./api-reference/) for specs
-- **Administrators**: Check [WebAdmin Guide](./user-guides/webadmin-guide.md) and [Operations](#operations)
-- **Contributors**: Reference [Development](./development/) for codebase development
-- **DevOps**: Check [Deployment](./deployment/) and [Runbooks](./runbooks/)
+- **[Provider Compatibility](./operations/providers/compatibility-report.md)** — Provider feature support
+- **[Error Tracking](./operations/providers/error-tracking.md)** — Operational error tracking
+- **[Usage Mappings](./operations/providers/usage-mappings.md)** — Usage tracking configuration
 
-### By Feature Area
-- **Authentication & Security**: [Security Features](./features/security.md) | [Virtual Keys](./user-guides/virtual-keys.md)
-- **Audio Processing**: [Audio Overview](./features/audio/README.md) | [Audio API](./features/audio/api-guide.md)
-- **Real-Time Features**: [SignalR Overview](./features/signalr/README.md) | [Implementation](./features/signalr/implementation.md)
-- **Provider Management**: [Provider Integration](./features/providers.md) | [Multi-Instance Architecture](./architecture/provider-multi-instance.md)
-- **Cost Management**: [Model Costs](./model-costs.md) | [Budget Management](./user-guides/budget-management.md)
+### SignalR Operations
 
-### By Task
-- **Using SDKs**: [SDK Documentation](./api-guides/sdk/) → [Next.js Integration](./api-guides/sdk/nextjs-integration.md) → [Best Practices](./api-guides/sdk/best-practices.md)
-- **Getting Started**: [Installation](./user-guides/getting-started.md) → [Configuration](./user-guides/configuration.md) → [First API Call](./user-guides/getting-started.md#first-api-call)
-- **Adding LLM Provider**: [LLM Client Factory Guide](./development/llm-client-factory-guide.md) → [Provider API Research](./development/provider-api-research.md)
-- **Setting Up Audio**: [Audio Quick Start](./features/audio/README.md#quick-start)
-- **Implementing Real-Time**: [SignalR Quick Reference](./features/signalr/quick-reference.md)
-- **Troubleshooting SDKs**: [SDK Troubleshooting](./api-guides/sdk/troubleshooting.md)
-- **Troubleshooting System**: [General Troubleshooting](./troubleshooting/TROUBLESHOOTING-GUIDE.md) | [SignalR Issues](./features/signalr/troubleshooting.md)
+- **[SignalR Configuration](./operations/signalr/configuration.md)** — Production SignalR setup
+- **[Redis Backplane Testing](./operations/signalr/redis-backplane-testing.md)** — Horizontal scaling tests
 
-## 📝 Contributing to Documentation
+## Model Pricing
 
-When adding new documentation:
+- **[Pricing Overview](./model-pricing/README.md)** — Import process and CSV format
+- **[Quick Reference](./model-pricing/pricing-quick-reference.md)** — Common model lookup
+- **[OpenAI](./model-pricing/openai-pricing.md)** — GPT-4, DALL-E, Whisper
+- **[Anthropic](./model-pricing/anthropic-pricing.md)** — Claude models
+- **[Groq](./model-pricing/groq-pricing.md)** — Groq inference
+- **[Fireworks](./model-pricing/fireworks-pricing.md)** — Fireworks AI
+- **[Replicate](./model-pricing/replicate-pricing.md)** — Replicate models
+- **[Cerebras](./model-pricing/cerebras-pricing.md)** — Cerebras inference
+- **[SambaNova](./model-pricing/sambanova-pricing.md)** — SambaNova inference
+- **[MiniMax](./model-pricing/minimax-pricing.md)** — MiniMax models
+- **[Cohere](./model-pricing/cohere-pricing.md)** — Cohere models
+- **[Gemini](./model-pricing/gemini-pricing.md)** — Google Gemini
+- **[Model Costs](./model-pricing/model-costs.md)** — Database cost configuration
+- **[Polymorphic Pricing](./model-pricing/polymorphic-pricing.md)** — Complex pricing patterns
+- **[Pricing Migration](./model-pricing/pricing-migration-guide.md)** — Migration to new pricing system
+- **[WebUI Pricing Guide](./model-pricing/webui-pricing-guide.md)** — Managing pricing in the dashboard
 
-1. **Follow the new structure** - Place documents in appropriate feature/category directories
-2. **Use consistent naming** - kebab-case for file names (e.g., `my-new-feature.md`)
-3. **Add to navigation** - Update this README and relevant section READMEs
-4. **Include metadata** - Add "Last Updated" date and clear headings
-5. **Cross-reference** - Link to related documentation
-6. **Consider consolidation** - Can this be merged with existing docs?
+## Development
 
-### Documentation Quality Standards
+For contributors working on the Conduit codebase.
 
-- **Lead with purpose**: Clear opening explaining what the doc covers
-- **Progressive disclosure**: Start with common tasks, then advanced topics
-- **Consistent structure**: Overview → Quick Start → Detailed Reference → Troubleshooting
-- **Practical examples**: Include working code samples and API calls
-- **Current information**: Ensure all examples work with the current version
+- **[Development Overview](./development/README.md)** — Setup and workflows
+- **[API Patterns](./development/API-PATTERNS-BEST-PRACTICES.md)** — Backend API conventions
+- **[LLM Client Factory Guide](./development/llm-client-factory-guide.md)** — Adding LLM providers
+- **[Provider API Research](./development/provider-api-research.md)** — Provider integration research
+- **[Error Tracking Architecture](./development/error-tracking-architecture.md)** — Error system design
+- **[SDK Gaps](./development/sdk-gaps.md)** — Known SDK limitations
+- **[Documentation Style Guide](./development/documentation-style-guide.md)** — Writing standards
 
-## 📊 Documentation Structure Changes
+### WebAdmin Development
 
-This documentation has been significantly reorganized for better usability:
+- **[WebAdmin Guide](./development/webui/README.md)** — WebAdmin contribution guide
+- **[Component Library](./development/webui/component-library.md)** — UI components
+- **[Error Handling](./development/webui/error-handling.md)** — Frontend error patterns
+- **[Responsive Design](./development/webui/responsive-design-patterns.md)** — Layout patterns
+- **[Troubleshooting](./development/webui/troubleshooting.md)** — WebAdmin debugging
 
-### What's New ✨
-- **Consolidated Features**: SignalR (15+ files → 4 files), Audio (6+ files → 4 files)
-- **Clear User Paths**: Organized by user role and common tasks
-- **Reduced Duplication**: Eliminated redundant information across files
-- **Better Navigation**: Logical grouping and clear cross-references
-- **Quality Focus**: High-quality, maintained documentation prioritized
+### Testing
 
-### What's Archived 📦
-- Implementation summary files (completed work)
-- Outdated EPIC files (historical planning)
-- Technical debt tracking (moved to archive)
-- Duplicate/redundant documentation
-
-### Benefits 📈
-- **50% fewer files** while maintaining all useful information
-- **Faster information finding** with logical organization
-- **Reduced maintenance** through consolidation
-- **Better user experience** with clear navigation paths
-
----
-
-## 🆘 Need Help?
-
-1. **Check the appropriate feature guide** in the navigation above
-2. **Search this README** for your topic or task
-3. **Review troubleshooting guides** for common issues
-4. **Consult the API reference** for specific endpoint details
-5. **Check archived documentation** for historical context
-
-*For the latest updates and releases, see the [GitHub repository](https://github.com/knnlabs/Conduit).*
-
----
-
-*Documentation consolidated and restructured on 2025-08-01. Previous file structure preserved in archive directories.*
+- **[Coverage Report](./development/testing/test-coverage-report.md)** — Test coverage metrics
+- **[Coverage Setup](./development/testing/coverage.md)** — Coverage system configuration
+- **[Mutation Testing](./development/testing/Mutation-Testing-Guide.md)** — Stryker mutation testing
+- **[CDN Testing](./development/testing/testing-cdn-locally.md)** — Local CDN testing

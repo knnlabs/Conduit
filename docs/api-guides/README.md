@@ -12,9 +12,9 @@ These guides provide **in-depth explanations**, **best practices**, and **practi
 
 The Gateway API provides an OpenAI-compatible interface for LLM interactions.
 
-- **[Gateway API Overview](./core/README.md)** - Introduction and capabilities
-- **[Getting Started](./core/getting-started.md)** - Authentication, quick start, basic usage
-- **[API Reference](./core/api-reference.md)** - Complete endpoint documentation
+- **[Gateway API Overview](./gateway/README.md)** - Introduction and capabilities
+- **[Getting Started](./gateway/getting-started.md)** - Authentication, quick start, basic usage
+- **[API Reference](./gateway/api-reference.md)** - Complete endpoint documentation
 
 **Key Features:** Chat completions, streaming, function calling, multimodal vision, embeddings, image generation
 
@@ -73,14 +73,14 @@ Real-time updates and WebSocket connections.
 
 **Example:**
 - **Want to learn about function calling?** → Read [Function Calling Guide](./features/function-calling.md)
-- **Need function calling endpoint details?** → Check [Gateway API Reference](./core/api-reference.md#function-calling)
+- **Need function calling endpoint details?** → Check [Gateway API Reference](./gateway/api-reference.md#function-calling)
 
 ## 🚀 Getting Started Paths
 
 ### For New Users
 
-1. Start with [Gateway API Getting Started](./core/getting-started.md) - understand the basics
-2. Review [Gateway API Reference](./core/api-reference.md) - see full capabilities
+1. Start with [Gateway API Getting Started](./gateway/getting-started.md) - understand the basics
+2. Review [Gateway API Reference](./gateway/api-reference.md) - see full capabilities
 3. Explore [Feature Guides](./features/) as needed
 
 ### For Administrators
@@ -122,7 +122,7 @@ Real-time updates and WebSocket connections.
 ```
 api-guides/
 ├── README.md (this file)
-├── core/
+├── gateway/
 │   ├── README.md
 │   ├── getting-started.md
 │   └── api-reference.md
