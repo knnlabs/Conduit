@@ -85,7 +85,6 @@ See **[Runbooks README](./runbooks/README.md)** for complete alert catalog with 
 ## Providers
 
 - **[Provider Compatibility](./providers/compatibility-report.md)** - Provider feature support matrix
-- **[Error Tracking](./providers/error-tracking.md)** - Operational error tracking
 - **[Usage Mappings](./providers/usage-mappings.md)** - Usage tracking configuration
 
 ## SignalR Operations

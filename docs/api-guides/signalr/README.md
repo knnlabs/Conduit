@@ -1,32 +1,14 @@
 # SignalR Real-Time Communication
 
-*Last Updated: 2025-01-20*
-
-Comprehensive documentation for SignalR/WebSocket real-time features in Conduit.
-
-## Table of Contents
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [Documentation Structure](#documentation-structure)
-- [Common Tasks](#common-tasks)
-
-## Overview
-
-Conduit uses SignalR for real-time bidirectional communication between clients and servers. This enables:
-
-- **Media generation progress** - Monitor image/video generation status
-- **System notifications** - Receive alerts and updates
-- **Multi-instance synchronization** - Redis backplane for horizontal scaling
+Conduit uses SignalR for real-time bidirectional communication between clients and servers. This enables media generation progress tracking, system notifications, and multi-instance synchronization via a Redis backplane.
 
 ## Quick Start
-
-### Client Connection
 
 ```typescript
 import { HubConnectionBuilder } from '@microsoft/signalr';
 
 const connection = new HubConnectionBuilder()
-  .withUrl('https://api.conduit.ai/hubs/video-generation', {
+  .withUrl('https://your-conduit-host/hubs/video-generation', {
     accessTokenFactory: () => virtualKey
   })
   .withAutomaticReconnect()
@@ -35,7 +17,7 @@ const connection = new HubConnectionBuilder()
 await connection.start();
 ```
 
-### Available Hubs
+## Available Hubs
 
 | Hub | Endpoint | Purpose |
 |-----|----------|---------|
@@ -46,58 +28,32 @@ await connection.start();
 | Metrics | `/hubs/metrics` | Admin metrics dashboard |
 | HealthMonitoring | `/hubs/health-monitoring` | System health monitoring |
 
-## Documentation Structure
+## Documentation
 
-### Core Documentation
-- **[Configuration](./configuration.md)** - Server setup, Redis backplane, connection settings
-- **[Hub Reference](./hub-reference.md)** - Complete hub API documentation
-- **[Architecture](./architecture.md)** - System design and data flow
-- **[Authentication](./authentication.md)** - Security and authorization
+- **[Getting Started](./getting-started.md)** — First SignalR integration
+- **[Hub Reference](./hub-reference.md)** — Complete hub API documentation
+- **[Client Examples](./client-examples.md)** — Production-ready client implementations
+- **[Authentication](./authentication.md)** — Security and authorization patterns
+- **[MessagePack Protocol](./messagepack-protocol.md)** — Binary protocol for performance
 
-### Developer Guides
-- **[Getting Started](./guides/getting-started.md)** - First SignalR integration
-- **[Implementation Patterns](./guides/implementation-patterns.md)** - Best practices and patterns
-- **[Connection Management](./guides/connection-management.md)** - Handling connections at scale
-- **[Migration Guide](./guides/migration-guide.md)** - Upgrading SignalR implementations
+## Authentication
 
-### Advanced Topics
-- **[Performance Optimization](./advanced/performance-optimization.md)** - Tuning for high throughput
-- **[Monitoring & Diagnostics](./advanced/monitoring-and-diagnostics.md)** - Health checks and metrics
-- **[Scaling with Redis](./advanced/scaling-and-redis.md)** - Multi-instance deployment
-- **[Admin Features](./advanced/admin-features.md)** - Administrative capabilities
+All hubs support multiple authentication methods:
 
-## Common Tasks
+1. **Virtual Key Authentication** (Recommended)
+   ```typescript
+   accessTokenFactory: () => virtualKey
+   ```
 
-### Track Navigation State
-```typescript
-// Subscribe to navigation updates
-connection.on('NavigationUpdated', (state) => {
-  console.log('User navigated to:', state.currentView);
-});
+2. **Admin Authentication** (Admin hubs only)
+   ```typescript
+   accessTokenFactory: () => adminAuthToken
+   ```
 
-// Update navigation
-await connection.invoke('UpdateNavigation', {
-  view: 'conversation-detail',
-  conversationId: '123'
-});
-```
+3. **Anonymous Access** (Health hub only)
 
-### Monitor Media Generation
-```typescript
-// Image generation progress
-connection.on('ImageProgress', (progress) => {
-  console.log(`Generation ${progress.percentage}% complete`);
-});
+## Connection Lifecycle
 
-// Video generation updates
-connection.on('VideoStatus', (status) => {
-  if (status.completed) {
-    console.log('Video ready:', status.url);
-  }
-});
-```
-
-### Handle Connection Lifecycle
 ```typescript
 connection.onreconnecting(() => {
   console.log('Connection lost, attempting to reconnect...');
@@ -112,23 +68,6 @@ connection.onclose(() => {
 });
 ```
 
-## Authentication
-
-All hubs support multiple authentication methods:
-
-1. **Virtual Key Authentication** (Recommended)
-   ```typescript
-   accessTokenFactory: () => virtualKey
-   ```
-
-2. **Admin Authentication** (Admin hub only)
-   ```typescript
-   accessTokenFactory: () => adminAuthToken
-   ```
-
-3. **Anonymous Access** (Health hub only)
-   - No authentication required for health checks
-
 ## Performance Considerations
 
 - **Message Size**: Keep messages under 32KB for optimal performance
@@ -138,46 +77,24 @@ All hubs support multiple authentication methods:
 
 ## Troubleshooting
 
-### Common Issues
+### Connection fails immediately
+- Check CORS configuration
+- Verify authentication token
+- Ensure WebSocket support is enabled
 
-1. **Connection fails immediately**
-   - Check CORS configuration
-   - Verify authentication token
-   - Ensure WebSocket support
+### Messages not received
+- Verify hub name and method names (case-sensitive)
+- Check group membership for targeted messages
+- Enable client-side logging: `.configureLogging(LogLevel.Debug)`
 
-2. **Messages not received**
-   - Verify hub name and method names (case-sensitive)
-   - Check group membership for targeted messages
-   - Enable client-side logging
-
-3. **Poor performance**
-   - Enable message pack protocol
-   - Configure Redis backplane
-   - Review message frequency
-
-### Debug Logging
-
-```typescript
-const connection = new HubConnectionBuilder()
-  .withUrl(hubUrl)
-  .configureLogging(LogLevel.Debug)
-  .build();
-```
+### Poor performance
+- Enable MessagePack protocol — see [MessagePack Protocol](./messagepack-protocol.md)
+- Configure Redis backplane — see [SignalR Configuration](../../operations/signalr/configuration.md)
+- Review message frequency
 
 ## Related Documentation
 
-- [Streaming & WebSockets](../../architecture/real-time/streaming-and-websockets.md)
+- [Streaming & WebSockets Architecture](../../architecture/real-time/streaming-and-websockets.md)
 - [SignalR Configuration](../../operations/signalr/configuration.md)
+- [Redis Backplane Testing](../../operations/signalr/redis-backplane-testing.md)
 - [Redis Resilience](../../operations/infrastructure/redis-resilience.md)
-
-## Migration from Older Versions
-
-If upgrading from previous SignalR implementations:
-1. Review [Migration Guide](./guides/migration-guide.md)
-2. Update client libraries to latest versions
-3. Test connection resilience
-4. Verify authentication flow
-
----
-
-*For framework-specific examples, see the [SDK Documentation](../../SDKs/Node/docs/README.md).*

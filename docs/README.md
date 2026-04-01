@@ -155,7 +155,6 @@ Production deployment, monitoring, scaling, and incident response.
 ### Providers
 
 - **[Provider Compatibility](./operations/providers/compatibility-report.md)** — Provider feature support
-- **[Error Tracking](./operations/providers/error-tracking.md)** — Operational error tracking
 - **[Usage Mappings](./operations/providers/usage-mappings.md)** — Usage tracking configuration
 
 ### SignalR Operations

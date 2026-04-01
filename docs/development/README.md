@@ -88,14 +88,13 @@ When adding features to Admin/Core SDKs:
 
 ### Key Architecture Guides
 
-- **[Clean Architecture Guide](../clean-architecture-guide.md)** - Development principles and layering
-- **[Provider Multi-Instance](../architecture/provider-multi-instance.md)** - Provider architecture patterns
-- **[Repository Pattern](../architecture/Repository-Pattern.md)** - Data access patterns
-- **[DTO Guidelines](../architecture/dto-guidelines.md)** - Data transfer patterns
+- **[Provider Architecture](../architecture/provider-system/provider-architecture.md)** - Multi-instance provider design
+- **[Repository & Data Access](../architecture/patterns/repository-and-data-access.md)** - Data access patterns
+- **[DTO Guidelines](../architecture/data-transfer/dto-guidelines.md)** - Data transfer patterns
 
 ### Important Design Decisions
 
-1. **Provider ID is canonical** - Not ProviderType or ProviderName (see [Provider Multi-Instance](../architecture/provider-multi-instance.md))
+1. **Provider ID is canonical** - Not ProviderType or ProviderName (see [Provider Architecture](../architecture/provider-system/provider-architecture.md))
 2. **Use DatabaseAwareLLMClientFactory** for production code (see [LLM Client Factory Guide](./llm-client-factory-guide.md))
 3. **Admin SDK server-side only** - Never expose master keys client-side
 4. **Virtual keys for Gateway API** - Use virtual keys, not master keys

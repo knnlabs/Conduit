@@ -189,7 +189,7 @@ for await (const chunk of stream) {
 - **[API Reference](./api-reference.md)** - Detailed endpoint documentation
 - **[Function Calling](../features/function-calling.md)** - Enable LLMs to use tools
 - **[Multimodal Vision](../features/multimodal-vision.md)** - Work with images
-- **[Streaming Guide](../features/streaming.md)** - Advanced streaming patterns
+- **[Streaming with Tools](../streaming-with-tools.md)** - Function calling in streaming mode
 - **[SDK Documentation](../sdk/)** - Complete SDK integration guides
 
 ## Common Parameters
