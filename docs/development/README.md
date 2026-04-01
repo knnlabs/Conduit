@@ -205,7 +205,7 @@ const keys: any = await client.virtualKeys.list();
 
 ## Database Migrations
 
-**⚠️ CRITICAL**: Always read [Database Migration Guide](../claude/database-migration-guide.md) before creating migrations.
+**⚠️ CRITICAL**: Always follow the migration guidelines in [CLAUDE.md](../../CLAUDE.md#database-migrations) and [Repository & Data Access](../architecture/patterns/repository-and-data-access.md) before creating migrations.
 
 Quick reference:
 ```bash
@@ -223,8 +223,7 @@ dotnet ef database update PreviousMigration --project ConduitLLM.Infrastructure
 
 ### Development Guides
 - **[CLAUDE.md](../../CLAUDE.md)** - **PRIMARY** development workflow, Docker setup, build verification
-- **[Architecture Overview](../architecture-overview.md)** - System design and components
-- **[Database Migration Guide](../claude/database-migration-guide.md)** - PostgreSQL migration procedures
+- **[Architecture Overview](../architecture/README.md)** - System design and components
 ### API Documentation
 - **[Gateway API Guide](../api-guides/gateway/README.md)** - Gateway API reference
 - **[Admin API Guide](../api-guides/admin/README.md)** - Admin API overview

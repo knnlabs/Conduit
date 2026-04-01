@@ -165,22 +165,13 @@ Production deployment, monitoring, scaling, and incident response.
 
 ## Model Pricing
 
-- **[Pricing Overview](./model-pricing/README.md)** — Import process and CSV format
-- **[Quick Reference](./model-pricing/pricing-quick-reference.md)** — Common model lookup
-- **[OpenAI](./model-pricing/openai-pricing.md)** — GPT-4, DALL-E, Whisper
-- **[Anthropic](./model-pricing/anthropic-pricing.md)** — Claude models
-- **[Groq](./model-pricing/groq-pricing.md)** — Groq inference
-- **[Fireworks](./model-pricing/fireworks-pricing.md)** — Fireworks AI
-- **[Replicate](./model-pricing/replicate-pricing.md)** — Replicate models
-- **[Cerebras](./model-pricing/cerebras-pricing.md)** — Cerebras inference
-- **[SambaNova](./model-pricing/sambanova-pricing.md)** — SambaNova inference
-- **[MiniMax](./model-pricing/minimax-pricing.md)** — MiniMax models
-- **[Cohere](./model-pricing/cohere-pricing.md)** — Cohere models
-- **[Gemini](./model-pricing/gemini-pricing.md)** — Google Gemini
-- **[Model Costs](./model-pricing/model-costs.md)** — Database cost configuration
-- **[Polymorphic Pricing](./model-pricing/polymorphic-pricing.md)** — Complex pricing patterns
-- **[Pricing Migration](./model-pricing/pricing-migration-guide.md)** — Migration to new pricing system
+- **[Pricing Overview](./model-pricing/README.md)** — How model data and pricing are managed
+- **[Model Costs](./model-pricing/model-costs.md)** — Cost storage architecture (ModelCost, ModelCostMapping)
+- **[Polymorphic Pricing](./model-pricing/polymorphic-pricing.md)** — 8 pricing models (per-token, per-image, tiered, etc.)
+- **[Pricing Quick Reference](./model-pricing/pricing-quick-reference.md)** — Enum values and configuration templates
 - **[WebUI Pricing Guide](./model-pricing/webui-pricing-guide.md)** — Managing pricing in the dashboard
+
+Model definitions and per-provider pricing are managed via SQL scripts in [`scripts/db/providers/`](../scripts/db/providers/README.md).
 
 ## Development
 

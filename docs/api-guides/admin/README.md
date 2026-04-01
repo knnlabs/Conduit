@@ -168,7 +168,7 @@ services:
 
 ## Related Documentation
 
-- **[Gateway API](../core/)** - User-facing LLM API documentation
+- **[Gateway API](../gateway/)** - User-facing LLM API documentation
 - **[SDK Documentation](../sdk/)** - SDK integration guides
 - **[Architecture Docs](../../architecture/)** - System design and patterns
 - **[Development Guide](../../development/)** - Contributing to Conduit

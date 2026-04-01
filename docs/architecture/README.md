@@ -289,8 +289,7 @@ All architecture documentation follows these standards:
 ## 📚 Related Documentation
 
 - **[API Guides](../api-guides/README.md)** - API endpoint documentation and integration guides
-- **[Claude Guides](../claude/README.md)** - Development guides and patterns for AI assistance
-- **[Database Migration Guide](../claude/database-migration-guide.md)** - PostgreSQL migration requirements
+- **[Repository & Data Access](./patterns/repository-and-data-access.md)** - EF Core patterns and migration best practices
 
 ---
 
