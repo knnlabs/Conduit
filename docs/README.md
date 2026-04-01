@@ -179,9 +179,9 @@ For contributors working on the Conduit codebase.
 
 - **[Development Overview](./development/README.md)** — Setup and workflows
 - **[API Patterns](./development/API-PATTERNS-BEST-PRACTICES.md)** — Backend API conventions
-- **[LLM Client Factory Guide](./development/llm-client-factory-guide.md)** — Adding LLM providers
+- **[Adding a New Provider](./development/adding-a-provider.md)** — End-to-end guide for new providers
+- **[LLM Client Factory Guide](./development/llm-client-factory-guide.md)** — Factory architecture and decorators
 - **[Provider API Research](./development/provider-api-research.md)** — Provider integration research
-- **[Error Tracking Architecture](./development/error-tracking-architecture.md)** — Error system design
 - **[SDK Gaps](./development/sdk-gaps.md)** — Known SDK limitations
 - **[Documentation Style Guide](./development/documentation-style-guide.md)** — Writing standards
 

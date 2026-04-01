@@ -210,6 +210,6 @@ Content-Type: application/json
 
 ## Related Documentation
 
-- [Provider Architecture](../architecture/provider-system/provider-architecture.md)
-- [Error Tracking Developer Guide](../development/error-tracking-architecture.md)
-- [Error Tracking Runbook](../operations/error-tracking-runbook.md)
+- [Provider Architecture](../../architecture/provider-system/provider-architecture.md)
+- [Error Tracking Architecture](../../architecture/provider-system/error-tracking.md)
+- [Error Tracking Runbook](../../operations/error-tracking-runbook.md)
