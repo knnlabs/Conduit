@@ -178,9 +178,15 @@ namespace ConduitLLM.Providers.OpenRouter
             ProviderErrorType baseType,
             string? responseBody)
         {
+            // Apply common patterns first (quota, rate limit, model not found)
+            var refined = base.RefineErrorClassification(baseType, responseBody);
+            if (refined != baseType)
+                return refined;
+
             if (string.IsNullOrEmpty(responseBody))
                 return baseType;
 
+            // OpenRouter-specific: 503 "no endpoints" → ModelNotFound
             try
             {
                 using var doc = JsonDocument.Parse(responseBody);
@@ -191,8 +197,6 @@ namespace ConduitLLM.Providers.OpenRouter
                     ? msgProp.GetString() ?? ""
                     : "";
 
-                // OpenRouter 503 "no endpoints found" means no provider can serve
-                // this model/routing combo — more like ModelNotFound than ServiceUnavailable
                 if (baseType == ProviderErrorType.ServiceUnavailable &&
                     (message.Contains("no endpoints", StringComparison.OrdinalIgnoreCase) ||
                      message.Contains("no provider", StringComparison.OrdinalIgnoreCase)))

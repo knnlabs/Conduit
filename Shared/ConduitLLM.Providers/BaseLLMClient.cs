@@ -572,11 +572,41 @@ namespace ConduitLLM.Providers
         /// <param name="responseBody">The response body for additional context.</param>
         /// <returns>The refined error type.</returns>
         protected virtual ProviderErrorType RefineErrorClassification(
-            ProviderErrorType baseType, 
+            ProviderErrorType baseType,
             string? responseBody)
         {
-            // Base implementation returns the status code-based classification
-            // Derived classes should override to parse provider-specific error messages
+            if (string.IsNullOrEmpty(responseBody))
+                return baseType;
+
+            var lowerBody = responseBody.ToLowerInvariant();
+
+            // Common pattern: 403 with quota/billing keywords → InsufficientBalance
+            if (baseType == ProviderErrorType.AccessForbidden &&
+                (lowerBody.Contains("insufficient_quota") ||
+                 lowerBody.Contains("exceeded your current quota") ||
+                 lowerBody.Contains("billing") ||
+                 lowerBody.Contains("payment") ||
+                 lowerBody.Contains("credit")))
+            {
+                return ProviderErrorType.InsufficientBalance;
+            }
+
+            // Common pattern: rate limit keywords regardless of status code
+            if (lowerBody.Contains("rate limit") ||
+                lowerBody.Contains("too many requests"))
+            {
+                return ProviderErrorType.RateLimitExceeded;
+            }
+
+            // Common pattern: model not found keywords
+            if (lowerBody.Contains("model") &&
+                (lowerBody.Contains("not found") ||
+                 lowerBody.Contains("does not exist") ||
+                 lowerBody.Contains("invalid model")))
+            {
+                return ProviderErrorType.ModelNotFound;
+            }
+
             return baseType;
         }
 

@@ -35,7 +35,7 @@ namespace ConduitLLM.Core.Interfaces
             ChatCompletionRequest request,
             string? apiKey = null,
             int? virtualKeyId = null,
-            Func<object, CancellationToken, Task>? onToolExecutingEvent = null,
+            Func<ToolExecutionEvent, CancellationToken, Task>? onToolExecutingEvent = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>

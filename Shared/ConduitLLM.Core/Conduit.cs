@@ -113,7 +113,7 @@ namespace ConduitLLM.Core
             ChatCompletionRequest request,
             string? apiKey = null,
             int? virtualKeyId = null,
-            Func<object, CancellationToken, Task>? onToolExecutingEvent = null,
+            Func<ToolExecutionEvent, CancellationToken, Task>? onToolExecutingEvent = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -319,7 +319,7 @@ namespace ConduitLLM.Core
             ChatCompletionRequest request,
             string? apiKey,
             int virtualKeyId,
-            Func<object, CancellationToken, Task>? onToolExecutingEvent,
+            Func<ToolExecutionEvent, CancellationToken, Task>? onToolExecutingEvent,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             if (_functionDiscoveryService == null || _agenticOrchestrationService == null)
@@ -468,11 +468,11 @@ namespace ConduitLLM.Core
                     {
                         try
                         {
-                            await onToolExecutingEvent(new
+                            await onToolExecutingEvent(new ToolExecutionEvent
                             {
-                                tool_call_id = toolCall.Id,
-                                function_name = toolCall.Function.Name,
-                                status = "started"
+                                ToolCallId = toolCall.Id,
+                                FunctionName = toolCall.Function.Name,
+                                Status = "started"
                             }, cancellationToken);
                         }
                         catch (Exception ex)
@@ -500,14 +500,14 @@ namespace ConduitLLM.Core
                     {
                         try
                         {
-                            await onToolExecutingEvent(new
+                            await onToolExecutingEvent(new ToolExecutionEvent
                             {
-                                tool_call_id = summary.ToolCallId,
-                                function_name = summary.FunctionName,
-                                status = summary.Success ? "completed" : "failed",
-                                cost = summary.Cost,
-                                error_message = summary.ErrorMessage,
-                                function_execution_id = summary.FunctionExecutionId
+                                ToolCallId = summary.ToolCallId,
+                                FunctionName = summary.FunctionName,
+                                Status = summary.Success ? "completed" : "failed",
+                                Cost = summary.Cost,
+                                ErrorMessage = summary.ErrorMessage,
+                                FunctionExecutionId = summary.FunctionExecutionId
                             }, cancellationToken);
                         }
                         catch (Exception ex)
