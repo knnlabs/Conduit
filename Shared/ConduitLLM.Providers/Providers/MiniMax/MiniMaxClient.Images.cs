@@ -66,12 +66,7 @@ namespace ConduitLLM.Providers.MiniMax
                 MiniMaxImageGenerationResponse response;
                 try
                 {
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                    };
-                    response = JsonSerializer.Deserialize<MiniMaxImageGenerationResponse>(rawContent, options)
+                    response = JsonSerializer.Deserialize<MiniMaxImageGenerationResponse>(rawContent, DefaultJsonOptions)
                         ?? throw new LLMCommunicationException("MiniMax returned null response");
                 }
                 catch (JsonException ex)

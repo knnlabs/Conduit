@@ -70,12 +70,7 @@ namespace ConduitLLM.Providers.MiniMax
                 MiniMaxChatCompletionResponse response;
                 try
                 {
-                    response = JsonSerializer.Deserialize<MiniMaxChatCompletionResponse>(rawContent, new JsonSerializerOptions
-                    {
-                        // MiniMax uses snake_case, not camelCase
-                        PropertyNameCaseInsensitive = true,
-                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                    })!;
+                    response = JsonSerializer.Deserialize<MiniMaxChatCompletionResponse>(rawContent, CaseInsensitiveJsonOptions)!;
                 }
                 catch (Exception ex)
                 {

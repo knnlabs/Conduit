@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
@@ -14,6 +16,15 @@ namespace ConduitLLM.Providers.MiniMax
         private const string DefaultBaseUrl = "https://api.minimax.io";
         private readonly string _baseUrl;
         private Func<string, string, int, Task>? _progressCallback;
+
+        /// <summary>
+        /// MiniMax chat API returns snake_case properties — needs case-insensitive deserialization.
+        /// </summary>
+        private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MiniMaxClient"/> class.
@@ -39,11 +50,11 @@ namespace ConduitLLM.Providers.MiniMax
         /// <inheritdoc />
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            // Add Accept header for SSE streaming
-            client.DefaultRequestHeaders.Add("Accept", "text/event-stream");
+            base.ConfigureHttpClient(client, apiKey);
+            // Override Accept header for SSE streaming (base sets application/json)
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(
+                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
             // Use video generation timeout since MiniMax supports video
             client.Timeout = VideoGenerationTimeout;
         }

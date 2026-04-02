@@ -93,12 +93,7 @@ namespace ConduitLLM.Providers.MiniMax
                 MiniMaxVideoGenerationResponse response;
                 try
                 {
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                    };
-                    response = JsonSerializer.Deserialize<MiniMaxVideoGenerationResponse>(rawContent, options)
+                    response = JsonSerializer.Deserialize<MiniMaxVideoGenerationResponse>(rawContent, DefaultJsonOptions)
                         ?? throw new LLMCommunicationException("MiniMax returned null response");
                 }
                 catch (JsonException ex)
@@ -225,12 +220,7 @@ namespace ConduitLLM.Providers.MiniMax
                         MiniMaxVideoStatusResponse statusResult;
                         try
                         {
-                            statusResult = JsonSerializer.Deserialize<MiniMaxVideoStatusResponse>(statusContent, 
-                                new JsonSerializerOptions
-                                {
-                                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                                })!;
+                            statusResult = JsonSerializer.Deserialize<MiniMaxVideoStatusResponse>(statusContent, DefaultJsonOptions)!;
                         }
                         catch (Exception ex)
                         {
