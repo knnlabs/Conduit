@@ -15,6 +15,97 @@ namespace ConduitLLM.Gateway.Middleware
     public partial class UsageTrackingMiddleware
     {
         /// <summary>
+        /// Holds the type-specific data extracted by image/video adapters
+        /// so the shared pipeline can process any media type uniformly.
+        /// </summary>
+        private sealed class MediaProcessingContext
+        {
+            public required string MediaType { get; init; }
+            public required string Model { get; init; }
+            public required Usage Usage { get; init; }
+            public required string MetadataJson { get; init; }
+            public required string ProviderType { get; init; }
+            public required int VirtualKeyId { get; init; }
+            public required string LogDetail { get; init; }
+        }
+
+        /// <summary>
+        /// Resolves the model name: prefer the value stored in HttpContext.Items by the controller,
+        /// fall back to the model returned in the provider response, then "unknown".
+        /// </summary>
+        private static string ResolveModel(HttpContext context, string contextKey, string? responseModel)
+        {
+            var model = context.Items.TryGetValue(contextKey, out var obj) ? obj?.ToString() : null;
+            return string.IsNullOrEmpty(model) ? (responseModel ?? "unknown") : model;
+        }
+
+        /// <summary>
+        /// Shared pipeline for image and video response processing.
+        /// Handles cost calculation, metrics, spend updates, billing audit, and request logging.
+        /// </summary>
+        private async Task ProcessMediaResponseAsync(
+            HttpContext context,
+            MediaProcessingContext media,
+            ICostCalculationService costCalculationService,
+            IBatchSpendUpdateService batchSpendService,
+            IRequestLogService requestLogService,
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
+        {
+            // Calculate cost - prefer ID-based lookup if ModelCostId is available
+            decimal cost;
+            if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
+                modelCostIdObj is int modelCostId)
+            {
+                cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, media.Usage);
+            }
+            else
+            {
+                cost = await costCalculationService.CalculateCostAsync(media.Model, media.Usage);
+            }
+
+            // Update Prometheus metrics
+            UsageMetrics.UsageTrackingRequests.WithLabels(media.MediaType, "success").Inc();
+            UsageMetrics.UsageTrackingCosts.WithLabels(media.Model, media.ProviderType, media.MediaType)
+                .Inc(Convert.ToDouble(cost));
+
+            // Record business metrics for Grafana dashboards
+            var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300
+                ? "success" : "error";
+            BusinessMetricsService.RecordModelRequest(media.Model, media.ProviderType, requestStatus);
+            BusinessMetricsService.RecordResponseTime(media.Model, media.ProviderType,
+                UsageExtractor.GetResponseTime(context) / 1000.0);
+            if (cost > 0)
+            {
+                BusinessMetricsService.RecordCost(media.ProviderType, media.Model, media.MediaType,
+                    Convert.ToDouble(cost));
+            }
+
+            // Update spend and log billing
+            if (cost > 0)
+            {
+                await SpendUpdateHelper.UpdateSpendAsync(media.VirtualKeyId, cost,
+                    batchSpendService, virtualKeyService, _logger);
+                LogSuccessfulBilling(context, media.Model, media.Usage, cost,
+                    media.ProviderType, billingAuditService);
+            }
+            else
+            {
+                UsageMetrics.ZeroCostEvents.WithLabels(media.Model, $"{media.MediaType}_zero").Inc();
+                LogZeroCostBilling(context, media.Model, media.Usage, cost,
+                    media.ProviderType, billingAuditService);
+            }
+
+            // Log the request with media metadata
+            await LogRequestAsync(context, media.VirtualKeyId, media.Model, media.Usage, cost,
+                requestLogService, media.MetadataJson);
+
+            _logger.LogInformation(
+                "Tracked {MediaType} generation for VirtualKey {VirtualKeyId}: Model={Model}, {Detail}, Cost={Cost:C}",
+                media.MediaType, media.VirtualKeyId, media.Model, media.LogDetail, cost);
+        }
+
+        /// <summary>
         /// Process function execution responses and log them with function-specific metadata.
         /// </summary>
         private async Task ProcessFunctionResponseAsync(
@@ -131,8 +222,7 @@ namespace ConduitLLM.Gateway.Middleware
 
         /// <summary>
         /// Process image generation responses and log them with image-specific metadata.
-        /// Image responses typically don't have standard usage data in the response,
-        /// so we extract details from HttpContext.Items (set by the controller) and the response data array.
+        /// Extracts image-specific data, then delegates to the shared media pipeline.
         /// </summary>
         private async Task ProcessImageResponseAsync(
             HttpContext context,
@@ -145,10 +235,9 @@ namespace ConduitLLM.Gateway.Middleware
         {
             try
             {
-                // Get virtual key ID
                 var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
 
-                // Get image request details from HttpContext.Items (set by ImagesController)
+                // Extract image request details from HttpContext.Items (set by ImagesController)
                 var quality = context.Items.TryGetValue(HttpContextKeys.ImageRequestQuality, out var qualityObj)
                     ? qualityObj?.ToString()
                     : null;
@@ -158,82 +247,43 @@ namespace ConduitLLM.Gateway.Middleware
                 var requestedN = context.Items.TryGetValue(HttpContextKeys.ImageRequestN, out var nObj)
                     ? nObj as int? ?? 1
                     : 1;
-
-                // Get provider type for metrics
                 var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
                     ? providerTypeObj?.ToString() ?? "unknown"
                     : "unknown";
 
-                // Parse the response to count actual images generated and check for usage/model data
-                int actualImageCount = requestedN; // Default to requested count
+                // Parse the response
+                int actualImageCount = requestedN;
                 Usage? responseUsage = null;
                 string? responseModel = null;
 
                 using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
                 var root = jsonDocument.RootElement;
 
-                // Try to get model from response (some providers may include it)
                 if (root.TryGetProperty("model", out var modelElement))
-                {
                     responseModel = modelElement.GetString();
-                }
 
-                // Count actual images from the data array
                 if (root.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
-                {
                     actualImageCount = dataArray.GetArrayLength();
-                }
 
-                // Check if the response includes usage data (some providers may include it)
                 if (root.TryGetProperty("usage", out var usageElement))
-                {
                     responseUsage = UsageExtractor.ExtractUsage(usageElement, _logger);
-                }
 
-                // Resolve model: prefer HttpContext.Items (original request model alias), then response, then "unknown"
-                var model = context.Items.TryGetValue(HttpContextKeys.ImageRequestModel, out var modelObj)
-                    ? modelObj?.ToString()
-                    : null;
-                if (string.IsNullOrEmpty(model))
-                {
-                    model = responseModel ?? "unknown";
-                }
+                var model = ResolveModel(context, HttpContextKeys.ImageRequestModel, responseModel);
 
-                // Build usage object - prefer response usage if available, otherwise construct from request data
+                // Build Usage object - prefer response usage if available, otherwise construct from request data
                 var usage = responseUsage ?? new Usage
                 {
                     ImageCount = actualImageCount,
                     ImageQuality = quality,
                     ImageResolution = size
                 };
-
-                // Ensure image count is set even if response usage was used
                 if (!usage.ImageCount.HasValue || usage.ImageCount.Value == 0)
-                {
                     usage.ImageCount = actualImageCount;
-                }
                 if (string.IsNullOrEmpty(usage.ImageQuality))
-                {
                     usage.ImageQuality = quality;
-                }
                 if (string.IsNullOrEmpty(usage.ImageResolution))
-                {
                     usage.ImageResolution = size;
-                }
 
-                // Calculate cost - prefer ID-based lookup if ModelCostId is available
-                decimal cost;
-                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
-                    modelCostIdObj is int modelCostId)
-                {
-                    cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, usage);
-                }
-                else
-                {
-                    cost = await costCalculationService.CalculateCostAsync(model, usage);
-                }
-
-                // Build metadata JSON for image generation
                 var metadata = JsonSerializer.Serialize(new
                 {
                     type = "image",
@@ -243,37 +293,16 @@ namespace ConduitLLM.Gateway.Middleware
                     style = context.Items.TryGetValue("ImageRequestStyle", out var styleObj) ? styleObj?.ToString() : null
                 });
 
-                // Update metrics
-                UsageMetrics.UsageTrackingRequests.WithLabels("image", "success").Inc();
-                UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, "image").Inc(Convert.ToDouble(cost));
-
-                // Record business metrics for Grafana dashboards (real-time counters)
-                var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
-                BusinessMetricsService.RecordModelRequest(model, providerType, requestStatus);
-                BusinessMetricsService.RecordResponseTime(model, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
-                if (cost > 0)
+                await ProcessMediaResponseAsync(context, new MediaProcessingContext
                 {
-                    BusinessMetricsService.RecordCost(providerType, model, "image", Convert.ToDouble(cost));
-                }
-
-                // Update spend if there's a cost
-                if (cost > 0)
-                {
-                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
-                    LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService);
-                }
-                else
-                {
-                    UsageMetrics.ZeroCostEvents.WithLabels(model, "image_zero").Inc();
-                    LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService);
-                }
-
-                // Log the request with image metadata
-                await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService, metadata);
-
-                _logger.LogInformation(
-                    "Tracked image generation for VirtualKey {VirtualKeyId}: Model={Model}, Images={ImageCount}, Quality={Quality}, Size={Size}, Cost={Cost:C}",
-                    virtualKeyId, model, actualImageCount, quality ?? "standard", size ?? "default", cost);
+                    MediaType = "image",
+                    Model = model,
+                    Usage = usage,
+                    MetadataJson = metadata,
+                    ProviderType = providerType,
+                    VirtualKeyId = virtualKeyId,
+                    LogDetail = $"Images={actualImageCount}, Quality={quality ?? "standard"}, Size={size ?? "default"}"
+                }, costCalculationService, batchSpendService, requestLogService, virtualKeyService, billingAuditService);
             }
             catch (Exception ex)
             {
@@ -284,8 +313,7 @@ namespace ConduitLLM.Gateway.Middleware
 
         /// <summary>
         /// Process video generation responses and log them with video-specific metadata.
-        /// Video responses typically don't have standard usage data in the response,
-        /// so we extract details from HttpContext.Items (set by the controller) and the response data.
+        /// Extracts video-specific data, then delegates to the shared media pipeline.
         /// </summary>
         private async Task ProcessVideoResponseAsync(
             HttpContext context,
@@ -298,10 +326,9 @@ namespace ConduitLLM.Gateway.Middleware
         {
             try
             {
-                // Get virtual key ID
                 var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
 
-                // Get video request details from HttpContext.Items (set by VideosController)
+                // Extract video request details from HttpContext.Items (set by VideosController)
                 var size = context.Items.TryGetValue(HttpContextKeys.VideoRequestSize, out var sizeObj)
                     ? sizeObj?.ToString()
                     : null;
@@ -317,18 +344,14 @@ namespace ConduitLLM.Gateway.Middleware
                 var style = context.Items.TryGetValue(HttpContextKeys.VideoRequestStyle, out var styleObj)
                     ? styleObj?.ToString()
                     : null;
-
-                // Get pricing parameters for rules-based pricing
                 var pricingParameters = context.Items.TryGetValue(HttpContextKeys.VideoRequestPricingParameters, out var paramsObj)
                     ? paramsObj as Dictionary<string, object>
                     : null;
-
-                // Get provider type for metrics
                 var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
                     ? providerTypeObj?.ToString() ?? "unknown"
                     : "unknown";
 
-                // Parse the response to check for usage/model data and actual video count
+                // Parse the response
                 int actualVideoCount = requestedN;
                 Usage? responseUsage = null;
                 string? responseModel = null;
@@ -340,135 +363,66 @@ namespace ConduitLLM.Gateway.Middleware
                 using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
                 var root = jsonDocument.RootElement;
 
-                // Try to get task ID from async response (for cost correction later)
                 if (root.TryGetProperty("taskId", out var taskIdElement))
-                {
                     taskId = taskIdElement.GetString();
-                }
 
-                // Try to get model from response
                 if (root.TryGetProperty("model", out var modelElement))
-                {
                     responseModel = modelElement.GetString();
-                }
 
-                // Count actual videos from the data array and extract metadata
                 if (root.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
                 {
                     actualVideoCount = dataArray.GetArrayLength();
 
-                    // Extract metadata from first video if available
                     if (actualVideoCount > 0)
                     {
                         var firstVideo = dataArray[0];
                         if (firstVideo.TryGetProperty("metadata", out var videoMetadata))
                         {
                             if (videoMetadata.TryGetProperty("duration", out var durationEl))
-                            {
                                 actualDuration = durationEl.GetDouble();
-                            }
                             if (videoMetadata.TryGetProperty("width", out var widthEl) &&
                                 videoMetadata.TryGetProperty("height", out var heightEl))
-                            {
                                 actualResolution = $"{widthEl.GetInt32()}x{heightEl.GetInt32()}";
-                            }
                         }
                     }
                 }
 
-                // Check if the response includes usage data
                 if (root.TryGetProperty("usage", out var usageElement))
-                {
                     responseUsage = UsageExtractor.ExtractUsage(usageElement, _logger);
-                }
 
-                // Resolve model: prefer HttpContext.Items (original request model alias), then response, then "unknown"
-                var model = context.Items.TryGetValue(HttpContextKeys.VideoRequestModel, out var modelObj)
-                    ? modelObj?.ToString()
-                    : null;
-                if (string.IsNullOrEmpty(model))
-                {
-                    model = responseModel ?? "unknown";
-                }
+                var model = ResolveModel(context, HttpContextKeys.VideoRequestModel, responseModel);
 
-                // Build usage object - prefer response usage if available, otherwise construct from request/response data
+                // Build Usage object
                 var usage = responseUsage ?? new Usage();
-
-                // Set video duration (prefer actual from response, then requested)
                 if (!usage.VideoDurationSeconds.HasValue)
-                {
                     usage.VideoDurationSeconds = actualDuration ?? requestedDuration;
-                }
-
-                // Set video resolution (prefer actual from response, then requested)
                 if (string.IsNullOrEmpty(usage.VideoResolution))
-                {
                     usage.VideoResolution = actualResolution ?? size;
-                }
-
-                // Set pricing parameters for rules-based pricing
                 if (pricingParameters != null && pricingParameters.Count > 0)
-                {
                     usage.PricingParameters = pricingParameters;
-                }
 
-                // Calculate cost - prefer ID-based lookup if ModelCostId is available
-                decimal cost;
-                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
-                    modelCostIdObj is int modelCostId)
-                {
-                    cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, usage);
-                }
-                else
-                {
-                    cost = await costCalculationService.CalculateCostAsync(model, usage);
-                }
-
-                // Build metadata JSON for video generation
-                // Include taskId for async requests so we can update cost/duration later
                 var metadata = JsonSerializer.Serialize(new
                 {
                     type = "video",
-                    taskId = taskId,
+                    taskId,
                     videoCount = actualVideoCount,
                     durationSeconds = usage.VideoDurationSeconds,
                     resolution = usage.VideoResolution ?? "unknown",
-                    fps = fps,
-                    style = style,
+                    fps,
+                    style,
                     pricingParametersUsed = pricingParameters?.Keys.ToArray()
                 });
 
-                // Update metrics
-                UsageMetrics.UsageTrackingRequests.WithLabels("video", "success").Inc();
-                UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, "video").Inc(Convert.ToDouble(cost));
-
-                // Record business metrics for Grafana dashboards (real-time counters)
-                var requestStatus = context.Response.StatusCode >= 200 && context.Response.StatusCode < 300 ? "success" : "error";
-                BusinessMetricsService.RecordModelRequest(model, providerType, requestStatus);
-                BusinessMetricsService.RecordResponseTime(model, providerType, UsageExtractor.GetResponseTime(context) / 1000.0);
-                if (cost > 0)
+                await ProcessMediaResponseAsync(context, new MediaProcessingContext
                 {
-                    BusinessMetricsService.RecordCost(providerType, model, "video", Convert.ToDouble(cost));
-                }
-
-                // Update spend if there's a cost
-                if (cost > 0)
-                {
-                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
-                    LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService);
-                }
-                else
-                {
-                    UsageMetrics.ZeroCostEvents.WithLabels(model, "video_zero").Inc();
-                    LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService);
-                }
-
-                // Log the request with video metadata
-                await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService, metadata);
-
-                _logger.LogInformation(
-                    "Tracked video generation for VirtualKey {VirtualKeyId}: Model={Model}, Videos={VideoCount}, Duration={Duration}s, Resolution={Resolution}, Cost={Cost:C}",
-                    virtualKeyId, model, actualVideoCount, usage.VideoDurationSeconds ?? 0, usage.VideoResolution ?? "unknown", cost);
+                    MediaType = "video",
+                    Model = model,
+                    Usage = usage,
+                    MetadataJson = metadata,
+                    ProviderType = providerType,
+                    VirtualKeyId = virtualKeyId,
+                    LogDetail = $"Videos={actualVideoCount}, Duration={usage.VideoDurationSeconds ?? 0}s, Resolution={usage.VideoResolution ?? "unknown"}"
+                }, costCalculationService, batchSpendService, requestLogService, virtualKeyService, billingAuditService);
             }
             catch (Exception ex)
             {
