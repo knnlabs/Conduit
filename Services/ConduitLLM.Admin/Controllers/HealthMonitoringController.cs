@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,7 @@ namespace ConduitLLM.Admin.Controllers
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IMemoryCache _cache;
+        private readonly IAdminSystemInfoService _systemInfoService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HealthMonitoringController"/> class.
@@ -24,14 +26,17 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dbContextFactory">Database context factory.</param>
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
+        /// <param name="systemInfoService">System info service for database metrics.</param>
         public HealthMonitoringController(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<HealthMonitoringController> logger,
-            IMemoryCache cache)
+            IMemoryCache cache,
+            IAdminSystemInfoService systemInfoService)
             : base(logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _systemInfoService = systemInfoService ?? throw new ArgumentNullException(nameof(systemInfoService));
         }
 
         /// <summary>
@@ -303,10 +308,9 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                // This would vary by database provider
-                // Added to ensure the method remains asynchronous and to avoid CS1998 warning
-                await Task.CompletedTask;
-                return "Unknown";
+                var systemInfo = await _systemInfoService.GetSystemInfoAsync();
+                var size = systemInfo.Database.Size;
+                return !string.IsNullOrEmpty(size) ? size : "Unknown";
             }
             catch
             {

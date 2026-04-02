@@ -44,19 +44,6 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
     }
 
     /// <inheritdoc/>
-    [Obsolete("Use GetByProviderIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    public async Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int providerId)
-    {
-        return await ExecuteAsync(async context =>
-            await GetDbSet(context)
-                .AsNoTracking()
-                .Where(k => k.ProviderId == providerId)
-                .OrderByDescending(k => k.IsPrimary)
-                .ThenBy(k => k.ProviderAccountGroup)
-                .ToListAsync());
-    }
-
-    /// <inheritdoc/>
     public async Task<(List<ProviderKeyCredential> Items, int TotalCount)> GetByProviderIdPaginatedAsync(
         int providerId,
         int pageNumber,

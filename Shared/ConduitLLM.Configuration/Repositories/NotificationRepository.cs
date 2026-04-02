@@ -42,28 +42,6 @@ public class NotificationRepository : RepositoryBase<Notification, int>, INotifi
     }
 
     /// <inheritdoc/>
-    [Obsolete("Use GetUnreadPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    public async Task<List<Notification>> GetUnreadAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            return await ExecuteAsync(async context =>
-            {
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(n => !n.IsRead)
-                    .OrderByDescending(n => n.CreatedAt)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting unread notifications");
-            throw;
-        }
-    }
-
-    /// <inheritdoc/>
     public async Task<(List<Notification> Items, int TotalCount)> GetUnreadPaginatedAsync(
         int pageNumber,
         int pageSize,

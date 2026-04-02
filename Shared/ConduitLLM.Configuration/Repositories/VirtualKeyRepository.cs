@@ -127,19 +127,6 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        [Obsolete("Use GetByVirtualKeyGroupIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        public async Task<List<VirtualKey>> GetByVirtualKeyGroupIdAsync(int virtualKeyGroupId, CancellationToken cancellationToken = default)
-        {
-            return await ExecuteAsync(async context =>
-                await context.VirtualKeys
-                    .AsNoTracking()
-                    .Where(vk => vk.VirtualKeyGroupId == virtualKeyGroupId)
-                    .OrderBy(vk => vk.KeyName)
-                    .ToListAsync(cancellationToken),
-                cancellationToken, $"getting by group ID {virtualKeyGroupId}");
-        }
-
-        /// <inheritdoc/>
         public async Task<(List<VirtualKey> Items, int TotalCount)> GetByVirtualKeyGroupIdPaginatedAsync(
             int virtualKeyGroupId,
             int pageNumber,
