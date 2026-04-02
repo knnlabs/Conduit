@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -137,7 +138,7 @@ namespace ConduitLLM.Admin.Controllers
                         CorrelationId = Guid.NewGuid()
                     }, "create provider key", new { ProviderId = providerId, KeyId = createdKeyId });
 
-                    LogAdminAudit("Created", "ProviderKeyCredential", createdKeyId, $"Provider: {providerId}, KeyName: {keyCredential.KeyName}");
+                    LogAdminAudit("Created", "ProviderKeyCredential", createdKeyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(keyCredential.KeyName)}");
                     AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "create");
 
                     return CreatedAtAction(
@@ -282,7 +283,7 @@ namespace ConduitLLM.Admin.Controllers
 
                     await _keyRepository.DeleteAsync(keyId);
 
-                    LogAdminAudit("Deleted", "ProviderKeyCredential", keyId, $"Provider: {providerId}");
+                    LogAdminAudit("Deleted", "ProviderKeyCredential", keyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(key.KeyName)}");
                     AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "delete");
 
                     // Publish key deleted event
@@ -337,7 +338,7 @@ namespace ConduitLLM.Admin.Controllers
                     key.UpdatedAt = DateTime.UtcNow;
                     await _keyRepository.UpdateAsync(key);
 
-                    LogAdminAudit("SetPrimary", "ProviderKeyCredential", keyId, $"Provider: {providerId}");
+                    LogAdminAudit("SetPrimary", "ProviderKeyCredential", keyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(key.KeyName)}");
                     AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "set_primary");
 
                     // Publish primary key changed event

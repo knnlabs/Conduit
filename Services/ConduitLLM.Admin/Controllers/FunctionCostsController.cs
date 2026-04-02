@@ -174,7 +174,7 @@ public class FunctionCostsController : AdminControllerBase
 
                 // Fetch the updated entity to return
                 var updated = await _functionCostService.GetCostByIdAsync(id);
-                LogAdminAudit("Updated", "FunctionCost", id);
+                LogAdminAudit("Updated", "FunctionCost", id, $"CostName: {LoggingSanitizer.S(updateDto.CostName)}");
                 return updated?.ToDto();
             },
             dto => Ok(dto),
@@ -196,8 +196,9 @@ public class FunctionCostsController : AdminControllerBase
         return ExecuteAsync(
             async () =>
             {
+                var existing = await _functionCostService.GetCostByIdAsync(id);
                 await _functionCostService.DeleteCostAsync(id);
-                LogAdminAudit("Deleted", "FunctionCost", id);
+                LogAdminAudit("Deleted", "FunctionCost", id, existing != null ? $"CostName: {LoggingSanitizer.S(existing.CostName)}" : null);
             },
             NoContent(),
             "DeleteFunctionCost",

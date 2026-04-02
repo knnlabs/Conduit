@@ -193,7 +193,7 @@ namespace ConduitLLM.Admin.Controllers
                         throw new KeyNotFoundException($"Model cost with ID '{id}' not found");
                     }
 
-                    LogAdminAudit("Updated", "ModelCost", id);
+                    LogAdminAudit("Updated", "ModelCost", id, $"CostName: {LoggingSanitizer.S(modelCost.CostName)}");
                 },
                 NoContent(),
                 "UpdateModelCost",
@@ -214,6 +214,7 @@ namespace ConduitLLM.Admin.Controllers
             return ExecuteAsync(
                 async () =>
                 {
+                    var existing = await _modelCostService.GetModelCostByIdAsync(id);
                     var success = await _modelCostService.DeleteModelCostAsync(id);
 
                     if (!success)
@@ -221,7 +222,7 @@ namespace ConduitLLM.Admin.Controllers
                         throw new KeyNotFoundException($"Model cost with ID '{id}' not found");
                     }
 
-                    LogAdminAudit("Deleted", "ModelCost", id);
+                    LogAdminAudit("Deleted", "ModelCost", id, existing != null ? $"CostName: {LoggingSanitizer.S(existing.CostName)}" : null);
                 },
                 NoContent(),
                 "DeleteModelCost",
@@ -363,7 +364,7 @@ namespace ConduitLLM.Admin.Controllers
                             }));
                     }
 
-                    LogAdminAudit("ImportedCsv", "ModelCost", detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+                    LogAdminAuditBulk("ImportedCsv", "ModelCost", result.SuccessCount, result.FailureCount);
                     return result;
                 },
                 result => Ok(result),
@@ -410,7 +411,7 @@ namespace ConduitLLM.Admin.Controllers
                             }));
                     }
 
-                    LogAdminAudit("ImportedJson", "ModelCost", detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+                    LogAdminAuditBulk("ImportedJson", "ModelCost", result.SuccessCount, result.FailureCount);
                     return result;
                 },
                 result => Ok(result),

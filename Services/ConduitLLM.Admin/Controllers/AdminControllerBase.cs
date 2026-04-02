@@ -369,6 +369,38 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
+        /// Logs an audit event for bulk/import operations with success and failure counts.
+        /// </summary>
+        /// <param name="operation">The bulk operation (e.g., "ImportedCsv", "BulkCreated").</param>
+        /// <param name="entityType">The type of entity affected.</param>
+        /// <param name="successCount">Number of successfully processed items.</param>
+        /// <param name="failureCount">Number of failed items.</param>
+        protected void LogAdminAuditBulk(
+            string operation,
+            string entityType,
+            int successCount,
+            int failureCount)
+        {
+            LogAdminAudit(operation, entityType, detail: $"Success: {successCount}, Failures: {failureCount}");
+        }
+
+        /// <summary>
+        /// Logs an audit event for state/toggle changes on an entity.
+        /// </summary>
+        /// <param name="entityType">The type of entity affected.</param>
+        /// <param name="entityId">The identifier of the affected entity (null for global settings).</param>
+        /// <param name="property">The property being changed (e.g., "Enabled").</param>
+        /// <param name="newValue">The new value of the property.</param>
+        protected void LogAdminAuditStateChange(
+            string entityType,
+            object? entityId,
+            string property,
+            object newValue)
+        {
+            LogAdminAudit("Updated", entityType, entityId, $"{property}: {newValue}");
+        }
+
+        /// <summary>
         /// Gets the admin user identity string for audit logging.
         /// Combines the authentication identity with any forwarded user ID from the WebAdmin.
         /// </summary>

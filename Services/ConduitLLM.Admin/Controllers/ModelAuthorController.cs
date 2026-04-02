@@ -186,7 +186,7 @@ namespace ConduitLLM.Admin.Controllers
                         author.WebsiteUrl = dto.WebsiteUrl;
 
                     await _repository.UpdateAsync(author);
-                    LogAdminAudit("Updated", "ModelAuthor", id);
+                    LogAdminAudit("Updated", "ModelAuthor", id, $"Name: {LoggingSanitizer.S(author.Name)}");
                 },
                 NoContent(),
                 "Update",
@@ -222,7 +222,7 @@ namespace ConduitLLM.Admin.Controllers
                     }
 
                     await _repository.DeleteAsync(id);
-                    LogAdminAudit("Deleted", "ModelAuthor", id);
+                    LogAdminAudit("Deleted", "ModelAuthor", id, $"Name: {LoggingSanitizer.S(author.Name)}");
                 },
                 NoContent(),
                 "Delete",

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MassTransit;
 using ConduitLLM.Configuration.Events;
+using ConduitLLM.Core.Extensions;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -98,7 +99,7 @@ namespace ConduitLLM.Admin.Controllers
                     await _publishEndpoint.Publish(flushEvent);
 
                     LogAdminAudit("Flushed", "BatchSpending",
-                        detail: $"RequestId: {requestId}, Priority: {priority}, Reason: {reason ?? "Administrative flush operation"}");
+                        detail: $"RequestId: {requestId}, Priority: {priority}, Reason: {LoggingSanitizer.S(reason ?? "Administrative flush operation")}");
 
                     // Return accepted response with tracking information
                     return (object)new

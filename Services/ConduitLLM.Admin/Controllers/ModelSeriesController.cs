@@ -195,7 +195,7 @@ namespace ConduitLLM.Admin.Controllers
                         series.Parameters = dto.Parameters;
 
                     await _repository.UpdateAsync(series);
-                    LogAdminAudit("Updated", "ModelSeries", id);
+                    LogAdminAudit("Updated", "ModelSeries", id, $"Name: {LoggingSanitizer.S(series.Name)}");
                 },
                 NoContent(),
                 "Update",
@@ -231,7 +231,7 @@ namespace ConduitLLM.Admin.Controllers
                     }
 
                     await _repository.DeleteAsync(id);
-                    LogAdminAudit("Deleted", "ModelSeries", id);
+                    LogAdminAudit("Deleted", "ModelSeries", id, $"Name: {LoggingSanitizer.S(series.Name)}");
                 },
                 NoContent(),
                 "Delete",

@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -160,7 +161,7 @@ namespace ConduitLLM.Admin.Controllers
                     _context.MediaRetentionPolicies.Add(policy);
                     await _context.SaveChangesAsync();
 
-                    LogAdminAudit("Created", "MediaRetentionPolicy", policy.Id, $"Name: {policy.Name}");
+                    LogAdminAudit("Created", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
                     return new MediaRetentionPolicyDto
                     {
@@ -232,7 +233,7 @@ namespace ConduitLLM.Admin.Controllers
 
                     await _context.SaveChangesAsync();
 
-                    LogAdminAudit("Updated", "MediaRetentionPolicy", policy.Id, $"Name: {policy.Name}");
+                    LogAdminAudit("Updated", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
                     return Ok(new MediaRetentionPolicyDto
                     {
@@ -288,7 +289,7 @@ namespace ConduitLLM.Admin.Controllers
                     _context.MediaRetentionPolicies.Remove(policy);
                     await _context.SaveChangesAsync();
 
-                    LogAdminAudit("Deleted", "MediaRetentionPolicy", policy.Id, $"Name: {policy.Name}");
+                    LogAdminAudit("Deleted", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
                     return NoContent();
                 },
@@ -362,7 +363,7 @@ namespace ConduitLLM.Admin.Controllers
                     policy.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
 
-                    LogAdminAudit("SetDefault", "MediaRetentionPolicy", policy.Id, $"Name: {policy.Name}");
+                    LogAdminAudit("SetDefault", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
                     return Ok(new { message = $"'{policy.Name}' is now the default retention policy" });
                 },

@@ -150,7 +150,7 @@ public class IpFilterController : AdminControllerBase
                     throw new InvalidOperationException(errorMessage);
                 }
 
-                LogAdminAudit("Updated", "IpFilter", id);
+                LogAdminAudit("Updated", "IpFilter", id, $"CIDR: {LoggingSanitizer.S(filter.IpAddressOrCidr)}, Type: {filter.FilterType}");
             },
             NoContent(),
             "UpdateFilter",
@@ -186,7 +186,7 @@ public class IpFilterController : AdminControllerBase
                     throw new InvalidOperationException(errorMessage);
                 }
 
-                LogAdminAudit("Deleted", "IpFilter", id);
+                LogAdminAudit("Deleted", "IpFilter", id, $"Id: {id}");
             },
             NoContent(),
             "DeleteFilter",

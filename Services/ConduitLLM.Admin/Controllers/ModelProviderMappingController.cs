@@ -245,8 +245,7 @@ public class ModelProviderMappingController : AdminControllerBase
                     FailureCount = errors.Count()
                 };
 
-                LogAdminAudit("BulkCreated", "ModelProviderMapping",
-                    detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+                LogAdminAuditBulk("BulkCreated", "ModelProviderMapping", result.SuccessCount, result.FailureCount);
                 AdminOperationsMetricsService.RecordModelMappingOperation("bulk_create", "success");
 
                 return result;
@@ -314,8 +313,7 @@ public class ModelProviderMappingController : AdminControllerBase
                     FailureCount = errors.Count
                 };
 
-                LogAdminAudit("BulkDeleted", "ModelProviderMapping",
-                    detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+                LogAdminAuditBulk("BulkDeleted", "ModelProviderMapping", result.SuccessCount, result.FailureCount);
                 AdminOperationsMetricsService.RecordModelMappingOperation("bulk_delete", "success");
 
                 return result;
@@ -404,8 +402,7 @@ public class ModelProviderMappingController : AdminControllerBase
                     FailureCount = errors.Count
                 };
 
-                LogAdminAudit(isEnabled ? "BulkEnabled" : "BulkDisabled", "ModelProviderMapping",
-                    detail: $"Success: {result.SuccessCount}, Failures: {result.FailureCount}");
+                LogAdminAuditBulk(isEnabled ? "BulkEnabled" : "BulkDisabled", "ModelProviderMapping", result.SuccessCount, result.FailureCount);
                 AdminOperationsMetricsService.RecordModelMappingOperation(isEnabled ? "bulk_enable" : "bulk_disable", "success");
 
                 return result;

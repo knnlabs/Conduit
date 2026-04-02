@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -93,7 +94,7 @@ namespace ConduitLLM.Admin.Controllers
                 async () =>
                 {
                     var result = await _notificationService.CreateNotificationAsync(notification);
-                    LogAdminAudit("Created", "Notification", result.Id);
+                    LogAdminAudit("Created", "Notification", result.Id, $"Type: {result.Type}, Message: {LoggingSanitizer.S(result.Message)}");
                     return result;
                 },
                 createdNotification => CreatedAtAction(nameof(GetNotificationById), new { id = createdNotification.Id }, createdNotification),
@@ -124,7 +125,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _notificationService.UpdateNotificationAsync(notification))
                         throw new KeyNotFoundException();
-                    LogAdminAudit("Updated", "Notification", id);
+                    LogAdminAudit("Updated", "Notification", id, notification.Message != null ? $"Message: {LoggingSanitizer.S(notification.Message)}" : null);
                 },
                 NoContent(),
                 "UpdateNotification",
@@ -147,7 +148,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _notificationService.MarkNotificationAsReadAsync(id))
                         throw new KeyNotFoundException();
-                    LogAdminAudit("MarkedAsRead", "Notification", id);
+                    LogAdminAudit("MarkedAsRead", "Notification", id, "IsRead: true");
                 },
                 NoContent(),
                 "MarkAsRead",
@@ -190,7 +191,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     if (!await _notificationService.DeleteNotificationAsync(id))
                         throw new KeyNotFoundException();
-                    LogAdminAudit("Deleted", "Notification", id);
+                    LogAdminAudit("Deleted", "Notification", id, $"Id: {id}");
                 },
                 NoContent(),
                 "DeleteNotification",

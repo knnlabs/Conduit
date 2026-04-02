@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Core.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
@@ -192,7 +193,7 @@ namespace ConduitLLM.Admin.Controllers
                         userName,
                         request.Reason,
                         cancellationToken);
-                    LogAdminAudit("Toggled", "LLMCache", detail: $"Enabled: {request.Enabled}, Reason: {request.Reason}");
+                    LogAdminAudit("Toggled", "LLMCache", detail: $"Enabled: {request.Enabled}, Reason: {LoggingSanitizer.S(request.Reason)}");
                     return result;
                 },
                 Ok,

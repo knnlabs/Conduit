@@ -126,7 +126,7 @@ public class FunctionCredentialsController : AdminControllerBase
             },
             result =>
             {
-                LogAdminAudit("Created", "FunctionCredential", result.id);
+                LogAdminAudit("Created", "FunctionCredential", result.id, $"ProviderType: {credential.ProviderType}");
                 return CreatedAtAction(
                     nameof(GetCredentialById),
                     new { id = result.id },
@@ -177,7 +177,7 @@ public class FunctionCredentialsController : AdminControllerBase
             },
             result =>
             {
-                LogAdminAudit("Updated", "FunctionCredential", id);
+                LogAdminAudit("Updated", "FunctionCredential", id, $"ProviderType: {credential.ProviderType}");
                 return Ok(result);
             },
             "UpdateCredential",
@@ -198,8 +198,9 @@ public class FunctionCredentialsController : AdminControllerBase
         return ExecuteAsync(
             async () =>
             {
+                var credential = await _credentialRepository.GetByIdAsync(id);
                 await _credentialRepository.DeleteAsync(id);
-                LogAdminAudit("Deleted", "FunctionCredential", id);
+                LogAdminAudit("Deleted", "FunctionCredential", id, credential != null ? $"ProviderType: {credential.ProviderType}" : null);
             },
             NoContent(),
             "DeleteCredential",
