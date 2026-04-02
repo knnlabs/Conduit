@@ -24,7 +24,7 @@ namespace ConduitLLM.Gateway.Controllers
     [Authorize]
     [RequireBalance]
     [Tags("Chat")]
-    public partial class ChatController : EventPublishingControllerBase
+    public partial class ChatController : GatewayControllerBase
     {
         private readonly Conduit _conduit;
         private readonly ILogger<ChatController> _logger;
@@ -103,15 +103,7 @@ namespace ConduitLLM.Gateway.Controllers
                 activity?.SetTag("error.type", ex.GetType().Name);
                 _logger.LogError(ex, "Error processing request");
                 GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "error", operationStopwatch.Elapsed.TotalSeconds);
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = ex.Message,
-                        Type = "server_error",
-                        Code = "internal_error"
-                    }
-                });
+                return OpenAIError(500, ex.Message, "internal_error", "server_error");
             }
         }
 

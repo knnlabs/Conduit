@@ -18,7 +18,7 @@ namespace ConduitLLM.Gateway.Controllers;
 [Authorize]
 [RequireBalance]
 [Tags("Functions")]
-public class FunctionsController : EventPublishingControllerBase
+public class FunctionsController : GatewayControllerBase
 {
     private readonly IFunctionExecutionService _executionService;
     private readonly IFunctionConfigurationRepository _configurationRepository;

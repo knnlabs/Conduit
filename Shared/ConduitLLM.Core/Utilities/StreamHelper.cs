@@ -38,10 +38,84 @@ namespace ConduitLLM.Core.Utilities
         {
             var jsonOptions = options ?? DefaultJsonOptions;
 
+            await foreach (var dataBuffer in ReadSseDataLinesAsync(response, logger, cancellationToken))
+            {
+                T? data = default;
+                try
+                {
+                    data = JsonSerializer.Deserialize<T>(dataBuffer, jsonOptions);
+                }
+                catch (JsonException ex)
+                {
+                    logger?.LogWarning(ex, "Error deserializing stream chunk: {Data}", dataBuffer);
+                }
+
+                if (data != null)
+                {
+                    logger?.LogTrace("Yielding deserialized stream chunk");
+                    yield return data;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Extracts and deserializes data from an SSE stream.
+        /// </summary>
+        private static async Task<List<T>> ExtractSseDataAsync<T>(
+            HttpResponseMessage response,
+            ILogger? logger,
+            JsonSerializerOptions jsonOptions,
+            CancellationToken cancellationToken)
+        {
+            var results = new List<T>();
+
+            try
+            {
+                await foreach (var dataBuffer in ReadSseDataLinesAsync(response, logger, cancellationToken))
+                {
+                    try
+                    {
+                        var data = JsonSerializer.Deserialize<T>(dataBuffer, jsonOptions);
+                        if (data != null)
+                        {
+                            logger?.LogTrace("Adding deserialized stream chunk to results");
+                            results.Add(data);
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        logger?.LogWarning(ex, "Error deserializing stream chunk: {Data}", dataBuffer);
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger?.LogError(ex, "Error processing SSE stream");
+                throw new LLMCommunicationException("Error processing streaming response", ex);
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Reads raw SSE data lines from an HTTP response stream, yielding each complete
+        /// event's data payload as a string. Handles SSE framing (event:/data: prefixes,
+        /// empty-line delimiters, and the [DONE] sentinel) so callers only receive
+        /// deserialization-ready JSON strings.
+        /// </summary>
+        /// <param name="response">The HTTP response containing the SSE stream.</param>
+        /// <param name="logger">Optional logger for debugging.</param>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+        /// <returns>An async enumerable of raw JSON data strings from SSE events.</returns>
+        private static async IAsyncEnumerable<string> ReadSseDataLinesAsync(
+            HttpResponseMessage response,
+            ILogger? logger,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
             logger?.LogDebug("Beginning to process SSE stream");
             logger?.LogDebug("Response headers: {Headers}", response.Headers.ToString());
             logger?.LogDebug("Content headers: {ContentHeaders}", response.Content.Headers.ToString());
-            
+
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream, Encoding.UTF8);
 
@@ -54,7 +128,7 @@ namespace ConduitLLM.Core.Utilities
                 line = await reader.ReadLineAsync(cancellationToken);
                 if (line == null) break; // End of stream
                 lineCount++;
-                
+
                 // Log first few lines for debugging
                 if (lineCount <= 5)
                 {
@@ -73,21 +147,7 @@ namespace ConduitLLM.Core.Utilities
                             break;
                         }
 
-                        T? data = default;
-                        try
-                        {
-                            data = JsonSerializer.Deserialize<T>(dataBuffer, jsonOptions);
-                        }
-                        catch (JsonException ex)
-                        {
-                            logger?.LogWarning(ex, "Error deserializing stream chunk: {Data}", dataBuffer);
-                        }
-                        
-                        if (data != null)
-                        {
-                            logger?.LogTrace("Yielding deserialized stream chunk");
-                            yield return data;
-                        }
+                        yield return dataBuffer;
 
                         // Reset for next event
                         dataBuffer = string.Empty;
@@ -109,99 +169,6 @@ namespace ConduitLLM.Core.Utilities
                     dataBuffer = data;
                 }
             }
-        }
-
-        /// <summary>
-        /// Extracts and deserializes data from an SSE stream.
-        /// </summary>
-        private static async Task<List<T>> ExtractSseDataAsync<T>(
-            HttpResponseMessage response,
-            ILogger? logger,
-            JsonSerializerOptions jsonOptions,
-            CancellationToken cancellationToken)
-        {
-            var results = new List<T>();
-
-            try
-            {
-                logger?.LogDebug("Beginning to process SSE stream");
-                logger?.LogDebug("Response headers: {Headers}", response.Headers.ToString());
-                logger?.LogDebug("Content headers: {ContentHeaders}", response.Content.Headers.ToString());
-                
-                var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                using var reader = new StreamReader(stream, Encoding.UTF8);
-
-                string? line;
-                string dataBuffer = string.Empty;
-                int lineCount = 0;
-                // SSE event type (only used internally for parsing, not exposed)
-
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    line = await reader.ReadLineAsync(cancellationToken);
-                    if (line == null) break; // End of stream
-                    lineCount++;
-
-                    // Log first few lines for debugging
-                    if (lineCount <= 5)
-                    {
-                        logger?.LogDebug("SSE line {LineNumber}: '{Line}'", lineCount, line);
-                    }
-
-                    if (string.IsNullOrEmpty(line))
-                    {
-                        // Empty line indicates the end of an event
-                        if (!string.IsNullOrEmpty(dataBuffer))
-                        {
-                            // Process the complete event data
-                            if (dataBuffer == "[DONE]")
-                            {
-                                logger?.LogDebug("Received end of stream marker [DONE]");
-                                break;
-                            }
-
-                            try
-                            {
-                                var data = JsonSerializer.Deserialize<T>(dataBuffer, jsonOptions);
-                                if (data != null)
-                                {
-                                    logger?.LogTrace("Adding deserialized stream chunk to results");
-                                    results.Add(data);
-                                }
-                            }
-                            catch (JsonException ex)
-                            {
-                                logger?.LogWarning(ex, "Error deserializing stream chunk: {Data}", dataBuffer);
-                            }
-
-                            // Reset for next event
-                            dataBuffer = string.Empty;
-                        }
-                        continue;
-                    }
-
-                    // Check for event type
-                    if (line.StartsWith("event:"))
-                    {
-                        // Event line - just continue to the next line
-                        continue;
-                    }
-
-                    // Process data lines
-                    if (line.StartsWith("data:"))
-                    {
-                        var data = line.Substring(5).TrimStart();
-                        dataBuffer = data;
-                    }
-                }
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger?.LogError(ex, "Error processing SSE stream");
-                throw new LLMCommunicationException("Error processing streaming response", ex);
-            }
-
-            return results;
         }
 
         /// <summary>

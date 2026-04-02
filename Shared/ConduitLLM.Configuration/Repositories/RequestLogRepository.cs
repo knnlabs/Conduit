@@ -104,25 +104,6 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        [Obsolete("Use GetByModelPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        public async Task<List<RequestLog>> GetByModelAsync(string modelName, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(modelName))
-            {
-                throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
-            }
-
-            return await ExecuteAsync(async context =>
-            {
-                return await context.RequestLogs
-                    .AsNoTracking()
-                    .Where(r => r.ModelName == modelName)
-                    .OrderByDescending(r => r.Timestamp)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken, $"getting by model {LoggingSanitizer.S(modelName)}");
-        }
-
-        /// <inheritdoc/>
         public async Task<(List<RequestLog> Logs, int TotalCount)> GetByModelPaginatedAsync(
             string modelName,
             int pageNumber,

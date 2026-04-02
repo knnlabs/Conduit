@@ -16,7 +16,7 @@ namespace ConduitLLM.Gateway.Controllers
     [Authorize]
     [RequireBalance]
     [Tags("Images")]
-    public partial class ImagesController : EventPublishingControllerBase
+    public partial class ImagesController : GatewayControllerBase
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IMediaStorageService _storageService;

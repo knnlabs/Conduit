@@ -111,16 +111,6 @@ namespace ConduitLLM.Configuration.Interfaces
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets request logs for a specific model
-        /// </summary>
-        /// <param name="modelName">The model name</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A list of request logs for the specified model</returns>
-        /// <remarks>This method is obsolete. Use GetByModelPaginatedAsync instead for better performance.</remarks>
-        [Obsolete("Use GetByModelPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-        Task<List<RequestLog>> GetByModelAsync(string modelName, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets paginated request logs for a specific model
         /// </summary>
         /// <param name="modelName">The model name</param>

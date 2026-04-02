@@ -18,15 +18,7 @@ namespace ConduitLLM.Gateway.Controllers
             if (_functionConfigRepository == null)
             {
                 _logger.LogError("Function calling requested but IFunctionConfigurationRepository is not available");
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Function calling is not configured on this server",
-                        Type = "server_error",
-                        Code = "function_calling_unavailable"
-                    }
-                });
+                return OpenAIError(500, "Function calling is not configured on this server", "function_calling_unavailable", "server_error");
             }
 
             try
@@ -43,15 +35,7 @@ namespace ConduitLLM.Gateway.Controllers
                 {
                     _logger.LogWarning("Function calling request includes non-existent function configuration IDs: {MissingIds}",
                         string.Join(", ", missingIds));
-                    return BadRequest(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = $"Function configuration IDs not found: {string.Join(", ", missingIds)}",
-                            Type = "invalid_request_error",
-                            Code = "invalid_function_configuration_ids"
-                        }
-                    });
+                    return OpenAIError(400, $"Function configuration IDs not found: {string.Join(", ", missingIds)}", "invalid_function_configuration_ids");
                 }
 
                 var disabledConfigs = functionConfigs.Where(fc => !fc.IsEnabled).ToList();
@@ -59,15 +43,7 @@ namespace ConduitLLM.Gateway.Controllers
                 {
                     var disabledIds = string.Join(", ", disabledConfigs.Select(fc => fc.Id));
                     _logger.LogWarning("Function calling request includes disabled function configurations: {DisabledIds}", disabledIds);
-                    return BadRequest(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = $"Function configurations are disabled: {disabledIds}",
-                            Type = "invalid_request_error",
-                            Code = "disabled_function_configurations"
-                        }
-                    });
+                    return OpenAIError(400, $"Function configurations are disabled: {disabledIds}", "disabled_function_configurations");
                 }
 
                 if (request.MaxAgenticIterations.HasValue)
@@ -79,15 +55,7 @@ namespace ConduitLLM.Gateway.Controllers
                     {
                         _logger.LogWarning("Invalid MaxAgenticIterations value: {Value}, valid range is {Min}-{Max}",
                             request.MaxAgenticIterations.Value, minIterations, maxIterations);
-                        return BadRequest(new OpenAIErrorResponse
-                        {
-                            Error = new OpenAIError
-                            {
-                                Message = $"MaxAgenticIterations must be between {minIterations} and {maxIterations}",
-                                Type = "invalid_request_error",
-                                Code = "invalid_max_agentic_iterations"
-                            }
-                        });
+                        return OpenAIError(400, $"MaxAgenticIterations must be between {minIterations} and {maxIterations}", "invalid_max_agentic_iterations");
                     }
                 }
 
@@ -98,15 +66,7 @@ namespace ConduitLLM.Gateway.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating function calling request");
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Error validating function calling request",
-                        Type = "server_error",
-                        Code = "function_validation_error"
-                    }
-                });
+                return OpenAIError(500, "Error validating function calling request", "function_validation_error", "server_error");
             }
         }
     }

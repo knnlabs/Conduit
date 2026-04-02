@@ -371,6 +371,7 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<BatchOperationHistory>(entity =>
             {
                 entity.HasKey(e => e.OperationId);
+                entity.Ignore(e => e.Id);
                 entity.HasIndex(e => e.VirtualKeyId);
                 entity.HasIndex(e => e.OperationType);
                 entity.HasIndex(e => e.Status);

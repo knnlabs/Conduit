@@ -94,30 +94,14 @@ namespace ConduitLLM.Gateway.Controllers
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
                 {
-                    return Unauthorized(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Invalid authentication",
-                            Type = "invalid_request_error",
-                            Code = "unauthorized"
-                        }
-                    });
+                    return OpenAIError(401, "Invalid authentication", "unauthorized");
                 }
 
                 // Get virtual key information from service
                 var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Virtual key not found",
-                            Type = "invalid_request_error",
-                            Code = "unauthorized"
-                        }
-                    });
+                    return OpenAIError(401, "Virtual key not found", "unauthorized");
                 }
 
                 // Create correlation ID
@@ -190,15 +174,7 @@ namespace ConduitLLM.Gateway.Controllers
             {
                 _logger.LogError(ex, "Error creating async image generation task");
                 GatewayOpsMetrics.RecordMediaOperation("generate", "image_async", "error");
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "An error occurred while creating the task",
-                        Type = "server_error",
-                        Code = "internal_error"
-                    }
-                });
+                return OpenAIError(500, "An error occurred while creating the task", "internal_error", "server_error");
             }
         }
 
@@ -284,15 +260,7 @@ namespace ConduitLLM.Gateway.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting task status for {TaskId}", taskId);
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "An error occurred while getting task status",
-                        Type = "server_error",
-                        Code = "internal_error"
-                    }
-                });
+                return OpenAIError(500, "An error occurred while getting task status", "internal_error", "server_error");
             }
         }
 
@@ -398,15 +366,7 @@ namespace ConduitLLM.Gateway.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cancelling task {TaskId}", taskId);
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "An error occurred while cancelling the task",
-                        Type = "server_error",
-                        Code = "internal_error"
-                    }
-                });
+                return OpenAIError(500, "An error occurred while cancelling the task", "internal_error", "server_error");
             }
         }
     }

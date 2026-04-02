@@ -591,6 +591,17 @@ namespace ConduitLLM.Providers
                 return ProviderErrorType.InsufficientBalance;
             }
 
+            // Common pattern: authentication method mismatch (e.g., Bearer token
+            // sent to a provider that requires a custom API key header)
+            if (baseType == ProviderErrorType.InvalidApiKey &&
+                (lowerBody.Contains("invalid bearer token") ||
+                 lowerBody.Contains("invalid api key") ||
+                 lowerBody.Contains("invalid x-api-key") ||
+                 lowerBody.Contains("authentication_error")))
+            {
+                return ProviderErrorType.InvalidApiKey;
+            }
+
             // Common pattern: rate limit keywords regardless of status code
             if (lowerBody.Contains("rate limit") ||
                 lowerBody.Contains("too many requests"))

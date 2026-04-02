@@ -219,18 +219,6 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
     }
 
     /// <inheritdoc />
-    [Obsolete("Use GetLowBalanceGroupsPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    public async Task<List<VirtualKeyGroup>> GetLowBalanceGroupsAsync(decimal threshold)
-    {
-        return await ExecuteAsync(async context =>
-            await GetDbSet(context)
-                .AsNoTracking()
-                .Where(g => g.Balance < threshold)
-                .OrderBy(g => g.Balance)
-                .ToListAsync());
-    }
-
-    /// <inheritdoc />
     public async Task<(List<VirtualKeyGroup> Items, int TotalCount)> GetLowBalanceGroupsPaginatedAsync(
         decimal threshold,
         int pageNumber,

@@ -54,15 +54,6 @@ public interface IVirtualKeyGroupRepository : IRepositoryBase<VirtualKeyGroup, i
     Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId = null);
 
     /// <summary>
-    /// Gets groups with low balance (below threshold)
-    /// </summary>
-    /// <param name="threshold">The balance threshold</param>
-    /// <returns>List of groups with balance below threshold</returns>
-    /// <remarks>This method is obsolete. Use GetLowBalanceGroupsPaginatedAsync instead for better performance.</remarks>
-    [Obsolete("Use GetLowBalanceGroupsPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
-    Task<List<VirtualKeyGroup>> GetLowBalanceGroupsAsync(decimal threshold);
-
-    /// <summary>
     /// Gets groups with low balance (below threshold) with pagination
     /// </summary>
     /// <param name="threshold">The balance threshold</param>

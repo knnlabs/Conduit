@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
 
@@ -302,22 +303,8 @@ namespace ConduitLLM.Providers.Cloudflare
             return null;
         }
 
-        /// <summary>
-        /// Converts a JsonElement to a CLR object for serialization.
-        /// </summary>
-        private static object? ConvertJsonElement(JsonElement element)
-        {
-            return element.ValueKind switch
-            {
-                JsonValueKind.String => element.GetString(),
-                JsonValueKind.Number when element.TryGetInt32(out var i) => i,
-                JsonValueKind.Number when element.TryGetDouble(out var d) => d,
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.Null => null,
-                _ => element.ToString()
-            };
-        }
+        private static object? ConvertJsonElement(JsonElement element) =>
+            JsonElementConverter.ConvertJsonElement(element);
 
         /// <summary>
         /// Classifies a Cloudflare model ID into its model family.
