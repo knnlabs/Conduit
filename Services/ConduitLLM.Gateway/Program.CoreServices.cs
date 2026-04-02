@@ -20,10 +20,9 @@ public partial class Program
         // Add leader election service for distributed background service coordination
         builder.Services.AddLeaderElection();
 
-        // Global settings cache service - loads settings at startup and provides fast access
-        builder.Services.AddSingleton<IGlobalSettingsCacheService, GlobalSettingsCacheService>();
-        builder.Services.AddHostedService(provider => provider.GetRequiredService<IGlobalSettingsCacheService>() as GlobalSettingsCacheService
-            ?? throw new InvalidOperationException("GlobalSettingsCacheService must be registered as singleton"));
+        // Shared application services (GlobalSettingsCache, ProviderService,
+        // ModelProviderMapping+decorator, ProviderMetadataRegistry)
+        builder.Services.AddSharedApplicationServices();
 
         // Rate Limiter registration
         builder.Services.AddRateLimiter(options =>
@@ -77,8 +76,7 @@ public partial class Program
         // Register LLM client factory and provider services from shared extension
         builder.Services.AddProviderServices();
 
-        // Add Provider Registry - single source of truth for provider metadata
-        builder.Services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
+        // Note: ProviderMetadataRegistry registered via AddSharedApplicationServices() above
 
         // Provider error tracking service
         builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
@@ -106,17 +104,7 @@ public partial class Program
 
         // ========== Model Services ==========
 
-        // Register model provider mapping service with caching decorator pattern
-        builder.Services.AddScoped<ConduitLLM.Configuration.ModelProviderMappingService>(); // Inner service
-        builder.Services.AddScoped<IModelProviderMappingService>(provider =>
-        {
-            var innerService = provider.GetRequiredService<ConduitLLM.Configuration.ModelProviderMappingService>();
-            var cacheManager = provider.GetRequiredService<ICacheManager>();
-            var logger = provider.GetRequiredService<ILogger<CachedModelProviderMappingService>>();
-            return new CachedModelProviderMappingService(innerService, cacheManager, logger);
-        });
-
-        builder.Services.AddScoped<IProviderService, ConduitLLM.Configuration.ProviderService>();
+        // Note: ModelProviderMappingService+decorator and ProviderService registered via AddSharedApplicationServices() above
 
         // Register System Notification Service
         builder.Services.AddSingleton<ISystemNotificationService, SystemNotificationService>();

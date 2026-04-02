@@ -88,9 +88,7 @@ namespace ConduitLLM.Admin.Extensions
             services.AddFunctionDiscoveryCache(configuration);
             startupLogger?.LogInformation("Function Discovery Cache registered — function tool definitions will be cached based on per-function TTL");
 
-            // Add Provider Registry - single source of truth for provider metadata
-            services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
-            startupLogger?.LogInformation("Provider Registry registered — centralized provider metadata management enabled");
+            // Note: ProviderMetadataRegistry is registered via AddSharedApplicationServices() in ConfigurationExtensions
 
             // Add correlation context services for cross-service request tracing
             services.AddCorrelationContext();

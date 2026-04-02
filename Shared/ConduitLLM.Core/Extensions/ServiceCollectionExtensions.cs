@@ -1,4 +1,7 @@
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Options;
@@ -8,8 +11,7 @@ using ConduitLLM.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-
-using ConduitLLM.Configuration.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Extensions
 {
@@ -201,6 +203,37 @@ namespace ConduitLLM.Core.Extensions
             // Register media lifecycle repository
             // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
             // Migration: 20250827194408_ConsolidateMediaTables.cs
+
+            return services;
+        }
+
+        /// <summary>
+        /// Registers application services shared by both Admin API and Gateway API.
+        /// Centralizes registrations that were previously duplicated across both services.
+        /// </summary>
+        public static IServiceCollection AddSharedApplicationServices(this IServiceCollection services)
+        {
+            // Global settings cache — loads settings at startup and provides fast access
+            services.AddSingleton<IGlobalSettingsCacheService, GlobalSettingsCacheService>();
+            services.AddHostedService(provider =>
+                provider.GetRequiredService<IGlobalSettingsCacheService>() as GlobalSettingsCacheService
+                ?? throw new InvalidOperationException("GlobalSettingsCacheService must be registered as singleton"));
+
+            // Provider service
+            services.AddScoped<IProviderService, ProviderService>();
+
+            // Model provider mapping with caching decorator
+            services.AddScoped<ModelProviderMappingService>();
+            services.AddScoped<IModelProviderMappingService>(provider =>
+            {
+                var innerService = provider.GetRequiredService<ModelProviderMappingService>();
+                var cacheManager = provider.GetRequiredService<ICacheManager>();
+                var logger = provider.GetRequiredService<ILogger<CachedModelProviderMappingService>>();
+                return new CachedModelProviderMappingService(innerService, cacheManager, logger);
+            });
+
+            // Provider metadata registry — single source of truth for provider metadata
+            services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
 
             return services;
         }
