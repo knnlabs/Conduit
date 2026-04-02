@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
@@ -164,7 +165,7 @@ namespace ConduitLLM.Gateway.Services
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync(cancellationToken);
 
-                var models = new List<object>();
+                var models = new List<JsonElement>();
 
                 foreach (var mapping in modelMappings)
                 {
@@ -202,7 +203,8 @@ namespace ConduitLLM.Gateway.Services
                     var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
                     var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? caps.MaxOutputTokens ?? 0;
 
-                    models.Add(new
+                    // Serialize to JsonElement for cache-safe storage (anonymous objects can't round-trip through JSON deserialization)
+                    models.Add(JsonSerializer.SerializeToElement(new
                     {
                         // Identity
                         id = mapping.ModelAlias,
@@ -236,7 +238,7 @@ namespace ConduitLLM.Gateway.Services
                             max_tokens = maxInputTokens + maxOutputTokens,
                             max_output_tokens = maxOutputTokens
                         }
-                    });
+                    }));
                 }
 
                 // Cache the results

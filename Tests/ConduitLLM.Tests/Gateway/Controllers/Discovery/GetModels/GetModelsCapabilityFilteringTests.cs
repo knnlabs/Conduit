@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.Entities;
@@ -42,7 +43,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(1, response.count);
-            Assert.Equal("gpt-4-vision", ((IEnumerable<dynamic>)response.data).First().id);
+            Assert.Equal("gpt-4-vision", ((List<JsonElement>)response.data).First().GetProperty("id").GetString());
         }
 
         [Fact]
@@ -72,7 +73,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(1, response.count);
-            Assert.Equal("gpt-4", ((IEnumerable<dynamic>)response.data).First().id);
+            Assert.Equal("gpt-4", ((List<JsonElement>)response.data).First().GetProperty("id").GetString());
         }
 
         [Fact]

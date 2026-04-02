@@ -83,34 +83,6 @@ namespace ConduitLLM.Gateway.Services
                 operationId, processedCount, successCount, failedCount);
         }
 
-        public async Task NotifyBatchItemCompletedAsync(
-            string operationId,
-            int itemIndex,
-            string? itemIdentifier,
-            bool success,
-            string? error,
-            TimeSpan duration,
-            object? result = null)
-        {
-            var notification = new BatchOperationItemCompletedNotification
-            {
-                OperationId = operationId,
-                ItemIndex = itemIndex,
-                ItemIdentifier = itemIdentifier,
-                Success = success,
-                Error = error,
-                Duration = duration,
-                Result = result,
-                CompletedAt = DateTime.UtcNow
-            };
-
-            await SendToGroupAsync($"task-{operationId}-items", "BatchItemCompleted", notification);
-
-            Logger.LogDebug(
-                "Batch operation {OperationId} item {ItemIndex} completed: {Success}",
-                operationId, itemIndex, success ? "Success" : "Failed");
-        }
-
         public async Task NotifyBatchOperationCompletedAsync(
             string operationId,
             string operationType,

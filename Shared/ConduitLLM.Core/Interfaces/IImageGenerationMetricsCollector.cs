@@ -230,4 +230,16 @@ namespace ConduitLLM.Core.Interfaces
         public TimeSpan Duration { get; set; }
         public string? AffectedProvider { get; set; }
     }
+
+    /// <summary>
+    /// Provider metrics summary.
+    /// </summary>
+    public class ProviderMetricsSummary
+    {
+        public double AverageResponseTime { get; set; }
+        public double SuccessRate { get; set; }
+        public decimal TotalCost { get; set; }
+        public int TotalRequests { get; set; }
+        public double ErrorRate { get; set; }
+    }
 }

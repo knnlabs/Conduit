@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.Entities;
@@ -42,7 +43,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(2, response.count);
-            Assert.Equal(2, ((IEnumerable<object>)response.data).Count());
+            Assert.Equal(2, ((List<JsonElement>)response.data).Count);
         }
 
         [Fact]

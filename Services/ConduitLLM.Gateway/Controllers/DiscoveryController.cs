@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Extensions;
@@ -95,7 +96,7 @@ namespace ConduitLLM.Gateway.Controllers
                 Logger.LogDebug("Found {Count} enabled model mappings for discovery (capability filter: {Capability})",
                     modelMappings.Count, LoggingSanitizer.S(capability ?? "all"));
 
-                var models = new List<object>();
+                var models = new List<JsonElement>();
 
                 foreach (var mapping in modelMappings)
                 {
@@ -139,7 +140,8 @@ namespace ConduitLLM.Gateway.Controllers
                     var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
                     var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? caps.MaxOutputTokens ?? 0;
 
-                    models.Add(new
+                    // Serialize to JsonElement for cache-safe storage (anonymous objects can't round-trip through JSON deserialization)
+                    models.Add(JsonSerializer.SerializeToElement(new
                     {
                         // Identity
                         id = mapping.ModelAlias,
@@ -173,7 +175,7 @@ namespace ConduitLLM.Gateway.Controllers
                             max_tokens = maxInputTokens + maxOutputTokens,
                             max_output_tokens = maxOutputTokens
                         }
-                    });
+                    }));
                 }
 
                 // Cache the results for future requests
@@ -397,7 +399,7 @@ namespace ConduitLLM.Gateway.Controllers
                 // Cache the results
                 var discoveryResult = new DiscoveryModelsResult
                 {
-                    Data = new List<object> { result },
+                    Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result) },
                     Count = result.Count,
                     CapabilityFilter = purpose
                 };
@@ -497,7 +499,7 @@ namespace ConduitLLM.Gateway.Controllers
                 // Cache the results
                 var discoveryResult = new DiscoveryModelsResult
                 {
-                    Data = new List<object> { result },
+                    Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result) },
                     Count = 1
                 };
 
