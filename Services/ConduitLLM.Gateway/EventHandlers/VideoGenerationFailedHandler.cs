@@ -72,11 +72,26 @@ namespace ConduitLLM.Gateway.EventHandlers
                 var progressCacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
                 _progressCache.Remove(progressCacheKey);
 
-                // Track per-provider failure count and log structured metrics
-                TrackFailureMetrics(message);
+                // Track per-provider failure count
+                var failureCount = MediaGenerationHandlerHelper.TrackFailureMetrics(
+                    _progressCache, FailureCountCacheKeyPrefix, provider, "video", _logger);
+
+                // Log structured metrics for monitoring/alerting pipelines
+                _logger.LogInformation("Video generation failure metrics: {@Metrics}", new
+                {
+                    RequestId = message.RequestId,
+                    Provider = provider,
+                    ErrorCode = message.ErrorCode ?? "unknown",
+                    IsRetryable = message.IsRetryable,
+                    FailedAt = message.FailedAt,
+                    ErrorType = MediaGenerationHandlerHelper.DetermineErrorType(message.Error, message.ErrorCode),
+                    ProviderFailureCount = failureCount
+                });
 
                 // Analyze error patterns for actionable diagnostics
-                AnalyzeErrorPattern(message);
+                MediaGenerationHandlerHelper.AnalyzeErrorPattern(
+                    message.Error, message.RequestId, _logger,
+                    VideoSpecificErrorPatterns);
 
                 // Send failure notification via notification service
                 await _notificationService.NotifyVideoGenerationFailedAsync(
@@ -108,7 +123,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 }
 
                 // Flag critical failures (auth, account, credits) for immediate attention
-                if (IsCriticalFailure(message))
+                if (MediaGenerationHandlerHelper.IsCriticalFailure(message.Error))
                 {
                     _logger.LogCritical("Critical video generation failure detected for provider {Provider}: {Error}",
                         provider, message.Error);
@@ -121,104 +136,16 @@ namespace ConduitLLM.Gateway.EventHandlers
             }
         }
 
-        private void TrackFailureMetrics(VideoGenerationFailed message)
+        /// <summary>
+        /// Video-specific error patterns beyond the common set.
+        /// </summary>
+        private static readonly Dictionary<string, string> VideoSpecificErrorPatterns = new()
         {
-            var provider = message.Provider ?? "unknown";
-
-            // Track failure count by provider in a 1-hour sliding window
-            var failureCacheKey = $"{FailureCountCacheKeyPrefix}{provider}";
-            var failureCount = 0;
-
-            if (_progressCache.TryGetValue<int>(failureCacheKey, out var existingCount))
-            {
-                failureCount = existingCount;
-            }
-
-            failureCount++;
-            _progressCache.Set(failureCacheKey, failureCount, TimeSpan.FromHours(1));
-
-            _logger.LogWarning("Provider {Provider} video failure count in last hour: {FailureCount}",
-                provider, failureCount);
-
-            // Log structured metrics for monitoring/alerting pipelines
-            _logger.LogInformation("Video generation failure metrics: {@Metrics}", new
-            {
-                RequestId = message.RequestId,
-                Provider = provider,
-                ErrorCode = message.ErrorCode ?? "unknown",
-                IsRetryable = message.IsRetryable,
-                FailedAt = message.FailedAt,
-                ErrorType = DetermineErrorType(message.Error, message.ErrorCode),
-                ProviderFailureCount = failureCount
-            });
-        }
-
-        private void AnalyzeErrorPattern(VideoGenerationFailed message)
-        {
-            var errorPatterns = new Dictionary<string, string>
-            {
-                ["rate limit"] = "Provider rate limit exceeded - consider implementing backoff",
-                ["quota"] = "Provider quota exhausted - check account limits",
-                ["timeout"] = "Request timeout - provider may be experiencing high load",
-                ["invalid api key"] = "Authentication failure - check provider credentials",
-                ["insufficient credits"] = "Provider account has insufficient credits",
-                ["content policy"] = "Content violates provider's usage policy",
-                ["model not found"] = "Requested model is not available",
-                ["duration"] = "Requested video duration may exceed provider limits",
-                ["resolution"] = "Requested video resolution may not be supported",
-                ["codec"] = "Unsupported video codec or output format",
-                ["format"] = "Unsupported video format requested"
-            };
-
-            var lowerError = message.Error.ToLowerInvariant();
-            foreach (var (pattern, analysis) in errorPatterns)
-            {
-                if (lowerError.Contains(pattern))
-                {
-                    _logger.LogWarning("Error pattern detected for request {RequestId}: {Analysis}",
-                        message.RequestId, analysis);
-                    break;
-                }
-            }
-        }
-
-        private bool IsCriticalFailure(VideoGenerationFailed message)
-        {
-            var criticalErrorPatterns = new[]
-            {
-                "invalid api key",
-                "authentication failed",
-                "unauthorized",
-                "forbidden",
-                "account suspended",
-                "insufficient credits"
-            };
-
-            var lowerError = message.Error.ToLowerInvariant();
-            return criticalErrorPatterns.Any(pattern => lowerError.Contains(pattern));
-        }
-
-        private static string DetermineErrorType(string error, string? errorCode)
-        {
-            if (string.IsNullOrEmpty(error))
-                return "unknown";
-
-            var lowerError = error.ToLowerInvariant();
-
-            if (lowerError.Contains("rate limit") || lowerError.Contains("quota"))
-                return "rate_limit";
-            if (lowerError.Contains("auth") || lowerError.Contains("unauthorized"))
-                return "authentication";
-            if (lowerError.Contains("timeout"))
-                return "timeout";
-            if (lowerError.Contains("invalid") || lowerError.Contains("bad request"))
-                return "validation";
-            if (lowerError.Contains("not found"))
-                return "not_found";
-            if (lowerError.Contains("server error") || lowerError.Contains("internal"))
-                return "server_error";
-
-            return "other";
-        }
+            ["quota"] = "Provider quota exhausted - check account limits",
+            ["duration"] = "Requested video duration may exceed provider limits",
+            ["resolution"] = "Requested video resolution may not be supported",
+            ["codec"] = "Unsupported video codec or output format",
+            ["format"] = "Unsupported video format requested"
+        };
     }
 }

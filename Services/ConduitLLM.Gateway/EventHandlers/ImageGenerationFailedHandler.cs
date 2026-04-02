@@ -66,10 +66,13 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _progressCache.Remove(progressCacheKey);
 
                 // Track per-provider failure count
-                TrackFailureMetrics(message);
+                MediaGenerationHandlerHelper.TrackFailureMetrics(
+                    _progressCache, FailureCountCacheKeyPrefix, message.Provider, "image", _logger);
 
                 // Analyze error patterns for actionable diagnostics
-                AnalyzeErrorPattern(message);
+                MediaGenerationHandlerHelper.AnalyzeErrorPattern(
+                    message.Error, message.TaskId, _logger,
+                    ImageSpecificErrorPatterns);
 
                 // Send failure notification to WebAdmin
                 await _notificationService.NotifyImageGenerationFailedAsync(
@@ -85,7 +88,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 }
 
                 // Flag critical failures (auth, account, credits) for immediate attention
-                if (IsCriticalFailure(message))
+                if (MediaGenerationHandlerHelper.IsCriticalFailure(message.Error))
                 {
                     _logger.LogCritical("Critical image generation failure detected for provider {Provider}: {Error}",
                         message.Provider, message.Error);
@@ -98,63 +101,12 @@ namespace ConduitLLM.Gateway.EventHandlers
             }
         }
 
-        private void TrackFailureMetrics(ImageGenerationFailed message)
+        /// <summary>
+        /// Image-specific error patterns beyond the common set.
+        /// </summary>
+        private static readonly Dictionary<string, string> ImageSpecificErrorPatterns = new()
         {
-            // Track failure count by provider in a 1-hour sliding window
-            var failureCacheKey = $"{FailureCountCacheKeyPrefix}{message.Provider}";
-            var failureCount = 0;
-
-            if (_progressCache.TryGetValue<int>(failureCacheKey, out var existingCount))
-            {
-                failureCount = existingCount;
-            }
-
-            failureCount++;
-            _progressCache.Set(failureCacheKey, failureCount, TimeSpan.FromHours(1));
-
-            _logger.LogWarning("Provider {Provider} image failure count in last hour: {FailureCount}",
-                message.Provider, failureCount);
-        }
-
-        private void AnalyzeErrorPattern(ImageGenerationFailed message)
-        {
-            var errorPatterns = new Dictionary<string, string>
-            {
-                ["rate limit"] = "Provider rate limit exceeded - consider implementing backoff",
-                ["timeout"] = "Request timeout - provider may be experiencing high load",
-                ["invalid api key"] = "Authentication failure - check provider credentials",
-                ["insufficient credits"] = "Provider account has insufficient credits",
-                ["content policy"] = "Content violates provider's usage policy",
-                ["model not found"] = "Requested model is not available",
-                ["invalid size"] = "Requested image size is not supported"
-            };
-
-            var lowerError = message.Error.ToLowerInvariant();
-            foreach (var (pattern, analysis) in errorPatterns)
-            {
-                if (lowerError.Contains(pattern))
-                {
-                    _logger.LogWarning("Error pattern detected for task {TaskId}: {Analysis}",
-                        message.TaskId, analysis);
-                    break;
-                }
-            }
-        }
-
-        private static bool IsCriticalFailure(ImageGenerationFailed message)
-        {
-            var criticalErrorPatterns = new[]
-            {
-                "invalid api key",
-                "authentication failed",
-                "unauthorized",
-                "forbidden",
-                "account suspended",
-                "insufficient credits"
-            };
-
-            var lowerError = message.Error.ToLowerInvariant();
-            return criticalErrorPatterns.Any(pattern => lowerError.Contains(pattern));
-        }
+            ["invalid size"] = "Requested image size is not supported"
+        };
     }
 }

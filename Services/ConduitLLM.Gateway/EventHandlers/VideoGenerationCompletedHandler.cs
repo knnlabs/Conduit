@@ -149,7 +149,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 };
 
                 // Cache completion data for recent tasks (24 hours)
-                UpdateCompletedTasksCache(completionData);
+                MediaGenerationHandlerHelper.UpdateCompletedTasksCache(_progressCache, CompletedTasksCacheKey, completionData);
 
                 // Log performance metrics
                 _logger.LogInformation("Video generation performance - Provider: {Provider}, Model: {Model}, Generation time: {GenerationTime}s, Video duration: {VideoDuration}s, Cost: ${Cost}",
@@ -179,24 +179,6 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex, "Error handling video generation completion for request {RequestId}", message.RequestId);
                 throw; // Let MassTransit handle retry
             }
-        }
-
-        private void UpdateCompletedTasksCache(object completionData)
-        {
-            // Maintain a rolling list of recently completed tasks
-            var completedTasks = _progressCache.Get<List<object>>(CompletedTasksCacheKey) ?? new List<object>();
-
-            // Add new completion
-            completedTasks.Add(completionData);
-
-            // Keep only last 100 completed tasks
-            if (completedTasks.Count() > 100)
-            {
-                completedTasks = completedTasks.Skip(completedTasks.Count() - 100).ToList();
-            }
-
-            // Cache for 24 hours
-            _progressCache.Set(CompletedTasksCacheKey, completedTasks, TimeSpan.FromHours(24));
         }
 
         private void LogProviderMetrics(string provider, string model, TimeSpan generationDuration, double videoDuration, decimal cost)
