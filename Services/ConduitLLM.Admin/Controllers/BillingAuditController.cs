@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ConduitLLM.Admin.DTOs;
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -70,9 +71,9 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public Task<IActionResult> QueryAuditEvents([FromBody] BillingAuditQueryRequest request)
         {
-            if (request.From > request.To)
+            if (ControllerErrorExtensions.ValidateDateRange(request.From, request.To) is { } dateError)
             {
-                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
+                return Task.FromResult(dateError);
             }
 
             if (request.PageSize > 1000)
@@ -126,9 +127,9 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] DateTime to,
             [FromQuery] int? virtualKeyId = null)
         {
-            if (from > to)
+            if (ControllerErrorExtensions.ValidateDateRange(from, to) is { } dateError)
             {
-                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
+                return Task.FromResult(dateError);
             }
 
             return ExecuteAsync(
@@ -158,9 +159,9 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] DateTime from,
             [FromQuery] DateTime to)
         {
-            if (from > to)
+            if (ControllerErrorExtensions.ValidateDateRange(from, to) is { } dateError)
             {
-                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
+                return Task.FromResult(dateError);
             }
 
             return ExecuteAsync(
@@ -197,9 +198,9 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] DateTime from,
             [FromQuery] DateTime to)
         {
-            if (from > to)
+            if (ControllerErrorExtensions.ValidateDateRange(from, to) is { } dateError)
             {
-                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
+                return Task.FromResult(dateError);
             }
 
             return ExecuteAsync(
@@ -226,9 +227,9 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public Task<IActionResult> ExportAuditEvents([FromBody] BillingAuditExportRequest request)
         {
-            if (request.From > request.To)
+            if (ControllerErrorExtensions.ValidateDateRange(request.From, request.To) is { } dateError)
             {
-                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
+                return Task.FromResult(dateError);
             }
 
             return ExecuteAsync(

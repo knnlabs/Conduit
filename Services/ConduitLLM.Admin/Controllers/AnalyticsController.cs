@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Admin.Services;
@@ -133,10 +134,9 @@ public class AnalyticsController : AdminControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        // Validate timeframe
-        if (timeframe.ToLower() != "daily" && timeframe.ToLower() != "weekly" && timeframe.ToLower() != "monthly")
+        if (ControllerErrorExtensions.ValidateTimeframe(timeframe) is { } timeframeError)
         {
-            return Task.FromResult<IActionResult>(BadRequest("Timeframe must be one of: daily, weekly, monthly"));
+            return Task.FromResult(timeframeError);
         }
 
         return ExecuteAsync(
@@ -161,10 +161,9 @@ public class AnalyticsController : AdminControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        // Validate period
-        if (period.ToLower() != "daily" && period.ToLower() != "weekly" && period.ToLower() != "monthly")
+        if (ControllerErrorExtensions.ValidateTimeframe(period, "Period") is { } periodError)
         {
-            return Task.FromResult<IActionResult>(BadRequest("Period must be one of: daily, weekly, monthly"));
+            return Task.FromResult(periodError);
         }
 
         return ExecuteAsync(
@@ -235,10 +234,9 @@ public class AnalyticsController : AdminControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        // Validate timeframe
-        if (timeframe.ToLower() != "daily" && timeframe.ToLower() != "weekly" && timeframe.ToLower() != "monthly")
+        if (ControllerErrorExtensions.ValidateTimeframe(timeframe) is { } timeframeError)
         {
-            return Task.FromResult<IActionResult>(BadRequest("Timeframe must be one of: daily, weekly, monthly"));
+            return Task.FromResult(timeframeError);
         }
 
         return ExecuteAsync(

@@ -125,6 +125,34 @@ namespace ConduitLLM.Admin.Extensions
             return controller.UnprocessableEntity(new ErrorResponseDto(message) { Code = code ?? "validation_error" });
         }
 
+        #region Common Validation Helpers
+
+        /// <summary>
+        /// Validates that a date range has From &lt;= To.
+        /// Returns a BadRequest result if invalid, or null if valid.
+        /// </summary>
+        public static IActionResult? ValidateDateRange(DateTime from, DateTime to)
+        {
+            if (from > to)
+                return new BadRequestObjectResult("From date must be before or equal to To date");
+            return null;
+        }
+
+        private static readonly string[] ValidTimeframes = { "daily", "weekly", "monthly" };
+
+        /// <summary>
+        /// Validates that a timeframe string is one of: daily, weekly, monthly.
+        /// Returns a BadRequest result if invalid, or null if valid.
+        /// </summary>
+        public static IActionResult? ValidateTimeframe(string timeframe, string paramName = "Timeframe")
+        {
+            if (!ValidTimeframes.Contains(timeframe.ToLowerInvariant()))
+                return new BadRequestObjectResult($"{paramName} must be one of: daily, weekly, monthly");
+            return null;
+        }
+
+        #endregion
+
         /// <summary>
         /// Creates an appropriate error response from an exception.
         /// Uses <see cref="ExceptionToResponseMapper"/> for consistent exception-to-response mapping.

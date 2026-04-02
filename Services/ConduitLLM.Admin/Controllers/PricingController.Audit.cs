@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Prometheus;
@@ -14,9 +15,9 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public Task<IActionResult> QueryPricingAuditEvents([FromBody] PricingAuditQueryRequest request)
         {
-            if (request.From > request.To)
+            if (ControllerErrorExtensions.ValidateDateRange(request.From, request.To) is { } dateError)
             {
-                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
+                return Task.FromResult(dateError);
             }
 
             if (request.PageSize > 1000)
@@ -77,9 +78,9 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] DateTime to,
             [FromQuery] int? virtualKeyId = null)
         {
-            if (from > to)
+            if (ControllerErrorExtensions.ValidateDateRange(from, to) is { } dateError)
             {
-                return Task.FromResult<IActionResult>(BadRequest("From date must be before or equal to To date"));
+                return Task.FromResult(dateError);
             }
 
             return ExecuteAsync(
