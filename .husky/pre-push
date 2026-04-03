@@ -1,3 +1,4 @@
+#!/bin/sh
 # Pre-push hook to prevent pushing code with lint errors
 
 echo "🔍 Running pre-push lint checks..."
