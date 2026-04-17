@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Authentication;
 using ConduitLLM.Providers.Configuration;
 
@@ -14,11 +15,16 @@ namespace ConduitLLM.Providers.Replicate
     /// Revised client for interacting with Replicate APIs using the new client hierarchy.
     /// Handles the asynchronous prediction workflow (start, poll, get result) for various model providers.
     /// </summary>
-    public partial class ReplicateClient : CustomProviderClient
+    public partial class ReplicateClient : BaseLLMClient
     {
         // Default polling configuration
         private static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromSeconds(2);
         private static readonly TimeSpan MaxPollingDuration = TimeSpan.FromMinutes(10);
+
+        /// <summary>
+        /// Base URL for the Replicate API (e.g. "https://api.replicate.com/v1").
+        /// </summary>
+        protected readonly string BaseUrl;
 
         /// <summary>
         /// Gets the Token authentication strategy for Replicate.
@@ -49,9 +55,11 @@ namespace ConduitLLM.Providers.Replicate
                 logger,
                 httpClientFactory,
                 "Replicate",
-                baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate),
-                defaultModels: defaultModels)
+                defaultModels)
         {
+            BaseUrl = ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate)
+                ?? provider.BaseUrl
+                ?? throw new ConfigurationException($"Base URL must be provided for {ProviderName}");
         }
 
         /// <inheritdoc/>
@@ -64,6 +72,47 @@ namespace ConduitLLM.Providers.Replicate
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
         }
+
+        /// <inheritdoc/>
+        protected override void ValidateRequest<TRequest>(TRequest request, string operationName)
+        {
+            base.ValidateRequest(request, operationName);
+
+            switch (request)
+            {
+                case ChatCompletionRequest chat when chat.Messages is null || !chat.Messages.Any():
+                    throw new ValidationException($"{operationName}: Messages cannot be null or empty");
+                case EmbeddingRequest embed when embed.Input is null:
+                    throw new ValidationException($"{operationName}: Input cannot be null");
+                case ImageGenerationRequest image when string.IsNullOrWhiteSpace(image.Prompt):
+                    throw new ValidationException($"{operationName}: Prompt cannot be null or empty");
+            }
+        }
+
+        private static ChatCompletionChunk CreateChatCompletionChunk(
+            string content,
+            string model,
+            bool isFirst = false,
+            string? finishReason = null) => new()
+            {
+                Id = $"chatcmpl-{Guid.NewGuid():N}",
+                Object = "chat.completion.chunk",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = model,
+                Choices = new List<StreamingChoice>
+                {
+                    new StreamingChoice
+                    {
+                        Index = 0,
+                        Delta = new DeltaContent
+                        {
+                            Role = isFirst ? "assistant" : null,
+                            Content = content,
+                        },
+                        FinishReason = finishReason,
+                    },
+                },
+            };
 
         /// <inheritdoc/>
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)

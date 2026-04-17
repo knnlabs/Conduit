@@ -83,9 +83,7 @@ namespace ConduitLLM.Providers.Replicate
             yield return CreateChatCompletionChunk(
                 string.Empty,
                 ProviderModelId,
-                true,
-                null,
-                request.Model);
+                isFirst: true);
 
             try
             {
@@ -119,9 +117,8 @@ namespace ConduitLLM.Providers.Replicate
                     yield return CreateChatCompletionChunk(
                         content,
                         ProviderModelId,
-                        false,
-                        "stop",
-                        request.Model);
+                        isFirst: false,
+                        finishReason: "stop");
                 }
             }
         }
