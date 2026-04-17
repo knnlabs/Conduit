@@ -95,8 +95,7 @@ namespace ConduitLLM.Providers.Replicate
                     finalPrediction = await PollPredictionUntilCompletedAsync(
                         predictionResponse.Id,
                         apiKey,
-                        cancellationToken,
-                        true); // Set yield progress to true
+                        cancellationToken);
                 }
             }
             catch (LLMCommunicationException)
