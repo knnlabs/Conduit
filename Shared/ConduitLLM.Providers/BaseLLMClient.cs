@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -6,6 +7,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Authentication;
@@ -329,7 +331,8 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
-        /// Safely executes an API request with standardized error handling.
+        /// Safely executes an API request with standardized error handling, tracing,
+        /// metrics, and structured logging scope.
         /// </summary>
         /// <typeparam name="TResult">The type of result expected from the operation.</typeparam>
         /// <param name="operation">The operation to execute.</param>
@@ -341,14 +344,121 @@ namespace ConduitLLM.Providers
             string operationName,
             CancellationToken cancellationToken)
         {
-            return await ExceptionHandler.HandleHttpRequestAsync(
-                async () =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return await operation();
-                },
-                Logger,
-                $"{ProviderName} ({operationName})");
+            using var activity = ProviderInstrumentation.StartRequestActivity(
+                operationName, ProviderName, ProviderTypeName, ProviderModelId);
+            using var scope = BeginProviderLogScope(operationName);
+            var stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                var result = await ExceptionHandler.HandleHttpRequestAsync(
+                    async () =>
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return await operation();
+                    },
+                    Logger,
+                    $"{ProviderName} ({operationName})");
+
+                stopwatch.Stop();
+                ProviderInstrumentation.RecordRequest(
+                    operationName, ProviderName, ProviderTypeName, ProviderModelId,
+                    stopwatch.Elapsed.TotalMilliseconds, success: true);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                stopwatch.Stop();
+                ProviderInstrumentation.RecordRequest(
+                    operationName, ProviderName, ProviderTypeName, ProviderModelId,
+                    stopwatch.Elapsed.TotalMilliseconds, success: false,
+                    errorType: nameof(OperationCanceledException));
+                activity?.SetStatus(ActivityStatusCode.Error, "cancelled");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                ProviderInstrumentation.RecordRequest(
+                    operationName, ProviderName, ProviderTypeName, ProviderModelId,
+                    stopwatch.Elapsed.TotalMilliseconds, success: false,
+                    errorType: ex.GetType().Name);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Provider type name (e.g., "OpenAI", "Groq") used as a tag on spans and metrics.
+        /// </summary>
+        protected string ProviderTypeName => Provider.ProviderType.ToString();
+
+        /// <summary>
+        /// Opens an <see cref="ILogger"/> scope populated with provider, model, key, and
+        /// operation context so that all downstream log entries inherit correlation tags.
+        /// </summary>
+        /// <param name="operationName">The current operation name (e.g., "ChatCompletion").</param>
+        /// <returns>A disposable scope; may be null if the underlying logger does not support scopes.</returns>
+        protected IDisposable? BeginProviderLogScope(string operationName)
+        {
+            return Logger.BeginScope(new Dictionary<string, object?>
+            {
+                ["ProviderName"] = ProviderName,
+                ["ProviderType"] = ProviderTypeName,
+                ["ProviderId"] = Provider.Id,
+                ["KeyCredentialId"] = PrimaryKeyCredential.Id,
+                ["Model"] = ProviderModelId,
+                ["Operation"] = operationName
+            });
+        }
+
+        /// <summary>
+        /// Records token usage metrics + tags reported by the provider.
+        /// Safe to call with a null <paramref name="usage"/>; counters are only incremented
+        /// for token dimensions that are populated.
+        /// </summary>
+        /// <param name="usage">The usage object returned by the provider, or null.</param>
+        /// <param name="operationName">The operation that produced the usage (e.g., "ChatCompletion").</param>
+        protected void RecordUsage(Usage? usage, string operationName)
+        {
+            if (usage == null)
+            {
+                return;
+            }
+
+            ProviderInstrumentation.RecordUsage(
+                operationName,
+                ProviderName,
+                ProviderTypeName,
+                ProviderModelId,
+                usage.PromptTokens,
+                usage.CompletionTokens,
+                usage.TotalTokens);
+
+            if ((usage.PromptTokens ?? 0) > 0 ||
+                (usage.CompletionTokens ?? 0) > 0 ||
+                (usage.TotalTokens ?? 0) > 0)
+            {
+                Logger.LogDebug(
+                    "{Provider} {Operation} usage: Prompt={Prompt}, Completion={Completion}, Total={Total}",
+                    ProviderName, operationName,
+                    usage.PromptTokens ?? 0,
+                    usage.CompletionTokens ?? 0,
+                    usage.TotalTokens ?? 0);
+            }
+        }
+
+        /// <summary>
+        /// Begins an instrumentation scope for a streaming provider request.
+        /// Use inside an async iterator with try/finally; call <c>RecordChunk()</c> per chunk
+        /// and <c>RecordFailure(...)</c> before re-throwing on error.
+        /// </summary>
+        /// <param name="operationName">The operation name (e.g., "StreamChatCompletion").</param>
+        protected ProviderInstrumentation.StreamingScope BeginStreamingScope(string operationName)
+        {
+            return ProviderInstrumentation.BeginStreaming(
+                operationName, ProviderName, ProviderTypeName, ProviderModelId);
         }
 
         /// <summary>

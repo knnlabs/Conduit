@@ -18,9 +18,9 @@ namespace ConduitLLM.Providers.Replicate
         {
             ValidateRequest(request, "CreateChatCompletionAsync");
 
-            Logger.LogInformation("Creating chat completion with Replicate for model '{ModelId}'", ProviderModelId);
+            Logger.LogDebug("Creating chat completion with Replicate for model '{ModelId}'", ProviderModelId);
 
-            try
+            return await ExecuteApiRequestAsync(async () =>
             {
                 // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToPredictionRequest(request);
@@ -29,19 +29,10 @@ namespace ConduitLLM.Providers.Replicate
                 // Poll until prediction completes or fails
                 var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
 
-                // Process the final result
-                return MapToChatCompletionResponse(finalPrediction, request.Model);
-            }
-            catch (LLMCommunicationException)
-            {
-                // Re-throw LLMCommunicationException directly
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "An unexpected error occurred while processing Replicate chat completion");
-                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-            }
+                var response = MapToChatCompletionResponse(finalPrediction, request.Model);
+                RecordUsage(response.Usage, "CreateChatCompletion");
+                return response;
+            }, "CreateChatCompletion", cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -52,74 +43,96 @@ namespace ConduitLLM.Providers.Replicate
         {
             ValidateRequest(request, "StreamChatCompletionAsync");
 
-            Logger.LogInformation("Creating streaming chat completion with Replicate for model '{ModelId}'", ProviderModelId);
+            Logger.LogDebug("Creating streaming chat completion with Replicate for model '{ModelId}'", ProviderModelId);
 
-            // Variables to hold data outside the try block
-            ReplicatePredictionRequest? predictionRequest = null;
-            ReplicatePredictionResponse? predictionResponse = null;
+            using var logScope = BeginProviderLogScope("StreamChatCompletion");
+            var instrumentation = BeginStreamingScope("StreamChatCompletion");
+
+            ReplicatePredictionRequest? predictionRequest;
+            ReplicatePredictionResponse? predictionResponse;
             ReplicatePredictionResponse? finalPrediction = null;
 
             try
             {
-                // Replicate doesn't natively support streaming in the common SSE format
-                // Instead, we'll simulate streaming by getting the full response and breaking it into chunks
-
-                // Start the prediction
-                predictionRequest = MapToPredictionRequest(request);
-                predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
-            }
-            catch (LLMCommunicationException)
-            {
-                // Re-throw LLMCommunicationException directly
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "An unexpected error occurred starting Replicate prediction");
-                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-            }
-
-            // First chunk with role "assistant" - outside try block so we can yield
-            yield return CreateChatCompletionChunk(
-                string.Empty,
-                ProviderModelId,
-                isFirst: true);
-
-            try
-            {
-                // Poll until prediction completes or fails
-                if (predictionResponse != null)
+                try
                 {
-                    finalPrediction = await PollPredictionUntilCompletedAsync(
-                        predictionResponse.Id,
-                        apiKey,
-                        cancellationToken);
+                    // Replicate doesn't natively support streaming in the common SSE format
+                    // Instead, we'll simulate streaming by getting the full response and breaking it into chunks
+                    predictionRequest = MapToPredictionRequest(request);
+                    predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    instrumentation.RecordFailure(nameof(OperationCanceledException));
+                    throw;
+                }
+                catch (LLMCommunicationException)
+                {
+                    instrumentation.RecordFailure(nameof(LLMCommunicationException));
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "An unexpected error occurred starting Replicate prediction");
+                    instrumentation.RecordFailure(ex.GetType().Name);
+                    throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+                }
+
+                // First chunk with role "assistant"
+                instrumentation.RecordChunk();
+                yield return CreateChatCompletionChunk(string.Empty, ProviderModelId, isFirst: true);
+
+                try
+                {
+                    if (predictionResponse != null)
+                    {
+                        finalPrediction = await PollPredictionUntilCompletedAsync(
+                            predictionResponse.Id, apiKey, cancellationToken);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    instrumentation.RecordFailure(nameof(OperationCanceledException));
+                    throw;
+                }
+                catch (LLMCommunicationException)
+                {
+                    instrumentation.RecordFailure(nameof(LLMCommunicationException));
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "An unexpected error occurred polling Replicate prediction");
+                    instrumentation.RecordFailure(ex.GetType().Name);
+                    throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+                }
+
+                if (finalPrediction != null)
+                {
+                    var content = ExtractTextFromPredictionOutput(finalPrediction.Output);
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        // Replicate doesn't report token usage; estimate from output size.
+                        var promptTokens = finalPrediction.Input != null
+                            ? EstimateTokenCount(JsonSerializer.Serialize(finalPrediction.Input))
+                            : 0;
+                        var completionTokens = EstimateTokenCount(content);
+                        RecordUsage(new Usage
+                        {
+                            PromptTokens = promptTokens,
+                            CompletionTokens = completionTokens,
+                            TotalTokens = promptTokens + completionTokens
+                        }, "StreamChatCompletion");
+
+                        instrumentation.RecordChunk();
+                        yield return CreateChatCompletionChunk(
+                            content, ProviderModelId, isFirst: false, finishReason: "stop");
+                    }
                 }
             }
-            catch (LLMCommunicationException)
+            finally
             {
-                // Re-throw LLMCommunicationException directly
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "An unexpected error occurred polling Replicate prediction");
-                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-            }
-
-            // Extract content and yield the result - outside try block
-            if (finalPrediction != null)
-            {
-                var content = ExtractTextFromPredictionOutput(finalPrediction.Output);
-                if (!string.IsNullOrEmpty(content))
-                {
-                    // Yield the content as a chunk
-                    yield return CreateChatCompletionChunk(
-                        content,
-                        ProviderModelId,
-                        isFirst: false,
-                        finishReason: "stop");
-                }
+                instrumentation.Dispose();
             }
         }
 

@@ -31,6 +31,7 @@ public static class ObservabilityExtensions
                     .AddMeter("ConduitLLM.SignalR")
                     .AddMeter("ConduitLLM.MediaGeneration")
                     .AddMeter("ConduitLLM.Gateway.Requests")
+                    .AddMeter("ConduitLLM.Providers")
                     .AddPrometheusExporter();
             });
 
@@ -58,6 +59,7 @@ public static class ObservabilityExtensions
                     .AddSource("ConduitLLM.SignalR")
                     .AddSource("ConduitLLM.MediaGeneration")
                     .AddSource("ConduitLLM.Gateway.Requests")
+                    .AddSource("ConduitLLM.Providers")
                     .AddOtlpExporter(options =>
                     {
                         options.Endpoint = new Uri(otlpEndpoint);

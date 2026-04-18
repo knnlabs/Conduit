@@ -44,29 +44,30 @@ namespace ConduitLLM.Providers.MiniMax
 
                 // MiniMax uses different endpoints for streaming vs non-streaming
                 // Streaming uses the v2 API which requires name fields in messages
-                var endpoint = request.Stream == true 
+                var endpoint = request.Stream == true
                     ? $"{_baseUrl}/v1/text/chatcompletion_v2"
                     : $"{_baseUrl}/v1/chat/completions";
-                // Log the request for debugging
-                var requestJson = JsonSerializer.Serialize(miniMaxRequest);
-                Logger.LogInformation("MiniMax request: {Request}", requestJson);
 
-                // Make direct HTTP call to debug
+                var requestJson = JsonSerializer.Serialize(miniMaxRequest);
+                if (Logger.IsEnabled(LogLevel.Debug))
+                {
+                    Logger.LogDebug("MiniMax request to {Endpoint}: {Request}", endpoint, requestJson);
+                }
+
                 var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
                 httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-                
+
                 using var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
                 var rawContent = await httpResponse.Content.ReadAsStringAsync();
-                
-                Logger.LogInformation("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);
-                Logger.LogInformation("MiniMax raw response: {Response}", rawContent);
-                
+
+                Logger.LogDebug("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);
+
                 if (!httpResponse.IsSuccessStatusCode)
                 {
+                    Logger.LogError("MiniMax API returned {Status}: {Response}", httpResponse.StatusCode, rawContent);
                     throw new LLMCommunicationException($"MiniMax API returned {httpResponse.StatusCode}: {rawContent}");
                 }
-                
-                // Now deserialize
+
                 MiniMaxChatCompletionResponse response;
                 try
                 {
@@ -78,38 +79,25 @@ namespace ConduitLLM.Providers.MiniMax
                     throw new LLMCommunicationException("Failed to deserialize MiniMax response", ex);
                 }
 
-                // Log the raw response for debugging
                 if (response == null)
                 {
                     Logger.LogWarning("MiniMax response is null");
                     throw new LLMCommunicationException("MiniMax returned null response");
                 }
 
-                var responseJson = JsonSerializer.Serialize(response);
-                Logger.LogInformation("MiniMax response: {Response}", responseJson);
-                Logger.LogInformation("MiniMax response choices count: {Count}", response.Choices?.Count ?? 0);
-                if (response.Choices != null && response.Choices.Any())
-                {
-                    Logger.LogInformation("First choice message: {Message}", 
-                        JsonSerializer.Serialize(response.Choices[0].Message));
-                    var message = response.Choices[0].Message;
-                    if (message != null)
-                    {
-                        Logger.LogInformation("Message content: '{Content}', ReasoningContent: '{Reasoning}'", 
-                            message.Content ?? "", 
-                            message.ReasoningContent ?? "");
-                    }
-                }
+                Logger.LogDebug("MiniMax response choices count: {Count}", response.Choices?.Count ?? 0);
 
                 // Check for MiniMax error response
                 if (response.BaseResp is { } baseResp && baseResp.StatusCode != 0)
                 {
-                    Logger.LogError("MiniMax error: {StatusCode} - {StatusMsg}", 
+                    Logger.LogError("MiniMax error: {StatusCode} - {StatusMsg}",
                         baseResp.StatusCode, baseResp.StatusMsg);
                     throw new LLMCommunicationException($"MiniMax error: {baseResp.StatusMsg}");
                 }
 
-                return ConvertToCoreResponse(response, request.Model ?? ProviderModelId);
+                var coreResponse = ConvertToCoreResponse(response, request.Model ?? ProviderModelId);
+                RecordUsage(coreResponse.Usage, "CreateChatCompletion");
+                return coreResponse;
             }, "CreateChatCompletion", cancellationToken);
         }
     }

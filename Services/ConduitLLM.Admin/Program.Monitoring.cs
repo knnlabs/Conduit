@@ -40,6 +40,7 @@ public partial class Program
                     .AddMeter("Microsoft.AspNetCore.Hosting")
                     .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
                     .AddMeter("ConduitLLM.Admin.Requests")
+                    .AddMeter("ConduitLLM.Providers")
                     .AddPrometheusExporter();
             });
 
@@ -60,6 +61,7 @@ public partial class Program
                     })
                     .AddHttpClientInstrumentation()
                     .AddSource("ConduitLLM.Admin.Requests")
+                    .AddSource("ConduitLLM.Providers")
                     .AddOtlpExporter(options =>
                     {
                         options.Endpoint = new Uri(otlpEndpoint);
