@@ -256,7 +256,7 @@ query-filters:
     Write-Host "=== Analysis Complete ===" -ForegroundColor Green
     Write-Host ""
     Write-Host "Compare with GitHub's count by checking:"
-    Write-Host "https://github.com/knnlabs/Conduit/security/code-scanning"
+    Write-Host "https://github.com/nickna/Conduit/security/code-scanning"
     Write-Host ""
 
     # Show comparison with last run if available

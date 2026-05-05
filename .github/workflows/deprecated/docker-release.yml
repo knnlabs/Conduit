@@ -45,7 +45,7 @@ jobs:
         id: meta-webadmin
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/knnlabs/conduit-webadmin
+          images: ghcr.io/nickna/conduit-webadmin
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -73,7 +73,7 @@ jobs:
         id: meta-http
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/knnlabs/conduit-http
+          images: ghcr.io/nickna/conduit-http
           tags: |
             type=ref,event=branch
             type=ref,event=pr

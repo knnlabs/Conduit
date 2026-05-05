@@ -380,7 +380,7 @@ for await (const event of stream) {
 # docker-compose.yml for high-throughput agents
 services:
   conduit-http:
-    image: ghcr.io/knnlabs/conduit-http:latest
+    image: ghcr.io/nickna/conduit-http:latest
     environment:
       CONDUIT_FUNCTION_EXECUTION_CONCURRENCY: 50
       CONDUIT_FUNCTION_TIMEOUT_SECONDS: 30

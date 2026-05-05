@@ -142,9 +142,9 @@ jobs:
           
           ### Docker
           \`\`\`bash
-          docker pull ghcr.io/knnlabs/conduit-webadmin:v$VERSION
-          docker pull ghcr.io/knnlabs/conduit-http:v$VERSION
-          docker pull ghcr.io/knnlabs/conduit-admin:v$VERSION
+          docker pull ghcr.io/nickna/conduit-webadmin:v$VERSION
+          docker pull ghcr.io/nickna/conduit-http:v$VERSION
+          docker pull ghcr.io/nickna/conduit-admin:v$VERSION
           \`\`\`
           
           ### NPM SDKs

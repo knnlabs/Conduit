@@ -219,7 +219,7 @@ test('fetches virtual keys', async () => {
 ## 🆘 Getting Help
 
 - **[Troubleshooting Guide](./troubleshooting.md)** - Common issues and solutions
-- **[GitHub Issues](https://github.com/knnlabs/Conduit/issues)** - Report bugs or request features
+- **[GitHub Issues](https://github.com/nickna/Conduit/issues)** - Report bugs or request features
 
 ## 📖 Related Documentation
 

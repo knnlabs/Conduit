@@ -389,5 +389,5 @@ NODE_ENV=production
 ## Support
 
 For questions or issues:
-- **GitHub Issues**: https://github.com/knnlabs/Conduit/issues
+- **GitHub Issues**: https://github.com/nickna/Conduit/issues
 - **Documentation**: https://docs.conduit.ai

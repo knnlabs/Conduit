@@ -94,5 +94,5 @@ Real-time notifications for asynchronous operations like video generation, image
 ## Support
 
 For questions or issues:
-- **GitHub Issues**: https://github.com/knnlabs/Conduit/issues
+- **GitHub Issues**: https://github.com/nickna/Conduit/issues
 - **Documentation**: https://docs.conduit.ai

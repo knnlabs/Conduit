@@ -137,7 +137,7 @@ Control access based on IP addresses:
 ```yaml
 services:
   admin:
-    image: ghcr.io/knnlabs/conduit-admin:latest
+    image: ghcr.io/nickna/conduit-admin:latest
     environment:
       DATABASE_URL: postgresql://user:password@postgres:5432/conduitdb
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_master_key
@@ -147,7 +147,7 @@ services:
       - postgres
 
   webadmin:
-    image: ghcr.io/knnlabs/conduit-webadmin:latest
+    image: ghcr.io/nickna/conduit-webadmin:latest
     environment:
       CONDUIT_ADMIN_API_URL: http://admin:8080
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_master_key
@@ -176,5 +176,5 @@ services:
 ## Support
 
 For questions or issues:
-- **GitHub Issues**: https://github.com/knnlabs/Conduit/issues
+- **GitHub Issues**: https://github.com/nickna/Conduit/issues
 - **Documentation**: https://docs.conduit.ai

@@ -77,9 +77,9 @@ $methodColor = Get-BadgeColor -Percentage ([double]$methodCoverage)
 # Create badge markdown
 $badgeMarkdown = @"
 <!-- Auto-generated coverage badges -->
-[![Line Coverage](https://img.shields.io/badge/Line%20Coverage-${lineCoverage}%25-${lineColor})](https://github.com/knnlabs/Conduit/actions)
-[![Branch Coverage](https://img.shields.io/badge/Branch%20Coverage-${branchCoverage}%25-${branchColor})](https://github.com/knnlabs/Conduit/actions)
-[![Method Coverage](https://img.shields.io/badge/Method%20Coverage-${methodCoverage}%25-${methodColor})](https://github.com/knnlabs/Conduit/actions)
+[![Line Coverage](https://img.shields.io/badge/Line%20Coverage-${lineCoverage}%25-${lineColor})](https://github.com/nickna/Conduit/actions)
+[![Branch Coverage](https://img.shields.io/badge/Branch%20Coverage-${branchCoverage}%25-${branchColor})](https://github.com/nickna/Conduit/actions)
+[![Method Coverage](https://img.shields.io/badge/Method%20Coverage-${methodCoverage}%25-${methodColor})](https://github.com/nickna/Conduit/actions)
 "@
 
 $badgesFile = Join-Path $badgesDir 'coverage-badges.md'

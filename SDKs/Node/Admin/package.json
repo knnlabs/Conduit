@@ -85,11 +85,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/knnlabs/Conduit.git",
+    "url": "https://github.com/nickna/Conduit.git",
     "directory": "SDKs/Node/Admin"
   },
-  "homepage": "https://github.com/knnlabs/Conduit/tree/master/SDKs/Node/Admin",
+  "homepage": "https://github.com/nickna/Conduit/tree/master/SDKs/Node/Admin",
   "bugs": {
-    "url": "https://github.com/knnlabs/Conduit/issues"
+    "url": "https://github.com/nickna/Conduit/issues"
   }
 }

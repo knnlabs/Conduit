@@ -636,6 +636,6 @@ Planned pricing models:
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/knnlabs/Conduit/issues
+- GitHub Issues: https://github.com/nickna/Conduit/issues
 - Documentation: This file
 - API Reference: `/api/swagger`

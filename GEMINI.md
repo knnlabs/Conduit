@@ -284,6 +284,6 @@ My goal is to be a thoughtful and effective engineering partner. I will adhere t
 
 ## Repository Information
 
-- **GitHub Repository**: knnlabs/Conduit
-- **Issues URL**: https://github.com/knnlabs/Conduit/issues
-- **Pull Requests URL**: https://github.com/knnlabs/Conduit/pulls
+- **GitHub Repository**: nickna/Conduit
+- **Issues URL**: https://github.com/nickna/Conduit/issues
+- **Pull Requests URL**: https://github.com/nickna/Conduit/pulls

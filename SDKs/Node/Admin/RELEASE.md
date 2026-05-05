@@ -92,7 +92,7 @@ npm install conduit-admin-client@1.2.3
 ## Monitoring
 
 - **NPM Package**: https://www.npmjs.com/package/conduit-admin-client
-- **GitHub Releases**: https://github.com/knnlabs/Conduit/releases
+- **GitHub Releases**: https://github.com/nickna/Conduit/releases
 - **Workflow Status**: Actions tab in GitHub repository
 
 ## Troubleshooting

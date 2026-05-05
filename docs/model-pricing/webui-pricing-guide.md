@@ -377,5 +377,5 @@ A: Cached tokens (prompt caching) are previously processed tokens offered at a d
 ## Need Help?
 
 - Check the [main documentation](./polymorphic-pricing.md)
-- Report issues on [GitHub](https://github.com/knnlabs/Conduit/issues)
+- Report issues on [GitHub](https://github.com/nickna/Conduit/issues)
 - Review the [API documentation](./api-reference.md) for programmatic access

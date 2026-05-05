@@ -48,13 +48,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/knnlabs/Conduit.git",
+    "url": "https://github.com/nickna/Conduit.git",
     "directory": "SDKs/Node/Gateway"
   },
   "bugs": {
-    "url": "https://github.com/knnlabs/Conduit/issues"
+    "url": "https://github.com/nickna/Conduit/issues"
   },
-  "homepage": "https://github.com/knnlabs/Conduit#readme",
+  "homepage": "https://github.com/nickna/Conduit#readme",
   "dependencies": {
     "@knn_labs/conduit-common": "file:../Common",
     "@microsoft/signalr": "^10.0.0"

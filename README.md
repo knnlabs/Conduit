@@ -1,6 +1,6 @@
 ![ConduitLLM Logo](docs/assets/conduit.png)
-[![CodeQL](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml)
-[![Build & Test](https://github.com/knnlabs/Conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/nickna/Conduit/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/nickna/Conduit/actions/workflows/codeql-analysis.yml)
+[![Build & Test](https://github.com/nickna/Conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/nickna/Conduit/actions/workflows/ci.yml)
 [![OpenAI Compatible](https://img.shields.io/badge/OpenAI-Compatible-brightgreen.svg)](https://platform.openai.com/docs/api-reference)
 [![Built with .NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED)](https://www.docker.com/)
@@ -154,9 +154,9 @@ As of May 2025, ConduitLLM is distributed as three separate Docker images:
 
 Each service is built, tagged, and published as an independent container:
 
-- `ghcr.io/knnlabs/conduit-webadmin:latest` (WebAdmin)
-- `ghcr.io/knnlabs/conduit-admin:latest` (Admin API)
-- `ghcr.io/knnlabs/conduit-http:latest` (API Gateway)
+- `ghcr.io/nickna/conduit-webadmin:latest` (WebAdmin)
+- `ghcr.io/nickna/conduit-admin:latest` (Admin API)
+- `ghcr.io/nickna/conduit-http:latest` (API Gateway)
 
 #### Why this architecture?
 - **Separation of concerns**: Each component can be scaled, deployed, and maintained independently
@@ -173,7 +173,7 @@ With Docker Compose:
 
 services:
   webadmin:
-    image: ghcr.io/knnlabs/conduit-webadmin:latest
+    image: ghcr.io/nickna/conduit-webadmin:latest
     ports:
       - "3000:3000"
     environment:
@@ -190,7 +190,7 @@ services:
       - api
 
   admin:
-    image: ghcr.io/knnlabs/conduit-admin:latest
+    image: ghcr.io/nickna/conduit-admin:latest
     ports:
       - "5002:8080"
     environment:
@@ -207,7 +207,7 @@ services:
       - rabbitmq
 
   api:
-    image: ghcr.io/knnlabs/conduit-http:latest
+    image: ghcr.io/nickna/conduit-http:latest
     ports:
       - "5000:8080"
     environment:
@@ -274,7 +274,7 @@ For more details, see the per-service README files.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/knnlabs/Conduit.git
+   git clone https://github.com/nickna/Conduit.git
    cd Conduit
    ```
 
@@ -301,9 +301,9 @@ For more details, see the per-service README files.
 Pull the individual service images:
 
 ```bash
-docker pull ghcr.io/knnlabs/conduit-webadmin:latest
-docker pull ghcr.io/knnlabs/conduit-admin:latest
-docker pull ghcr.io/knnlabs/conduit-http:latest
+docker pull ghcr.io/nickna/conduit-webadmin:latest
+docker pull ghcr.io/nickna/conduit-admin:latest
+docker pull ghcr.io/nickna/conduit-http:latest
 ```
 
 Or use with Docker Compose:

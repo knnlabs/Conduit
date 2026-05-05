@@ -359,4 +359,4 @@ conduit_pricing_cache_hit_ratio
 
 - [Full Documentation](./polymorphic-pricing.md)
 - [WebAdmin Guide](./webui-pricing-guide.md)
-- [GitHub Issues](https://github.com/knnlabs/Conduit/issues)
+- [GitHub Issues](https://github.com/nickna/Conduit/issues)

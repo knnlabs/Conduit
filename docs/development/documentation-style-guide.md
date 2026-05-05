@@ -92,7 +92,7 @@ const client = new ConduitClient({
 #### Commands
 ```bash
 # Good: Shows full command with options
-docker run -p 5000:5000 -e DATABASE_URL=postgres://... ghcr.io/knnlabs/conduit:latest
+docker run -p 5000:5000 -e DATABASE_URL=postgres://... ghcr.io/nickna/conduit:latest
 
 # Bad: Incomplete example
 docker run conduit

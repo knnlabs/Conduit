@@ -265,4 +265,4 @@ except openai.error.APIError as e:
 - **[API Reference](./api-reference.md)** - Complete endpoint documentation
 - **[Feature Guides](../features/)** - In-depth guides for specific features
 - **[Troubleshooting](../sdk/troubleshooting.md)** - Common issues and solutions
-- **[GitHub Issues](https://github.com/knnlabs/Conduit/issues)** - Report bugs or request features
+- **[GitHub Issues](https://github.com/nickna/Conduit/issues)** - Report bugs or request features
