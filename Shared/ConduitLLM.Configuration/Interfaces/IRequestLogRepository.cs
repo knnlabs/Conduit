@@ -45,6 +45,23 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <returns>A list of request logs within the specified date range</returns>
         Task<List<RequestLog>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Gets request logs for a date range with optional model and virtual key filters
+        /// applied at the database level. Used by the analytics export endpoint to avoid
+        /// loading every row in the range when filters are present.
+        /// </summary>
+        /// <param name="startDate">The start date.</param>
+        /// <param name="endDate">The end date.</param>
+        /// <param name="modelFilter">Optional case-insensitive substring match against ModelName.</param>
+        /// <param name="virtualKeyId">Optional virtual key ID to filter on.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task<List<RequestLog>> GetByDateRangeFilteredAsync(
+            DateTime startDate,
+            DateTime endDate,
+            string? modelFilter = null,
+            int? virtualKeyId = null,
+            CancellationToken cancellationToken = default);
+
         #region Database-Level Aggregation Methods
 
         /// <summary>

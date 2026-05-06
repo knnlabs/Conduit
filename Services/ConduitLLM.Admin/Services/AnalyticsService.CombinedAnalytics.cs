@@ -191,15 +191,10 @@ namespace ConduitLLM.Admin.Services
                 startDate ??= DateTime.UtcNow.AddDays(-30);
                 endDate ??= DateTime.UtcNow;
 
-                // Export requires full entity data — still loads rows, but this is an infrequent operation
-                var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-
-                // Apply filters
-                if (!string.IsNullOrEmpty(model))
-                    logs = logs.Where(l => l.ModelName.Contains(model, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                if (virtualKeyId.HasValue)
-                    logs = logs.Where(l => l.VirtualKeyId == virtualKeyId.Value).ToList();
+                // Export requires full entity data, but the repository pushes the model and
+                // virtual-key filters into SQL so we don't materialize rows we'd just discard.
+                var logs = await _requestLogRepository.GetByDateRangeFilteredAsync(
+                    startDate.Value, endDate.Value, model, virtualKeyId);
 
                 _logger.LogInformation("Analytics export completed: {RecordCount} records in {Format} format",
                     logs.Count, format);

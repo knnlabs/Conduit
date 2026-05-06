@@ -104,6 +104,52 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<List<RequestLog>> GetByDateRangeFilteredAsync(
+            DateTime startDate,
+            DateTime endDate,
+            string? modelFilter = null,
+            int? virtualKeyId = null,
+            CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            // Pre-compute ILIKE pattern outside the EF expression so it's a parameterized literal.
+            // Escape the LIKE wildcards so a user-supplied "_" or "%" matches itself.
+            string? likePattern = null;
+            if (!string.IsNullOrEmpty(modelFilter))
+            {
+                var escaped = modelFilter
+                    .Replace("\\", "\\\\")
+                    .Replace("%", "\\%")
+                    .Replace("_", "\\_");
+                likePattern = $"%{escaped}%";
+            }
+
+            return await ExecuteAsync(async context =>
+            {
+                var query = context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate);
+
+                if (likePattern != null)
+                {
+                    query = query.Where(r => EF.Functions.ILike(r.ModelName, likePattern));
+                }
+
+                if (virtualKeyId.HasValue)
+                {
+                    var vkId = virtualKeyId.Value;
+                    query = query.Where(r => r.VirtualKeyId == vkId);
+                }
+
+                return await query
+                    .OrderByDescending(r => r.Timestamp)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting filtered by date range {startDate:d} to {endDate:d}");
+        }
+
+        /// <inheritdoc/>
         public async Task<(List<RequestLog> Logs, int TotalCount)> GetByModelPaginatedAsync(
             string modelName,
             int pageNumber,
