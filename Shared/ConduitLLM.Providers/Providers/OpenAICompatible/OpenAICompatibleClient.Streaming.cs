@@ -256,33 +256,5 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 cancellationToken);
         }
 
-        /// <summary>
-        /// Processes a streaming response and returns a list of chat completion chunks
-        /// </summary>
-        /// <param name="response">The HTTP response message</param>
-        /// <param name="originalModelAlias">The original model alias from the request</param>
-        /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
-        /// <returns>A list of chat completion chunks</returns>
-        private async Task<List<CoreModels.ChatCompletionChunk>> ProcessStreamingResponseAsync(
-            HttpResponseMessage response,
-            string? originalModelAlias,
-            CancellationToken cancellationToken)
-        {
-            var chunks = new List<CoreModels.ChatCompletionChunk>();
-
-            // Use StreamHelper to process the SSE stream
-            await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIChatCompletionChunk>(
-                response, Logger, DefaultJsonOptions, cancellationToken))
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                chunks.Add(MapFromOpenAIChunk(chunk, originalModelAlias));
-            }
-
-            return chunks;
-        }
     }
 }
