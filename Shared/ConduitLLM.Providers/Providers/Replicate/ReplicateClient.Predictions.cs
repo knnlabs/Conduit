@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
@@ -116,7 +117,8 @@ namespace ConduitLLM.Providers.Replicate
         private Task<ReplicatePredictionResponse> PollPredictionUntilCompletedAsync(
             string predictionId,
             string? apiKey,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            ProviderInstrumentation.PollingScope? instrumentation = null)
         {
             var options = new PollingOptions(
                 InitialDelay: DefaultPollingInterval,
@@ -137,7 +139,8 @@ namespace ConduitLLM.Providers.Replicate
                 logger: Logger,
                 cancellationToken: cancellationToken,
                 onAbort: () => CancelPredictionAsync(predictionId, apiKey),
-                operationName: $"Replicate prediction {predictionId}");
+                operationName: $"Replicate prediction {predictionId}",
+                instrumentation: instrumentation);
         }
 
         private async Task<ReplicatePredictionResponse> FetchPredictionStatusAsync(

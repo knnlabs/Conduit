@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Metrics;
 
 using Microsoft.Extensions.Logging;
 
@@ -83,6 +84,7 @@ namespace ConduitLLM.Providers.Helpers
         /// <param name="onAbort">Optional best-effort remote-cancel callback, invoked on timeout or caller cancellation. Exceptions are logged but swallowed.</param>
         /// <param name="operationName">Short label used in log/exception messages (e.g. "Replicate prediction", "MiniMax video").</param>
         /// <param name="delayFunc">Delay implementation. Defaults to <see cref="Task.Delay(TimeSpan, CancellationToken)"/>. Tests may inject a no-op.</param>
+        /// <param name="instrumentation">Optional polling scope to record attempt count, transient errors, and terminal outcome. Caller owns disposal.</param>
         public static async Task<TResult> PollAsync<TStatus, TResult>(
             Func<CancellationToken, Task<TStatus>> fetchStatus,
             Func<TStatus, JobState> classify,
@@ -94,7 +96,8 @@ namespace ConduitLLM.Providers.Helpers
             Func<PollProgress, TStatus, Task>? onProgress = null,
             Func<Task>? onAbort = null,
             string operationName = "async job",
-            Func<TimeSpan, CancellationToken, Task>? delayFunc = null)
+            Func<TimeSpan, CancellationToken, Task>? delayFunc = null,
+            ProviderInstrumentation.PollingScope? instrumentation = null)
         {
             ArgumentNullException.ThrowIfNull(fetchStatus);
             ArgumentNullException.ThrowIfNull(classify);
@@ -117,6 +120,7 @@ namespace ConduitLLM.Providers.Helpers
                     var elapsed = DateTime.UtcNow - start;
                     logger.LogWarning("{Operation} polling canceled after {Elapsed:F1}s and {Attempts} attempts",
                         operationName, elapsed.TotalSeconds, attempt);
+                    instrumentation?.RecordCancelled();
                     await SafeAbortAsync(onAbort, logger, operationName);
                     throw new OperationCanceledException($"{operationName} polling was canceled", cancellationToken);
                 }
@@ -126,6 +130,7 @@ namespace ConduitLLM.Providers.Helpers
                 {
                     logger.LogError("{Operation} timed out after {Elapsed:F1}s and {Attempts} attempts (last state: {LastState})",
                         operationName, totalElapsed.TotalSeconds, attempt, lastState?.ToString() ?? "none");
+                    instrumentation?.RecordTimeout();
                     await SafeAbortAsync(onAbort, logger, operationName);
                     throw new RequestTimeoutException(
                         $"{operationName} timed out after {options.Timeout.TotalSeconds:F0}s (last state: {lastState?.ToString() ?? "unknown"})",
@@ -142,27 +147,33 @@ namespace ConduitLLM.Providers.Helpers
                 }
                 catch (OperationCanceledException)
                 {
+                    instrumentation?.RecordCancelled();
                     throw;
                 }
-                catch (ConduitException)
+                catch (ConduitException ex)
                 {
                     // Caller-classified domain exceptions propagate immediately.
+                    instrumentation?.RecordFailure(ex.GetType().Name);
                     throw;
                 }
                 catch (Exception ex)
                 {
                     consecutiveTransient++;
+                    instrumentation?.RecordAttempt(state: null);
+                    instrumentation?.RecordTransientError(ex.GetType().Name);
                     logger.LogWarning(ex,
                         "{Operation} transient fetch error on attempt {Attempt} (consecutive: {Count})",
                         operationName, attempt, consecutiveTransient);
 
                     if (options.MaxConsecutiveTransientErrors is null)
                     {
+                        instrumentation?.RecordFailure(ex.GetType().Name);
                         throw new LLMCommunicationException(
                             $"{operationName} fetch failed: {ex.Message}", ex);
                     }
                     if (consecutiveTransient >= options.MaxConsecutiveTransientErrors.Value)
                     {
+                        instrumentation?.RecordFailure(ex.GetType().Name);
                         throw new LLMCommunicationException(
                             $"{operationName} failed after {consecutiveTransient} consecutive transient errors: {ex.Message}", ex);
                     }
@@ -172,6 +183,7 @@ namespace ConduitLLM.Providers.Helpers
                 }
 
                 var state = classify(status);
+                instrumentation?.RecordAttempt(state.ToString());
 
                 if (state != JobState.TransientError)
                 {
@@ -210,7 +222,11 @@ namespace ConduitLLM.Providers.Helpers
                         return extractSuccess(status);
 
                     case JobState.Failed:
-                        throw extractFailure(status);
+                        {
+                            var failure = extractFailure(status);
+                            instrumentation?.RecordFailure(failure.GetType().Name);
+                            throw failure;
+                        }
 
                     case JobState.RateLimited:
                         await delay(options.MaxDelay, cancellationToken);
@@ -218,13 +234,16 @@ namespace ConduitLLM.Providers.Helpers
 
                     case JobState.TransientError:
                         consecutiveTransient++;
+                        instrumentation?.RecordTransientError(nameof(JobState.TransientError));
                         if (options.MaxConsecutiveTransientErrors is null)
                         {
+                            instrumentation?.RecordFailure(nameof(JobState.TransientError));
                             throw new LLMCommunicationException(
                                 $"{operationName} reported a transient error and fail-fast is enabled");
                         }
                         if (consecutiveTransient >= options.MaxConsecutiveTransientErrors.Value)
                         {
+                            instrumentation?.RecordFailure(nameof(JobState.TransientError));
                             throw new LLMCommunicationException(
                                 $"{operationName} failed after {consecutiveTransient} consecutive transient errors");
                         }

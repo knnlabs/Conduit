@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
@@ -27,7 +28,9 @@ namespace ConduitLLM.Providers.Replicate
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
 
                 // Poll until prediction completes or fails
-                var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
+                using var pollScope = BeginPollingScope("CreateChatCompletion");
+                var finalPrediction = await PollPredictionUntilCompletedAsync(
+                    predictionResponse.Id, apiKey, cancellationToken, pollScope);
 
                 var response = MapToChatCompletionResponse(finalPrediction, request.Model);
                 RecordUsage(response.Usage, "CreateChatCompletion");
@@ -47,6 +50,7 @@ namespace ConduitLLM.Providers.Replicate
 
             using var logScope = BeginProviderLogScope("StreamChatCompletion");
             var instrumentation = BeginStreamingScope("StreamChatCompletion");
+            ProviderInstrumentation.PollingScope? pollScope = null;
 
             ReplicatePredictionRequest? predictionRequest;
             ReplicatePredictionResponse? predictionResponse;
@@ -86,8 +90,9 @@ namespace ConduitLLM.Providers.Replicate
                 {
                     if (predictionResponse != null)
                     {
+                        pollScope = BeginPollingScope("StreamChatCompletion");
                         finalPrediction = await PollPredictionUntilCompletedAsync(
-                            predictionResponse.Id, apiKey, cancellationToken);
+                            predictionResponse.Id, apiKey, cancellationToken, pollScope);
                     }
                 }
                 catch (OperationCanceledException)
@@ -132,6 +137,7 @@ namespace ConduitLLM.Providers.Replicate
             }
             finally
             {
+                pollScope?.Dispose();
                 instrumentation.Dispose();
             }
         }

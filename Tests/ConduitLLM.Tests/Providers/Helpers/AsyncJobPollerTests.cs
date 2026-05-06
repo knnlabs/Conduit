@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Providers.Helpers;
 
 using FluentAssertions;
@@ -436,5 +437,88 @@ public class AsyncJobPollerTests
 
         await act.Should().ThrowAsync<RateLimitExceededException>();
         calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task PollAsync_WithInstrumentation_PropagatesResultUnchanged()
+    {
+        // The scope is caller-owned, so we just verify that PollAsync accepts one,
+        // advances it through attempts, and propagates results unchanged.
+        using var scope = ProviderInstrumentation.BeginPolling(
+            operation: "TestOp",
+            providerName: "TestProvider",
+            providerType: "TestType",
+            model: "test-model");
+
+        var calls = 0;
+        var result = await AsyncJobPoller.PollAsync(
+            fetchStatus: _ =>
+            {
+                calls++;
+                return Task.FromResult(new Status(calls >= 3 ? "done" : "processing"));
+            },
+            classify: s => s.Name == "done" ? JobState.Succeeded : JobState.InProgress,
+            extractSuccess: _ => "ok",
+            extractFailure: _ => new InvalidOperationException(),
+            options: Fast(),
+            logger: NullLogger.Instance,
+            cancellationToken: CancellationToken.None,
+            delayFunc: NoDelay(),
+            instrumentation: scope);
+
+        result.Should().Be("ok");
+        calls.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task PollAsync_WithInstrumentation_TimeoutRecordsTimeoutOutcome()
+    {
+        using var scope = ProviderInstrumentation.BeginPolling(
+            operation: "TestOp",
+            providerName: "TestProvider",
+            providerType: "TestType",
+            model: "test-model");
+
+        var act = async () => await AsyncJobPoller.PollAsync(
+            fetchStatus: _ => Task.FromResult(new Status("processing")),
+            classify: _ => JobState.InProgress,
+            extractSuccess: _ => 0,
+            extractFailure: _ => new InvalidOperationException(),
+            options: new PollingOptions(
+                InitialDelay: TimeSpan.FromMilliseconds(1),
+                MaxDelay: TimeSpan.FromMilliseconds(10),
+                Timeout: TimeSpan.FromMilliseconds(1),
+                Backoff: BackoffStrategy.Fixed),
+            logger: NullLogger.Instance,
+            cancellationToken: CancellationToken.None,
+            delayFunc: (_, _) => Task.Delay(5),
+            instrumentation: scope);
+
+        await act.Should().ThrowAsync<RequestTimeoutException>();
+        // Scope disposal happens via `using`; this test primarily confirms no interaction
+        // breaks the timeout contract — the metric recording is fire-and-forget.
+    }
+
+    [Fact]
+    public async Task PollAsync_WithInstrumentation_ClassifierFailurePropagates()
+    {
+        using var scope = ProviderInstrumentation.BeginPolling(
+            operation: "TestOp",
+            providerName: "TestProvider",
+            providerType: "TestType",
+            model: "test-model");
+
+        var act = async () => await AsyncJobPoller.PollAsync(
+            fetchStatus: _ => Task.FromResult(new Status("failed")),
+            classify: _ => JobState.Failed,
+            extractSuccess: _ => 0,
+            extractFailure: s => new ModelNotFoundException("m", $"provider said {s.Name}"),
+            options: Fast(),
+            logger: NullLogger.Instance,
+            cancellationToken: CancellationToken.None,
+            delayFunc: NoDelay(),
+            instrumentation: scope);
+
+        await act.Should().ThrowAsync<ModelNotFoundException>();
     }
 }

@@ -462,6 +462,18 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
+        /// Begins an instrumentation scope for a long-running async-job poll loop
+        /// (e.g., Replicate predictions, MiniMax video generation).
+        /// Pair with <c>using</c> and pass to <c>AsyncJobPoller.PollAsync</c>.
+        /// </summary>
+        /// <param name="operationName">The operation name (e.g., "CreateVideo", "CreateImage").</param>
+        protected ProviderInstrumentation.PollingScope BeginPollingScope(string operationName)
+        {
+            return ProviderInstrumentation.BeginPolling(
+                operationName, ProviderName, ProviderTypeName, ProviderModelId);
+        }
+
+        /// <summary>
         /// Prepares and validates a request before sending it to the API.
         /// </summary>
         /// <typeparam name="TRequest">The type of the request.</typeparam>

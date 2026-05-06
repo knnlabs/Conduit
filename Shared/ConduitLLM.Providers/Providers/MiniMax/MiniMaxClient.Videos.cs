@@ -138,6 +138,7 @@ namespace ConduitLLM.Providers.MiniMax
                     JitterMilliseconds: 500);
 
                 var taskId = response.TaskId;
+                using var pollScope = BeginPollingScope("CreateVideo");
                 var statusResult = await AsyncJobPoller.PollAsync(
                     fetchStatus: ct => FetchVideoStatusAsync(taskId, httpClient, ct),
                     classify: ClassifyVideoStatus,
@@ -163,7 +164,8 @@ namespace ConduitLLM.Providers.MiniMax
                         };
                         await _progressCallback(taskId, status.Status ?? "unknown", pct);
                     },
-                    operationName: $"MiniMax video generation {taskId}");
+                    operationName: $"MiniMax video generation {taskId}",
+                    instrumentation: pollScope);
 
                 Logger.LogInformation("MiniMax video generation completed: FileId={FileId}", statusResult.FileId);
 
