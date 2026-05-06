@@ -232,47 +232,58 @@ namespace ConduitLLM.Core.Services
 
         private async Task<FileRetrievalResult?> RetrieveFromUrlAsync(string url, CancellationToken cancellationToken)
         {
-            var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            HttpResponseMessage? response = null;
+            try
             {
-                _logger.LogWarning("Failed to retrieve URL {Url}: {StatusCode}", url, response.StatusCode);
-                response.Dispose();
-                return null;
-            }
-
-            var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
-            var contentLength = response.Content.Headers.ContentLength ?? 0;
-            var lastModified = response.Content.Headers.LastModified?.DateTime;
-            var etag = response.Headers.ETag?.Tag;
-
-            // Extract filename from Content-Disposition header if available
-            string? fileName = null;
-            if (response.Content.Headers.ContentDisposition?.FileName != null)
-            {
-                fileName = response.Content.Headers.ContentDisposition.FileName.Trim('"');
-            }
-            else
-            {
-                // Try to extract from URL
-                fileName = Path.GetFileName(new Uri(url).LocalPath);
-            }
-
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-
-            return new FileRetrievalResult
-            {
-                ContentStream = stream,
-                Metadata = new FileMetadata
+                response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                if (!response.IsSuccessStatusCode)
                 {
-                    FileName = fileName,
-                    ContentType = contentType,
-                    SizeBytes = contentLength,
-                    ModifiedAt = lastModified,
-                    StorageProvider = "url",
-                    ETag = etag,
-                    SupportsRangeRequests = response.Headers.AcceptRanges?.Contains("bytes") == true
+                    _logger.LogWarning("Failed to retrieve URL {Url}: {StatusCode}", url, response.StatusCode);
+                    return null;
                 }
-            };
+
+                var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+                var contentLength = response.Content.Headers.ContentLength ?? 0;
+                var lastModified = response.Content.Headers.LastModified?.DateTime;
+                var etag = response.Headers.ETag?.Tag;
+
+                // Extract filename from Content-Disposition header if available
+                string? fileName = null;
+                if (response.Content.Headers.ContentDisposition?.FileName != null)
+                {
+                    fileName = response.Content.Headers.ContentDisposition.FileName.Trim('"');
+                }
+                else
+                {
+                    // Try to extract from URL
+                    fileName = Path.GetFileName(new Uri(url).LocalPath);
+                }
+
+                var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+
+                var result = new FileRetrievalResult
+                {
+                    ContentStream = stream,
+                    Metadata = new FileMetadata
+                    {
+                        FileName = fileName,
+                        ContentType = contentType,
+                        SizeBytes = contentLength,
+                        ModifiedAt = lastModified,
+                        StorageProvider = "url",
+                        ETag = etag,
+                        SupportsRangeRequests = response.Headers.AcceptRanges?.Contains("bytes") == true
+                    },
+                    // Transfer ownership: result.Dispose() will dispose both the stream and the response.
+                    Owner = response
+                };
+                response = null;
+                return result;
+            }
+            finally
+            {
+                response?.Dispose();
+            }
         }
 
         private async Task<FileMetadata?> GetUrlMetadataAsync(string url, CancellationToken cancellationToken)
