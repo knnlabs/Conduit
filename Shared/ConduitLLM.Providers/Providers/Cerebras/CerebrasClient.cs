@@ -68,7 +68,6 @@ namespace ConduitLLM.Providers.Cerebras
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
-        /// <param name="providerName">Optional provider name override. If not specified, defaults to "cerebras".</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing.</exception>
         public CerebrasClient(
@@ -77,15 +76,14 @@ namespace ConduitLLM.Providers.Cerebras
             string providerModelId,
             ILogger<CerebrasClient> logger,
             IHttpClientFactory httpClientFactory,
-            ProviderDefaultModels? defaultModels = null,
-            string? providerName = null)
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 provider,
                 keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
-                providerName ?? "cerebras",
+                "cerebras",
                 baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Cerebras),
                 defaultModels: defaultModels)
         {

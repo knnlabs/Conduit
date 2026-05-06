@@ -71,7 +71,6 @@ namespace ConduitLLM.Providers.SambaNova
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
-        /// <param name="providerName">Optional provider name override. If not specified, defaults to "sambanova".</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing.</exception>
         public SambaNovaClient(
@@ -80,15 +79,14 @@ namespace ConduitLLM.Providers.SambaNova
             string providerModelId,
             ILogger<SambaNovaClient> logger,
             IHttpClientFactory httpClientFactory,
-            ProviderDefaultModels? defaultModels = null,
-            string? providerName = null)
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 provider,
                 keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
-                providerName ?? "sambanova",
+                "sambanova",
                 baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.SambaNova),
                 defaultModels: defaultModels)
         {
