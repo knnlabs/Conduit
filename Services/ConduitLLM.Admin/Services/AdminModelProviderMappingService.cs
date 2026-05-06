@@ -65,18 +65,15 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     public async Task<ModelProviderMapping?> GetMappingByModelIdAsync(int modelId)
     {
         _logger.LogDebug("Getting model provider mapping for model ID: {ModelId}", modelId);
-        var mappings = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-            _mappingRepository.GetPaginatedAsync);
-        return mappings.FirstOrDefault(m => m.ModelProviderTypeAssociation?.ModelId == modelId);
+        var mappings = await _mappingRepository.GetByModelIdAsync(modelId);
+        return mappings.FirstOrDefault();
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ModelProviderMapping>> GetMappingsByModelIdAsync(int modelId)
     {
         _logger.LogDebug("Getting all model provider mappings for model ID: {ModelId}", modelId);
-        var mappings = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-            _mappingRepository.GetPaginatedAsync);
-        return mappings.Where(m => m.ModelProviderTypeAssociation?.ModelId == modelId).ToList();
+        return await _mappingRepository.GetByModelIdAsync(modelId);
     }
 
     /// <inheritdoc />
