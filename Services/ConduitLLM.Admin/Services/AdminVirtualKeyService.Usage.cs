@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
+using Microsoft.EntityFrameworkCore;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
 namespace ConduitLLM.Admin.Services
@@ -27,43 +28,38 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                // Get all virtual keys
-                var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                    _virtualKeyRepository.GetPaginatedAsync);
-                _logger.LogInformation("Processing maintenance for {KeyCount} virtual keys", allKeys.Count);
+                var now = DateTime.UtcNow;
 
-                int keysDisabled = 0;
+                await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-                foreach (var key in allKeys)
+                // Capture identifying fields of the keys we're about to disable so the per-key
+                // audit log lines below have something to reference. Same predicate as the
+                // UPDATE; modulo a tiny race with concurrent disables, the lists agree.
+                var expiredKeys = await context.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.IsEnabled && vk.ExpiresAt != null && vk.ExpiresAt < now)
+                    .Select(vk => new { vk.Id, vk.KeyName })
+                    .ToListAsync();
+
+                if (expiredKeys.Count == 0)
                 {
-                    try
-                    {
-                        // Budget resets are no longer performed in the bank account model
-                        // Only check and disable expired keys
-                        if (key.IsEnabled && key.ExpiresAt.HasValue && key.ExpiresAt.Value < DateTime.UtcNow)
-                        {
-                            key.IsEnabled = false;
-                            key.UpdatedAt = DateTime.UtcNow;
+                    _logger.LogInformation("Virtual key maintenance completed. No expired keys to disable.");
+                    return;
+                }
 
-                            var updated = await _virtualKeyRepository.UpdateAsync(key);
-                            if (updated)
-                            {
-                                keysDisabled++;
-                                _logger.LogInformation("Disabled expired virtual key {KeyId} ({KeyName})",
-                                    key.Id, LoggingSanitizer.S(key.KeyName));
-                            }
-                            else
-                            {
-                                _logger.LogWarning("Failed to disable expired virtual key {KeyId} ({KeyName})",
-                                    key.Id, LoggingSanitizer.S(key.KeyName));
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error processing maintenance for virtual key {KeyId}", key.Id);
-                        // Continue processing other keys even if one fails
-                    }
+                _logger.LogInformation("Processing maintenance for {KeyCount} expired virtual keys", expiredKeys.Count);
+
+                // Disable all matching keys in a single SQL UPDATE rather than N round-trips.
+                var keysDisabled = await context.VirtualKeys
+                    .Where(vk => vk.IsEnabled && vk.ExpiresAt != null && vk.ExpiresAt < now)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(vk => vk.IsEnabled, false)
+                        .SetProperty(vk => vk.UpdatedAt, now));
+
+                foreach (var key in expiredKeys)
+                {
+                    _logger.LogInformation("Disabled expired virtual key {KeyId} ({KeyName})",
+                        key.Id, LoggingSanitizer.S(key.KeyName));
                 }
 
                 _logger.LogInformation("Virtual key maintenance completed. Keys disabled: {KeysDisabled}", keysDisabled);
