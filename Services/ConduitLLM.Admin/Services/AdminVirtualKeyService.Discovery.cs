@@ -27,6 +27,7 @@ namespace ConduitLLM.Admin.Services
             using var context = await _dbContextFactory.CreateDbContextAsync();
             
             var modelMappings = await context.ModelProviderMappings
+                .AsNoTracking()
                 .Include(m => m.Provider)
                 .Include(m => m.ModelProviderTypeAssociation)
                     .ThenInclude(mpta => mpta.Model)

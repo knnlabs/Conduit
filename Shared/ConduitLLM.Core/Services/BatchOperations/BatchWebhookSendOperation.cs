@@ -87,7 +87,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 // Add headers
-                var request = new HttpRequestMessage(HttpMethod.Post, item.WebhookUrl)
+                using var request = new HttpRequestMessage(HttpMethod.Post, item.WebhookUrl)
                 {
                     Content = content
                 };
@@ -111,7 +111,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-                var response = await httpClient.SendAsync(request, cts.Token);
+                using var response = await httpClient.SendAsync(request, cts.Token);
 
                 // Notify delivery status
                 if (response.IsSuccessStatusCode)

@@ -194,12 +194,12 @@ namespace ConduitLLM.Gateway.Services
                 }
             }
 
-            var response = await httpClient.PostAsync(_options.Url, content, cancellationToken);
-            
+            using var response = await httpClient.PostAsync(_options.Url, content, cancellationToken);
+
             if (!response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("Webhook failed with status {StatusCode}: {Response}", 
+                _logger.LogError("Webhook failed with status {StatusCode}: {Response}",
                     response.StatusCode, responseBody);
                 throw new HttpRequestException($"Webhook failed with status {response.StatusCode}");
             }

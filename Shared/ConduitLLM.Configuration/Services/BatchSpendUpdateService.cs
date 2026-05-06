@@ -270,6 +270,7 @@ namespace ConduitLLM.Configuration.Services
 
                     // Get keys in this group for cache invalidation
                     var groupKeys = await context.VirtualKeys
+                        .AsNoTracking()
                         .Where(vk => vk.VirtualKeyGroupId == groupId)
                         .Select(vk => new { vk.Id, vk.KeyHash })
                         .ToListAsync();
