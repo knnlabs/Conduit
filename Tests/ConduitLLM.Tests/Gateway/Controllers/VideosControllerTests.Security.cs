@@ -308,9 +308,6 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTaskRegistry.Setup(x => x.TryCancel(taskId))
                 .Returns(true);
 
-            _mockVideoService.Setup(x => x.CancelVideoGenerationAsync(taskId, virtualKey, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
             _mockTaskService.Setup(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -328,7 +325,6 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             result.Should().BeOfType<NoContentResult>();
             _mockTaskRegistry.Verify(x => x.TryCancel(taskId), Times.Once);
-            _mockVideoService.Verify(x => x.CancelVideoGenerationAsync(taskId, virtualKey, It.IsAny<CancellationToken>()), Times.Once);
             _mockTaskService.Verify(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()), Times.Once);
         }
 

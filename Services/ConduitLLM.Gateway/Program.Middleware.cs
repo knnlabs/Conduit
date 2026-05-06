@@ -70,11 +70,13 @@ public partial class Program
         // Add usage tracking middleware to capture LLM usage from responses
         app.UseUsageTracking();
 
-        // Add security middleware (IP filtering, rate limiting, ban checks)
+        // Add security middleware (IP filtering, ban checks)
         app.UseCoreApiSecurity();
 
-        // Enable rate limiting before metrics so rejected requests aren't counted as served
-        app.UseRateLimiter();
+        // Enforce per-virtual-key RPM/RPD rate limits (placed before metrics so rejected
+        // requests aren't counted as served). Reads VirtualKey.KeyHash + RateLimitRpm/Rpd
+        // stashed by VirtualKeyAuthenticationHandler; Backend-scheme requests pass through.
+        app.UseVirtualKeyRateLimiting();
 
         // Add HTTP metrics middleware for comprehensive request tracking
         app.UseMiddleware<ConduitLLM.Gateway.Middleware.HttpMetricsMiddleware>();

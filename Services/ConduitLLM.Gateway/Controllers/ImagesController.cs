@@ -13,7 +13,7 @@ namespace ConduitLLM.Gateway.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/images")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
     [RequireBalance]
     [Tags("Images")]
     public partial class ImagesController : GatewayControllerBase

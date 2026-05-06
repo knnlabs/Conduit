@@ -2,10 +2,12 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
+using MassTransit;
 using ConduitLLM.Gateway.Authorization;
 using ConduitLLM.Gateway.Constants;
+using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Constants;
@@ -19,11 +21,9 @@ namespace ConduitLLM.Gateway.Controllers
     [Route("v1/videos")]
     [Authorize(AuthenticationSchemes = "VirtualKey")]
     [RequireBalance]
-    [EnableRateLimiting("VirtualKeyPolicy")]
     [Tags("Videos")]
     public class VideosController : GatewayControllerBase
     {
-        private readonly IVideoGenerationService _videoService;
         private readonly IAsyncTaskService _taskService;
         private readonly IOperationTimeoutProvider _timeoutProvider;
         private readonly ICancellableTaskRegistry _taskRegistry;
@@ -33,15 +33,14 @@ namespace ConduitLLM.Gateway.Controllers
         /// Initializes a new instance of the <see cref="VideosController"/> class.
         /// </summary>
         public VideosController(
-            IVideoGenerationService videoService,
             IAsyncTaskService taskService,
             IOperationTimeoutProvider timeoutProvider,
             ICancellableTaskRegistry taskRegistry,
             ILogger<VideosController> logger,
-            ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService)
-            : base(logger)
+            ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
+            IPublishEndpoint publishEndpoint)
+            : base(publishEndpoint, logger)
         {
-            _videoService = videoService ?? throw new ArgumentNullException(nameof(videoService));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _timeoutProvider = timeoutProvider ?? throw new ArgumentNullException(nameof(timeoutProvider));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
@@ -64,13 +63,29 @@ namespace ConduitLLM.Gateway.Controllers
         {
             return ExecuteAsync(async () =>
             {
-                // Get virtual key and ID from HttpContext (set by VirtualKeyAuthenticationHandler)
-                var virtualKey = HttpContext.Items["VirtualKey"]?.ToString();
-                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-
-                if (string.IsNullOrEmpty(virtualKey) || string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
+                var virtualKey = CurrentVirtualKey;
+                if (string.IsNullOrEmpty(virtualKey) || CurrentVirtualKeyId == null)
                 {
                     return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
+                }
+                var virtualKeyId = CurrentVirtualKeyId.Value;
+
+                // Validate the request
+                if (string.IsNullOrWhiteSpace(request.Prompt))
+                {
+                    return OpenAIError(400, "Prompt is required", "missing_parameter");
+                }
+                if (string.IsNullOrWhiteSpace(request.Model))
+                {
+                    return OpenAIError(400, "Model is required", "missing_parameter");
+                }
+                if (request.Duration.HasValue && (request.Duration.Value < 1 || request.Duration.Value > 60))
+                {
+                    return OpenAIError(400, "Duration must be between 1 and 60 seconds", "invalid_value");
+                }
+                if (request.Fps.HasValue && (request.Fps.Value < 1 || request.Fps.Value > 120))
+                {
+                    return OpenAIError(400, "FPS must be between 1 and 120", "invalid_value");
                 }
 
                 // Store video request parameters for usage tracking and pricing
@@ -100,23 +115,57 @@ namespace ConduitLLM.Gateway.Controllers
                 // Create a linked cancellation token that can be controlled independently
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-                var response = await _videoService.GenerateVideoWithTaskAsync(
-                    request,
-                    virtualKey,
-                    cts.Token);
-
-                // Extract task ID from the response
-                var taskId = response.Data?.FirstOrDefault()?.Url?.Replace("pending:", "");
-                if (string.IsNullOrEmpty(taskId))
+                // Build task metadata. The orchestrator reads ExtensionData["VirtualKey"] for re-validation
+                // and ExtensionData["Request"] to reconstruct the original request when consuming the event.
+                var taskMetadata = new TaskMetadata(virtualKeyId)
                 {
-                    throw new InvalidOperationException("Failed to create video generation task");
-                }
+                    Model = request.Model,
+                    Prompt = request.Prompt,
+                    ExtensionData = new Dictionary<string, object>
+                    {
+                        ["VirtualKey"] = virtualKey,
+                        ["Request"] = request
+                    }
+                };
+
+                var taskId = await _taskService.CreateTaskAsync("video_generation", virtualKeyId, taskMetadata, cts.Token);
 
                 // Register the task for cancellation
                 _taskRegistry.RegisterTask(taskId, cts);
-                Logger.LogDebug("Registered task {TaskId} for cancellation", taskId);
 
-                // Create task response
+                // Convert ExtensionData to provider options for the event payload
+                Dictionary<string, object>? providerOptions = null;
+                if (request.ExtensionData != null && request.ExtensionData.Count > 0)
+                {
+                    providerOptions = new Dictionary<string, object>();
+                    foreach (var kvp in request.ExtensionData)
+                    {
+                        providerOptions[kvp.Key] = kvp.Value.ToString();
+                    }
+                }
+
+                PublishEventFireAndForget(new VideoGenerationRequested
+                {
+                    RequestId = taskId,
+                    Model = request.Model,
+                    Prompt = request.Prompt,
+                    VirtualKeyId = virtualKeyId.ToString(),
+                    IsAsync = true,
+                    RequestedAt = DateTime.UtcNow,
+                    CorrelationId = taskId,
+                    WebhookUrl = request.WebhookUrl,
+                    WebhookHeaders = request.WebhookHeaders,
+                    Parameters = new VideoGenerationParameters
+                    {
+                        Size = request.Size,
+                        Duration = request.Duration,
+                        Fps = request.Fps,
+                        Style = request.Style,
+                        ResponseFormat = request.ResponseFormat,
+                        ProviderOptions = providerOptions
+                    }
+                }, "create async video generation", new { TaskId = taskId, Model = request.Model });
+
                 var taskResponse = new VideoGenerationTaskResponse
                 {
                     TaskId = taskId,
@@ -146,11 +195,11 @@ namespace ConduitLLM.Gateway.Controllers
         {
             return ExecuteAsync(async () =>
             {
-                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
+                if (CurrentVirtualKeyId == null)
                 {
                     return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
                 }
+                var virtualKeyId = CurrentVirtualKeyId.Value;
 
                 var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
                 if (taskStatus == null)
@@ -180,25 +229,10 @@ namespace ConduitLLM.Gateway.Controllers
                     ResultRaw = taskStatus.Result?.ToString()
                 };
 
-                // If completed, try to get the video response
-                if (taskStatus.State == TaskState.Completed && !string.IsNullOrEmpty(taskStatus.Result?.ToString()))
+                // If completed, deserialize the stored result into a typed VideoGenerationResponse.
+                if (taskStatus.State == TaskState.Completed && taskStatus.Result != null)
                 {
-                    try
-                    {
-                        var virtualKey = HttpContext.Items["VirtualKey"]?.ToString();
-                        if (!string.IsNullOrEmpty(virtualKey))
-                        {
-                            var videoResponse = await _videoService.GetVideoGenerationStatusAsync(
-                                taskId,
-                                virtualKey,
-                                cancellationToken);
-                            response.Result = videoResponse;
-                        }
-                    }
-                    catch (NotImplementedException)
-                    {
-                        // Status tracking not yet implemented, just return basic status
-                    }
+                    response.Result = DeserializeVideoResult(taskStatus.Result, taskId);
                 }
 
                 return Ok(response);
@@ -222,11 +256,11 @@ namespace ConduitLLM.Gateway.Controllers
         {
             return ExecuteAsync(async () =>
             {
-                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
+                if (CurrentVirtualKeyId == null)
                 {
                     return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
                 }
+                var virtualKeyId = CurrentVirtualKeyId.Value;
 
                 var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
                 if (taskStatus == null)
@@ -301,11 +335,11 @@ namespace ConduitLLM.Gateway.Controllers
         {
             return ExecuteAsync(async () =>
             {
-                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
+                if (CurrentVirtualKeyId == null)
                 {
                     return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
                 }
+                var virtualKeyId = CurrentVirtualKeyId.Value;
 
                 var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
                 if (taskStatus == null)
@@ -327,63 +361,62 @@ namespace ConduitLLM.Gateway.Controllers
                     return OpenAIError(409, $"Task is already {taskStatus.State.ToString().ToLowerInvariant()} and cannot be cancelled", "invalid_operation");
                 }
 
-                // Try to cancel via the registry first
+                // Try to cancel via the registry first (signals any in-flight provider call)
                 var registryCancelled = _taskRegistry.TryCancel(taskId);
                 if (registryCancelled)
                 {
                     Logger.LogInformation("Cancelled task {TaskId} via registry", taskId);
                 }
 
-                // Also notify the video service
-                var virtualKey = HttpContext.Items["VirtualKey"]?.ToString();
-                var cancelled = await _videoService.CancelVideoGenerationAsync(
-                    taskId,
-                    virtualKey ?? string.Empty,
-                    cancellationToken);
+                // Mark the task as cancelled and notify consumers via event
+                await _taskService.CancelTaskAsync(taskId, cancellationToken);
 
-                if (cancelled || registryCancelled)
+                PublishEventFireAndForget(new VideoGenerationCancelled
                 {
-                    // Update task status to cancelled
-                    await _taskService.CancelTaskAsync(taskId, cancellationToken);
-                    return NoContent();
-                }
-                else
-                {
-                    return OpenAIError(409, "Unable to cancel the video generation task", "cancellation_failed");
-                }
+                    RequestId = taskId,
+                    CancelledAt = DateTime.UtcNow,
+                    CorrelationId = taskId,
+                    Reason = "User requested cancellation"
+                }, "cancel video generation", new { TaskId = taskId });
+
+                return NoContent();
             },
             "CancelTask",
             taskId);
         }
 
         /// <summary>
-        /// Stores video request parameters in HttpContext.Items for usage tracking and pricing.
+        /// Deserializes the stored task result into a typed <see cref="VideoGenerationResponse"/>.
+        /// The result may already be a typed object (in-memory task store) or a JsonElement (Redis/DB).
+        /// Returns null if deserialization fails — caller falls back to <c>ResultRaw</c>.
+        /// </summary>
+        private VideoGenerationResponse? DeserializeVideoResult(object result, string taskId)
+        {
+            try
+            {
+                if (result is VideoGenerationResponse typed)
+                {
+                    return typed;
+                }
+                var json = result is JsonElement element
+                    ? element.GetRawText()
+                    : JsonSerializer.Serialize(result);
+                return JsonSerializer.Deserialize<VideoGenerationResponse>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to deserialize video task result for {TaskId}", taskId);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Stores video request parameters in a typed <see cref="VideoUsageContext"/> for
+        /// the usage tracking middleware (cost calculation, request logging, pricing rules).
         /// </summary>
         private void StoreVideoRequestParameters(VideoGenerationRequest request)
         {
-            HttpContext.Items[HttpContextKeys.VideoRequestModel] = request.Model;
-            HttpContext.Items[HttpContextKeys.VideoRequestN] = request.N;
-
-            if (!string.IsNullOrEmpty(request.Size))
-            {
-                HttpContext.Items[HttpContextKeys.VideoRequestSize] = request.Size;
-            }
-
-            if (request.Duration.HasValue)
-            {
-                HttpContext.Items[HttpContextKeys.VideoRequestDuration] = request.Duration.Value;
-            }
-
-            if (request.Fps.HasValue)
-            {
-                HttpContext.Items[HttpContextKeys.VideoRequestFps] = request.Fps.Value;
-            }
-
-            if (!string.IsNullOrEmpty(request.Style))
-            {
-                HttpContext.Items[HttpContextKeys.VideoRequestStyle] = request.Style;
-            }
-
             // Build pricing parameters dictionary for rules-based pricing
             var pricingParameters = new Dictionary<string, object>();
 
@@ -391,23 +424,19 @@ namespace ConduitLLM.Gateway.Controllers
             {
                 pricingParameters["resolution"] = NormalizeResolution(request.Size);
             }
-
             if (request.Duration.HasValue)
             {
                 pricingParameters["duration"] = request.Duration.Value;
             }
-
             if (request.Fps.HasValue)
             {
                 pricingParameters["fps"] = request.Fps.Value;
             }
-
             if (!string.IsNullOrEmpty(request.Style))
             {
                 pricingParameters["style"] = request.Style;
             }
 
-            // Extract additional pricing parameters from ExtensionData
             if (request.ExtensionData != null)
             {
                 ExtractExtensionParameter(request.ExtensionData, "with_audio", pricingParameters);
@@ -419,10 +448,19 @@ namespace ConduitLLM.Gateway.Controllers
                 ExtractExtensionParameter(request.ExtensionData, "motion_bucket_id", pricingParameters);
             }
 
-            HttpContext.Items[HttpContextKeys.VideoRequestPricingParameters] = pricingParameters;
+            HttpContext.SetUsageContext(new VideoUsageContext
+            {
+                Model = request.Model,
+                Size = string.IsNullOrEmpty(request.Size) ? null : request.Size,
+                Duration = request.Duration,
+                Fps = request.Fps,
+                Style = string.IsNullOrEmpty(request.Style) ? null : request.Style,
+                N = request.N,
+                PricingParameters = pricingParameters.Count > 0 ? pricingParameters : null
+            });
 
             Logger.LogDebug(
-                "Stored video request parameters: Model={Model}, Size={Size}, Duration={Duration}, N={N}, PricingParams={PricingParamsCount}",
+                "Stored video usage context: Model={Model}, Size={Size}, Duration={Duration}, N={N}, PricingParams={PricingParamsCount}",
                 request.Model, request.Size, request.Duration, request.N, pricingParameters.Count);
         }
 

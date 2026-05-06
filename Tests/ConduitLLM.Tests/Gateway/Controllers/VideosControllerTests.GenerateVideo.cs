@@ -1,4 +1,6 @@
 using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 
@@ -29,19 +31,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var virtualKey = "condt_test_key_123456";
             var taskId = "task-video-123";
 
-            var videoResponse = new VideoGenerationResponse
-            {
-                Data = new List<VideoData>
-                {
-                    new VideoData { Url = $"pending:{taskId}" }
-                }
-            };
-
-            _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
-                    It.IsAny<VideoGenerationRequest>(),
-                    virtualKey,
+            _mockTaskService.Setup(x => x.CreateTaskAsync(
+                    "video_generation",
+                    123,
+                    It.IsAny<TaskMetadata>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(videoResponse);
+                .ReturnsAsync(taskId);
 
             _controller.ControllerContext = CreateControllerContext();
             _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
@@ -61,6 +56,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(TaskStateConstants.Pending, taskResponse.Status);
             Assert.Contains(taskId, taskResponse.CheckStatusUrl);
             _mockTaskRegistry.Verify(x => x.RegisterTask(taskId, It.IsAny<CancellationTokenSource>()), Times.Once);
+            _mockPublishEndpoint.Verify(x => x.Publish(
+                It.IsAny<VideoGenerationRequested>(),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -86,61 +84,17 @@ namespace ConduitLLM.Tests.Http.Controllers
         }
 
         [Fact]
-        public async Task GenerateVideoAsync_WithArgumentException_ShouldReturnBadRequest()
+        public async Task GenerateVideoAsync_WithEmptyPrompt_ShouldReturnBadRequest()
         {
             // Arrange
             var request = new VideoGenerationRequest
             {
-                Prompt = "Test prompt",
-                Model = "invalid-model"
-            };
-
-            var virtualKey = "condt_test_key_123456";
-
-            _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
-                    It.IsAny<VideoGenerationRequest>(),
-                    It.IsAny<string>(),
-                    It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new ArgumentException("Invalid model specified"));
-
-            _controller.ControllerContext = CreateControllerContext();
-            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
-            _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
-                new System.Security.Claims.ClaimsIdentity(new[]
-                {
-                    new System.Security.Claims.Claim("VirtualKeyId", "123")
-                }, "Test"));
-
-            // Act
-            var result = await _controller.GenerateVideoAsync(request);
-
-            // Assert - ExceptionToResponseMapper maps ArgumentException to 400
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(400, objectResult.StatusCode);
-            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
-        }
-
-        [Fact]
-        public async Task GenerateVideoAsync_WithUnauthorizedAccessException_ShouldReturnUnauthorized()
-        {
-            // Arrange
-            var request = new VideoGenerationRequest
-            {
-                Prompt = "Test prompt",
+                Prompt = "",
                 Model = "runway-ml"
             };
 
-            var virtualKey = "condt_test_key_123456";
-
-            _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
-                    It.IsAny<VideoGenerationRequest>(),
-                    It.IsAny<string>(),
-                    It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new UnauthorizedAccessException("Virtual key does not have permission"));
-
             _controller.ControllerContext = CreateControllerContext();
-            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
+            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = "condt_test_key";
             _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
                 new System.Security.Claims.ClaimsIdentity(new[]
                 {
@@ -150,33 +104,28 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GenerateVideoAsync(request);
 
-            // Assert - ExceptionToResponseMapper maps UnauthorizedAccessException to 401
+            // Assert
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(401, objectResult.StatusCode);
+            Assert.Equal(400, objectResult.StatusCode);
             var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
+            Assert.Equal("Prompt is required", errorResponse.Error.Message);
+            _mockTaskService.Verify(x => x.CreateTaskAsync(
+                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<TaskMetadata>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]
-        public async Task GenerateVideoAsync_WithNotSupportedException_ShouldReturnBadRequest()
+        public async Task GenerateVideoAsync_WithEmptyModel_ShouldReturnBadRequest()
         {
             // Arrange
             var request = new VideoGenerationRequest
             {
                 Prompt = "Test prompt",
-                Model = "text-only-model"
+                Model = ""
             };
 
-            var virtualKey = "condt_test_key_123456";
-
-            _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
-                    It.IsAny<VideoGenerationRequest>(),
-                    It.IsAny<string>(),
-                    It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new NotSupportedException("Model does not support video generation"));
-
             _controller.ControllerContext = CreateControllerContext();
-            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
+            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = "condt_test_key";
             _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
                 new System.Security.Claims.ClaimsIdentity(new[]
                 {
@@ -186,11 +135,69 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GenerateVideoAsync(request);
 
-            // Assert - ExceptionToResponseMapper maps NotSupportedException to 400
+            // Assert
             var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(400, objectResult.StatusCode);
             var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
+            Assert.Equal("Model is required", errorResponse.Error.Message);
+        }
+
+        [Fact]
+        public async Task GenerateVideoAsync_WithInvalidDuration_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var request = new VideoGenerationRequest
+            {
+                Prompt = "Test prompt",
+                Model = "runway-ml",
+                Duration = 999
+            };
+
+            _controller.ControllerContext = CreateControllerContext();
+            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = "condt_test_key";
+            _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity(new[]
+                {
+                    new System.Security.Claims.Claim("VirtualKeyId", "123")
+                }, "Test"));
+
+            // Act
+            var result = await _controller.GenerateVideoAsync(request);
+
+            // Assert
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Contains("Duration must be between", errorResponse.Error.Message);
+        }
+
+        [Fact]
+        public async Task GenerateVideoAsync_WithInvalidFps_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var request = new VideoGenerationRequest
+            {
+                Prompt = "Test prompt",
+                Model = "runway-ml",
+                Fps = 999
+            };
+
+            _controller.ControllerContext = CreateControllerContext();
+            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = "condt_test_key";
+            _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity(new[]
+                {
+                    new System.Security.Claims.Claim("VirtualKeyId", "123")
+                }, "Test"));
+
+            // Act
+            var result = await _controller.GenerateVideoAsync(request);
+
+            // Assert
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Contains("FPS must be between", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -203,16 +210,15 @@ namespace ConduitLLM.Tests.Http.Controllers
                 Model = "runway-ml"
             };
 
-            var virtualKey = "condt_test_key_123456";
-
-            _mockVideoService.Setup(x => x.GenerateVideoWithTaskAsync(
-                    It.IsAny<VideoGenerationRequest>(),
+            _mockTaskService.Setup(x => x.CreateTaskAsync(
                     It.IsAny<string>(),
+                    It.IsAny<int>(),
+                    It.IsAny<TaskMetadata>(),
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Internal error"));
 
             _controller.ControllerContext = CreateControllerContext();
-            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
+            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = "condt_test_key";
             _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
                 new System.Security.Claims.ClaimsIdentity(new[]
                 {

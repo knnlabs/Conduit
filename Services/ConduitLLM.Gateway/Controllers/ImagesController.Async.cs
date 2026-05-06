@@ -90,12 +90,11 @@ namespace ConduitLLM.Gateway.Controllers
                     });
                 }
 
-                // Get virtual key ID from authenticated user claims
-                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
+                if (CurrentVirtualKeyId == null)
                 {
-                    return OpenAIError(401, "Invalid authentication", "unauthorized");
+                    return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
                 }
+                var virtualKeyId = CurrentVirtualKeyId.Value;
 
                 // Get virtual key information from service
                 var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
@@ -207,27 +206,16 @@ namespace ConduitLLM.Gateway.Controllers
                     });
                 }
                 
-                _logger.LogInformation("Task {TaskId} retrieved, State: {State}, HasMetadata: {HasMetadata}", 
+                _logger.LogInformation("Task {TaskId} retrieved, State: {State}, HasMetadata: {HasMetadata}",
                     taskId, task.State, task.Metadata != null);
 
-                // Verify user owns this task by comparing virtual key IDs
-                var userVirtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-                if (task.Metadata != null && !string.IsNullOrEmpty(userVirtualKeyIdClaim) && int.TryParse(userVirtualKeyIdClaim, out var userVirtualKeyId))
+                // Verify user owns this task. Return 404 (not 403) to avoid leaking task existence.
+                var callerVirtualKeyId = CurrentVirtualKeyId;
+                if (callerVirtualKeyId != null && task.Metadata != null && task.Metadata.VirtualKeyId != callerVirtualKeyId.Value)
                 {
-                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
-                    var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
-                    if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
-                    {
-                        var taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
-                        _logger.LogInformation("Validating task ownership - Task VirtualKeyId: {TaskKeyId}, User VirtualKeyId: {UserKeyId}", 
-                            taskVirtualKeyId, userVirtualKeyId);
-                        
-                        // Compare the virtual key IDs
-                        if (taskVirtualKeyId != userVirtualKeyId)
-                        {
-                            _logger.LogWarning("Virtual key ID mismatch for task {TaskId} - Expected: {Expected}, Got: {Got}", 
-                                taskId, taskVirtualKeyId, userVirtualKeyId);
-                            return NotFound(new OpenAIErrorResponse
+                    _logger.LogWarning("Virtual key {CallerKeyId} attempted to access task {TaskId} owned by {OwnerKeyId}",
+                        callerVirtualKeyId.Value, taskId, task.Metadata.VirtualKeyId);
+                    return NotFound(new OpenAIErrorResponse
                     {
                         Error = new OpenAIError
                         {
@@ -237,10 +225,6 @@ namespace ConduitLLM.Gateway.Controllers
                             Param = "task_id"
                         }
                     });
-                        }
-                        
-                        _logger.LogInformation("Virtual key validation successful for task {TaskId}", taskId);
-                    }
                 }
 
                 // Build response
@@ -290,24 +274,13 @@ namespace ConduitLLM.Gateway.Controllers
                     });
                 }
 
-                // Verify user owns this task by comparing virtual key IDs
-                var userVirtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-                if (task.Metadata != null && !string.IsNullOrEmpty(userVirtualKeyIdClaim) && int.TryParse(userVirtualKeyIdClaim, out var userVirtualKeyId))
+                // Verify user owns this task. Return 404 (not 403) to avoid leaking task existence.
+                var callerVirtualKeyId = CurrentVirtualKeyId;
+                if (callerVirtualKeyId != null && task.Metadata != null && task.Metadata.VirtualKeyId != callerVirtualKeyId.Value)
                 {
-                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
-                    var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
-                    if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
-                    {
-                        var taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
-                        _logger.LogInformation("Validating task ownership - Task VirtualKeyId: {TaskKeyId}, User VirtualKeyId: {UserKeyId}", 
-                            taskVirtualKeyId, userVirtualKeyId);
-                        
-                        // Compare the virtual key IDs
-                        if (taskVirtualKeyId != userVirtualKeyId)
-                        {
-                            _logger.LogWarning("Virtual key ID mismatch for task {TaskId} - Expected: {Expected}, Got: {Got}", 
-                                taskId, taskVirtualKeyId, userVirtualKeyId);
-                            return NotFound(new OpenAIErrorResponse
+                    _logger.LogWarning("Virtual key {CallerKeyId} attempted to cancel task {TaskId} owned by {OwnerKeyId}",
+                        callerVirtualKeyId.Value, taskId, task.Metadata.VirtualKeyId);
+                    return NotFound(new OpenAIErrorResponse
                     {
                         Error = new OpenAIError
                         {
@@ -317,10 +290,6 @@ namespace ConduitLLM.Gateway.Controllers
                             Param = "task_id"
                         }
                     });
-                        }
-                        
-                        _logger.LogInformation("Virtual key validation successful for task {TaskId}", taskId);
-                    }
                 }
 
                 // Check if task can be cancelled
@@ -337,23 +306,11 @@ namespace ConduitLLM.Gateway.Controllers
                     });
                 }
 
-                // Get virtual key ID from metadata for event publishing
-                var cancelVirtualKeyId = 0;
-                if (task.Metadata != null)
-                {
-                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
-                    var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
-                    if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
-                    {
-                        cancelVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
-                    }
-                }
-
-                // Publish cancellation event
+                // Publish cancellation event using the task owner's virtual key ID
                 PublishEventFireAndForget(new ImageGenerationCancelled
                 {
                     TaskId = taskId,
-                    VirtualKeyId = cancelVirtualKeyId,
+                    VirtualKeyId = task.Metadata?.VirtualKeyId ?? 0,
                     Reason = "Cancelled by user request",
                     CancelledAt = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid().ToString()

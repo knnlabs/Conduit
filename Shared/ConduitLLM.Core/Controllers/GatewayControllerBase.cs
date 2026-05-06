@@ -134,6 +134,45 @@ namespace ConduitLLM.Core.Controllers
         }
 
         /// <summary>
+        /// Authenticated virtual key ID for the current request, or null if unauthenticated.
+        /// Reads from <c>HttpContext.Items["VirtualKeyId"]</c> (populated by VirtualKeyAuthenticationHandler)
+        /// and falls back to the <c>VirtualKeyId</c> claim.
+        /// </summary>
+        protected int? CurrentVirtualKeyId
+        {
+            get
+            {
+                if (HttpContext.Items.TryGetValue("VirtualKeyId", out var idObj) && idObj is int id)
+                {
+                    return id;
+                }
+                var claim = User.FindFirst("VirtualKeyId")?.Value;
+                if (!string.IsNullOrEmpty(claim) && int.TryParse(claim, out var parsed))
+                {
+                    return parsed;
+                }
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Raw virtual key string for the current request, or null if unauthenticated.
+        /// Reads from <c>HttpContext.Items["VirtualKey"]</c> (populated by VirtualKeyAuthenticationHandler)
+        /// and falls back to the <c>VirtualKey</c> claim.
+        /// </summary>
+        protected string? CurrentVirtualKey
+        {
+            get
+            {
+                if (HttpContext.Items.TryGetValue("VirtualKey", out var keyObj) && keyObj is string key && !string.IsNullOrEmpty(key))
+                {
+                    return key;
+                }
+                return User.FindFirst("VirtualKey")?.Value;
+            }
+        }
+
+        /// <summary>
         /// Creates an OpenAI-compatible error response for explicit (non-exception) error returns.
         /// Use this when returning validation errors or other expected failures from action methods.
         /// </summary>

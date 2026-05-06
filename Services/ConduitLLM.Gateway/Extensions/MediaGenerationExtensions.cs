@@ -1,9 +1,6 @@
-using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Configuration;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Services;
-using MassTransit;
 
 namespace ConduitLLM.Gateway.Extensions;
 
@@ -17,33 +14,6 @@ public static class MediaGenerationExtensions
     /// </summary>
     public static IServiceCollection AddMediaGenerationServices(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
-        // Register Video Generation Service with explicit dependencies
-        services.AddScoped<IVideoGenerationService>(sp =>
-        {
-            var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
-            var capabilityService = sp.GetRequiredService<IModelCapabilityService>();
-            var costService = sp.GetRequiredService<ICostCalculationService>();
-            var virtualKeyService = sp.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyService>();
-            var mediaStorage = sp.GetRequiredService<IMediaStorageService>();
-            var taskService = sp.GetRequiredService<IAsyncTaskService>();
-            var logger = sp.GetRequiredService<ILogger<VideoGenerationService>>();
-            var modelMappingService = sp.GetRequiredService<IModelProviderMappingService>();
-            var publishEndpoint = sp.GetService<IPublishEndpoint>(); // Optional
-            var taskRegistry = sp.GetService<ICancellableTaskRegistry>(); // Optional
-
-            return new VideoGenerationService(
-                clientFactory,
-                capabilityService,
-                costService,
-                virtualKeyService,
-                mediaStorage,
-                taskService,
-                logger,
-                modelMappingService,
-                publishEndpoint,
-                taskRegistry);
-        });
-
         // Configure Video Generation Retry Settings
         services.Configure<VideoGenerationRetryConfiguration>(options =>
         {

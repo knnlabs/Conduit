@@ -56,73 +56,8 @@ public static class HttpContextKeys
     /// </summary>
     public const string ModelCostId = "ModelCostId";
 
-    /// <summary>
-    /// Key for storing the model name from image generation request (before provider mapping).
-    /// Value type: string
-    /// </summary>
-    public const string ImageRequestModel = "ImageRequestModel";
-
-    /// <summary>
-    /// Key for storing the quality setting from image generation request.
-    /// Value type: string (e.g., "standard", "hd")
-    /// </summary>
-    public const string ImageRequestQuality = "ImageRequestQuality";
-
-    /// <summary>
-    /// Key for storing the size/resolution from image generation request.
-    /// Value type: string (e.g., "1024x1024", "1792x1024")
-    /// </summary>
-    public const string ImageRequestSize = "ImageRequestSize";
-
-    /// <summary>
-    /// Key for storing the number of images requested.
-    /// Value type: int
-    /// </summary>
-    public const string ImageRequestN = "ImageRequestN";
-
-    #region Video Request Keys
-
-    /// <summary>
-    /// Key for storing the model name from video generation request (before provider mapping).
-    /// Value type: string
-    /// </summary>
-    public const string VideoRequestModel = "VideoRequestModel";
-
-    /// <summary>
-    /// Key for storing the size/resolution from video generation request.
-    /// Value type: string (e.g., "1920x1080", "1280x720")
-    /// </summary>
-    public const string VideoRequestSize = "VideoRequestSize";
-
-    /// <summary>
-    /// Key for storing the duration from video generation request.
-    /// Value type: int (seconds)
-    /// </summary>
-    public const string VideoRequestDuration = "VideoRequestDuration";
-
-    /// <summary>
-    /// Key for storing the FPS from video generation request.
-    /// Value type: int
-    /// </summary>
-    public const string VideoRequestFps = "VideoRequestFps";
-
-    /// <summary>
-    /// Key for storing the style from video generation request.
-    /// Value type: string
-    /// </summary>
-    public const string VideoRequestStyle = "VideoRequestStyle";
-
-    /// <summary>
-    /// Key for storing the number of videos requested.
-    /// Value type: int
-    /// </summary>
-    public const string VideoRequestN = "VideoRequestN";
-
-    /// <summary>
-    /// Key for storing additional pricing parameters extracted from video generation request.
-    /// Value type: Dictionary&lt;string, object&gt;
-    /// </summary>
-    public const string VideoRequestPricingParameters = "VideoRequestPricingParameters";
-
-    #endregion
+    // NOTE: Image and video request-shape data (model, size, quality, duration, fps, style,
+    // N, pricing parameters) is no longer carried via string keys. It now flows through the
+    // typed ConduitLLM.Gateway.Usage.IUsageContext set by ImagesController/VideosController
+    // and consumed by UsageTrackingMiddleware.
 }

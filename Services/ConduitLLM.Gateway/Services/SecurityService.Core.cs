@@ -11,20 +11,17 @@ namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
     /// Gateway-specific security service interface.
-    /// Extends the shared security service with Virtual Key rate limiting.
+    /// Virtual Key rate limiting is enforced separately by VirtualKeyRateLimitMiddleware.
     /// </summary>
     public interface IGatewaySecurityService : ConduitLLM.Security.Interfaces.ISecurityService
     {
-        /// <summary>
-        /// Checks Virtual Key rate limits (RPM and RPD)
-        /// </summary>
-        Task<RateLimitCheckResult> CheckVirtualKeyRateLimitAsync(HttpContext context, string virtualKeyId, string endpoint);
     }
 
     /// <summary>
     /// Implementation of security service for Gateway API.
-    /// Handles Virtual Key authentication, IP banning, rate limiting, IP filtering,
-    /// discovery-specific rate limits, and security event monitoring.
+    /// Handles authentication-related state (failed-auth tracking, IP bans, IP filtering,
+    /// discovery-specific rate limits, security event monitoring). Virtual Key rate limits
+    /// are enforced by <see cref="ConduitLLM.Gateway.Middleware.VirtualKeyRateLimitMiddleware"/>.
     /// </summary>
     public partial class SecurityService : SecurityServiceBase, IGatewaySecurityService
     {
@@ -32,9 +29,6 @@ namespace ConduitLLM.Gateway.Services
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
         private readonly ISecurityEventMonitoringService? _securityEventMonitoring;
-
-        // Gateway-specific cache prefix
-        private const string VkeyRateLimitPrefix = "vkey_rate:";
 
         /// <inheritdoc/>
         protected override string ServiceName => "core-api";
@@ -113,30 +107,9 @@ namespace ConduitLLM.Gateway.Services
                 }
             }
 
-            // Check Virtual Key rate limits
-            if (_options.VirtualKey.EnforceRateLimits && context.Items.ContainsKey("VirtualKeyEntity"))
-            {
-                var virtualKey = context.Items["VirtualKeyEntity"] as VirtualKey;
-                if (virtualKey != null && (virtualKey.RateLimitRpm.HasValue || virtualKey.RateLimitRpd.HasValue))
-                {
-                    var vkeyResult = await CheckVirtualKeyRateLimitAsync(context, virtualKey.Id.ToString(), path);
-                    if (!vkeyResult.IsAllowed)
-                    {
-                        return new SecurityCheckResult
-                        {
-                            IsAllowed = false,
-                            Reason = "Virtual Key rate limit exceeded",
-                            StatusCode = 429,
-                            Headers = new Dictionary<string, string>
-                            {
-                                ["X-RateLimit-Limit"] = vkeyResult.Limit?.ToString() ?? "0",
-                                ["X-RateLimit-Remaining"] = vkeyResult.Remaining?.ToString() ?? "0",
-                                ["X-RateLimit-Reset"] = vkeyResult.ResetsAt?.ToUnixTimeSeconds().ToString() ?? ""
-                            }
-                        };
-                    }
-                }
-            }
+            // Note: Virtual Key rate limits (RPM/RPD) are enforced by
+            // VirtualKeyRateLimitMiddleware, which runs after authentication and uses
+            // the Redis-backed sliding-window IVirtualKeyRateLimitService.
 
             return SecurityCheckResult.Allowed();
         }

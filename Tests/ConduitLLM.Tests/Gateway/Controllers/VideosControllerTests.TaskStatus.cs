@@ -22,18 +22,6 @@ namespace ConduitLLM.Tests.Http.Controllers
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
 
-            var taskStatus = new AsyncTaskStatus
-            {
-                TaskId = taskId,
-                State = TaskState.Completed,
-                Progress = 100,
-                CreatedAt = DateTime.UtcNow.AddMinutes(-5),
-                UpdatedAt = DateTime.UtcNow,
-                CompletedAt = DateTime.UtcNow,
-                Result = "video-url-123",
-                Metadata = new TaskMetadata(123) // Same virtual key ID as in claims
-            };
-
             var videoResponse = new VideoGenerationResponse
             {
                 Data = new List<VideoData>
@@ -42,11 +30,20 @@ namespace ConduitLLM.Tests.Http.Controllers
                 }
             };
 
+            var taskStatus = new AsyncTaskStatus
+            {
+                TaskId = taskId,
+                State = TaskState.Completed,
+                Progress = 100,
+                CreatedAt = DateTime.UtcNow.AddMinutes(-5),
+                UpdatedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                Result = videoResponse, // Stored result is deserialized inline by the controller
+                Metadata = new TaskMetadata(123) // Same virtual key ID as in claims
+            };
+
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
-
-            _mockVideoService.Setup(x => x.GetVideoGenerationStatusAsync(taskId, virtualKey, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(videoResponse);
 
             _controller.ControllerContext = CreateControllerContext();
             _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;

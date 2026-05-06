@@ -3,6 +3,7 @@ using System.Net;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Constants;
+using ConduitLLM.Gateway.UsageTracking;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using Microsoft.AspNetCore.Mvc;
@@ -61,12 +62,16 @@ namespace ConduitLLM.Gateway.Controllers
                 
                 var modelName = request.Model;
 
-                // Store image request details for usage tracking
-                // These are stored before mapping lookup since request.Model may be updated later
-                HttpContext.Items[HttpContextKeys.ImageRequestModel] = modelName;
-                HttpContext.Items[HttpContextKeys.ImageRequestQuality] = request.Quality;
-                HttpContext.Items[HttpContextKeys.ImageRequestSize] = request.Size;
-                HttpContext.Items[HttpContextKeys.ImageRequestN] = request.N;
+                // Store image request details for usage tracking.
+                // Set before mapping lookup since request.Model may be updated to the provider model ID later.
+                HttpContext.SetUsageContext(new ImageUsageContext
+                {
+                    Model = modelName,
+                    Quality = request.Quality,
+                    Size = request.Size,
+                    N = request.N,
+                    Style = request.Style
+                });
 
                 // First check model mappings for image generation capability
                 mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
@@ -262,9 +267,8 @@ namespace ConduitLLM.Gateway.Controllers
                             // Track media ownership for lifecycle management
                             try
                             {
-                                // Get virtual key ID from HttpContext
-                                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-                                if (!string.IsNullOrEmpty(virtualKeyIdClaim) && int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
+                                var virtualKeyId = CurrentVirtualKeyId;
+                                if (virtualKeyId != null)
                                 {
                                     var mediaMetadata = new Core.Interfaces.MediaLifecycleMetadata
                                     {
@@ -278,13 +282,13 @@ namespace ConduitLLM.Gateway.Controllers
                                     };
 
                                     await _mediaLifecycleService.TrackMediaAsync(
-                                        virtualKeyId,
+                                        virtualKeyId.Value,
                                         storageResult.StorageKey,
                                         "image",
                                         mediaMetadata);
-                                    
-                                    _logger.LogInformation("Tracked media {StorageKey} for virtual key {VirtualKeyId}", 
-                                        storageResult.StorageKey, virtualKeyId);
+
+                                    _logger.LogInformation("Tracked media {StorageKey} for virtual key {VirtualKeyId}",
+                                        storageResult.StorageKey, virtualKeyId.Value);
                                 }
                                 else
                                 {

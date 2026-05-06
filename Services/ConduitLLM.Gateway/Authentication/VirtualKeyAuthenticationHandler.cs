@@ -139,6 +139,13 @@ namespace ConduitLLM.Gateway.Authentication
                 Context.Items["VirtualKey"] = virtualKey;
                 Context.Items["RequestStartTime"] = DateTime.UtcNow;
 
+                // Store rate-limit config so VirtualKeyRateLimitMiddleware can enforce limits
+                // without re-fetching the key. KeyHash is the partition key for rate limiting;
+                // null RPM/RPD means "unlimited" for this key.
+                Context.Items["VirtualKey.KeyHash"] = keyEntity.KeyHash;
+                Context.Items["VirtualKey.RateLimitRpm"] = keyEntity.RateLimitRpm;
+                Context.Items["VirtualKey.RateLimitRpd"] = keyEntity.RateLimitRpd;
+
                 // Store ephemeral key status for logging/auditing
                 if (isEphemeralKey)
                 {

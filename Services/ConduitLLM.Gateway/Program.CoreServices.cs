@@ -5,7 +5,6 @@ using ConduitLLM.Core;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Gateway.Security;
 using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Providers.Extensions;
@@ -23,18 +22,6 @@ public partial class Program
         // Shared application services (GlobalSettingsCache, ProviderService,
         // ModelProviderMapping+decorator, ProviderMetadataRegistry)
         builder.Services.AddSharedApplicationServices();
-
-        // Rate Limiter registration
-        builder.Services.AddRateLimiter(options =>
-        {
-            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            options.AddPolicy<HttpContext>("VirtualKeyPolicy", context =>
-            {
-                var policy = context.RequestServices.GetRequiredService<VirtualKeyRateLimitPolicy>();
-                return policy.GetPartition(context);
-            });
-        });
-        builder.Services.AddScoped<VirtualKeyRateLimitPolicy>();
 
         // ========== Caching Infrastructure ==========
 

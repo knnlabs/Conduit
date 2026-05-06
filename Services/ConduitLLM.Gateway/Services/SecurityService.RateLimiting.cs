@@ -1,84 +1,17 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
-using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Security.Models;
 
 namespace ConduitLLM.Gateway.Services
 {
+    /// <summary>
+    /// IP-based rate limiting with discovery-specific overrides for the Gateway.
+    /// Virtual Key (RPM/RPD) rate limiting is enforced separately by
+    /// <see cref="ConduitLLM.Gateway.Middleware.VirtualKeyRateLimitMiddleware"/>.
+    /// </summary>
     public partial class SecurityService
     {
-        /// <inheritdoc/>
-        public async Task<RateLimitCheckResult> CheckVirtualKeyRateLimitAsync(HttpContext context, string virtualKeyId, string endpoint)
-        {
-            if (!context.Items.ContainsKey("VirtualKeyEntity"))
-            {
-                return new RateLimitCheckResult { IsAllowed = true };
-            }
-
-            var virtualKey = context.Items["VirtualKeyEntity"] as VirtualKey;
-            if (virtualKey == null)
-            {
-                return new RateLimitCheckResult { IsAllowed = true };
-            }
-
-            var now = DateTime.UtcNow;
-            var result = new RateLimitCheckResult { IsAllowed = true };
-
-            // Check RPM (Requests Per Minute) limit
-            if (virtualKey.RateLimitRpm.HasValue && virtualKey.RateLimitRpm.Value > 0)
-            {
-                var rpmKey = $"{VkeyRateLimitPrefix}rpm:{virtualKeyId}";
-                var rpmCount = await GetRateLimitCountAsync(rpmKey, 60);
-
-                if (rpmCount >= virtualKey.RateLimitRpm.Value)
-                {
-                    Logger.LogWarning("Virtual Key {KeyId} exceeded RPM limit: {Count}/{Limit}",
-                        virtualKeyId, rpmCount, virtualKey.RateLimitRpm.Value);
-
-                    result.IsAllowed = false;
-                    result.Limit = virtualKey.RateLimitRpm.Value;
-                    result.Remaining = 0;
-                    result.ResetsAt = now.AddSeconds(60);
-                    return result;
-                }
-
-                await IncrementRateLimitCountAsync(rpmKey, 60);
-                result.Limit = virtualKey.RateLimitRpm.Value;
-                result.Remaining = virtualKey.RateLimitRpm.Value - (rpmCount + 1);
-            }
-
-            // Check RPD (Requests Per Day) limit
-            if (virtualKey.RateLimitRpd.HasValue && virtualKey.RateLimitRpd.Value > 0)
-            {
-                var rpdKey = $"{VkeyRateLimitPrefix}rpd:{virtualKeyId}";
-                var rpdCount = await GetRateLimitCountAsync(rpdKey, 86400);
-
-                if (rpdCount >= virtualKey.RateLimitRpd.Value)
-                {
-                    Logger.LogWarning("Virtual Key {KeyId} exceeded RPD limit: {Count}/{Limit}",
-                        virtualKeyId, rpdCount, virtualKey.RateLimitRpd.Value);
-
-                    result.IsAllowed = false;
-                    result.Limit = virtualKey.RateLimitRpd.Value;
-                    result.Remaining = 0;
-                    result.ResetsAt = now.Date.AddDays(1);
-                    return result;
-                }
-
-                await IncrementRateLimitCountAsync(rpdKey, 86400);
-
-                if (!virtualKey.RateLimitRpm.HasValue)
-                {
-                    result.Limit = virtualKey.RateLimitRpd.Value;
-                    result.Remaining = virtualKey.RateLimitRpd.Value - (rpdCount + 1);
-                    result.ResetsAt = now.Date.AddDays(1);
-                }
-            }
-
-            return result;
-        }
-
         private async Task<int> GetRateLimitCountAsync(string key, int windowSeconds)
         {
             if (_options.UseDistributedTracking && DistributedCache != null)

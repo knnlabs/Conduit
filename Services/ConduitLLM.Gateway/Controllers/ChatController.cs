@@ -21,7 +21,7 @@ namespace ConduitLLM.Gateway.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/chat")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
     [RequireBalance]
     [Tags("Chat")]
     public partial class ChatController : GatewayControllerBase
@@ -85,7 +85,7 @@ namespace ConduitLLM.Gateway.Controllers
 
             try
             {
-                var virtualKeyId = ExtractVirtualKeyId();
+                var virtualKeyId = CurrentVirtualKeyId;
 
                 if (request.Stream != true)
                 {
@@ -143,15 +143,6 @@ namespace ConduitLLM.Gateway.Controllers
             }
         }
 
-        private int? ExtractVirtualKeyId()
-        {
-            var virtualKeyIdClaim = User.FindFirst("VirtualKeyId")?.Value;
-            if (!string.IsNullOrEmpty(virtualKeyIdClaim) && int.TryParse(virtualKeyIdClaim, out var keyId))
-            {
-                return keyId;
-            }
-            return null;
-        }
     }
 
     /// <summary>

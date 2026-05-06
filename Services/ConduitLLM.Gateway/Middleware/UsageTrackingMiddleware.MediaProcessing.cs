@@ -7,6 +7,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Gateway.Utilities;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
@@ -33,10 +34,14 @@ namespace ConduitLLM.Gateway.Middleware
         /// Resolves the model name: prefer the value stored in HttpContext.Items by the controller,
         /// fall back to the model returned in the provider response, then "unknown".
         /// </summary>
-        private static string ResolveModel(HttpContext context, string contextKey, string? responseModel)
+        /// <summary>
+        /// Resolves the canonical model name. Prefers the model recorded in the request
+        /// usage context (set by the controller before provider mapping); falls back to
+        /// the model echoed in the response, then to <c>"unknown"</c>.
+        /// </summary>
+        private static string ResolveModelFromUsage(string? requestModel, string? responseModel)
         {
-            var model = context.Items.TryGetValue(contextKey, out var obj) ? obj?.ToString() : null;
-            return string.IsNullOrEmpty(model) ? (responseModel ?? "unknown") : model;
+            return string.IsNullOrEmpty(requestModel) ? (responseModel ?? "unknown") : requestModel;
         }
 
         /// <summary>
@@ -237,16 +242,11 @@ namespace ConduitLLM.Gateway.Middleware
             {
                 var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
 
-                // Extract image request details from HttpContext.Items (set by ImagesController)
-                var quality = context.Items.TryGetValue(HttpContextKeys.ImageRequestQuality, out var qualityObj)
-                    ? qualityObj?.ToString()
-                    : null;
-                var size = context.Items.TryGetValue(HttpContextKeys.ImageRequestSize, out var sizeObj)
-                    ? sizeObj?.ToString()
-                    : null;
-                var requestedN = context.Items.TryGetValue(HttpContextKeys.ImageRequestN, out var nObj)
-                    ? nObj as int? ?? 1
-                    : 1;
+                // Extract image request details from the typed usage context (set by ImagesController)
+                var imageUsage = context.GetUsageContext() as ImageUsageContext;
+                var quality = imageUsage?.Quality;
+                var size = imageUsage?.Size;
+                var requestedN = imageUsage?.N ?? 1;
                 var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
                     ? providerTypeObj?.ToString() ?? "unknown"
                     : "unknown";
@@ -268,7 +268,7 @@ namespace ConduitLLM.Gateway.Middleware
                 if (root.TryGetProperty("usage", out var usageElement))
                     responseUsage = UsageExtractor.ExtractUsage(usageElement, _logger);
 
-                var model = ResolveModel(context, HttpContextKeys.ImageRequestModel, responseModel);
+                var model = ResolveModelFromUsage(imageUsage?.Model, responseModel);
 
                 // Build Usage object - prefer response usage if available, otherwise construct from request data
                 var usage = responseUsage ?? new Usage
@@ -290,7 +290,7 @@ namespace ConduitLLM.Gateway.Middleware
                     imageCount = actualImageCount,
                     quality = quality ?? "standard",
                     size = size ?? "unknown",
-                    style = context.Items.TryGetValue("ImageRequestStyle", out var styleObj) ? styleObj?.ToString() : null
+                    style = imageUsage?.Style
                 });
 
                 await ProcessMediaResponseAsync(context, new MediaProcessingContext
@@ -328,25 +328,14 @@ namespace ConduitLLM.Gateway.Middleware
             {
                 var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
 
-                // Extract video request details from HttpContext.Items (set by VideosController)
-                var size = context.Items.TryGetValue(HttpContextKeys.VideoRequestSize, out var sizeObj)
-                    ? sizeObj?.ToString()
-                    : null;
-                var requestedDuration = context.Items.TryGetValue(HttpContextKeys.VideoRequestDuration, out var durationObj)
-                    ? durationObj as int?
-                    : null;
-                var requestedN = context.Items.TryGetValue(HttpContextKeys.VideoRequestN, out var nObj)
-                    ? nObj as int? ?? 1
-                    : 1;
-                var fps = context.Items.TryGetValue(HttpContextKeys.VideoRequestFps, out var fpsObj)
-                    ? fpsObj as int?
-                    : null;
-                var style = context.Items.TryGetValue(HttpContextKeys.VideoRequestStyle, out var styleObj)
-                    ? styleObj?.ToString()
-                    : null;
-                var pricingParameters = context.Items.TryGetValue(HttpContextKeys.VideoRequestPricingParameters, out var paramsObj)
-                    ? paramsObj as Dictionary<string, object>
-                    : null;
+                // Extract video request details from the typed usage context (set by VideosController)
+                var videoUsage = context.GetUsageContext() as VideoUsageContext;
+                var size = videoUsage?.Size;
+                var requestedDuration = videoUsage?.Duration;
+                var requestedN = videoUsage?.N ?? 1;
+                var fps = videoUsage?.Fps;
+                var style = videoUsage?.Style;
+                var pricingParameters = videoUsage?.PricingParameters;
                 var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
                     ? providerTypeObj?.ToString() ?? "unknown"
                     : "unknown";
@@ -390,7 +379,7 @@ namespace ConduitLLM.Gateway.Middleware
                 if (root.TryGetProperty("usage", out var usageElement))
                     responseUsage = UsageExtractor.ExtractUsage(usageElement, _logger);
 
-                var model = ResolveModel(context, HttpContextKeys.VideoRequestModel, responseModel);
+                var model = ResolveModelFromUsage(videoUsage?.Model, responseModel);
 
                 // Build Usage object
                 var usage = responseUsage ?? new Usage();
