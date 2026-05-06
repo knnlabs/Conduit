@@ -23,44 +23,59 @@ namespace ConduitLLM.Admin.Services
                 return null;
             }
 
-            // Get all enabled model mappings with their related data
+            // Project to only the fields the loop reads — no full Provider/Model/Series graphs.
+            // Inner Caps is null when the mapping is missing its Model row, which preserves
+            // the existing "no model data" warning below.
             using var context = await _dbContextFactory.CreateDbContextAsync();
-            
-            var modelMappings = await context.ModelProviderMappings
+
+            var projections = await context.ModelProviderMappings
                 .AsNoTracking()
-                .Include(m => m.Provider)
-                .Include(m => m.ModelProviderTypeAssociation)
-                    .ThenInclude(mpta => mpta.Model)
-                        .ThenInclude(m => m.Series)
                 .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
+                .Select(m => new
+                {
+                    m.ModelAlias,
+                    Caps = m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.Model != null
+                        ? new
+                        {
+                            m.ModelProviderTypeAssociation.Model.SupportsChat,
+                            m.ModelProviderTypeAssociation.Model.SupportsStreaming,
+                            m.ModelProviderTypeAssociation.Model.SupportsVision,
+                            m.ModelProviderTypeAssociation.Model.SupportsVideoGeneration,
+                            m.ModelProviderTypeAssociation.Model.SupportsImageGeneration,
+                            m.ModelProviderTypeAssociation.Model.SupportsEmbeddings,
+                            m.ModelProviderTypeAssociation.Model.SupportsFunctionCalling,
+                            m.ModelProviderTypeAssociation.Model.Description,
+                            m.ModelProviderTypeAssociation.Model.ModelCardUrl,
+                            m.ModelProviderTypeAssociation.Model.MaxInputTokens,
+                            m.ModelProviderTypeAssociation.Model.MaxOutputTokens,
+                            m.ModelProviderTypeAssociation.Model.TokenizerType
+                        }
+                        : null
+                })
                 .ToListAsync();
 
             var models = new List<DiscoveredModelDto>();
 
-            foreach (var mapping in modelMappings)
+            foreach (var p in projections)
             {
-                // Skip if model is missing
-                if (mapping.ModelProviderTypeAssociation?.Model == null)
+                if (p.Caps == null)
                 {
-                    _logger.LogWarning("Model mapping {ModelAlias} has no model data", mapping.ModelAlias);
+                    _logger.LogWarning("Model mapping {ModelAlias} has no model data", p.ModelAlias);
                     continue;
                 }
 
-                var caps = mapping.ModelProviderTypeAssociation.Model;
-
-                // Apply capability filter if specified
                 if (!string.IsNullOrEmpty(capability))
                 {
                     var capabilityKey = capability.Replace("-", "_").ToLowerInvariant();
                     bool hasCapability = capabilityKey switch
                     {
-                        "chat" => caps.SupportsChat,
-                        "streaming" or "chat_stream" => caps.SupportsStreaming,
-                        "vision" => caps.SupportsVision,
-                        "video_generation" => caps.SupportsVideoGeneration,
-                        "image_generation" => caps.SupportsImageGeneration,
-                        "embeddings" => caps.SupportsEmbeddings,
-                        "function_calling" => caps.SupportsFunctionCalling,
+                        "chat" => p.Caps.SupportsChat,
+                        "streaming" or "chat_stream" => p.Caps.SupportsStreaming,
+                        "vision" => p.Caps.SupportsVision,
+                        "video_generation" => p.Caps.SupportsVideoGeneration,
+                        "image_generation" => p.Caps.SupportsImageGeneration,
+                        "embeddings" => p.Caps.SupportsEmbeddings,
+                        "function_calling" => p.Caps.SupportsFunctionCalling,
                         _ => false
                     };
 
@@ -70,33 +85,28 @@ namespace ConduitLLM.Admin.Services
                     }
                 }
 
-                // Build flat capabilities structure matching DiscoveryController
                 var capabilities = new Dictionary<string, object>
                 {
-                    ["supports_chat"] = caps.SupportsChat,
-                    ["supports_streaming"] = caps.SupportsStreaming,
-                    ["supports_vision"] = caps.SupportsVision,
-                    ["supports_function_calling"] = caps.SupportsFunctionCalling,
-                    ["supports_video_generation"] = caps.SupportsVideoGeneration,
-                    ["supports_image_generation"] = caps.SupportsImageGeneration,
-                    ["supports_embeddings"] = caps.SupportsEmbeddings
+                    ["supports_chat"] = p.Caps.SupportsChat,
+                    ["supports_streaming"] = p.Caps.SupportsStreaming,
+                    ["supports_vision"] = p.Caps.SupportsVision,
+                    ["supports_function_calling"] = p.Caps.SupportsFunctionCalling,
+                    ["supports_video_generation"] = p.Caps.SupportsVideoGeneration,
+                    ["supports_image_generation"] = p.Caps.SupportsImageGeneration,
+                    ["supports_embeddings"] = p.Caps.SupportsEmbeddings,
+                    ["description"] = p.Caps.Description ?? "",
+                    ["model_card_url"] = p.Caps.ModelCardUrl ?? "",
+                    ["input_tokens"] = p.Caps.MaxInputTokens ?? 0,
+                    ["output_tokens"] = p.Caps.MaxOutputTokens ?? 0,
+                    ["tokenizer_type"] = p.Caps.TokenizerType.ToString().ToLowerInvariant()
                 };
 
-                // Add metadata
-                capabilities["description"] = mapping.ModelProviderTypeAssociation.Model.Description ?? "";
-                capabilities["model_card_url"] = mapping.ModelProviderTypeAssociation.Model.ModelCardUrl ?? "";
-                capabilities["input_tokens"] = mapping.ModelProviderTypeAssociation.Model.MaxInputTokens ?? 0;
-                capabilities["output_tokens"] = mapping.ModelProviderTypeAssociation.Model.MaxOutputTokens ?? 0;
-                capabilities["tokenizer_type"] = mapping.ModelProviderTypeAssociation.Model.TokenizerType.ToString().ToLowerInvariant();
-
-                var model = new DiscoveredModelDto
+                models.Add(new DiscoveredModelDto
                 {
-                    Id = mapping.ModelAlias,
-                    DisplayName = mapping.ModelAlias,
+                    Id = p.ModelAlias,
+                    DisplayName = p.ModelAlias,
                     Capabilities = capabilities
-                };
-
-                models.Add(model);
+                });
             }
 
             return new VirtualKeyDiscoveryPreviewDto
