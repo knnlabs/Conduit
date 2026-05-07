@@ -104,15 +104,16 @@ namespace ConduitLLM.Gateway.Services
                 Timestamp = DateTime.UtcNow
             };
 
-            var tasks = new[]
-            {
-                Task.Run(() => CollectHttpMetrics(snapshot)),
-                Task.Run(() => CollectInfrastructureMetrics(snapshot)),
-                CollectBusinessMetricsAsync(snapshot),
-                Task.Run(() => CollectSystemMetrics(snapshot))
-            };
+            // Kick off the only I/O-bound collector so it overlaps with the cheap synchronous
+            // ones below. The sync collectors are fast in-memory metric reads; wrapping them
+            // in Task.Run only adds scheduling overhead.
+            var businessTask = CollectBusinessMetricsAsync(snapshot);
 
-            await Task.WhenAll(tasks);
+            CollectHttpMetrics(snapshot);
+            CollectInfrastructureMetrics(snapshot);
+            CollectSystemMetrics(snapshot);
+
+            await businessTask;
 
             return snapshot;
         }
