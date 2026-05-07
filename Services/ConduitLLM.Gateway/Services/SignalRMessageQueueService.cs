@@ -207,23 +207,25 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("SignalR Message Queue Service stopping");
-            
+
             _processingTimer?.Change(Timeout.Infinite, 0);
 
-            // Wait for any in-flight processing to complete
-            try
+            // Wait for any in-flight processing to complete without blocking the shutdown
+            // thread. WaitAsync(timeout) returns false on timeout — we proceed regardless.
+            if (_processingLock != null)
             {
-                _processingLock?.Wait(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await _processingLock.WaitAsync(TimeSpan.FromSeconds(5));
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Already disposed, ignore
+                }
             }
-            catch (ObjectDisposedException)
-            {
-                // Already disposed, ignore
-            }
-
-            return Task.CompletedTask;
         }
 
         public async Task EnqueueMessageAsync(QueuedMessage message)
