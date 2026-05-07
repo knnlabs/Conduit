@@ -65,7 +65,7 @@ namespace ConduitLLM.Core.Middleware
             var requestPath = context.Request.Path;
             var requestMethod = context.Request.Method;
             var isMutation = IsMutationMethod(requestMethod);
-            var sanitizedPath = LoggingSanitizer.S(requestPath.ToString());
+            var sanitizedPath = LoggingSanitizer.S(requestPath.ToString()) ?? string.Empty;
 
             OnBeforeRequest(context, requestMethod, sanitizedPath);
 
