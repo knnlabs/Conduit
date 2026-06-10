@@ -3,7 +3,7 @@ import type { BaseStreamChunk, StreamingResponse } from '../models/streaming';
 /**
  * Creates a type-safe streaming response wrapper
  */
-export class TypedStreamingResponse<T extends BaseStreamChunk> implements StreamingResponse<T> {
+export class TypedStreamingResponse<T> implements StreamingResponse<T> {
   private readonly stream: AsyncGenerator<T, void, unknown>;
   private abortController?: AbortController;
 
@@ -72,7 +72,7 @@ export class TypedStreamingResponse<T extends BaseStreamChunk> implements Stream
 /**
  * Helper function to create a streaming response
  */
-export function createStreamingResponse<T extends BaseStreamChunk>(
+export function createStreamingResponse<T>(
   stream: AsyncGenerator<T, void, unknown>,
   abortController?: AbortController
 ): StreamingResponse<T> {

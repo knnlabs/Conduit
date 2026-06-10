@@ -142,8 +142,25 @@ export interface EnhancedStreamEvent {
   /** The type of SSE event */
   type: EnhancedSSEEventType;
   /** The event data, type depends on the event type */
-  data: ChatCompletionChunk | StreamingMetrics | FinalMetrics | ReasoningEvent | ToolExecutingEvent | ToolResultEvent | string;
+  data: ChatCompletionChunk | StreamingMetrics | FinalMetrics | StreamingErrorEvent | ReasoningEvent | ToolExecutingEvent | ToolResultEvent | string;
 }
+
+/**
+ * Union of every event a streaming chat completion can yield.
+ * The server interleaves content chunks with metrics, reasoning, tool,
+ * and error events on the same SSE stream; use the is* type guards
+ * (e.g. {@link isChatCompletionChunk}, {@link isFinalMetrics}) to narrow.
+ *
+ * @since 0.6.0
+ */
+export type ChatStreamEvent =
+  | ChatCompletionChunk
+  | StreamingMetrics
+  | FinalMetrics
+  | StreamingErrorEvent
+  | ReasoningEvent
+  | ToolExecutingEvent
+  | ToolResultEvent;
 
 /**
  * Type guard to check if data is a ChatCompletionChunk.

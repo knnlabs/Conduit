@@ -24,6 +24,7 @@ export { ContentHelpers } from './models/chat';
 
 // Enhanced streaming types
 export type {
+  ChatStreamEvent,
   EnhancedStreamEvent,
   EnhancedSSEEventType,
   StreamingMetrics,

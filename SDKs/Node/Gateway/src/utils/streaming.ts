@@ -152,7 +152,7 @@ export async function* streamAsyncIterator(
 /**
  * Creates a typed streaming response from a readable stream
  */
-export function createTypedStream<T extends BaseStreamChunk>(
+export function createTypedStream<T>(
   stream: NodeJS.ReadableStream,
   options?: StreamOptions
 ): StreamingResponse<T> {

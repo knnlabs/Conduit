@@ -7,7 +7,7 @@ import type {
   ChatCompletionChunk 
 } from '../models/chat';
 import type { StreamingResponse } from '../models/streaming';
-import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
+import type { ChatStreamEvent, EnhancedStreamEvent } from '../models/enhanced-streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import { validateChatCompletionRequest } from '../utils/validation';
 import { API_ENDPOINTS } from '../constants';
@@ -64,11 +64,11 @@ export class ChatService extends BaseStreamingService {
   async create(
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
-  ): Promise<StreamingResponse<ChatCompletionChunk>>;
+  ): Promise<StreamingResponse<ChatStreamEvent>>;
   async create(
     request: ChatCompletionRequest,
     options?: RequestOptions
-  ): Promise<ChatCompletionResponse | StreamingResponse<ChatCompletionChunk>> {
+  ): Promise<ChatCompletionResponse | StreamingResponse<ChatStreamEvent>> {
     validateChatCompletionRequest(request);
 
     if (request.stream === true) {
@@ -92,8 +92,8 @@ export class ChatService extends BaseStreamingService {
   private async createStream(
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
-  ): Promise<StreamingResponse<ChatCompletionChunk>> {
-    return this.createStandardStream<ChatCompletionChunk>(request, options);
+  ): Promise<StreamingResponse<ChatStreamEvent>> {
+    return this.createStandardStream<ChatStreamEvent>(request, options);
   }
 
   protected async createStreamingRequest(
