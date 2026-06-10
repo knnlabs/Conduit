@@ -212,38 +212,49 @@ namespace ConduitLLM.Configuration.Repositories
                     query = query.Where(h => h.StartedAt >= since.Value);
                 }
 
-                var operations = await query.ToListAsync();
+                // Aggregate in the database rather than loading every row into memory
+                var summary = await query
+                    .GroupBy(h => 1)
+                    .Select(g => new
+                    {
+                        TotalOperations = g.Count(),
+                        SuccessfulOperations = g.Count(h => h.Status == "Completed"),
+                        FailedOperations = g.Count(h => h.Status == "Failed"),
+                        CancelledOperations = g.Count(h => h.Status == "Cancelled"),
+                        TotalItemsSucceeded = g.Sum(h => (long)h.SuccessCount),
+                        TotalItemsFailed = g.Sum(h => (long)h.FailedCount),
+                        // AVG ignores NULLs, so gate both columns on the same completeness
+                        // condition the original in-memory filter used
+                        AverageDurationSeconds = g.Average(h =>
+                            h.DurationSeconds.HasValue && h.ItemsPerSecond.HasValue ? h.DurationSeconds : null),
+                        AverageItemsPerSecond = g.Average(h =>
+                            h.DurationSeconds.HasValue && h.ItemsPerSecond.HasValue ? h.ItemsPerSecond : null)
+                    })
+                    .FirstOrDefaultAsync();
 
-                if (!operations.Any())
+                if (summary == null)
                 {
                     return new BatchOperationStatistics();
                 }
 
-                var stats = new BatchOperationStatistics
-                {
-                    TotalOperations = operations.Count,
-                    SuccessfulOperations = operations.Count(h => h.Status == "Completed"),
-                    FailedOperations = operations.Count(h => h.Status == "Failed"),
-                    CancelledOperations = operations.Count(h => h.Status == "Cancelled"),
-                    TotalItemsProcessed = operations.Sum(h => h.SuccessCount + h.FailedCount),
-                    TotalItemsSucceeded = operations.Sum(h => h.SuccessCount),
-                    TotalItemsFailed = operations.Sum(h => h.FailedCount)
-                };
-
-                // Calculate averages only for completed operations
-                var completedOps = operations.Where(h => h.DurationSeconds.HasValue && h.ItemsPerSecond.HasValue).ToList();
-                if (completedOps.Any())
-                {
-                    stats.AverageDurationSeconds = completedOps.Average(h => h.DurationSeconds!.Value);
-                    stats.AverageItemsPerSecond = completedOps.Average(h => h.ItemsPerSecond!.Value);
-                }
-
-                // Count by operation type
-                stats.OperationTypeCounts = operations
+                var operationTypeCounts = await query
                     .GroupBy(h => h.OperationType)
-                    .ToDictionary(g => g.Key, g => g.Count());
+                    .Select(g => new { g.Key, Count = g.Count() })
+                    .ToListAsync();
 
-                return stats;
+                return new BatchOperationStatistics
+                {
+                    TotalOperations = summary.TotalOperations,
+                    SuccessfulOperations = summary.SuccessfulOperations,
+                    FailedOperations = summary.FailedOperations,
+                    CancelledOperations = summary.CancelledOperations,
+                    TotalItemsProcessed = summary.TotalItemsSucceeded + summary.TotalItemsFailed,
+                    TotalItemsSucceeded = summary.TotalItemsSucceeded,
+                    TotalItemsFailed = summary.TotalItemsFailed,
+                    AverageDurationSeconds = summary.AverageDurationSeconds ?? 0,
+                    AverageItemsPerSecond = summary.AverageItemsPerSecond ?? 0,
+                    OperationTypeCounts = operationTypeCounts.ToDictionary(g => g.Key, g => g.Count)
+                };
             }, operationName: "getting statistics");
         }
     }
