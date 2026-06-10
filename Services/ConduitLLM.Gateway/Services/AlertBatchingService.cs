@@ -36,12 +36,16 @@ namespace ConduitLLM.Gateway.Services
             _alertQueue = new ConcurrentQueue<HealthAlert>();
             _batchSemaphore = new SemaphoreSlim(1, 1);
 
-            // Unbounded channel - alerts should always be accepted
-            _workChannel = Channel.CreateUnbounded<AlertWorkItem>(new UnboundedChannelOptions
-            {
-                SingleReader = true,
-                SingleWriter = false
-            });
+            // Bounded so a stalled processor cannot grow memory without limit; the oldest
+            // (least relevant) work items are dropped first and the drop is logged.
+            _workChannel = Channel.CreateBounded<AlertWorkItem>(
+                new BoundedChannelOptions(5000)
+                {
+                    SingleReader = true,
+                    SingleWriter = false,
+                    FullMode = BoundedChannelFullMode.DropOldest
+                },
+                dropped => _logger.LogWarning("Alert work queue full; dropped {WorkItemType}", dropped.GetType().Name));
         }
 
         /// <summary>

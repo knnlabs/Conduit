@@ -46,7 +46,11 @@ namespace ConduitLLM.Gateway.Services
             _hubContext = hubContext;
             _serviceProvider = serviceProvider;
             InstanceId = Environment.MachineName + "_" + Environment.ProcessId + "_" + Guid.NewGuid().ToString("N")[..8];
-            _alertChannel = Channel.CreateUnbounded<HealthAlert>();
+            // Bounded so a stalled stream consumer cannot grow memory without limit;
+            // the oldest (least relevant) alerts are dropped first.
+            _alertChannel = Channel.CreateBounded<HealthAlert>(
+                new BoundedChannelOptions(1000) { FullMode = BoundedChannelFullMode.DropOldest },
+                dropped => _logger.LogWarning("Alert stream buffer full; dropped alert {AlertId} ({Title})", dropped.Id, dropped.Title));
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)

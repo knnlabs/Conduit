@@ -66,7 +66,10 @@ namespace ConduitLLM.Gateway.Hubs
         /// </summary>
         public ChannelReader<HealthAlert> StreamAlerts(CancellationToken cancellationToken = default)
         {
-            var channel = Channel.CreateUnbounded<HealthAlert>();
+            // Bounded per-client buffer: a slow consumer loses the oldest alerts
+            // instead of growing server memory.
+            var channel = Channel.CreateBounded<HealthAlert>(
+                new BoundedChannelOptions(256) { FullMode = BoundedChannelFullMode.DropOldest });
 
             _ = Task.Run(async () =>
             {

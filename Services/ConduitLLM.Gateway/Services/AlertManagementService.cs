@@ -36,7 +36,11 @@ namespace ConduitLLM.Gateway.Services
             _activeAlerts = new ConcurrentDictionary<string, HealthAlert>();
             _alertRules = new ConcurrentDictionary<string, AlertRule>();
             _suppressions = new ConcurrentDictionary<string, AlertSuppression>();
-            _alertChannel = Channel.CreateUnbounded<HealthAlert>();
+            // Bounded so a stalled stream consumer cannot grow memory without limit;
+            // the oldest (least relevant) alerts are dropped first.
+            _alertChannel = Channel.CreateBounded<HealthAlert>(
+                new BoundedChannelOptions(1000) { FullMode = BoundedChannelFullMode.DropOldest },
+                dropped => _logger.LogWarning("Alert stream buffer full; dropped alert {AlertId} ({Title})", dropped.Id, dropped.Title));
 
             // Load existing data from cache
             LoadFromCache();
