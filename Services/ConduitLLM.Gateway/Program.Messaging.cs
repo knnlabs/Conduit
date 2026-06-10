@@ -20,6 +20,7 @@ public partial class Program
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ProviderEventHandler>();
+            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
             
             // Add spend notification consumer
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdatedHandler>();
