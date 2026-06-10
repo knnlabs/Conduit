@@ -196,40 +196,23 @@ export class SDKChatStreamingAdapter {
             }
           }
         } else if (isStreamingMetrics(data)) {
-          // Handle streaming metrics updates
-          // Cast to unknown first, then to expected shape to satisfy ESLint
-          const metrics = data as unknown as {
-            current_tokens_per_second?: number;
-            tokens_per_second?: number;
-            [key: string]: unknown;
-          };
-          
+          // Handle streaming metrics updates — the type guard narrows to StreamingMetrics
+
           // Update tokens per second if available
           if (callbacks.onTokensPerSecond && this.config.showTokensPerSecond) {
-            const tokensPerSecond = metrics.current_tokens_per_second ?? metrics.tokens_per_second;
-            if (tokensPerSecond !== undefined && typeof tokensPerSecond === 'number') {
+            const tokensPerSecond = data.current_tokens_per_second;
+            if (tokensPerSecond !== undefined) {
               callbacks.onTokensPerSecond(tokensPerSecond);
             }
           }
-          
+
           // Pass metrics to callback if available
           if (callbacks.onMetrics) {
-            callbacks.onMetrics(data as Parameters<typeof callbacks.onMetrics>[0]);
+            callbacks.onMetrics(data);
           }
         } else if (isFinalMetrics(data)) {
           // Handle final metrics - this has the accurate token counts and timing
-          // Cast to unknown first, then to expected shape to satisfy ESLint
-          const finalMetrics = data as unknown as {
-            model?: string;
-            total_tokens?: number;
-            completion_tokens?: number;
-            prompt_tokens?: number;
-            total_latency_ms?: number;
-            time_to_first_token_ms?: number;
-            tokens_per_second?: number;
-            completion_tokens_per_second?: number;
-            provider?: string;
-          };
+          const finalMetrics = data;
 
           // Build metadata from server-provided final metrics
           // The backend calculates accurate timing using Stopwatch from request start to completion
@@ -261,16 +244,15 @@ export class SDKChatStreamingAdapter {
             });
           }
           break; // Stream is complete
-        } else if (isStreamingErrorEvent(data as unknown)) {
+        } else if (isStreamingErrorEvent(data)) {
           // Handle error event - sent as "event: error" when upstream provider fails
           // This surfaces provider errors (model not found, auth failure, rate limit, etc.)
-          const errorEvent = data as unknown as { error: string };
           const streamingError: StreamingError = Object.assign(
-            new Error(errorEvent.error),
+            new Error(data.error),
             {
               status: undefined,
               code: 'provider_error',
-              context: errorEvent.error,
+              context: data.error,
               retryable: false
             }
           );
@@ -280,11 +262,9 @@ export class SDKChatStreamingAdapter {
           }
           completionTriggered = true; // Prevent fallback from also firing
           break; // Stream is done after an error
-        } else if (isReasoningEvent(data as unknown)) {
+        } else if (isReasoningEvent(data)) {
           // Handle reasoning event - sent as "event: reasoning"
-          // Cast through unknown to work with SDK stream type
-          const reasoningEvent = data as unknown as { content: string };
-          const reasoning = reasoningEvent.content;
+          const reasoning = data.content;
           if (reasoning) {
             totalReasoning += reasoning;
 
@@ -293,46 +273,28 @@ export class SDKChatStreamingAdapter {
               callbacks.onReasoning(reasoning, totalReasoning);
             }
           }
-        } else if (isToolExecutingEvent(data as unknown)) {
+        } else if (isToolExecutingEvent(data)) {
           // Handle tool execution status event - sent as "event: tool-executing"
           // Provides real-time feedback during function calling
-          // Cast through unknown to work with SDK stream type
-          const toolEvent = data as unknown as {
-            tool_call_id?: string;
-            function_name?: string;
-            status: string;
-            result?: unknown;
-            cost?: number;
-            error_message?: string;
-            function_execution_id?: string;
-          };
-
           if (callbacks.onToolExecuting) {
             callbacks.onToolExecuting({
-              tool_call_id: toolEvent.tool_call_id,
-              function_name: toolEvent.function_name,
-              status: toolEvent.status,
-              result: toolEvent.result,
-              cost: toolEvent.cost,
-              error_message: toolEvent.error_message,
-              function_execution_id: toolEvent.function_execution_id
+              tool_call_id: data.tool_call_id,
+              function_name: data.function_name,
+              status: data.status,
+              result: data.result,
+              cost: data.cost,
+              error_message: data.error_message,
+              function_execution_id: data.function_execution_id
             });
           }
-        } else if (isToolResultEvent(data as unknown)) {
+        } else if (isToolResultEvent(data)) {
           // Handle individual tool result event - sent as "event: tool-result"
           // Optional detailed logging of tool execution outcomes
-          // Cast through unknown to work with SDK stream type
-          const toolResultEvent = data as unknown as {
-            tool_call_id: string;
-            result: unknown;
-            error?: string;
-          };
-
           if (callbacks.onToolResult) {
             callbacks.onToolResult({
-              tool_call_id: toolResultEvent.tool_call_id,
-              result: toolResultEvent.result,
-              error: toolResultEvent.error
+              tool_call_id: data.tool_call_id,
+              result: data.result,
+              error: data.error
             });
           }
         }

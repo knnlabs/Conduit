@@ -3,7 +3,7 @@
  */
 
 import type { VideoData } from '@/app/videos/types';
-import type { BackendVideoResponse } from './metadata';
+import type { BackendVideoResponse } from '../MediaMetadata';
 
 /**
  * Standard video response format with data array

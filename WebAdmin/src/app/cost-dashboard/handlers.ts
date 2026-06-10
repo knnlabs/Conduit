@@ -53,9 +53,9 @@ export function useCostDashboardHandlers(
         client.analytics.exportAnalyticsAsync('csv', startDate, endDate)
       );
       
-      // Create a blob from the Uint8Array and download
-      // Cast to unknown then to BlobPart to avoid TypeScript ArrayBufferLike vs ArrayBuffer issue
-      const blob = new Blob([exportData as unknown as BlobPart], { type: 'text/csv; charset=utf-8' });
+      // Create a blob from the Uint8Array and download. Re-wrap so the bytes are
+      // backed by a plain ArrayBuffer (Uint8Array<ArrayBufferLike> is not a BlobPart).
+      const blob = new Blob([new Uint8Array(exportData)], { type: 'text/csv; charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
