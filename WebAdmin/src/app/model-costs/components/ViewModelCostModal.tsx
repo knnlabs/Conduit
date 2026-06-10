@@ -164,7 +164,7 @@ function EmbeddingPricingSection({ modelCost }: { modelCost: ModelCost }) {
 function ImagePricingSection({ modelCost }: { modelCost: ModelCost }) {
   const hasPerImageCost = modelCost.imageCostPerImage !== undefined;
   const hasStepCost = modelCost.costPerInferenceStep !== undefined;
-  const hasMultipliers = modelCost.imageQualityMultipliers || modelCost.imageResolutionMultipliers;
+  const hasMultipliers = modelCost.imageQualityMultipliers ?? modelCost.imageResolutionMultipliers;
 
   if (!hasPerImageCost && !hasStepCost) {
     return (

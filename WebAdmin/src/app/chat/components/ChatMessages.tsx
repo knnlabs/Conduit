@@ -61,6 +61,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
     const content = message.content;
     const hasError = message.error && !isUser;
     const isRawView = rawViewMessages.has(message.id);
+    const copyLabel = isRawView ? 'Copy JSON' : 'Copy message';
     const hasReasoning = !isUser && message.metadata?.hasReasoning && message.metadata?.reasoning;
     const reasoningText = hasReasoning ? message.metadata?.reasoning : null;
 
@@ -374,7 +375,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                 }, null, 2);
               })()} timeout={2000}>
                 {({ copied, copy }) => (
-                  <Tooltip label={copied ? 'Copied!' : isRawView ? 'Copy JSON' : 'Copy message'} withArrow position="left">
+                  <Tooltip label={copied ? 'Copied!' : copyLabel} withArrow position="left">
                     <ActionIcon color={copied ? 'teal' : 'gray'} onClick={copy} variant="subtle" size="sm">
                       {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
                     </ActionIcon>

@@ -285,12 +285,13 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
           </Tabs.Panel>
 
           <Tabs.Panel value="result" pt="md">
-            {isLoading ? (
+            {isLoading && (
               <Stack align="center" py="xl">
                 <Loader size="lg" />
                 <Text c="dimmed">Executing function...</Text>
               </Stack>
-            ) : testResult ? (
+            )}
+            {!isLoading && testResult && (
               <Stack gap="md">
                 <Group justify="space-between">
                   <Badge
@@ -402,7 +403,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                   </Grid>
                 </Card>
               </Stack>
-            ) : null}
+            )}
           </Tabs.Panel>
         </Tabs>
 
