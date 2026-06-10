@@ -1,7 +1,5 @@
-using System.Text.Json;
 using StackExchange.Redis;
 using ConduitLLM.Configuration.Constants;
-using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
@@ -38,22 +36,12 @@ namespace ConduitLLM.Gateway.Services
 
             try
             {
-                var cachedValue = await Database.StringGetAsync(cacheKey);
-
-                if (cachedValue.HasValue)
+                var credential = await TryGetCacheEntryAsync<CachedProvider>(cacheKey);
+                if (credential != null)
                 {
-                    var jsonString = (string?)cachedValue;
-                    if (jsonString is not null)
-                    {
-                        var credential = JsonSerializer.Deserialize<CachedProvider>(jsonString, JsonOptions);
-
-                        if (credential != null)
-                        {
-                            Logger.LogDebug("Provider credential cache hit: {ProviderId}", providerId);
-                            await TrackHitAsync(ServiceName);
-                            return credential;
-                        }
-                    }
+                    Logger.LogDebug("Provider credential cache hit: {ProviderId}", providerId);
+                    await TrackHitAsync(ServiceName);
+                    return credential;
                 }
 
                 // Cache miss - use stampede prevention to avoid multiple concurrent DB queries
@@ -62,20 +50,8 @@ namespace ConduitLLM.Gateway.Services
 
                 var dbCredential = await _cachePopulator.GetOrPopulateAsync(
                     lockKey: $"populate:provider:{providerId}",
-                    cacheCheck: async () =>
-                    {
-                        // Re-check cache in case another instance populated it
-                        var cached = await Database.StringGetAsync(cacheKey);
-                        if (cached.HasValue)
-                        {
-                            var jsonStr = (string?)cached;
-                            if (jsonStr is not null)
-                            {
-                                return JsonSerializer.Deserialize<CachedProvider>(jsonStr, JsonOptions);
-                            }
-                        }
-                        return null;
-                    },
+                    // Re-check cache in case another instance populated it
+                    cacheCheck: () => TryGetCacheEntryAsync<CachedProvider>(cacheKey),
                     factory: () => databaseFallback(providerId));
 
                 if (dbCredential != null)
@@ -134,22 +110,6 @@ namespace ConduitLLM.Gateway.Services
             {
                 var cacheKey = CacheKeys.Provider.ById(providerId);
 
-                // Get the provider to find its name for name-based key invalidation
-                var cachedValue = await Database.StringGetAsync(cacheKey);
-                if (cachedValue.HasValue)
-                {
-                    var jsonString = (string?)cachedValue;
-                    if (jsonString is not null)
-                    {
-                        var credential = JsonSerializer.Deserialize<Provider>(jsonString, JsonOptions);
-                        if (credential != null)
-                        {
-                            // No longer using name-based keys
-                        }
-                    }
-                }
-
-                // Delete ID-based key
                 await Database.KeyDeleteAsync(cacheKey);
                 await TrackInvalidationAsync(ServiceName);
 

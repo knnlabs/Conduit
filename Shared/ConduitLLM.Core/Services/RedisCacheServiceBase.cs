@@ -93,6 +93,27 @@ public abstract class RedisCacheServiceBase
     }
 
     /// <summary>
+    /// Read and deserialize a cache entry, or null when absent or unparseable.
+    /// Does not track stats or fall back — for callers that need custom
+    /// hit/miss handling around the raw lookup.
+    /// </summary>
+    protected async Task<T?> TryGetCacheEntryAsync<T>(string cacheKey) where T : class
+    {
+        var cachedValue = await Database.StringGetAsync(cacheKey);
+
+        if (cachedValue.HasValue)
+        {
+            var jsonString = (string?)cachedValue;
+            if (jsonString is not null)
+            {
+                return JsonSerializer.Deserialize<T>(jsonString, JsonOptions);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Serialize and store a value in Redis.
     /// </summary>
     protected async Task SetCacheEntryAsync<T>(string cacheKey, T value, TimeSpan? expiry = null)

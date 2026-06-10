@@ -82,5 +82,72 @@ namespace ConduitLLM.Providers.Streaming
         {
             return data.Equals(DoneMarker, StringComparison.Ordinal);
         }
+
+        /// <summary>
+        /// Detects the standard OpenAI-style error envelope: {"error": {"message": ...}}.
+        /// </summary>
+        /// <param name="chunk">The chunk to check.</param>
+        /// <param name="errorMessage">The extracted error message if this is an error chunk.</param>
+        /// <returns>True if this is an error chunk, false otherwise.</returns>
+        protected static bool IsOpenAIStyleErrorChunk(System.Text.Json.JsonElement chunk, out string? errorMessage)
+        {
+            errorMessage = null;
+
+            try
+            {
+                if (chunk.TryGetProperty("error", out var errorElement))
+                {
+                    if (errorElement.TryGetProperty("message", out var messageElement))
+                    {
+                        errorMessage = messageElement.GetString();
+                        return true;
+                    }
+
+                    errorMessage = errorElement.GetRawText();
+                    return true;
+                }
+            }
+            catch
+            {
+                // If we can't parse the error, assume it's not an error chunk
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Detects the standard OpenAI-style final chunk: any choice with a non-null,
+        /// non-empty finish_reason.
+        /// </summary>
+        /// <param name="chunk">The chunk to check.</param>
+        /// <returns>True if this is the final chunk, false otherwise.</returns>
+        protected static bool IsOpenAIStyleFinalChunk(System.Text.Json.JsonElement chunk)
+        {
+            try
+            {
+                if (chunk.TryGetProperty("choices", out var choicesElement) &&
+                    choicesElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var choice in choicesElement.EnumerateArray())
+                    {
+                        if (choice.TryGetProperty("finish_reason", out var finishReasonElement) &&
+                            finishReasonElement.ValueKind != System.Text.Json.JsonValueKind.Null)
+                        {
+                            var finishReason = finishReasonElement.GetString();
+                            if (!string.IsNullOrEmpty(finishReason))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If we can't determine, assume not final
+            }
+
+            return false;
+        }
     }
 }

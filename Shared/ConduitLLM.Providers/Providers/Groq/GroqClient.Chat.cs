@@ -62,68 +62,13 @@ namespace ConduitLLM.Providers.Groq
         {
             try
             {
-                // Check if x_groq.usage exists
-                if (chunk.TryGetProperty("x_groq", out var xGroq) && 
-                    xGroq.TryGetProperty("usage", out var xGroqUsage))
-                {
-                    // Create a mutable copy of the chunk
-                    using var doc = System.Text.Json.JsonDocument.Parse(chunk.GetRawText());
-                    using var stream = new System.IO.MemoryStream();
-                    using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
-                    {
-                        writer.WriteStartObject();
-                        
-                        // Copy all existing properties
-                        foreach (var property in doc.RootElement.EnumerateObject())
-                        {
-                            // Skip x_groq as we're extracting its usage data
-                            if (property.Name != "x_groq")
-                            {
-                                property.WriteTo(writer);
-                            }
-                        }
-                        
-                        // Add usage field with data from x_groq.usage
-                        writer.WritePropertyName("usage");
-                        writer.WriteStartObject();
-                        
-                        if (xGroqUsage.TryGetProperty("prompt_tokens", out var promptTokens))
-                        {
-                            writer.WriteNumber("prompt_tokens", promptTokens.GetInt32());
-                        }
-                        
-                        if (xGroqUsage.TryGetProperty("completion_tokens", out var completionTokens))
-                        {
-                            writer.WriteNumber("completion_tokens", completionTokens.GetInt32());
-                        }
-                        
-                        if (xGroqUsage.TryGetProperty("total_tokens", out var totalTokens))
-                        {
-                            writer.WriteNumber("total_tokens", totalTokens.GetInt32());
-                        }
-                        
-                        writer.WriteEndObject(); // End usage
-                        writer.WriteEndObject(); // End root
-                    }
-                    
-                    var processedJson = System.Text.Encoding.UTF8.GetString(stream.ToArray());
-                    
-                    Logger.LogDebug(
-                        "Extracted Groq usage data: Prompt={PromptTokens}, Completion={CompletionTokens}, Total={TotalTokens}",
-                        xGroqUsage.TryGetProperty("prompt_tokens", out var pt) ? pt.GetInt32() : 0,
-                        xGroqUsage.TryGetProperty("completion_tokens", out var ct) ? ct.GetInt32() : 0,
-                        xGroqUsage.TryGetProperty("total_tokens", out var tt) ? tt.GetInt32() : 0);
-                    
-                    return processedJson;
-                }
+                return Streaming.GroqChunkConverter.ExtractGroqUsageJson(chunk);
             }
             catch (Exception ex)
             {
                 Logger.LogWarning(ex, "Failed to process Groq chunk JSON for usage extraction");
+                return chunk.GetRawText();
             }
-            
-            // Return original JSON if no x_groq.usage found or processing failed
-            return chunk.GetRawText();
         }
 
         /// <summary>

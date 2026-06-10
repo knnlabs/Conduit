@@ -96,57 +96,19 @@ namespace ConduitLLM.Providers.Streaming
                         return true;
                     }
                 }
-
-                // Also check standard error field
-                if (chunk.TryGetProperty("error", out var errorElement))
-                {
-                    if (errorElement.TryGetProperty("message", out var messageElement))
-                    {
-                        errorMessage = messageElement.GetString();
-                        return true;
-                    }
-
-                    errorMessage = errorElement.GetRawText();
-                    return true;
-                }
             }
             catch
             {
                 // If we can't parse the error, assume it's not an error chunk
             }
 
-            return false;
+            // Also check standard error field
+            return IsOpenAIStyleErrorChunk(chunk, out errorMessage);
         }
 
         /// <inheritdoc />
         public bool IsFinalChunk(JsonElement chunk)
-        {
-            try
-            {
-                if (chunk.TryGetProperty("choices", out var choicesElement) &&
-                    choicesElement.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var choice in choicesElement.EnumerateArray())
-                    {
-                        if (choice.TryGetProperty("finish_reason", out var finishReasonElement) &&
-                            finishReasonElement.ValueKind != JsonValueKind.Null)
-                        {
-                            var finishReason = finishReasonElement.GetString();
-                            if (!string.IsNullOrEmpty(finishReason))
-                            {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // If we can't determine, assume not final
-            }
-
-            return false;
-        }
+            => IsOpenAIStyleFinalChunk(chunk);
 
         /// <summary>
         /// Converts a MiniMax choice to a StreamingChoice.

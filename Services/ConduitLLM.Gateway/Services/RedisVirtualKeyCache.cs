@@ -54,31 +54,23 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 // Try Redis first - this is ~50x faster than database
-                var cachedValue = await Database.StringGetAsync(cacheKey);
+                var virtualKey = await TryGetCacheEntryAsync<VirtualKey>(cacheKey);
 
-                if (cachedValue.HasValue)
+                if (virtualKey != null)
                 {
-                    var jsonString = (string?)cachedValue;
-                    if (jsonString is not null)
+                    // Validate key is still enabled and not expired
+                    if (IsKeyValid(virtualKey))
                     {
-                        var virtualKey = JsonSerializer.Deserialize<VirtualKey>(jsonString);
-
-                        // Validate key is still enabled and not expired
-                        if (virtualKey != null && IsKeyValid(virtualKey))
-                        {
-                            Logger.LogDebug("Virtual Key cache hit: {KeyHash}", keyHash);
-                            await TrackHitAsync(CacheKeys.Stats.VirtualKeyService);
-                            GatewayCacheMetrics.RecordHit("virtualkey");
-                            GatewayCacheMetrics.RecordLatency("virtualkey", "get", sw.Elapsed.TotalSeconds);
-                            return virtualKey;
-                        }
-                        else
-                        {
-                            // Invalid key in cache, remove it
-                            await Database.KeyDeleteAsync(cacheKey);
-                            Logger.LogDebug("Removed invalid Virtual Key from cache: {KeyHash}", keyHash);
-                        }
+                        Logger.LogDebug("Virtual Key cache hit: {KeyHash}", keyHash);
+                        await TrackHitAsync(CacheKeys.Stats.VirtualKeyService);
+                        GatewayCacheMetrics.RecordHit("virtualkey");
+                        GatewayCacheMetrics.RecordLatency("virtualkey", "get", sw.Elapsed.TotalSeconds);
+                        return virtualKey;
                     }
+
+                    // Invalid key in cache, remove it
+                    await Database.KeyDeleteAsync(cacheKey);
+                    Logger.LogDebug("Removed invalid Virtual Key from cache: {KeyHash}", keyHash);
                 }
 
                 // Cache miss or invalid key - fallback to database
@@ -113,10 +105,9 @@ namespace ConduitLLM.Gateway.Services
 
             try
             {
-                var json = JsonSerializer.Serialize(virtualKey);
                 var expiry = CalculateExpiry(virtualKey);
 
-                await Database.StringSetAsync(cacheKey, json, expiry);
+                await SetCacheEntryAsync(cacheKey, virtualKey, expiry);
 
                 Logger.LogDebug("Cached Virtual Key: {KeyHash}, expires in {ExpiryMinutes} minutes",
                     keyHash, expiry.TotalMinutes);

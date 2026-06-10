@@ -33,7 +33,7 @@ namespace ConduitLLM.Providers.Streaming
             try
             {
                 // Transform the chunk to extract x_groq.usage into standard usage field
-                var transformedJson = TransformGroqChunk(providerChunk);
+                var transformedJson = ExtractGroqUsageJson(providerChunk);
                 var chunk = JsonSerializer.Deserialize<ChatCompletionChunk>(transformedJson, DefaultJsonOptions);
 
                 if (chunk != null && !string.IsNullOrEmpty(modelId))
@@ -52,67 +52,19 @@ namespace ConduitLLM.Providers.Streaming
 
         /// <inheritdoc />
         public bool IsErrorChunk(JsonElement chunk, out string? errorMessage)
-        {
-            errorMessage = null;
-
-            try
-            {
-                if (chunk.TryGetProperty("error", out var errorElement))
-                {
-                    if (errorElement.TryGetProperty("message", out var messageElement))
-                    {
-                        errorMessage = messageElement.GetString();
-                        return true;
-                    }
-
-                    errorMessage = errorElement.GetRawText();
-                    return true;
-                }
-            }
-            catch
-            {
-                // If we can't parse the error, assume it's not an error chunk
-            }
-
-            return false;
-        }
+            => IsOpenAIStyleErrorChunk(chunk, out errorMessage);
 
         /// <inheritdoc />
         public bool IsFinalChunk(JsonElement chunk)
-        {
-            try
-            {
-                if (chunk.TryGetProperty("choices", out var choicesElement) &&
-                    choicesElement.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var choice in choicesElement.EnumerateArray())
-                    {
-                        if (choice.TryGetProperty("finish_reason", out var finishReasonElement) &&
-                            finishReasonElement.ValueKind != JsonValueKind.Null)
-                        {
-                            var finishReason = finishReasonElement.GetString();
-                            if (!string.IsNullOrEmpty(finishReason))
-                            {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // If we can't determine, assume not final
-            }
-
-            return false;
-        }
+            => IsOpenAIStyleFinalChunk(chunk);
 
         /// <summary>
         /// Transforms a Groq chunk to extract x_groq.usage into the standard usage field.
+        /// Shared by this converter and <c>GroqClient</c>'s raw-chunk transform.
         /// </summary>
         /// <param name="chunk">The original Groq chunk.</param>
         /// <returns>JSON string with usage data in the standard location.</returns>
-        private static string TransformGroqChunk(JsonElement chunk)
+        public static string ExtractGroqUsageJson(JsonElement chunk)
         {
             // Check if x_groq.usage exists
             if (!chunk.TryGetProperty("x_groq", out var xGroq) ||
