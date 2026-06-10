@@ -229,6 +229,11 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
+            public async ValueTask DisposeAsync()
+            {
+                await ReleaseAsync().ConfigureAwait(false);
+            }
+
             public void Dispose()
             {
                 if (!_disposed)

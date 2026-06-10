@@ -50,8 +50,10 @@ namespace ConduitLLM.Core.Interfaces
 
     /// <summary>
     /// Represents a distributed lock that can be released when disposed.
+    /// Prefer <see cref="IAsyncDisposable.DisposeAsync"/> (or <see cref="ReleaseAsync"/>) over
+    /// synchronous disposal so release I/O is not blocked on.
     /// </summary>
-    public interface IDistributedLock : IDisposable
+    public interface IDistributedLock : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Gets the unique key for this lock.

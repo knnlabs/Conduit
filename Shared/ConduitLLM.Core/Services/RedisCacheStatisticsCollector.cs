@@ -607,14 +607,11 @@ namespace ConduitLLM.Core.Services
         {
             _heartbeatTimer?.Dispose();
 
-            try
-            {
-                UnregisterInstanceAsync().GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error unregistering instance during disposal");
-            }
+            // Best-effort unregistration without blocking on Redis I/O; if it doesn't
+            // complete, the instance is dropped once its heartbeat key expires.
+            _ = UnregisterInstanceAsync().ContinueWith(
+                t => _logger.LogError(t.Exception, "Error unregistering instance during disposal"),
+                TaskContinuationOptions.OnlyOnFaulted);
         }
     }
 }

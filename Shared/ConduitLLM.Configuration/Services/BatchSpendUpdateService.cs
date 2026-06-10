@@ -515,21 +515,12 @@ namespace ConduitLLM.Configuration.Services
         }
 
         /// <summary>
-        /// Sync cleanup fallback.
+        /// Sync cleanup fallback. Does not flush: pending updates are durable in Redis and
+        /// are picked up by the next flush cycle, so blocking on async I/O here is unnecessary.
         /// </summary>
         public override void Dispose()
         {
             _flushTimer?.Dispose();
-
-            try
-            {
-                FlushPendingUpdatesAsync().GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error flushing pending updates during service disposal");
-            }
-
             base.Dispose();
         }
 
