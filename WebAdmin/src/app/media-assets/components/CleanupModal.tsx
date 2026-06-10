@@ -4,20 +4,15 @@ import { useState, useMemo } from 'react';
 import { Modal, Stack, Text, Button, NumberInput, Alert, Group } from '@mantine/core';
 import { IconTrash, IconAlertCircle } from '@tabler/icons-react';
 import { useConfirmModal } from '@/hooks/useFormModal';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 async function runCleanup(type: 'expired' | 'orphaned' | 'prune', daysToKeep?: number): Promise<void> {
-  const response = await fetch('/api/media/cleanup', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  await withAdminClient(client =>
+    client.media.cleanupMedia({
       type,
       ...(type === 'prune' && { daysToKeep })
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Cleanup failed');
-  }
+    })
+  );
 }
 
 interface CleanupModalProps {

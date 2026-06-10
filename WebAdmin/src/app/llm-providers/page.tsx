@@ -79,8 +79,9 @@ export default function ProvidersPage() {
                 client.providers.listKeys(provider.id)
               );
               keyCount = Array.isArray(keys) ? keys.length : 0;
-            } catch {
-              // Silently fail, keyCount remains 0
+            } catch (error) {
+              // keyCount remains 0; log so a failing key lookup isn't mistaken for "no keys"
+              console.warn(`Failed to list keys for provider ${provider.id}:`, error);
             }
           }
           

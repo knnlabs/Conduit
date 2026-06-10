@@ -107,8 +107,9 @@ export const CostPreview: React.FC<CostPreviewProps> = ({ modelCost }) => {
               breakdown: `${formatCost(modelCost.imageCostPerImage)} × ${multipliers.hd}x`
             });
           }
-        } catch {
-          // Invalid JSON, skip
+        } catch (error) {
+          // Skip the multiplier rows; surface that the stored JSON is corrupt
+          console.warn('Failed to parse image quality multipliers for cost preview:', error);
         }
       }
     }
