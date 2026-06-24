@@ -9,6 +9,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.Builders;
+using ConduitLLM.Configuration.Messaging;
 using FluentAssertions;
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +27,7 @@ namespace ConduitLLM.Tests.Services
         private readonly ProviderErrorTrackingService _service;
         private readonly Mock<IProviderKeyCredentialRepository> _keyRepoMock;
         private readonly Mock<IProviderRepository> _providerRepoMock;
-        private readonly Mock<IPublishEndpoint> _publishEndpointMock;
+        private readonly Mock<IEventBus> _publishEndpointMock;
 
         public ProviderErrorTrackingServiceTests()
         {
@@ -35,7 +36,7 @@ namespace ConduitLLM.Tests.Services
             _loggerMock = new Mock<ILogger<ProviderErrorTrackingService>>();
             _keyRepoMock = new Mock<IProviderKeyCredentialRepository>();
             _providerRepoMock = new Mock<IProviderRepository>();
-            _publishEndpointMock = new Mock<IPublishEndpoint>();
+            _publishEndpointMock = new Mock<IEventBus>();
 
             SetupServiceScope();
 
@@ -54,7 +55,7 @@ namespace ConduitLLM.Tests.Services
                 .Returns(_keyRepoMock.Object);
             serviceProviderMock.Setup(x => x.GetService(typeof(IProviderRepository)))
                 .Returns(_providerRepoMock.Object);
-            serviceProviderMock.Setup(x => x.GetService(typeof(MassTransit.IPublishEndpoint)))
+            serviceProviderMock.Setup(x => x.GetService(typeof(ConduitLLM.Configuration.Messaging.IEventBus)))
                 .Returns(_publishEndpointMock.Object);
 
             scopeMock.Setup(x => x.ServiceProvider)
@@ -124,7 +125,7 @@ namespace ConduitLLM.Tests.Services
                 It.Is<ProviderKeyCredential>(k => k.Id == error.KeyCredentialId && !k.IsEnabled)), 
                 Times.Once);
             
-            _publishEndpointMock.Verify(x => x.Publish(
+            _publishEndpointMock.Verify(x => x.PublishAsync(
                 It.Is<ProviderKeyDisabledEvent>(e => 
                     e.KeyId == error.KeyCredentialId &&
                     e.ProviderId == error.ProviderId),
@@ -347,7 +348,7 @@ namespace ConduitLLM.Tests.Services
                 It.IsAny<CancellationToken>()), 
                 Times.Once);
             
-            _publishEndpointMock.Verify(x => x.Publish(
+            _publishEndpointMock.Verify(x => x.PublishAsync(
                 It.Is<ProviderKeyDisabledEvent>(e => 
                     e.KeyId == keyId &&
                     e.Reason.Contains("Provider disabled")),

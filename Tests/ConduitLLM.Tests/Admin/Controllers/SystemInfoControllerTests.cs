@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
@@ -14,14 +15,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public class SystemInfoControllerTests
     {
         private readonly Mock<IAdminSystemInfoService> _mockSystemInfoService;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<SystemInfoController>> _mockLogger;
         private readonly SystemInfoController _controller;
 
         public SystemInfoControllerTests()
         {
             _mockSystemInfoService = new Mock<IAdminSystemInfoService>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<SystemInfoController>>();
 
             _controller = new SystemInfoController(
@@ -36,7 +37,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Arrange
             _mockPublishEndpoint
-                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
+                .Setup(x => x.PublishAsync(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .Returns(Task.CompletedTask);
 
             // Act
@@ -48,7 +49,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Verify the event was published
             _mockPublishEndpoint.Verify(
-                x => x.Publish(
+                x => x.PublishAsync(
                     It.Is<DiscoveryCacheInvalidationRequested>(e =>
                         e.Reason == "Manual invalidation via Admin API" &&
                         e.RequestedBy == "Admin User"),
@@ -62,7 +63,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Arrange
             var exceptionMessage = "Event publishing failed";
             _mockPublishEndpoint
-                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
+                .Setup(x => x.PublishAsync(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .ThrowsAsync(new System.Exception(exceptionMessage));
 
             // Act
@@ -88,7 +89,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Arrange
             _mockPublishEndpoint
-                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
+                .Setup(x => x.PublishAsync(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .Returns(Task.CompletedTask);
 
             // Act

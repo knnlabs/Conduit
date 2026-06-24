@@ -5,6 +5,7 @@ using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
@@ -20,7 +21,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         private readonly Mock<IModelRepository> _mockModelRepository;
         private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
         private readonly Mock<IProviderRepository> _mockProviderRepository;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
         private readonly ModelController _controller;
 
@@ -29,7 +30,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockModelRepository = new Mock<IModelRepository>();
             _mockMappingService = new Mock<IAdminModelProviderMappingService>();
             _mockProviderRepository = new Mock<IProviderRepository>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<ModelController>>();
 
             _controller = new ModelController(
@@ -75,7 +76,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(updatedModel);
 
             ModelUpdated? capturedEvent = null;
-            _mockPublishEndpoint.Setup(p => p.Publish(It.IsAny<ModelUpdated>(), default))
+            _mockPublishEndpoint.Setup(p => p.PublishAsync(It.IsAny<ModelUpdated>(), default))
                 .Callback<object, System.Threading.CancellationToken>((evt, _) => capturedEvent = evt as ModelUpdated)
                 .Returns(Task.CompletedTask);
 
@@ -86,7 +87,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             Assert.IsType<OkObjectResult>(result);
             
             // Verify the event was published
-            _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<ModelUpdated>(), default), Times.Once);
+            _mockPublishEndpoint.Verify(p => p.PublishAsync(It.IsAny<ModelUpdated>(), default), Times.Once);
             
             // Verify the event has correct properties
             Assert.NotNull(capturedEvent);
@@ -132,7 +133,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(updatedModel);
 
             ModelUpdated? capturedEvent = null;
-            _mockPublishEndpoint.Setup(p => p.Publish(It.IsAny<ModelUpdated>(), default))
+            _mockPublishEndpoint.Setup(p => p.PublishAsync(It.IsAny<ModelUpdated>(), default))
                 .Callback<object, System.Threading.CancellationToken>((evt, _) => capturedEvent = evt as ModelUpdated)
                 .Returns(Task.CompletedTask);
 
@@ -143,7 +144,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             Assert.IsType<OkObjectResult>(result);
             
             // Verify the event was published
-            _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<ModelUpdated>(), default), Times.Once);
+            _mockPublishEndpoint.Verify(p => p.PublishAsync(It.IsAny<ModelUpdated>(), default), Times.Once);
             
             // Verify the event has correct properties
             Assert.NotNull(capturedEvent);

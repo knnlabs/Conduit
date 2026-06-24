@@ -6,6 +6,7 @@ using Moq;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Events;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Models;
 using ConduitLLM.Configuration.Services;
 
@@ -14,7 +15,7 @@ namespace ConduitLLM.Tests.Configuration.Services
     public class CacheConfigurationServiceTests : IDisposable
     {
         private readonly ConduitDbContext _dbContext;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<ILogger<CacheConfigurationService>> _mockLogger;
         private readonly CacheConfigurationService _service;
@@ -26,7 +27,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 .Options;
 
             _dbContext = new ConduitDbContext(options);
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockConfiguration = new Mock<IConfiguration>();
             _mockLogger = new Mock<ILogger<CacheConfigurationService>>();
 
@@ -131,7 +132,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             Assert.True(savedEntity.IsActive);
             Assert.Equal("test-user", savedEntity.CreatedBy);
 
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.Is<CacheConfigurationChangedEvent>(e => 
                     e.Region == CacheRegions.ModelCosts && 
                     e.Action == "Created"),
@@ -202,7 +203,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             Assert.Equal("Disabling cache for maintenance", audit.Reason);
             Assert.True(audit.Success);
 
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.Is<CacheConfigurationChangedEvent>(e => 
                     e.Region == CacheRegions.ProviderHealth && 
                     e.Action == "Updated"),
@@ -236,7 +237,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             Assert.NotNull(deletedEntity);
             Assert.False(deletedEntity.IsActive);
 
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.Is<CacheConfigurationChangedEvent>(e => 
                     e.Region == CacheRegions.IpFilters && 
                     e.Action == "Deleted"),
@@ -359,7 +360,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             Assert.True(result.Enabled);
             Assert.Equal(TimeSpan.FromMinutes(15), result.DefaultTTL);
 
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.Is<CacheConfigurationChangedEvent>(e => 
                     e.Region == CacheRegions.AsyncTasks && 
                     e.Action == "RolledBack" &&

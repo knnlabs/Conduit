@@ -3,6 +3,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IVirtualKeySpendHistoryRepository> _mockSpendHistoryRepository;
         private readonly Mock<IVirtualKeyGroupRepository> _mockGroupRepository;
         private readonly Mock<IVirtualKeyCache> _mockCache;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<AdminVirtualKeyService>> _mockLogger;
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
         private readonly Mock<IModelProviderMappingRepository> _mockModelProviderMappingRepository;
@@ -32,7 +33,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockSpendHistoryRepository = new Mock<IVirtualKeySpendHistoryRepository>();
             _mockGroupRepository = new Mock<IVirtualKeyGroupRepository>();
             _mockCache = new Mock<IVirtualKeyCache>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<AdminVirtualKeyService>>();
             _mockMediaLifecycleService = new Mock<IMediaLifecycleService>();
             _mockModelProviderMappingRepository = new Mock<IModelProviderMappingRepository>();

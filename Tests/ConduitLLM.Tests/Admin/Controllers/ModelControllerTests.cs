@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
@@ -22,7 +23,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         private readonly Mock<IModelRepository> _mockRepository;
         private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
         private readonly Mock<IProviderRepository> _mockProviderRepository;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
 
         public ModelControllerTests()
@@ -30,7 +31,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository = new Mock<IModelRepository>();
             _mockMappingService = new Mock<IAdminModelProviderMappingService>();
             _mockProviderRepository = new Mock<IProviderRepository>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<ModelController>>();
         }
 

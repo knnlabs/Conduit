@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Controllers;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +25,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<ILogger<ImagesController>> _mockLogger;
         private readonly Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService> _mockModelMappingService;
         private readonly Mock<IAsyncTaskService> _mockTaskService;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
@@ -39,7 +40,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockLogger = CreateLogger<ImagesController>();
             _mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
             _mockTaskService = new Mock<IAsyncTaskService>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockMediaLifecycleService = new Mock<IMediaLifecycleService>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
