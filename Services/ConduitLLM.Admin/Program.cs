@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Filters;
+using ConduitLLM.Admin.Validation;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
@@ -40,6 +41,14 @@ public partial class Program
                 // Ensure all DateTime values serialize as UTC with 'Z' suffix
                 options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
                 options.JsonSerializerOptions.Converters.Add(new NullableUtcDateTimeConverter());
+            })
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                // Tier 2a (#904): return the Admin API's standard ErrorResponseDto for automatic
+                // [ApiController] model-validation failures instead of the default
+                // ValidationProblemDetails — unifying the validation error shape with the rest of
+                // the Admin API (AdminExceptionMiddleware also emits ErrorResponseDto).
+                options.InvalidModelStateResponseFactory = InvalidModelStateResponse.Create;
             });
 
         // Operation-logging action filter — replaces the per-action success logging that used to
