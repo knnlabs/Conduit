@@ -6,6 +6,9 @@
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
     <NoWarn>xUnit2013;CS8632</NoWarn>
+    <!-- Enable interceptors emitted by the Microsoft.AspNetCore.OpenApi source generator, which
+         runs because the OpenAPI runtime tests call AddOpenApi() in this assembly. -->
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
   </PropertyGroup>
 
   <ItemGroup>
