@@ -127,7 +127,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act
             var result = await _controller.GetKeysInGroup(groupId);
 
-            // Assert - ExecuteWithNotFoundAsync returns NotFoundObjectResult with ErrorResponseDto
+            // Assert - NotFoundEntity returns NotFoundObjectResult with ErrorResponseDto
             result.Should().BeOfType<NotFoundObjectResult>();
 
             // Verify the correct repository method was called
@@ -168,22 +168,18 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GetKeysInGroup_ShouldReturnBadRequest_WhenInvalidOperationExceptionOccurs()
+        public async Task GetKeysInGroup_ShouldPropagateException_WhenInvalidOperationExceptionOccurs()
         {
             // Arrange
             var groupId = 1;
             _mockGroupRepository.Setup(r => r.GetByIdWithKeysAsync(groupId))
                               .ThrowsAsync(new InvalidOperationException("Database error"));
 
-            // Act
-            var result = await _controller.GetKeysInGroup(groupId);
-
-            // Assert - ExceptionToResponseMapper maps InvalidOperationException to 400 Bad Request
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-
-            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("The requested operation is not valid", errorResponse.error);
-            Assert.Equal("invalid_operation", errorResponse.Code);
+            // Act + Assert - error handling is delegated to the global AdminExceptionMiddleware,
+            // which maps InvalidOperationException to a 400 response. The action itself lets the
+            // exception propagate rather than catching it in a per-action wrapper.
+            var act = async () => await _controller.GetKeysInGroup(groupId);
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Database error");
 
             // Verify the repository method was called
             _mockGroupRepository.Verify(r => r.GetByIdWithKeysAsync(groupId), Times.Once);

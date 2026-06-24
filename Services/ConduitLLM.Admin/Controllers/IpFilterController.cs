@@ -1,4 +1,6 @@
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 
@@ -13,6 +15,7 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
+[ServiceFilter(typeof(OperationLoggingFilter))]
 public class IpFilterController : AdminControllerBase
 {
     private readonly IAdminIpFilterService _ipFilterService;
@@ -37,12 +40,10 @@ public class IpFilterController : AdminControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<IpFilterDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetAllFilters()
+    public async Task<IActionResult> GetAllFilters()
     {
-        return ExecuteAsync(
-            () => _ipFilterService.GetAllFiltersAsync(),
-            Ok,
-            "GetAllFilters");
+        var filters = await _ipFilterService.GetAllFiltersAsync();
+        return Ok(filters);
     }
 
     /// <summary>
@@ -52,12 +53,10 @@ public class IpFilterController : AdminControllerBase
     [HttpGet("enabled")]
     [ProducesResponseType(typeof(IEnumerable<IpFilterDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetEnabledFilters()
+    public async Task<IActionResult> GetEnabledFilters()
     {
-        return ExecuteAsync(
-            () => _ipFilterService.GetEnabledFiltersAsync(),
-            Ok,
-            "GetEnabledFilters");
+        var filters = await _ipFilterService.GetEnabledFiltersAsync();
+        return Ok(filters);
     }
 
     /// <summary>
@@ -69,14 +68,14 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(typeof(IpFilterDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetFilterById(int id)
+    public async Task<IActionResult> GetFilterById(int id)
     {
-        return ExecuteWithNotFoundAsync(
-            () => _ipFilterService.GetFilterByIdAsync(id),
-            Ok,
-            "IP filter",
-            id,
-            "GetFilterById");
+        var filter = await _ipFilterService.GetFilterByIdAsync(id);
+        if (filter == null)
+        {
+            return this.NotFoundEntity("IP filter", id);
+        }
+        return Ok(filter);
     }
 
     /// <summary>
@@ -91,26 +90,17 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> CreateFilter([FromBody] CreateIpFilterDto filter)
+    public async Task<IActionResult> CreateFilter([FromBody] CreateIpFilterDto filter)
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var (success, errorMessage, createdFilter) = await _ipFilterService.CreateFilterAsync(filter);
+        var (success, errorMessage, createdFilter) = await _ipFilterService.CreateFilterAsync(filter);
 
-                if (!success)
-                {
-                    throw new InvalidOperationException(errorMessage);
-                }
+        if (!success)
+        {
+            throw new InvalidOperationException(errorMessage);
+        }
 
-                return createdFilter!;
-            },
-            createdFilter =>
-            {
-                LogAdminAudit("Created", "IpFilter", createdFilter.Id, $"CIDR: {LoggingSanitizer.S(filter.IpAddressOrCidr)}, Type: {filter.FilterType}");
-                return CreatedAtAction(nameof(GetFilterById), new { id = createdFilter.Id }, createdFilter);
-            },
-            "CreateFilter");
+        LogAdminAudit("Created", "IpFilter", createdFilter!.Id, $"CIDR: {LoggingSanitizer.S(filter.IpAddressOrCidr)}, Type: {filter.FilterType}");
+        return CreatedAtAction(nameof(GetFilterById), new { id = createdFilter.Id }, createdFilter);
     }
 
     /// <summary>
@@ -127,34 +117,28 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> UpdateFilter(int id, [FromBody] UpdateIpFilterDto filter)
+    public async Task<IActionResult> UpdateFilter(int id, [FromBody] UpdateIpFilterDto filter)
     {
         // Ensure ID in route matches ID in body
         if (id != filter.Id)
         {
-            return Task.FromResult<IActionResult>(BadRequest("ID in route must match ID in body"));
+            return BadRequest("ID in route must match ID in body");
         }
 
-        return ExecuteAsync(
-            async () =>
+        var (success, errorMessage) = await _ipFilterService.UpdateFilterAsync(filter);
+
+        if (!success)
+        {
+            if (errorMessage?.Contains("not found") == true)
             {
-                var (success, errorMessage) = await _ipFilterService.UpdateFilterAsync(filter);
+                throw new KeyNotFoundException(errorMessage);
+            }
 
-                if (!success)
-                {
-                    if (errorMessage?.Contains("not found") == true)
-                    {
-                        throw new KeyNotFoundException(errorMessage);
-                    }
+            throw new InvalidOperationException(errorMessage);
+        }
 
-                    throw new InvalidOperationException(errorMessage);
-                }
-
-                LogAdminAudit("Updated", "IpFilter", id, $"CIDR: {LoggingSanitizer.S(filter.IpAddressOrCidr)}, Type: {filter.FilterType}");
-            },
-            NoContent(),
-            "UpdateFilter",
-            new { Id = id });
+        LogAdminAudit("Updated", "IpFilter", id, $"CIDR: {LoggingSanitizer.S(filter.IpAddressOrCidr)}, Type: {filter.FilterType}");
+        return NoContent();
     }
 
     /// <summary>
@@ -169,28 +153,22 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> DeleteFilter(int id)
+    public async Task<IActionResult> DeleteFilter(int id)
     {
-        return ExecuteAsync(
-            async () =>
+        var (success, errorMessage) = await _ipFilterService.DeleteFilterAsync(id);
+
+        if (!success)
+        {
+            if (errorMessage?.Contains("not found") == true)
             {
-                var (success, errorMessage) = await _ipFilterService.DeleteFilterAsync(id);
+                throw new KeyNotFoundException(errorMessage);
+            }
 
-                if (!success)
-                {
-                    if (errorMessage?.Contains("not found") == true)
-                    {
-                        throw new KeyNotFoundException(errorMessage);
-                    }
+            throw new InvalidOperationException(errorMessage);
+        }
 
-                    throw new InvalidOperationException(errorMessage);
-                }
-
-                LogAdminAudit("Deleted", "IpFilter", id, $"Id: {id}");
-            },
-            NoContent(),
-            "DeleteFilter",
-            new { Id = id });
+        LogAdminAudit("Deleted", "IpFilter", id, $"Id: {id}");
+        return NoContent();
     }
 
     /// <summary>
@@ -200,12 +178,10 @@ public class IpFilterController : AdminControllerBase
     [HttpGet("settings")]
     [ProducesResponseType(typeof(IpFilterSettingsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetSettings()
+    public async Task<IActionResult> GetSettings()
     {
-        return ExecuteAsync(
-            () => _ipFilterService.GetIpFilterSettingsAsync(),
-            Ok,
-            "GetSettings");
+        var settings = await _ipFilterService.GetIpFilterSettingsAsync();
+        return Ok(settings);
     }
 
     /// <summary>
@@ -220,22 +196,17 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> UpdateSettings([FromBody] IpFilterSettingsDto settings)
+    public async Task<IActionResult> UpdateSettings([FromBody] IpFilterSettingsDto settings)
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var (success, errorMessage) = await _ipFilterService.UpdateIpFilterSettingsAsync(settings);
+        var (success, errorMessage) = await _ipFilterService.UpdateIpFilterSettingsAsync(settings);
 
-                if (!success)
-                {
-                    throw new InvalidOperationException(errorMessage);
-                }
+        if (!success)
+        {
+            throw new InvalidOperationException(errorMessage);
+        }
 
-                LogAdminAudit("Updated", "IpFilterSettings", detail: $"Enabled: {settings.IsEnabled}, DefaultAllow: {settings.DefaultAllow}");
-            },
-            NoContent(),
-            "UpdateSettings");
+        LogAdminAudit("Updated", "IpFilterSettings", detail: $"Enabled: {settings.IsEnabled}, DefaultAllow: {settings.DefaultAllow}");
+        return NoContent();
     }
 
     /// <summary>
@@ -248,17 +219,14 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(typeof(IpCheckResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> CheckIpAddress(string ipAddress)
+    public async Task<IActionResult> CheckIpAddress(string ipAddress)
     {
         if (string.IsNullOrWhiteSpace(ipAddress))
         {
-            return Task.FromResult<IActionResult>(BadRequest("IP address must be provided"));
+            return BadRequest("IP address must be provided");
         }
 
-        return ExecuteAsync(
-            () => _ipFilterService.CheckIpAddressAsync(ipAddress),
-            Ok,
-            "CheckIpAddress",
-            new { IpAddress = LoggingSanitizer.S(ipAddress) });
+        var result = await _ipFilterService.CheckIpAddressAsync(ipAddress);
+        return Ok(result);
     }
 }
