@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration;
 
 using Microsoft.AspNetCore.Authorization;
@@ -16,6 +17,7 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("metrics")]
     [Authorize(Policy = "MasterKeyPolicy")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class MetricsController : AdminControllerBase
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
@@ -39,68 +41,62 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Connection pool metrics.</returns>
         [HttpGet("database/pool")]
-        public Task<IActionResult> GetDatabasePoolMetrics(CancellationToken cancellationToken = default)
+        public async Task<IActionResult> GetDatabasePoolMetrics(CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(
-                async () =>
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var connection = dbContext.Database.GetDbConnection() as NpgsqlConnection;
+
+            if (connection == null)
+            {
+                return Ok(new
                 {
-                    using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                    var connection = dbContext.Database.GetDbConnection() as NpgsqlConnection;
+                    provider = "non-postgresql",
+                    message = "Connection pool metrics only available for PostgreSQL"
+                });
+            }
 
-                    if (connection == null)
-                    {
-                        return (object)new
-                        {
-                            provider = "non-postgresql",
-                            message = "Connection pool metrics only available for PostgreSQL"
-                        };
-                    }
+            // Get connection string to extract pool settings
+            var connectionString = connection.ConnectionString;
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
 
-                    // Get connection string to extract pool settings
-                    var connectionString = connection.ConnectionString;
-                    var builder = new NpgsqlConnectionStringBuilder(connectionString);
+            // Measure connection acquisition time
+            var stopwatch = Stopwatch.StartNew();
+            await connection.OpenAsync(cancellationToken);
+            stopwatch.Stop();
+            await connection.CloseAsync();
 
-                    // Measure connection acquisition time
-                    var stopwatch = Stopwatch.StartNew();
-                    await connection.OpenAsync(cancellationToken);
-                    stopwatch.Stop();
-                    await connection.CloseAsync();
+            // Note: Npgsql doesn't expose pool statistics directly in current versions
+            // We can only infer pool health from connection acquisition time
+            // For detailed monitoring, use PostgreSQL's pg_stat_activity or external monitoring tools
 
-                    // Note: Npgsql doesn't expose pool statistics directly in current versions
-                    // We can only infer pool health from connection acquisition time
-                    // For detailed monitoring, use PostgreSQL's pg_stat_activity or external monitoring tools
-
-                    return (object)new
-                    {
-                        timestamp = DateTime.UtcNow,
-                        provider = "postgresql",
-                        connectionString = new
-                        {
-                            host = builder.Host,
-                            port = builder.Port,
-                            database = builder.Database,
-                            applicationName = builder.ApplicationName ?? "Conduit Gateway API"
-                        },
-                        poolConfiguration = new
-                        {
-                            minPoolSize = builder.MinPoolSize,
-                            maxPoolSize = builder.MaxPoolSize,
-                            connectionLifetime = builder.ConnectionLifetime,
-                            connectionIdleLifetime = builder.ConnectionIdleLifetime,
-                            pooling = builder.Pooling
-                        },
-                        currentMetrics = new
-                        {
-                            connectionAcquisitionTimeMs = stopwatch.ElapsedMilliseconds,
-                            healthStatus = GetHealthStatus(stopwatch.ElapsedMilliseconds),
-                            // Additional metrics can be obtained from pg_stat_activity if needed
-                            // but we avoid that here to prevent performance impact
-                            note = "For detailed pool statistics, query pg_stat_activity directly or use monitoring tools"
-                        }
-                    };
+            return Ok(new
+            {
+                timestamp = DateTime.UtcNow,
+                provider = "postgresql",
+                connectionString = new
+                {
+                    host = builder.Host,
+                    port = builder.Port,
+                    database = builder.Database,
+                    applicationName = builder.ApplicationName ?? "Conduit Gateway API"
                 },
-                Ok,
-                "GetDatabasePoolMetrics");
+                poolConfiguration = new
+                {
+                    minPoolSize = builder.MinPoolSize,
+                    maxPoolSize = builder.MaxPoolSize,
+                    connectionLifetime = builder.ConnectionLifetime,
+                    connectionIdleLifetime = builder.ConnectionIdleLifetime,
+                    pooling = builder.Pooling
+                },
+                currentMetrics = new
+                {
+                    connectionAcquisitionTimeMs = stopwatch.ElapsedMilliseconds,
+                    healthStatus = GetHealthStatus(stopwatch.ElapsedMilliseconds),
+                    // Additional metrics can be obtained from pg_stat_activity if needed
+                    // but we avoid that here to prevent performance impact
+                    note = "For detailed pool statistics, query pg_stat_activity directly or use monitoring tools"
+                }
+            });
         }
 
         /// <summary>
@@ -109,37 +105,31 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Comprehensive application metrics.</returns>
         [HttpGet]
-        public Task<IActionResult> GetAllMetrics(CancellationToken cancellationToken = default)
+        public async Task<IActionResult> GetAllMetrics(CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Get database pool metrics
-                    var poolMetricsResult = await GetDatabasePoolMetrics(cancellationToken);
-                    var poolMetrics = (poolMetricsResult as OkObjectResult)?.Value;
+            // Get database pool metrics
+            var poolMetricsResult = await GetDatabasePoolMetrics(cancellationToken);
+            var poolMetrics = (poolMetricsResult as OkObjectResult)?.Value;
 
-                    return new
-                    {
-                        timestamp = DateTime.UtcNow,
-                        application = new
-                        {
-                            name = "Conduit Gateway API",
-                            version = typeof(MetricsController).Assembly.GetName().Version?.ToString() ?? "unknown",
-                            environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
-                        },
-                        database = poolMetrics,
-                        system = new
-                        {
-                            cpuCount = Environment.ProcessorCount,
-                            workingSetMb = Environment.WorkingSet / 1024 / 1024,
-                            gcMemoryMb = GC.GetTotalMemory(false) / 1024 / 1024,
-                            threadCount = Process.GetCurrentProcess().Threads.Count,
-                            uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime()
-                        }
-                    };
+            return Ok(new
+            {
+                timestamp = DateTime.UtcNow,
+                application = new
+                {
+                    name = "Conduit Gateway API",
+                    version = typeof(MetricsController).Assembly.GetName().Version?.ToString() ?? "unknown",
+                    environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
                 },
-                Ok,
-                "GetAllMetrics");
+                database = poolMetrics,
+                system = new
+                {
+                    cpuCount = Environment.ProcessorCount,
+                    workingSetMb = Environment.WorkingSet / 1024 / 1024,
+                    gcMemoryMb = GC.GetTotalMemory(false) / 1024 / 1024,
+                    threadCount = Process.GetCurrentProcess().Threads.Count,
+                    uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime()
+                }
+            });
         }
 
         private static string GetHealthStatus(long acquisitionTimeMs)
