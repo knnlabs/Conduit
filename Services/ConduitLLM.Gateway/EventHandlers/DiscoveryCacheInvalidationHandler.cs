@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -8,7 +9,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles DiscoveryCacheInvalidationRequested events from Admin API
     /// Invalidates the discovery cache across all Gateway API instances
     /// </summary>
-    public class DiscoveryCacheInvalidationHandler : IConsumer<DiscoveryCacheInvalidationRequested>
+    public class DiscoveryCacheInvalidationHandler : IEventHandler<DiscoveryCacheInvalidationRequested>
     {
         private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly ILogger<DiscoveryCacheInvalidationHandler> _logger;
@@ -24,9 +25,9 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles manual discovery cache invalidation requests from Admin API
         /// </summary>
-        public async Task Consume(ConsumeContext<DiscoveryCacheInvalidationRequested> context)
+        public async Task HandleAsync(DiscoveryCacheInvalidationRequested message, IEventContext context)
         {
-            var @event = context.Message;
+            var @event = message;
 
             try
             {

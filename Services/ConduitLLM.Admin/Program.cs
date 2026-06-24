@@ -176,15 +176,15 @@ public partial class Program
         // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
         builder.Services.AddMassTransitEventBus();
 
+        // Register the shared cache-invalidation IEventHandler<T> implementations (#919).
+        ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationHandlers(builder.Services);
+
         // Register MassTransit event bus for Admin API
         builder.Services.AddMassTransit(x =>
         {
-            // Register consumers for Admin API cache invalidation
-            x.AddConsumer<ConduitLLM.Core.Consumers.GlobalSettingCacheInvalidationHandler>();
-
-            // Add Function Discovery Cache invalidation consumers
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
+            // Cache-invalidation handlers (#919) are migrated to IEventHandler<T> and
+            // dispatched via the generic bridge. Handlers are registered on builder.Services.
+            ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(x);
 
             // Register consumers for Admin API SignalR notifications
             // Provider health consumer removed

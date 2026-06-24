@@ -9,6 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Messaging.MassTransit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -30,11 +32,17 @@ namespace ConduitLLM.Tests.Integration
         {
             var services = new ServiceCollection();
 
-            // Add MassTransit test harness
+            // Add MassTransit test harness.
+            // ModelMappingCacheInvalidationConsumer now implements the IEventHandler<T>
+            // abstraction (epic #909), so register the generic bridge consumer on the bus
+            // and register the handler + event bus on the service collection.
             services.AddMassTransitTestHarness(cfg =>
             {
-                cfg.AddConsumer<ModelMappingCacheInvalidationConsumer>();
+                cfg.AddEventBridge<ModelMappingChanged>();
             });
+
+            services.AddMassTransitEventBus();
+            services.AddEventHandler<ModelMappingChanged, ConduitLLM.Gateway.Consumers.ModelMappingCacheInvalidationConsumer>();
 
             // Add mock services
             services.AddSingleton(Mock.Of<ICacheManager>());
@@ -93,7 +101,9 @@ namespace ConduitLLM.Tests.Integration
                 x.Context.Message.MappingId == @event.MappingId));
 
             // Assert
-            var consumerHarness = _harness.GetConsumerHarness<ModelMappingCacheInvalidationConsumer>();
+            // The handler is dispatched via the generic bridge consumer (epic #909),
+            // so the consumer harness is keyed on the bridge type.
+            var consumerHarness = _harness.GetConsumerHarness<MassTransitConsumerBridge<ModelMappingChanged>>();
             Assert.True(await consumerHarness.Consumed.Any<ModelMappingChanged>());
 
             // Verify the consumer called the cache services

@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Interfaces;
@@ -9,10 +10,10 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles Provider events to refresh in-memory settings and invalidate discovery cache
     /// Critical for maintaining runtime configuration consistency
     /// </summary>
-    public class ProviderCacheInvalidationHandler : 
-        IConsumer<ProviderCreated>,
-        IConsumer<ProviderUpdated>,
-        IConsumer<ProviderDeleted>
+    public class ProviderCacheInvalidationHandler :
+        IEventHandler<ProviderCreated>,
+        IEventHandler<ProviderUpdated>,
+        IEventHandler<ProviderDeleted>
     {
         private readonly ISettingsRefreshService _settingsRefreshService;
         private readonly IDiscoveryCacheService _discoveryCacheService;
@@ -31,10 +32,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles ProviderCreated events by refreshing provider credentials and invalidating discovery cache
         /// </summary>
-        public async Task Consume(ConsumeContext<ProviderCreated> context)
+        public async Task HandleAsync(ProviderCreated message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 _logger.LogInformation(
@@ -64,10 +65,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles ProviderUpdated events by refreshing provider credentials and invalidating discovery cache
         /// </summary>
-        public async Task Consume(ConsumeContext<ProviderUpdated> context)
+        public async Task HandleAsync(ProviderUpdated message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 _logger.LogInformation(
@@ -103,10 +104,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles ProviderDeleted events by refreshing provider credentials from the database
         /// </summary>
-        public async Task Consume(ConsumeContext<ProviderDeleted> context)
+        public async Task HandleAsync(ProviderDeleted message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 _logger.LogInformation(

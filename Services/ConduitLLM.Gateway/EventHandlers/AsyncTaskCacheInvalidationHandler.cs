@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 
 using MassTransit;
@@ -9,10 +10,10 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// <summary>
     /// Handles async task events to invalidate cache entries.
     /// </summary>
-    public class AsyncTaskCacheInvalidationHandler : 
-        IConsumer<AsyncTaskCreated>,
-        IConsumer<AsyncTaskUpdated>,
-        IConsumer<AsyncTaskDeleted>
+    public class AsyncTaskCacheInvalidationHandler :
+        IEventHandler<AsyncTaskCreated>,
+        IEventHandler<AsyncTaskUpdated>,
+        IEventHandler<AsyncTaskDeleted>
     {
         private readonly IDistributedCache _cache;
         private readonly ILogger<AsyncTaskCacheInvalidationHandler> _logger;
@@ -32,10 +33,8 @@ namespace ConduitLLM.Gateway.EventHandlers
         }
 
         /// <inheritdoc/>
-        public async Task Consume(ConsumeContext<AsyncTaskCreated> context)
+        public async Task HandleAsync(AsyncTaskCreated message, IEventContext context)
         {
-            var message = context.Message;
-            
             // For created events, we don't need to invalidate cache
             // The task was just created in DB and will be cached on first access
             _logger.LogDebug("Async task created event received for task {TaskId}", message.TaskId);
@@ -44,10 +43,8 @@ namespace ConduitLLM.Gateway.EventHandlers
         }
 
         /// <inheritdoc/>
-        public async Task Consume(ConsumeContext<AsyncTaskUpdated> context)
+        public async Task HandleAsync(AsyncTaskUpdated message, IEventContext context)
         {
-            var message = context.Message;
-            
             try
             {
                 // Invalidate cache for updated task
@@ -67,10 +64,8 @@ namespace ConduitLLM.Gateway.EventHandlers
         }
 
         /// <inheritdoc/>
-        public async Task Consume(ConsumeContext<AsyncTaskDeleted> context)
+        public async Task HandleAsync(AsyncTaskDeleted message, IEventContext context)
         {
-            var message = context.Message;
-            
             try
             {
                 // Invalidate cache for deleted task

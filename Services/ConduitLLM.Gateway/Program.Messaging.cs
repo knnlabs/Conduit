@@ -12,6 +12,11 @@ public partial class Program
         // exactly as injecting IPublishEndpoint behaved before.
         builder.Services.AddMassTransitEventBus();
 
+        // Register the cache-invalidation / notification IEventHandler<T> implementations (#919).
+        // Their MassTransit bridges are registered inside AddMassTransit below.
+        ConduitLLM.Gateway.Extensions.CacheInvalidationMessagingExtensions.AddGatewayCacheInvalidationHandlers(builder.Services);
+        ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationHandlers(builder.Services);
+
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
             ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
@@ -22,61 +27,30 @@ public partial class Program
         // Register MassTransit event bus
         builder.Services.AddMassTransit(x =>
         {
-            // Add event consumers for Gateway API
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
+            // Cache-invalidation / notification handlers (#919) are migrated to IEventHandler<T>
+            // and dispatched through the generic MassTransit bridge instead of per-consumer
+            // AddConsumer registrations. Bridges register one consumer per event type; the
+            // handler implementations are registered on builder.Services (see top of method).
+            ConduitLLM.Gateway.Extensions.CacheInvalidationMessagingExtensions.AddGatewayCacheInvalidationBridges(x);
+            ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(x);
+
+            // High-risk ordered spend processor (still IConsumer — migrated in #921)
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ProviderEventHandler>();
-            
-            // Add spend notification consumer
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdatedHandler>();
-            
-            
-            // Add image generation consumers
+
+            // Add image generation consumers (orchestrators — migrated in #920)
             x.AddConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ImageGenerationProgressHandler>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ImageGenerationCompletedHandler>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ImageGenerationFailedHandler>();
-            
-            // Add video generation consumers
+
+            // Add video generation consumers (orchestrators — migrated in #920)
             x.AddConsumer<ConduitLLM.Core.Services.VideoGenerationOrchestrator>();
             x.AddConsumer<ConduitLLM.Core.Services.VideoProgressTrackingOrchestrator>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VideoGenerationProgressHandler>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VideoGenerationCompletedHandler>();
             x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VideoGenerationFailedHandler>();
-            
-            // Add Admin API event consumers for cache invalidation
-            x.AddConsumer<ConduitLLM.Core.Consumers.GlobalSettingCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.IpFilterCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.DiscoveryCacheInvalidationHandler>();
 
-            // Add Function Discovery Cache invalidation consumers
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
-
-            // LLM cache toggle now uses GlobalSettingChanged event via GlobalSettingCacheInvalidationHandler
-            // (registered above) - no separate consumer needed
-
-            // Add async task cache invalidation handler
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.AsyncTaskCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.ModelCostCacheInvalidationHandler>();
-            
-            // Navigation state event consumers removed - WebAdmin uses React Query instead of SignalR for model mapping updates
-
-            // Add cache invalidation consumers for runtime configuration updates
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ModelCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ProviderCacheInvalidationHandler>();
-
-            // Add model mapping cache invalidation consumer - handles both model mapping cache
-            // (CacheRegion.ModelMetadata) and discovery cache (CacheRegion.ModelDiscovery)
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.ModelMappingCacheInvalidationConsumer>();
-            
-            // Add media lifecycle handler for tracking generated media
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.MediaLifecycleHandler>();
-            
-            // Add video generation started handler for real-time notifications
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VideoGenerationStartedHandler>();
-            
-            // Add webhook delivery consumer for scalable webhook processing
+            // Add webhook delivery consumer for scalable webhook processing (migrated in #921)
             x.AddConsumer<ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>();
             
             // Add batch spend flush handler for admin operations and integration testing

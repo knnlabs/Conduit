@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -32,7 +33,7 @@ namespace ConduitLLM.Gateway.Consumers
     /// This ensures that all API endpoints using cached mappings will get fresh data
     /// on the next request after a configuration change.
     /// </remarks>
-    public class ModelMappingCacheInvalidationConsumer : IConsumer<ModelMappingChanged>
+    public class ModelMappingCacheInvalidationConsumer : IEventHandler<ModelMappingChanged>
     {
         private readonly ICacheManager _cacheManager;
         private readonly IDiscoveryCacheService _discoveryCacheService;
@@ -57,9 +58,9 @@ namespace ConduitLLM.Gateway.Consumers
         /// <summary>
         /// Handles ModelMappingChanged events and invalidates the corresponding cache entries.
         /// </summary>
-        public async Task Consume(ConsumeContext<ModelMappingChanged> context)
+        public async Task HandleAsync(ModelMappingChanged message, IEventContext context)
         {
-            var @event = context.Message;
+            var @event = message;
 
             _logger.LogInformation(
                 "Processing ModelMappingChanged event: MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}",

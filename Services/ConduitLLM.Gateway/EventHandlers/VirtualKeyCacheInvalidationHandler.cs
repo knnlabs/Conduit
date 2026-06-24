@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -8,11 +9,11 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles Virtual Key events for cache invalidation in the Gateway API
     /// Critical for maintaining cache consistency across all services
     /// </summary>
-    public class VirtualKeyCacheInvalidationHandler : 
+    public class VirtualKeyCacheInvalidationHandler :
         BatchInvalidationEventHandler<VirtualKeyUpdated>,
-        IConsumer<VirtualKeyCreated>,
-        IConsumer<VirtualKeyDeleted>,
-        IConsumer<SpendUpdated>
+        IEventHandler<VirtualKeyCreated>,
+        IEventHandler<VirtualKeyDeleted>,
+        IEventHandler<SpendUpdated>
     {
         private readonly IBatchCacheInvalidationService _batchService;
         private readonly IVirtualKeyCache? _cache;
@@ -53,10 +54,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// Handles VirtualKeyCreated events by invalidating the cache to force a fresh load
         /// </summary>
         /// <param name="context">Message context containing the event</param>
-        public async Task Consume(ConsumeContext<VirtualKeyCreated> context)
+        public async Task HandleAsync(VirtualKeyCreated message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 // Use batch service for invalidation
@@ -86,10 +87,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// Handles VirtualKeyDeleted events by invalidating the cache
         /// </summary>
         /// <param name="context">Message context containing the event</param>
-        public async Task Consume(ConsumeContext<VirtualKeyDeleted> context)
+        public async Task HandleAsync(VirtualKeyDeleted message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 // Use batch service for invalidation with critical priority
@@ -116,10 +117,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// Handles SpendUpdated events by invalidating the cache for the affected virtual key
         /// </summary>
         /// <param name="context">Message context containing the event</param>
-        public async Task Consume(ConsumeContext<SpendUpdated> context)
+        public async Task HandleAsync(SpendUpdated message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 // Use batch service for invalidation with high priority

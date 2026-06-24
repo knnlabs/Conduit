@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -8,7 +9,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles ModelUpdated events to invalidate discovery cache
     /// Critical for ensuring updated model parameters are reflected in the discovery API
     /// </summary>
-    public class ModelCacheInvalidationHandler : IConsumer<ModelUpdated>
+    public class ModelCacheInvalidationHandler : IEventHandler<ModelUpdated>
     {
         private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly ILogger<ModelCacheInvalidationHandler> _logger;
@@ -24,10 +25,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles ModelUpdated events by invalidating discovery cache
         /// </summary>
-        public async Task Consume(ConsumeContext<ModelUpdated> context)
+        public async Task HandleAsync(ModelUpdated message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 _logger.LogInformation(
