@@ -39,7 +39,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of all notifications</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllNotifications()
         {
             var notifications = await _notificationService.GetAllNotificationsAsync();
@@ -52,7 +51,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of unread notifications</returns>
         [HttpGet("unread")]
         [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetUnreadNotifications()
         {
             var notifications = await _notificationService.GetUnreadNotificationsAsync();
@@ -67,7 +65,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(NotificationDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetNotificationById(int id)
         {
             var notification = await _notificationService.GetNotificationByIdAsync(id);
@@ -86,7 +83,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(NotificationDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationDto notification)
         {
             var result = await _notificationService.CreateNotificationAsync(notification);
@@ -104,7 +100,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateNotification(int id, [FromBody] UpdateNotificationDto notification)
         {
             // Ensure ID in route matches ID in body
@@ -127,7 +122,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("{id}/read")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> MarkAsRead(int id)
         {
             if (!await _notificationService.MarkNotificationAsReadAsync(id))
@@ -142,7 +136,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>The number of notifications marked as read</returns>
         [HttpPost("mark-all-read")]
         [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> MarkAllAsRead()
         {
             var count = await _notificationService.MarkAllNotificationsAsReadAsync();
@@ -158,7 +151,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteNotification(int id)
         {
             if (!await _notificationService.DeleteNotificationAsync(id))

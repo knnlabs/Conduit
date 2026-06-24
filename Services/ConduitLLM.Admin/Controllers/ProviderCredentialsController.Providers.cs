@@ -52,7 +52,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Paginated list of providers</returns>
         [HttpGet]
         [ProducesResponseType(typeof(Configuration.DTOs.PagedResult<object>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllProviders(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50,
@@ -96,7 +95,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetProviderById(int id)
         {
             var provider = await _providerRepository.GetByIdAsync(id);
@@ -125,7 +123,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateProvider([FromBody] CreateProviderRequest request)
         {
             var provider = new Provider
@@ -180,7 +177,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateProvider(int id, [FromBody] UpdateProviderRequest request)
         {
             var provider = await _providerRepository.GetByIdAsync(id);
@@ -242,7 +238,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteProvider(int id)
         {
             var provider = await _providerRepository.GetByIdAsync(id);

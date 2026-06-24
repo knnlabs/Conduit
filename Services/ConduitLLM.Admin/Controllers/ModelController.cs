@@ -65,7 +65,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of all models, or paginated result when page/pageSize are provided</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllModels(
             [FromQuery] int? page = null,
             [FromQuery] int? pageSize = null,
@@ -111,7 +110,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ModelDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelById(int id)
         {
             var model = await _modelRepository.GetByIdWithDetailsAsync(id);
@@ -131,7 +129,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of matching models</returns>
         [HttpGet("search")]
         [ProducesResponseType(typeof(IEnumerable<ModelDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SearchModels([FromQuery] string query)
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -151,7 +148,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("provider/{provider}")]
         [ProducesResponseType(typeof(IEnumerable<ModelWithProviderIdDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelsByProvider(string provider)
         {
             if (string.IsNullOrWhiteSpace(provider))
@@ -212,7 +208,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(ModelDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateModel([FromBody] CreateModelDto dto)
         {
             if (dto == null)
@@ -282,7 +277,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateModel(int id, [FromBody] UpdateModelDto dto)
         {
             if (dto == null)
@@ -438,7 +432,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteModel(int id)
         {
             var model = await _modelRepository.GetByIdAsync(id);

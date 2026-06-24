@@ -52,7 +52,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token</param>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<VirtualKeyGroupDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllGroups(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50,
@@ -249,7 +248,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}/transactions")]
         [ProducesResponseType(typeof(PagedResult<VirtualKeyGroupTransactionDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetTransactionHistory(
             int id,
             [FromQuery] int page = 1,
@@ -347,7 +345,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(RefundResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ProcessRefund(int id, [FromBody] ProcessRefundRequestDto request)
         {
             // Validate request

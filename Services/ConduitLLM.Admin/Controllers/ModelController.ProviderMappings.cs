@@ -15,7 +15,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}/provider-mappings")]
         [ProducesResponseType(typeof(IEnumerable<ModelProviderMappingDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelProviderMappings(int id)
         {
             var model = await _modelRepository.GetByIdAsync(id);
@@ -42,7 +41,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateModelProviderMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
         {
             // Skip ModelId validation since it's no longer on the DTO
@@ -96,7 +94,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateModelProviderMapping(int id, int mappingId, [FromBody] ModelProviderMappingDto mappingDto)
         {
             if (mappingDto.Id != mappingId)
@@ -148,7 +145,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{id}/provider-mappings/{mappingId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteModelProviderMapping(int id, int mappingId)
         {
             // Check if model exists
