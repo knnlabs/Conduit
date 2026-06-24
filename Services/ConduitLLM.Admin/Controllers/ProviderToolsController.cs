@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
@@ -15,6 +16,7 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("api/admin/provider-tools")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class ProviderToolsController : AdminControllerBase
     {
         private readonly ConduitDbContext _context;
@@ -40,34 +42,28 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="isActive">Optional active status filter</param>
         /// <returns>List of provider tools</returns>
         [HttpGet]
-        public Task<IActionResult> GetProviderTools(
+        public async Task<IActionResult> GetProviderTools(
             [FromQuery] ProviderType? provider = null,
             [FromQuery] bool? isActive = null)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var query = _context.ProviderTools.AsQueryable();
+            var query = _context.ProviderTools.AsQueryable();
 
-                    if (provider.HasValue)
-                    {
-                        query = query.Where(pt => pt.Provider == provider.Value);
-                    }
+            if (provider.HasValue)
+            {
+                query = query.Where(pt => pt.Provider == provider.Value);
+            }
 
-                    if (isActive.HasValue)
-                    {
-                        query = query.Where(pt => pt.IsActive == isActive.Value);
-                    }
+            if (isActive.HasValue)
+            {
+                query = query.Where(pt => pt.IsActive == isActive.Value);
+            }
 
-                    var tools = await query
-                        .OrderBy(pt => pt.Provider)
-                        .ThenBy(pt => pt.ToolName)
-                        .ToListAsync();
+            var tools = await query
+                .OrderBy(pt => pt.Provider)
+                .ThenBy(pt => pt.ToolName)
+                .ToListAsync();
 
-                    return tools.Select(ProviderToolDto.FromEntity);
-                },
-                result => Ok(result),
-                "GetProviderTools");
+            return Ok(tools.Select(ProviderToolDto.FromEntity));
         }
 
         /// <summary>
@@ -76,22 +72,15 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">Tool ID</param>
         /// <returns>Provider tool details</returns>
         [HttpGet("{id}")]
-        public Task<IActionResult> GetProviderTool(int id)
+        public async Task<IActionResult> GetProviderTool(int id)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var tool = await _context.ProviderTools.FindAsync(id);
-                    if (tool == null)
-                    {
-                        throw new KeyNotFoundException($"Provider tool with ID '{id}' not found");
-                    }
+            var tool = await _context.ProviderTools.FindAsync(id);
+            if (tool == null)
+            {
+                throw new KeyNotFoundException($"Provider tool with ID '{id}' not found");
+            }
 
-                    return ProviderToolDto.FromEntity(tool);
-                },
-                result => Ok(result),
-                "GetProviderTool",
-                new { Id = id });
+            return Ok(ProviderToolDto.FromEntity(tool));
         }
 
         /// <summary>
@@ -100,47 +89,42 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dto">Provider tool creation data</param>
         /// <returns>Created provider tool</returns>
         [HttpPost]
-        public Task<IActionResult> CreateProviderTool([FromBody] CreateProviderToolDto dto)
+        public async Task<IActionResult> CreateProviderTool([FromBody] CreateProviderToolDto dto)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Validate billing unit
-                    ValidateBillingUnit(dto.BillingUnit);
+            // Validate billing unit
+            ValidateBillingUnit(dto.BillingUnit);
 
-                    // Check if tool already exists for this provider
-                    var existingTool = await _context.ProviderTools
-                        .FirstOrDefaultAsync(pt => pt.Provider == dto.Provider && pt.ToolName == dto.ToolName);
+            // Check if tool already exists for this provider
+            var existingTool = await _context.ProviderTools
+                .FirstOrDefaultAsync(pt => pt.Provider == dto.Provider && pt.ToolName == dto.ToolName);
 
-                    if (existingTool != null)
-                    {
-                        throw new InvalidOperationException($"Tool '{dto.ToolName}' already exists for provider {dto.Provider}");
-                    }
+            if (existingTool != null)
+            {
+                throw new InvalidOperationException($"Tool '{dto.ToolName}' already exists for provider {dto.Provider}");
+            }
 
-                    var tool = new ProviderTool
-                    {
-                        Provider = dto.Provider,
-                        ToolName = dto.ToolName,
-                        ToolParameters = dto.ToolParameters,
-                        CostPerUnit = dto.CostPerUnit,
-                        BillingUnit = dto.BillingUnit,
-                        CostDescription = dto.CostDescription,
-                        IsActive = dto.IsActive,
-                        UpdatedAt = DateTime.UtcNow
-                    };
+            var tool = new ProviderTool
+            {
+                Provider = dto.Provider,
+                ToolName = dto.ToolName,
+                ToolParameters = dto.ToolParameters,
+                CostPerUnit = dto.CostPerUnit,
+                BillingUnit = dto.BillingUnit,
+                CostDescription = dto.CostDescription,
+                IsActive = dto.IsActive,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-                    _context.ProviderTools.Add(tool);
-                    await _context.SaveChangesAsync();
+            _context.ProviderTools.Add(tool);
+            await _context.SaveChangesAsync();
 
-                    LogAdminAudit("Created", "ProviderTool", tool.Id,
-                        $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
+            LogAdminAudit("Created", "ProviderTool", tool.Id,
+                $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
 
-                    await PublishToolChangedEventAsync(tool, "Created");
+            await PublishToolChangedEventAsync(tool, "Created");
 
-                    return ProviderToolDto.FromEntity(tool);
-                },
-                result => CreatedAtAction(nameof(GetProviderTool), new { id = result.Id }, result),
-                "CreateProviderTool");
+            var result = ProviderToolDto.FromEntity(tool);
+            return CreatedAtAction(nameof(GetProviderTool), new { id = result.Id }, result);
         }
 
         /// <summary>
@@ -150,39 +134,32 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dto">Updated tool data</param>
         /// <returns>Updated provider tool</returns>
         [HttpPut("{id}")]
-        public Task<IActionResult> UpdateProviderTool(int id, [FromBody] UpdateProviderToolDto dto)
+        public async Task<IActionResult> UpdateProviderTool(int id, [FromBody] UpdateProviderToolDto dto)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Validate billing unit
-                    ValidateBillingUnit(dto.BillingUnit);
+            // Validate billing unit
+            ValidateBillingUnit(dto.BillingUnit);
 
-                    var tool = await _context.ProviderTools.FindAsync(id);
-                    if (tool == null)
-                    {
-                        throw new KeyNotFoundException($"Provider tool with ID '{id}' not found");
-                    }
+            var tool = await _context.ProviderTools.FindAsync(id);
+            if (tool == null)
+            {
+                throw new KeyNotFoundException($"Provider tool with ID '{id}' not found");
+            }
 
-                    tool.IsActive = dto.IsActive;
-                    tool.ToolParameters = dto.ToolParameters;
-                    tool.CostPerUnit = dto.CostPerUnit;
-                    tool.BillingUnit = dto.BillingUnit;
-                    tool.CostDescription = dto.CostDescription;
-                    tool.UpdatedAt = DateTime.UtcNow;
+            tool.IsActive = dto.IsActive;
+            tool.ToolParameters = dto.ToolParameters;
+            tool.CostPerUnit = dto.CostPerUnit;
+            tool.BillingUnit = dto.BillingUnit;
+            tool.CostDescription = dto.CostDescription;
+            tool.UpdatedAt = DateTime.UtcNow;
 
-                    await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
-                    LogAdminAudit("Updated", "ProviderTool", id,
-                        $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
+            LogAdminAudit("Updated", "ProviderTool", id,
+                $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
 
-                    await PublishToolChangedEventAsync(tool, "Updated");
+            await PublishToolChangedEventAsync(tool, "Updated");
 
-                    return ProviderToolDto.FromEntity(tool);
-                },
-                result => Ok(result),
-                "UpdateProviderTool",
-                new { Id = id });
+            return Ok(ProviderToolDto.FromEntity(tool));
         }
 
         /// <summary>
@@ -191,28 +168,23 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">Tool ID</param>
         /// <returns>Success status</returns>
         [HttpDelete("{id}")]
-        public Task<IActionResult> DeleteProviderTool(int id)
+        public async Task<IActionResult> DeleteProviderTool(int id)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var tool = await _context.ProviderTools.FindAsync(id);
-                    if (tool == null)
-                    {
-                        throw new KeyNotFoundException($"Provider tool with ID '{id}' not found");
-                    }
+            var tool = await _context.ProviderTools.FindAsync(id);
+            if (tool == null)
+            {
+                throw new KeyNotFoundException($"Provider tool with ID '{id}' not found");
+            }
 
-                    _context.ProviderTools.Remove(tool);
-                    await _context.SaveChangesAsync();
+            _context.ProviderTools.Remove(tool);
+            await _context.SaveChangesAsync();
 
-                    LogAdminAudit("Deleted", "ProviderTool", id,
-                        $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
+            LogAdminAudit("Deleted", "ProviderTool", id,
+                $"ToolName: {LoggingSanitizer.S(tool.ToolName)}, Provider: {tool.Provider}");
 
-                    await PublishToolChangedEventAsync(tool, "Deleted");
-                },
-                NoContent(),
-                "DeleteProviderTool",
-                new { Id = id });
+            await PublishToolChangedEventAsync(tool, "Deleted");
+
+            return NoContent();
         }
 
         /// <summary>
@@ -250,86 +222,80 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="tools">Array of provider tools to import</param>
         /// <returns>Import results</returns>
         [HttpPost("import")]
-        public Task<IActionResult> ImportProviderTools([FromBody] List<CreateProviderToolDto> tools)
+        public async Task<IActionResult> ImportProviderTools([FromBody] List<CreateProviderToolDto> tools)
         {
-            return ExecuteAsync(
-                async () =>
+            var imported = 0;
+            var skipped = 0;
+            var errors = new List<string>();
+            var affectedProviders = new HashSet<ProviderType>();
+
+            foreach (var dto in tools)
+            {
+                try
                 {
-                    var imported = 0;
-                    var skipped = 0;
-                    var errors = new List<string>();
-                    var affectedProviders = new HashSet<ProviderType>();
-
-                    foreach (var dto in tools)
+                    // Validate billing unit
+                    if (!ProviderToolBillingUnits.IsValid(dto.BillingUnit))
                     {
-                        try
-                        {
-                            // Validate billing unit
-                            if (!ProviderToolBillingUnits.IsValid(dto.BillingUnit))
-                            {
-                                errors.Add($"Tool '{dto.ToolName}': Invalid billing unit '{dto.BillingUnit}'. " +
-                                    $"Must be one of: {string.Join(", ", ProviderToolBillingUnits.All)}");
-                                skipped++;
-                                continue;
-                            }
-
-                            // Check if tool already exists
-                            var exists = await _context.ProviderTools
-                                .AnyAsync(pt => pt.Provider == dto.Provider && pt.ToolName == dto.ToolName);
-
-                            if (exists)
-                            {
-                                skipped++;
-                                errors.Add($"Tool '{dto.ToolName}' already exists for {dto.Provider}");
-                                continue;
-                            }
-
-                            var tool = new ProviderTool
-                            {
-                                Provider = dto.Provider,
-                                ToolName = dto.ToolName,
-                                ToolParameters = dto.ToolParameters,
-                                CostPerUnit = dto.CostPerUnit,
-                                BillingUnit = dto.BillingUnit,
-                                CostDescription = dto.CostDescription,
-                                IsActive = dto.IsActive,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-
-                            _context.ProviderTools.Add(tool);
-                            imported++;
-                            affectedProviders.Add(dto.Provider);
-                        }
-                        catch (Exception ex)
-                        {
-                            errors.Add($"Failed to import {dto.ToolName}: {ex.Message}");
-                        }
+                        errors.Add($"Tool '{dto.ToolName}': Invalid billing unit '{dto.BillingUnit}'. " +
+                            $"Must be one of: {string.Join(", ", ProviderToolBillingUnits.All)}");
+                        skipped++;
+                        continue;
                     }
 
-                    if (imported > 0)
-                    {
-                        await _context.SaveChangesAsync();
+                    // Check if tool already exists
+                    var exists = await _context.ProviderTools
+                        .AnyAsync(pt => pt.Provider == dto.Provider && pt.ToolName == dto.ToolName);
 
-                        // Publish events for each affected provider
-                        foreach (var provider in affectedProviders)
-                        {
-                            await PublishToolChangedEventAsync(provider, "BulkImport");
-                        }
+                    if (exists)
+                    {
+                        skipped++;
+                        errors.Add($"Tool '{dto.ToolName}' already exists for {dto.Provider}");
+                        continue;
                     }
 
-                    LogAdminAudit("Imported", "ProviderTool",
-                        detail: $"Imported: {imported}, Skipped: {skipped}, Total: {tools.Count}");
-
-                    return new
+                    var tool = new ProviderTool
                     {
-                        imported,
-                        skipped,
-                        total = tools.Count,
-                        errors = errors.Count > 0 ? errors : null
+                        Provider = dto.Provider,
+                        ToolName = dto.ToolName,
+                        ToolParameters = dto.ToolParameters,
+                        CostPerUnit = dto.CostPerUnit,
+                        BillingUnit = dto.BillingUnit,
+                        CostDescription = dto.CostDescription,
+                        IsActive = dto.IsActive,
+                        UpdatedAt = DateTime.UtcNow
                     };
-                },
-                result => Ok(result),
-                "ImportProviderTools");
+
+                    _context.ProviderTools.Add(tool);
+                    imported++;
+                    affectedProviders.Add(dto.Provider);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Failed to import {dto.ToolName}: {ex.Message}");
+                }
+            }
+
+            if (imported > 0)
+            {
+                await _context.SaveChangesAsync();
+
+                // Publish events for each affected provider
+                foreach (var provider in affectedProviders)
+                {
+                    await PublishToolChangedEventAsync(provider, "BulkImport");
+                }
+            }
+
+            LogAdminAudit("Imported", "ProviderTool",
+                detail: $"Imported: {imported}, Skipped: {skipped}, Total: {tools.Count}");
+
+            return Ok(new
+            {
+                imported,
+                skipped,
+                total = tools.Count,
+                errors = errors.Count > 0 ? errors : null
+            });
         }
 
         /// <summary>
@@ -337,23 +303,17 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>JSON array of all provider tools</returns>
         [HttpGet("export")]
-        public Task<IActionResult> ExportProviderTools()
+        public async Task<IActionResult> ExportProviderTools()
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var tools = await _context.ProviderTools
-                        .OrderBy(pt => pt.Provider)
-                        .ThenBy(pt => pt.ToolName)
-                        .ToListAsync();
+            var tools = await _context.ProviderTools
+                .OrderBy(pt => pt.Provider)
+                .ThenBy(pt => pt.ToolName)
+                .ToListAsync();
 
-                    var dtos = tools.Select(ProviderToolDto.FromEntity);
+            var dtos = tools.Select(ProviderToolDto.FromEntity);
 
-                    Response.Headers.Append("Content-Disposition", "attachment; filename=provider-tools.json");
-                    return dtos;
-                },
-                result => Ok(result),
-                "ExportProviderTools");
+            Response.Headers.Append("Content-Disposition", "attachment; filename=provider-tools.json");
+            return Ok(dtos);
         }
 
         /// <summary>

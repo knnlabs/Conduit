@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MassTransit;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Core.Extensions;
 
@@ -20,6 +21,7 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/batch-spending")]
     [Authorize(Policy = "MasterKeyPolicy")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class BatchSpendingController : AdminControllerBase
     {
         private readonly IPublishEndpoint _publishEndpoint;
@@ -60,63 +62,57 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(object), 202)]
         [ProducesResponseType(400)]
         [ProducesResponseType(500)]
-        public Task<IActionResult> FlushPendingUpdates(
+        public async Task<IActionResult> FlushPendingUpdates(
             [FromQuery] string? reason = null,
             [FromQuery] FlushPriority priority = FlushPriority.Normal,
             [FromQuery] int? timeoutSeconds = null,
             [FromQuery] bool includeStatistics = true)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Generate unique request ID for tracking
-                    var requestId = Guid.NewGuid().ToString();
+            // Generate unique request ID for tracking
+            var requestId = Guid.NewGuid().ToString();
 
-                    Logger.LogInformation(
-                        "Admin requesting batch spend flush - RequestId: {RequestId}, Reason: {Reason}, Priority: {Priority}",
-                        requestId, reason ?? "Administrative operation", priority);
+            Logger.LogInformation(
+                "Admin requesting batch spend flush - RequestId: {RequestId}, Reason: {Reason}, Priority: {Priority}",
+                requestId, reason ?? "Administrative operation", priority);
 
-                    // Validate timeout parameter
-                    if (timeoutSeconds.HasValue && (timeoutSeconds.Value < 1 || timeoutSeconds.Value > 300))
-                    {
-                        throw new ArgumentException("Timeout must be between 1 and 300 seconds");
-                    }
+            // Validate timeout parameter
+            if (timeoutSeconds.HasValue && (timeoutSeconds.Value < 1 || timeoutSeconds.Value > 300))
+            {
+                throw new ArgumentException("Timeout must be between 1 and 300 seconds");
+            }
 
-                    // Create and publish flush request event
-                    var flushEvent = new BatchSpendFlushRequestedEvent
-                    {
-                        RequestId = requestId,
-                        RequestedBy = "Admin",
-                        RequestedAt = DateTime.UtcNow,
-                        Reason = reason ?? "Administrative flush operation",
-                        Source = "Admin API",
-                        Priority = priority,
-                        TimeoutSeconds = timeoutSeconds,
-                        IncludeStatistics = includeStatistics
-                    };
+            // Create and publish flush request event
+            var flushEvent = new BatchSpendFlushRequestedEvent
+            {
+                RequestId = requestId,
+                RequestedBy = "Admin",
+                RequestedAt = DateTime.UtcNow,
+                Reason = reason ?? "Administrative flush operation",
+                Source = "Admin API",
+                Priority = priority,
+                TimeoutSeconds = timeoutSeconds,
+                IncludeStatistics = includeStatistics
+            };
 
-                    // Publish event to Gateway API for processing
-                    await _publishEndpoint.Publish(flushEvent);
+            // Publish event to Gateway API for processing
+            await _publishEndpoint.Publish(flushEvent);
 
-                    LogAdminAudit("Flushed", "BatchSpending",
-                        detail: $"RequestId: {requestId}, Priority: {priority}, Reason: {LoggingSanitizer.S(reason ?? "Administrative flush operation")}");
+            LogAdminAudit("Flushed", "BatchSpending",
+                detail: $"RequestId: {requestId}, Priority: {priority}, Reason: {LoggingSanitizer.S(reason ?? "Administrative flush operation")}");
 
-                    // Return accepted response with tracking information
-                    return (object)new
-                    {
-                        success = true,
-                        message = "Batch spend flush request submitted successfully",
-                        requestId = requestId,
-                        requestedAt = flushEvent.RequestedAt,
-                        priority = priority.ToString(),
-                        estimatedProcessingTime = timeoutSeconds.HasValue
-                            ? $"Up to {timeoutSeconds} seconds"
-                            : "Based on service configuration",
-                        note = "This is an asynchronous operation. Monitor logs for completion status."
-                    };
-                },
-                result => Accepted(result),
-                "FlushPendingUpdates");
+            // Return accepted response with tracking information
+            return Accepted(new
+            {
+                success = true,
+                message = "Batch spend flush request submitted successfully",
+                requestId = requestId,
+                requestedAt = flushEvent.RequestedAt,
+                priority = priority.ToString(),
+                estimatedProcessingTime = timeoutSeconds.HasValue
+                    ? $"Up to {timeoutSeconds} seconds"
+                    : "Based on service configuration",
+                note = "This is an asynchronous operation. Monitor logs for completion status."
+            });
         }
 
         /// <summary>
@@ -133,36 +129,33 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>System status and configuration information</returns>
         [HttpGet("status")]
         [ProducesResponseType(typeof(object), 200)]
-        public Task<IActionResult> GetStatus()
+        public async Task<IActionResult> GetStatus()
         {
-            return ExecuteAsync(
-                () =>
-                {
-                    var isEventBusAvailable = IsEventPublishingEnabled;
+            var isEventBusAvailable = IsEventPublishingEnabled;
 
-                    return Task.FromResult(new
-                    {
-                        success = true,
-                        adminApiStatus = "healthy",
-                        eventBusAvailable = isEventBusAvailable,
-                        canPublishFlushRequests = isEventBusAvailable,
-                        supportedOperations = new[]
-                        {
-                            "flush - Trigger immediate batch spend processing",
-                            "status - Get system status information"
-                        },
-                        architecture = new
-                        {
-                            pattern = "Event-driven with MassTransit",
-                            adminRole = "Publishes BatchSpendFlushRequestedEvent",
-                            coreRole = "Consumes events and performs actual flush operations",
-                            decoupling = "Admin and Gateway APIs communicate via events only"
-                        },
-                        timestamp = DateTime.UtcNow
-                    });
+            var status = new
+            {
+                success = true,
+                adminApiStatus = "healthy",
+                eventBusAvailable = isEventBusAvailable,
+                canPublishFlushRequests = isEventBusAvailable,
+                supportedOperations = new[]
+                {
+                    "flush - Trigger immediate batch spend processing",
+                    "status - Get system status information"
                 },
-                Ok,
-                "GetStatus");
+                architecture = new
+                {
+                    pattern = "Event-driven with MassTransit",
+                    adminRole = "Publishes BatchSpendFlushRequestedEvent",
+                    coreRole = "Consumes events and performs actual flush operations",
+                    decoupling = "Admin and Gateway APIs communicate via events only"
+                },
+                timestamp = DateTime.UtcNow
+            };
+
+            await Task.CompletedTask;
+            return Ok(status);
         }
 
         /// <summary>

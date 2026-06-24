@@ -2,7 +2,6 @@ using ConduitLLM.Configuration.DTOs;
 
 using FluentAssertions;
 
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -28,19 +27,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task DeleteSetting_WithNonExistingId_ShouldReturnNotFound()
+        public async Task DeleteSetting_WithNonExistingId_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.DeleteSettingAsync(999))
                 .ReturnsAsync(false);
 
-            // Act
-            var result = await _controller.DeleteSetting(999);
-
-            // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("not_found");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.DeleteSetting(999);
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion
@@ -62,36 +57,27 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task DeleteSettingByKey_WithNonExistingKey_ShouldReturnNotFound()
+        public async Task DeleteSettingByKey_WithNonExistingKey_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.DeleteSettingByKeyAsync("non_existing"))
                 .ReturnsAsync(false);
 
-            // Act
-            var result = await _controller.DeleteSettingByKey("non_existing");
-
-            // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("not_found");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.DeleteSettingByKey("non_existing");
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         [Fact]
-        public async Task DeleteSettingByKey_WithException_ShouldReturn500()
+        public async Task DeleteSettingByKey_WithException_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.DeleteSettingByKeyAsync(It.IsAny<string>()))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.DeleteSettingByKey("test_key");
-
-            // Assert
-            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.DeleteSettingByKey("test_key");
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

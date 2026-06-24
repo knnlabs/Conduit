@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.PromptCaching;
@@ -18,6 +19,7 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/prompt-caching")]
 [Authorize(Policy = "MasterKeyPolicy")]
+[ServiceFilter(typeof(OperationLoggingFilter))]
 public class PromptCachingController : AdminControllerBase
 {
     private const string SettingKey = "PromptCaching.Config";
@@ -52,43 +54,37 @@ public class PromptCachingController : AdminControllerBase
     /// <returns>The current prompt caching configuration, or defaults if not set.</returns>
     [HttpGet("config")]
     [ProducesResponseType(typeof(PromptCachingConfigDto), StatusCodes.Status200OK)]
-    public Task<IActionResult> GetConfig()
+    public async Task<IActionResult> GetConfig()
     {
-        return ExecuteAsync(
-            async () =>
+        var json = await _cacheService.GetSettingValueAsync(SettingKey);
+        if (json == null)
+        {
+            return Ok(new PromptCachingConfigDto
             {
-                var json = await _cacheService.GetSettingValueAsync(SettingKey);
-                if (json == null)
-                {
-                    return new PromptCachingConfigDto
-                    {
-                        AutoInjectEnabled = false,
-                        InjectionPoints = new List<CacheInjectionPointDto>()
-                    };
-                }
+                AutoInjectEnabled = false,
+                InjectionPoints = new List<CacheInjectionPointDto>()
+            });
+        }
 
-                var config = JsonSerializer.Deserialize<PromptCachingConfig>(json, JsonOptions);
-                if (config == null)
-                {
-                    return new PromptCachingConfigDto
-                    {
-                        AutoInjectEnabled = false,
-                        InjectionPoints = new List<CacheInjectionPointDto>()
-                    };
-                }
+        var config = JsonSerializer.Deserialize<PromptCachingConfig>(json, JsonOptions);
+        if (config == null)
+        {
+            return Ok(new PromptCachingConfigDto
+            {
+                AutoInjectEnabled = false,
+                InjectionPoints = new List<CacheInjectionPointDto>()
+            });
+        }
 
-                return new PromptCachingConfigDto
-                {
-                    AutoInjectEnabled = config.AutoInjectEnabled,
-                    InjectionPoints = config.InjectionPoints.Select(p => new CacheInjectionPointDto
-                    {
-                        Role = p.Role,
-                        Index = p.Index
-                    }).ToList()
-                };
-            },
-            Ok,
-            "GetPromptCachingConfig");
+        return Ok(new PromptCachingConfigDto
+        {
+            AutoInjectEnabled = config.AutoInjectEnabled,
+            InjectionPoints = config.InjectionPoints.Select(p => new CacheInjectionPointDto
+            {
+                Role = p.Role,
+                Index = p.Index
+            }).ToList()
+        });
     }
 
     /// <summary>
@@ -99,57 +95,51 @@ public class PromptCachingController : AdminControllerBase
     [HttpPut("config")]
     [ProducesResponseType(typeof(PromptCachingConfigDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
-    public Task<IActionResult> UpdateConfig([FromBody] UpdatePromptCachingConfigDto dto)
+    public async Task<IActionResult> UpdateConfig([FromBody] UpdatePromptCachingConfigDto dto)
     {
-        return ExecuteAsync(
-            async () =>
+        // Map DTO to domain model
+        var config = new PromptCachingConfig
+        {
+            AutoInjectEnabled = dto.AutoInjectEnabled,
+            InjectionPoints = dto.InjectionPoints.Select(p => new CacheInjectionPoint
             {
-                // Map DTO to domain model
-                var config = new PromptCachingConfig
-                {
-                    AutoInjectEnabled = dto.AutoInjectEnabled,
-                    InjectionPoints = dto.InjectionPoints.Select(p => new CacheInjectionPoint
-                    {
-                        Role = p.Role,
-                        Index = p.Index
-                    }).ToList()
-                };
+                Role = p.Role,
+                Index = p.Index
+            }).ToList()
+        };
 
-                var json = JsonSerializer.Serialize(config, JsonOptions);
+        var json = JsonSerializer.Serialize(config, JsonOptions);
 
-                // Upsert: try update first, create if not found
-                var existing = await _globalSettingService.GetSettingByKeyAsync(SettingKey);
-                if (existing != null)
-                {
-                    await _globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
-                    {
-                        Key = SettingKey,
-                        Value = json,
-                        Description = "Prompt caching auto-injection configuration"
-                    });
-                }
-                else
-                {
-                    await _globalSettingService.CreateSettingAsync(new CreateGlobalSettingDto
-                    {
-                        Key = SettingKey,
-                        Value = json,
-                        Description = "Prompt caching auto-injection configuration"
-                    });
-                }
+        // Upsert: try update first, create if not found
+        var existing = await _globalSettingService.GetSettingByKeyAsync(SettingKey);
+        if (existing != null)
+        {
+            await _globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
+            {
+                Key = SettingKey,
+                Value = json,
+                Description = "Prompt caching auto-injection configuration"
+            });
+        }
+        else
+        {
+            await _globalSettingService.CreateSettingAsync(new CreateGlobalSettingDto
+            {
+                Key = SettingKey,
+                Value = json,
+                Description = "Prompt caching auto-injection configuration"
+            });
+        }
 
-                // Invalidate cache so changes take effect immediately
-                await _cacheService.InvalidateSettingAsync(SettingKey);
+        // Invalidate cache so changes take effect immediately
+        await _cacheService.InvalidateSettingAsync(SettingKey);
 
-                LogAdminAudit("Updated", "PromptCachingConfig", detail: $"AutoInject={dto.AutoInjectEnabled}, Points={dto.InjectionPoints.Count}");
+        LogAdminAudit("Updated", "PromptCachingConfig", detail: $"AutoInject={dto.AutoInjectEnabled}, Points={dto.InjectionPoints.Count}");
 
-                return new PromptCachingConfigDto
-                {
-                    AutoInjectEnabled = dto.AutoInjectEnabled,
-                    InjectionPoints = dto.InjectionPoints
-                };
-            },
-            Ok,
-            "UpdatePromptCachingConfig");
+        return Ok(new PromptCachingConfigDto
+        {
+            AutoInjectEnabled = dto.AutoInjectEnabled,
+            InjectionPoints = dto.InjectionPoints
+        });
     }
 }

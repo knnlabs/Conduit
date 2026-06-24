@@ -1,6 +1,5 @@
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -52,7 +51,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task UpdateSetting_WithNonExistingId_ShouldReturnNotFound()
+        public async Task UpdateSetting_WithNonExistingId_ShouldPropagateException()
         {
             // Arrange
             var updateDto = new UpdateGlobalSettingDto
@@ -64,13 +63,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.GetSettingByIdAsync(999))
                 .ReturnsAsync((GlobalSettingDto?)null);
 
-            // Act
-            var result = await _controller.UpdateSetting(999, updateDto);
-
-            // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("not_found");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.UpdateSetting(999, updateDto);
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion
@@ -99,7 +94,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task UpdateSettingByKey_WithFailure_ShouldReturnBadRequest()
+        public async Task UpdateSettingByKey_WithFailure_ShouldPropagateException()
         {
             // Arrange
             var updateDto = new UpdateGlobalSettingByKeyDto
@@ -111,20 +106,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.UpdateSettingByKeyAsync(It.IsAny<UpdateGlobalSettingByKeyDto>()))
                 .ReturnsAsync(false);
 
-            // Act
-            var result = await _controller.UpdateSettingByKey(updateDto);
-
-            // Assert
-            // Controller throws InvalidOperationException when service returns false,
-            // which AdminControllerBase maps to 400 Bad Request
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.Should().Be("The requested operation is not valid");
-            errorResponse.Code.Should().Be("invalid_operation");
+            // Act + Assert — controller throws InvalidOperationException when service returns false;
+            // error mapping is now owned by AdminExceptionMiddleware, so the action propagates.
+            var act = async () => await _controller.UpdateSettingByKey(updateDto);
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         [Fact]
-        public async Task UpdateSettingByKey_WithException_ShouldReturn500()
+        public async Task UpdateSettingByKey_WithException_ShouldPropagateException()
         {
             // Arrange
             var updateDto = new UpdateGlobalSettingByKeyDto
@@ -136,14 +125,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.UpdateSettingByKeyAsync(It.IsAny<UpdateGlobalSettingByKeyDto>()))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.UpdateSettingByKey(updateDto);
-
-            // Assert
-            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.UpdateSettingByKey(updateDto);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

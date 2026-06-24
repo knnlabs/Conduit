@@ -1,6 +1,5 @@
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -51,20 +50,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GetAllSettings_WithException_ShouldReturn500()
+        public async Task GetAllSettings_WithException_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.GetAllSettingsAsync())
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.GetAllSettings();
-
-            // Assert
-            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.GetAllSettings();
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

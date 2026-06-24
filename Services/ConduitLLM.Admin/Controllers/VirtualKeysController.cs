@@ -1,4 +1,6 @@
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
@@ -14,6 +16,7 @@ namespace ConduitLLM.Admin.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[ServiceFilter(typeof(OperationLoggingFilter))]
 public class VirtualKeysController : AdminControllerBase
 {
     private readonly IAdminVirtualKeyService _virtualKeyService;
@@ -43,19 +46,13 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GenerateKey([FromBody] CreateVirtualKeyRequestDto request)
+    public async Task<IActionResult> GenerateKey([FromBody] CreateVirtualKeyRequestDto request)
     {
-        return ExecuteAsync(
-            () => _virtualKeyService.GenerateVirtualKeyAsync(request),
-            response =>
-            {
-                LogAdminAudit("Created", "VirtualKey", response.KeyInfo.Id, $"Name: {LoggingSanitizer.S(request.KeyName)}");
-                AdminOperationsMetricsService.RecordVirtualKeyOperation("create", "success");
-                AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "create");
-                return CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response);
-            },
-            "GenerateKey",
-            new { KeyName = LoggingSanitizer.S(request.KeyName) });
+        var response = await _virtualKeyService.GenerateVirtualKeyAsync(request);
+        LogAdminAudit("Created", "VirtualKey", response.KeyInfo.Id, $"Name: {LoggingSanitizer.S(request.KeyName)}");
+        AdminOperationsMetricsService.RecordVirtualKeyOperation("create", "success");
+        AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "create");
+        return CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response);
     }
 
     /// <summary>
@@ -67,12 +64,10 @@ public class VirtualKeysController : AdminControllerBase
     [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(List<VirtualKeyDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> ListKeys([FromQuery] int? virtualKeyGroupId = null)
+    public async Task<IActionResult> ListKeys([FromQuery] int? virtualKeyGroupId = null)
     {
-        return ExecuteAsync(
-            () => _virtualKeyService.ListVirtualKeysAsync(virtualKeyGroupId),
-            Ok,
-            "ListKeys");
+        var result = await _virtualKeyService.ListVirtualKeysAsync(virtualKeyGroupId);
+        return Ok(result);
     }
 
     /// <summary>
@@ -85,14 +80,14 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(typeof(VirtualKeyDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetKeyById(int id)
+    public async Task<IActionResult> GetKeyById(int id)
     {
-        return ExecuteWithNotFoundAsync(
-            () => _virtualKeyService.GetVirtualKeyInfoAsync(id),
-            Ok,
-            "Virtual key",
-            id,
-            "GetKeyById");
+        var result = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
+        if (result == null)
+        {
+            return this.NotFoundEntity("Virtual key", id);
+        }
+        return Ok(result);
     }
 
     /// <summary>
@@ -109,51 +104,45 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> UpdateKey(int id, [FromBody] UpdateVirtualKeyRequestDto request)
+    public async Task<IActionResult> UpdateKey(int id, [FromBody] UpdateVirtualKeyRequestDto request)
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                // Fetch pre-state for change tracking
-                var preState = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
-                if (preState == null)
-                    throw new KeyNotFoundException();
+        // Fetch pre-state for change tracking
+        var preState = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
+        if (preState == null)
+            throw new KeyNotFoundException();
 
-                if (!await _virtualKeyService.UpdateVirtualKeyAsync(id, request))
-                    throw new KeyNotFoundException();
+        if (!await _virtualKeyService.UpdateVirtualKeyAsync(id, request))
+            throw new KeyNotFoundException();
 
-                // Build change list from pre-state vs request
-                var changes = new List<(string Property, string? OldValue, string? NewValue)>();
+        // Build change list from pre-state vs request
+        var changes = new List<(string Property, string? OldValue, string? NewValue)>();
 
-                if (request.KeyName != null && preState.KeyName != request.KeyName)
-                    changes.Add(("KeyName", preState.KeyName, request.KeyName));
-                if (request.IsEnabled.HasValue && preState.IsEnabled != request.IsEnabled.Value)
-                    changes.Add(("IsEnabled", preState.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
-                if (request.AllowedModels != null && preState.AllowedModels != request.AllowedModels)
-                    changes.Add(("AllowedModels", preState.AllowedModels ?? "null", request.AllowedModels));
-                if (request.ExpiresAt.HasValue && preState.ExpiresAt != request.ExpiresAt)
-                    changes.Add(("ExpiresAt", preState.ExpiresAt?.ToString("o") ?? "null", request.ExpiresAt?.ToString("o") ?? "null"));
-                if (request.RateLimitRpm.HasValue && preState.RateLimitRpm != request.RateLimitRpm)
-                    changes.Add(("RateLimitRpm", preState.RateLimitRpm?.ToString() ?? "null", request.RateLimitRpm?.ToString() ?? "null"));
-                if (request.RateLimitRpd.HasValue && preState.RateLimitRpd != request.RateLimitRpd)
-                    changes.Add(("RateLimitRpd", preState.RateLimitRpd?.ToString() ?? "null", request.RateLimitRpd?.ToString() ?? "null"));
-                if (request.VirtualKeyGroupId.HasValue && preState.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
-                    changes.Add(("VirtualKeyGroupId", preState.VirtualKeyGroupId.ToString(), request.VirtualKeyGroupId.Value.ToString()));
+        if (request.KeyName != null && preState.KeyName != request.KeyName)
+            changes.Add(("KeyName", preState.KeyName, request.KeyName));
+        if (request.IsEnabled.HasValue && preState.IsEnabled != request.IsEnabled.Value)
+            changes.Add(("IsEnabled", preState.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
+        if (request.AllowedModels != null && preState.AllowedModels != request.AllowedModels)
+            changes.Add(("AllowedModels", preState.AllowedModels ?? "null", request.AllowedModels));
+        if (request.ExpiresAt.HasValue && preState.ExpiresAt != request.ExpiresAt)
+            changes.Add(("ExpiresAt", preState.ExpiresAt?.ToString("o") ?? "null", request.ExpiresAt?.ToString("o") ?? "null"));
+        if (request.RateLimitRpm.HasValue && preState.RateLimitRpm != request.RateLimitRpm)
+            changes.Add(("RateLimitRpm", preState.RateLimitRpm?.ToString() ?? "null", request.RateLimitRpm?.ToString() ?? "null"));
+        if (request.RateLimitRpd.HasValue && preState.RateLimitRpd != request.RateLimitRpd)
+            changes.Add(("RateLimitRpd", preState.RateLimitRpd?.ToString() ?? "null", request.RateLimitRpd?.ToString() ?? "null"));
+        if (request.VirtualKeyGroupId.HasValue && preState.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
+            changes.Add(("VirtualKeyGroupId", preState.VirtualKeyGroupId.ToString(), request.VirtualKeyGroupId.Value.ToString()));
 
-                if (changes.Count > 0)
-                {
-                    LogAdminAuditWithChanges("VirtualKey", id, changes);
-                }
-                else
-                {
-                    LogAdminAudit("Updated", "VirtualKey", id, "No changes detected");
-                }
-                AdminOperationsMetricsService.RecordVirtualKeyOperation("update", "success");
-                AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "update");
-            },
-            NoContent(),
-            "UpdateKey",
-            new { Id = id });
+        if (changes.Count > 0)
+        {
+            LogAdminAuditWithChanges("VirtualKey", id, changes);
+        }
+        else
+        {
+            LogAdminAudit("Updated", "VirtualKey", id, "No changes detected");
+        }
+        AdminOperationsMetricsService.RecordVirtualKeyOperation("update", "success");
+        AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "update");
+        return NoContent();
     }
 
     /// <summary>
@@ -168,20 +157,14 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> DeleteKey(int id)
+    public async Task<IActionResult> DeleteKey(int id)
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                if (!await _virtualKeyService.DeleteVirtualKeyAsync(id))
-                    throw new KeyNotFoundException();
-                LogAdminAudit("Deleted", "VirtualKey", id);
-                AdminOperationsMetricsService.RecordVirtualKeyOperation("delete", "success");
-                AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "delete");
-            },
-            NoContent(),
-            "DeleteKey",
-            new { Id = id });
+        if (!await _virtualKeyService.DeleteVirtualKeyAsync(id))
+            throw new KeyNotFoundException();
+        LogAdminAudit("Deleted", "VirtualKey", id);
+        AdminOperationsMetricsService.RecordVirtualKeyOperation("delete", "success");
+        AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "delete");
+        return NoContent();
     }
 
 
@@ -195,12 +178,10 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     // lgtm [cs/web/missing-function-level-access-control]
-    public Task<IActionResult> ValidateKey([FromBody] ValidateVirtualKeyRequest request)
+    public async Task<IActionResult> ValidateKey([FromBody] ValidateVirtualKeyRequest request)
     {
-        return ExecuteAsync(
-            () => _virtualKeyService.ValidateVirtualKeyAsync(request.Key, request.RequestedModel),
-            Ok,
-            "ValidateKey");
+        var result = await _virtualKeyService.ValidateVirtualKeyAsync(request.Key, request.RequestedModel);
+        return Ok(result);
     }
 
 
@@ -216,14 +197,14 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(typeof(VirtualKeyValidationInfoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetValidationInfo(int id)
+    public async Task<IActionResult> GetValidationInfo(int id)
     {
-        return ExecuteWithNotFoundAsync(
-            () => _virtualKeyService.GetValidationInfoAsync(id),
-            Ok,
-            "Virtual key",
-            id,
-            "GetValidationInfo");
+        var result = await _virtualKeyService.GetValidationInfoAsync(id);
+        if (result == null)
+        {
+            return this.NotFoundEntity("Virtual key", id);
+        }
+        return Ok(result);
     }
 
     /// <summary>
@@ -242,12 +223,10 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> PerformMaintenance()
+    public async Task<IActionResult> PerformMaintenance()
     {
-        return ExecuteAsync(
-            () => _virtualKeyService.PerformMaintenanceAsync(),
-            NoContent(),
-            "PerformMaintenance");
+        await _virtualKeyService.PerformMaintenanceAsync();
+        return NoContent();
     }
 
     /// <summary>
@@ -261,14 +240,14 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(typeof(VirtualKeyDiscoveryPreviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> PreviewDiscovery(int id, [FromQuery] string? capability = null)
+    public async Task<IActionResult> PreviewDiscovery(int id, [FromQuery] string? capability = null)
     {
-        return ExecuteWithNotFoundAsync(
-            () => _virtualKeyService.PreviewDiscoveryAsync(id, capability),
-            Ok,
-            "Virtual key",
-            id,
-            "PreviewDiscovery");
+        var result = await _virtualKeyService.PreviewDiscoveryAsync(id, capability);
+        if (result == null)
+        {
+            return this.NotFoundEntity("Virtual key", id);
+        }
+        return Ok(result);
     }
 
     /// <summary>
@@ -281,28 +260,21 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetKeyGroup(int id)
+    public async Task<IActionResult> GetKeyGroup(int id)
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var key = await _virtualKeyService.GetVirtualKeyByIdAsync(id);
-                if (key == null)
-                {
-                    throw new KeyNotFoundException("Virtual key not found");
-                }
+        var key = await _virtualKeyService.GetVirtualKeyByIdAsync(id);
+        if (key == null)
+        {
+            throw new KeyNotFoundException("Virtual key not found");
+        }
 
-                var groupInfo = await _virtualKeyService.GetKeyGroupAsync(id);
-                if (groupInfo == null)
-                {
-                    throw new KeyNotFoundException("Virtual key group not found");
-                }
+        var groupInfo = await _virtualKeyService.GetKeyGroupAsync(id);
+        if (groupInfo == null)
+        {
+            throw new KeyNotFoundException("Virtual key group not found");
+        }
 
-                return groupInfo;
-            },
-            Ok,
-            "GetKeyGroup",
-            new { Id = id });
+        return Ok(groupInfo);
     }
 
     /// <summary>
@@ -323,18 +295,18 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetUsageByKey(string key)
+    public async Task<IActionResult> GetUsageByKey(string key)
     {
         if (string.IsNullOrEmpty(key))
         {
-            return Task.FromResult<IActionResult>(BadRequest(new { message = "Key value is required" }));
+            return BadRequest(new { message = "Key value is required" });
         }
 
-        return ExecuteWithNotFoundAsync(
-            () => _virtualKeyService.GetUsageByKeyAsync(key),
-            Ok,
-            "Virtual key",
-            null,
-            "GetUsageByKey");
+        var result = await _virtualKeyService.GetUsageByKeyAsync(key);
+        if (result == null)
+        {
+            return this.NotFoundEntity("Virtual key", null);
+        }
+        return Ok(result);
     }
 }
