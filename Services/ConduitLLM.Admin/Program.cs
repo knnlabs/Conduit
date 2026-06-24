@@ -2,6 +2,7 @@ using System.Reflection;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Messaging.MassTransit;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Extensions;
@@ -171,6 +172,9 @@ public partial class Program
 
         // Add media lifecycle services (scheduler, storage, distributed locking)
         builder.Services.AddMediaLifecycleServices(builder.Configuration);
+
+        // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
+        builder.Services.AddMassTransitEventBus();
 
         // Register MassTransit event bus for Admin API
         builder.Services.AddMassTransit(x =>

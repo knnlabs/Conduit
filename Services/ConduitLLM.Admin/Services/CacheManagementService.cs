@@ -2,6 +2,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.DTOs.Cache;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 namespace ConduitLLM.Admin.Services
@@ -18,7 +19,7 @@ namespace ConduitLLM.Admin.Services
         private readonly ICacheStatisticsCollector _statisticsCollector;
         private readonly ICachePolicyEngine _policyEngine;
         private readonly ILogger<CacheManagementService> _logger;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly IGlobalSettingRepository _globalSettingRepository;
 
         /// <summary>
@@ -31,7 +32,7 @@ namespace ConduitLLM.Admin.Services
             ICacheStatisticsCollector statisticsCollector,
             ICachePolicyEngine policyEngine,
             ILogger<CacheManagementService> logger,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IGlobalSettingRepository globalSettingRepository)
         {
             _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
@@ -40,7 +41,7 @@ namespace ConduitLLM.Admin.Services
             _statisticsCollector = statisticsCollector ?? throw new ArgumentNullException(nameof(statisticsCollector));
             _policyEngine = policyEngine ?? throw new ArgumentNullException(nameof(policyEngine));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
         }
 

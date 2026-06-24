@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using ConduitLLM.Configuration.Events;
 
@@ -21,19 +22,19 @@ namespace ConduitLLM.Admin.Controllers
     [Authorize(Policy = "MasterKeyPolicy")]
     public class BatchSpendingController : ControllerBase
     {
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<BatchSpendingController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the BatchSpendingController.
         /// </summary>
-        /// <param name="publishEndpoint">MassTransit publish endpoint for sending events</param>
+        /// <param name="eventBus">event bus for sending events</param>
         /// <param name="logger">Logger instance for operational tracking</param>
         public BatchSpendingController(
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<BatchSpendingController> logger)
         {
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -100,7 +101,7 @@ namespace ConduitLLM.Admin.Controllers
                 };
 
                 // Publish event to Gateway API for processing
-                await _publishEndpoint.Publish(flushEvent);
+                await _eventBus.PublishAsync(flushEvent);
 
                 _logger.LogInformation(
                     "Published BatchSpendFlushRequestedEvent - RequestId: {RequestId}", requestId);
@@ -151,7 +152,7 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                var isEventBusAvailable = _publishEndpoint != null;
+                var isEventBusAvailable = _eventBus != null;
                 
                 return Ok(new
                 {

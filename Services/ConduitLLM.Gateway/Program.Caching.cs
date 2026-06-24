@@ -110,10 +110,10 @@ public partial class Program
                 var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
                 var groupRepository = serviceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
                 var cache = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
-                var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
+                var eventBus = serviceProvider.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
                 var logger = serviceProvider.GetRequiredService<ILogger<CachedApiVirtualKeyService>>();
-                
-                return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger);
+
+                return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, eventBus, logger);
             });
             
             Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with PostgreSQL distributed locking");

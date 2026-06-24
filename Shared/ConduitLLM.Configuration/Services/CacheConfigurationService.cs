@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Events;
@@ -66,7 +67,7 @@ namespace ConduitLLM.Configuration.Services
     public partial class CacheConfigurationService : ICacheConfigurationService
     {
         private readonly ConduitDbContext _dbContext;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly IConfiguration _configuration;
         private readonly ILogger<CacheConfigurationService> _logger;
         private readonly Dictionary<string, CacheRegionConfig> _cache = new();
@@ -74,12 +75,12 @@ namespace ConduitLLM.Configuration.Services
 
         public CacheConfigurationService(
             ConduitDbContext dbContext,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IConfiguration configuration,
             ILogger<CacheConfigurationService> logger)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -224,7 +225,7 @@ namespace ConduitLLM.Configuration.Services
                 await CacheConfigAsync(region, config, cancellationToken);
 
                 // Publish event
-                await _publishEndpoint.Publish(new CacheConfigurationChangedEvent
+                await _eventBus.PublishAsync(new CacheConfigurationChangedEvent
                 {
                     Region = region,
                     Action = "Updated",
@@ -305,7 +306,7 @@ namespace ConduitLLM.Configuration.Services
                 await CacheConfigAsync(region, config, cancellationToken);
 
                 // Publish event
-                await _publishEndpoint.Publish(new CacheConfigurationChangedEvent
+                await _eventBus.PublishAsync(new CacheConfigurationChangedEvent
                 {
                     Region = region,
                     Action = "Created",
@@ -382,7 +383,7 @@ namespace ConduitLLM.Configuration.Services
                 }
 
                 // Publish event
-                await _publishEndpoint.Publish(new CacheConfigurationChangedEvent
+                await _eventBus.PublishAsync(new CacheConfigurationChangedEvent
                 {
                     Region = region,
                     Action = "Deleted",

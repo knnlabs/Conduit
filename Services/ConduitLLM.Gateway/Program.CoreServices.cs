@@ -429,9 +429,9 @@ public partial class Program
             var taskService = sp.GetRequiredService<IAsyncTaskService>();
             var logger = sp.GetRequiredService<ILogger<VideoGenerationService>>();
             var modelMappingService = sp.GetRequiredService<IModelProviderMappingService>();
-            var publishEndpoint = sp.GetService<IPublishEndpoint>(); // Optional
+            var eventBus = sp.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
             var taskRegistry = sp.GetService<ICancellableTaskRegistry>(); // Optional
-            
+
             return new VideoGenerationService(
                 clientFactory,
                 capabilityService,
@@ -441,7 +441,7 @@ public partial class Program
                 taskService,
                 logger,
                 modelMappingService,
-                publishEndpoint,
+                eventBus,
                 taskRegistry);
         });
 
@@ -584,11 +584,11 @@ public partial class Program
         {
             var repository = sp.GetRequiredService<IAsyncTaskRepository>();
             var cache = sp.GetRequiredService<IDistributedCache>();
-            var publishEndpoint = sp.GetService<MassTransit.IPublishEndpoint>(); // Optional
+            var eventBus = sp.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
             var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();
-            
-            return publishEndpoint != null
-                ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, publishEndpoint, logger)
+
+            return eventBus != null
+                ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, eventBus, logger)
                 : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
         });
 

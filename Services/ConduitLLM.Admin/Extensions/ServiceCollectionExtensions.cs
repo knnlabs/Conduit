@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Interfaces; // For repository interfaces
 using ConduitLLM.Configuration.Repositories; // For repository interfaces
 using ConduitLLM.Configuration.Options;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit; // For IPublishEndpoint
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore; // For IDbContextFactory
@@ -80,14 +81,14 @@ public static class ServiceCollectionExtensions
             var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
             var groupRepository = serviceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
             var cache = serviceProvider.GetService<IVirtualKeyCache>(); // Optional - null if not registered
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var eventBus = serviceProvider.GetService<IEventBus>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
             var modelProviderMappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
             var modelCapabilityService = serviceProvider.GetRequiredService<IModelCapabilityService>();
             var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<ConduitDbContext>>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>(); // Optional - null if not configured
             
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, dbContextFactory, mediaLifecycleService);
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, eventBus, logger, modelProviderMappingRepository, modelCapabilityService, dbContextFactory, mediaLifecycleService);
         });
         // Register AdminModelProviderMappingService with optional event publishing dependency
         services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
@@ -95,10 +96,10 @@ public static class ServiceCollectionExtensions
             var mappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
             var credentialRepository = serviceProvider.GetRequiredService<IProviderRepository>();
             var modelRepository = serviceProvider.GetRequiredService<IModelRepository>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var eventBus = serviceProvider.GetService<IEventBus>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelProviderMappingService>>();
             
-            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, modelRepository, publishEndpoint, logger);
+            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, modelRepository, eventBus, logger);
         });
         
         // Register Analytics services
@@ -111,10 +112,10 @@ public static class ServiceCollectionExtensions
             var ipFilterRepository = serviceProvider.GetRequiredService<IIpFilterRepository>();
             var globalSettingRepository = serviceProvider.GetRequiredService<IGlobalSettingRepository>();
             var ipFilterOptions = serviceProvider.GetRequiredService<IOptionsMonitor<IpFilterOptions>>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var eventBus = serviceProvider.GetService<IEventBus>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminIpFilterService>>();
 
-            return new AdminIpFilterService(ipFilterRepository, globalSettingRepository, ipFilterOptions, publishEndpoint, logger);
+            return new AdminIpFilterService(ipFilterRepository, globalSettingRepository, ipFilterOptions, eventBus, logger);
         });
         services.AddScoped<IAdminSystemInfoService, AdminSystemInfoService>();
         services.AddScoped<IAdminNotificationService, AdminNotificationService>();
@@ -122,10 +123,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminGlobalSettingService>(serviceProvider =>
         {
             var globalSettingRepository = serviceProvider.GetRequiredService<IGlobalSettingRepository>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var eventBus = serviceProvider.GetService<IEventBus>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminGlobalSettingService>>();
             
-            return new AdminGlobalSettingService(globalSettingRepository, publishEndpoint, logger);
+            return new AdminGlobalSettingService(globalSettingRepository, eventBus, logger);
         });
         // Register AdminModelCostService with optional event publishing dependency
         services.AddScoped<IAdminModelCostService>(serviceProvider =>
@@ -133,10 +134,10 @@ public static class ServiceCollectionExtensions
             var modelCostRepository = serviceProvider.GetRequiredService<IModelCostRepository>();
             var requestLogRepository = serviceProvider.GetRequiredService<IRequestLogRepository>();
             var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var eventBus = serviceProvider.GetService<IEventBus>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelCostService>>();
             
-            return new AdminModelCostService(modelCostRepository, requestLogRepository, dbContextFactory, publishEndpoint, logger);
+            return new AdminModelCostService(modelCostRepository, requestLogRepository, dbContextFactory, eventBus, logger);
         });
 
         // Register cost calculation dependencies

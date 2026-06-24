@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Messaging.MassTransit;
 using ConduitLLM.Core.Services;
 
 using MassTransit;
@@ -6,6 +7,11 @@ public partial class Program
 {
     public static void ConfigureMessagingServices(WebApplicationBuilder builder)
     {
+        // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
+        // Scoped so follow-on publishes inside a consume scope stay correlation-aware,
+        // exactly as injecting IPublishEndpoint behaved before.
+        builder.Services.AddMassTransitEventBus();
+
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
             ?? new ConduitLLM.Configuration.RabbitMqConfiguration();

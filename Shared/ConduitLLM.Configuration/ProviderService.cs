@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Exceptions;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
@@ -20,20 +21,20 @@ namespace ConduitLLM.Configuration
         private readonly IProviderRepository _repository;
         private readonly IProviderKeyCredentialRepository _keyRepository;
         private readonly ProviderKeyCredentialValidator _keyValidator;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
 
         public ProviderService(
             ILogger<ProviderService> logger,
             IProviderRepository repository,
             IProviderKeyCredentialRepository keyRepository,
             ProviderKeyCredentialValidator keyValidator,
-            IPublishEndpoint publishEndpoint)
+            IEventBus eventBus)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _keyRepository = keyRepository ?? throw new ArgumentNullException(nameof(keyRepository));
             _keyValidator = keyValidator ?? throw new ArgumentNullException(nameof(keyValidator));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         }
 
         public async Task AddProviderAsync(Provider provider)
@@ -281,7 +282,7 @@ namespace ConduitLLM.Configuration
                         created.Id, providerId);
                 
                 // Publish domain event
-                await _publishEndpoint.Publish(new ProviderKeyCredentialCreated
+                await _eventBus.PublishAsync(new ProviderKeyCredentialCreated
                 {
                     KeyId = created.Id,
                     ProviderId = providerId,
@@ -351,7 +352,7 @@ namespace ConduitLLM.Configuration
                     _logger.LogInformation("Successfully updated key credential {KeyId}", keyId);
                     
                     // Publish domain event
-                    await _publishEndpoint.Publish(new ProviderKeyCredentialUpdated
+                    await _eventBus.PublishAsync(new ProviderKeyCredentialUpdated
                     {
                         KeyId = keyId,
                         ProviderId = keyCredential.ProviderId,
@@ -401,7 +402,7 @@ namespace ConduitLLM.Configuration
                     _logger.LogInformation("Successfully deleted key credential {KeyId}", keyId);
                     
                     // Publish domain event
-                    await _publishEndpoint.Publish(new ProviderKeyCredentialDeleted
+                    await _eventBus.PublishAsync(new ProviderKeyCredentialDeleted
                     {
                         KeyId = keyId,
                         ProviderId = key.ProviderId,
@@ -444,7 +445,7 @@ namespace ConduitLLM.Configuration
                         keyId, providerId);
                     
                     // Publish domain event
-                    await _publishEndpoint.Publish(new ProviderKeyCredentialPrimaryChanged
+                    await _eventBus.PublishAsync(new ProviderKeyCredentialPrimaryChanged
                     {
                         ProviderId = providerId,
                         OldPrimaryKeyId = oldPrimaryKeyId,

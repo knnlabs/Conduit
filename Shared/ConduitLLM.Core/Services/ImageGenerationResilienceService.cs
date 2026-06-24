@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -19,7 +20,7 @@ namespace ConduitLLM.Core.Services
         private readonly IImageGenerationMetricsCollector _metricsCollector;
         private readonly IImageGenerationAlertingService _alertingService;
         private readonly ImageGenerationResilienceOptions _options;
-        private readonly IPublishEndpoint? _publishEndpoint;
+        private readonly IEventBus? _eventBus;
         
         private readonly ConcurrentDictionary<int, ProviderHealthState> _providerStates = new();
         private readonly ConcurrentDictionary<int, FailoverState> _failoverStates = new();
@@ -37,14 +38,14 @@ namespace ConduitLLM.Core.Services
             IImageGenerationMetricsCollector metricsCollector,
             IImageGenerationAlertingService alertingService,
             IOptions<ImageGenerationResilienceOptions> options,
-            IPublishEndpoint? publishEndpoint = null)
+            IEventBus? eventBus = null)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
             _alertingService = alertingService ?? throw new ArgumentNullException(nameof(alertingService));
             _options = options?.Value ?? new ImageGenerationResilienceOptions();
-            _publishEndpoint = publishEndpoint;
+            _eventBus = eventBus;
         }
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)

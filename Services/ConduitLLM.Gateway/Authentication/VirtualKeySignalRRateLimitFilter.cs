@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using ConduitLLM.Core.Events;
 
@@ -199,11 +200,11 @@ namespace ConduitLLM.Gateway.Authentication
                 try
                 {
                     using var scope = _serviceProvider.CreateScope();
-                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
+                    var eventBus = scope.ServiceProvider.GetService<IEventBus>();
                     
-                    if (publishEndpoint != null)
+                    if (eventBus != null)
                     {
-                        await publishEndpoint.Publish(new RateLimitExceeded
+                        await eventBus.PublishAsync(new RateLimitExceeded
                         {
                             VirtualKeyId = virtualKeyId,
                             VirtualKeyHash = virtualKeyHash,
@@ -248,11 +249,11 @@ namespace ConduitLLM.Gateway.Authentication
                 try
                 {
                     using var scope = _serviceProvider.CreateScope();
-                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
+                    var eventBus = scope.ServiceProvider.GetService<IEventBus>();
 
-                    if (publishEndpoint != null)
+                    if (eventBus != null)
                     {
-                        await publishEndpoint.Publish(new ConnectionLimitExceeded
+                        await eventBus.PublishAsync(new ConnectionLimitExceeded
                         {
                             VirtualKeyId = virtualKeyId,
                             VirtualKeyHash = virtualKeyHash,

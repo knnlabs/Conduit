@@ -11,6 +11,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,7 +39,7 @@ namespace ConduitLLM.Admin.Services
         /// <param name="virtualKeyRepository">The virtual key repository</param>
         /// <param name="spendHistoryRepository">The spend history repository</param>
         /// <param name="cache">Optional Redis cache for immediate invalidation (null if not configured)</param>
-        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+        /// <param name="eventBus">Optional event bus (null if not configured)</param>
         /// <param name="logger">The logger</param>
         /// <param name="modelProviderMappingRepository">The model provider mapping repository</param>
         /// <param name="modelCapabilityService">The model capability service</param>
@@ -50,13 +51,13 @@ namespace ConduitLLM.Admin.Services
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IVirtualKeyGroupRepository groupRepository,
             IVirtualKeyCache? cache,
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger<AdminVirtualKeyService> logger,
             IModelProviderMappingRepository modelProviderMappingRepository,
             IModelCapabilityService modelCapabilityService,
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             IMediaLifecycleService? mediaLifecycleService = null)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));

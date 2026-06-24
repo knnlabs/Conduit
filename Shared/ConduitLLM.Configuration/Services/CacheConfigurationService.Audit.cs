@@ -58,7 +58,7 @@ namespace ConduitLLM.Configuration.Services
                 cancellationToken);
 
             // Publish rollback event
-            await _publishEndpoint.Publish(new CacheConfigurationChangedEvent
+            await _eventBus.PublishAsync(new CacheConfigurationChangedEvent
             {
                 Region = region,
                 Action = "RolledBack",

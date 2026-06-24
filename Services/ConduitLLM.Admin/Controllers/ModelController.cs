@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,7 +29,7 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IModelRepository _modelRepository;
         private readonly IAdminModelProviderMappingService _mappingService;
         private readonly IProviderRepository _providerRepository;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<ModelController> _logger;
 
         /// <summary>
@@ -38,13 +39,13 @@ namespace ConduitLLM.Admin.Controllers
             IModelRepository modelRepository,
             IAdminModelProviderMappingService mappingService,
             IProviderRepository providerRepository,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<ModelController> logger)
         {
             _modelRepository = modelRepository ?? throw new ArgumentNullException(nameof(modelRepository));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -635,7 +636,7 @@ namespace ConduitLLM.Admin.Controllers
                 var updatedModel = await _modelRepository.UpdateAsync(model);
 
                 // Publish ModelUpdated event for cache invalidation
-                await _publishEndpoint.Publish(new ModelUpdated
+                await _eventBus.PublishAsync(new ModelUpdated
                 {
                     ModelId = updatedModel.Id,
                     ModelName = updatedModel.Name,

@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -95,9 +96,9 @@ namespace ConduitLLM.Core.Services
             }
             
             // Publish quarantine event
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
-                await _publishEndpoint.Publish(new ProviderQuarantined
+                await _eventBus.PublishAsync(new ProviderQuarantined
                 {
                     ProviderId = providerId,
                     ProviderName = GetProviderName(providerId),
@@ -191,9 +192,9 @@ namespace ConduitLLM.Core.Services
             // In a real implementation, this might update a configuration service
             // or publish events that the routing layer would consume
             
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
-                await _publishEndpoint.Publish(new ProviderFailoverInitiated
+                await _eventBus.PublishAsync(new ProviderFailoverInitiated
                 {
                     FailedProviderId = failedProviderId,
                     FailedProviderName = GetProviderName(failedProviderId),

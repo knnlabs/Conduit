@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 using ConduitLLM.Configuration.Interfaces;
@@ -32,9 +33,9 @@ namespace ConduitLLM.Core.Services
             IAsyncTaskService taskService,
             ILogger<VideoGenerationService> logger,
             IModelProviderMappingService modelMappingService,
-            IPublishEndpoint? publishEndpoint = null,
+            IEventBus? eventBus = null,
             ICancellableTaskRegistry? taskRegistry = null)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _capabilityService = capabilityService ?? throw new ArgumentNullException(nameof(capabilityService));

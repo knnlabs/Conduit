@@ -10,6 +10,7 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Services;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
@@ -44,10 +45,10 @@ namespace ConduitLLM.Gateway.Controllers
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
             IOptions<ConduitSettings> settings,
             JsonSerializerOptions jsonSerializerOptions,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService globalSettingsCacheService,
             IUsageEstimationService? usageEstimationService = null,
-            ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null) : base(publishEndpoint, logger)
+            ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null) : base(eventBus, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

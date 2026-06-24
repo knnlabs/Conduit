@@ -6,6 +6,7 @@ using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +25,7 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IProviderErrorTrackingService _errorService;
         private readonly IProviderKeyCredentialRepository _keyRepo;
         private readonly IProviderRepository _providerRepo;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<ProviderErrorsController> _logger;
 
         /// <summary>
@@ -34,13 +35,13 @@ namespace ConduitLLM.Admin.Controllers
             IProviderErrorTrackingService errorService,
             IProviderKeyCredentialRepository keyRepo,
             IProviderRepository providerRepo,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<ProviderErrorsController> logger)
         {
             _errorService = errorService ?? throw new ArgumentNullException(nameof(errorService));
             _keyRepo = keyRepo ?? throw new ArgumentNullException(nameof(keyRepo));
             _providerRepo = providerRepo ?? throw new ArgumentNullException(nameof(providerRepo));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -219,7 +220,7 @@ namespace ConduitLLM.Admin.Controllers
                         await _keyRepo.UpdateAsync(key);
 
                         // Publish event for UI update
-                        await _publishEndpoint.Publish(new ProviderKeyReenabledEvent
+                        await _eventBus.PublishAsync(new ProviderKeyReenabledEvent
                         {
                             KeyId = keyId,
                             ProviderId = key.ProviderId,

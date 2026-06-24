@@ -139,9 +139,9 @@ namespace ConduitLLM.Core.Services
             await UpdateProviderWeightAsync(providerId, state.ThrottleLevel);
             
             // Publish recovery event
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
-                await _publishEndpoint.Publish(new ProviderRecoveryInitiated
+                await _eventBus.PublishAsync(new ProviderRecoveryInitiated
                 {
                     ProviderId = providerId,
                     ProviderName = GetProviderName(providerId),
@@ -174,9 +174,9 @@ namespace ConduitLLM.Core.Services
 
         private async Task RestoreOriginalProviderAsync(int originalProviderId, int failoverProviderId)
         {
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
-                await _publishEndpoint.Publish(new ProviderFailoverReverted
+                await _eventBus.PublishAsync(new ProviderFailoverReverted
                 {
                     OriginalProviderId = originalProviderId,
                     OriginalProviderName = GetProviderName(originalProviderId),

@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.Monitoring;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +18,7 @@ namespace ConduitLLM.Admin.Controllers;
 public class SystemInfoController : ControllerBase
 {
     private readonly IAdminSystemInfoService _systemInfoService;
-    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IEventBus _eventBus;
     private readonly ILogger<SystemInfoController> _logger;
     private readonly IFunctionDiscoveryCacheService? _functionDiscoveryCacheService;
 
@@ -25,17 +26,17 @@ public class SystemInfoController : ControllerBase
     /// Initializes a new instance of the SystemInfoController
     /// </summary>
     /// <param name="systemInfoService">The system info service</param>
-    /// <param name="publishEndpoint">MassTransit publish endpoint for events</param>
+    /// <param name="eventBus">event bus for events</param>
     /// <param name="logger">The logger</param>
     /// <param name="functionDiscoveryCacheService">Optional function discovery cache service</param>
     public SystemInfoController(
         IAdminSystemInfoService systemInfoService,
-        IPublishEndpoint publishEndpoint,
+        IEventBus eventBus,
         ILogger<SystemInfoController> logger,
         IFunctionDiscoveryCacheService? functionDiscoveryCacheService = null)
     {
         _systemInfoService = systemInfoService ?? throw new ArgumentNullException(nameof(systemInfoService));
-        _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+        _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _functionDiscoveryCacheService = functionDiscoveryCacheService;
     }
@@ -94,7 +95,7 @@ public class SystemInfoController : ControllerBase
         try
         {
             // Publish event to all Gateway API instances via MassTransit
-            await _publishEndpoint.Publish(new DiscoveryCacheInvalidationRequested
+            await _eventBus.PublishAsync(new DiscoveryCacheInvalidationRequested
             {
                 Reason = "Manual invalidation via Admin API",
                 RequestedBy = "Admin User",
@@ -168,7 +169,7 @@ public class SystemInfoController : ControllerBase
         try
         {
             // Publish event to all Gateway API instances via MassTransit
-            await _publishEndpoint.Publish(new FunctionDiscoveryCacheInvalidationRequested
+            await _eventBus.PublishAsync(new FunctionDiscoveryCacheInvalidationRequested
             {
                 Reason = "Manual invalidation via Admin API",
                 RequestedBy = "Admin User",

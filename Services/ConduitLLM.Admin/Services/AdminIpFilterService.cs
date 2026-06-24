@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.Extensions.Options;
 
@@ -36,15 +37,15 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     /// <param name="ipFilterRepository">The IP filter repository</param>
     /// <param name="globalSettingRepository">The global settings repository for persisting IP filter settings</param>
     /// <param name="ipFilterOptions">The IP filter options</param>
-    /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+    /// <param name="eventBus">Optional event bus (null if not configured)</param>
     /// <param name="logger">The logger</param>
     public AdminIpFilterService(
         IIpFilterRepository ipFilterRepository,
         IGlobalSettingRepository globalSettingRepository,
         IOptionsMonitor<IpFilterOptions> ipFilterOptions,
-        IPublishEndpoint? publishEndpoint,
+        IEventBus? eventBus,
         ILogger<AdminIpFilterService> logger)
-        : base(publishEndpoint, logger)
+        : base(eventBus, logger)
     {
         _ipFilterRepository = ipFilterRepository ?? throw new ArgumentNullException(nameof(ipFilterRepository));
         _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));

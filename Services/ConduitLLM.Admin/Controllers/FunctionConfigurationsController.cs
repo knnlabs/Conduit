@@ -2,6 +2,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +18,7 @@ namespace ConduitLLM.Admin.Controllers;
 public class FunctionConfigurationsController : ControllerBase
 {
     private readonly IFunctionConfigurationRepository _configurationRepository;
-    private readonly IPublishEndpoint? _publishEndpoint;
+    private readonly IEventBus? _eventBus;
     private readonly ILogger<FunctionConfigurationsController> _logger;
 
     /// <summary>
@@ -25,11 +26,11 @@ public class FunctionConfigurationsController : ControllerBase
     /// </summary>
     public FunctionConfigurationsController(
         IFunctionConfigurationRepository configurationRepository,
-        IPublishEndpoint? publishEndpoint,
+        IEventBus? eventBus,
         ILogger<FunctionConfigurationsController> logger)
     {
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));
-        _publishEndpoint = publishEndpoint; // Nullable for in-memory mode
+        _eventBus = eventBus; // Nullable for in-memory mode
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -162,11 +163,11 @@ public class FunctionConfigurationsController : ControllerBase
             var created = await _configurationRepository.GetByIdAsync(id);
 
             // Publish FunctionConfigurationChanged event for cache invalidation
-            if (_publishEndpoint != null && created != null)
+            if (_eventBus != null && created != null)
             {
                 try
                 {
-                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
+                    await _eventBus.PublishAsync(new FunctionConfigurationChanged
                     {
                         FunctionConfigurationId = created.Id,
                         ConfigurationName = created.ConfigurationName,
@@ -264,11 +265,11 @@ public class FunctionConfigurationsController : ControllerBase
             }
 
             // Publish FunctionConfigurationChanged event for cache invalidation
-            if (_publishEndpoint != null && changedProperties.Count > 0)
+            if (_eventBus != null && changedProperties.Count > 0)
             {
                 try
                 {
-                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
+                    await _eventBus.PublishAsync(new FunctionConfigurationChanged
                     {
                         FunctionConfigurationId = updated.Id,
                         ConfigurationName = updated.ConfigurationName,
@@ -326,11 +327,11 @@ public class FunctionConfigurationsController : ControllerBase
             await _configurationRepository.DeleteAsync(id);
 
             // Publish FunctionConfigurationChanged event for cache invalidation
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
                 try
                 {
-                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
+                    await _eventBus.PublishAsync(new FunctionConfigurationChanged
                     {
                         FunctionConfigurationId = toDelete.Id,
                         ConfigurationName = toDelete.ConfigurationName,

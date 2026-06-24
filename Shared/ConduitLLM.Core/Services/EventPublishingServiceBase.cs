@@ -1,35 +1,36 @@
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
-    /// Base class for services that publish domain events using MassTransit.
+    /// Base class for services that publish domain events through the Conduit-owned
+    /// <see cref="IEventBus"/> abstraction (epic #909).
     /// Provides standardized event publishing patterns with consistent error handling and logging.
     /// </summary>
     public abstract class EventPublishingServiceBase
     {
-        private readonly IPublishEndpoint? _publishEndpoint;
+        private readonly IEventBus? _eventBus;
         private readonly ILogger _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventPublishingServiceBase"/> class.
         /// </summary>
-        /// <param name="publishEndpoint">The optional MassTransit publish endpoint for event publishing.</param>
+        /// <param name="eventBus">The optional event bus for event publishing (null if messaging not configured).</param>
         /// <param name="logger">The logger instance for the derived service.</param>
         protected EventPublishingServiceBase(
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger logger)
         {
-            _publishEndpoint = publishEndpoint;
+            _eventBus = eventBus;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
         /// Gets a value indicating whether event publishing is configured.
         /// </summary>
-        protected bool IsEventPublishingEnabled => _publishEndpoint != null;
+        protected bool IsEventPublishingEnabled => _eventBus != null;
 
         /// <summary>
         /// Publishes a domain event asynchronously with standardized error handling.
@@ -56,7 +57,7 @@ namespace ConduitLLM.Core.Services
                 return;
             }
 
-            if (_publishEndpoint == null)
+            if (_eventBus == null)
             {
                 _logger.LogWarning(
                     "Event publishing not configured - skipping {EventType} for {Operation}",
@@ -66,7 +67,7 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                await _publishEndpoint.Publish(domainEvent);
+                await _eventBus.PublishAsync(domainEvent);
                 _logger.LogDebug(
                     "Published {EventType} event for {Operation}",
                     nameof(TEvent), operationName);
@@ -101,7 +102,7 @@ namespace ConduitLLM.Core.Services
                 return;
             }
 
-            if (_publishEndpoint == null)
+            if (_eventBus == null)
             {
                 _logger.LogDebug(
                     "Event publishing not configured - skipping {EventType} for {Operation} with context {ContextData}",
@@ -111,7 +112,7 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                await _publishEndpoint.Publish(domainEvent);
+                await _eventBus.PublishAsync(domainEvent);
                 _logger.LogDebug(
                     "Published {EventType} event for {Operation} with context {ContextData}",
                     nameof(TEvent), operationName, contextData);
@@ -131,7 +132,7 @@ namespace ConduitLLM.Core.Services
         /// <param name="serviceName">The name of the service for logging context.</param>
         protected void LogEventPublishingConfiguration(string serviceName)
         {
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
                 _logger.LogInformation(
                     "{ServiceName}: Event bus configured - using event-driven architecture",

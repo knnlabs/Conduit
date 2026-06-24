@@ -136,7 +136,7 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Publish configuration change event
-                await _publishEndpoint.Publish(new CacheConfigurationChangedEvent
+                await _eventBus.PublishAsync(new CacheConfigurationChangedEvent
                 {
                     Region = config.RegionId ?? "global",
                     ChangedBy = "Admin API"
