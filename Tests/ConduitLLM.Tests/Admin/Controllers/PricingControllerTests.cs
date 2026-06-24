@@ -141,7 +141,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task SimulatePricing_InvalidJson_ReturnsBadRequest()
+        public async Task SimulatePricing_InvalidJson_ShouldPropagateException()
         {
             // Arrange
             var request = new PricingSimulationRequest
@@ -149,11 +149,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 PricingConfiguration = "bad json"
             };
 
-            // Act
-            var result = await _controller.SimulatePricing(request);
-
-            // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
+            // Act & Assert — invalid JSON now throws ArgumentException, mapped in AdminExceptionMiddleware
+            var act = async () => await _controller.SimulatePricing(request);
+            await act.Should().ThrowAsync<ArgumentException>();
         }
 
         #endregion
@@ -250,17 +248,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
         #region GetPricingAuditByRequestId Tests
 
         [Fact]
-        public async Task GetPricingAuditByRequestId_NoEvents_ReturnsNotFound()
+        public async Task GetPricingAuditByRequestId_NoEvents_ShouldPropagateException()
         {
             // Arrange
             _mockAuditService.Setup(s => s.GetByRequestIdAsync("req-123"))
                 .ReturnsAsync(new List<ConduitLLM.Configuration.Entities.PricingAuditEvent>());
 
-            // Act
-            var result = await _controller.GetPricingAuditByRequestId("req-123");
-
-            // Assert
-            result.Should().BeOfType<NotFoundObjectResult>();
+            // Act & Assert — not-found now throws KeyNotFoundException, mapped in AdminExceptionMiddleware
+            var act = async () => await _controller.GetPricingAuditByRequestId("req-123");
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion

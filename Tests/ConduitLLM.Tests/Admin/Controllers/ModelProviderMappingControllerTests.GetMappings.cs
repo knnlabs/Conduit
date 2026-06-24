@@ -57,20 +57,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GetAllMappings_WithException_ShouldReturn500()
+        public async Task GetAllMappings_WithException_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.GetAllMappingsAsync())
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.GetAllMappings();
-
-            // Assert
-            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.GetAllMappings();
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

@@ -219,7 +219,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task CreateModel_WhenRepositoryThrows_ShouldReturn500()
+        public async Task CreateModel_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var createDto = new CreateModelDto
@@ -234,14 +234,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.CreateModel(createDto);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.CreateModel(createDto);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -458,7 +453,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task UpdateModel_WhenGetByIdFails_ShouldReturn500()
+        public async Task UpdateModel_WhenGetByIdFails_ShouldPropagateException()
         {
             // Arrange
             var modelId = 1;
@@ -472,20 +467,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.UpdateModel(modelId, updateDto);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.UpdateModel(modelId, updateDto);
+            await act.Should().ThrowAsync<Exception>();
 
             _mockRepository.Verify(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task UpdateModel_WhenRepositoryThrows_ShouldReturn500()
+        public async Task UpdateModel_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var modelId = 1;
@@ -499,14 +489,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.UpdateModel(modelId, updateDto);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.UpdateModel(modelId, updateDto);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -568,7 +553,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task DeleteModel_WhenRepositoryThrows_ShouldReturn500()
+        public async Task DeleteModel_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var modelId = 1;
@@ -576,14 +561,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByIdAsync(modelId))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.DeleteModel(modelId);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.DeleteModel(modelId);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

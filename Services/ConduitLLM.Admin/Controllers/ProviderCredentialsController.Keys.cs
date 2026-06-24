@@ -19,31 +19,26 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetProviderKeyCredentials(int providerId)
+        public async Task<IActionResult> GetProviderKeyCredentials(int providerId)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                        _keyRepository.GetByProviderIdPaginatedAsync, providerId);
-                    return keys.Select(k => new
-                    {
-                        k.Id,
-                        k.ProviderId,
-                        k.KeyName,
-                        k.IsPrimary,
-                        k.IsEnabled,
-                        k.ProviderAccountGroup,
-                        ApiKey = k.ApiKey != null ? "***" + k.ApiKey.Substring(Math.Max(0, k.ApiKey.Length - 4)) : "***", // Mask API key
-                        k.Organization,
-                        k.BaseUrl,
-                        k.CreatedAt,
-                        k.UpdatedAt
-                    });
-                },
-                result => Ok(result),
-                "GetProviderKeyCredentials",
-                new { ProviderId = providerId });
+            var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _keyRepository.GetByProviderIdPaginatedAsync, providerId);
+            var result = keys.Select(k => new
+            {
+                k.Id,
+                k.ProviderId,
+                k.KeyName,
+                k.IsPrimary,
+                k.IsEnabled,
+                k.ProviderAccountGroup,
+                ApiKey = k.ApiKey != null ? "***" + k.ApiKey.Substring(Math.Max(0, k.ApiKey.Length - 4)) : "***", // Mask API key
+                k.Organization,
+                k.BaseUrl,
+                k.CreatedAt,
+                k.UpdatedAt
+            });
+
+            return Ok(result);
         }
 
         /// <summary>
@@ -56,36 +51,30 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetProviderKeyCredential(int providerId, int keyId)
+        public async Task<IActionResult> GetProviderKeyCredential(int providerId, int keyId)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var key = await _keyRepository.GetByIdAsync(keyId);
+            var key = await _keyRepository.GetByIdAsync(keyId);
 
-                    if (key == null || key.ProviderId != providerId)
-                    {
-                        Logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
-                        return this.NotFoundEntity("Key credential", keyId);
-                    }
+            if (key == null || key.ProviderId != providerId)
+            {
+                Logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
+                return this.NotFoundEntity("Key credential", keyId);
+            }
 
-                    return Ok(new
-                    {
-                        key.Id,
-                        key.ProviderId,
-                        key.KeyName,
-                        key.IsPrimary,
-                        key.IsEnabled,
-                        key.ProviderAccountGroup,
-                        ApiKey = key.ApiKey != null ? "***" + key.ApiKey.Substring(Math.Max(0, key.ApiKey.Length - 4)) : "***", // Mask API key
-                        key.Organization,
-                        key.BaseUrl,
-                        key.CreatedAt,
-                        key.UpdatedAt
-                    });
-                },
-                "GetProviderKeyCredential",
-                new { ProviderId = providerId, KeyId = keyId });
+            return Ok(new
+            {
+                key.Id,
+                key.ProviderId,
+                key.KeyName,
+                key.IsPrimary,
+                key.IsEnabled,
+                key.ProviderAccountGroup,
+                ApiKey = key.ApiKey != null ? "***" + key.ApiKey.Substring(Math.Max(0, key.ApiKey.Length - 4)) : "***", // Mask API key
+                key.Organization,
+                key.BaseUrl,
+                key.CreatedAt,
+                key.UpdatedAt
+            });
         }
 
         /// <summary>
@@ -99,68 +88,62 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> CreateProviderKeyCredential(int providerId, [FromBody] CreateKeyRequest request)
+        public async Task<IActionResult> CreateProviderKeyCredential(int providerId, [FromBody] CreateKeyRequest request)
         {
-            return ExecuteAsync(
-                async () =>
+            // Verify provider exists
+            var provider = await _providerRepository.GetByIdAsync(providerId);
+            if (provider == null)
+            {
+                return this.NotFoundEntity("Provider", providerId);
+            }
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                ProviderId = providerId,
+                ApiKey = request.ApiKey,
+                KeyName = request.KeyName,
+                Organization = request.Organization,
+                BaseUrl = request.BaseUrl,
+                IsPrimary = request.IsPrimary,
+                IsEnabled = request.IsEnabled,
+                ProviderAccountGroup = (short)(request.ProviderAccountGroup ?? 0),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var createdKeyId = await _keyRepository.CreateAsync(keyCredential);
+
+            // After CreateAsync, keyCredential has its Id populated and IsPrimary potentially modified
+            // Publish key created event
+            PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialCreated
+            {
+                KeyId = createdKeyId,
+                ProviderId = providerId,
+                IsPrimary = keyCredential.IsPrimary,
+                IsEnabled = keyCredential.IsEnabled,
+                CorrelationId = Guid.NewGuid()
+            }, "create provider key", new { ProviderId = providerId, KeyId = createdKeyId });
+
+            LogAdminAudit("Created", "ProviderKeyCredential", createdKeyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(keyCredential.KeyName)}");
+            AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "create");
+
+            return CreatedAtAction(
+                nameof(GetProviderKeyCredential),
+                new { providerId = providerId, keyId = createdKeyId },
+                new
                 {
-                    // Verify provider exists
-                    var provider = await _providerRepository.GetByIdAsync(providerId);
-                    if (provider == null)
-                    {
-                        return this.NotFoundEntity("Provider", providerId);
-                    }
-
-                    var keyCredential = new ProviderKeyCredential
-                    {
-                        ProviderId = providerId,
-                        ApiKey = request.ApiKey,
-                        KeyName = request.KeyName,
-                        Organization = request.Organization,
-                        BaseUrl = request.BaseUrl,
-                        IsPrimary = request.IsPrimary,
-                        IsEnabled = request.IsEnabled,
-                        ProviderAccountGroup = (short)(request.ProviderAccountGroup ?? 0),
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-
-                    var createdKeyId = await _keyRepository.CreateAsync(keyCredential);
-
-                    // After CreateAsync, keyCredential has its Id populated and IsPrimary potentially modified
-                    // Publish key created event
-                    PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialCreated
-                    {
-                        KeyId = createdKeyId,
-                        ProviderId = providerId,
-                        IsPrimary = keyCredential.IsPrimary,
-                        IsEnabled = keyCredential.IsEnabled,
-                        CorrelationId = Guid.NewGuid()
-                    }, "create provider key", new { ProviderId = providerId, KeyId = createdKeyId });
-
-                    LogAdminAudit("Created", "ProviderKeyCredential", createdKeyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(keyCredential.KeyName)}");
-                    AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "create");
-
-                    return CreatedAtAction(
-                        nameof(GetProviderKeyCredential),
-                        new { providerId = providerId, keyId = createdKeyId },
-                        new
-                        {
-                            Id = createdKeyId,
-                            keyCredential.ProviderId,
-                            keyCredential.KeyName,
-                            keyCredential.IsPrimary,
-                            keyCredential.IsEnabled,
-                            keyCredential.ProviderAccountGroup,
-                            ApiKey = keyCredential.ApiKey != null ? "***" + keyCredential.ApiKey.Substring(Math.Max(0, keyCredential.ApiKey.Length - 4)) : "***",
-                            keyCredential.Organization,
-                            keyCredential.BaseUrl,
-                            keyCredential.CreatedAt,
-                            keyCredential.UpdatedAt
-                        });
-                },
-                "CreateProviderKeyCredential",
-                new { ProviderId = providerId });
+                    Id = createdKeyId,
+                    keyCredential.ProviderId,
+                    keyCredential.KeyName,
+                    keyCredential.IsPrimary,
+                    keyCredential.IsEnabled,
+                    keyCredential.ProviderAccountGroup,
+                    ApiKey = keyCredential.ApiKey != null ? "***" + keyCredential.ApiKey.Substring(Math.Max(0, keyCredential.ApiKey.Length - 4)) : "***",
+                    keyCredential.Organization,
+                    keyCredential.BaseUrl,
+                    keyCredential.CreatedAt,
+                    keyCredential.UpdatedAt
+                });
         }
 
         /// <summary>
@@ -175,88 +158,82 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> UpdateProviderKeyCredential(int providerId, int keyId, [FromBody] UpdateKeyRequest request)
+        public async Task<IActionResult> UpdateProviderKeyCredential(int providerId, int keyId, [FromBody] UpdateKeyRequest request)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var key = await _keyRepository.GetByIdAsync(keyId);
-                    if (key == null || key.ProviderId != providerId)
-                    {
-                        Logger.LogWarning("Key credential not found for update {KeyId}", keyId);
-                        return this.NotFoundEntity("Key credential", keyId);
-                    }
+            var key = await _keyRepository.GetByIdAsync(keyId);
+            if (key == null || key.ProviderId != providerId)
+            {
+                Logger.LogWarning("Key credential not found for update {KeyId}", keyId);
+                return this.NotFoundEntity("Key credential", keyId);
+            }
 
-                    // Track changes with before/after values
-                    var changes = new List<(string Property, string? OldValue, string? NewValue)>();
+            // Track changes with before/after values
+            var changes = new List<(string Property, string? OldValue, string? NewValue)>();
 
-                    if (!string.IsNullOrEmpty(request.KeyName) && key.KeyName != request.KeyName)
-                    {
-                        changes.Add(("KeyName", key.KeyName, request.KeyName));
-                        key.KeyName = request.KeyName;
-                    }
-                    if (!string.IsNullOrEmpty(request.ApiKey))
-                    {
-                        changes.Add(("ApiKey", "***", "***")); // Never log API key values
-                        key.ApiKey = request.ApiKey;
-                    }
-                    if (request.Organization != null && key.Organization != request.Organization)
-                    {
-                        changes.Add(("Organization", key.Organization, request.Organization));
-                        key.Organization = request.Organization;
-                    }
-                    if (request.BaseUrl != null && key.BaseUrl != request.BaseUrl)
-                    {
-                        changes.Add(("BaseUrl", key.BaseUrl, request.BaseUrl));
-                        key.BaseUrl = request.BaseUrl;
-                    }
-                    if (request.IsPrimary.HasValue && key.IsPrimary != request.IsPrimary.Value)
-                    {
-                        changes.Add(("IsPrimary", key.IsPrimary.ToString(), request.IsPrimary.Value.ToString()));
-                        key.IsPrimary = request.IsPrimary.Value;
-                    }
-                    if (request.IsEnabled.HasValue && key.IsEnabled != request.IsEnabled.Value)
-                    {
-                        changes.Add(("IsEnabled", key.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
-                        key.IsEnabled = request.IsEnabled.Value;
-                    }
-                    if (request.ProviderAccountGroup.HasValue && key.ProviderAccountGroup != (short)request.ProviderAccountGroup.Value)
-                    {
-                        changes.Add(("ProviderAccountGroup", key.ProviderAccountGroup.ToString(), request.ProviderAccountGroup.Value.ToString()));
-                        key.ProviderAccountGroup = (short)request.ProviderAccountGroup.Value;
-                    }
+            if (!string.IsNullOrEmpty(request.KeyName) && key.KeyName != request.KeyName)
+            {
+                changes.Add(("KeyName", key.KeyName, request.KeyName));
+                key.KeyName = request.KeyName;
+            }
+            if (!string.IsNullOrEmpty(request.ApiKey))
+            {
+                changes.Add(("ApiKey", "***", "***")); // Never log API key values
+                key.ApiKey = request.ApiKey;
+            }
+            if (request.Organization != null && key.Organization != request.Organization)
+            {
+                changes.Add(("Organization", key.Organization, request.Organization));
+                key.Organization = request.Organization;
+            }
+            if (request.BaseUrl != null && key.BaseUrl != request.BaseUrl)
+            {
+                changes.Add(("BaseUrl", key.BaseUrl, request.BaseUrl));
+                key.BaseUrl = request.BaseUrl;
+            }
+            if (request.IsPrimary.HasValue && key.IsPrimary != request.IsPrimary.Value)
+            {
+                changes.Add(("IsPrimary", key.IsPrimary.ToString(), request.IsPrimary.Value.ToString()));
+                key.IsPrimary = request.IsPrimary.Value;
+            }
+            if (request.IsEnabled.HasValue && key.IsEnabled != request.IsEnabled.Value)
+            {
+                changes.Add(("IsEnabled", key.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
+                key.IsEnabled = request.IsEnabled.Value;
+            }
+            if (request.ProviderAccountGroup.HasValue && key.ProviderAccountGroup != (short)request.ProviderAccountGroup.Value)
+            {
+                changes.Add(("ProviderAccountGroup", key.ProviderAccountGroup.ToString(), request.ProviderAccountGroup.Value.ToString()));
+                key.ProviderAccountGroup = (short)request.ProviderAccountGroup.Value;
+            }
 
-                    key.UpdatedAt = DateTime.UtcNow;
+            key.UpdatedAt = DateTime.UtcNow;
 
-                    await _keyRepository.UpdateAsync(key);
+            await _keyRepository.UpdateAsync(key);
 
-                    var changedProperties = changes.Count > 0
-                        ? changes.Select(c => c.Property).ToArray()
-                        : Array.Empty<string>();
+            var changedProperties = changes.Count > 0
+                ? changes.Select(c => c.Property).ToArray()
+                : Array.Empty<string>();
 
-                    if (changes.Count > 0)
-                    {
-                        LogAdminAuditWithChanges("ProviderKeyCredential", keyId, changes, $"Provider: {providerId}");
-                    }
-                    else
-                    {
-                        LogAdminAudit("Updated", "ProviderKeyCredential", keyId, $"Provider: {providerId} (no changes detected)");
-                    }
-                    AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "update");
+            if (changes.Count > 0)
+            {
+                LogAdminAuditWithChanges("ProviderKeyCredential", keyId, changes, $"Provider: {providerId}");
+            }
+            else
+            {
+                LogAdminAudit("Updated", "ProviderKeyCredential", keyId, $"Provider: {providerId} (no changes detected)");
+            }
+            AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "update");
 
-                    // Publish key updated event
-                    PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialUpdated
-                    {
-                        KeyId = keyId,
-                        ProviderId = providerId,
-                        ChangedProperties = changedProperties,
-                        CorrelationId = Guid.NewGuid()
-                    }, "update provider key", new { ProviderId = providerId, KeyId = keyId });
+            // Publish key updated event
+            PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialUpdated
+            {
+                KeyId = keyId,
+                ProviderId = providerId,
+                ChangedProperties = changedProperties,
+                CorrelationId = Guid.NewGuid()
+            }, "update provider key", new { ProviderId = providerId, KeyId = keyId });
 
-                    return NoContent();
-                },
-                "UpdateProviderKeyCredential",
-                new { ProviderId = providerId, KeyId = keyId });
+            return NoContent();
         }
 
         /// <summary>
@@ -269,35 +246,29 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> DeleteProviderKeyCredential(int providerId, int keyId)
+        public async Task<IActionResult> DeleteProviderKeyCredential(int providerId, int keyId)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var key = await _keyRepository.GetByIdAsync(keyId);
-                    if (key == null || key.ProviderId != providerId)
-                    {
-                        Logger.LogWarning("Key credential not found for deletion {KeyId}", keyId);
-                        return this.NotFoundEntity("Key credential", keyId);
-                    }
+            var key = await _keyRepository.GetByIdAsync(keyId);
+            if (key == null || key.ProviderId != providerId)
+            {
+                Logger.LogWarning("Key credential not found for deletion {KeyId}", keyId);
+                return this.NotFoundEntity("Key credential", keyId);
+            }
 
-                    await _keyRepository.DeleteAsync(keyId);
+            await _keyRepository.DeleteAsync(keyId);
 
-                    LogAdminAudit("Deleted", "ProviderKeyCredential", keyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(key.KeyName)}");
-                    AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "delete");
+            LogAdminAudit("Deleted", "ProviderKeyCredential", keyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(key.KeyName)}");
+            AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "delete");
 
-                    // Publish key deleted event
-                    PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialDeleted
-                    {
-                        KeyId = keyId,
-                        ProviderId = providerId,
-                        CorrelationId = Guid.NewGuid()
-                    }, "delete provider key", new { ProviderId = providerId, KeyId = keyId });
+            // Publish key deleted event
+            PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialDeleted
+            {
+                KeyId = keyId,
+                ProviderId = providerId,
+                CorrelationId = Guid.NewGuid()
+            }, "delete provider key", new { ProviderId = providerId, KeyId = keyId });
 
-                    return NoContent();
-                },
-                "DeleteProviderKeyCredential",
-                new { ProviderId = providerId, KeyId = keyId });
+            return NoContent();
         }
 
         /// <summary>
@@ -311,49 +282,43 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> SetPrimaryKey(int providerId, int keyId)
+        public async Task<IActionResult> SetPrimaryKey(int providerId, int keyId)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var key = await _keyRepository.GetByIdAsync(keyId);
-                    if (key == null || key.ProviderId != providerId)
-                    {
-                        Logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
-                        return this.NotFoundEntity("Key credential", keyId);
-                    }
+            var key = await _keyRepository.GetByIdAsync(keyId);
+            if (key == null || key.ProviderId != providerId)
+            {
+                Logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
+                return this.NotFoundEntity("Key credential", keyId);
+            }
 
-                    // Unset all other primary keys for this provider
-                    var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                        _keyRepository.GetByProviderIdPaginatedAsync, providerId);
-                    foreach (var otherKey in allKeys.Where(k => k.IsPrimary && k.Id != keyId))
-                    {
-                        otherKey.IsPrimary = false;
-                        otherKey.UpdatedAt = DateTime.UtcNow;
-                        await _keyRepository.UpdateAsync(otherKey);
-                    }
+            // Unset all other primary keys for this provider
+            var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _keyRepository.GetByProviderIdPaginatedAsync, providerId);
+            foreach (var otherKey in allKeys.Where(k => k.IsPrimary && k.Id != keyId))
+            {
+                otherKey.IsPrimary = false;
+                otherKey.UpdatedAt = DateTime.UtcNow;
+                await _keyRepository.UpdateAsync(otherKey);
+            }
 
-                    // Set this key as primary
-                    key.IsPrimary = true;
-                    key.UpdatedAt = DateTime.UtcNow;
-                    await _keyRepository.UpdateAsync(key);
+            // Set this key as primary
+            key.IsPrimary = true;
+            key.UpdatedAt = DateTime.UtcNow;
+            await _keyRepository.UpdateAsync(key);
 
-                    LogAdminAudit("SetPrimary", "ProviderKeyCredential", keyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(key.KeyName)}");
-                    AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "set_primary");
+            LogAdminAudit("SetPrimary", "ProviderKeyCredential", keyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(key.KeyName)}");
+            AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "set_primary");
 
-                    // Publish primary key changed event
-                    PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialPrimaryChanged
-                    {
-                        ProviderId = providerId,
-                        OldPrimaryKeyId = 0, // Not tracking old primary in this method
-                        NewPrimaryKeyId = keyId,
-                        CorrelationId = Guid.NewGuid()
-                    }, "set primary key", new { ProviderId = providerId, KeyId = keyId });
+            // Publish primary key changed event
+            PublishEventFireAndForget(new ConduitLLM.Configuration.Events.ProviderKeyCredentialPrimaryChanged
+            {
+                ProviderId = providerId,
+                OldPrimaryKeyId = 0, // Not tracking old primary in this method
+                NewPrimaryKeyId = keyId,
+                CorrelationId = Guid.NewGuid()
+            }, "set primary key", new { ProviderId = providerId, KeyId = keyId });
 
-                    return NoContent();
-                },
-                "SetPrimaryKey",
-                new { ProviderId = providerId, KeyId = keyId });
+            return NoContent();
         }
     }
 }

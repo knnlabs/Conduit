@@ -13,58 +13,52 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("audit/query")]
         [ProducesResponseType(typeof(PricingAuditQueryResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public Task<IActionResult> QueryPricingAuditEvents([FromBody] PricingAuditQueryRequest request)
+        public async Task<IActionResult> QueryPricingAuditEvents([FromBody] PricingAuditQueryRequest request)
         {
             if (ControllerErrorExtensions.ValidateDateRange(request.From, request.To) is { } dateError)
             {
-                return Task.FromResult(dateError);
+                return dateError;
             }
 
             if (request.PageSize > 1000)
             {
-                return Task.FromResult<IActionResult>(BadRequest("Page size cannot exceed 1000"));
+                return BadRequest("Page size cannot exceed 1000");
             }
 
-            return ExecuteAsync(
-                async () =>
+            using var timer = PricingOperationDuration.WithLabels("audit_query").NewTimer();
+
+            var (events, totalCount) = await _pricingAuditService.GetAuditEventsAsync(
+                request.From,
+                request.To,
+                request.VirtualKeyId,
+                request.ModelId,
+                request.PricingType,
+                request.PageNumber,
+                request.PageSize);
+
+            LogAdminAudit("Queried", "PricingAudit", detail: $"From: {request.From:O}, To: {request.To:O}, Results: {totalCount}");
+            return Ok(new PricingAuditQueryResponse
+            {
+                Events = events.Select(e => new PricingAuditEventDto
                 {
-                    using var timer = PricingOperationDuration.WithLabels("audit_query").NewTimer();
-
-                    var (events, totalCount) = await _pricingAuditService.GetAuditEventsAsync(
-                        request.From,
-                        request.To,
-                        request.VirtualKeyId,
-                        request.ModelId,
-                        request.PricingType,
-                        request.PageNumber,
-                        request.PageSize);
-
-                    LogAdminAudit("Queried", "PricingAudit", detail: $"From: {request.From:O}, To: {request.To:O}, Results: {totalCount}");
-                    return new PricingAuditQueryResponse
-                    {
-                        Events = events.Select(e => new PricingAuditEventDto
-                        {
-                            Id = e.Id,
-                            Timestamp = e.Timestamp,
-                            VirtualKeyId = e.VirtualKeyId,
-                            ModelId = e.ModelId,
-                            ModelCostId = e.ModelCostId,
-                            PricingType = e.PricingType,
-                            InputParameters = e.InputParameters,
-                            MatchedRule = e.MatchedRule,
-                            UsedDefaultRate = e.UsedDefaultRate,
-                            AppliedRate = e.AppliedRate,
-                            Quantity = e.Quantity,
-                            CalculatedCost = e.CalculatedCost,
-                            RequestId = e.RequestId
-                        }).ToList(),
-                        TotalCount = totalCount,
-                        PageNumber = request.PageNumber,
-                        PageSize = request.PageSize
-                    };
-                },
-                Ok,
-                "QueryPricingAuditEvents");
+                    Id = e.Id,
+                    Timestamp = e.Timestamp,
+                    VirtualKeyId = e.VirtualKeyId,
+                    ModelId = e.ModelId,
+                    ModelCostId = e.ModelCostId,
+                    PricingType = e.PricingType,
+                    InputParameters = e.InputParameters,
+                    MatchedRule = e.MatchedRule,
+                    UsedDefaultRate = e.UsedDefaultRate,
+                    AppliedRate = e.AppliedRate,
+                    Quantity = e.Quantity,
+                    CalculatedCost = e.CalculatedCost,
+                    RequestId = e.RequestId
+                }).ToList(),
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            });
         }
 
         /// <summary>
@@ -73,25 +67,20 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("audit/summary")]
         [ProducesResponseType(typeof(PricingAuditSummary), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public Task<IActionResult> GetPricingAuditSummary(
+        public async Task<IActionResult> GetPricingAuditSummary(
             [FromQuery] DateTime from,
             [FromQuery] DateTime to,
             [FromQuery] int? virtualKeyId = null)
         {
             if (ControllerErrorExtensions.ValidateDateRange(from, to) is { } dateError)
             {
-                return Task.FromResult(dateError);
+                return dateError;
             }
 
-            return ExecuteAsync(
-                async () =>
-                {
-                    using var timer = PricingOperationDuration.WithLabels("audit_summary").NewTimer();
+            using var timer = PricingOperationDuration.WithLabels("audit_summary").NewTimer();
 
-                    return await _pricingAuditService.GetSummaryAsync(from, to, virtualKeyId);
-                },
-                Ok,
-                "GetPricingAuditSummary");
+            var summary = await _pricingAuditService.GetSummaryAsync(from, to, virtualKeyId);
+            return Ok(summary);
         }
 
         /// <summary>
@@ -100,38 +89,31 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("audit/request/{requestId}")]
         [ProducesResponseType(typeof(IEnumerable<PricingAuditEventDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public Task<IActionResult> GetPricingAuditByRequestId(string requestId)
+        public async Task<IActionResult> GetPricingAuditByRequestId(string requestId)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var events = await _pricingAuditService.GetByRequestIdAsync(requestId);
+            var events = await _pricingAuditService.GetByRequestIdAsync(requestId);
 
-                    if (!events.Any())
-                    {
-                        throw new KeyNotFoundException($"No pricing audit events found for request {requestId}");
-                    }
+            if (!events.Any())
+            {
+                throw new KeyNotFoundException($"No pricing audit events found for request {requestId}");
+            }
 
-                    return events.Select(e => new PricingAuditEventDto
-                    {
-                        Id = e.Id,
-                        Timestamp = e.Timestamp,
-                        VirtualKeyId = e.VirtualKeyId,
-                        ModelId = e.ModelId,
-                        ModelCostId = e.ModelCostId,
-                        PricingType = e.PricingType,
-                        InputParameters = e.InputParameters,
-                        MatchedRule = e.MatchedRule,
-                        UsedDefaultRate = e.UsedDefaultRate,
-                        AppliedRate = e.AppliedRate,
-                        Quantity = e.Quantity,
-                        CalculatedCost = e.CalculatedCost,
-                        RequestId = e.RequestId
-                    });
-                },
-                Ok,
-                "GetPricingAuditByRequestId",
-                new { RequestId = requestId });
+            return Ok(events.Select(e => new PricingAuditEventDto
+            {
+                Id = e.Id,
+                Timestamp = e.Timestamp,
+                VirtualKeyId = e.VirtualKeyId,
+                ModelId = e.ModelId,
+                ModelCostId = e.ModelCostId,
+                PricingType = e.PricingType,
+                InputParameters = e.InputParameters,
+                MatchedRule = e.MatchedRule,
+                UsedDefaultRate = e.UsedDefaultRate,
+                AppliedRate = e.AppliedRate,
+                Quantity = e.Quantity,
+                CalculatedCost = e.CalculatedCost,
+                RequestId = e.RequestId
+            }));
         }
     }
 }
