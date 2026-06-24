@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Validation;
@@ -126,6 +127,9 @@ public partial class Program
         app.UseAuthorization();
 
         app.MapControllers();
+
+        // Tier 3 pilot (#906): ModelAuthor served as Minimal-API endpoints (replaces ModelAuthorController).
+        app.MapModelAuthorEndpoints();
 
         // Map SignalR hub with master key authentication
         app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
