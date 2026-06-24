@@ -3,6 +3,7 @@ using ConduitLLM.Core.Controllers;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Gateway.Authorization;
+using ConduitLLM.Gateway.Filters;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,7 @@ namespace ConduitLLM.Gateway.Controllers;
 [Authorize]
 [RequireBalance]
 [Tags("Functions")]
+[ServiceFilter(typeof(OperationLoggingFilter))]
 public class FunctionsController : GatewayControllerBase
 {
     private readonly IFunctionExecutionService _executionService;

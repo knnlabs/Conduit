@@ -5,6 +5,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Configuration.DTOs.BatchOperations;
 using ConduitLLM.Core.Services.BatchOperations;
+using ConduitLLM.Gateway.Filters;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 namespace ConduitLLM.Gateway.Controllers
@@ -16,6 +17,7 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/batch")]
     [Authorize]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class BatchOperationsController : GatewayControllerBase
     {
         private readonly IBatchOperationService _batchOperationService;
@@ -56,74 +58,71 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(401)]
         public async Task<IActionResult> StartBatchSpendUpdate([FromBody] BatchSpendUpdateRequest request)
         {
-            return await ExecuteAsync(async () =>
+            var virtualKeyId = GetVirtualKeyId();
+
+            // Validate request
+            if (request.Updates == null || !request.Updates.Any())
             {
-                var virtualKeyId = GetVirtualKeyId();
-
-                // Validate request
-                if (request.Updates == null || !request.Updates.Any())
+                return BadRequest(new OpenAIErrorResponse
                 {
-                    return BadRequest(new OpenAIErrorResponse
+                    Error = new OpenAIError
                     {
-                        Error = new OpenAIError
-                        {
-                            Message = "No updates provided",
-                            Type = "invalid_request_error",
-                            Code = "invalid_request"
-                        }
-                    });
-                }
-
-                if (request.Updates.Count() > 10000)
-                {
-                    return BadRequest(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Maximum 10,000 items per batch",
-                            Type = "invalid_request_error",
-                            Code = "invalid_request"
-                        }
-                    });
-                }
-
-                // Convert to internal model
-                var spendUpdates = request.Updates.Select(u => new SpendUpdateItem
-                {
-                    VirtualKeyId = u.VirtualKeyId,
-                    Amount = u.Amount,
-                    Model = u.Model,
-                    Provider = u.ProviderType.ToString(),
-                    RequestMetadata = u.Metadata
-                }).ToList();
-
-                // Get idempotency token from header (optional)
-                var idempotencyToken = HttpContext.Request.Headers["X-Idempotency-Token"].FirstOrDefault();
-
-                // Execute batch spend update operation
-                var result = await _batchSpendUpdateOperation.ExecuteAsync(
-                    spendUpdates,
-                    virtualKeyId,
-                    idempotencyToken,
-                    HttpContext.RequestAborted);
-
-                Logger.LogInformation(
-                    "Started batch spend update operation {OperationId} with {Count} items (Idempotent: {Idempotent})",
-                    result.OperationId,
-                    request.Updates.Count(),
-                    !string.IsNullOrWhiteSpace(idempotencyToken));
-
-                GatewayOpsMetrics.RecordBatchOperation("spend_update", "accepted", request.Updates.Count());
-                return Accepted(new BatchOperationStartResponse
-                {
-                    OperationId = result.OperationId,
-                    OperationType = "spend_update",
-                    TotalItems = request.Updates.Count(),
-                    StatusUrl = $"/v1/batch/operations/{result.OperationId}",
-                    TaskId = result.OperationId,
-                    Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
+                        Message = "No updates provided",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
                 });
-            }, "StartBatchSpendUpdate");
+            }
+
+            if (request.Updates.Count() > 10000)
+            {
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Maximum 10,000 items per batch",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
+            }
+
+            // Convert to internal model
+            var spendUpdates = request.Updates.Select(u => new SpendUpdateItem
+            {
+                VirtualKeyId = u.VirtualKeyId,
+                Amount = u.Amount,
+                Model = u.Model,
+                Provider = u.ProviderType.ToString(),
+                RequestMetadata = u.Metadata
+            }).ToList();
+
+            // Get idempotency token from header (optional)
+            var idempotencyToken = HttpContext.Request.Headers["X-Idempotency-Token"].FirstOrDefault();
+
+            // Execute batch spend update operation
+            var result = await _batchSpendUpdateOperation.ExecuteAsync(
+                spendUpdates,
+                virtualKeyId,
+                idempotencyToken,
+                HttpContext.RequestAborted);
+
+            Logger.LogInformation(
+                "Started batch spend update operation {OperationId} with {Count} items (Idempotent: {Idempotent})",
+                result.OperationId,
+                request.Updates.Count(),
+                !string.IsNullOrWhiteSpace(idempotencyToken));
+
+            GatewayOpsMetrics.RecordBatchOperation("spend_update", "accepted", request.Updates.Count());
+            return Accepted(new BatchOperationStartResponse
+            {
+                OperationId = result.OperationId,
+                OperationType = "spend_update",
+                TotalItems = request.Updates.Count(),
+                StatusUrl = $"/v1/batch/operations/{result.OperationId}",
+                TaskId = result.OperationId,
+                Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
+            });
         }
 
         /// <summary>
@@ -137,93 +136,90 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(401)]
         public async Task<IActionResult> StartBatchVirtualKeyUpdate([FromBody] BatchVirtualKeyUpdateRequest request)
         {
-            return await ExecuteAsync(async () =>
+            var virtualKeyId = GetVirtualKeyId();
+
+            // Check if user has admin permissions
+            var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyInfoAsync(virtualKeyId);
+            bool isAdmin = false;
+            if (virtualKeyInfo != null && !string.IsNullOrEmpty(virtualKeyInfo.Metadata))
             {
-                var virtualKeyId = GetVirtualKeyId();
-
-                // Check if user has admin permissions
-                var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyInfoAsync(virtualKeyId);
-                bool isAdmin = false;
-                if (virtualKeyInfo != null && !string.IsNullOrEmpty(virtualKeyInfo.Metadata))
+                try
                 {
-                    try
+                    var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(virtualKeyInfo.Metadata);
+                    if (metadata != null && metadata.TryGetValue("isAdmin", out var isAdminValue))
                     {
-                        var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(virtualKeyInfo.Metadata);
-                        if (metadata != null && metadata.TryGetValue("isAdmin", out var isAdminValue))
-                        {
-                            isAdmin = isAdminValue?.ToString()?.ToLower() == "true";
-                        }
-                    }
-                    catch
-                    {
-                        // Invalid metadata format
+                        isAdmin = isAdminValue?.ToString()?.ToLower() == "true";
                     }
                 }
-
-                if (!isAdmin)
+                catch
                 {
-                    return Forbid("Admin permissions required for batch virtual key updates");
+                    // Invalid metadata format
                 }
+            }
 
-                // Validate request
-                if (request.Updates == null || !request.Updates.Any())
+            if (!isAdmin)
+            {
+                return Forbid("Admin permissions required for batch virtual key updates");
+            }
+
+            // Validate request
+            if (request.Updates == null || !request.Updates.Any())
+            {
+                return BadRequest(new OpenAIErrorResponse
                 {
-                    return BadRequest(new OpenAIErrorResponse
+                    Error = new OpenAIError
                     {
-                        Error = new OpenAIError
-                        {
-                            Message = "No updates provided",
-                            Type = "invalid_request_error",
-                            Code = "invalid_request"
-                        }
-                    });
-                }
-
-                if (request.Updates.Count() > 1000)
-                {
-                    return BadRequest(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Maximum 1,000 items per batch",
-                            Type = "invalid_request_error",
-                            Code = "invalid_request"
-                        }
-                    });
-                }
-
-                // Convert to internal model
-                var keyUpdates = request.Updates.Select(u => new VirtualKeyUpdateItem
-                {
-                    VirtualKeyId = u.VirtualKeyId,
-                    AllowedModels = u.AllowedModels,
-                    RateLimits = u.RateLimits,
-                    IsEnabled = u.IsEnabled,
-                    ExpiresAt = u.ExpiresAt,
-                    Notes = u.Notes
-                }).ToList();
-
-                // Start operation
-                var result = await _batchVirtualKeyUpdateOperation.ExecuteAsync(
-                    keyUpdates,
-                    virtualKeyId,
-                    HttpContext.RequestAborted);
-
-                Logger.LogInformation(
-                    "Started batch virtual key update operation {OperationId} with {Count} items",
-                    result.OperationId,
-                    request.Updates.Count());
-
-                return Accepted(new BatchOperationStartResponse
-                {
-                    OperationId = result.OperationId,
-                    OperationType = "virtual_key_update",
-                    TotalItems = request.Updates.Count(),
-                    StatusUrl = $"/v1/batch/operations/{result.OperationId}",
-                    TaskId = result.OperationId,
-                    Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
+                        Message = "No updates provided",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
                 });
-            }, "StartBatchVirtualKeyUpdate");
+            }
+
+            if (request.Updates.Count() > 1000)
+            {
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Maximum 1,000 items per batch",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
+            }
+
+            // Convert to internal model
+            var keyUpdates = request.Updates.Select(u => new VirtualKeyUpdateItem
+            {
+                VirtualKeyId = u.VirtualKeyId,
+                AllowedModels = u.AllowedModels,
+                RateLimits = u.RateLimits,
+                IsEnabled = u.IsEnabled,
+                ExpiresAt = u.ExpiresAt,
+                Notes = u.Notes
+            }).ToList();
+
+            // Start operation
+            var result = await _batchVirtualKeyUpdateOperation.ExecuteAsync(
+                keyUpdates,
+                virtualKeyId,
+                HttpContext.RequestAborted);
+
+            Logger.LogInformation(
+                "Started batch virtual key update operation {OperationId} with {Count} items",
+                result.OperationId,
+                request.Updates.Count());
+
+            return Accepted(new BatchOperationStartResponse
+            {
+                OperationId = result.OperationId,
+                OperationType = "virtual_key_update",
+                TotalItems = request.Updates.Count(),
+                StatusUrl = $"/v1/batch/operations/{result.OperationId}",
+                TaskId = result.OperationId,
+                Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
+            });
         }
 
         /// <summary>
@@ -237,69 +233,66 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(401)]
         public async Task<IActionResult> StartBatchWebhookSend([FromBody] BatchWebhookSendRequest request)
         {
-            return await ExecuteAsync(async () =>
+            var virtualKeyId = GetVirtualKeyId();
+
+            // Validate request
+            if (request.Webhooks == null || !request.Webhooks.Any())
             {
-                var virtualKeyId = GetVirtualKeyId();
-
-                // Validate request
-                if (request.Webhooks == null || !request.Webhooks.Any())
+                return BadRequest(new OpenAIErrorResponse
                 {
-                    return BadRequest(new OpenAIErrorResponse
+                    Error = new OpenAIError
                     {
-                        Error = new OpenAIError
-                        {
-                            Message = "No webhooks provided",
-                            Type = "invalid_request_error",
-                            Code = "invalid_request"
-                        }
-                    });
-                }
-
-                if (request.Webhooks.Count() > 5000)
-                {
-                    return BadRequest(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Maximum 5,000 webhooks per batch",
-                            Type = "invalid_request_error",
-                            Code = "invalid_request"
-                        }
-                    });
-                }
-
-                // Convert to internal model
-                var webhookSends = request.Webhooks.Select(w => new WebhookSendItem
-                {
-                    WebhookUrl = w.Url,
-                    VirtualKeyId = virtualKeyId,
-                    EventType = w.EventType,
-                    Payload = w.Payload,
-                    Headers = w.Headers,
-                    Secret = w.Secret
-                }).ToList();
-
-                // Start operation
-                var result = await _batchWebhookSendOperation.ExecuteAsync(
-                    webhookSends,
-                    virtualKeyId,
-                    HttpContext.RequestAborted);
-
-                Logger.LogInformation(
-                    "Started batch webhook send operation {OperationId} with {Count} items",
-                    result.OperationId,
-                    request.Webhooks.Count());
-
-                return Accepted(new BatchOperationStartResponse
-                {
-                    OperationId = result.OperationId,
-                    OperationType = "webhook_send",
-                    TotalItems = request.Webhooks.Count(),
-                    StatusUrl = $"/v1/batch/operations/{result.OperationId}",
-                    TaskId = result.OperationId,
-                    Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
+                        Message = "No webhooks provided",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
                 });
-            }, "StartBatchWebhookSend");
+            }
+
+            if (request.Webhooks.Count() > 5000)
+            {
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Maximum 5,000 webhooks per batch",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
+            }
+
+            // Convert to internal model
+            var webhookSends = request.Webhooks.Select(w => new WebhookSendItem
+            {
+                WebhookUrl = w.Url,
+                VirtualKeyId = virtualKeyId,
+                EventType = w.EventType,
+                Payload = w.Payload,
+                Headers = w.Headers,
+                Secret = w.Secret
+            }).ToList();
+
+            // Start operation
+            var result = await _batchWebhookSendOperation.ExecuteAsync(
+                webhookSends,
+                virtualKeyId,
+                HttpContext.RequestAborted);
+
+            Logger.LogInformation(
+                "Started batch webhook send operation {OperationId} with {Count} items",
+                result.OperationId,
+                request.Webhooks.Count());
+
+            return Accepted(new BatchOperationStartResponse
+            {
+                OperationId = result.OperationId,
+                OperationType = "webhook_send",
+                TotalItems = request.Webhooks.Count(),
+                StatusUrl = $"/v1/batch/operations/{result.OperationId}",
+                TaskId = result.OperationId,
+                Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
+            });
         }
 
         /// <summary>

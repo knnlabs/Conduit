@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Gateway.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.Interfaces;
@@ -14,6 +15,7 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/downloads")]
     [Authorize]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class DownloadsController : GatewayControllerBase
     {
         private readonly IFileRetrievalService _fileRetrievalService;
@@ -39,49 +41,46 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="inline">Whether to display inline (true) or force download (false).</param>
         /// <returns>The file content.</returns>
         [HttpGet("{**fileId}")]
-        public Task<IActionResult> DownloadFile(string fileId, [FromQuery] bool inline = false)
+        public async Task<IActionResult> DownloadFile(string fileId, [FromQuery] bool inline = false)
         {
-            return ExecuteAsync(async () =>
+            var virtualKeyId = GetVirtualKeyId();
+            Logger.LogDebug("File download requested by Virtual Key {VirtualKeyId}: {FileId}, inline: {Inline}",
+                virtualKeyId, LoggingSanitizer.S(fileId), inline);
+
+            // Validate ownership
+            if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
-                var virtualKeyId = GetVirtualKeyId();
-                Logger.LogDebug("File download requested by Virtual Key {VirtualKeyId}: {FileId}, inline: {Inline}",
-                    virtualKeyId, LoggingSanitizer.S(fileId), inline);
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+            }
 
-                // Validate ownership
-                if (!await ValidateFileOwnership(fileId, virtualKeyId))
+            var result = await _fileRetrievalService.RetrieveFileAsync(fileId);
+            if (result == null)
+            {
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+            }
+
+            using (result)
+            {
+                // Set appropriate headers
+                if (!inline && !string.IsNullOrEmpty(result.Metadata.FileName))
                 {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+                    Response.Headers["Content-Disposition"] = $"attachment; filename=\"{result.Metadata.FileName}\"";
                 }
 
-                var result = await _fileRetrievalService.RetrieveFileAsync(fileId);
-                if (result == null)
+                // Set cache headers
+                if (!string.IsNullOrEmpty(result.Metadata.ETag))
                 {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+                    Response.Headers["ETag"] = result.Metadata.ETag;
+                    Response.Headers["Cache-Control"] = "private, max-age=3600";
                 }
 
-                using (result)
-                {
-                    // Set appropriate headers
-                    if (!inline && !string.IsNullOrEmpty(result.Metadata.FileName))
-                    {
-                        Response.Headers["Content-Disposition"] = $"attachment; filename=\"{result.Metadata.FileName}\"";
-                    }
-
-                    // Set cache headers
-                    if (!string.IsNullOrEmpty(result.Metadata.ETag))
-                    {
-                        Response.Headers["ETag"] = result.Metadata.ETag;
-                        Response.Headers["Cache-Control"] = "private, max-age=3600";
-                    }
-
-                    // Return file with range processing support
-                    return File(
-                        result.ContentStream,
-                        result.Metadata.ContentType,
-                        result.Metadata.FileName,
-                        enableRangeProcessing: result.Metadata.SupportsRangeRequests);
-                }
-            }, nameof(DownloadFile), fileId);
+                // Return file with range processing support
+                return File(
+                    result.ContentStream,
+                    result.Metadata.ContentType,
+                    result.Metadata.FileName,
+                    enableRangeProcessing: result.Metadata.SupportsRangeRequests);
+            }
         }
 
         /// <summary>
@@ -90,36 +89,33 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="fileId">The file identifier.</param>
         /// <returns>File metadata.</returns>
         [HttpGet("metadata/{**fileId}")]
-        public Task<IActionResult> GetFileMetadata(string fileId)
+        public async Task<IActionResult> GetFileMetadata(string fileId)
         {
-            return ExecuteAsync(async () =>
+            // Validate ownership
+            var virtualKeyId = GetVirtualKeyId();
+            if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
-                // Validate ownership
-                var virtualKeyId = GetVirtualKeyId();
-                if (!await ValidateFileOwnership(fileId, virtualKeyId))
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
-                }
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+            }
 
-                var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
-                if (metadata == null)
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
-                }
+            var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
+            if (metadata == null)
+            {
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+            }
 
-                return Ok(new
-                {
-                    file_name = metadata.FileName,
-                    content_type = metadata.ContentType,
-                    size_bytes = metadata.SizeBytes,
-                    created_at = metadata.CreatedAt,
-                    modified_at = metadata.ModifiedAt,
-                    storage_provider = metadata.StorageProvider,
-                    etag = metadata.ETag,
-                    supports_range_requests = metadata.SupportsRangeRequests,
-                    additional_metadata = metadata.AdditionalMetadata
-                });
-            }, nameof(GetFileMetadata), fileId);
+            return Ok(new
+            {
+                file_name = metadata.FileName,
+                content_type = metadata.ContentType,
+                size_bytes = metadata.SizeBytes,
+                created_at = metadata.CreatedAt,
+                modified_at = metadata.ModifiedAt,
+                storage_provider = metadata.StorageProvider,
+                etag = metadata.ETag,
+                supports_range_requests = metadata.SupportsRangeRequests,
+                additional_metadata = metadata.AdditionalMetadata
+            });
         }
 
         /// <summary>
@@ -128,46 +124,43 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="request">The URL generation request.</param>
         /// <returns>A temporary download URL.</returns>
         [HttpPost("generate-url")]
-        public Task<IActionResult> GenerateDownloadUrl([FromBody] GenerateUrlRequest request)
+        public async Task<IActionResult> GenerateDownloadUrl([FromBody] GenerateUrlRequest request)
         {
-            return ExecuteAsync(async () =>
+            if (string.IsNullOrWhiteSpace(request.FileId))
             {
-                if (string.IsNullOrWhiteSpace(request.FileId))
-                {
-                    return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("File ID is required", "invalid_request_error")));
-                }
+                return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("File ID is required", "invalid_request_error")));
+            }
 
-                var virtualKeyId = GetVirtualKeyId();
-                Logger.LogInformation("Download URL generation requested by Virtual Key {VirtualKeyId} for {FileId}, expiration: {ExpirationMinutes}m",
-                    virtualKeyId, LoggingSanitizer.S(request.FileId), request.ExpirationMinutes ?? 60);
+            var virtualKeyId = GetVirtualKeyId();
+            Logger.LogInformation("Download URL generation requested by Virtual Key {VirtualKeyId} for {FileId}, expiration: {ExpirationMinutes}m",
+                virtualKeyId, LoggingSanitizer.S(request.FileId), request.ExpirationMinutes ?? 60);
 
-                // Validate ownership
-                if (!await ValidateFileOwnership(request.FileId, virtualKeyId))
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
-                }
+            // Validate ownership
+            if (!await ValidateFileOwnership(request.FileId, virtualKeyId))
+            {
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+            }
 
-                var expirationMinutes = request.ExpirationMinutes ?? 60; // Default 1 hour
-                if (expirationMinutes < 1 || expirationMinutes > 10080) // Max 1 week
-                {
-                    return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("Expiration must be between 1 minute and 1 week", "invalid_request_error")));
-                }
+            var expirationMinutes = request.ExpirationMinutes ?? 60; // Default 1 hour
+            if (expirationMinutes < 1 || expirationMinutes > 10080) // Max 1 week
+            {
+                return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("Expiration must be between 1 minute and 1 week", "invalid_request_error")));
+            }
 
-                var expiration = TimeSpan.FromMinutes(expirationMinutes);
-                var url = await _fileRetrievalService.GetDownloadUrlAsync(request.FileId, expiration);
+            var expiration = TimeSpan.FromMinutes(expirationMinutes);
+            var url = await _fileRetrievalService.GetDownloadUrlAsync(request.FileId, expiration);
 
-                if (string.IsNullOrEmpty(url))
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found or URL generation failed", "not_found")));
-                }
+            if (string.IsNullOrEmpty(url))
+            {
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found or URL generation failed", "not_found")));
+            }
 
-                return Ok(new
-                {
-                    url = url,
-                    expires_at = DateTime.UtcNow.Add(expiration),
-                    expiration_minutes = expirationMinutes
-                });
-            }, nameof(GenerateDownloadUrl), request.FileId);
+            return Ok(new
+            {
+                url = url,
+                expires_at = DateTime.UtcNow.Add(expiration),
+                expiration_minutes = expirationMinutes
+            });
         }
 
         /// <summary>
@@ -176,36 +169,33 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="fileId">The file identifier.</param>
         /// <returns>200 OK if exists, 404 if not.</returns>
         [HttpHead("{**fileId}")]
-        public Task<IActionResult> CheckFileExists(string fileId)
+        public async Task<IActionResult> CheckFileExists(string fileId)
         {
-            return ExecuteAsync(async () =>
+            // Validate ownership
+            var virtualKeyId = GetVirtualKeyId();
+            if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
-                // Validate ownership
-                var virtualKeyId = GetVirtualKeyId();
-                if (!await ValidateFileOwnership(fileId, virtualKeyId))
-                {
-                    return NotFound();
-                }
+                return NotFound();
+            }
 
-                var exists = await _fileRetrievalService.FileExistsAsync(fileId);
-                if (!exists)
-                {
-                    return NotFound();
-                }
+            var exists = await _fileRetrievalService.FileExistsAsync(fileId);
+            if (!exists)
+            {
+                return NotFound();
+            }
 
-                var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
-                if (metadata != null)
+            var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
+            if (metadata != null)
+            {
+                Response.Headers["Content-Type"] = metadata.ContentType;
+                Response.Headers["Content-Length"] = metadata.SizeBytes.ToString();
+                if (!string.IsNullOrEmpty(metadata.ETag))
                 {
-                    Response.Headers["Content-Type"] = metadata.ContentType;
-                    Response.Headers["Content-Length"] = metadata.SizeBytes.ToString();
-                    if (!string.IsNullOrEmpty(metadata.ETag))
-                    {
-                        Response.Headers["ETag"] = metadata.ETag;
-                    }
+                    Response.Headers["ETag"] = metadata.ETag;
                 }
+            }
 
-                return Ok();
-            }, nameof(CheckFileExists), fileId);
+            return Ok();
         }
 
         /// <summary>

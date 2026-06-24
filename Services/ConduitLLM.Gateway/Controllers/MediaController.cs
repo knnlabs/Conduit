@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Filters;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +15,7 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/media")]
     [Authorize]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class MediaController : GatewayControllerBase
     {
         private readonly IMediaStorageService _storageService;
@@ -36,95 +38,91 @@ namespace ConduitLLM.Gateway.Controllers
         [Authorize]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(524288000)] // 500MB limit
-        public Task<IActionResult> UploadMedia(
+        public async Task<IActionResult> UploadMedia(
             IFormFile file,
             [FromForm] string? mediaType = null)
         {
-            return ExecuteAsync(async () =>
+            // Validate file
+            if (file == null || file.Length == 0)
             {
-                // Validate file
-                if (file == null || file.Length == 0)
+                return OpenAIError(400, "No file provided or file is empty", "invalid_request");
+            }
+
+            // Validate file extension
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowedImageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg" };
+            var allowedVideoExtensions = new[] { ".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v" };
+            var allowedAudioExtensions = new[] { ".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac" };
+
+            // Determine media type from extension if not provided
+            MediaType determinedMediaType;
+            if (!string.IsNullOrEmpty(mediaType))
+            {
+                if (!Enum.TryParse<MediaType>(mediaType, true, out determinedMediaType))
                 {
-                    return OpenAIError(400, "No file provided or file is empty", "invalid_request");
+                    return OpenAIError(400, "Invalid media type. Must be Image, Video, or Audio", "invalid_parameter");
                 }
+            }
+            else if (allowedImageExtensions.Contains(extension))
+            {
+                determinedMediaType = MediaType.Image;
+            }
+            else if (allowedVideoExtensions.Contains(extension))
+            {
+                determinedMediaType = MediaType.Video;
+            }
+            else if (allowedAudioExtensions.Contains(extension))
+            {
+                determinedMediaType = MediaType.Audio;
+            }
+            else
+            {
+                return OpenAIError(400, $"Unsupported file extension: {extension}", "invalid_parameter");
+            }
 
-                // Validate file extension
-                var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-                var allowedImageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg" };
-                var allowedVideoExtensions = new[] { ".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v" };
-                var allowedAudioExtensions = new[] { ".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac" };
+            // Validate file size based on type
+            var maxSizeBytes = determinedMediaType switch
+            {
+                MediaType.Image => 104857600L, // 100MB for images
+                MediaType.Video => 524288000L, // 500MB for videos
+                MediaType.Audio => 209715200L, // 200MB for audio
+                _ => 104857600L // Default 100MB
+            };
 
-                // Determine media type from extension if not provided
-                MediaType determinedMediaType;
-                if (!string.IsNullOrEmpty(mediaType))
-                {
-                    if (!Enum.TryParse<MediaType>(mediaType, true, out determinedMediaType))
-                    {
-                        return OpenAIError(400, "Invalid media type. Must be Image, Video, or Audio", "invalid_parameter");
-                    }
-                }
-                else if (allowedImageExtensions.Contains(extension))
-                {
-                    determinedMediaType = MediaType.Image;
-                }
-                else if (allowedVideoExtensions.Contains(extension))
-                {
-                    determinedMediaType = MediaType.Video;
-                }
-                else if (allowedAudioExtensions.Contains(extension))
-                {
-                    determinedMediaType = MediaType.Audio;
-                }
-                else
-                {
-                    return OpenAIError(400, $"Unsupported file extension: {extension}", "invalid_parameter");
-                }
+            if (file.Length > maxSizeBytes)
+            {
+                var maxSizeMB = maxSizeBytes / (1024 * 1024);
+                return OpenAIError(400, $"File size exceeds maximum allowed size of {maxSizeMB}MB for {determinedMediaType}", "invalid_request");
+            }
 
-                // Validate file size based on type
-                var maxSizeBytes = determinedMediaType switch
-                {
-                    MediaType.Image => 104857600L, // 100MB for images
-                    MediaType.Video => 524288000L, // 500MB for videos
-                    MediaType.Audio => 209715200L, // 200MB for audio
-                    _ => 104857600L // Default 100MB
-                };
+            // Create metadata
+            var metadata = new MediaMetadata
+            {
+                MediaType = determinedMediaType,
+                ContentType = file.ContentType ?? GetContentTypeFromExtension(extension),
+                FileName = file.FileName
+            };
 
-                if (file.Length > maxSizeBytes)
-                {
-                    var maxSizeMB = maxSizeBytes / (1024 * 1024);
-                    return OpenAIError(400, $"File size exceeds maximum allowed size of {maxSizeMB}MB for {determinedMediaType}", "invalid_request");
-                }
+            // Upload file using storage service
+            using var stream = file.OpenReadStream();
+            var result = await _storageService.StoreAsync(stream, metadata);
 
-                // Create metadata
-                var metadata = new MediaMetadata
-                {
-                    MediaType = determinedMediaType,
-                    ContentType = file.ContentType ?? GetContentTypeFromExtension(extension),
-                    FileName = file.FileName
-                };
+            Logger.LogInformation("Media uploaded successfully. Type: {MediaType}, Size: {Size} bytes, Key: {StorageKey}",
+                determinedMediaType, file.Length, result.StorageKey);
 
-                // Upload file using storage service
-                using var stream = file.OpenReadStream();
-                var result = await _storageService.StoreAsync(stream, metadata);
-
-                Logger.LogInformation("Media uploaded successfully. Type: {MediaType}, Size: {Size} bytes, Key: {StorageKey}",
-                    determinedMediaType, file.Length, result.StorageKey);
-
-                // Return result with full URL
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                return Ok(new
-                {
-                    success = true,
-                    storageKey = result.StorageKey,
-                    url = result.Url,
-                    directUrl = $"{baseUrl}/v1/media/{result.StorageKey}",
-                    contentType = metadata.ContentType,
-                    mediaType = determinedMediaType.ToString(),
-                    fileName = file.FileName,
-                    sizeBytes = file.Length
-                });
-            },
-            "UploadMedia");
+            // Return result with full URL
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            return Ok(new
+            {
+                success = true,
+                storageKey = result.StorageKey,
+                url = result.Url,
+                directUrl = $"{baseUrl}/v1/media/{result.StorageKey}",
+                contentType = metadata.ContentType,
+                mediaType = determinedMediaType.ToString(),
+                fileName = file.FileName,
+                sizeBytes = file.Length
+            });
         }
 
         /// <summary>
@@ -165,54 +163,49 @@ namespace ConduitLLM.Gateway.Controllers
         /// <returns>The media file.</returns>
         [HttpGet("{**storageKey}")]
         [AllowAnonymous] // Media URLs should work without auth
-        public Task<IActionResult> GetMedia(string storageKey)
+        public async Task<IActionResult> GetMedia(string storageKey)
         {
-            return ExecuteAsync(async () =>
+            // Validate storage key
+            if (string.IsNullOrWhiteSpace(storageKey))
             {
-                // Validate storage key
-                if (string.IsNullOrWhiteSpace(storageKey))
-                {
-                    return OpenAIError(400, "Invalid storage key", "invalid_parameter");
-                }
+                return OpenAIError(400, "Invalid storage key", "invalid_parameter");
+            }
 
-                // Get media info
-                var mediaInfo = await _storageService.GetInfoAsync(storageKey);
-                if (mediaInfo == null)
-                {
-                    return NotFound();
-                }
+            // Get media info
+            var mediaInfo = await _storageService.GetInfoAsync(storageKey);
+            if (mediaInfo == null)
+            {
+                return NotFound();
+            }
 
-                // Check if this is a video and if range is requested
-                if (mediaInfo.MediaType == MediaType.Video && Request.Headers.ContainsKey(HeaderNames.Range))
-                {
-                    return await HandleVideoRangeRequest(storageKey, mediaInfo);
-                }
+            // Check if this is a video and if range is requested
+            if (mediaInfo.MediaType == MediaType.Video && Request.Headers.ContainsKey(HeaderNames.Range))
+            {
+                return await HandleVideoRangeRequest(storageKey, mediaInfo);
+            }
 
-                // Get media stream for non-video or non-range requests
-                var stream = await _storageService.GetStreamAsync(storageKey);
-                if (stream == null)
-                {
-                    return NotFound();
-                }
+            // Get media stream for non-video or non-range requests
+            var stream = await _storageService.GetStreamAsync(storageKey);
+            if (stream == null)
+            {
+                return NotFound();
+            }
 
-                // Set cache headers for performance
-                Response.Headers["Cache-Control"] = "public, max-age=3600"; // 1 hour
-                Response.Headers["ETag"] = $"\"{storageKey}\"";
+            // Set cache headers for performance
+            Response.Headers["Cache-Control"] = "public, max-age=3600"; // 1 hour
+            Response.Headers["ETag"] = $"\"{storageKey}\"";
 
-                // Add CORS headers for video playback
-                if (mediaInfo.MediaType == MediaType.Video)
-                {
-                    Response.Headers["Accept-Ranges"] = "bytes";
-                    Response.Headers["Access-Control-Allow-Origin"] = "*";
-                    Response.Headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS";
-                    Response.Headers["Access-Control-Allow-Headers"] = "Range";
-                }
+            // Add CORS headers for video playback
+            if (mediaInfo.MediaType == MediaType.Video)
+            {
+                Response.Headers["Accept-Ranges"] = "bytes";
+                Response.Headers["Access-Control-Allow-Origin"] = "*";
+                Response.Headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS";
+                Response.Headers["Access-Control-Allow-Headers"] = "Range";
+            }
 
-                // Return file with proper content type
-                return File(stream, mediaInfo.ContentType, enableRangeProcessing: true);
-            },
-            "GetMedia",
-            storageKey);
+            // Return file with proper content type
+            return File(stream, mediaInfo.ContentType, enableRangeProcessing: true);
         }
 
         /// <summary>
@@ -221,20 +214,15 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="storageKey">The unique storage key.</param>
         /// <returns>Media metadata.</returns>
         [HttpGet("info/{**storageKey}")]
-        public Task<IActionResult> GetMediaInfo(string storageKey)
+        public async Task<IActionResult> GetMediaInfo(string storageKey)
         {
-            return ExecuteAsync(async () =>
+            var mediaInfo = await _storageService.GetInfoAsync(storageKey);
+            if (mediaInfo == null)
             {
-                var mediaInfo = await _storageService.GetInfoAsync(storageKey);
-                if (mediaInfo == null)
-                {
-                    return NotFound();
-                }
+                return NotFound();
+            }
 
-                return Ok(mediaInfo);
-            },
-            "GetMediaInfo",
-            storageKey);
+            return Ok(mediaInfo);
         }
 
         /// <summary>
@@ -244,27 +232,22 @@ namespace ConduitLLM.Gateway.Controllers
         /// <returns>True if the media exists.</returns>
         [HttpHead("{**storageKey}")]
         [AllowAnonymous]
-        public Task<IActionResult> CheckMediaExists(string storageKey)
+        public async Task<IActionResult> CheckMediaExists(string storageKey)
         {
-            return ExecuteAsync(async () =>
+            var exists = await _storageService.ExistsAsync(storageKey);
+            if (!exists)
             {
-                var exists = await _storageService.ExistsAsync(storageKey);
-                if (!exists)
-                {
-                    return NotFound();
-                }
+                return NotFound();
+            }
 
-                var mediaInfo = await _storageService.GetInfoAsync(storageKey);
-                if (mediaInfo != null)
-                {
-                    Response.Headers["Content-Type"] = mediaInfo.ContentType;
-                    Response.Headers["Content-Length"] = mediaInfo.SizeBytes.ToString();
-                }
+            var mediaInfo = await _storageService.GetInfoAsync(storageKey);
+            if (mediaInfo != null)
+            {
+                Response.Headers["Content-Type"] = mediaInfo.ContentType;
+                Response.Headers["Content-Length"] = mediaInfo.SizeBytes.ToString();
+            }
 
-                return Ok();
-            },
-            "CheckMediaExists",
-            storageKey);
+            return Ok();
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Filters;
 using ConduitLLM.Gateway.Services;
 
 using Microsoft.AspNetCore.Authorization;
@@ -15,6 +16,7 @@ namespace ConduitLLM.Gateway.Controllers
     [Route("v1")]
     [Authorize(Policy = "VirtualKeyAuthentication")]
     [Tags("Models")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class ModelsController : GatewayControllerBase
     {
         private readonly IModelMetadataService _metadataService;
@@ -41,53 +43,48 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpGet("models")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> ListModels(CancellationToken cancellationToken = default)
+        public async Task<IActionResult> ListModels(CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(
-                async () =>
+            Logger.LogInformation("Getting available models");
+
+            // Get model mappings using paginated repository method
+            // Use max page size; most deployments have <100 model mappings
+            var allMappings = new List<Configuration.Entities.ModelProviderMapping>();
+            var pageNumber = 1;
+            const int pageSize = 100;
+
+            // Fetch all pages to maintain OpenAI API compatibility (no pagination in response)
+            while (true)
+            {
+                var (mappings, totalCount) = await _modelMappingRepository.GetPaginatedAsync(pageNumber, pageSize, cancellationToken);
+                allMappings.AddRange(mappings);
+
+                if (allMappings.Count >= totalCount || mappings.Count == 0)
+                    break;
+
+                pageNumber++;
+            }
+
+            // Convert to OpenAI format using model aliases
+            var basicModelData = allMappings
+                .Select(m => m.ModelAlias)
+                .Distinct()
+                .Select(alias => new
                 {
-                    Logger.LogInformation("Getting available models");
+                    id = alias,
+                    @object = "model"
+                }).ToList();
 
-                    // Get model mappings using paginated repository method
-                    // Use max page size; most deployments have <100 model mappings
-                    var allMappings = new List<Configuration.Entities.ModelProviderMapping>();
-                    var pageNumber = 1;
-                    const int pageSize = 100;
+            Logger.LogDebug("Returning {ModelCount} available models", basicModelData.Count);
 
-                    // Fetch all pages to maintain OpenAI API compatibility (no pagination in response)
-                    while (true)
-                    {
-                        var (mappings, totalCount) = await _modelMappingRepository.GetPaginatedAsync(pageNumber, pageSize, cancellationToken);
-                        allMappings.AddRange(mappings);
+            // Create the response envelope
+            var response = new
+            {
+                data = basicModelData,
+                @object = "list"
+            };
 
-                        if (allMappings.Count >= totalCount || mappings.Count == 0)
-                            break;
-
-                        pageNumber++;
-                    }
-
-                    // Convert to OpenAI format using model aliases
-                    var basicModelData = allMappings
-                        .Select(m => m.ModelAlias)
-                        .Distinct()
-                        .Select(alias => new
-                        {
-                            id = alias,
-                            @object = "model"
-                        }).ToList();
-
-                    Logger.LogDebug("Returning {ModelCount} available models", basicModelData.Count);
-
-                    // Create the response envelope
-                    var response = new
-                    {
-                        data = basicModelData,
-                        @object = "list"
-                    };
-
-                    return Ok(response);
-                },
-                "ListModels");
+            return Ok(response);
         }
 
         /// <summary>
@@ -99,38 +96,32 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetModelMetadata(string modelId)
+        public async Task<IActionResult> GetModelMetadata(string modelId)
         {
-            return ExecuteAsync(
-                async () =>
+            Logger.LogInformation("Getting metadata for model {ModelId}", modelId);
+
+            var metadata = await _metadataService.GetModelMetadataAsync(modelId);
+
+            if (metadata == null)
+            {
+                return NotFound(new OpenAIErrorResponse
                 {
-                    Logger.LogInformation("Getting metadata for model {ModelId}", modelId);
-
-                    var metadata = await _metadataService.GetModelMetadataAsync(modelId);
-
-                    if (metadata == null)
+                    Error = new OpenAIError
                     {
-                        return NotFound(new OpenAIErrorResponse
-                        {
-                            Error = new OpenAIError
-                            {
-                                Message = $"No metadata found for model '{modelId}'",
-                                Type = "invalid_request_error",
-                                Code = "model_not_found"
-                            }
-                        });
+                        Message = $"No metadata found for model '{modelId}'",
+                        Type = "invalid_request_error",
+                        Code = "model_not_found"
                     }
+                });
+            }
 
-                    var response = new
-                    {
-                        modelId = modelId,
-                        metadata = metadata
-                    };
+            var response = new
+            {
+                modelId = modelId,
+                metadata = metadata
+            };
 
-                    return Ok(response);
-                },
-                "GetModelMetadata",
-                modelId);
+            return Ok(response);
         }
     }
 }
