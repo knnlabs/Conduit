@@ -418,12 +418,19 @@ public enum ProviderType
 
 ## Event-Driven Architecture
 
-- **MassTransit** for event processing with RabbitMQ
-- Supports in-memory (dev) or RabbitMQ (production)
-- Events ensure cache consistency and eliminate race conditions
-- Virtual Key events partitioned by key ID for ordered processing
+- **Publish/consume through the Conduit-owned `IEventBus` / `IEventHandler<T>` abstraction**
+  (`ConduitLLM.Configuration.Messaging`), NOT MassTransit types directly. Inject `IEventBus`
+  to publish; implement `IEventHandler<TEvent>` (handler context is `IEventContext`) to consume.
+- The abstraction currently runs over **MassTransit** (in-memory for dev, RabbitMQ for
+  production); it is being migrated to **Wolverine on the PostgreSQL transport + outbox**
+  behind a config flag, with no domain changes (epic #909).
+- Events ensure cache consistency and eliminate race conditions; spend ordering is
+  RabbitMQ-native (single-active-consumer), webhook retry is deferred delivery.
+- The 4 tuned endpoints are described as data in `ConduitEndpointPolicies` (retry,
+  circuit-breaker, rate-limit, ordering) so both backends translate the same descriptors.
 
-**See:** `docs/architecture/media-generation/async-media-generation.md`
+**See:** `docs/architecture/messaging-migration/` (ADR-001, inventory, phase plans) and
+`docs/architecture/media-generation/async-media-generation.md`
 
 ## Real-Time Updates
 
