@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
@@ -40,6 +41,13 @@ public partial class Program
                 options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
                 options.JsonSerializerOptions.Converters.Add(new NullableUtcDateTimeConverter());
             });
+
+        // Operation-logging action filter — replaces the per-action success logging that used to
+        // live in AdminControllerBase.ExecuteAsync. Applied per controller via [ServiceFilter]
+        // during the incremental Tier 1a migration (#902); promote to a global filter once all
+        // controllers are converted.
+        builder.Services.AddScoped<OperationLoggingFilter>();
+
         builder.Services.AddEndpointsApiExplorer();
 
         // Add HttpClient factory for provider connection testing

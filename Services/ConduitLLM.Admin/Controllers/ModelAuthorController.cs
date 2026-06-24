@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
@@ -13,9 +14,16 @@ namespace ConduitLLM.Admin.Controllers
     /// <summary>
     /// Controller for managing ModelAuthor entities
     /// </summary>
+    /// <remarks>
+    /// Error handling is delegated to the global <c>AdminExceptionMiddleware</c> (thrown exceptions
+    /// are mapped to standardized responses via <c>ExceptionToResponseMapper</c>), and success
+    /// logging is provided by <see cref="OperationLoggingFilter"/>. This keeps actions free of the
+    /// per-action <c>ExecuteAsync</c> wrapper boilerplate.
+    /// </remarks>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Policy = "MasterKeyPolicy")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class ModelAuthorController : AdminControllerBase
     {
         private readonly IModelAuthorRepository _repository;
@@ -38,17 +46,11 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelAuthorDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll()
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var authors = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                        _repository.GetPaginatedAsync);
-                    return authors.Select(a => a.ToDto());
-                },
-                Ok,
-                "GetAll");
+            var authors = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _repository.GetPaginatedAsync);
+            return Ok(authors.Select(a => a.ToDto()));
         }
 
         /// <summary>
@@ -60,14 +62,15 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(ModelAuthorDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetById(int id)
+        public async Task<IActionResult> GetById(int id)
         {
-            return ExecuteWithNotFoundAsync(
-                () => _repository.GetByIdAsync(id),
-                author => Ok(author.ToDto()),
-                "Model author",
-                id,
-                "GetById");
+            var author = await _repository.GetByIdAsync(id);
+            if (author == null)
+            {
+                return this.NotFoundEntity("Model author", id);
+            }
+
+            return Ok(author.ToDto());
         }
 
         /// <summary>
@@ -79,25 +82,23 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<SimpleModelSeriesDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetSeriesByAuthor(int id)
+        public async Task<IActionResult> GetSeriesByAuthor(int id)
         {
-            return ExecuteWithNotFoundAsync(
-                () => _repository.GetSeriesByAuthorAsync(id),
-                series =>
-                {
-                    var dtos = series.Select(s => new SimpleModelSeriesDto
-                    {
-                        Id = s.Id,
-                        Name = s.Name,
-                        Description = s.Description,
-                        TokenizerType = s.TokenizerType
-                    });
+            var series = await _repository.GetSeriesByAuthorAsync(id);
+            if (series == null)
+            {
+                return this.NotFoundEntity("Model author", id);
+            }
 
-                    return Ok(dtos);
-                },
-                "Model author",
-                id,
-                "GetSeriesByAuthor");
+            var dtos = series.Select(s => new SimpleModelSeriesDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Description = s.Description,
+                TokenizerType = s.TokenizerType
+            });
+
+            return Ok(dtos);
         }
 
         /// <summary>
@@ -110,35 +111,29 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> Create([FromBody] CreateModelAuthorDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateModelAuthorDto dto)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Check if author with same name already exists
-                    var existing = await _repository.GetByNameAsync(dto.Name);
-                    if (existing != null)
-                    {
-                        throw new InvalidOperationException($"A model author with name '{dto.Name}' already exists");
-                    }
+            // Check if author with same name already exists
+            var existing = await _repository.GetByNameAsync(dto.Name);
+            if (existing != null)
+            {
+                throw new InvalidOperationException($"A model author with name '{dto.Name}' already exists");
+            }
 
-                    var author = new ModelAuthor
-                    {
-                        Name = dto.Name,
-                        Description = dto.Description,
-                        WebsiteUrl = dto.WebsiteUrl
-                    };
+            var author = new ModelAuthor
+            {
+                Name = dto.Name,
+                Description = dto.Description,
+                WebsiteUrl = dto.WebsiteUrl
+            };
 
-                    await _repository.CreateAsync(author);
-                    LogAdminAudit("Created", "ModelAuthor", author.Id, $"Name: {LoggingSanitizer.S(author.Name)}");
+            await _repository.CreateAsync(author);
+            LogAdminAudit("Created", "ModelAuthor", author.Id, $"Name: {LoggingSanitizer.S(author.Name)}");
 
-                    return author;
-                },
-                author => CreatedAtAction(
-                    nameof(GetById),
-                    new { id = author.Id },
-                    author.ToDto()),
-                "Create");
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = author.Id },
+                author.ToDto());
         }
 
         /// <summary>
@@ -153,44 +148,39 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> Update(int id, [FromBody] UpdateModelAuthorDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateModelAuthorDto dto)
         {
             if (id != dto.Id)
             {
-                return Task.FromResult<IActionResult>(BadRequest("ID mismatch"));
+                return BadRequest("ID mismatch");
             }
 
-            return ExecuteAsync(
-                async () =>
+            var author = await _repository.GetByIdAsync(id);
+            if (author == null)
+            {
+                throw new KeyNotFoundException($"Model author with ID {id} not found");
+            }
+
+            // Check for name conflicts if name is being changed
+            if (!string.IsNullOrEmpty(dto.Name) && dto.Name != author.Name)
+            {
+                var existing = await _repository.GetByNameAsync(dto.Name);
+                if (existing != null && existing.Id != id)
                 {
-                    var author = await _repository.GetByIdAsync(id);
-                    if (author == null)
-                    {
-                        throw new KeyNotFoundException($"Model author with ID {id} not found");
-                    }
+                    throw new InvalidOperationException($"A model author with name '{dto.Name}' already exists");
+                }
+                author.Name = dto.Name;
+            }
 
-                    // Check for name conflicts if name is being changed
-                    if (!string.IsNullOrEmpty(dto.Name) && dto.Name != author.Name)
-                    {
-                        var existing = await _repository.GetByNameAsync(dto.Name);
-                        if (existing != null && existing.Id != id)
-                        {
-                            throw new InvalidOperationException($"A model author with name '{dto.Name}' already exists");
-                        }
-                        author.Name = dto.Name;
-                    }
+            if (dto.Description != null)
+                author.Description = dto.Description;
+            if (dto.WebsiteUrl != null)
+                author.WebsiteUrl = dto.WebsiteUrl;
 
-                    if (dto.Description != null)
-                        author.Description = dto.Description;
-                    if (dto.WebsiteUrl != null)
-                        author.WebsiteUrl = dto.WebsiteUrl;
+            await _repository.UpdateAsync(author);
+            LogAdminAudit("Updated", "ModelAuthor", id, $"Name: {LoggingSanitizer.S(author.Name)}");
 
-                    await _repository.UpdateAsync(author);
-                    LogAdminAudit("Updated", "ModelAuthor", id, $"Name: {LoggingSanitizer.S(author.Name)}");
-                },
-                NoContent(),
-                "Update",
-                new { Id = id });
+            return NoContent();
         }
 
         /// <summary>
@@ -203,30 +193,25 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var author = await _repository.GetByIdAsync(id);
-                    if (author == null)
-                    {
-                        throw new KeyNotFoundException($"Model author with ID {id} not found");
-                    }
+            var author = await _repository.GetByIdAsync(id);
+            if (author == null)
+            {
+                throw new KeyNotFoundException($"Model author with ID {id} not found");
+            }
 
-                    // Check if author has series
-                    var series = await _repository.GetSeriesByAuthorAsync(id);
-                    if (series != null && series.Any())
-                    {
-                        throw new InvalidOperationException($"Cannot delete model author with {series.Count()} associated series. Delete the series first.");
-                    }
+            // Check if author has series
+            var series = await _repository.GetSeriesByAuthorAsync(id);
+            if (series != null && series.Any())
+            {
+                throw new InvalidOperationException($"Cannot delete model author with {series.Count()} associated series. Delete the series first.");
+            }
 
-                    await _repository.DeleteAsync(id);
-                    LogAdminAudit("Deleted", "ModelAuthor", id, $"Name: {LoggingSanitizer.S(author.Name)}");
-                },
-                NoContent(),
-                "Delete",
-                new { Id = id });
+            await _repository.DeleteAsync(id);
+            LogAdminAudit("Deleted", "ModelAuthor", id, $"Name: {LoggingSanitizer.S(author.Name)}");
+
+            return NoContent();
         }
 
     }
