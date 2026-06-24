@@ -1,34 +1,26 @@
-using ConduitLLM.Admin.Extensions;
-using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Controllers;
-using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Extensions;
 
 using MassTransit;
 
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers
 {
     /// <summary>
-    /// Base class for Admin API controllers providing standardized error handling,
-    /// event publishing, and common operation patterns.
+    /// Base class for Admin API controllers providing event publishing and
+    /// admin audit logging.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This base class combines the functionality of <see cref="EventPublishingControllerBase"/>
-    /// with standardized error response patterns for the Admin API.
+    /// Extends <see cref="EventPublishingControllerBase"/> with fire-and-forget MassTransit event
+    /// publishing and structured admin audit logging.
     /// </para>
     /// <para>
-    /// Features:
-    /// <list type="bullet">
-    ///   <item><description>Fire-and-forget event publishing via MassTransit</description></item>
-    ///   <item><description>Standardized error responses using <see cref="ControllerErrorExtensions"/></description></item>
-    ///   <item><description>Async operation wrappers with automatic exception handling</description></item>
-    ///   <item><description>Consistent logging patterns</description></item>
-    ///   <item><description>Admin audit logging for security-sensitive operations</description></item>
-    /// </list>
+    /// Error handling is delegated to the global <c>AdminExceptionMiddleware</c> (thrown exceptions
+    /// are mapped to standardized <c>ErrorResponseDto</c> responses via <c>ExceptionToResponseMapper</c>),
+    /// and per-action success logging is provided by <c>OperationLoggingFilter</c>. The former per-action
+    /// <c>ExecuteAsync</c>/<c>ExecuteWithNotFoundAsync</c> wrappers were removed in the Tier 1a cleanup (#902).
     /// </para>
     /// </remarks>
     public abstract class AdminControllerBase : EventPublishingControllerBase
@@ -53,249 +45,6 @@ namespace ConduitLLM.Admin.Controllers
         protected AdminControllerBase(ILogger logger)
             : this(null, logger)
         {
-        }
-
-        /// <summary>
-        /// Executes an async operation with standardized error handling.
-        /// Automatically handles common exception types and returns appropriate responses.
-        /// </summary>
-        /// <typeparam name="T">The type of result returned by the operation.</typeparam>
-        /// <param name="operation">The async operation to execute.</param>
-        /// <param name="successAction">Function to convert the result to an IActionResult on success.</param>
-        /// <param name="operationName">Name of the operation for logging purposes.</param>
-        /// <param name="contextData">Optional context data to include in log messages.</param>
-        /// <returns>An appropriate IActionResult based on the operation outcome.</returns>
-        /// <remarks>
-        /// This method handles the following exception types:
-        /// <list type="bullet">
-        ///   <item><description><see cref="ArgumentNullException"/> - Returns 400 Bad Request</description></item>
-        ///   <item><description><see cref="ArgumentException"/> - Returns 400 Bad Request</description></item>
-        ///   <item><description><see cref="InvalidOperationException"/> - Returns 400 Bad Request</description></item>
-        ///   <item><description><see cref="KeyNotFoundException"/> - Returns 404 Not Found</description></item>
-        ///   <item><description><see cref="UnauthorizedAccessException"/> - Returns 403 Forbidden</description></item>
-        ///   <item><description>Other exceptions - Returns 500 Internal Server Error</description></item>
-        /// </list>
-        /// </remarks>
-        protected async Task<IActionResult> ExecuteAsync<T>(
-            Func<Task<T>> operation,
-            Func<T, IActionResult> successAction,
-            string operationName,
-            object? contextData = null)
-        {
-            try
-            {
-                var result = await operation();
-                LogOperationSuccess(operationName);
-                return successAction(result);
-            }
-            catch (Exception ex)
-            {
-                return HandleOperationException(ex, operationName, contextData);
-            }
-        }
-
-        /// <summary>
-        /// Executes an async operation that directly returns an IActionResult,
-        /// with standardized error handling.
-        /// </summary>
-        /// <param name="operation">The async operation that returns an IActionResult.</param>
-        /// <param name="operationName">Name of the operation for logging purposes.</param>
-        /// <param name="contextData">Optional context data to include in log messages.</param>
-        /// <returns>The operation's IActionResult, or an error response if an exception occurs.</returns>
-        protected async Task<IActionResult> ExecuteAsync(
-            Func<Task<IActionResult>> operation,
-            string operationName,
-            object? contextData = null)
-        {
-            try
-            {
-                var result = await operation();
-                LogOperationSuccess(operationName);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                return HandleOperationException(ex, operationName, contextData);
-            }
-        }
-
-        /// <summary>
-        /// Executes an async operation that returns no value with standardized error handling.
-        /// </summary>
-        /// <param name="operation">The async operation to execute.</param>
-        /// <param name="successResult">The action result to return on success.</param>
-        /// <param name="operationName">Name of the operation for logging purposes.</param>
-        /// <param name="contextData">Optional context data to include in log messages.</param>
-        /// <returns>An appropriate IActionResult based on the operation outcome.</returns>
-        protected async Task<IActionResult> ExecuteAsync(
-            Func<Task> operation,
-            IActionResult successResult,
-            string operationName,
-            object? contextData = null)
-        {
-            try
-            {
-                await operation();
-                if (contextData != null)
-                {
-                    Logger.LogInformation("{OperationName} completed successfully with context {ContextData}",
-                        operationName, contextData);
-                }
-                else
-                {
-                    Logger.LogInformation("{OperationName} completed successfully", operationName);
-                }
-                return successResult;
-            }
-            catch (Exception ex)
-            {
-                return HandleOperationException(ex, operationName, contextData);
-            }
-        }
-
-        /// <summary>
-        /// Executes an async operation that may return null with standardized error handling.
-        /// Returns 404 Not Found if the result is null.
-        /// </summary>
-        /// <typeparam name="T">The type of result returned by the operation.</typeparam>
-        /// <param name="operation">The async operation to execute.</param>
-        /// <param name="successAction">Function to convert the non-null result to an IActionResult.</param>
-        /// <param name="entityType">The type of entity being retrieved (for 404 message).</param>
-        /// <param name="entityId">Optional entity ID (for 404 message).</param>
-        /// <param name="operationName">Name of the operation for logging purposes.</param>
-        /// <returns>An appropriate IActionResult based on the operation outcome.</returns>
-        protected async Task<IActionResult> ExecuteWithNotFoundAsync<T>(
-            Func<Task<T?>> operation,
-            Func<T, IActionResult> successAction,
-            string entityType,
-            object? entityId,
-            string operationName) where T : class
-        {
-            try
-            {
-                var result = await operation();
-                if (result == null)
-                {
-                    Logger.LogWarning("{OperationName}: {EntityType} not found with ID {EntityId}",
-                        operationName, entityType, entityId);
-                    return this.NotFoundEntity(entityType, entityId);
-                }
-                LogOperationSuccess(operationName, entityType, entityId);
-                return successAction(result);
-            }
-            catch (Exception ex)
-            {
-                return HandleOperationException(ex, operationName, new { entityType, entityId });
-            }
-        }
-
-        /// <summary>
-        /// Executes an async operation that may return null with standardized error handling.
-        /// Returns 404 Not Found if the result is null. Supports async success actions.
-        /// </summary>
-        /// <typeparam name="T">The type of result returned by the operation.</typeparam>
-        /// <param name="operation">The async operation to execute.</param>
-        /// <param name="successAction">Async function to convert the non-null result to an IActionResult.</param>
-        /// <param name="entityType">The type of entity being retrieved (for 404 message).</param>
-        /// <param name="entityId">Optional entity ID (for 404 message).</param>
-        /// <param name="operationName">Name of the operation for logging purposes.</param>
-        /// <returns>An appropriate IActionResult based on the operation outcome.</returns>
-        protected async Task<IActionResult> ExecuteWithNotFoundAsync<T>(
-            Func<Task<T?>> operation,
-            Func<T, Task<IActionResult>> successAction,
-            string entityType,
-            object? entityId,
-            string operationName) where T : class
-        {
-            try
-            {
-                var result = await operation();
-                if (result == null)
-                {
-                    Logger.LogWarning("{OperationName}: {EntityType} not found with ID {EntityId}",
-                        operationName, entityType, entityId);
-                    return this.NotFoundEntity(entityType, entityId);
-                }
-                LogOperationSuccess(operationName, entityType, entityId);
-                return await successAction(result);
-            }
-            catch (Exception ex)
-            {
-                return HandleOperationException(ex, operationName, new { entityType, entityId });
-            }
-        }
-
-        /// <summary>
-        /// Logs operation success at Information level for mutations (POST/PUT/PATCH/DELETE)
-        /// and Debug level for reads (GET/HEAD/OPTIONS).
-        /// </summary>
-        private void LogOperationSuccess(string operationName, string? entityType = null, object? entityId = null)
-        {
-            if (IsMutationRequest())
-            {
-                if (entityType != null)
-                {
-                    Logger.LogInformation("{OperationName} completed successfully for {EntityType} {EntityId}",
-                        operationName, entityType, entityId);
-                }
-                else
-                {
-                    Logger.LogInformation("{OperationName} completed successfully", operationName);
-                }
-            }
-            else
-            {
-                if (entityType != null)
-                {
-                    Logger.LogDebug("{OperationName} completed successfully for {EntityType} {EntityId}",
-                        operationName, entityType, entityId);
-                }
-                else
-                {
-                    Logger.LogDebug("{OperationName} completed successfully", operationName);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Handles exceptions from operations with standardized logging and response formatting.
-        /// Uses <see cref="ExceptionToResponseMapper"/> for consistent exception-to-response mapping.
-        /// </summary>
-        /// <param name="ex">The exception that occurred.</param>
-        /// <param name="operationName">Name of the operation for logging purposes.</param>
-        /// <param name="contextData">Optional context data to include in log messages.</param>
-        /// <returns>An appropriate IActionResult based on the exception type.</returns>
-        protected IActionResult HandleOperationException(
-            Exception ex,
-            string operationName,
-            object? contextData = null)
-        {
-            var logMessage = contextData != null
-                ? $"{operationName} with context {contextData}"
-                : operationName;
-
-            var mapping = ExceptionToResponseMapper.Map(ex);
-
-            // Capture request body for mutation failures (fire-and-forget — don't block error response)
-            _ = LogExceptionWithBodyAsync(mapping, ex, logMessage);
-
-            // Return appropriate result type based on status code
-            var errorResponse = new ErrorResponseDto(mapping.ResponseMessage) { Code = mapping.ErrorCode };
-            return CreateErrorResult(mapping.StatusCode, errorResponse);
-        }
-
-        /// <summary>
-        /// Creates an appropriate IActionResult based on the HTTP status code.
-        /// Returns semantically correct result types (BadRequestObjectResult, NotFoundObjectResult, etc.)
-        /// </summary>
-        private IActionResult CreateErrorResult(int statusCode, ErrorResponseDto errorResponse)
-        {
-            return statusCode switch
-            {
-                400 => new BadRequestObjectResult(errorResponse),
-                404 => new NotFoundObjectResult(errorResponse),
-                _ => new ObjectResult(errorResponse) { StatusCode = statusCode }
-            };
         }
 
         /// <summary>
