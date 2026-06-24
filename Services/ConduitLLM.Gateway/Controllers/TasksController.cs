@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Filters;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ConduitLLM.Gateway.Controllers
@@ -12,6 +13,7 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/tasks")]
     [Authorize]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class TasksController : GatewayControllerBase
     {
         private readonly IAsyncTaskService _taskService;
@@ -35,27 +37,24 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpGet("{taskId}")]
         public async Task<IActionResult> GetTaskStatus(string taskId)
         {
-            return await ExecuteAsync(async () =>
+            Logger.LogDebug("Getting status for task {TaskId}", taskId);
+            try
             {
-                Logger.LogDebug("Getting status for task {TaskId}", taskId);
-                try
+                var status = await _taskService.GetTaskStatusAsync(taskId);
+                return Ok(status);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new OpenAIErrorResponse
                 {
-                    var status = await _taskService.GetTaskStatusAsync(taskId);
-                    return Ok(status);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    return NotFound(new OpenAIErrorResponse
+                    Error = new OpenAIError
                     {
-                        Error = new OpenAIError
-                        {
-                            Message = ex.Message,
-                            Type = "not_found_error",
-                            Code = "not_found"
-                        }
-                    });
-                }
-            }, "GetTaskStatus", taskId);
+                        Message = ex.Message,
+                        Type = "not_found_error",
+                        Code = "not_found"
+                    }
+                });
+            }
         }
 
         /// <summary>
@@ -66,27 +65,24 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpPost("{taskId}/cancel")]
         public async Task<IActionResult> CancelTask(string taskId)
         {
-            return await ExecuteAsync(async () =>
+            try
             {
-                try
+                await _taskService.CancelTaskAsync(taskId);
+                Logger.LogInformation("Task {TaskId} cancelled successfully", taskId);
+                return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new OpenAIErrorResponse
                 {
-                    await _taskService.CancelTaskAsync(taskId);
-                    Logger.LogInformation("Task {TaskId} cancelled successfully", taskId);
-                    return NoContent();
-                }
-                catch (InvalidOperationException ex)
-                {
-                    return NotFound(new OpenAIErrorResponse
+                    Error = new OpenAIError
                     {
-                        Error = new OpenAIError
-                        {
-                            Message = ex.Message,
-                            Type = "not_found_error",
-                            Code = "not_found"
-                        }
-                    });
-                }
-            }, "CancelTask", taskId);
+                        Message = ex.Message,
+                        Type = "not_found_error",
+                        Code = "not_found"
+                    }
+                });
+            }
         }
 
         /// <summary>
@@ -99,49 +95,46 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpGet("{taskId}/poll")]
         public async Task<IActionResult> PollTask(string taskId, [FromQuery] int timeout = 300, [FromQuery] int interval = 2)
         {
-            return await ExecuteAsync(async () =>
+            // Validate and clamp parameters
+            timeout = Math.Clamp(timeout, 1, 600); // Max 10 minutes
+            interval = Math.Max(interval, 1); // Min 1 second
+
+            Logger.LogDebug("Polling task {TaskId} with timeout {TimeoutSeconds}s, interval {IntervalSeconds}s",
+                taskId, timeout, interval);
+
+            try
             {
-                // Validate and clamp parameters
-                timeout = Math.Clamp(timeout, 1, 600); // Max 10 minutes
-                interval = Math.Max(interval, 1); // Min 1 second
+                var status = await _taskService.PollTaskUntilCompletedAsync(
+                    taskId,
+                    TimeSpan.FromSeconds(interval),
+                    TimeSpan.FromSeconds(timeout));
 
-                Logger.LogDebug("Polling task {TaskId} with timeout {TimeoutSeconds}s, interval {IntervalSeconds}s",
-                    taskId, timeout, interval);
-
-                try
+                return Ok(status);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new OpenAIErrorResponse
                 {
-                    var status = await _taskService.PollTaskUntilCompletedAsync(
-                        taskId,
-                        TimeSpan.FromSeconds(interval),
-                        TimeSpan.FromSeconds(timeout));
-
-                    return Ok(status);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    return NotFound(new OpenAIErrorResponse
+                    Error = new OpenAIError
                     {
-                        Error = new OpenAIError
-                        {
-                            Message = ex.Message,
-                            Type = "not_found_error",
-                            Code = "not_found"
-                        }
-                    });
-                }
-                catch (OperationCanceledException)
+                        Message = ex.Message,
+                        Type = "not_found_error",
+                        Code = "not_found"
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(408, new OpenAIErrorResponse
                 {
-                    return StatusCode(408, new OpenAIErrorResponse
+                    Error = new OpenAIError
                     {
-                        Error = new OpenAIError
-                        {
-                            Message = "Task polling timed out",
-                            Type = "timeout",
-                            Code = "timeout"
-                        }
-                    });
-                }
-            }, "PollTask", taskId);
+                        Message = "Task polling timed out",
+                        Type = "timeout",
+                        Code = "timeout"
+                    }
+                });
+            }
         }
 
     }

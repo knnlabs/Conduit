@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using MassTransit;
 using ConduitLLM.Gateway.Authorization;
 using ConduitLLM.Gateway.Constants;
+using ConduitLLM.Gateway.Filters;
 using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Events;
@@ -22,6 +23,7 @@ namespace ConduitLLM.Gateway.Controllers
     [Authorize(AuthenticationSchemes = "VirtualKey")]
     [RequireBalance]
     [Tags("Videos")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class VideosController : GatewayControllerBase
     {
         private readonly IAsyncTaskService _taskService;
@@ -57,128 +59,123 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(typeof(OpenAIErrorResponse), 403)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), 429)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), 500)]
-        public Task<IActionResult> GenerateVideoAsync(
+        public async Task<IActionResult> GenerateVideoAsync(
             [FromBody][Required] VideoGenerationRequest request,
             CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(async () =>
+            var virtualKey = CurrentVirtualKey;
+            if (string.IsNullOrEmpty(virtualKey) || CurrentVirtualKeyId == null)
             {
-                var virtualKey = CurrentVirtualKey;
-                if (string.IsNullOrEmpty(virtualKey) || CurrentVirtualKeyId == null)
-                {
-                    return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
-                }
-                var virtualKeyId = CurrentVirtualKeyId.Value;
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
+            }
+            var virtualKeyId = CurrentVirtualKeyId.Value;
 
-                // Validate the request
-                if (string.IsNullOrWhiteSpace(request.Prompt))
-                {
-                    return OpenAIError(400, "Prompt is required", "missing_parameter");
-                }
-                if (string.IsNullOrWhiteSpace(request.Model))
-                {
-                    return OpenAIError(400, "Model is required", "missing_parameter");
-                }
-                if (request.Duration.HasValue && (request.Duration.Value < 1 || request.Duration.Value > 60))
-                {
-                    return OpenAIError(400, "Duration must be between 1 and 60 seconds", "invalid_value");
-                }
-                if (request.Fps.HasValue && (request.Fps.Value < 1 || request.Fps.Value > 120))
-                {
-                    return OpenAIError(400, "FPS must be between 1 and 120", "invalid_value");
-                }
+            // Validate the request
+            if (string.IsNullOrWhiteSpace(request.Prompt))
+            {
+                return OpenAIError(400, "Prompt is required", "missing_parameter");
+            }
+            if (string.IsNullOrWhiteSpace(request.Model))
+            {
+                return OpenAIError(400, "Model is required", "missing_parameter");
+            }
+            if (request.Duration.HasValue && (request.Duration.Value < 1 || request.Duration.Value > 60))
+            {
+                return OpenAIError(400, "Duration must be between 1 and 60 seconds", "invalid_value");
+            }
+            if (request.Fps.HasValue && (request.Fps.Value < 1 || request.Fps.Value > 120))
+            {
+                return OpenAIError(400, "FPS must be between 1 and 120", "invalid_value");
+            }
 
-                // Store video request parameters for usage tracking and pricing
-                StoreVideoRequestParameters(request);
+            // Store video request parameters for usage tracking and pricing
+            StoreVideoRequestParameters(request);
 
-                // Get provider info for usage tracking
-                try
+            // Get provider info for usage tracking
+            try
+            {
+                var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                if (modelMapping != null)
                 {
-                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
-                    if (modelMapping != null)
+                    HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                    HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+
+                    // Store ModelCostId for direct cost lookup (preferred over string matching)
+                    if (modelMapping.ModelProviderTypeAssociation?.ModelCostId != null)
                     {
-                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
-                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
-
-                        // Store ModelCostId for direct cost lookup (preferred over string matching)
-                        if (modelMapping.ModelProviderTypeAssociation?.ModelCostId != null)
-                        {
-                            HttpContext.Items[HttpContextKeys.ModelCostId] = modelMapping.ModelProviderTypeAssociation.ModelCostId;
-                        }
+                        HttpContext.Items[HttpContextKeys.ModelCostId] = modelMapping.ModelProviderTypeAssociation.ModelCostId;
                     }
                 }
-                catch (Exception ex)
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
+            }
+
+            // Create a linked cancellation token that can be controlled independently
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            // Build task metadata. The orchestrator reads ExtensionData["VirtualKey"] for re-validation
+            // and ExtensionData["Request"] to reconstruct the original request when consuming the event.
+            var taskMetadata = new TaskMetadata(virtualKeyId)
+            {
+                Model = request.Model,
+                Prompt = request.Prompt,
+                ExtensionData = new Dictionary<string, object>
                 {
-                    Logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
+                    ["VirtualKey"] = virtualKey,
+                    ["Request"] = request
                 }
+            };
 
-                // Create a linked cancellation token that can be controlled independently
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var taskId = await _taskService.CreateTaskAsync("video_generation", virtualKeyId, taskMetadata, cts.Token);
 
-                // Build task metadata. The orchestrator reads ExtensionData["VirtualKey"] for re-validation
-                // and ExtensionData["Request"] to reconstruct the original request when consuming the event.
-                var taskMetadata = new TaskMetadata(virtualKeyId)
+            // Register the task for cancellation
+            _taskRegistry.RegisterTask(taskId, cts);
+
+            // Convert ExtensionData to provider options for the event payload
+            Dictionary<string, object>? providerOptions = null;
+            if (request.ExtensionData != null && request.ExtensionData.Count > 0)
+            {
+                providerOptions = new Dictionary<string, object>();
+                foreach (var kvp in request.ExtensionData)
                 {
-                    Model = request.Model,
-                    Prompt = request.Prompt,
-                    ExtensionData = new Dictionary<string, object>
-                    {
-                        ["VirtualKey"] = virtualKey,
-                        ["Request"] = request
-                    }
-                };
-
-                var taskId = await _taskService.CreateTaskAsync("video_generation", virtualKeyId, taskMetadata, cts.Token);
-
-                // Register the task for cancellation
-                _taskRegistry.RegisterTask(taskId, cts);
-
-                // Convert ExtensionData to provider options for the event payload
-                Dictionary<string, object>? providerOptions = null;
-                if (request.ExtensionData != null && request.ExtensionData.Count > 0)
-                {
-                    providerOptions = new Dictionary<string, object>();
-                    foreach (var kvp in request.ExtensionData)
-                    {
-                        providerOptions[kvp.Key] = kvp.Value.ToString();
-                    }
+                    providerOptions[kvp.Key] = kvp.Value.ToString();
                 }
+            }
 
-                PublishEventFireAndForget(new VideoGenerationRequested
+            PublishEventFireAndForget(new VideoGenerationRequested
+            {
+                RequestId = taskId,
+                Model = request.Model,
+                Prompt = request.Prompt,
+                VirtualKeyId = virtualKeyId.ToString(),
+                IsAsync = true,
+                RequestedAt = DateTime.UtcNow,
+                CorrelationId = taskId,
+                WebhookUrl = request.WebhookUrl,
+                WebhookHeaders = request.WebhookHeaders,
+                Parameters = new VideoGenerationParameters
                 {
-                    RequestId = taskId,
-                    Model = request.Model,
-                    Prompt = request.Prompt,
-                    VirtualKeyId = virtualKeyId.ToString(),
-                    IsAsync = true,
-                    RequestedAt = DateTime.UtcNow,
-                    CorrelationId = taskId,
-                    WebhookUrl = request.WebhookUrl,
-                    WebhookHeaders = request.WebhookHeaders,
-                    Parameters = new VideoGenerationParameters
-                    {
-                        Size = request.Size,
-                        Duration = request.Duration,
-                        Fps = request.Fps,
-                        Style = request.Style,
-                        ResponseFormat = request.ResponseFormat,
-                        ProviderOptions = providerOptions
-                    }
-                }, "create async video generation", new { TaskId = taskId, Model = request.Model });
+                    Size = request.Size,
+                    Duration = request.Duration,
+                    Fps = request.Fps,
+                    Style = request.Style,
+                    ResponseFormat = request.ResponseFormat,
+                    ProviderOptions = providerOptions
+                }
+            }, "create async video generation", new { TaskId = taskId, Model = request.Model });
 
-                var taskResponse = new VideoGenerationTaskResponse
-                {
-                    TaskId = taskId,
-                    Status = TaskStateConstants.Pending,
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    EstimatedCompletionTime = DateTimeOffset.UtcNow.AddSeconds(60),
-                    CheckStatusUrl = $"/v1/videos/generations/tasks/{taskId}"
-                };
+            var taskResponse = new VideoGenerationTaskResponse
+            {
+                TaskId = taskId,
+                Status = TaskStateConstants.Pending,
+                CreatedAt = DateTimeOffset.UtcNow,
+                EstimatedCompletionTime = DateTimeOffset.UtcNow.AddSeconds(60),
+                CheckStatusUrl = $"/v1/videos/generations/tasks/{taskId}"
+            };
 
-                return Accepted(taskResponse);
-            },
-            "GenerateVideoAsync",
-            request.Model);
+            return Accepted(taskResponse);
         }
 
         /// <summary>
@@ -189,56 +186,51 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(typeof(OpenAIErrorResponse), 401)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), 404)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), 500)]
-        public Task<IActionResult> GetTaskStatus(
+        public async Task<IActionResult> GetTaskStatus(
             [FromRoute][Required] string taskId,
             CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(async () =>
+            if (CurrentVirtualKeyId == null)
             {
-                if (CurrentVirtualKeyId == null)
-                {
-                    return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
-                }
-                var virtualKeyId = CurrentVirtualKeyId.Value;
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
+            }
+            var virtualKeyId = CurrentVirtualKeyId.Value;
 
-                var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
-                if (taskStatus == null)
-                {
-                    return OpenAIError(404, "The requested task was not found", "not_found");
-                }
+            var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
+            if (taskStatus == null)
+            {
+                return OpenAIError(404, "The requested task was not found", "not_found");
+            }
 
-                // Validate task ownership for security
-                if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
-                {
-                    // Return 404 instead of 403 to prevent information disclosure
-                    Logger.LogWarning("Virtual key {VirtualKeyId} attempted to access task {TaskId} owned by {OwnerKeyId}",
-                        virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
-                    return OpenAIError(404, "The requested task was not found", "not_found");
-                }
+            // Validate task ownership for security
+            if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+            {
+                // Return 404 instead of 403 to prevent information disclosure
+                Logger.LogWarning("Virtual key {VirtualKeyId} attempted to access task {TaskId} owned by {OwnerKeyId}",
+                    virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
+                return OpenAIError(404, "The requested task was not found", "not_found");
+            }
 
-                // Map internal task status to API response
-                var response = new VideoGenerationTaskStatus
-                {
-                    TaskId = taskId,
-                    Status = TaskStateConstants.FromTaskState(taskStatus.State),
-                    Progress = taskStatus.Progress,
-                    CreatedAt = taskStatus.CreatedAt,
-                    UpdatedAt = taskStatus.UpdatedAt,
-                    CompletedAt = taskStatus.CompletedAt,
-                    Error = taskStatus.Error,
-                    ResultRaw = taskStatus.Result?.ToString()
-                };
+            // Map internal task status to API response
+            var response = new VideoGenerationTaskStatus
+            {
+                TaskId = taskId,
+                Status = TaskStateConstants.FromTaskState(taskStatus.State),
+                Progress = taskStatus.Progress,
+                CreatedAt = taskStatus.CreatedAt,
+                UpdatedAt = taskStatus.UpdatedAt,
+                CompletedAt = taskStatus.CompletedAt,
+                Error = taskStatus.Error,
+                ResultRaw = taskStatus.Result?.ToString()
+            };
 
-                // If completed, deserialize the stored result into a typed VideoGenerationResponse.
-                if (taskStatus.State == TaskState.Completed && taskStatus.Result != null)
-                {
-                    response.Result = DeserializeVideoResult(taskStatus.Result, taskId);
-                }
+            // If completed, deserialize the stored result into a typed VideoGenerationResponse.
+            if (taskStatus.State == TaskState.Completed && taskStatus.Result != null)
+            {
+                response.Result = DeserializeVideoResult(taskStatus.Result, taskId);
+            }
 
-                return Ok(response);
-            },
-            "GetTaskStatus",
-            taskId);
+            return Ok(response);
         }
 
         /// <summary>
@@ -250,74 +242,69 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(typeof(OpenAIErrorResponse), 401)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), 404)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), 500)]
-        public Task<IActionResult> RetryTask(
+        public async Task<IActionResult> RetryTask(
             [FromRoute][Required] string taskId,
             CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(async () =>
+            if (CurrentVirtualKeyId == null)
             {
-                if (CurrentVirtualKeyId == null)
-                {
-                    return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
-                }
-                var virtualKeyId = CurrentVirtualKeyId.Value;
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
+            }
+            var virtualKeyId = CurrentVirtualKeyId.Value;
 
-                var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
-                if (taskStatus == null)
-                {
-                    return OpenAIError(404, "The requested task was not found", "not_found");
-                }
+            var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
+            if (taskStatus == null)
+            {
+                return OpenAIError(404, "The requested task was not found", "not_found");
+            }
 
-                // Validate task ownership for security
-                if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
-                {
-                    Logger.LogWarning("Virtual key {VirtualKeyId} attempted to retry task {TaskId} owned by {OwnerKeyId}",
-                        virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
-                    return OpenAIError(404, "The requested task was not found", "not_found");
-                }
+            // Validate task ownership for security
+            if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+            {
+                Logger.LogWarning("Virtual key {VirtualKeyId} attempted to retry task {TaskId} owned by {OwnerKeyId}",
+                    virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
+                return OpenAIError(404, "The requested task was not found", "not_found");
+            }
 
-                // Validate task can be retried
-                if (taskStatus.State != TaskState.Failed)
-                {
-                    return OpenAIError(400, $"Only failed tasks can be retried. Current state: {taskStatus.State}", "invalid_operation");
-                }
+            // Validate task can be retried
+            if (taskStatus.State != TaskState.Failed)
+            {
+                return OpenAIError(400, $"Only failed tasks can be retried. Current state: {taskStatus.State}", "invalid_operation");
+            }
 
-                if (!taskStatus.IsRetryable)
-                {
-                    return OpenAIError(400, "This task has been marked as non-retryable", "invalid_operation");
-                }
+            if (!taskStatus.IsRetryable)
+            {
+                return OpenAIError(400, "This task has been marked as non-retryable", "invalid_operation");
+            }
 
-                if (taskStatus.RetryCount >= taskStatus.MaxRetries)
-                {
-                    return OpenAIError(400, $"Task has already been retried {taskStatus.RetryCount} times (max: {taskStatus.MaxRetries})", "invalid_operation");
-                }
+            if (taskStatus.RetryCount >= taskStatus.MaxRetries)
+            {
+                return OpenAIError(400, $"Task has already been retried {taskStatus.RetryCount} times (max: {taskStatus.MaxRetries})", "invalid_operation");
+            }
 
-                // Reset task for retry
-                await _taskService.UpdateTaskStatusAsync(
-                    taskId,
-                    TaskState.Pending,
-                    error: $"Manual retry requested (attempt {taskStatus.RetryCount + 1}/{taskStatus.MaxRetries})",
-                    cancellationToken: cancellationToken);
+            // Reset task for retry
+            await _taskService.UpdateTaskStatusAsync(
+                taskId,
+                TaskState.Pending,
+                error: $"Manual retry requested (attempt {taskStatus.RetryCount + 1}/{taskStatus.MaxRetries})",
+                cancellationToken: cancellationToken);
 
-                Logger.LogInformation("Manual retry requested for task {TaskId} by virtual key {VirtualKeyId}",
-                    taskId, virtualKeyId);
+            Logger.LogInformation("Manual retry requested for task {TaskId} by virtual key {VirtualKeyId}",
+                taskId, virtualKeyId);
 
-                // Return updated status
-                var updatedStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
-                var response = new VideoGenerationTaskStatus
-                {
-                    TaskId = taskId,
-                    Status = updatedStatus != null ? TaskStateConstants.FromTaskState(updatedStatus.State) : TaskStateConstants.Pending,
-                    Progress = updatedStatus?.Progress ?? 0,
-                    CreatedAt = updatedStatus?.CreatedAt ?? DateTimeOffset.UtcNow,
-                    UpdatedAt = updatedStatus?.UpdatedAt ?? DateTimeOffset.UtcNow,
-                    Error = $"Retry {updatedStatus?.RetryCount ?? 0}/{updatedStatus?.MaxRetries ?? 3} scheduled"
-                };
+            // Return updated status
+            var updatedStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
+            var response = new VideoGenerationTaskStatus
+            {
+                TaskId = taskId,
+                Status = updatedStatus != null ? TaskStateConstants.FromTaskState(updatedStatus.State) : TaskStateConstants.Pending,
+                Progress = updatedStatus?.Progress ?? 0,
+                CreatedAt = updatedStatus?.CreatedAt ?? DateTimeOffset.UtcNow,
+                UpdatedAt = updatedStatus?.UpdatedAt ?? DateTimeOffset.UtcNow,
+                Error = $"Retry {updatedStatus?.RetryCount ?? 0}/{updatedStatus?.MaxRetries ?? 3} scheduled"
+            };
 
-                return Ok(response);
-            },
-            "RetryTask",
-            taskId);
+            return Ok(response);
         }
 
         /// <summary>
@@ -329,60 +316,55 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(typeof(OpenAIErrorResponse), 404)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), 409)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), 500)]
-        public Task<IActionResult> CancelTask(
+        public async Task<IActionResult> CancelTask(
             [FromRoute][Required] string taskId,
             CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(async () =>
+            if (CurrentVirtualKeyId == null)
             {
-                if (CurrentVirtualKeyId == null)
-                {
-                    return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
-                }
-                var virtualKeyId = CurrentVirtualKeyId.Value;
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
+            }
+            var virtualKeyId = CurrentVirtualKeyId.Value;
 
-                var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
-                if (taskStatus == null)
-                {
-                    return OpenAIError(404, "The requested task was not found", "not_found");
-                }
+            var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
+            if (taskStatus == null)
+            {
+                return OpenAIError(404, "The requested task was not found", "not_found");
+            }
 
-                // Validate task ownership for security
-                if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
-                {
-                    Logger.LogWarning("Virtual key {VirtualKeyId} attempted to cancel task {TaskId} owned by {OwnerKeyId}",
-                        virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
-                    return OpenAIError(404, "The requested task was not found", "not_found");
-                }
+            // Validate task ownership for security
+            if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+            {
+                Logger.LogWarning("Virtual key {VirtualKeyId} attempted to cancel task {TaskId} owned by {OwnerKeyId}",
+                    virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
+                return OpenAIError(404, "The requested task was not found", "not_found");
+            }
 
-                // Check if task can be cancelled
-                if (taskStatus.State == TaskState.Completed || taskStatus.State == TaskState.Failed)
-                {
-                    return OpenAIError(409, $"Task is already {taskStatus.State.ToString().ToLowerInvariant()} and cannot be cancelled", "invalid_operation");
-                }
+            // Check if task can be cancelled
+            if (taskStatus.State == TaskState.Completed || taskStatus.State == TaskState.Failed)
+            {
+                return OpenAIError(409, $"Task is already {taskStatus.State.ToString().ToLowerInvariant()} and cannot be cancelled", "invalid_operation");
+            }
 
-                // Try to cancel via the registry first (signals any in-flight provider call)
-                var registryCancelled = _taskRegistry.TryCancel(taskId);
-                if (registryCancelled)
-                {
-                    Logger.LogInformation("Cancelled task {TaskId} via registry", taskId);
-                }
+            // Try to cancel via the registry first (signals any in-flight provider call)
+            var registryCancelled = _taskRegistry.TryCancel(taskId);
+            if (registryCancelled)
+            {
+                Logger.LogInformation("Cancelled task {TaskId} via registry", taskId);
+            }
 
-                // Mark the task as cancelled and notify consumers via event
-                await _taskService.CancelTaskAsync(taskId, cancellationToken);
+            // Mark the task as cancelled and notify consumers via event
+            await _taskService.CancelTaskAsync(taskId, cancellationToken);
 
-                PublishEventFireAndForget(new VideoGenerationCancelled
-                {
-                    RequestId = taskId,
-                    CancelledAt = DateTime.UtcNow,
-                    CorrelationId = taskId,
-                    Reason = "User requested cancellation"
-                }, "cancel video generation", new { TaskId = taskId });
+            PublishEventFireAndForget(new VideoGenerationCancelled
+            {
+                RequestId = taskId,
+                CancelledAt = DateTime.UtcNow,
+                CorrelationId = taskId,
+                Reason = "User requested cancellation"
+            }, "cancel video generation", new { TaskId = taskId });
 
-                return NoContent();
-            },
-            "CancelTask",
-            taskId);
+            return NoContent();
         }
 
         /// <summary>

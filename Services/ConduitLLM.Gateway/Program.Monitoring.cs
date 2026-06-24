@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Extensions;
+using ConduitLLM.Gateway.Filters;
 
 public partial class Program
 {
@@ -8,6 +9,12 @@ public partial class Program
     {
         // Add Controller support
         builder.Services.AddControllers();
+
+        // Operation-logging action filter — replaces the per-action success logging that used to
+        // live in GatewayControllerBase.ExecuteAsync. Applied per controller via [ServiceFilter]
+        // during the incremental Tier 1a migration (#902); promote to a global filter once all
+        // Gateway controllers are converted.
+        builder.Services.AddScoped<OperationLoggingFilter>();
 
         // Add OpenAPI support with Scalar
         builder.Services.AddEndpointsApiExplorer();
