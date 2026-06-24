@@ -38,7 +38,6 @@ public class FunctionCostsController : AdminControllerBase
     /// <returns>List of all function costs</returns>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAllFunctionCosts()
     {
         var functionCosts = await _functionCostService.ListCostsAsync();
@@ -53,7 +52,6 @@ public class FunctionCostsController : AdminControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetFunctionCostById(int id)
     {
         var functionCost = await _functionCostService.GetCostByIdAsync(id);
@@ -73,7 +71,6 @@ public class FunctionCostsController : AdminControllerBase
     [HttpGet("configuration/{functionConfigurationId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCostForConfiguration(int functionConfigurationId)
     {
         var functionCost = await _functionCostService.GetCostForConfigurationAsync(
@@ -94,7 +91,6 @@ public class FunctionCostsController : AdminControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateFunctionCost(
         [FromBody] CreateFunctionCostDto createDto)
     {
@@ -127,7 +123,6 @@ public class FunctionCostsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateFunctionCost(
         int id,
         [FromBody] UpdateFunctionCostDto updateDto)
@@ -167,7 +162,6 @@ public class FunctionCostsController : AdminControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteFunctionCost(int id)
     {
         var existing = await _functionCostService.GetCostByIdAsync(id);
@@ -182,7 +176,6 @@ public class FunctionCostsController : AdminControllerBase
     /// <returns>Success message</returns>
     [HttpPost("cache/clear")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ClearCache()
     {
         await _functionCostService.ClearCacheAsync();

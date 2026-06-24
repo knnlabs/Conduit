@@ -39,7 +39,6 @@ public class IpFilterController : AdminControllerBase
     /// <returns>List of all IP filters</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<IpFilterDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAllFilters()
     {
         var filters = await _ipFilterService.GetAllFiltersAsync();
@@ -52,7 +51,6 @@ public class IpFilterController : AdminControllerBase
     /// <returns>List of all enabled IP filters</returns>
     [HttpGet("enabled")]
     [ProducesResponseType(typeof(IEnumerable<IpFilterDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetEnabledFilters()
     {
         var filters = await _ipFilterService.GetEnabledFiltersAsync();
@@ -67,7 +65,6 @@ public class IpFilterController : AdminControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(IpFilterDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetFilterById(int id)
     {
         var filter = await _ipFilterService.GetFilterByIdAsync(id);
@@ -89,7 +86,6 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateFilter([FromBody] CreateIpFilterDto filter)
     {
         var (success, errorMessage, createdFilter) = await _ipFilterService.CreateFilterAsync(filter);
@@ -116,7 +112,6 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateFilter(int id, [FromBody] UpdateIpFilterDto filter)
     {
         // Ensure ID in route matches ID in body
@@ -152,7 +147,6 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteFilter(int id)
     {
         var (success, errorMessage) = await _ipFilterService.DeleteFilterAsync(id);
@@ -177,7 +171,6 @@ public class IpFilterController : AdminControllerBase
     /// <returns>The current IP filter settings</returns>
     [HttpGet("settings")]
     [ProducesResponseType(typeof(IpFilterSettingsDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetSettings()
     {
         var settings = await _ipFilterService.GetIpFilterSettingsAsync();
@@ -195,7 +188,6 @@ public class IpFilterController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateSettings([FromBody] IpFilterSettingsDto settings)
     {
         var (success, errorMessage) = await _ipFilterService.UpdateIpFilterSettingsAsync(settings);
@@ -218,7 +210,6 @@ public class IpFilterController : AdminControllerBase
     [AllowAnonymous] // This needs to be accessible without authentication for performance
     [ProducesResponseType(typeof(IpCheckResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CheckIpAddress(string ipAddress)
     {
         if (string.IsNullOrWhiteSpace(ipAddress))

@@ -41,7 +41,6 @@ public class FunctionExecutionsController : AdminControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetExecutionById(Guid id)
     {
         var execution = await _executionRepository.GetByIdAsync(id);
@@ -60,7 +59,6 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <returns>List of executions</returns>
     [HttpGet("virtualkey/{virtualKeyId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetExecutionsByVirtualKey(int virtualKeyId)
     {
         var executions = await _executionRepository.GetByVirtualKeyIdAsync(virtualKeyId);
@@ -74,7 +72,6 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <returns>List of executions</returns>
     [HttpGet("configuration/{functionConfigurationId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetExecutionsByConfiguration(int functionConfigurationId)
     {
         var executions = await _executionRepository.GetByFunctionConfigurationIdAsync(
@@ -90,7 +87,6 @@ public class FunctionExecutionsController : AdminControllerBase
     [HttpGet("state/{state}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetExecutionsByState(string state)
     {
         if (!Enum.TryParse<ExecutionState>(state, true, out var stateEnum))
@@ -108,7 +104,6 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <returns>List of executions with expired leases</returns>
     [HttpGet("expired-leases")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetExpiredLeases()
     {
         var executions = await _executionRepository.GetExpiredLeasesAsync();
@@ -121,7 +116,6 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <returns>List of executions ready for retry</returns>
     [HttpGet("ready-for-retry")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetReadyForRetry()
     {
         var executions = await _executionRepository.GetReadyForRetryAsync();
@@ -136,7 +130,6 @@ public class FunctionExecutionsController : AdminControllerBase
     [HttpDelete("cleanup")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CleanupOldExecutions([FromQuery] int olderThanDays = 30)
     {
         if (olderThanDays < 1)

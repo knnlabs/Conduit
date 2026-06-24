@@ -18,7 +18,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}/identifiers")]
         [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelIdentifiers(int id)
         {
             var model = await _modelRepository.GetByIdWithDetailsAsync(id);
@@ -53,7 +52,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}/available-providers")]
         [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAvailableProviders(int id)
         {
             var model = await _modelRepository.GetByIdWithDetailsAsync(id);
