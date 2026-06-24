@@ -202,7 +202,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task TestProviderConnectionWithCredentials_WithEmptyApiKey_ShouldReturnBadRequest()
+        public async Task TestProviderConnectionWithCredentials_WithEmptyApiKey_ShouldPropagateException()
         {
             // Arrange
             var testRequest = new TestProviderRequest
@@ -212,21 +212,19 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 BaseUrl = "https://api.openai.com/v1"
             };
 
-            // Mock the client factory to throw when creating client with empty key
+            // Mock the client factory to throw when creating client with empty key.
+            // CreateTestClient is invoked outside the action's try/catch, so the
+            // ArgumentException propagates and is mapped to 400 in AdminExceptionMiddleware.
             _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
                 .Throws(new ArgumentException("API key is required for testing credentials"));
 
-            // Act
-            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
-
-            // Assert - ExceptionToResponseMapper maps ArgumentException to 400 Bad Request
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("invalid_parameter", errorResponse.Code);
+            // Act & Assert
+            var act = async () => await _controller.TestProviderConnectionWithCredentials(testRequest);
+            await act.Should().ThrowAsync<ArgumentException>();
         }
 
         [Fact]
-        public async Task TestProviderConnectionWithCredentials_WithNullApiKey_ShouldReturnBadRequest()
+        public async Task TestProviderConnectionWithCredentials_WithNullApiKey_ShouldPropagateException()
         {
             // Arrange
             var testRequest = new TestProviderRequest
@@ -236,17 +234,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 BaseUrl = "https://api.openai.com/v1"
             };
 
-            // Mock the client factory to throw when creating client with null key
+            // Mock the client factory to throw when creating client with null key.
+            // CreateTestClient is invoked outside the action's try/catch, so the
+            // ArgumentException propagates and is mapped to 400 in AdminExceptionMiddleware.
             _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
                 .Throws(new ArgumentException("API key is required for testing credentials"));
 
-            // Act
-            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
-
-            // Assert - ExceptionToResponseMapper maps ArgumentException to 400 Bad Request
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            Assert.Equal("invalid_parameter", errorResponse.Code);
+            // Act & Assert
+            var act = async () => await _controller.TestProviderConnectionWithCredentials(testRequest);
+            await act.Should().ThrowAsync<ArgumentException>();
         }
 
         [Fact]

@@ -90,7 +90,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GenerateKey_ServiceThrowsInvalidOperation_ReturnsBadRequest()
+        public async Task GenerateKey_ServiceThrowsInvalidOperation_ShouldPropagateException()
         {
             // Arrange
             var request = new CreateVirtualKeyRequestDto
@@ -102,11 +102,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockVirtualKeyService.Setup(x => x.GenerateVirtualKeyAsync(It.IsAny<CreateVirtualKeyRequestDto>()))
                 .ThrowsAsync(new InvalidOperationException("Virtual key group 999 not found. Ensure the group exists before creating keys."));
 
-            // Act
-            var result = await _controller.GenerateKey(request);
-
-            // Assert - AdminControllerBase maps InvalidOperationException to 400 Bad Request
-            result.Should().BeOfType<BadRequestObjectResult>();
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.GenerateKey(request);
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         [Fact]

@@ -19,29 +19,29 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetModelIdentifiers(int id)
+        public async Task<IActionResult> GetModelIdentifiers(int id)
         {
-            return ExecuteWithNotFoundAsync(
-                () => _modelRepository.GetByIdWithDetailsAsync(id),
-                model =>
-                {
-                    var identifiers = model.Identifiers.Select(i => new
-                    {
-                        id = i.Id,
-                        identifier = i.Identifier,
-                        provider = (int?)i.Provider,
-                        isPrimary = i.IsPrimary,
-                        maxInputTokens = i.MaxInputTokens,
-                        maxOutputTokens = i.MaxOutputTokens,
-                        speedScore = i.SpeedScore,
-                        qualityScore = i.QualityScore,
-                        providerVariation = i.ProviderVariation,
-                        modelCostId = i.ModelCostId
-                    });
+            var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+            if (model == null)
+            {
+                return this.NotFoundEntity("Model", id);
+            }
 
-                    return Ok(identifiers);
-                },
-                "Model", id, "GetModelIdentifiers");
+            var identifiers = model.Identifiers.Select(i => new
+            {
+                id = i.Id,
+                identifier = i.Identifier,
+                provider = (int?)i.Provider,
+                isPrimary = i.IsPrimary,
+                maxInputTokens = i.MaxInputTokens,
+                maxOutputTokens = i.MaxOutputTokens,
+                speedScore = i.SpeedScore,
+                qualityScore = i.QualityScore,
+                providerVariation = i.ProviderVariation,
+                modelCostId = i.ModelCostId
+            });
+
+            return Ok(identifiers);
         }
 
         /// <summary>
@@ -54,60 +54,60 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetAvailableProviders(int id)
+        public async Task<IActionResult> GetAvailableProviders(int id)
         {
-            return ExecuteWithNotFoundAsync(
-                () => _modelRepository.GetByIdWithDetailsAsync(id),
-                async model =>
+            var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+            if (model == null)
+            {
+                return this.NotFoundEntity("Model", id);
+            }
+
+            var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _providerRepository.GetPaginatedAsync);
+            var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
+
+            var result = new List<object>();
+
+            foreach (var association in model.Identifiers)
+            {
+                // Skip associations without a provider type - they're not properly configured
+                if (association.Provider == null)
                 {
-                    var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                        _providerRepository.GetPaginatedAsync);
-                    var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
+                    Logger.LogWarning(
+                        "ModelIdentifier {AssociationId} for model {ModelId} has null Provider field - skipping",
+                        association.Id, id);
+                    continue;
+                }
 
-                    var result = new List<object>();
+                // Find matching providers for this association
+                var matchingProviders = enabledProviders.Where(p =>
+                    p.ProviderType == association.Provider
+                ).ToList();
 
-                    foreach (var association in model.Identifiers)
+                if (matchingProviders.Any())
+                {
+                    result.Add(new
                     {
-                        // Skip associations without a provider type - they're not properly configured
-                        if (association.Provider == null)
+                        associationId = association.Id,
+                        identifier = association.Identifier,
+                        provider = (int?)association.Provider,
+                        providerVariation = association.ProviderVariation,
+                        maxInputTokens = association.MaxInputTokens,
+                        maxOutputTokens = association.MaxOutputTokens,
+                        speedScore = association.SpeedScore,
+                        qualityScore = association.QualityScore,
+                        isPrimary = association.IsPrimary,
+                        availableProviders = matchingProviders.Select(p => new
                         {
-                            Logger.LogWarning(
-                                "ModelIdentifier {AssociationId} for model {ModelId} has null Provider field - skipping",
-                                association.Id, id);
-                            continue;
-                        }
+                            providerId = p.Id,
+                            providerName = p.ProviderName,
+                            providerType = p.ProviderType.ToString()
+                        })
+                    });
+                }
+            }
 
-                        // Find matching providers for this association
-                        var matchingProviders = enabledProviders.Where(p =>
-                            p.ProviderType == association.Provider
-                        ).ToList();
-
-                        if (matchingProviders.Any())
-                        {
-                            result.Add(new
-                            {
-                                associationId = association.Id,
-                                identifier = association.Identifier,
-                                provider = (int?)association.Provider,
-                                providerVariation = association.ProviderVariation,
-                                maxInputTokens = association.MaxInputTokens,
-                                maxOutputTokens = association.MaxOutputTokens,
-                                speedScore = association.SpeedScore,
-                                qualityScore = association.QualityScore,
-                                isPrimary = association.IsPrimary,
-                                availableProviders = matchingProviders.Select(p => new
-                                {
-                                    providerId = p.Id,
-                                    providerName = p.ProviderName,
-                                    providerType = p.ProviderType.ToString()
-                                })
-                            });
-                        }
-                    }
-
-                    return (IActionResult)Ok(result);
-                },
-                "Model", id, "GetAvailableProviders");
+            return Ok(result);
         }
 
         /// <summary>
@@ -121,66 +121,59 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public Task<IActionResult> CreateModelIdentifier(int id, [FromBody] CreateModelIdentifierDto dto)
+        public async Task<IActionResult> CreateModelIdentifier(int id, [FromBody] CreateModelIdentifierDto dto)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var model = await _modelRepository.GetByIdWithDetailsAsync(id);
-                    if (model == null)
-                    {
-                        return (IActionResult)NotFound($"Model with ID {id} not found");
-                    }
+            var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+            if (model == null)
+            {
+                return NotFound($"Model with ID {id} not found");
+            }
 
-                    // Parse provider if provided as integer
-                    ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
+            // Parse provider if provided as integer
+            ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
 
-                    // Check if identifier already exists for this provider
-                    var existing = model.Identifiers.FirstOrDefault(i =>
-                        i.Identifier == dto.Identifier &&
-                        i.Provider == providerType);
+            // Check if identifier already exists for this provider
+            var existing = model.Identifiers.FirstOrDefault(i =>
+                i.Identifier == dto.Identifier &&
+                i.Provider == providerType);
 
-                    if (existing != null)
-                    {
-                        return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
-                    }
+            if (existing != null)
+            {
+                return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
+            }
 
-                    var identifier = new ModelProviderTypeAssociation
-                    {
-                        ModelId = id,
-                        Identifier = dto.Identifier,
-                        Provider = providerType,
-                        IsPrimary = dto.IsPrimary ?? false,
-                        Metadata = dto.Metadata,
-                        MaxInputTokens = dto.MaxInputTokens,
-                        MaxOutputTokens = dto.MaxOutputTokens,
-                        SpeedScore = dto.SpeedScore,
-                        QualityScore = dto.QualityScore,
-                        ProviderVariation = dto.ProviderVariation
-                    };
+            var identifier = new ModelProviderTypeAssociation
+            {
+                ModelId = id,
+                Identifier = dto.Identifier,
+                Provider = providerType,
+                IsPrimary = dto.IsPrimary ?? false,
+                Metadata = dto.Metadata,
+                MaxInputTokens = dto.MaxInputTokens,
+                MaxOutputTokens = dto.MaxOutputTokens,
+                SpeedScore = dto.SpeedScore,
+                QualityScore = dto.QualityScore,
+                ProviderVariation = dto.ProviderVariation
+            };
 
-                    model.Identifiers.Add(identifier);
-                    await _modelRepository.UpdateModelAsync(model);
+            model.Identifiers.Add(identifier);
+            await _modelRepository.UpdateModelAsync(model);
 
-                    LogAdminAudit("Created", "ModelIdentifier", identifier.Id,
-                        $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
+            LogAdminAudit("Created", "ModelIdentifier", identifier.Id,
+                $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
 
-                    return CreatedAtAction(nameof(GetModelIdentifiers), new { id }, new
-                    {
-                        id = identifier.Id,
-                        identifier = identifier.Identifier,
-                        provider = (int?)identifier.Provider,
-                        isPrimary = identifier.IsPrimary,
-                        maxInputTokens = identifier.MaxInputTokens,
-                        maxOutputTokens = identifier.MaxOutputTokens,
-                        speedScore = identifier.SpeedScore,
-                        qualityScore = identifier.QualityScore,
-                        providerVariation = identifier.ProviderVariation
-                    });
-                },
-                result => result,
-                "CreateModelIdentifier",
-                new { Id = id });
+            return CreatedAtAction(nameof(GetModelIdentifiers), new { id }, new
+            {
+                id = identifier.Id,
+                identifier = identifier.Identifier,
+                provider = (int?)identifier.Provider,
+                isPrimary = identifier.IsPrimary,
+                maxInputTokens = identifier.MaxInputTokens,
+                maxOutputTokens = identifier.MaxOutputTokens,
+                speedScore = identifier.SpeedScore,
+                qualityScore = identifier.QualityScore,
+                providerVariation = identifier.ProviderVariation
+            });
         }
 
         /// <summary>
@@ -195,60 +188,53 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public Task<IActionResult> UpdateModelIdentifier(int id, int identifierId, [FromBody] UpdateModelIdentifierDto dto)
+        public async Task<IActionResult> UpdateModelIdentifier(int id, int identifierId, [FromBody] UpdateModelIdentifierDto dto)
         {
-            return ExecuteAsync(
-                async () =>
+            var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+            if (model == null)
+            {
+                return NotFound($"Model with ID {id} not found");
+            }
+
+            var identifier = model.Identifiers.FirstOrDefault(i => i.Id == identifierId);
+            if (identifier == null)
+            {
+                return NotFound($"Identifier with ID {identifierId} not found for model {id}");
+            }
+
+            // Parse provider if provided as integer
+            ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
+
+            // Check if the new identifier/provider combo already exists (if changed)
+            if (identifier.Identifier != dto.Identifier || identifier.Provider != providerType)
+            {
+                var existing = model.Identifiers.FirstOrDefault(i =>
+                    i.Id != identifierId &&
+                    i.Identifier == dto.Identifier &&
+                    i.Provider == providerType);
+
+                if (existing != null)
                 {
-                    var model = await _modelRepository.GetByIdWithDetailsAsync(id);
-                    if (model == null)
-                    {
-                        return (IActionResult)NotFound($"Model with ID {id} not found");
-                    }
+                    return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
+                }
+            }
 
-                    var identifier = model.Identifiers.FirstOrDefault(i => i.Id == identifierId);
-                    if (identifier == null)
-                    {
-                        return NotFound($"Identifier with ID {identifierId} not found for model {id}");
-                    }
+            identifier.Identifier = dto.Identifier;
+            identifier.Provider = providerType;
+            identifier.IsPrimary = dto.IsPrimary ?? identifier.IsPrimary;
+            identifier.Metadata = dto.Metadata;
+            identifier.MaxInputTokens = dto.MaxInputTokens;
+            identifier.MaxOutputTokens = dto.MaxOutputTokens;
+            identifier.SpeedScore = dto.SpeedScore;
+            identifier.QualityScore = dto.QualityScore;
+            identifier.ProviderVariation = dto.ProviderVariation;
 
-                    // Parse provider if provided as integer
-                    ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
+            await _modelRepository.UpdateModelAsync(model);
 
-                    // Check if the new identifier/provider combo already exists (if changed)
-                    if (identifier.Identifier != dto.Identifier || identifier.Provider != providerType)
-                    {
-                        var existing = model.Identifiers.FirstOrDefault(i =>
-                            i.Id != identifierId &&
-                            i.Identifier == dto.Identifier &&
-                            i.Provider == providerType);
+            LogAdminAudit("Updated", "ModelIdentifier", identifierId,
+                $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
 
-                        if (existing != null)
-                        {
-                            return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
-                        }
-                    }
-
-                    identifier.Identifier = dto.Identifier;
-                    identifier.Provider = providerType;
-                    identifier.IsPrimary = dto.IsPrimary ?? identifier.IsPrimary;
-                    identifier.Metadata = dto.Metadata;
-                    identifier.MaxInputTokens = dto.MaxInputTokens;
-                    identifier.MaxOutputTokens = dto.MaxOutputTokens;
-                    identifier.SpeedScore = dto.SpeedScore;
-                    identifier.QualityScore = dto.QualityScore;
-                    identifier.ProviderVariation = dto.ProviderVariation;
-
-                    await _modelRepository.UpdateModelAsync(model);
-
-                    LogAdminAudit("Updated", "ModelIdentifier", identifierId,
-                        $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
-
-                    return (IActionResult)NoContent();
-                },
-                result => result,
-                "UpdateModelIdentifier",
-                new { Id = id, IdentifierId = identifierId });
+            return NoContent();
         }
 
         /// <summary>
@@ -260,24 +246,19 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{id}/identifiers/{identifierId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public Task<IActionResult> DeleteModelIdentifier(int id, int identifierId)
+        public async Task<IActionResult> DeleteModelIdentifier(int id, int identifierId)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Directly delete the identifier from the repository
-                    var deleted = await _modelRepository.DeleteIdentifierAsync(id, identifierId);
+            // Directly delete the identifier from the repository
+            var deleted = await _modelRepository.DeleteIdentifierAsync(id, identifierId);
 
-                    if (!deleted)
-                    {
-                        throw new KeyNotFoundException($"Identifier with ID {identifierId} not found for model {id}");
-                    }
+            if (!deleted)
+            {
+                throw new KeyNotFoundException($"Identifier with ID {identifierId} not found for model {id}");
+            }
 
-                    LogAdminAudit("Deleted", "ModelIdentifier", identifierId, $"ModelId: {id}");
-                },
-                NoContent(),
-                "DeleteModelIdentifier",
-                new { Id = id, IdentifierId = identifierId });
+            LogAdminAudit("Deleted", "ModelIdentifier", identifierId, $"ModelId: {id}");
+
+            return NoContent();
         }
     }
 }

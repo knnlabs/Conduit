@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Models;
 using ConduitLLM.Admin.Services;
 
@@ -10,6 +11,7 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("api/admin/auth")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class AuthController : AdminControllerBase
     {
         private readonly IEphemeralMasterKeyService _ephemeralMasterKeyService;
@@ -39,20 +41,14 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(EphemeralMasterKeyResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GenerateEphemeralMasterKey()
+        public async Task<IActionResult> GenerateEphemeralMasterKey()
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Create ephemeral master key
-                    var response = await _ephemeralMasterKeyService.CreateEphemeralMasterKeyAsync();
+            // Create ephemeral master key
+            var response = await _ephemeralMasterKeyService.CreateEphemeralMasterKeyAsync();
 
-                    LogAdminAudit("Generated", "EphemeralMasterKey", detail: $"TTL: {response.ExpiresInSeconds}s");
+            LogAdminAudit("Generated", "EphemeralMasterKey", detail: $"TTL: {response.ExpiresInSeconds}s");
 
-                    return response;
-                },
-                Ok,
-                "GenerateEphemeralMasterKey");
+            return Ok(response);
         }
     }
 }

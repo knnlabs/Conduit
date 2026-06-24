@@ -100,24 +100,17 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task CleanupOldTasks_WithServiceException_ShouldReturn500()
+        public async Task CleanupOldTasks_WithServiceException_ShouldPropagateException()
         {
             // Arrange
             _mockTaskService.Setup(x => x.CleanupOldTasksAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
             // Act
-            var result = await _controller.CleanupOldTasks();
+            var act = async () => await _controller.CleanupOldTasks();
 
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-            Assert.NotNull(objectResult.Value);
-
-            // Verify standardized error response structure from AdminControllerBase
-            var errorResponse = objectResult.Value.Should().BeOfType<ConduitLLM.Configuration.DTOs.ErrorResponseDto>().Subject;
-            Assert.Equal("An unexpected error occurred", errorResponse.error);
-            Assert.Equal("internal_error", errorResponse.Code);
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping
+            await act.Should().ThrowAsync<Exception>();
         }
 
         [Fact]

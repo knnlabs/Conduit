@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.DTOs;
@@ -15,6 +16,7 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
+[ServiceFilter(typeof(OperationLoggingFilter))]
 public class FunctionCostsController : AdminControllerBase
 {
     private readonly IFunctionCostService _functionCostService;
@@ -37,16 +39,10 @@ public class FunctionCostsController : AdminControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetAllFunctionCosts()
+    public async Task<IActionResult> GetAllFunctionCosts()
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var functionCosts = await _functionCostService.ListCostsAsync();
-                return functionCosts.Select(e => e.ToDto()).ToList();
-            },
-            Ok,
-            "GetAllFunctionCosts");
+        var functionCosts = await _functionCostService.ListCostsAsync();
+        return Ok(functionCosts.Select(e => e.ToDto()).ToList());
     }
 
     /// <summary>
@@ -58,18 +54,15 @@ public class FunctionCostsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetFunctionCostById(int id)
+    public async Task<IActionResult> GetFunctionCostById(int id)
     {
-        return ExecuteWithNotFoundAsync(
-            async () =>
-            {
-                var functionCost = await _functionCostService.GetCostByIdAsync(id);
-                return functionCost?.ToDto();
-            },
-            Ok,
-            "Function cost",
-            id,
-            "GetFunctionCostById");
+        var functionCost = await _functionCostService.GetCostByIdAsync(id);
+        var dto = functionCost?.ToDto();
+        if (dto == null)
+        {
+            return this.NotFoundEntity("Function cost", id);
+        }
+        return Ok(dto);
     }
 
     /// <summary>
@@ -81,19 +74,16 @@ public class FunctionCostsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetCostForConfiguration(int functionConfigurationId)
+    public async Task<IActionResult> GetCostForConfiguration(int functionConfigurationId)
     {
-        return ExecuteWithNotFoundAsync(
-            async () =>
-            {
-                var functionCost = await _functionCostService.GetCostForConfigurationAsync(
-                    functionConfigurationId);
-                return functionCost?.ToDto();
-            },
-            Ok,
-            "Function cost for configuration",
-            functionConfigurationId,
-            "GetCostForConfiguration");
+        var functionCost = await _functionCostService.GetCostForConfigurationAsync(
+            functionConfigurationId);
+        var dto = functionCost?.ToDto();
+        if (dto == null)
+        {
+            return this.NotFoundEntity("Function cost for configuration", functionConfigurationId);
+        }
+        return Ok(dto);
     }
 
     /// <summary>
@@ -105,32 +95,26 @@ public class FunctionCostsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> CreateFunctionCost(
+    public async Task<IActionResult> CreateFunctionCost(
         [FromBody] CreateFunctionCostDto createDto)
     {
         if (createDto == null)
         {
-            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("Function cost data is required")));
+            return BadRequest(new ErrorResponseDto("Function cost data is required"));
         }
 
-        return ExecuteAsync(
-            async () =>
-            {
-                var entity = MapToEntity(createDto);
-                int id = await _functionCostService.CreateCostAsync(entity);
+        var entity = MapToEntity(createDto);
+        int id = await _functionCostService.CreateCostAsync(entity);
 
-                // Fetch the created entity to return as DTO
-                var created = await _functionCostService.GetCostByIdAsync(id);
-                var dto = created?.ToDto();
+        // Fetch the created entity to return as DTO
+        var created = await _functionCostService.GetCostByIdAsync(id);
+        var dto = created?.ToDto();
 
-                LogAdminAudit("Created", "FunctionCost", id, $"CostName: {LoggingSanitizer.S(createDto.CostName)}");
-                return (id, dto);
-            },
-            result => CreatedAtAction(
-                nameof(GetFunctionCostById),
-                new { id = result.id },
-                result.dto),
-            "CreateFunctionCost");
+        LogAdminAudit("Created", "FunctionCost", id, $"CostName: {LoggingSanitizer.S(createDto.CostName)}");
+        return CreatedAtAction(
+            nameof(GetFunctionCostById),
+            new { id },
+            dto);
     }
 
     /// <summary>
@@ -144,42 +128,35 @@ public class FunctionCostsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> UpdateFunctionCost(
+    public async Task<IActionResult> UpdateFunctionCost(
         int id,
         [FromBody] UpdateFunctionCostDto updateDto)
     {
         if (updateDto == null)
         {
-            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("Function cost data is required")));
+            return BadRequest(new ErrorResponseDto("Function cost data is required"));
         }
 
         if (id != updateDto.Id)
         {
-            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("ID mismatch")));
+            return BadRequest(new ErrorResponseDto("ID mismatch"));
         }
 
-        return ExecuteAsync(
-            async () =>
-            {
-                // Get existing entity to preserve fields not in update DTO
-                var existing = await _functionCostService.GetCostByIdAsync(id);
-                if (existing == null)
-                {
-                    throw new KeyNotFoundException();
-                }
+        // Get existing entity to preserve fields not in update DTO
+        var existing = await _functionCostService.GetCostByIdAsync(id);
+        if (existing == null)
+        {
+            throw new KeyNotFoundException();
+        }
 
-                // Map update DTO to entity, preserving ProviderType from existing
-                var entity = MapToEntity(updateDto, existing);
-                await _functionCostService.UpdateCostAsync(entity);
+        // Map update DTO to entity, preserving ProviderType from existing
+        var entity = MapToEntity(updateDto, existing);
+        await _functionCostService.UpdateCostAsync(entity);
 
-                // Fetch the updated entity to return
-                var updated = await _functionCostService.GetCostByIdAsync(id);
-                LogAdminAudit("Updated", "FunctionCost", id, $"CostName: {LoggingSanitizer.S(updateDto.CostName)}");
-                return updated?.ToDto();
-            },
-            dto => Ok(dto),
-            "UpdateFunctionCost",
-            new { Id = id });
+        // Fetch the updated entity to return
+        var updated = await _functionCostService.GetCostByIdAsync(id);
+        LogAdminAudit("Updated", "FunctionCost", id, $"CostName: {LoggingSanitizer.S(updateDto.CostName)}");
+        return Ok(updated?.ToDto());
     }
 
     /// <summary>
@@ -191,18 +168,12 @@ public class FunctionCostsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> DeleteFunctionCost(int id)
+    public async Task<IActionResult> DeleteFunctionCost(int id)
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var existing = await _functionCostService.GetCostByIdAsync(id);
-                await _functionCostService.DeleteCostAsync(id);
-                LogAdminAudit("Deleted", "FunctionCost", id, existing != null ? $"CostName: {LoggingSanitizer.S(existing.CostName)}" : null);
-            },
-            NoContent(),
-            "DeleteFunctionCost",
-            new { Id = id });
+        var existing = await _functionCostService.GetCostByIdAsync(id);
+        await _functionCostService.DeleteCostAsync(id);
+        LogAdminAudit("Deleted", "FunctionCost", id, existing != null ? $"CostName: {LoggingSanitizer.S(existing.CostName)}" : null);
+        return NoContent();
     }
 
     /// <summary>
@@ -212,17 +183,11 @@ public class FunctionCostsController : AdminControllerBase
     [HttpPost("cache/clear")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> ClearCache()
+    public async Task<IActionResult> ClearCache()
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                await _functionCostService.ClearCacheAsync();
-                LogAdminAudit("Cleared", "FunctionCostCache");
-                return new { message = "Function cost cache cleared successfully" };
-            },
-            Ok,
-            "ClearCache");
+        await _functionCostService.ClearCacheAsync();
+        LogAdminAudit("Cleared", "FunctionCostCache");
+        return Ok(new { message = "Function cost cache cleared successfully" });
     }
 
     // Mapping methods

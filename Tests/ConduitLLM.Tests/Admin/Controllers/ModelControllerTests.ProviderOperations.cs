@@ -290,7 +290,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GetModelsByProvider_WhenRepositoryThrows_ShouldReturn500()
+        public async Task GetModelsByProvider_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var provider = "groq";
@@ -299,14 +299,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByProviderAsync(ProviderType.Groq))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.GetModelsByProvider(provider);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("internal_error");
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.GetModelsByProvider(provider);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         [Fact]

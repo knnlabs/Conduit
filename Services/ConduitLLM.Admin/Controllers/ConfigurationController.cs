@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs.Cache;
 
@@ -16,6 +17,7 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/config")]
     [Authorize(Policy = "MasterKeyPolicy")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class ConfigurationController : AdminControllerBase
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
@@ -51,66 +53,60 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Routing configuration data.</returns>
         [HttpGet("routing")]
-        public Task<IActionResult> GetRoutingConfig(CancellationToken cancellationToken = default)
+        public async Task<IActionResult> GetRoutingConfig(CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(
-                async () =>
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            // Get model-to-provider mappings
+            var modelMappings = await dbContext.ModelProviderMappings
+                .Include(m => m.Provider)
+                .Select(m => new
                 {
-                    using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                    // Get model-to-provider mappings
-                    var modelMappings = await dbContext.ModelProviderMappings
-                        .Include(m => m.Provider)
-                        .Select(m => new
-                        {
-                            Id = m.Id,
-                            ModelAlias = m.ModelAlias,
-                            ProviderModelId = m.ProviderModelId,
-                            IsEnabled = m.IsEnabled,
-                            Provider = new
-                            {
-                                Id = m.Provider.Id,
-                                Name = m.Provider.ProviderName,
-                                Type = m.Provider.ProviderType,
-                                IsEnabled = m.Provider.IsEnabled
-                            }
-                        })
-                        .ToListAsync(cancellationToken);
-
-                    // Get load balancing configuration
-                    var loadBalancers = new List<object>
+                    Id = m.Id,
+                    ModelAlias = m.ModelAlias,
+                    ProviderModelId = m.ProviderModelId,
+                    IsEnabled = m.IsEnabled,
+                    Provider = new
                     {
-                        new
-                        {
-                            Id = "primary",
-                            Name = "Primary Load Balancer",
-                            Algorithm = _configuration["LoadBalancing:Algorithm"] ?? "round-robin",
-                            HealthCheckInterval = 30,
-                            FailoverThreshold = 3,
-                            Endpoints = await GetProviderEndpoints(dbContext, cancellationToken)
-                        }
-                    };
+                        Id = m.Provider.Id,
+                        Name = m.Provider.ProviderName,
+                        Type = m.Provider.ProviderType,
+                        IsEnabled = m.Provider.IsEnabled
+                    }
+                })
+                .ToListAsync(cancellationToken);
 
-                    // Get routing statistics
-                    var routingStats = await GetRoutingStatistics(dbContext, cancellationToken);
+            // Get load balancing configuration
+            var loadBalancers = new List<object>
+            {
+                new
+                {
+                    Id = "primary",
+                    Name = "Primary Load Balancer",
+                    Algorithm = _configuration["LoadBalancing:Algorithm"] ?? "round-robin",
+                    HealthCheckInterval = 30,
+                    FailoverThreshold = 3,
+                    Endpoints = await GetProviderEndpoints(dbContext, cancellationToken)
+                }
+            };
 
-                    return (object)new
-                    {
-                        Timestamp = DateTime.UtcNow,
-                        RoutingRules = modelMappings,
-                        LoadBalancers = loadBalancers,
-                        Statistics = routingStats,
-                        Configuration = new
-                        {
-                            EnableFailover = _configuration.GetValue<bool>("Routing:EnableFailover", true),
-                            EnableLoadBalancing = _configuration.GetValue<bool>("Routing:EnableLoadBalancing", true),
-                            RequestTimeout = _configuration.GetValue<int>("Routing:RequestTimeoutSeconds", 30),
-                            CircuitBreakerThreshold = _configuration.GetValue<int>("Routing:CircuitBreakerThreshold", 5)
-                        }
-                    };
-                },
-                Ok,
-                "GetRoutingConfig");
+            // Get routing statistics
+            var routingStats = await GetRoutingStatistics(dbContext, cancellationToken);
+
+            return Ok(new
+            {
+                Timestamp = DateTime.UtcNow,
+                RoutingRules = modelMappings,
+                LoadBalancers = loadBalancers,
+                Statistics = routingStats,
+                Configuration = new
+                {
+                    EnableFailover = _configuration.GetValue<bool>("Routing:EnableFailover", true),
+                    EnableLoadBalancing = _configuration.GetValue<bool>("Routing:EnableLoadBalancing", true),
+                    RequestTimeout = _configuration.GetValue<int>("Routing:RequestTimeoutSeconds", 30),
+                    CircuitBreakerThreshold = _configuration.GetValue<int>("Routing:CircuitBreakerThreshold", 5)
+                }
+            });
         }
 
         private async Task<List<object>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
@@ -166,12 +162,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>LLM cache control status.</returns>
         [HttpGet("caching/llm-status")]
         [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
-        public Task<IActionResult> GetLLMCacheStatus(CancellationToken cancellationToken = default)
+        public async Task<IActionResult> GetLLMCacheStatus(CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(
-                () => _llmCacheManagementService.GetLLMCacheStatusAsync(cancellationToken),
-                Ok,
-                "GetLLMCacheStatus");
+            var status = await _llmCacheManagementService.GetLLMCacheStatusAsync(cancellationToken);
+            return Ok(status);
         }
 
         /// <summary>
@@ -182,22 +176,16 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Updated LLM cache control status.</returns>
         [HttpPost("caching/llm-toggle")]
         [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
-        public Task<IActionResult> ToggleLLMCache([FromBody] ToggleLLMCacheRequest request, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> ToggleLLMCache([FromBody] ToggleLLMCacheRequest request, CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var userName = User?.Identity?.Name ?? "Unknown";
-                    var result = await _llmCacheManagementService.ToggleLLMCacheAsync(
-                        request.Enabled,
-                        userName,
-                        request.Reason,
-                        cancellationToken);
-                    LogAdminAudit("Toggled", "LLMCache", detail: $"Enabled: {request.Enabled}, Reason: {LoggingSanitizer.S(request.Reason)}");
-                    return result;
-                },
-                Ok,
-                "ToggleLLMCache");
+            var userName = User?.Identity?.Name ?? "Unknown";
+            var result = await _llmCacheManagementService.ToggleLLMCacheAsync(
+                request.Enabled,
+                userName,
+                request.Reason,
+                cancellationToken);
+            LogAdminAudit("Toggled", "LLMCache", detail: $"Enabled: {request.Enabled}, Reason: {LoggingSanitizer.S(request.Reason)}");
+            return Ok(result);
         }
 
     }

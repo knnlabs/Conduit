@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Models.Pricing;
 using ConduitLLM.Core.Services;
@@ -14,6 +15,7 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Policy = "MasterKeyPolicy")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public partial class PricingController : AdminControllerBase
     {
         private readonly IPricingRulesValidator _pricingValidator;

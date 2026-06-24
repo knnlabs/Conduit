@@ -34,19 +34,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task DeleteMapping_WithNonExistingId_ShouldReturnNotFound()
+        public async Task DeleteMapping_WithNonExistingId_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.GetMappingByIdAsync(999))
                 .ReturnsAsync((ModelProviderMapping?)null);
 
-            // Act
-            var result = await _controller.DeleteMapping(999);
-
-            // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("not_found");
+            // Act & Assert — not-found now throws KeyNotFoundException, mapped in AdminExceptionMiddleware
+            var act = async () => await _controller.DeleteMapping(999);
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion

@@ -14,36 +14,32 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("validate")]
         [ProducesResponseType(typeof(PricingValidationResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public Task<IActionResult> ValidatePricingConfiguration([FromBody] PricingValidationRequest request)
+        public async Task<IActionResult> ValidatePricingConfiguration([FromBody] PricingValidationRequest request)
         {
-            return ExecuteAsync(
-                () =>
+            await Task.CompletedTask;
+
+            using var timer = PricingOperationDuration.WithLabels("validate").NewTimer();
+
+            if (!TryDeserializePricingConfig<PricingRulesConfig>(request.PricingConfiguration, out var config, out var errorMessage))
+            {
+                PricingValidations.WithLabels(errorMessage!.StartsWith("Invalid JSON") ? "invalid_json" : "null_config").Inc();
+                return Ok(new PricingValidationResponse
                 {
-                    using var timer = PricingOperationDuration.WithLabels("validate").NewTimer();
+                    IsValid = false,
+                    Errors = new[] { errorMessage! }
+                });
+            }
 
-                    if (!TryDeserializePricingConfig<PricingRulesConfig>(request.PricingConfiguration, out var config, out var errorMessage))
-                    {
-                        PricingValidations.WithLabels(errorMessage!.StartsWith("Invalid JSON") ? "invalid_json" : "null_config").Inc();
-                        return Task.FromResult<PricingValidationResponse>(new PricingValidationResponse
-                        {
-                            IsValid = false,
-                            Errors = new[] { errorMessage! }
-                        });
-                    }
+            var result = _pricingValidator.Validate(config!);
 
-                    var result = _pricingValidator.Validate(config!);
-
-                    PricingValidations.WithLabels(result.IsValid ? "valid" : "invalid").Inc();
-                    LogAdminAudit("Validated", "PricingConfiguration", detail: $"IsValid: {result.IsValid}, Errors: {result.Errors.Count}");
-                    return Task.FromResult(new PricingValidationResponse
-                    {
-                        IsValid = result.IsValid,
-                        Errors = result.Errors.Select(e => $"[{e.Field}] {e.Message}" + (e.RuleIndex.HasValue ? $" (rule {e.RuleIndex})" : "")).ToArray(),
-                        Warnings = result.Warnings.ToArray()
-                    });
-                },
-                Ok,
-                "ValidatePricingConfiguration");
+            PricingValidations.WithLabels(result.IsValid ? "valid" : "invalid").Inc();
+            LogAdminAudit("Validated", "PricingConfiguration", detail: $"IsValid: {result.IsValid}, Errors: {result.Errors.Count}");
+            return Ok(new PricingValidationResponse
+            {
+                IsValid = result.IsValid,
+                Errors = result.Errors.Select(e => $"[{e.Field}] {e.Message}" + (e.RuleIndex.HasValue ? $" (rule {e.RuleIndex})" : "")).ToArray(),
+                Warnings = result.Warnings.ToArray()
+            });
         }
 
         /// <summary>
@@ -54,62 +50,58 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("simulate")]
         [ProducesResponseType(typeof(PricingSimulationResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public Task<IActionResult> SimulatePricing([FromBody] PricingSimulationRequest request)
+        public async Task<IActionResult> SimulatePricing([FromBody] PricingSimulationRequest request)
         {
-            return ExecuteAsync(
-                () =>
+            await Task.CompletedTask;
+
+            using var timer = PricingOperationDuration.WithLabels("simulate").NewTimer();
+
+            // Parse pricing configuration
+            if (!TryDeserializePricingConfig<PricingRulesConfig>(request.PricingConfiguration, out var config, out var errorMessage))
+            {
+                PricingSimulations.WithLabels(errorMessage!.StartsWith("Invalid JSON") ? "invalid_json" : "null_config").Inc();
+                throw new ArgumentException($"Invalid pricing configuration JSON: {errorMessage}");
+            }
+
+            // Validate configuration first
+            var validationResult = _pricingValidator.Validate(config!);
+            if (!validationResult.IsValid)
+            {
+                PricingSimulations.WithLabels("invalid_config").Inc();
+                throw new ArgumentException("Pricing configuration is invalid");
+            }
+
+            // Build usage object for simulation
+            var usage = new ConduitLLM.Core.Models.Usage
+            {
+                VideoDurationSeconds = request.VideoDurationSeconds,
+                VideoResolution = request.VideoResolution,
+                ImageCount = request.ImageCount,
+                ImageResolution = request.ImageResolution,
+                ImageQuality = request.ImageQuality,
+                PricingParameters = request.Parameters ?? new Dictionary<string, object>()
+            };
+
+            // Evaluate the pricing rules
+            var result = _pricingEvaluator.Evaluate(config!, request.Parameters ?? new Dictionary<string, object>(), usage);
+
+            PricingSimulations.WithLabels("success").Inc();
+            LogAdminAudit("Simulated", "PricingCalculation", detail: $"Cost: {result.Cost}, UsedDefault: {result.UsedDefaultRate}");
+            return Ok(new PricingSimulationResponse
+            {
+                CalculatedCost = result.Cost,
+                AppliedRate = result.Rate,
+                Quantity = result.Quantity,
+                MatchedRule = result.MatchedRule != null ? new MatchedRuleInfo
                 {
-                    using var timer = PricingOperationDuration.WithLabels("simulate").NewTimer();
-
-                    // Parse pricing configuration
-                    if (!TryDeserializePricingConfig<PricingRulesConfig>(request.PricingConfiguration, out var config, out var errorMessage))
-                    {
-                        PricingSimulations.WithLabels(errorMessage!.StartsWith("Invalid JSON") ? "invalid_json" : "null_config").Inc();
-                        throw new ArgumentException($"Invalid pricing configuration JSON: {errorMessage}");
-                    }
-
-                    // Validate configuration first
-                    var validationResult = _pricingValidator.Validate(config!);
-                    if (!validationResult.IsValid)
-                    {
-                        PricingSimulations.WithLabels("invalid_config").Inc();
-                        throw new ArgumentException("Pricing configuration is invalid");
-                    }
-
-                    // Build usage object for simulation
-                    var usage = new ConduitLLM.Core.Models.Usage
-                    {
-                        VideoDurationSeconds = request.VideoDurationSeconds,
-                        VideoResolution = request.VideoResolution,
-                        ImageCount = request.ImageCount,
-                        ImageResolution = request.ImageResolution,
-                        ImageQuality = request.ImageQuality,
-                        PricingParameters = request.Parameters ?? new Dictionary<string, object>()
-                    };
-
-                    // Evaluate the pricing rules
-                    var result = _pricingEvaluator.Evaluate(config!, request.Parameters ?? new Dictionary<string, object>(), usage);
-
-                    PricingSimulations.WithLabels("success").Inc();
-                    LogAdminAudit("Simulated", "PricingCalculation", detail: $"Cost: {result.Cost}, UsedDefault: {result.UsedDefaultRate}");
-                    return Task.FromResult(new PricingSimulationResponse
-                    {
-                        CalculatedCost = result.Cost,
-                        AppliedRate = result.Rate,
-                        Quantity = result.Quantity,
-                        MatchedRule = result.MatchedRule != null ? new MatchedRuleInfo
-                        {
-                            Description = result.MatchedRule.Description,
-                            Priority = result.MatchedRule.Priority,
-                            Rate = result.MatchedRule.Rate,
-                            ConditionsSummary = result.MatchedRule.Conditions?.Select(c => $"{c.Key} = {c.Value}").ToArray()
-                        } : null,
-                        UsedDefaultRate = result.UsedDefaultRate,
-                        WarningMessage = result.UsedDefaultRate ? "No matching rule found, default rate was used" : null
-                    });
-                },
-                Ok,
-                "SimulatePricing");
+                    Description = result.MatchedRule.Description,
+                    Priority = result.MatchedRule.Priority,
+                    Rate = result.MatchedRule.Rate,
+                    ConditionsSummary = result.MatchedRule.Conditions?.Select(c => $"{c.Key} = {c.Value}").ToArray()
+                } : null,
+                UsedDefaultRate = result.UsedDefaultRate,
+                WarningMessage = result.UsedDefaultRate ? "No matching rule found, default rate was used" : null
+            });
         }
     }
 }

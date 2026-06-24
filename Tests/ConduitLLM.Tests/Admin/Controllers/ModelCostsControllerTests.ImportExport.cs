@@ -149,7 +149,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task ImportJson_WithFailedImport_ShouldReturnBadRequest()
+        public async Task ImportJson_WithFailedImport_ShouldPropagateException()
         {
             // Arrange
             var jsonContent = "[{\"invalidField\":\"data\"}]";
@@ -171,12 +171,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(importResult);
 
             // Act
-            var result = await _controller.ImportJson(formFile);
+            var act = async () => await _controller.ImportJson(formFile);
 
-            // Assert
-            // The test should just verify it returns BadRequest - the exact format depends on the controller implementation
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            badRequestResult.Value.Should().NotBeNull();
+            // Assert - controller throws InvalidOperationException on failed import; AdminExceptionMiddleware owns mapping
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         #endregion

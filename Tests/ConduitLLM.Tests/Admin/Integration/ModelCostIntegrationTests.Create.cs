@@ -60,11 +60,11 @@ namespace ConduitLLM.Tests.Admin.Integration
         }
 
         [Fact]
-        public async Task CreateModelCost_DuplicateName_ShouldReturnBadRequest()
+        public async Task CreateModelCost_DuplicateName_ShouldPropagateException()
         {
             // Arrange
             await SetupTestDataAsync();
-            
+
             // Create first cost
             var firstCost = new CreateModelCostDto
             {
@@ -83,13 +83,10 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
 
             // Act
-            var result = await _controller.CreateModelCost(duplicateCost);
+            var act = async () => await _controller.CreateModelCost(duplicateCost);
 
-            // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.Should().Be("The requested operation is not valid");
-            errorResponse.Code.Should().Be("invalid_operation");
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         #endregion

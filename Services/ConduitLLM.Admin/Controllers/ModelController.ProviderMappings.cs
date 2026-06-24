@@ -16,19 +16,19 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(IEnumerable<ModelProviderMappingDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetModelProviderMappings(int id)
+        public async Task<IActionResult> GetModelProviderMappings(int id)
         {
-            return ExecuteWithNotFoundAsync(
-                () => _modelRepository.GetByIdAsync(id),
-                async model =>
-                {
-                    // Get all mappings for this model
-                    var mappings = await _mappingService.GetMappingsByModelIdAsync(id);
-                    var dtos = mappings.Select(m => m.ToDto());
+            var model = await _modelRepository.GetByIdAsync(id);
+            if (model == null)
+            {
+                return this.NotFoundEntity("Model", id);
+            }
 
-                    return (IActionResult)Ok(dtos);
-                },
-                "Model", id, "GetModelProviderMappings");
+            // Get all mappings for this model
+            var mappings = await _mappingService.GetMappingsByModelIdAsync(id);
+            var dtos = mappings.Select(m => m.ToDto());
+
+            return Ok(dtos);
         }
 
         /// <summary>
@@ -43,53 +43,46 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> CreateModelProviderMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
+        public async Task<IActionResult> CreateModelProviderMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Skip ModelId validation since it's no longer on the DTO
-                    // The ModelProviderTypeAssociationId provides the model relationship
+            // Skip ModelId validation since it's no longer on the DTO
+            // The ModelProviderTypeAssociationId provides the model relationship
 
-                    // Check if model exists
-                    var model = await _modelRepository.GetByIdAsync(id);
-                    if (model == null)
-                    {
-                        return (IActionResult)NotFound($"Model with ID {id} not found");
-                    }
+            // Check if model exists
+            var model = await _modelRepository.GetByIdAsync(id);
+            if (model == null)
+            {
+                return NotFound($"Model with ID {id} not found");
+            }
 
-                    // Check for duplicate mapping
-                    var existingMappings = await _mappingService.GetMappingsByModelIdAsync(id);
-                    if (existingMappings.Any(m => m.ProviderId == mappingDto.ProviderId))
-                    {
-                        return Conflict($"A mapping for model ID {id} with provider ID {mappingDto.ProviderId} already exists");
-                    }
+            // Check for duplicate mapping
+            var existingMappings = await _mappingService.GetMappingsByModelIdAsync(id);
+            if (existingMappings.Any(m => m.ProviderId == mappingDto.ProviderId))
+            {
+                return Conflict($"A mapping for model ID {id} with provider ID {mappingDto.ProviderId} already exists");
+            }
 
-                    // Create the mapping
-                    var mapping = mappingDto.ToEntity();
-                    var success = await _mappingService.AddMappingAsync(mapping);
+            // Create the mapping
+            var mapping = mappingDto.ToEntity();
+            var success = await _mappingService.AddMappingAsync(mapping);
 
-                    if (!success)
-                    {
-                        return BadRequest("Failed to create provider mapping");
-                    }
+            if (!success)
+            {
+                return BadRequest("Failed to create provider mapping");
+            }
 
-                    // Get the created mapping
-                    var createdMappings = await _mappingService.GetMappingsByModelIdAsync(id);
-                    var createdMapping = createdMappings.FirstOrDefault(m => m.ProviderId == mappingDto.ProviderId);
+            // Get the created mapping
+            var createdMappings = await _mappingService.GetMappingsByModelIdAsync(id);
+            var createdMapping = createdMappings.FirstOrDefault(m => m.ProviderId == mappingDto.ProviderId);
 
-                    LogAdminAudit("Created", "ModelProviderMapping", createdMapping?.Id,
-                        $"ModelId: {id}, ProviderId: {mappingDto.ProviderId}");
+            LogAdminAudit("Created", "ModelProviderMapping", createdMapping?.Id,
+                $"ModelId: {id}, ProviderId: {mappingDto.ProviderId}");
 
-                    return CreatedAtAction(
-                        nameof(GetModelProviderMappings),
-                        new { id = id },
-                        createdMapping?.ToDto()
-                    );
-                },
-                result => result,
-                "CreateModelProviderMapping",
-                new { Id = id });
+            return CreatedAtAction(
+                nameof(GetModelProviderMappings),
+                new { id = id },
+                createdMapping?.ToDto()
+            );
         }
 
         /// <summary>
@@ -104,53 +97,46 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> UpdateModelProviderMapping(int id, int mappingId, [FromBody] ModelProviderMappingDto mappingDto)
+        public async Task<IActionResult> UpdateModelProviderMapping(int id, int mappingId, [FromBody] ModelProviderMappingDto mappingDto)
         {
             if (mappingDto.Id != mappingId)
             {
-                return Task.FromResult<IActionResult>(BadRequest("Mapping ID in URL does not match Mapping ID in request body"));
+                return BadRequest("Mapping ID in URL does not match Mapping ID in request body");
             }
 
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Skip ModelId validation since it's no longer on the DTO
-                    // The ModelProviderTypeAssociationId provides the model relationship
+            // Skip ModelId validation since it's no longer on the DTO
+            // The ModelProviderTypeAssociationId provides the model relationship
 
-                    // Check if model exists
-                    var model = await _modelRepository.GetByIdAsync(id);
-                    if (model == null)
-                    {
-                        return (IActionResult)NotFound($"Model with ID {id} not found");
-                    }
+            // Check if model exists
+            var model = await _modelRepository.GetByIdAsync(id);
+            if (model == null)
+            {
+                return NotFound($"Model with ID {id} not found");
+            }
 
-                    // Get and update the mapping
-                    var existingMapping = await _mappingService.GetMappingByIdAsync(mappingId);
-                    if (existingMapping == null)
-                    {
-                        return NotFound($"Provider mapping with ID {mappingId} not found");
-                    }
+            // Get and update the mapping
+            var existingMapping = await _mappingService.GetMappingByIdAsync(mappingId);
+            if (existingMapping == null)
+            {
+                return NotFound($"Provider mapping with ID {mappingId} not found");
+            }
 
-                    if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
-                    {
-                        return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
-                    }
+            if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
+            {
+                return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
+            }
 
-                    existingMapping.UpdateFromDto(mappingDto);
-                    var success = await _mappingService.UpdateMappingAsync(existingMapping);
+            existingMapping.UpdateFromDto(mappingDto);
+            var success = await _mappingService.UpdateMappingAsync(existingMapping);
 
-                    if (!success)
-                    {
-                        return BadRequest("Failed to update provider mapping");
-                    }
+            if (!success)
+            {
+                return BadRequest("Failed to update provider mapping");
+            }
 
-                    LogAdminAudit("Updated", "ModelProviderMapping", mappingId, $"ModelId: {id}");
+            LogAdminAudit("Updated", "ModelProviderMapping", mappingId, $"ModelId: {id}");
 
-                    return (IActionResult)NoContent();
-                },
-                result => result,
-                "UpdateModelProviderMapping",
-                new { Id = id, MappingId = mappingId });
+            return NoContent();
         }
 
         /// <summary>
@@ -163,44 +149,37 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> DeleteModelProviderMapping(int id, int mappingId)
+        public async Task<IActionResult> DeleteModelProviderMapping(int id, int mappingId)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    // Check if model exists
-                    var model = await _modelRepository.GetByIdAsync(id);
-                    if (model == null)
-                    {
-                        return (IActionResult)NotFound($"Model with ID {id} not found");
-                    }
+            // Check if model exists
+            var model = await _modelRepository.GetByIdAsync(id);
+            if (model == null)
+            {
+                return NotFound($"Model with ID {id} not found");
+            }
 
-                    // Check if mapping exists and belongs to this model
-                    var existingMapping = await _mappingService.GetMappingByIdAsync(mappingId);
-                    if (existingMapping == null)
-                    {
-                        return NotFound($"Provider mapping with ID {mappingId} not found");
-                    }
+            // Check if mapping exists and belongs to this model
+            var existingMapping = await _mappingService.GetMappingByIdAsync(mappingId);
+            if (existingMapping == null)
+            {
+                return NotFound($"Provider mapping with ID {mappingId} not found");
+            }
 
-                    if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
-                    {
-                        return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
-                    }
+            if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
+            {
+                return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
+            }
 
-                    var success = await _mappingService.DeleteMappingAsync(mappingId);
+            var success = await _mappingService.DeleteMappingAsync(mappingId);
 
-                    if (!success)
-                    {
-                        return BadRequest("Failed to delete provider mapping");
-                    }
+            if (!success)
+            {
+                return BadRequest("Failed to delete provider mapping");
+            }
 
-                    LogAdminAudit("Deleted", "ModelProviderMapping", mappingId, $"ModelId: {id}");
+            LogAdminAudit("Deleted", "ModelProviderMapping", mappingId, $"ModelId: {id}");
 
-                    return (IActionResult)NoContent();
-                },
-                result => result,
-                "DeleteModelProviderMapping",
-                new { Id = id, MappingId = mappingId });
+            return NoContent();
         }
     }
 }

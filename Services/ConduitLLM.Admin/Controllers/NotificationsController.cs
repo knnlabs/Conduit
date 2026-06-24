@@ -1,3 +1,5 @@
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Extensions;
@@ -13,6 +15,7 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Policy = "MasterKeyPolicy")]
+    [ServiceFilter(typeof(OperationLoggingFilter))]
     public class NotificationsController : AdminControllerBase
     {
         private readonly IAdminNotificationService _notificationService;
@@ -37,12 +40,10 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetAllNotifications()
+        public async Task<IActionResult> GetAllNotifications()
         {
-            return ExecuteAsync(
-                () => _notificationService.GetAllNotificationsAsync(),
-                Ok,
-                "GetAllNotifications");
+            var notifications = await _notificationService.GetAllNotificationsAsync();
+            return Ok(notifications);
         }
 
         /// <summary>
@@ -52,12 +53,10 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("unread")]
         [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetUnreadNotifications()
+        public async Task<IActionResult> GetUnreadNotifications()
         {
-            return ExecuteAsync(
-                () => _notificationService.GetUnreadNotificationsAsync(),
-                Ok,
-                "GetUnreadNotifications");
+            var notifications = await _notificationService.GetUnreadNotificationsAsync();
+            return Ok(notifications);
         }
 
         /// <summary>
@@ -69,14 +68,14 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(NotificationDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> GetNotificationById(int id)
+        public async Task<IActionResult> GetNotificationById(int id)
         {
-            return ExecuteWithNotFoundAsync(
-                () => _notificationService.GetNotificationByIdAsync(id),
-                Ok,
-                "Notification",
-                id,
-                "GetNotificationById");
+            var notification = await _notificationService.GetNotificationByIdAsync(id);
+            if (notification == null)
+            {
+                return this.NotFoundEntity("Notification", id);
+            }
+            return Ok(notification);
         }
 
         /// <summary>
@@ -88,17 +87,11 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(NotificationDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> CreateNotification([FromBody] CreateNotificationDto notification)
+        public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationDto notification)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var result = await _notificationService.CreateNotificationAsync(notification);
-                    LogAdminAudit("Created", "Notification", result.Id, $"Type: {result.Type}, Message: {LoggingSanitizer.S(result.Message)}");
-                    return result;
-                },
-                createdNotification => CreatedAtAction(nameof(GetNotificationById), new { id = createdNotification.Id }, createdNotification),
-                "CreateNotification");
+            var result = await _notificationService.CreateNotificationAsync(notification);
+            LogAdminAudit("Created", "Notification", result.Id, $"Type: {result.Type}, Message: {LoggingSanitizer.S(result.Message)}");
+            return CreatedAtAction(nameof(GetNotificationById), new { id = result.Id }, result);
         }
 
         /// <summary>
@@ -112,24 +105,18 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> UpdateNotification(int id, [FromBody] UpdateNotificationDto notification)
+        public async Task<IActionResult> UpdateNotification(int id, [FromBody] UpdateNotificationDto notification)
         {
             // Ensure ID in route matches ID in body
             if (id != notification.Id)
             {
-                return Task.FromResult<IActionResult>(BadRequest("ID in route must match ID in body"));
+                return BadRequest("ID in route must match ID in body");
             }
 
-            return ExecuteAsync(
-                async () =>
-                {
-                    if (!await _notificationService.UpdateNotificationAsync(notification))
-                        throw new KeyNotFoundException();
-                    LogAdminAudit("Updated", "Notification", id, notification.Message != null ? $"Message: {LoggingSanitizer.S(notification.Message)}" : null);
-                },
-                NoContent(),
-                "UpdateNotification",
-                new { Id = id });
+            if (!await _notificationService.UpdateNotificationAsync(notification))
+                throw new KeyNotFoundException();
+            LogAdminAudit("Updated", "Notification", id, notification.Message != null ? $"Message: {LoggingSanitizer.S(notification.Message)}" : null);
+            return NoContent();
         }
 
         /// <summary>
@@ -141,18 +128,12 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> MarkAsRead(int id)
+        public async Task<IActionResult> MarkAsRead(int id)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    if (!await _notificationService.MarkNotificationAsReadAsync(id))
-                        throw new KeyNotFoundException();
-                    LogAdminAudit("MarkedAsRead", "Notification", id, "IsRead: true");
-                },
-                NoContent(),
-                "MarkAsRead",
-                new { Id = id });
+            if (!await _notificationService.MarkNotificationAsReadAsync(id))
+                throw new KeyNotFoundException();
+            LogAdminAudit("MarkedAsRead", "Notification", id, "IsRead: true");
+            return NoContent();
         }
 
         /// <summary>
@@ -162,17 +143,11 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("mark-all-read")]
         [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> MarkAllAsRead()
+        public async Task<IActionResult> MarkAllAsRead()
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    var count = await _notificationService.MarkAllNotificationsAsReadAsync();
-                    LogAdminAudit("MarkedAllAsRead", "Notification", detail: $"Count: {count}");
-                    return count;
-                },
-                result => Ok(result),
-                "MarkAllAsRead");
+            var count = await _notificationService.MarkAllNotificationsAsReadAsync();
+            LogAdminAudit("MarkedAllAsRead", "Notification", detail: $"Count: {count}");
+            return Ok(count);
         }
 
         /// <summary>
@@ -184,18 +159,12 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public Task<IActionResult> DeleteNotification(int id)
+        public async Task<IActionResult> DeleteNotification(int id)
         {
-            return ExecuteAsync(
-                async () =>
-                {
-                    if (!await _notificationService.DeleteNotificationAsync(id))
-                        throw new KeyNotFoundException();
-                    LogAdminAudit("Deleted", "Notification", id, $"Id: {id}");
-                },
-                NoContent(),
-                "DeleteNotification",
-                new { Id = id });
+            if (!await _notificationService.DeleteNotificationAsync(id))
+                throw new KeyNotFoundException();
+            LogAdminAudit("Deleted", "Notification", id, $"Id: {id}");
+            return NoContent();
         }
     }
 }

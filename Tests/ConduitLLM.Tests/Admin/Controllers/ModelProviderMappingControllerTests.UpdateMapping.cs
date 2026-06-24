@@ -45,7 +45,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task UpdateMapping_WithNonExistingId_ShouldReturnNotFound()
+        public async Task UpdateMapping_WithNonExistingId_ShouldPropagateException()
         {
             // Arrange
             var mapping = new ModelProviderMapping
@@ -61,13 +61,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.GetMappingByIdAsync(999))
                 .ReturnsAsync((ModelProviderMapping?)null);
 
-            // Act
-            var actionResult = await _controller.UpdateMapping(999, mapping.ToDto());
-
-            // Assert
-            var notFoundResult = actionResult.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("not_found");
+            // Act & Assert — not-found now throws KeyNotFoundException, mapped in AdminExceptionMiddleware
+            var act = async () => await _controller.UpdateMapping(999, mapping.ToDto());
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion

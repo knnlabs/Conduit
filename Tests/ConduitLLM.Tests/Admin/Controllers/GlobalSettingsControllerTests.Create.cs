@@ -45,7 +45,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task CreateSetting_WithDuplicateKey_ShouldReturnBadRequest()
+        public async Task CreateSetting_WithDuplicateKey_ShouldPropagateException()
         {
             // Arrange
             var createDto = new CreateGlobalSettingDto
@@ -57,14 +57,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.CreateSettingAsync(It.IsAny<CreateGlobalSettingDto>()))
                 .ThrowsAsync(new InvalidOperationException("Setting with key already exists"));
 
-            // Act
-            var result = await _controller.CreateSetting(createDto);
-
-            // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.Should().Be("The requested operation is not valid");
-            errorResponse.Code.Should().Be("invalid_operation");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.CreateSetting(createDto);
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         #endregion

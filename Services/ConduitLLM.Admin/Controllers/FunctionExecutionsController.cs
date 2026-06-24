@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.DTOs;
@@ -16,6 +17,7 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
+[ServiceFilter(typeof(OperationLoggingFilter))]
 public class FunctionExecutionsController : AdminControllerBase
 {
     private readonly IFunctionExecutionRepository _executionRepository;
@@ -40,18 +42,15 @@ public class FunctionExecutionsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetExecutionById(Guid id)
+    public async Task<IActionResult> GetExecutionById(Guid id)
     {
-        return ExecuteWithNotFoundAsync(
-            async () =>
-            {
-                var execution = await _executionRepository.GetByIdAsync(id);
-                return execution?.ToDto();
-            },
-            Ok,
-            "Function execution",
-            id,
-            "GetExecutionById");
+        var execution = await _executionRepository.GetByIdAsync(id);
+        if (execution == null)
+        {
+            return this.NotFoundEntity("Function execution", id);
+        }
+
+        return Ok(execution.ToDto());
     }
 
     /// <summary>
@@ -62,17 +61,10 @@ public class FunctionExecutionsController : AdminControllerBase
     [HttpGet("virtualkey/{virtualKeyId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetExecutionsByVirtualKey(int virtualKeyId)
+    public async Task<IActionResult> GetExecutionsByVirtualKey(int virtualKeyId)
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var executions = await _executionRepository.GetByVirtualKeyIdAsync(virtualKeyId);
-                return executions.Select(e => e.ToDto()).ToList();
-            },
-            Ok,
-            "GetExecutionsByVirtualKey",
-            new { VirtualKeyId = virtualKeyId });
+        var executions = await _executionRepository.GetByVirtualKeyIdAsync(virtualKeyId);
+        return Ok(executions.Select(e => e.ToDto()).ToList());
     }
 
     /// <summary>
@@ -83,18 +75,11 @@ public class FunctionExecutionsController : AdminControllerBase
     [HttpGet("configuration/{functionConfigurationId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetExecutionsByConfiguration(int functionConfigurationId)
+    public async Task<IActionResult> GetExecutionsByConfiguration(int functionConfigurationId)
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var executions = await _executionRepository.GetByFunctionConfigurationIdAsync(
-                    functionConfigurationId);
-                return executions.Select(e => e.ToDto()).ToList();
-            },
-            Ok,
-            "GetExecutionsByConfiguration",
-            new { FunctionConfigurationId = functionConfigurationId });
+        var executions = await _executionRepository.GetByFunctionConfigurationIdAsync(
+            functionConfigurationId);
+        return Ok(executions.Select(e => e.ToDto()).ToList());
     }
 
     /// <summary>
@@ -106,22 +91,15 @@ public class FunctionExecutionsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetExecutionsByState(string state)
+    public async Task<IActionResult> GetExecutionsByState(string state)
     {
         if (!Enum.TryParse<ExecutionState>(state, true, out var stateEnum))
         {
-            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto($"Invalid execution state: {state}")));
+            return BadRequest(new ErrorResponseDto($"Invalid execution state: {state}"));
         }
 
-        return ExecuteAsync(
-            async () =>
-            {
-                var executions = await _executionRepository.GetByStateAsync(stateEnum);
-                return executions.Select(e => e.ToDto()).ToList();
-            },
-            Ok,
-            "GetExecutionsByState",
-            new { State = state });
+        var executions = await _executionRepository.GetByStateAsync(stateEnum);
+        return Ok(executions.Select(e => e.ToDto()).ToList());
     }
 
     /// <summary>
@@ -131,16 +109,10 @@ public class FunctionExecutionsController : AdminControllerBase
     [HttpGet("expired-leases")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetExpiredLeases()
+    public async Task<IActionResult> GetExpiredLeases()
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var executions = await _executionRepository.GetExpiredLeasesAsync();
-                return executions.Select(e => e.ToDto()).ToList();
-            },
-            Ok,
-            "GetExpiredLeases");
+        var executions = await _executionRepository.GetExpiredLeasesAsync();
+        return Ok(executions.Select(e => e.ToDto()).ToList());
     }
 
     /// <summary>
@@ -150,16 +122,10 @@ public class FunctionExecutionsController : AdminControllerBase
     [HttpGet("ready-for-retry")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetReadyForRetry()
+    public async Task<IActionResult> GetReadyForRetry()
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                var executions = await _executionRepository.GetReadyForRetryAsync();
-                return executions.Select(e => e.ToDto()).ToList();
-            },
-            Ok,
-            "GetReadyForRetry");
+        var executions = await _executionRepository.GetReadyForRetryAsync();
+        return Ok(executions.Select(e => e.ToDto()).ToList());
     }
 
     /// <summary>
@@ -171,31 +137,24 @@ public class FunctionExecutionsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> CleanupOldExecutions([FromQuery] int olderThanDays = 30)
+    public async Task<IActionResult> CleanupOldExecutions([FromQuery] int olderThanDays = 30)
     {
         if (olderThanDays < 1)
         {
-            return Task.FromResult<IActionResult>(BadRequest(new ErrorResponseDto("olderThanDays must be at least 1")));
+            return BadRequest(new ErrorResponseDto("olderThanDays must be at least 1"));
         }
 
-        return ExecuteAsync(
-            async () =>
-            {
-                var olderThan = DateTime.UtcNow.AddDays(-olderThanDays);
-                var deletedCount = await _executionRepository.DeleteOldExecutionsAsync(olderThan);
+        var olderThan = DateTime.UtcNow.AddDays(-olderThanDays);
+        var deletedCount = await _executionRepository.DeleteOldExecutionsAsync(olderThan);
 
-                LogAdminAudit("Cleanup", "FunctionExecution",
-                    detail: $"OlderThanDays: {olderThanDays}, DeletedCount: {deletedCount}");
+        LogAdminAudit("Cleanup", "FunctionExecution",
+            detail: $"OlderThanDays: {olderThanDays}, DeletedCount: {deletedCount}");
 
-                return new
-                {
-                    deletedCount,
-                    message = $"Deleted {deletedCount} executions older than {olderThanDays} days"
-                };
-            },
-            Ok,
-            "CleanupOldExecutions",
-            new { OlderThanDays = olderThanDays });
+        return Ok(new
+        {
+            deletedCount,
+            message = $"Deleted {deletedCount} executions older than {olderThanDays} days"
+        });
     }
 
 }
