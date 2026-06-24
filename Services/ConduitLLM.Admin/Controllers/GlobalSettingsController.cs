@@ -45,7 +45,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of all global settings</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<GlobalSettingDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllSettings()
         {
             var settings = await _globalSettingService.GetAllSettingsAsync();
@@ -60,7 +59,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(GlobalSettingDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetSettingById(int id)
         {
             var setting = await _globalSettingService.GetSettingByIdAsync(id);
@@ -79,7 +77,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("by-key/{key}")]
         [ProducesResponseType(typeof(GlobalSettingDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetSettingByKey(string key)
         {
             var setting = await _globalSettingService.GetSettingByKeyAsync(key);
@@ -98,7 +95,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(GlobalSettingDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateSetting([FromBody] CreateGlobalSettingDto setting)
         {
             var createdSetting = await _globalSettingService.CreateSettingAsync(setting);
@@ -117,7 +113,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateSetting(int id, [FromBody] UpdateGlobalSettingDto setting)
         {
             // Ensure ID in route matches ID in body
@@ -164,7 +159,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPut("by-key")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateSettingByKey([FromBody] UpdateGlobalSettingByKeyDto setting)
         {
             if (!await _globalSettingService.UpdateSettingByKeyAsync(setting))
@@ -183,7 +177,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteSetting(int id)
         {
             if (!await _globalSettingService.DeleteSettingAsync(id))
@@ -202,7 +195,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("by-key/{key}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteSettingByKey(string key)
         {
             if (!await _globalSettingService.DeleteSettingByKeyAsync(key))
@@ -219,7 +211,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Cache statistics including hit rate, size, and invalidation count</returns>
         [HttpGet("cache/stats")]
         [ProducesResponseType(typeof(GlobalSettingCacheStatsDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetCacheStats()
         {
             var stats = await _cacheService.GetCacheStatsAsync();
@@ -242,7 +233,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>No content if successful</returns>
         [HttpPost("cache/reload")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ReloadCache()
         {
             await _cacheService.ReloadAllSettingsAsync();
@@ -258,7 +248,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>No content if successful</returns>
         [HttpPost("cache/invalidate/{key}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> InvalidateCacheSetting(string key)
         {
             await _cacheService.InvalidateSettingAsync(key);

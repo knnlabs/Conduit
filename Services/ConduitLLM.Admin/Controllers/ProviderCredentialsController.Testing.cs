@@ -17,7 +17,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("test/{id}")]
         [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> TestProviderConnection(int id)
         {
             var provider = await _providerRepository.GetByIdAsync(id);
@@ -82,7 +81,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("test")]
         [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] TestProviderRequest testRequest)
         {
             // Create a temporary provider for testing
@@ -166,7 +164,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("{providerId}/keys/{keyId}/test")]
         [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> TestProviderKeyCredential(int providerId, int keyId)
         {
             var key = await _keyRepository.GetByIdAsync(keyId);

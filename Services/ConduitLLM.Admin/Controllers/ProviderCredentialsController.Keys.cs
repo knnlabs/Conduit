@@ -18,7 +18,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{providerId}/keys")]
         [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetProviderKeyCredentials(int providerId)
         {
             var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
@@ -50,7 +49,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{providerId}/keys/{keyId}")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetProviderKeyCredential(int providerId, int keyId)
         {
             var key = await _keyRepository.GetByIdAsync(keyId);
@@ -87,7 +85,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateProviderKeyCredential(int providerId, [FromBody] CreateKeyRequest request)
         {
             // Verify provider exists
@@ -157,7 +154,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateProviderKeyCredential(int providerId, int keyId, [FromBody] UpdateKeyRequest request)
         {
             var key = await _keyRepository.GetByIdAsync(keyId);
@@ -245,7 +241,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{providerId}/keys/{keyId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteProviderKeyCredential(int providerId, int keyId)
         {
             var key = await _keyRepository.GetByIdAsync(keyId);
@@ -281,7 +276,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SetPrimaryKey(int providerId, int keyId)
         {
             var key = await _keyRepository.GetByIdAsync(keyId);

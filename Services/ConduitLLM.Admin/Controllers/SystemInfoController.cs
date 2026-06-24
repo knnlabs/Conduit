@@ -47,7 +47,6 @@ public class SystemInfoController : AdminControllerBase
     /// <returns>System information details</returns>
     [HttpGet("info")]
     [ProducesResponseType(typeof(SystemInfoDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetSystemInfo()
     {
         var result = await _systemInfoService.GetSystemInfoAsync();
@@ -60,7 +59,6 @@ public class SystemInfoController : AdminControllerBase
     /// <returns>Health status information</returns>
     [HttpGet("health")]
     [ProducesResponseType(typeof(HealthStatusDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetHealthStatus()
     {
         var result = await _systemInfoService.GetHealthStatusAsync();
@@ -73,7 +71,6 @@ public class SystemInfoController : AdminControllerBase
     /// <returns>Success response with cache invalidation details</returns>
     [HttpPost("cache/invalidate-discovery")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> InvalidateDiscoveryCache()
     {
         // Publish event to all Gateway API instances via MassTransit
@@ -101,7 +98,6 @@ public class SystemInfoController : AdminControllerBase
     [HttpGet("cache/function-discovery/stats")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetFunctionDiscoveryCacheStats()
     {
         if (_functionDiscoveryCacheService == null)
@@ -123,7 +119,6 @@ public class SystemInfoController : AdminControllerBase
     /// <returns>Success response with cache invalidation details</returns>
     [HttpPost("cache/invalidate-function-discovery")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> InvalidateFunctionDiscoveryCache()
     {
         // Publish event to all Gateway API instances via MassTransit

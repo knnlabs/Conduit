@@ -45,7 +45,6 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GenerateKey([FromBody] CreateVirtualKeyRequestDto request)
     {
         var response = await _virtualKeyService.GenerateVirtualKeyAsync(request);
@@ -63,7 +62,6 @@ public class VirtualKeysController : AdminControllerBase
     [HttpGet]
     [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(List<VirtualKeyDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ListKeys([FromQuery] int? virtualKeyGroupId = null)
     {
         var result = await _virtualKeyService.ListVirtualKeysAsync(virtualKeyGroupId);
@@ -79,7 +77,6 @@ public class VirtualKeysController : AdminControllerBase
     [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(VirtualKeyDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetKeyById(int id)
     {
         var result = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
@@ -103,7 +100,6 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateKey(int id, [FromBody] UpdateVirtualKeyRequestDto request)
     {
         // Fetch pre-state for change tracking
@@ -156,7 +152,6 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteKey(int id)
     {
         if (!await _virtualKeyService.DeleteVirtualKeyAsync(id))
@@ -176,7 +171,6 @@ public class VirtualKeysController : AdminControllerBase
     [HttpPost("validate")]
     [ProducesResponseType(typeof(VirtualKeyValidationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     // lgtm [cs/web/missing-function-level-access-control]
     public async Task<IActionResult> ValidateKey([FromBody] ValidateVirtualKeyRequest request)
     {
@@ -196,7 +190,6 @@ public class VirtualKeysController : AdminControllerBase
     [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(VirtualKeyValidationInfoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetValidationInfo(int id)
     {
         var result = await _virtualKeyService.GetValidationInfoAsync(id);
@@ -222,7 +215,6 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PerformMaintenance()
     {
         await _virtualKeyService.PerformMaintenanceAsync();
@@ -239,7 +231,6 @@ public class VirtualKeysController : AdminControllerBase
     [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(VirtualKeyDiscoveryPreviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PreviewDiscovery(int id, [FromQuery] string? capability = null)
     {
         var result = await _virtualKeyService.PreviewDiscoveryAsync(id, capability);
@@ -259,7 +250,6 @@ public class VirtualKeysController : AdminControllerBase
     [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetKeyGroup(int id)
     {
         var key = await _virtualKeyService.GetVirtualKeyByIdAsync(id);
@@ -294,7 +284,6 @@ public class VirtualKeysController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUsageByKey(string key)
     {
         if (string.IsNullOrEmpty(key))

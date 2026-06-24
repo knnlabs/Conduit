@@ -67,6 +67,9 @@ public partial class Program
         {
             options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.AdminApiDocumentTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ApiKeySecurityOperationTransformer>();
+            // Tier 2b (#905): document the universal 500 once, so controllers can drop the per-action
+            // [ProducesResponseType(Status500InternalServerError)] boilerplate.
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.DefaultErrorResponsesOperationTransformer>();
         });
 
         // Configure services (partial class methods)

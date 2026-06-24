@@ -50,7 +50,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of all model costs or paginated response</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelCostDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllModelCosts(
             [FromQuery] int? page = null,
             [FromQuery] int? pageSize = null,
@@ -96,7 +95,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ModelCostDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelCostById(int id)
         {
             var modelCost = await _modelCostService.GetModelCostByIdAsync(id);
@@ -114,7 +112,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of model costs for the specified provider</returns>
         [HttpGet("provider/{providerId}")]
         [ProducesResponseType(typeof(IEnumerable<ModelCostDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelCostsByProvider(int providerId)
         {
             var result = await _modelCostService.GetModelCostsByProviderAsync(providerId);
@@ -129,7 +126,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("name/{costName}")]
         [ProducesResponseType(typeof(ModelCostDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelCostByCostName(string costName)
         {
             var modelCost = await _modelCostService.GetModelCostByCostNameAsync(costName);
@@ -148,7 +144,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(ModelCostDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateModelCost([FromBody] CreateModelCostDto modelCost)
         {
             var result = await _modelCostService.CreateModelCostAsync(modelCost);
@@ -166,7 +161,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateModelCost(int id, [FromBody] UpdateModelCostDto modelCost)
         {
             // Ensure ID in route matches ID in body
@@ -195,7 +189,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteModelCost(int id)
         {
             var existing = await _modelCostService.GetModelCostByIdAsync(id);
@@ -220,7 +213,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("overview")]
         [ProducesResponseType(typeof(IEnumerable<ModelCostOverviewDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelCostOverview(
             [FromQuery] DateTime startDate,
             [FromQuery] DateTime endDate)
@@ -242,7 +234,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("import")]
         [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportModelCosts([FromBody] IEnumerable<CreateModelCostDto> modelCosts)
         {
             if (modelCosts == null || !modelCosts.Any())
@@ -262,7 +253,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>CSV file containing model costs</returns>
         [HttpGet("export/csv")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ExportCsv([FromQuery] int? providerId = null)
         {
             var result = await _modelCostService.ExportModelCostsAsync("csv", providerId);
@@ -278,7 +268,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>JSON file containing model costs</returns>
         [HttpGet("export/json")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ExportJson([FromQuery] int? providerId = null)
         {
             var result = await _modelCostService.ExportModelCostsAsync("json", providerId);
@@ -295,7 +284,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("import/csv")]
         // [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportCsv(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -336,7 +324,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("import/json")]
         // [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportJson(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -379,7 +366,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(ValidationResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ValidatePricingRules(
             int id,
             [FromBody] ValidatePricingRulesRequest request)
@@ -418,7 +404,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("validate-pricing-rules")]
         [ProducesResponseType(typeof(ValidationResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ValidatePricingRulesStandalone([FromBody] ValidatePricingRulesRequest request)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.PricingConfiguration))

@@ -48,7 +48,6 @@ public class ModelProviderMappingController : AdminControllerBase
     /// <returns>A list of all model provider mappings</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<ModelProviderMappingDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAllMappings()
     {
         var mappings = await _mappingService.GetAllMappingsAsync();
@@ -64,7 +63,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ModelProviderMappingDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetMappingById(int id)
     {
         var mapping = await _mappingService.GetMappingByIdAsync(id);
@@ -81,7 +79,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [ProducesResponseType(typeof(ModelProviderMappingDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateMapping([FromBody] ModelProviderMappingDto mappingDto)
     {
         // Check if a mapping with the same model alias already exists
@@ -120,7 +117,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
     {
         if (id != mappingDto.Id)
@@ -157,7 +153,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteMapping(int id)
     {
         var existingMapping = await _mappingService.GetMappingByIdAsync(id);
@@ -186,7 +181,6 @@ public class ModelProviderMappingController : AdminControllerBase
     /// <returns>List of providers with IDs and names</returns>
     [HttpGet("providers")]
     [ProducesResponseType(typeof(IEnumerable<Provider>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetProviders()
     {
         var result = await _mappingService.GetProvidersAsync();
@@ -201,7 +195,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [HttpPost("bulk")]
     [ProducesResponseType(typeof(BulkMappingResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateBulkMappings([FromBody] List<ModelProviderMappingDto> mappingDtos)
     {
         if (mappingDtos == null || !mappingDtos.Any())
@@ -235,7 +228,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [HttpPost("bulk/delete")]
     [ProducesResponseType(typeof(BulkDeleteResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteBulkMappings([FromBody] List<int> ids)
     {
         if (ids == null || ids.Count == 0)
@@ -297,7 +289,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [HttpPost("bulk/enable")]
     [ProducesResponseType(typeof(BulkUpdateResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> EnableBulkMappings([FromBody] List<int> ids)
     {
         return await UpdateBulkMappingsStatus(ids, true);
@@ -311,7 +302,6 @@ public class ModelProviderMappingController : AdminControllerBase
     [HttpPost("bulk/disable")]
     [ProducesResponseType(typeof(BulkUpdateResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DisableBulkMappings([FromBody] List<int> ids)
     {
         return await UpdateBulkMappingsStatus(ids, false);

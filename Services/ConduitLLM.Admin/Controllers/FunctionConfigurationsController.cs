@@ -40,7 +40,6 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// <returns>List of all function configurations</returns>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAllConfigurations()
     {
         var configurations = await _configurationRepository.GetAllUnboundedAsync();
@@ -55,7 +54,6 @@ public class FunctionConfigurationsController : AdminControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetConfigurationById(int id)
     {
         var configuration = await _configurationRepository.GetByIdAsync(id);
@@ -73,7 +71,6 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// <returns>List of function configurations for the specified provider</returns>
     [HttpGet("provider/{providerType}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetConfigurationsByProvider(string providerType)
     {
         if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionProviderType>(providerType, true, out var providerEnum))
@@ -92,7 +89,6 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// <returns>List of function configurations for the specified purpose</returns>
     [HttpGet("purpose/{purpose}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetConfigurationsByPurpose(string purpose)
     {
         if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionPurpose>(purpose, true, out var purposeEnum))
@@ -112,7 +108,6 @@ public class FunctionConfigurationsController : AdminControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateConfiguration(
         [FromBody] ConduitLLM.Functions.Entities.FunctionConfiguration configuration)
     {
@@ -162,7 +157,6 @@ public class FunctionConfigurationsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateConfiguration(
         int id,
         [FromBody] ConduitLLM.Functions.Entities.FunctionConfiguration configuration)
@@ -241,7 +235,6 @@ public class FunctionConfigurationsController : AdminControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteConfiguration(int id)
     {
         var toDelete = await _configurationRepository.GetByIdAsync(id);

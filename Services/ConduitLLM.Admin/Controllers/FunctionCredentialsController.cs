@@ -42,7 +42,6 @@ public class FunctionCredentialsController : AdminControllerBase
     /// <returns>List of all credentials</returns>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAllCredentials()
     {
         var credentials = await _credentialRepository.GetAllUnboundedAsync();
@@ -57,7 +56,6 @@ public class FunctionCredentialsController : AdminControllerBase
     [HttpGet("configuration/{functionConfigurationId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCredentialsByConfiguration(int functionConfigurationId)
     {
         // Get the configuration to determine its provider type
@@ -81,7 +79,6 @@ public class FunctionCredentialsController : AdminControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCredentialById(int id)
     {
         var credential = await _credentialRepository.GetByIdAsync(id);
@@ -100,7 +97,6 @@ public class FunctionCredentialsController : AdminControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateCredential(
         [FromBody] ConduitLLM.Functions.Entities.FunctionCredential credential)
     {
@@ -131,7 +127,6 @@ public class FunctionCredentialsController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateCredential(
         int id,
         [FromBody] ConduitLLM.Functions.Entities.FunctionCredential credential)
@@ -168,7 +163,6 @@ public class FunctionCredentialsController : AdminControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteCredential(int id)
     {
         var credential = await _credentialRepository.GetByIdAsync(id);
@@ -185,7 +179,6 @@ public class FunctionCredentialsController : AdminControllerBase
     [HttpPost("test")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> TestCredential([FromBody] TestCredentialRequest testRequest)
     {
         if (testRequest == null)

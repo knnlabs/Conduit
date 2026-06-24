@@ -54,7 +54,6 @@ public class AnalyticsController : AdminControllerBase
     [HttpGet("logs")]
     [ProducesResponseType(typeof(PagedResult<LogRequestDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetLogs(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
@@ -88,7 +87,6 @@ public class AnalyticsController : AdminControllerBase
     [HttpGet("logs/{id:int}")]
     [ProducesResponseType(typeof(LogRequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetLogById(int id)
     {
         var log = await _analyticsService.GetLogByIdAsync(id);
@@ -105,7 +103,6 @@ public class AnalyticsController : AdminControllerBase
     /// <returns>List of model names</returns>
     [HttpGet("logs/models")]
     [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetDistinctModels()
     {
         var models = await _analyticsService.GetDistinctModelsAsync();
@@ -126,7 +123,6 @@ public class AnalyticsController : AdminControllerBase
     [HttpGet("costs/summary")]
     [ProducesResponseType(typeof(CostDashboardDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCostSummary(
         [FromQuery] string timeframe = "daily",
         [FromQuery] DateTime? startDate = null,
@@ -151,7 +147,6 @@ public class AnalyticsController : AdminControllerBase
     [HttpGet("costs/trends")]
     [ProducesResponseType(typeof(CostTrendDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCostTrends(
         [FromQuery] string period = "daily",
         [FromQuery] DateTime? startDate = null,
@@ -175,7 +170,6 @@ public class AnalyticsController : AdminControllerBase
     /// <returns>Model cost breakdown</returns>
     [HttpGet("costs/models")]
     [ProducesResponseType(typeof(ModelCostBreakdownDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetModelCosts(
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
@@ -194,7 +188,6 @@ public class AnalyticsController : AdminControllerBase
     /// <returns>Virtual key cost breakdown</returns>
     [HttpGet("costs/virtualkeys")]
     [ProducesResponseType(typeof(VirtualKeyCostBreakdownDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetVirtualKeyCosts(
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
@@ -218,7 +211,6 @@ public class AnalyticsController : AdminControllerBase
     [HttpGet("summary")]
     [ProducesResponseType(typeof(AnalyticsSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAnalyticsSummary(
         [FromQuery] string timeframe = "daily",
         [FromQuery] DateTime? startDate = null,
@@ -242,7 +234,6 @@ public class AnalyticsController : AdminControllerBase
     /// <returns>Usage statistics</returns>
     [HttpGet("virtualkeys/{virtualKeyId:int}/usage")]
     [ProducesResponseType(typeof(UsageStatisticsDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetVirtualKeyUsage(
         int virtualKeyId,
         [FromQuery] DateTime? startDate = null,
@@ -264,7 +255,6 @@ public class AnalyticsController : AdminControllerBase
     [HttpGet("export")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ExportAnalytics(
         [FromQuery] string format = "csv",
         [FromQuery] DateTime? startDate = null,
@@ -336,7 +326,6 @@ public class AnalyticsController : AdminControllerBase
     /// <returns>Success response</returns>
     [HttpPost("cache/invalidate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> InvalidateCache([FromQuery] string reason = "Manual invalidation")
     {
         // TODO: Implement cache invalidation logic

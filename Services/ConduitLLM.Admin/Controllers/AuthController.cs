@@ -40,7 +40,6 @@ namespace ConduitLLM.Admin.Controllers
         [Authorize(Policy = "MasterKeyPolicy")]
         [ProducesResponseType(typeof(EphemeralMasterKeyResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GenerateEphemeralMasterKey()
         {
             // Create ephemeral master key

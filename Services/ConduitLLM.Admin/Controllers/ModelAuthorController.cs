@@ -45,7 +45,6 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of all model authors</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelAuthorDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAll()
         {
             var authors = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
@@ -61,7 +60,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ModelAuthorDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetById(int id)
         {
             var author = await _repository.GetByIdAsync(id);
@@ -81,7 +79,6 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}/series")]
         [ProducesResponseType(typeof(IEnumerable<SimpleModelSeriesDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetSeriesByAuthor(int id)
         {
             var series = await _repository.GetSeriesByAuthorAsync(id);
@@ -110,7 +107,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(ModelAuthorDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Create([FromBody] CreateModelAuthorDto dto)
         {
             // Check if author with same name already exists
@@ -147,7 +143,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateModelAuthorDto dto)
         {
             if (id != dto.Id)
@@ -192,7 +187,6 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Delete(int id)
         {
             var author = await _repository.GetByIdAsync(id);
