@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.Monitoring;
 using ConduitLLM.Core.Events;
@@ -14,6 +15,7 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
+[ServiceFilter(typeof(OperationLoggingFilter))]
 public class SystemInfoController : AdminControllerBase
 {
     private readonly IAdminSystemInfoService _systemInfoService;
@@ -46,12 +48,10 @@ public class SystemInfoController : AdminControllerBase
     [HttpGet("info")]
     [ProducesResponseType(typeof(SystemInfoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetSystemInfo()
+    public async Task<IActionResult> GetSystemInfo()
     {
-        return ExecuteAsync(
-            () => _systemInfoService.GetSystemInfoAsync(),
-            result => Ok(result),
-            "GetSystemInfo");
+        var result = await _systemInfoService.GetSystemInfoAsync();
+        return Ok(result);
     }
 
     /// <summary>
@@ -61,12 +61,10 @@ public class SystemInfoController : AdminControllerBase
     [HttpGet("health")]
     [ProducesResponseType(typeof(HealthStatusDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetHealthStatus()
+    public async Task<IActionResult> GetHealthStatus()
     {
-        return ExecuteAsync(
-            () => _systemInfoService.GetHealthStatusAsync(),
-            result => Ok(result),
-            "GetHealthStatus");
+        var result = await _systemInfoService.GetHealthStatusAsync();
+        return Ok(result);
     }
 
     /// <summary>
@@ -76,30 +74,24 @@ public class SystemInfoController : AdminControllerBase
     [HttpPost("cache/invalidate-discovery")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> InvalidateDiscoveryCache()
+    public async Task<IActionResult> InvalidateDiscoveryCache()
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                // Publish event to all Gateway API instances via MassTransit
-                await _publishEndpoint.Publish(new DiscoveryCacheInvalidationRequested
-                {
-                    Reason = "Manual invalidation via Admin API",
-                    RequestedBy = "Admin User",
-                    CorrelationId = Guid.NewGuid().ToString()
-                });
+        // Publish event to all Gateway API instances via MassTransit
+        await _publishEndpoint.Publish(new DiscoveryCacheInvalidationRequested
+        {
+            Reason = "Manual invalidation via Admin API",
+            RequestedBy = "Admin User",
+            CorrelationId = Guid.NewGuid().ToString()
+        });
 
-                LogAdminAudit("Invalidated", "DiscoveryCache");
+        LogAdminAudit("Invalidated", "DiscoveryCache");
 
-                return new
-                {
-                    message = "Discovery cache invalidation request published successfully",
-                    timestamp = DateTime.UtcNow,
-                    note = "Cache invalidation is being processed asynchronously across all Gateway API instances"
-                };
-            },
-            result => Ok(result),
-            "InvalidateDiscoveryCache");
+        return Ok(new
+        {
+            message = "Discovery cache invalidation request published successfully",
+            timestamp = DateTime.UtcNow,
+            note = "Cache invalidation is being processed asynchronously across all Gateway API instances"
+        });
     }
 
     /// <summary>
@@ -110,21 +102,19 @@ public class SystemInfoController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> GetFunctionDiscoveryCacheStats()
+    public async Task<IActionResult> GetFunctionDiscoveryCacheStats()
     {
         if (_functionDiscoveryCacheService == null)
         {
-            return Task.FromResult<IActionResult>(NotFound(new
+            return NotFound(new
             {
                 message = "Function discovery cache service is not configured",
                 note = "The cache service must be registered in the DI container"
-            }));
+            });
         }
 
-        return ExecuteAsync(
-            () => _functionDiscoveryCacheService.GetStatisticsAsync(),
-            result => Ok(result),
-            "GetFunctionDiscoveryCacheStats");
+        var result = await _functionDiscoveryCacheService.GetStatisticsAsync();
+        return Ok(result);
     }
 
     /// <summary>
@@ -134,29 +124,23 @@ public class SystemInfoController : AdminControllerBase
     [HttpPost("cache/invalidate-function-discovery")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<IActionResult> InvalidateFunctionDiscoveryCache()
+    public async Task<IActionResult> InvalidateFunctionDiscoveryCache()
     {
-        return ExecuteAsync(
-            async () =>
-            {
-                // Publish event to all Gateway API instances via MassTransit
-                await _publishEndpoint.Publish(new FunctionDiscoveryCacheInvalidationRequested
-                {
-                    Reason = "Manual invalidation via Admin API",
-                    RequestedBy = "Admin User",
-                    CorrelationId = Guid.NewGuid().ToString()
-                });
+        // Publish event to all Gateway API instances via MassTransit
+        await _publishEndpoint.Publish(new FunctionDiscoveryCacheInvalidationRequested
+        {
+            Reason = "Manual invalidation via Admin API",
+            RequestedBy = "Admin User",
+            CorrelationId = Guid.NewGuid().ToString()
+        });
 
-                LogAdminAudit("Invalidated", "FunctionDiscoveryCache");
+        LogAdminAudit("Invalidated", "FunctionDiscoveryCache");
 
-                return new
-                {
-                    message = "Function discovery cache invalidation request published successfully",
-                    timestamp = DateTime.UtcNow,
-                    note = "Cache invalidation is being processed asynchronously across all Gateway API instances"
-                };
-            },
-            result => Ok(result),
-            "InvalidateFunctionDiscoveryCache");
+        return Ok(new
+        {
+            message = "Function discovery cache invalidation request published successfully",
+            timestamp = DateTime.UtcNow,
+            note = "Cache invalidation is being processed asynchronously across all Gateway API instances"
+        });
     }
 }

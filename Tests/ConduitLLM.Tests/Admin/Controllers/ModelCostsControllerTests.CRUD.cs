@@ -3,7 +3,6 @@ using ConduitLLM.Configuration.DTOs;
 
 using FluentAssertions;
 
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -77,7 +76,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task CreateModelCost_WithDuplicateCostName_ShouldReturnBadRequest()
+        public async Task CreateModelCost_WithDuplicateCostName_ShouldPropagateException()
         {
             // Arrange
             var createDto = new CreateModelCostDto
@@ -90,13 +89,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ThrowsAsync(new InvalidOperationException("Model cost with this name already exists"));
 
             // Act
-            var result = await _controller.CreateModelCost(createDto);
+            var act = async () => await _controller.CreateModelCost(createDto);
 
-            // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.ToString().Should().Be("The requested operation is not valid");
-            errorResponse.Code.Should().Be("invalid_operation");
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         #endregion
@@ -145,7 +141,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task UpdateModelCost_WithNonExistingId_ShouldReturnNotFound()
+        public async Task UpdateModelCost_WithNonExistingId_ShouldPropagateException()
         {
             // Arrange
             var updateDto = new UpdateModelCostDto
@@ -159,12 +155,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(false);
 
             // Act
-            var result = await _controller.UpdateModelCost(999, updateDto);
+            var act = async () => await _controller.UpdateModelCost(999, updateDto);
 
-            // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("not_found");
+            // Assert - controller throws KeyNotFoundException; AdminExceptionMiddleware maps it to 404
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion
@@ -186,19 +180,17 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task DeleteModelCost_WithNonExistingId_ShouldReturnNotFound()
+        public async Task DeleteModelCost_WithNonExistingId_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.DeleteModelCostAsync(999))
                 .ReturnsAsync(false);
 
             // Act
-            var result = await _controller.DeleteModelCost(999);
+            var act = async () => await _controller.DeleteModelCost(999);
 
-            // Assert
-            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.Code.Should().Be("not_found");
+            // Assert - controller throws KeyNotFoundException; AdminExceptionMiddleware maps it to 404
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion

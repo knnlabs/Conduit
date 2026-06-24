@@ -94,7 +94,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GetLLMCacheStatus_ServiceThrowsException_Returns500()
+        public async Task GetLLMCacheStatus_ServiceThrowsException_ShouldPropagateException()
         {
             // Arrange
             _mockLLMCacheManagementService
@@ -102,19 +102,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ThrowsAsync(new Exception("Database connection failed"));
 
             // Act
-            var result = await _controller.GetLLMCacheStatus();
+            var act = async () => await _controller.GetLLMCacheStatus();
 
-            // Assert - AdminControllerBase returns ObjectResult with ErrorResponseDto
-            var statusResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusResult.StatusCode.Should().Be(500);
-
-            var errorResponse = statusResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.Should().Be("An unexpected error occurred");
-            errorResponse.Code.Should().Be("internal_error");
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping/logging
+            await act.Should().ThrowAsync<Exception>();
         }
 
         [Fact]
-        public async Task GetLLMCacheStatus_LogsError_WhenExceptionOccurs()
+        public async Task GetLLMCacheStatus_WhenExceptionOccurs_ShouldPropagateException()
         {
             // Arrange
             var exception = new Exception("Test error");
@@ -123,17 +118,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ThrowsAsync(exception);
 
             // Act
-            await _controller.GetLLMCacheStatus();
+            var act = async () => await _controller.GetLLMCacheStatus();
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => true),
-                    exception,
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Assert - controller no longer logs; AdminExceptionMiddleware logs and the exception propagates
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -292,7 +280,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task ToggleLLMCache_ServiceThrowsException_Returns500()
+        public async Task ToggleLLMCache_ServiceThrowsException_ShouldPropagateException()
         {
             // Arrange
             SetupControllerUser("admin");
@@ -308,19 +296,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ThrowsAsync(new Exception("Event bus unavailable"));
 
             // Act
-            var result = await _controller.ToggleLLMCache(request);
+            var act = async () => await _controller.ToggleLLMCache(request);
 
-            // Assert - AdminControllerBase returns ObjectResult with ErrorResponseDto
-            var statusResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusResult.StatusCode.Should().Be(500);
-
-            var errorResponse = statusResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.Should().Be("An unexpected error occurred");
-            errorResponse.Code.Should().Be("internal_error");
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping/logging
+            await act.Should().ThrowAsync<Exception>();
         }
 
         [Fact]
-        public async Task ToggleLLMCache_LogsError_WhenExceptionOccurs()
+        public async Task ToggleLLMCache_WhenExceptionOccurs_ShouldPropagateException()
         {
             // Arrange
             SetupControllerUser("admin");
@@ -336,17 +319,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ThrowsAsync(exception);
 
             // Act
-            await _controller.ToggleLLMCache(request);
+            var act = async () => await _controller.ToggleLLMCache(request);
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => true),
-                    exception,
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Assert - controller no longer logs; AdminExceptionMiddleware logs and the exception propagates
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
