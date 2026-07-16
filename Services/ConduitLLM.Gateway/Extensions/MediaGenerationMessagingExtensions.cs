@@ -1,9 +1,12 @@
 using ConduitLLM.Configuration.Messaging.MassTransit;
+using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Events;
 
 using MassTransit;
 
 using Microsoft.Extensions.DependencyInjection;
+
+using Wolverine;
 
 namespace ConduitLLM.Gateway.Extensions
 {
@@ -45,21 +48,44 @@ namespace ConduitLLM.Gateway.Extensions
         }
 
         /// <summary>
+        /// The media-generation event types bridged to handlers. One list drives both
+        /// backends' bridge registration so they cannot drift (epic #909 Phase 2, #925).
+        /// </summary>
+        public static readonly IReadOnlyList<Type> BridgedEventTypes = new[]
+        {
+            typeof(ImageGenerationRequested),
+            typeof(ImageGenerationCancelled),
+            typeof(VideoGenerationRequested),
+            typeof(VideoGenerationCancelled),
+            typeof(VideoProgressCheckRequested),
+            typeof(ImageGenerationProgress),
+            typeof(ImageGenerationCompleted),
+            typeof(ImageGenerationFailed),
+            typeof(VideoGenerationProgress),
+            typeof(VideoGenerationCompleted),
+            typeof(VideoGenerationFailed),
+        };
+
+        /// <summary>
         /// Registers the MassTransit bridge consumers for the media-generation events.
         /// </summary>
         public static void AddMediaGenerationBridges(this IRegistrationConfigurator x)
         {
-            x.AddEventBridge<ImageGenerationRequested>();
-            x.AddEventBridge<ImageGenerationCancelled>();
-            x.AddEventBridge<VideoGenerationRequested>();
-            x.AddEventBridge<VideoGenerationCancelled>();
-            x.AddEventBridge<VideoProgressCheckRequested>();
-            x.AddEventBridge<ImageGenerationProgress>();
-            x.AddEventBridge<ImageGenerationCompleted>();
-            x.AddEventBridge<ImageGenerationFailed>();
-            x.AddEventBridge<VideoGenerationProgress>();
-            x.AddEventBridge<VideoGenerationCompleted>();
-            x.AddEventBridge<VideoGenerationFailed>();
+            foreach (var eventType in BridgedEventTypes)
+            {
+                x.AddEventBridge(eventType);
+            }
+        }
+
+        /// <summary>
+        /// Registers the Wolverine bridge handlers for the media-generation events (#925).
+        /// </summary>
+        public static void AddMediaGenerationBridges(this WolverineOptions options)
+        {
+            foreach (var eventType in BridgedEventTypes)
+            {
+                options.AddEventBridge(eventType);
+            }
         }
     }
 }

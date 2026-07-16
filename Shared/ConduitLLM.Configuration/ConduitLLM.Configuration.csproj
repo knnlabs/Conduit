@@ -45,6 +45,10 @@
          Spike-verified on this toolchain: docs/architecture/messaging-migration/spike-wolverine-postgres.md -->
     <PackageReference Include="WolverineFx" Version="6.14.0" />
     <PackageReference Include="WolverineFx.Postgresql" Version="6.14.0" />
+    <!-- Wolverine 6 no longer ships the runtime (Roslyn) compiler in the core package;
+         without this, hosts fail at startup in the default TypeLoadMode.Dynamic.
+         Pre-generated static codegen is a cutover-time optimization (#930). -->
+    <PackageReference Include="WolverineFx.RuntimeCompilation" Version="6.14.0" />
   </ItemGroup>
 
   <ItemGroup>
