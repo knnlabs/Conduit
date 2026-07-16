@@ -7,7 +7,7 @@ using ConduitLLM.Configuration.Options;
 
 using FluentAssertions;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,7 +26,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IGlobalSettingRepository> _mockGlobalSettingRepo;
         private readonly Mock<IOptionsMonitor<IpFilterOptions>> _mockOptions;
         private readonly Mock<ILogger<AdminIpFilterService>> _mockLogger;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockEventBus;
         private readonly AdminIpFilterService _service;
         private readonly ITestOutputHelper _output;
 
@@ -37,7 +37,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockGlobalSettingRepo = new Mock<IGlobalSettingRepository>();
             _mockOptions = new Mock<IOptionsMonitor<IpFilterOptions>>();
             _mockLogger = new Mock<ILogger<AdminIpFilterService>>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockEventBus = new Mock<IEventBus>();
 
             _mockOptions.Setup(o => o.CurrentValue).Returns(new IpFilterOptions
             {
@@ -52,7 +52,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockGlobalSettingRepo.Object,
                 _mockOptions.Object,
                 _mockLogger.Object,
-                _mockPublishEndpoint.Object);
+                _mockEventBus.Object);
         }
 
         #region CreateFilterAsync Tests

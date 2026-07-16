@@ -9,7 +9,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -31,15 +31,15 @@ namespace ConduitLLM.Admin.Services
         /// <param name="modelCostRepository">The model cost repository</param>
         /// <param name="requestLogRepository">The request log repository</param>
         /// <param name="dbContextFactory">The database context factory</param>
-        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+        /// <param name="eventBus">Optional event bus (null if not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminModelCostService(
             IModelCostRepository modelCostRepository,
             IRequestLogRepository requestLogRepository,
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<AdminModelCostService> logger,
-            IPublishEndpoint? publishEndpoint = null)
-            : base(publishEndpoint, logger)
+            IEventBus? eventBus = null)
+            : base(eventBus, logger)
         {
             _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));
             _requestLogRepository = requestLogRepository ?? throw new ArgumentNullException(nameof(requestLogRepository));

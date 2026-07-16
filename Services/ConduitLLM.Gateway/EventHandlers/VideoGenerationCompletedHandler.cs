@@ -1,13 +1,13 @@
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Interfaces;
 
-using MassTransit;
-
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ConduitLLM.Gateway.EventHandlers
@@ -16,7 +16,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles VideoGenerationCompleted events to update task status and track completion metrics.
     /// Also updates the RequestLog with the actual cost after video generation completes.
     /// </summary>
-    public class VideoGenerationCompletedHandler : IConsumer<VideoGenerationCompleted>
+    public class VideoGenerationCompletedHandler : IEventHandler<VideoGenerationCompleted>
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IRequestLogRepository _requestLogRepository;
@@ -39,10 +39,8 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<VideoGenerationCompleted> context)
+        public async Task HandleAsync(VideoGenerationCompleted message, IEventContext context)
         {
-            var message = context.Message;
-
             _logger.LogInformation("Processing video generation completion for request {RequestId}: Video generated in {Duration}s (cost: ${Cost})",
                 message.RequestId, message.GenerationDuration.TotalSeconds, message.Cost);
 
@@ -177,7 +175,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling video generation completion for request {RequestId}", message.RequestId);
-                throw; // Let MassTransit handle retry
+                throw; // Let the endpoint retry policy handle it
             }
         }
 

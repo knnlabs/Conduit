@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Core.Extensions;
@@ -24,19 +24,19 @@ namespace ConduitLLM.Admin.Controllers
     [ServiceFilter(typeof(OperationLoggingFilter))]
     public class BatchSpendingController : AdminControllerBase
     {
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
 
         /// <summary>
         /// Initializes a new instance of the BatchSpendingController.
         /// </summary>
-        /// <param name="publishEndpoint">MassTransit publish endpoint for sending events</param>
+        /// <param name="eventBus">Event bus for publishing domain events</param>
         /// <param name="logger">Logger instance for operational tracking</param>
         public BatchSpendingController(
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<BatchSpendingController> logger)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace ConduitLLM.Admin.Controllers
             };
 
             // Publish event to Gateway API for processing
-            await _publishEndpoint.Publish(flushEvent);
+            await _eventBus.PublishAsync(flushEvent);
 
             LogAdminAudit("Flushed", "BatchSpending",
                 detail: $"RequestId: {requestId}, Priority: {priority}, Reason: {LoggingSanitizer.S(reason ?? "Administrative flush operation")}");

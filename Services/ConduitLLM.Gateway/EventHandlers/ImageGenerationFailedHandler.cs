@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 
 using ConduitLLM.Gateway.Interfaces;
@@ -10,7 +10,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// <summary>
     /// Handles ImageGenerationFailed events to track failure metrics, analyze error patterns, and send notifications.
     /// </summary>
-    public class ImageGenerationFailedHandler : IConsumer<ImageGenerationFailed>
+    public class ImageGenerationFailedHandler : IEventHandler<ImageGenerationFailed>
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
@@ -30,10 +30,8 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<ImageGenerationFailed> context)
+        public async Task HandleAsync(ImageGenerationFailed message, IEventContext context)
         {
-            var message = context.Message;
-
             _logger.LogError("Image generation failed for task {TaskId}: {Error} (Provider: {Provider}, Retryable: {IsRetryable}, Attempt: {AttemptCount})",
                 message.TaskId, message.Error, message.Provider, message.IsRetryable, message.AttemptCount);
 
@@ -97,7 +95,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing image generation failure for task {TaskId}", message.TaskId);
-                throw; // Let MassTransit handle retry
+                throw; // Let the endpoint retry policy handle it
             }
         }
 

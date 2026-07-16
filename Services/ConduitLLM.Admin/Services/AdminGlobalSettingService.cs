@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
@@ -22,13 +22,13 @@ namespace ConduitLLM.Admin.Services
         /// Initializes a new instance of the AdminGlobalSettingService
         /// </summary>
         /// <param name="globalSettingRepository">The global setting repository</param>
-        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+        /// <param name="eventBus">Optional event bus (null if not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminGlobalSettingService(
             IGlobalSettingRepository globalSettingRepository,
             ILogger<AdminGlobalSettingService> logger,
-            IPublishEndpoint? publishEndpoint = null)
-            : base(publishEndpoint, logger)
+            IEventBus? eventBus = null)
+            : base(eventBus, logger)
         {
             _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

@@ -54,7 +54,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             result.Should().BeOfType<NoContentResult>();
             _mockTaskRegistry.Verify(x => x.TryCancel(taskId), Times.Once);
             _mockTaskService.Verify(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()), Times.Once);
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockEventBus.Verify(x => x.PublishAsync(
                 It.IsAny<VideoGenerationCancelled>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }

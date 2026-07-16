@@ -3,9 +3,9 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Functions.Interfaces;
-using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,9 +27,9 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// </summary>
     public FunctionConfigurationsController(
         IFunctionConfigurationRepository configurationRepository,
-        IPublishEndpoint? publishEndpoint,
+        IEventBus? eventBus,
         ILogger<FunctionConfigurationsController> logger)
-        : base(publishEndpoint, logger)
+        : base(eventBus, logger)
     {
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));
     }

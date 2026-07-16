@@ -4,6 +4,7 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
@@ -34,9 +35,9 @@ namespace ConduitLLM.Admin.Controllers
             IProviderRepository providerRepository,
             IProviderKeyCredentialRepository keyRepository,
             ILLMClientFactory clientFactory,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<ProviderCredentialsController> logger)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
             _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
             _keyRepository = keyRepository ?? throw new ArgumentNullException(nameof(keyRepository));

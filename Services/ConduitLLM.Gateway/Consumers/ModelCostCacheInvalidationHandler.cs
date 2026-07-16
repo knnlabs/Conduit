@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -9,7 +10,7 @@ namespace ConduitLLM.Gateway.Consumers
     /// Handles ModelCostChanged events for cache invalidation.
     /// Invalidates both the model cost cache and pricing rules cache.
     /// </summary>
-    public class ModelCostCacheInvalidationHandler : IConsumer<ModelCostChanged>
+    public class ModelCostCacheInvalidationHandler : IEventHandler<ModelCostChanged>
     {
         private readonly IModelCostCache? _modelCostCache;
         private readonly ICachedPricingRulesService? _pricingRulesCache;
@@ -35,9 +36,9 @@ namespace ConduitLLM.Gateway.Consumers
         /// Consumes ModelCostChanged events and logs them for monitoring
         /// </summary>
         /// <param name="context">The consume context containing the event</param>
-        public async Task Consume(ConsumeContext<ModelCostChanged> context)
+        public async Task HandleAsync(ModelCostChanged message, IEventContext context)
         {
-            var @event = context.Message;
+            var @event = message;
 
             _logger.LogInformation(
                 "ModelCostChanged event received - ModelCostId: {ModelCostId}, CostName: {CostName}, ChangeType: {ChangeType}",

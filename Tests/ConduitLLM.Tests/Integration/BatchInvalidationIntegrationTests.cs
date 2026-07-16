@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Messaging.MassTransit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
@@ -34,19 +36,31 @@ namespace ConduitLLM.Tests.Integration
             services.AddSingleton(_redis);
             _database = _redis.GetDatabase();
 
-            // Configure MassTransit with in-memory transport
+            // Configure MassTransit with in-memory transport.
+            // The handler now implements the IEventHandler<T> abstraction (epic #909),
+            // so register the generic bridge consumer per event type on the bus and
+            // register the handler for each event type on the service collection.
             services.AddMassTransit(x =>
             {
-                x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
-                
+                x.AddEventBridge<VirtualKeyUpdated>();
+                x.AddEventBridge<VirtualKeyCreated>();
+                x.AddEventBridge<VirtualKeyDeleted>();
+                x.AddEventBridge<SpendUpdated>();
+
                 x.UsingInMemory((context, cfg) =>
                 {
                     cfg.ConfigureEndpoints(context);
-                    
+
                     // Configure for immediate processing in tests
                     cfg.ConcurrentMessageLimit = 1;
                 });
             });
+
+            services.AddMassTransitEventBus();
+            services.AddEventHandler<VirtualKeyUpdated, ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
+            services.AddEventHandler<VirtualKeyCreated, ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
+            services.AddEventHandler<VirtualKeyDeleted, ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
+            services.AddEventHandler<SpendUpdated, ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
 
             // Add batch invalidation services
             services.Configure<BatchInvalidationOptions>(options =>

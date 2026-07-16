@@ -121,12 +121,12 @@ public partial class Program
         {
             var repository = sp.GetRequiredService<IAsyncTaskRepository>();
             var cache = sp.GetRequiredService<IDistributedCache>();
-            var publishEndpoint = sp.GetService<MassTransit.IPublishEndpoint>(); // Optional
-            var logger = sp.GetRequiredService<ILogger<HybridAsyncTaskService>>();
+            var eventBus = sp.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
+            var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();
 
-            return publishEndpoint != null
-                ? new HybridAsyncTaskService(repository, cache, publishEndpoint, logger)
-                : new HybridAsyncTaskService(repository, cache, logger);
+            return eventBus != null
+                ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, eventBus, logger)
+                : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
         });
 
         // ========== Conduit Service ==========

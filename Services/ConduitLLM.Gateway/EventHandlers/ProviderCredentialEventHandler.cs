@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -8,9 +9,9 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles provider credential events in the Gateway API
     /// Invalidates cached credentials and triggers capability rediscovery
     /// </summary>
-    public class ProviderEventHandler : 
-        IConsumer<ProviderUpdated>,
-        IConsumer<ProviderDeleted>
+    public class ProviderEventHandler :
+        IEventHandler<ProviderUpdated>,
+        IEventHandler<ProviderDeleted>
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<ProviderEventHandler> _logger;
@@ -33,10 +34,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// Invalidates cached credentials and triggers capability rediscovery
         /// </summary>
         /// <param name="context">Message context containing the event</param>
-        public async Task Consume(ConsumeContext<ProviderUpdated> context)
+        public async Task HandleAsync(ProviderUpdated message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 _logger.LogInformation(
@@ -73,10 +74,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// Cleans up cached data for the deleted provider
         /// </summary>
         /// <param name="context">Message context containing the event</param>
-        public async Task Consume(ConsumeContext<ProviderDeleted> context)
+        public async Task HandleAsync(ProviderDeleted message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 _logger.LogInformation(

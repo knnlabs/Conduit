@@ -1,6 +1,6 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Controllers;
@@ -34,12 +34,12 @@ namespace ConduitLLM.Gateway.Controllers
             ILogger<ImagesController> logger,
             IModelProviderMappingService modelMappingService,
             IAsyncTaskService taskService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ConduitLLM.Core.Interfaces.IVirtualKeyService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
             IHttpClientFactory httpClientFactory,
             IProviderErrorTrackingService errorTrackingService)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;

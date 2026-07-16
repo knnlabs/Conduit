@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 namespace ConduitLLM.Tests.Http.Services
@@ -18,7 +19,7 @@ namespace ConduitLLM.Tests.Http.Services
         private readonly Mock<IVirtualKeySpendHistoryRepository> _spendHistoryRepositoryMock;
         private readonly Mock<IVirtualKeyGroupRepository> _groupRepositoryMock;
         private readonly Mock<IVirtualKeyCache> _cacheMock;
-        private readonly Mock<IPublishEndpoint> _publishEndpointMock;
+        private readonly Mock<IEventBus> _publishEndpointMock;
         private readonly Mock<ILogger<CachedApiVirtualKeyService>> _loggerMock;
         private readonly CachedApiVirtualKeyService _service;
 
@@ -28,7 +29,7 @@ namespace ConduitLLM.Tests.Http.Services
             _spendHistoryRepositoryMock = new Mock<IVirtualKeySpendHistoryRepository>();
             _groupRepositoryMock = new Mock<IVirtualKeyGroupRepository>();
             _cacheMock = new Mock<IVirtualKeyCache>();
-            _publishEndpointMock = new Mock<IPublishEndpoint>();
+            _publishEndpointMock = new Mock<IEventBus>();
             _loggerMock = CreateLogger<CachedApiVirtualKeyService>();
 
             _service = new CachedApiVirtualKeyService(

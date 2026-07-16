@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using FluentAssertions;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +26,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         private readonly Mock<IProviderKeyCredentialRepository> _mockKeyRepository;
         private readonly Mock<ILLMClientFactory> _mockClientFactory;
         private readonly Mock<ILLMClient> _mockClient;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<ProviderCredentialsController>> _mockLogger;
         private readonly ProviderCredentialsController _controller;
         private readonly ITestOutputHelper _output;
@@ -37,7 +38,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockKeyRepository = new Mock<IProviderKeyCredentialRepository>();
             _mockClientFactory = new Mock<ILLMClientFactory>();
             _mockClient = new Mock<ILLMClient>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<ProviderCredentialsController>>();
             
             _controller = new ProviderCredentialsController(

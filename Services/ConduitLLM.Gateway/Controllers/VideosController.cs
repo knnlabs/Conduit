@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Gateway.Authorization;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Filters;
@@ -40,8 +40,8 @@ namespace ConduitLLM.Gateway.Controllers
             ICancellableTaskRegistry taskRegistry,
             ILogger<VideosController> logger,
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
-            IPublishEndpoint publishEndpoint)
-            : base(publishEndpoint, logger)
+            IEventBus eventBus)
+            : base(eventBus, logger)
         {
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _timeoutProvider = timeoutProvider ?? throw new ArgumentNullException(nameof(timeoutProvider));

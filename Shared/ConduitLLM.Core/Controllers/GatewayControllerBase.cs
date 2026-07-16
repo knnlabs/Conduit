@@ -1,6 +1,6 @@
 using ConduitLLM.Core.Models;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -23,9 +23,9 @@ namespace ConduitLLM.Core.Controllers
         /// Initializes a new instance with event publishing support.
         /// </summary>
         protected GatewayControllerBase(
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger logger)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
         }
 

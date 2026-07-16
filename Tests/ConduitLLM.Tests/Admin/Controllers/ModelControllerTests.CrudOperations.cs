@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.Repositories;
 
 using FluentAssertions;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +28,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         private readonly Mock<IModelRepository> _mockRepository;
         private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
         private readonly Mock<IProviderRepository> _mockProviderRepository;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
         private readonly ModelController _controller;
 
@@ -36,7 +37,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository = new Mock<IModelRepository>();
             _mockMappingService = new Mock<IAdminModelProviderMappingService>();
             _mockProviderRepository = new Mock<IProviderRepository>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<ModelController>>();
             _controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockProviderRepository.Object, _mockPublishEndpoint.Object, _mockLogger.Object);
         }

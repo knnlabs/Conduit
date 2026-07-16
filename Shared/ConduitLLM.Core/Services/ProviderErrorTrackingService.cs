@@ -7,6 +7,7 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -143,11 +144,11 @@ namespace ConduitLLM.Core.Services
                         await _errorStore.MarkProviderDisabledAsync(provider.Id, DateTime.UtcNow, reason);
                         
                         // Publish event for UI update (could create a ProviderDisabledEvent)
-                        var publishEndpoint = scope.ServiceProvider.GetService<MassTransit.IPublishEndpoint>();
-                        if (publishEndpoint != null)
+                        var eventBus = scope.ServiceProvider.GetService<IEventBus>();
+                        if (eventBus != null)
                         {
                             // Still publish key disabled event so UI knows something happened
-                            await publishEndpoint.Publish(new ProviderKeyDisabledEvent
+                            await eventBus.PublishAsync(new ProviderKeyDisabledEvent
                             {
                                 KeyId = keyId,
                                 ProviderId = key.ProviderId,
@@ -190,10 +191,10 @@ namespace ConduitLLM.Core.Services
                     }
                     
                     // Publish event for UI update
-                    var publishEndpoint = scope.ServiceProvider.GetService<MassTransit.IPublishEndpoint>();
-                    if (publishEndpoint != null)
+                    var eventBus = scope.ServiceProvider.GetService<IEventBus>();
+                    if (eventBus != null)
                     {
-                        await publishEndpoint.Publish(new ProviderKeyDisabledEvent
+                        await eventBus.PublishAsync(new ProviderKeyDisabledEvent
                         {
                             KeyId = keyId,
                             ProviderId = key.ProviderId,

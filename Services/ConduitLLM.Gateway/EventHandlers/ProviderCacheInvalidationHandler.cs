@@ -1,4 +1,4 @@
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Interfaces;
@@ -10,9 +10,9 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Critical for maintaining runtime configuration consistency.
     /// </summary>
     public class ProviderCacheInvalidationHandler :
-        IConsumer<ProviderCreated>,
-        IConsumer<ProviderUpdated>,
-        IConsumer<ProviderDeleted>
+        IEventHandler<ProviderCreated>,
+        IEventHandler<ProviderUpdated>,
+        IEventHandler<ProviderDeleted>
     {
         private readonly ISettingsRefreshService _settingsRefreshService;
         private readonly IDiscoveryCacheService _discoveryCacheService;
@@ -28,26 +28,23 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task Consume(ConsumeContext<ProviderCreated> context)
+        public async Task HandleAsync(ProviderCreated message, IEventContext context)
         {
-            var @event = context.Message;
-            await RefreshAndInvalidateAsync(@event.ProviderId, "creation",
+            await RefreshAndInvalidateAsync(message.ProviderId, "creation",
                 invalidateDiscovery: true);
         }
 
-        public async Task Consume(ConsumeContext<ProviderUpdated> context)
+        public async Task HandleAsync(ProviderUpdated message, IEventContext context)
         {
-            var @event = context.Message;
-            var invalidateDiscovery = @event.ChangedProperties.Contains("IsEnabled") ||
-                                     @event.ChangedProperties.Contains("IsActive");
-            await RefreshAndInvalidateAsync(@event.ProviderId, "update",
+            var invalidateDiscovery = message.ChangedProperties.Contains("IsEnabled") ||
+                                     message.ChangedProperties.Contains("IsActive");
+            await RefreshAndInvalidateAsync(message.ProviderId, "update",
                 invalidateDiscovery: invalidateDiscovery);
         }
 
-        public async Task Consume(ConsumeContext<ProviderDeleted> context)
+        public async Task HandleAsync(ProviderDeleted message, IEventContext context)
         {
-            var @event = context.Message;
-            await RefreshAndInvalidateAsync(@event.ProviderId, "deletion",
+            await RefreshAndInvalidateAsync(message.ProviderId, "deletion",
                 invalidateDiscovery: true);
         }
 

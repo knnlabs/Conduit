@@ -6,6 +6,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
@@ -13,7 +14,7 @@ using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Validation;
-using MassTransit;
+using ConduitLLM.Tests.Messaging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -35,7 +36,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected readonly Mock<ILLMClientFactory> ClientFactoryMock;
         protected readonly Mock<IAsyncTaskService> TaskServiceMock;
         protected readonly Mock<IMediaStorageService> StorageServiceMock;
-        protected readonly Mock<IPublishEndpoint> PublishEndpointMock;
+        protected readonly Mock<IEventBus> EventBusMock;
         protected readonly Mock<IModelProviderMappingService> ModelMappingServiceMock;
         protected readonly Mock<IVirtualKeyService> VirtualKeyServiceMock;
         protected readonly Mock<ICostCalculationService> CostServiceMock;
@@ -71,7 +72,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             ClientFactoryMock = new Mock<ILLMClientFactory>();
             TaskServiceMock = new Mock<IAsyncTaskService>();
             StorageServiceMock = new Mock<IMediaStorageService>();
-            PublishEndpointMock = new Mock<IPublishEndpoint>();
+            EventBusMock = new Mock<IEventBus>();
             ModelMappingServiceMock = new Mock<IModelProviderMappingService>();
             VirtualKeyServiceMock = new Mock<IVirtualKeyService>();
             CostServiceMock = new Mock<ICostCalculationService>();
@@ -183,11 +184,8 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(0.01m);
 
-            // Setup publish endpoint
-            PublishEndpointMock.Setup(x => x.Publish(
-                It.IsAny<object>(),
-                It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+            // No IEventBus setup needed — the loose mock returns a completed Task for
+            // any PublishAsync<TEvent> call; individual tests Verify specific publishes.
         }
 
         // ==========================================
@@ -195,17 +193,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         // ==========================================
 
         [Fact]
-        public async Task Consume_WhenRequestIsValid_ShouldProcessSuccessfully()
+        public async Task HandleAsync_WhenRequestIsValid_ShouldProcessSuccessfully()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -226,17 +224,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenGenerationFails_ShouldUpdateTaskAsFailed()
+        public async Task HandleAsync_WhenGenerationFails_ShouldUpdateTaskAsFailed()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var exception = new InvalidOperationException("Generation failed");
 
             SetupFailedGeneration(exception);
 
             // Act - Should handle failure gracefully
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should update task status to Failed with error message
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -256,17 +254,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         // Each derived orchestrator can implement its own cancellation test if needed.
 
         [Fact]
-        public async Task Consume_WhenVirtualKeyIsInvalid_ShouldFailGracefully()
+        public async Task HandleAsync_WhenVirtualKeyIsInvalid_ShouldFailGracefully()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
 
             VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
                 .ReturnsAsync((VirtualKey?)null);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should update task status to Failed with appropriate error
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -279,11 +277,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenVirtualKeyIsDisabled_ShouldFailGracefully()
+        public async Task HandleAsync_WhenVirtualKeyIsDisabled_ShouldFailGracefully()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
 
             VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
                 .ReturnsAsync(new VirtualKey
@@ -296,7 +294,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 });
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should update task status to Failed with appropriate error
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -309,17 +307,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenModelNotFound_ShouldFailGracefully()
+        public async Task HandleAsync_WhenModelNotFound_ShouldFailGracefully()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
 
             ModelMappingServiceMock.Setup(x => x.GetMappingByModelAliasAsync(It.IsAny<string>()))
                 .ReturnsAsync((ModelProviderMapping?)null);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should update task status to Failed with appropriate error
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -332,17 +330,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_ShouldRegisterAndUnregisterTaskInRegistry()
+        public async Task HandleAsync_ShouldRegisterAndUnregisterTaskInRegistry()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             TaskRegistryMock.Verify(x => x.RegisterTask(
@@ -354,23 +352,23 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenWebhookConfigured_ShouldSendNotification()
+        public async Task HandleAsync_WhenWebhookConfigured_ShouldSendNotification()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             var webhookUrl = GetWebhookUrl(request);
             if (!string.IsNullOrEmpty(webhookUrl))
             {
-                PublishEndpointMock.Verify(x => x.Publish(
+                EventBusMock.Verify(x => x.PublishAsync(
                     It.Is<WebhookDeliveryRequested>(w => 
                         w.TaskId == GetRequestId(request) &&
                         w.WebhookUrl == webhookUrl),
@@ -385,23 +383,13 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected abstract void SetupSuccessfulGeneration(TResponse response);
         protected abstract void SetupFailedGeneration(Exception exception);
 
-        protected Mock<ConsumeContext<TEventRequest>> CreateConsumeContext(
-            TEventRequest message, 
-            CancellationToken cancellationToken = default)
+        protected TestEventContext CreateEventContext(CancellationToken cancellationToken = default)
         {
-            var contextMock = new Mock<ConsumeContext<TEventRequest>>();
-            contextMock.Setup(x => x.Message).Returns(message);
-            contextMock.Setup(x => x.CancellationToken).Returns(cancellationToken);
-            contextMock.Setup(x => x.MessageId).Returns(Guid.NewGuid());
-            contextMock.Setup(x => x.CorrelationId).Returns(Guid.NewGuid());
-            contextMock.Setup(x => x.ConversationId).Returns(Guid.NewGuid());
-            
-            // Setup publish endpoint interface
-            contextMock.As<IPublishEndpoint>()
-                .Setup(x => x.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-            
-            return contextMock;
+            return new TestEventContext
+            {
+                CancellationToken = cancellationToken,
+                CorrelationId = Guid.NewGuid().ToString()
+            };
         }
     }
     

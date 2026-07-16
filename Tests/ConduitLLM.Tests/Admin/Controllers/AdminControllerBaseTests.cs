@@ -2,7 +2,7 @@ using ConduitLLM.Admin.Controllers;
 
 using FluentAssertions;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.Extensions.Logging;
 
@@ -23,19 +23,19 @@ namespace ConduitLLM.Tests.Admin.Controllers
     [Trait("Component", "AdminController")]
     public class AdminControllerBaseTests
     {
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint = new();
+        private readonly Mock<IEventBus> _mockEventBus = new();
         private readonly Mock<ILogger<TestableAdminController>> _mockLogger = new();
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var act = () => new TestableAdminController(_mockPublishEndpoint.Object, null!);
+            var act = () => new TestableAdminController(_mockEventBus.Object, null!);
             act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
         }
 
         [Fact]
-        public void Constructor_WithNullPublishEndpoint_DoesNotThrow()
+        public void Constructor_WithNullEventBus_DoesNotThrow()
         {
             // Act & Assert
             var act = () => new TestableAdminController(null, _mockLogger.Object);
@@ -48,8 +48,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
     /// </summary>
     public class TestableAdminController : AdminControllerBase
     {
-        public TestableAdminController(IPublishEndpoint? publishEndpoint, ILogger<TestableAdminController> logger)
-            : base(publishEndpoint, logger)
+        public TestableAdminController(IEventBus? eventBus, ILogger<TestableAdminController> logger)
+            : base(eventBus, logger)
         {
         }
     }

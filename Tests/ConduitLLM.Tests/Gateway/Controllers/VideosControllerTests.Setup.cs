@@ -1,7 +1,7 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Controllers;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +19,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<IAsyncTaskService> _mockTaskService;
         private readonly Mock<IOperationTimeoutProvider> _mockTimeoutProvider;
         private readonly Mock<ICancellableTaskRegistry> _mockTaskRegistry;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockEventBus;
         private readonly Mock<ILogger<VideosController>> _mockLogger;
         private readonly VideosController _controller;
 
@@ -28,7 +28,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTaskService = new Mock<IAsyncTaskService>();
             _mockTimeoutProvider = new Mock<IOperationTimeoutProvider>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockEventBus = new Mock<IEventBus>();
             _mockLogger = CreateLogger<VideosController>();
             var mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
 
@@ -38,7 +38,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockTaskRegistry.Object,
                 _mockLogger.Object,
                 mockModelMappingService.Object,
-                _mockPublishEndpoint.Object);
+                _mockEventBus.Object);
 
             // Setup default controller context
             _controller.ControllerContext = CreateControllerContext();

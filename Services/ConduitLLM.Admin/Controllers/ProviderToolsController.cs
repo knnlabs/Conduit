@@ -7,7 +7,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -20,7 +20,7 @@ namespace ConduitLLM.Admin.Controllers
     public class ProviderToolsController : AdminControllerBase
     {
         private readonly ConduitDbContext _context;
-        private readonly IPublishEndpoint? _publishEndpoint;
+        private readonly IEventBus? _eventBus;
 
         /// <summary>
         /// Initializes a new instance of the ProviderToolsController.
@@ -28,11 +28,11 @@ namespace ConduitLLM.Admin.Controllers
         public ProviderToolsController(
             ConduitDbContext context,
             ILogger<ProviderToolsController> logger,
-            IPublishEndpoint? publishEndpoint = null)
-            : base(publishEndpoint, logger)
+            IEventBus? eventBus = null)
+            : base(eventBus, logger)
         {
             _context = context;
-            _publishEndpoint = publishEndpoint;
+            _eventBus = eventBus;
         }
 
         /// <summary>
@@ -333,11 +333,11 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         private async Task PublishToolChangedEventAsync(ProviderTool tool, string changeType)
         {
-            if (_publishEndpoint == null) return;
+            if (_eventBus == null) return;
 
             try
             {
-                await _publishEndpoint.Publish(new ProviderToolChanged
+                await _eventBus.PublishAsync(new ProviderToolChanged
                 {
                     ProviderToolId = tool.Id,
                     ToolName = tool.ToolName,
@@ -358,11 +358,11 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         private async Task PublishToolChangedEventAsync(ProviderType providerType, string changeType)
         {
-            if (_publishEndpoint == null) return;
+            if (_eventBus == null) return;
 
             try
             {
-                await _publishEndpoint.Publish(new ProviderToolChanged
+                await _eventBus.PublishAsync(new ProviderToolChanged
                 {
                     ProviderToolId = 0,
                     ToolName = "*",

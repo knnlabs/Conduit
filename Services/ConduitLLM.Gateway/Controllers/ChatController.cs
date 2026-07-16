@@ -8,7 +8,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Metrics;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,10 +39,10 @@ namespace ConduitLLM.Gateway.Controllers
             ILogger<ChatController> logger,
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
             JsonSerializerOptions jsonSerializerOptions,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService globalSettingsCacheService,
             ConduitLLM.Core.Interfaces.IUsageEstimationService? usageEstimationService = null,
-            ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null) : base(publishEndpoint, logger)
+            ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null) : base(eventBus, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

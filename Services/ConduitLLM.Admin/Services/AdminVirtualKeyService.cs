@@ -8,7 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Admin.Services
@@ -44,7 +44,7 @@ namespace ConduitLLM.Admin.Services
         /// <param name="modelCapabilityService">The model capability service</param>
         /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="cache">Optional Redis cache for immediate invalidation (null if not configured)</param>
-        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+        /// <param name="eventBus">Optional event bus (null if not configured)</param>
         /// <param name="mediaLifecycleService">Optional media lifecycle service for cleaning up associated media files (null if not configured)</param>
         public AdminVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
@@ -55,9 +55,9 @@ namespace ConduitLLM.Admin.Services
             IModelCapabilityService modelCapabilityService,
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             IVirtualKeyCache? cache = null,
-            IPublishEndpoint? publishEndpoint = null,
+            IEventBus? eventBus = null,
             IMediaLifecycleService? mediaLifecycleService = null)
-            : base(virtualKeyRepository, groupRepository, spendHistoryRepository, publishEndpoint, logger)
+            : base(virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger)
         {
             _cache = cache;
             _mediaLifecycleService = mediaLifecycleService;

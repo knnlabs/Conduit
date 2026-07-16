@@ -1,10 +1,10 @@
 using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Interfaces;
 
-using MassTransit;
-
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ConduitLLM.Gateway.EventHandlers
@@ -12,7 +12,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// <summary>
     /// Handles VideoGenerationFailed events to update task status, track failure metrics, and analyze error patterns.
     /// </summary>
-    public class VideoGenerationFailedHandler : IConsumer<VideoGenerationFailed>
+    public class VideoGenerationFailedHandler : IEventHandler<VideoGenerationFailed>
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
@@ -32,9 +32,8 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<VideoGenerationFailed> context)
+        public async Task HandleAsync(VideoGenerationFailed message, IEventContext context)
         {
-            var message = context.Message;
             var provider = message.Provider ?? "unknown";
 
             _logger.LogError("Video generation failed for request {RequestId}: {Error} (Provider: {Provider}, Retryable: {IsRetryable}, Retry: {RetryCount}/{MaxRetries})",
@@ -132,7 +131,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling video generation failure for request {RequestId}", message.RequestId);
-                throw; // Let MassTransit handle retry
+                throw; // Let the endpoint retry policy handle it
             }
         }
 

@@ -5,7 +5,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Services;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Gateway.Services
@@ -29,9 +29,9 @@ namespace ConduitLLM.Gateway.Services
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeyGroupRepository groupRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger<DirectApiVirtualKeyService> logger)
-            : base(virtualKeyRepository, groupRepository, spendHistoryRepository, publishEndpoint, logger)
+            : base(virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger)
         {
         }
 

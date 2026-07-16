@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Interfaces;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Gateway.Services
@@ -24,9 +24,9 @@ namespace ConduitLLM.Gateway.Services
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IVirtualKeyGroupRepository groupRepository,
             ConduitLLM.Core.Interfaces.IVirtualKeyCache cache,
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger<CachedApiVirtualKeyService> logger)
-            : base(virtualKeyRepository, groupRepository, spendHistoryRepository, publishEndpoint, logger)
+            : base(virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

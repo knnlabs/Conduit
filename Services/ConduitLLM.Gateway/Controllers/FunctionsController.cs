@@ -3,8 +3,8 @@ using ConduitLLM.Core.Controllers;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Gateway.Authorization;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Gateway.Filters;
-using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,9 +33,9 @@ public class FunctionsController : GatewayControllerBase
         IFunctionExecutionService executionService,
         IFunctionConfigurationRepository configurationRepository,
         ConduitLLM.Functions.Services.FunctionParameterValidationService validationService,
-        IPublishEndpoint publishEndpoint,
+        IEventBus eventBus,
         ILogger<FunctionsController> logger)
-        : base(publishEndpoint, logger)
+        : base(eventBus, logger)
     {
         _executionService = executionService ?? throw new ArgumentNullException(nameof(executionService));
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));

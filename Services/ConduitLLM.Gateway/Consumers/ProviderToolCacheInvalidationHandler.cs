@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
 
 namespace ConduitLLM.Gateway.Consumers;
 
@@ -9,7 +9,7 @@ namespace ConduitLLM.Gateway.Consumers;
 /// Handles ProviderToolChanged events for cache invalidation.
 /// Invalidates the provider tool cache when tools are created, updated, or deleted.
 /// </summary>
-public class ProviderToolCacheInvalidationHandler : IConsumer<ProviderToolChanged>
+public class ProviderToolCacheInvalidationHandler : IEventHandler<ProviderToolChanged>
 {
     private readonly IProviderToolCache? _providerToolCache;
     private readonly ILogger<ProviderToolCacheInvalidationHandler> _logger;
@@ -22,9 +22,9 @@ public class ProviderToolCacheInvalidationHandler : IConsumer<ProviderToolChange
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<ProviderToolChanged> context)
+    public async Task HandleAsync(ProviderToolChanged message, IEventContext context)
     {
-        var @event = context.Message;
+        var @event = message;
 
         _logger.LogInformation(
             "ProviderToolChanged event received - ToolId: {ToolId}, ToolName: {ToolName}, Provider: {Provider}, ChangeType: {ChangeType}",

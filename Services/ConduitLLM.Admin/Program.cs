@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Validation;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Messaging.MassTransit;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Security.Middleware;

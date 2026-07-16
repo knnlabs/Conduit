@@ -1,10 +1,9 @@
 using System.Diagnostics;
 
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Metrics;
-
-using MassTransit;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -12,13 +11,14 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Core.Controllers
 {
     /// <summary>
-    /// Base class for controllers that publish domain events using MassTransit.
+    /// Base class for controllers that publish domain events through the Conduit-owned
+    /// <see cref="IEventBus"/> abstraction (epic #909).
     /// Provides fire-and-forget event publishing patterns, shared utility methods,
     /// and consistent error handling and logging.
     /// </summary>
     public abstract class EventPublishingControllerBase : ControllerBase
     {
-        private readonly IPublishEndpoint? _publishEndpoint;
+        private readonly IEventBus? _eventBus;
         private readonly ILogger _logger;
 
         /// <summary>
@@ -29,20 +29,20 @@ namespace ConduitLLM.Core.Controllers
         /// <summary>
         /// Initializes a new instance of the <see cref="EventPublishingControllerBase"/> class.
         /// </summary>
-        /// <param name="publishEndpoint">The optional MassTransit publish endpoint for event publishing.</param>
+        /// <param name="eventBus">The optional event bus for event publishing (null if messaging not configured).</param>
         /// <param name="logger">The logger instance for the derived controller.</param>
         protected EventPublishingControllerBase(
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger logger)
         {
-            _publishEndpoint = publishEndpoint;
+            _eventBus = eventBus;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
         /// Gets a value indicating whether event publishing is configured.
         /// </summary>
-        protected bool IsEventPublishingEnabled => _publishEndpoint != null;
+        protected bool IsEventPublishingEnabled => _eventBus != null;
 
         /// <summary>
         /// Publishes a domain event using fire-and-forget pattern with standardized error handling.
@@ -68,7 +68,7 @@ namespace ConduitLLM.Core.Controllers
                 return;
             }
 
-            if (_publishEndpoint == null)
+            if (_eventBus == null)
             {
                 _logger.LogWarning(
                     "Event publishing not configured - skipping {EventType} for {Operation}",
@@ -83,7 +83,9 @@ namespace ConduitLLM.Core.Controllers
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    await _publishEndpoint.Publish(domainEvent);
+                    // NOTE(#927): failures are swallowed below (fire-and-forget, no outbox);
+                    // the transactional outbox in Phase 2 closes this durability gap.
+                    await _eventBus.PublishAsync(domainEvent);
                     sw.Stop();
                     _logger.LogDebug(
                         "Published {EventType} event for {Operation}",
@@ -123,7 +125,7 @@ namespace ConduitLLM.Core.Controllers
                 return;
             }
 
-            if (_publishEndpoint == null)
+            if (_eventBus == null)
             {
                 _logger.LogDebug(
                     "Event publishing not configured - skipping {EventType} for {Operation} with context {ContextData}",
@@ -138,7 +140,9 @@ namespace ConduitLLM.Core.Controllers
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    await _publishEndpoint.Publish(domainEvent);
+                    // NOTE(#927): failures are swallowed below (fire-and-forget, no outbox);
+                    // the transactional outbox in Phase 2 closes this durability gap.
+                    await _eventBus.PublishAsync(domainEvent);
                     sw.Stop();
                     _logger.LogDebug(
                         "Published {EventType} event for {Operation} with context {ContextData}",
@@ -163,7 +167,7 @@ namespace ConduitLLM.Core.Controllers
         /// <param name="controllerName">The name of the controller for logging context.</param>
         protected void LogEventPublishingConfiguration(string controllerName)
         {
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
                 _logger.LogInformation(
                     "{ControllerName}: Event bus configured - using event-driven architecture",

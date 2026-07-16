@@ -6,6 +6,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Metrics;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
@@ -33,7 +34,7 @@ namespace ConduitLLM.Gateway.Controllers
             Conduit conduit,
             ILogger<EmbeddingsController> logger,
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
-            IPublishEndpoint publishEndpoint) : base(publishEndpoint, logger)
+            IEventBus eventBus) : base(eventBus, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));

@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration.Messaging.MassTransit;
+
 using MassTransit;
 
 namespace ConduitLLM.Admin;
@@ -9,6 +11,12 @@ public partial class Program
     /// </summary>
     private static void ConfigureMessagingServices(WebApplicationBuilder builder, ILogger startupLogger)
     {
+        // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
+        builder.Services.AddMassTransitEventBus();
+
+        // Register the shared cache-invalidation IEventHandler<T> implementations (#919).
+        ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationHandlers(builder.Services);
+
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>()
             ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
@@ -19,12 +27,9 @@ public partial class Program
         // Register MassTransit event bus for Admin API
         builder.Services.AddMassTransit(x =>
         {
-            // Register consumers for Admin API cache invalidation
-            x.AddConsumer<ConduitLLM.Core.Consumers.GlobalSettingCacheInvalidationHandler>();
-
-            // Add Function Discovery Cache invalidation consumers
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
+            // Cache-invalidation handlers (#919) are migrated to IEventHandler<T> and
+            // dispatched via the generic bridge. Handlers are registered on builder.Services.
+            ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(x);
 
             if (useRabbitMq)
             {

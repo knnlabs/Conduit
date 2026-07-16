@@ -56,7 +56,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(TaskStateConstants.Pending, taskResponse.Status);
             Assert.Contains(taskId, taskResponse.CheckStatusUrl);
             _mockTaskRegistry.Verify(x => x.RegisterTask(taskId, It.IsAny<CancellationTokenSource>()), Times.Once);
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockEventBus.Verify(x => x.PublishAsync(
                 It.IsAny<VideoGenerationRequested>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }

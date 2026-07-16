@@ -1,7 +1,6 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Extensions;
-
-using MassTransit;
 
 using Microsoft.Extensions.Logging;
 
@@ -13,8 +12,8 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Extends <see cref="EventPublishingControllerBase"/> with fire-and-forget MassTransit event
-    /// publishing and structured admin audit logging.
+    /// Extends <see cref="EventPublishingControllerBase"/> with fire-and-forget event publishing
+    /// through the Conduit-owned <see cref="IEventBus"/> abstraction and structured admin audit logging.
     /// </para>
     /// <para>
     /// Error handling is delegated to the global <c>AdminExceptionMiddleware</c> (thrown exceptions
@@ -28,12 +27,12 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Initializes a new instance of the <see cref="AdminControllerBase"/> class.
         /// </summary>
-        /// <param name="publishEndpoint">Optional MassTransit publish endpoint for event publishing.</param>
+        /// <param name="eventBus">Optional event bus for event publishing.</param>
         /// <param name="logger">The logger instance for the derived controller.</param>
         protected AdminControllerBase(
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger logger)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
         }
 

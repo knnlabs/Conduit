@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -8,7 +9,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Base class for event handlers that support batch cache invalidation
     /// </summary>
     /// <typeparam name="TEvent">The type of domain event to handle</typeparam>
-    public abstract class BatchInvalidationEventHandler<TEvent> : IConsumer<TEvent> 
+    public abstract class BatchInvalidationEventHandler<TEvent> : IEventHandler<TEvent>
         where TEvent : class
     {
         private readonly IBatchCacheInvalidationService _batchService;
@@ -28,24 +29,24 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Consumes the event and queues invalidation requests
         /// </summary>
-        public async Task Consume(ConsumeContext<TEvent> context)
+        public async Task HandleAsync(TEvent message, IEventContext context)
         {
             try
             {
-                var requests = ExtractInvalidationRequests(context.Message);
-                
+                var requests = ExtractInvalidationRequests(message);
+
                 if (requests.Any())
                 {
                     // Group by cache type for efficient processing
                     var groupedRequests = requests.GroupBy(r => GetCacheType(r));
-                    
+
                     foreach (var group in groupedRequests)
                     {
                         var cacheType = group.Key;
                         var keys = group.Select(r => r.EntityId).ToArray();
-                        
+
                         // Queue bulk invalidation for this cache type
-                        if (context.Message is DomainEvent domainEvent)
+                        if (message is DomainEvent domainEvent)
                         {
                             await _batchService.QueueBulkInvalidationAsync(
                                 keys, 

@@ -93,10 +93,10 @@ public partial class Program
                 var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
                 var groupRepository = serviceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
                 var cache = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
-                var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
+                var eventBus = serviceProvider.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
                 var logger = serviceProvider.GetRequiredService<ILogger<CachedApiVirtualKeyService>>();
-                
-                return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger);
+
+                return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, eventBus, logger);
             });
         }
         else
@@ -107,10 +107,10 @@ public partial class Program
                 var virtualKeyRepository = sp.GetRequiredService<IVirtualKeyRepository>();
                 var groupRepository = sp.GetRequiredService<IVirtualKeyGroupRepository>();
                 var spendHistoryRepository = sp.GetRequiredService<IVirtualKeySpendHistoryRepository>();
-                var publishEndpoint = sp.GetService<IPublishEndpoint>(); // Optional
+                var eventBus = sp.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
                 var logger = sp.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.DirectApiVirtualKeyService>>();
                 return new ConduitLLM.Gateway.Services.DirectApiVirtualKeyService(
-                    virtualKeyRepository, groupRepository, spendHistoryRepository, publishEndpoint, logger);
+                    virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger);
             });
 
             // Register PostgreSQL distributed lock service (works even without Redis)

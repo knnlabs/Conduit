@@ -1,10 +1,10 @@
 using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Interfaces;
 
-using MassTransit;
-
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ConduitLLM.Gateway.EventHandlers
@@ -12,7 +12,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// <summary>
     /// Handles VideoGenerationProgress events to track generation progress and enable real-time updates.
     /// </summary>
-    public class VideoGenerationProgressHandler : IConsumer<VideoGenerationProgress>
+    public class VideoGenerationProgressHandler : IEventHandler<VideoGenerationProgress>
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
@@ -31,10 +31,8 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<VideoGenerationProgress> context)
+        public async Task HandleAsync(VideoGenerationProgress message, IEventContext context)
         {
-            var message = context.Message;
-
             _logger.LogDebug("Video generation progress for request {RequestId}: {Progress}% - {Status}",
                 message.RequestId, message.ProgressPercentage, message.Status);
 
@@ -98,7 +96,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling video generation progress for request {RequestId}", message.RequestId);
-                throw; // Let MassTransit handle retry
+                throw; // Let the endpoint retry policy handle it
             }
         }
 

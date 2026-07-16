@@ -9,7 +9,7 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -28,15 +28,15 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     /// <param name="mappingRepository">The model provider mapping repository</param>
     /// <param name="providerRepository">The provider repository</param>
     /// <param name="modelRepository">The model repository</param>
-    /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+    /// <param name="eventBus">Optional event bus (null if not configured)</param>
     /// <param name="logger">The logger</param>
     public AdminModelProviderMappingService(
         IModelProviderMappingRepository mappingRepository,
         IProviderRepository providerRepository,
         IModelRepository modelRepository,
         ILogger<AdminModelProviderMappingService> logger,
-        IPublishEndpoint? publishEndpoint = null)
-        : base(publishEndpoint, logger)
+        IEventBus? eventBus = null)
+        : base(eventBus, logger)
     {
         _mappingRepository = mappingRepository ?? throw new ArgumentNullException(nameof(mappingRepository));
         _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));

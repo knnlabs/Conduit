@@ -84,7 +84,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 ClientFactoryMock.Object,
                 TaskServiceMock.Object,
                 StorageServiceMock.Object,
-                PublishEndpointMock.Object,
+                EventBusMock.Object,
                 ModelMappingServiceMock.Object,
                 VirtualKeyServiceMock.Object,
                 CostServiceMock.Object,
@@ -161,7 +161,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenSyncRequest_ShouldNotProcess()
+        public async Task HandleAsync_WhenSyncRequest_ShouldNotProcess()
         {
             // Arrange
             var request = new VideoGenerationRequested
@@ -172,10 +172,10 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 VirtualKeyId = "1",  // Must be a valid integer string for parsing
                 IsAsync = false // Sync request
             };
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should not process sync requests
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -189,17 +189,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
 
 
         [Fact]
-        public async Task Consume_WithRetryConfiguration_ShouldRespectSettings()
+        public async Task HandleAsync_WithRetryConfiguration_ShouldRespectSettings()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var exception = new TimeoutException("Video generation timed out");
 
             SetupFailedGeneration(exception);
 
             // Act - Should handle timeout gracefully
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Verify that task failed with timeout error
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -216,16 +216,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<VideoGenerationStarted>(e =>
                     e.RequestId == request.RequestId &&
                     e.EstimatedSeconds == 60 &&
@@ -238,16 +238,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<VideoGenerationCompleted>(e =>
                     e.RequestId == request.RequestId &&
                     !string.IsNullOrEmpty(e.VideoUrl) &&
@@ -260,7 +260,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             // Setup specific cost for verification
@@ -273,10 +273,10 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Verify all billing-critical fields are populated
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<VideoGenerationCompleted>(e =>
                     e.RequestId == request.RequestId &&
                     e.Cost == 0.34m &&
@@ -302,16 +302,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 Parameters = null, // No parameters
                 CorrelationId = "test-correlation-id"
             };
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should use default values (5 seconds, 1280x720)
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<VideoGenerationCompleted>(e =>
                     e.Duration == 5 && // Default duration
                     e.Resolution == "1280x720"), // Default resolution
@@ -323,16 +323,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var exception = new TimeoutException("Temporary failure");
 
             SetupFailedGeneration(exception);
 
             // Act - Should handle failure gracefully
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should publish failed event with retry information
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<VideoGenerationFailed>(e =>
                     e.RequestId == request.RequestId &&
                     e.IsRetryable == true &&

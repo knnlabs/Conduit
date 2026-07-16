@@ -30,9 +30,9 @@ namespace ConduitLLM.Core.Services
             await _repository.DeleteAsync(taskId, cancellationToken);
             
             // Publish event if event bus is available
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
-                await _publishEndpoint.Publish(new AsyncTaskDeleted
+                await _eventBus.PublishAsync(new AsyncTaskDeleted
                 {
                     TaskId = taskId
                 }, cancellationToken);

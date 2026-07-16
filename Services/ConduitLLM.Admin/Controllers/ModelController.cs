@@ -9,11 +9,11 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
-using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +33,7 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IModelRepository _modelRepository;
         private readonly IAdminModelProviderMappingService _mappingService;
         private readonly IProviderRepository _providerRepository;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
 
         /// <summary>
         /// Initializes a new instance of the ModelController
@@ -42,14 +42,14 @@ namespace ConduitLLM.Admin.Controllers
             IModelRepository modelRepository,
             IAdminModelProviderMappingService mappingService,
             IProviderRepository providerRepository,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<ModelController> logger)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
             _modelRepository = modelRepository ?? throw new ArgumentNullException(nameof(modelRepository));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         }
 
         /// <summary>
@@ -398,7 +398,7 @@ namespace ConduitLLM.Admin.Controllers
                 ? changes.Select(c => c.Property).ToArray()
                 : GetChangedProperties(dto);
 
-            await _publishEndpoint.Publish(new ModelUpdated
+            await _eventBus.PublishAsync(new ModelUpdated
             {
                 ModelId = updatedModel.Id,
                 ModelName = updatedModel.Name,

@@ -7,7 +7,8 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
+
 using Microsoft.Extensions.Logging;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
@@ -27,9 +28,9 @@ namespace ConduitLLM.Core.Services
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeyGroupRepository groupRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger logger)
-            : base(publishEndpoint, logger)
+            : base(eventBus, logger)
         {
             VirtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             GroupRepository = groupRepository ?? throw new ArgumentNullException(nameof(groupRepository));

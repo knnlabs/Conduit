@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs.Cache;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using FluentAssertions;
 using MassTransit;
@@ -17,7 +18,7 @@ namespace ConduitLLM.Tests.Admin.Services
     public class LLMCacheManagementServiceTests
     {
         private readonly Mock<ILogger<LLMCacheManagementService>> _mockLogger;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<IGlobalSettingRepository> _mockGlobalSettingRepository;
         private readonly LLMCacheManagementService _service;
 
@@ -26,7 +27,7 @@ namespace ConduitLLM.Tests.Admin.Services
         public LLMCacheManagementServiceTests()
         {
             _mockLogger = new Mock<ILogger<LLMCacheManagementService>>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockGlobalSettingRepository = new Mock<IGlobalSettingRepository>();
 
             _service = new LLMCacheManagementService(
@@ -176,7 +177,7 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Verify GlobalSettingChanged event published (for cache invalidation)
             _mockPublishEndpoint.Verify(
-                x => x.Publish(
+                x => x.PublishAsync(
                     It.Is<GlobalSettingChanged>(e =>
                         e.SettingKey == LLM_CACHE_SETTING_KEY &&
                         e.ChangeType == "Updated"),
@@ -216,7 +217,7 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Verify GlobalSettingChanged event published
             _mockPublishEndpoint.Verify(
-                x => x.Publish(
+                x => x.PublishAsync(
                     It.Is<GlobalSettingChanged>(e => e.SettingKey == LLM_CACHE_SETTING_KEY),
                     It.IsAny<CancellationToken>()),
                 Times.Once);

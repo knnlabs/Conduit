@@ -3,7 +3,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using FluentAssertions;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -12,20 +12,20 @@ namespace ConduitLLM.Tests.Admin.Services;
 public class AdminGlobalSettingServiceTests
 {
     private readonly Mock<IGlobalSettingRepository> _mockGlobalSettingRepository;
-    private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+    private readonly Mock<IEventBus> _mockEventBus;
     private readonly Mock<ILogger<AdminGlobalSettingService>> _mockLogger;
     private readonly AdminGlobalSettingService _service;
 
     public AdminGlobalSettingServiceTests()
     {
         _mockGlobalSettingRepository = new Mock<IGlobalSettingRepository>();
-        _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+        _mockEventBus = new Mock<IEventBus>();
         _mockLogger = new Mock<ILogger<AdminGlobalSettingService>>();
 
         _service = new AdminGlobalSettingService(
             _mockGlobalSettingRepository.Object,
             _mockLogger.Object,
-            _mockPublishEndpoint.Object);
+            _mockEventBus.Object);
     }
 
     [Fact]

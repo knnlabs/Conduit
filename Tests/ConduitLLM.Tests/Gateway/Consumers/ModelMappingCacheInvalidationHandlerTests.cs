@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -10,6 +9,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Consumers;
+using ConduitLLM.Tests.Messaging;
 
 namespace ConduitLLM.Tests.Http.Consumers
 {
@@ -47,15 +47,12 @@ namespace ConduitLLM.Tests.Http.Consumers
                 CorrelationId = Guid.NewGuid().ToString()
             };
 
-            var mockContext = new Mock<ConsumeContext<ModelMappingChanged>>();
-            mockContext.Setup(x => x.Message).Returns(@event);
-
             _mockCacheManager
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(3);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert - Model mapping cache invalidation
             _mockCacheManager.Verify(
@@ -88,15 +85,12 @@ namespace ConduitLLM.Tests.Http.Consumers
                 CorrelationId = Guid.NewGuid().ToString()
             };
 
-            var mockContext = new Mock<ConsumeContext<ModelMappingChanged>>();
-            mockContext.Setup(x => x.Message).Returns(@event);
-
             _mockCacheManager
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(3);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockCacheManager.Verify(
@@ -122,15 +116,12 @@ namespace ConduitLLM.Tests.Http.Consumers
                 CorrelationId = Guid.NewGuid().ToString()
             };
 
-            var mockContext = new Mock<ConsumeContext<ModelMappingChanged>>();
-            mockContext.Setup(x => x.Message).Returns(@event);
-
             _mockCacheManager
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(3);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockCacheManager.Verify(
@@ -156,16 +147,13 @@ namespace ConduitLLM.Tests.Http.Consumers
                 CorrelationId = Guid.NewGuid().ToString()
             };
 
-            var mockContext = new Mock<ConsumeContext<ModelMappingChanged>>();
-            mockContext.Setup(x => x.Message).Returns(@event);
-
             // Simulate model mapping cache failure
             _mockCacheManager
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Redis connection failed"));
 
             // Act - should NOT throw
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert - Discovery cache should still be called despite model mapping cache failure
             _mockDiscoveryCacheService.Verify(
@@ -197,9 +185,6 @@ namespace ConduitLLM.Tests.Http.Consumers
                 CorrelationId = Guid.NewGuid().ToString()
             };
 
-            var mockContext = new Mock<ConsumeContext<ModelMappingChanged>>();
-            mockContext.Setup(x => x.Message).Returns(@event);
-
             _mockCacheManager
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(3);
@@ -210,7 +195,7 @@ namespace ConduitLLM.Tests.Http.Consumers
                 .ThrowsAsync(new InvalidOperationException("Redis connection failed"));
 
             // Act - should NOT throw
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert - Model mapping cache should have been called before the discovery failure
             _mockCacheManager.Verify(
@@ -242,15 +227,12 @@ namespace ConduitLLM.Tests.Http.Consumers
                 CorrelationId = Guid.NewGuid().ToString()
             };
 
-            var mockContext = new Mock<ConsumeContext<ModelMappingChanged>>();
-            mockContext.Setup(x => x.Message).Returns(@event);
-
             _mockCacheManager
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(2);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert - Should only include ID-based key and all mappings key (not alias key)
             _mockCacheManager.Verify(
@@ -285,15 +267,12 @@ namespace ConduitLLM.Tests.Http.Consumers
                 CorrelationId = Guid.NewGuid().ToString()
             };
 
-            var mockContext = new Mock<ConsumeContext<ModelMappingChanged>>();
-            mockContext.Setup(x => x.Message).Returns(@event);
-
             _mockCacheManager
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(3);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockCacheManager.Verify(

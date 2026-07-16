@@ -4,6 +4,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Services;
 
 using MassTransit;
@@ -29,7 +30,7 @@ namespace ConduitLLM.Tests.Admin.Integration
         private readonly IModelProviderMappingRepository _modelMappingRepository;
         private readonly AdminModelCostService _service;
         private readonly ModelCostsController _controller;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<IPricingRulesValidator> _mockPricingValidator;
         private readonly Mock<ILogger<AdminModelCostService>> _mockServiceLogger;
         private readonly Mock<ILogger<ModelCostsController>> _mockControllerLogger;
@@ -62,7 +63,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             _modelMappingRepository = new ModelProviderMappingRepository(mockDbContextFactory.Object, _mockMappingRepoLogger.Object);
 
             // Setup mocks for non-essential dependencies
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockPricingValidator = new Mock<IPricingRulesValidator>();
             _mockServiceLogger = new Mock<ILogger<AdminModelCostService>>();
             _mockControllerLogger = new Mock<ILogger<ModelCostsController>>();
