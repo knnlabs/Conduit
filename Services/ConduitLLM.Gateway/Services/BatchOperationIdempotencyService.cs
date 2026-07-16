@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using StackExchange.Redis;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Gateway.Services
@@ -15,7 +16,6 @@ namespace ConduitLLM.Gateway.Services
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<BatchOperationIdempotencyService> _logger;
         private readonly JsonSerializerOptions _jsonOptions;
-        private const string KeyPrefix = "batch:idempotency:";
         private static readonly TimeSpan DefaultTtl = TimeSpan.FromHours(24);
 
         public BatchOperationIdempotencyService(
@@ -240,7 +240,7 @@ namespace ConduitLLM.Gateway.Services
 
         private static string GetRedisKey(string idempotencyToken)
         {
-            return $"{KeyPrefix}{idempotencyToken}";
+            return CacheKeys.BatchIdempotency.ByKey(idempotencyToken);
         }
     }
 }

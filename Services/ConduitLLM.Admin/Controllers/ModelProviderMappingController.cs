@@ -1,9 +1,13 @@
 using ConduitLLM.Configuration.Interfaces;
 
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,11 +20,11 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
-public class ModelProviderMappingController : ControllerBase
+[ServiceFilter(typeof(OperationLoggingFilter))]
+public class ModelProviderMappingController : AdminControllerBase
 {
     private readonly IAdminModelProviderMappingService _mappingService;
     private readonly IProviderService _providerService;
-    private readonly ILogger<ModelProviderMappingController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the ModelProviderMappingController
@@ -32,10 +36,10 @@ public class ModelProviderMappingController : ControllerBase
         IAdminModelProviderMappingService mappingService,
         IProviderService providerService,
         ILogger<ModelProviderMappingController> logger)
+        : base(logger)
     {
         _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
         _providerService = providerService ?? throw new ArgumentNullException(nameof(providerService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -44,20 +48,11 @@ public class ModelProviderMappingController : ControllerBase
     /// <returns>A list of all model provider mappings</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<ModelProviderMappingDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAllMappings()
     {
-        try
-        {
-            var mappings = await _mappingService.GetAllMappingsAsync();
-            var dtos = mappings.Select(m => m.ToDto());
-            return Ok(dtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all model provider mappings");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving model provider mappings");
-        }
+        var mappings = await _mappingService.GetAllMappingsAsync();
+        var result = mappings.Select(m => m.ToDto());
+        return Ok(result);
     }
 
     /// <summary>
@@ -68,25 +63,11 @@ public class ModelProviderMappingController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ModelProviderMappingDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetMappingById(int id)
     {
-        try
-        {
-            var mapping = await _mappingService.GetMappingByIdAsync(id);
-
-            if (mapping == null)
-            {
-                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
-            }
-
-            return Ok(mapping.ToDto());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting model provider mapping with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the model provider mapping");
-        }
+        var mapping = await _mappingService.GetMappingByIdAsync(id);
+        if (mapping == null) { return this.NotFoundEntity("Model provider mapping", id); }
+        return Ok(mapping.ToDto());
     }
 
     /// <summary>
@@ -98,40 +79,32 @@ public class ModelProviderMappingController : ControllerBase
     [ProducesResponseType(typeof(ModelProviderMappingDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateMapping([FromBody] ModelProviderMappingDto mappingDto)
     {
-        try
+        // Check if a mapping with the same model alias already exists
+        var existingMappings = await _mappingService.GetAllMappingsAsync();
+        var existingMapping = existingMappings.FirstOrDefault(m => m.ModelAlias.Equals(mappingDto.ModelAlias, StringComparison.OrdinalIgnoreCase));
+        if (existingMapping != null)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            // Check if a mapping with the same model alias already exists
-            var existingMappings = await _mappingService.GetAllMappingsAsync();
-            var existingMapping = existingMappings.FirstOrDefault(m => m.ModelAlias.Equals(mappingDto.ModelAlias, StringComparison.OrdinalIgnoreCase));
-            if (existingMapping != null)
-            {
-                return Conflict(new ErrorResponseDto($"A mapping for model alias '{mappingDto.ModelAlias}' already exists"));
-            }
-
-            var mapping = mappingDto.ToEntity();
-            var success = await _mappingService.AddMappingAsync(mapping);
-
-            if (!success)
-            {
-                return BadRequest(new ErrorResponseDto("Failed to create model provider mapping. Please check the provider ID."));
-            }
-
-            var createdMapping = await _mappingService.GetMappingByIdAsync(mapping.Id);
-            return CreatedAtAction(nameof(GetMappingById), new { id = createdMapping?.Id }, createdMapping?.ToDto());
+            return Conflict(new ErrorResponseDto($"A mapping for model alias '{mappingDto.ModelAlias}' already exists"));
         }
-        catch (Exception ex)
+
+        var mapping = mappingDto.ToEntity();
+        var success = await _mappingService.AddMappingAsync(mapping);
+
+        if (!success)
         {
-            _logger.LogError(ex, "Error creating model provider mapping");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating the model provider mapping");
+            return BadRequest(new ErrorResponseDto("Failed to create model provider mapping. Please check the provider ID."));
         }
+
+        var createdMapping = await _mappingService.GetMappingByIdAsync(mapping.Id);
+
+        LogAdminAudit("Created", "ModelProviderMapping", createdMapping?.Id,
+            $"ModelAlias: {LoggingSanitizer.S(mappingDto.ModelAlias)}, ProviderId: {mappingDto.ProviderId}");
+        AdminOperationsMetricsService.RecordModelMappingOperation("create", "success");
+        AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "create");
+
+        return CreatedAtAction(nameof(GetMappingById), new { id = createdMapping?.Id }, createdMapping?.ToDto());
     }
 
     /// <summary>
@@ -144,42 +117,32 @@ public class ModelProviderMappingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
     {
-        try
+        if (id != mappingDto.Id)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (id != mappingDto.Id)
-            {
-                return BadRequest(new ErrorResponseDto("ID mismatch"));
-            }
-
-            var existingMapping = await _mappingService.GetMappingByIdAsync(id);
-            if (existingMapping == null)
-            {
-                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
-            }
-
-            existingMapping.UpdateFromDto(mappingDto);
-            var success = await _mappingService.UpdateMappingAsync(existingMapping);
-
-            if (!success)
-            {
-                return BadRequest(new ErrorResponseDto("Failed to update model provider mapping"));
-            }
-
-            return NoContent();
+            return BadRequest(new ErrorResponseDto("ID mismatch"));
         }
-        catch (Exception ex)
+
+        var existingMapping = await _mappingService.GetMappingByIdAsync(id);
+        if (existingMapping == null)
         {
-            _logger.LogError(ex, "Error updating model provider mapping with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the model provider mapping");
+            throw new KeyNotFoundException($"Model provider mapping with ID '{id}' not found");
         }
+
+        existingMapping.UpdateFromDto(mappingDto);
+        var success = await _mappingService.UpdateMappingAsync(existingMapping);
+
+        if (!success)
+        {
+            throw new InvalidOperationException("Failed to update model provider mapping");
+        }
+
+        LogAdminAudit("Updated", "ModelProviderMapping", id);
+        AdminOperationsMetricsService.RecordModelMappingOperation("update", "success");
+        AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "update");
+
+        return NoContent();
     }
 
     /// <summary>
@@ -190,31 +153,26 @@ public class ModelProviderMappingController : ControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteMapping(int id)
     {
-        try
+        var existingMapping = await _mappingService.GetMappingByIdAsync(id);
+        if (existingMapping == null)
         {
-            var existingMapping = await _mappingService.GetMappingByIdAsync(id);
-            if (existingMapping == null)
-            {
-                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
-            }
-
-            var success = await _mappingService.DeleteMappingAsync(id);
-
-            if (!success)
-            {
-                return BadRequest(new ErrorResponseDto("Failed to delete model provider mapping"));
-            }
-
-            return NoContent();
+            throw new KeyNotFoundException($"Model provider mapping with ID '{id}' not found");
         }
-        catch (Exception ex)
+
+        var success = await _mappingService.DeleteMappingAsync(id);
+
+        if (!success)
         {
-            _logger.LogError(ex, "Error deleting model provider mapping with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the model provider mapping");
+            throw new InvalidOperationException("Failed to delete model provider mapping");
         }
+
+        LogAdminAudit("Deleted", "ModelProviderMapping", id);
+        AdminOperationsMetricsService.RecordModelMappingOperation("delete", "success");
+        AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "delete");
+
+        return NoContent();
     }
 
     /// <summary>
@@ -223,19 +181,10 @@ public class ModelProviderMappingController : ControllerBase
     /// <returns>List of providers with IDs and names</returns>
     [HttpGet("providers")]
     [ProducesResponseType(typeof(IEnumerable<Provider>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetProviders()
     {
-        try
-        {
-            var providers = await _mappingService.GetProvidersAsync();
-            return Ok(providers);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting providers");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving providers");
-        }
+        var result = await _mappingService.GetProvidersAsync();
+        return Ok(result);
     }
 
     /// <summary>
@@ -246,40 +195,29 @@ public class ModelProviderMappingController : ControllerBase
     [HttpPost("bulk")]
     [ProducesResponseType(typeof(BulkMappingResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateBulkMappings([FromBody] List<ModelProviderMappingDto> mappingDtos)
     {
-        try
+        if (mappingDtos == null || !mappingDtos.Any())
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (mappingDtos == null || mappingDtos.Count() == 0)
-            {
-                return BadRequest(new ErrorResponseDto("No mappings provided"));
-            }
-
-            var mappings = mappingDtos.Select(dto => dto.ToEntity()).ToList();
-            var (created, errors) = await _mappingService.CreateBulkMappingsAsync(mappings);
-
-            var result = new BulkMappingResult
-            {
-                Created = created.Select(m => m.ToDto()).ToList(),
-                Errors = errors.ToList(),
-                TotalProcessed = mappingDtos.Count(),
-                SuccessCount = created.Count(),
-                FailureCount = errors.Count()
-            };
-
-            return Ok(result);
+            return BadRequest(new ErrorResponseDto("No mappings provided"));
         }
-        catch (Exception ex)
+
+        var mappings = mappingDtos.Select(dto => dto.ToEntity()).ToList();
+        var (created, errors) = await _mappingService.CreateBulkMappingsAsync(mappings);
+
+        var result = new BulkMappingResult
         {
-            _logger.LogError(ex, "Error creating bulk model provider mappings");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating bulk model provider mappings");
-        }
+            Created = created.Select(m => m.ToDto()).ToList(),
+            Errors = errors.ToList(),
+            TotalProcessed = mappingDtos.Count(),
+            SuccessCount = created.Count(),
+            FailureCount = errors.Count()
+        };
+
+        LogAdminAuditBulk("BulkCreated", "ModelProviderMapping", result.SuccessCount, result.FailureCount);
+        AdminOperationsMetricsService.RecordModelMappingOperation("bulk_create", "success");
+
+        return Ok(result);
     }
 
     /// <summary>
@@ -290,63 +228,57 @@ public class ModelProviderMappingController : ControllerBase
     [HttpPost("bulk/delete")]
     [ProducesResponseType(typeof(BulkDeleteResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteBulkMappings([FromBody] List<int> ids)
     {
-        try
+        if (ids == null || ids.Count == 0)
         {
-            if (ids == null || ids.Count == 0)
-            {
-                return BadRequest(new ErrorResponseDto("No mapping IDs provided"));
-            }
+            return BadRequest(new ErrorResponseDto("No mapping IDs provided"));
+        }
 
-            var deleted = new List<int>();
-            var errors = new List<string>();
+        var deleted = new List<int>();
+        var errors = new List<string>();
 
-            foreach (var id in ids)
+        foreach (var id in ids)
+        {
+            try
             {
-                try
+                var existingMapping = await _mappingService.GetMappingByIdAsync(id);
+                if (existingMapping == null)
                 {
-                    var existingMapping = await _mappingService.GetMappingByIdAsync(id);
-                    if (existingMapping == null)
-                    {
-                        errors.Add($"Mapping with ID {id} not found");
-                        continue;
-                    }
-
-                    var success = await _mappingService.DeleteMappingAsync(id);
-                    if (success)
-                    {
-                        deleted.Add(id);
-                    }
-                    else
-                    {
-                        errors.Add($"Failed to delete mapping with ID {id}");
-                    }
+                    errors.Add($"Mapping with ID {id} not found");
+                    continue;
                 }
-                catch (Exception ex)
+
+                var success = await _mappingService.DeleteMappingAsync(id);
+                if (success)
                 {
-                    _logger.LogError(ex, "Error deleting mapping with ID {Id}", id);
-                    errors.Add($"Error deleting mapping with ID {id}: {ex.Message}");
+                    deleted.Add(id);
+                }
+                else
+                {
+                    errors.Add($"Failed to delete mapping with ID {id}");
                 }
             }
-
-            var result = new BulkDeleteResult
+            catch (Exception ex)
             {
-                DeletedIds = deleted,
-                Errors = errors,
-                TotalProcessed = ids.Count,
-                SuccessCount = deleted.Count,
-                FailureCount = errors.Count
-            };
+                Logger.LogError(ex, "Error deleting mapping with ID {Id}", id);
+                errors.Add($"Error deleting mapping with ID {id}: {ex.Message}");
+            }
+        }
 
-            return Ok(result);
-        }
-        catch (Exception ex)
+        var result = new BulkDeleteResult
         {
-            _logger.LogError(ex, "Error deleting bulk model provider mappings");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting bulk model provider mappings");
-        }
+            DeletedIds = deleted,
+            Errors = errors,
+            TotalProcessed = ids.Count,
+            SuccessCount = deleted.Count,
+            FailureCount = errors.Count
+        };
+
+        LogAdminAuditBulk("BulkDeleted", "ModelProviderMapping", result.SuccessCount, result.FailureCount);
+        AdminOperationsMetricsService.RecordModelMappingOperation("bulk_delete", "success");
+
+        return Ok(result);
     }
 
     /// <summary>
@@ -357,7 +289,6 @@ public class ModelProviderMappingController : ControllerBase
     [HttpPost("bulk/enable")]
     [ProducesResponseType(typeof(BulkUpdateResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> EnableBulkMappings([FromBody] List<int> ids)
     {
         return await UpdateBulkMappingsStatus(ids, true);
@@ -371,7 +302,6 @@ public class ModelProviderMappingController : ControllerBase
     [HttpPost("bulk/disable")]
     [ProducesResponseType(typeof(BulkUpdateResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DisableBulkMappings([FromBody] List<int> ids)
     {
         return await UpdateBulkMappingsStatus(ids, false);
@@ -379,62 +309,57 @@ public class ModelProviderMappingController : ControllerBase
 
     private async Task<IActionResult> UpdateBulkMappingsStatus(List<int> ids, bool isEnabled)
     {
-        try
+        if (ids == null || ids.Count == 0)
         {
-            if (ids == null || ids.Count == 0)
-            {
-                return BadRequest(new ErrorResponseDto("No mapping IDs provided"));
-            }
+            return BadRequest(new ErrorResponseDto("No mapping IDs provided"));
+        }
 
-            var updated = new List<ModelProviderMappingDto>();
-            var errors = new List<string>();
+        var updated = new List<ModelProviderMappingDto>();
+        var errors = new List<string>();
 
-            foreach (var id in ids)
+        foreach (var id in ids)
+        {
+            try
             {
-                try
+                var existingMapping = await _mappingService.GetMappingByIdAsync(id);
+                if (existingMapping == null)
                 {
-                    var existingMapping = await _mappingService.GetMappingByIdAsync(id);
-                    if (existingMapping == null)
-                    {
-                        errors.Add($"Mapping with ID {id} not found");
-                        continue;
-                    }
-
-                    existingMapping.IsEnabled = isEnabled;
-                    var success = await _mappingService.UpdateMappingAsync(existingMapping);
-                    
-                    if (success)
-                    {
-                        updated.Add(existingMapping.ToDto());
-                    }
-                    else
-                    {
-                        errors.Add($"Failed to update mapping with ID {id}");
-                    }
+                    errors.Add($"Mapping with ID {id} not found");
+                    continue;
                 }
-                catch (Exception ex)
+
+                existingMapping.IsEnabled = isEnabled;
+                var success = await _mappingService.UpdateMappingAsync(existingMapping);
+
+                if (success)
                 {
-                    _logger.LogError(ex, "Error updating mapping with ID {Id}", id);
-                    errors.Add($"Error updating mapping with ID {id}: {ex.Message}");
+                    updated.Add(existingMapping.ToDto());
+                }
+                else
+                {
+                    errors.Add($"Failed to update mapping with ID {id}");
                 }
             }
-
-            var result = new BulkUpdateResult
+            catch (Exception ex)
             {
-                Updated = updated,
-                Errors = errors,
-                TotalProcessed = ids.Count,
-                SuccessCount = updated.Count,
-                FailureCount = errors.Count
-            };
+                Logger.LogError(ex, "Error updating mapping with ID {Id}", id);
+                errors.Add($"Error updating mapping with ID {id}: {ex.Message}");
+            }
+        }
 
-            return Ok(result);
-        }
-        catch (Exception ex)
+        var result = new BulkUpdateResult
         {
-            _logger.LogError(ex, "Error updating bulk model provider mappings status");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating bulk model provider mappings");
-        }
+            Updated = updated,
+            Errors = errors,
+            TotalProcessed = ids.Count,
+            SuccessCount = updated.Count,
+            FailureCount = errors.Count
+        };
+
+        LogAdminAuditBulk(isEnabled ? "BulkEnabled" : "BulkDisabled", "ModelProviderMapping", result.SuccessCount, result.FailureCount);
+        AdminOperationsMetricsService.RecordModelMappingOperation(isEnabled ? "bulk_enable" : "bulk_disable", "success");
+
+        return Ok(result);
     }
 
 }

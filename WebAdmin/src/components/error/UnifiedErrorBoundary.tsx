@@ -4,7 +4,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { ErrorClassifier } from '@/lib/utils/ui-error-classifier';
 import { logger } from '@/lib/utils/logging';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 // Removed @tanstack/react-query dependency - not needed for basic error boundary
 
 export interface UnifiedErrorBoundaryProps {
@@ -156,13 +156,12 @@ export class UnifiedErrorBoundary extends Component<
 
   private showErrorNotification(error: Error) {
     const classification = ErrorClassifier.getClassification(error);
-    
-    notifications.show({
-      title: 'Error Occurred',
-      message: classification.displayMessage,
-      color: classification.severity === 'critical' ? 'red' : 'orange',
-      autoClose: classification.severity === 'critical' ? false : 5000,
-    });
+
+    if (classification.severity === 'critical') {
+      notify.error(classification.displayMessage);
+    } else {
+      notify.warning(classification.displayMessage, 'Error Occurred');
+    }
   }
 
   private reportError() {

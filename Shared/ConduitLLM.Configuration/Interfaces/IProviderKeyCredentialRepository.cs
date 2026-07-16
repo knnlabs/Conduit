@@ -3,63 +3,48 @@ using ConduitLLM.Configuration.Entities;
 namespace ConduitLLM.Configuration.Interfaces
 {
     /// <summary>
-    /// Repository interface for ProviderKeyCredential operations
+    /// Repository interface for ProviderKeyCredential operations.
+    /// Extends IRepositoryBase for standard CRUD operations and adds domain-specific methods.
     /// </summary>
-    public interface IProviderKeyCredentialRepository
+    public interface IProviderKeyCredentialRepository : IRepositoryBase<ProviderKeyCredential, int>
     {
         /// <summary>
-        /// Get all key credentials across all providers
+        /// Get key credentials for a provider with pagination
         /// </summary>
-        Task<List<ProviderKeyCredential>> GetAllAsync();
-
-        /// <summary>
-        /// Get all key credentials for a provider
-        /// </summary>
-        Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int ProviderId);
-
-        /// <summary>
-        /// Get a specific key credential by ID
-        /// </summary>
-        Task<ProviderKeyCredential?> GetByIdAsync(int id);
+        /// <param name="providerId">The provider ID</param>
+        /// <param name="pageNumber">The page number (1-based)</param>
+        /// <param name="pageSize">The number of items per page</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A tuple with the list of credentials and the total count</returns>
+        Task<(List<ProviderKeyCredential> Items, int TotalCount)> GetByProviderIdPaginatedAsync(
+            int providerId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get the primary key credential for a provider
         /// </summary>
-        Task<ProviderKeyCredential?> GetPrimaryKeyAsync(int ProviderId);
+        Task<ProviderKeyCredential?> GetPrimaryKeyAsync(int providerId);
 
         /// <summary>
         /// Get all enabled key credentials for a provider
         /// </summary>
-        Task<List<ProviderKeyCredential>> GetEnabledKeysByProviderIdAsync(int ProviderId);
-
-        /// <summary>
-        /// Create a new key credential
-        /// </summary>
-        Task<ProviderKeyCredential> CreateAsync(ProviderKeyCredential keyCredential);
-
-        /// <summary>
-        /// Update an existing key credential
-        /// </summary>
-        Task<bool> UpdateAsync(ProviderKeyCredential keyCredential);
-
-        /// <summary>
-        /// Delete a key credential
-        /// </summary>
-        Task<bool> DeleteAsync(int id);
+        Task<List<ProviderKeyCredential>> GetEnabledKeysByProviderIdAsync(int providerId);
 
         /// <summary>
         /// Set a key as primary (and unset others)
         /// </summary>
-        Task<bool> SetPrimaryKeyAsync(int ProviderId, int keyId);
+        Task<bool> SetPrimaryKeyAsync(int providerId, int keyId);
 
         /// <summary>
         /// Check if a provider has any key credentials
         /// </summary>
-        Task<bool> HasKeyCredentialsAsync(int ProviderId);
+        Task<bool> HasKeyCredentialsAsync(int providerId);
 
         /// <summary>
         /// Count key credentials for a provider
         /// </summary>
-        Task<int> CountByProviderIdAsync(int ProviderId);
+        Task<int> CountByProviderIdAsync(int providerId);
     }
 }

@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Models.SignalR;
 using ConduitLLM.Gateway.Models;
 using ConduitLLM.Gateway.Services;
 
@@ -122,6 +123,7 @@ namespace ConduitLLM.Gateway.Hubs
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
+            Logger.LogDebug("Cleaning up acknowledgments for disconnected connection {ConnectionId}", Context.ConnectionId);
             await _acknowledgmentService.CleanupConnectionAsync(Context.ConnectionId);
             await base.OnDisconnectedAsync(exception);
         }

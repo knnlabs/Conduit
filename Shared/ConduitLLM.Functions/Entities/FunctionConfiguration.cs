@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using ConduitLLM.Functions.Entities.Interfaces;
 using ConduitLLM.Functions.Enums;
 
 namespace ConduitLLM.Functions.Entities;
@@ -11,7 +12,7 @@ namespace ConduitLLM.Functions.Entities;
 /// The Id is the canonical identifier (not ProviderType).
 /// </summary>
 [Table("FunctionConfigurations")]
-public class FunctionConfiguration
+public class FunctionConfiguration : IIdentifiableEntity<int>
 {
     /// <summary>
     /// Unique identifier for this function configuration (canonical identifier)

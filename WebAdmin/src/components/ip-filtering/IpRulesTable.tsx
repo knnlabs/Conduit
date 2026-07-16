@@ -9,7 +9,6 @@ import {
   Tooltip,
   Stack,
   Box,
-  Paper,
   Menu,
   rem,
   Checkbox,
@@ -23,7 +22,7 @@ import {
   IconToggleRight,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { formatters } from '@/lib/utils/formatters';
 import type { IpRule } from '@/hooks/useSecurityApi';
 
@@ -46,11 +45,7 @@ export function IpRulesTable({
 }: IpRulesTableProps) {
   const handleCopyIp = (ipAddress: string) => {
     void navigator.clipboard.writeText(ipAddress);
-    notifications.show({
-      title: 'Copied',
-      message: 'IP address copied to clipboard',
-      color: 'green',
-    });
+    notify.success('IP address copied to clipboard', 'Copied');
   };
 
   const handleDelete = (rule: IpRule) => {
@@ -224,41 +219,35 @@ export function IpRulesTable({
 
   if (data.length === 0) {
     return (
-      <Paper withBorder radius="md">
-        <Box p="xl" style={{ textAlign: 'center' }}>
-          <Text c="dimmed">No IP rules found. Add your first IP rule to get started.</Text>
-        </Box>
-      </Paper>
+      <Box p="xl" style={{ textAlign: 'center' }}>
+        <Text c="dimmed">No IP rules found. Add your first IP rule to get started.</Text>
+      </Box>
     );
   }
 
   return (
-    <Paper withBorder radius="md">
-      <Box pos="relative">
-        <Table.ScrollContainer minWidth={900}>
-          <Table verticalSpacing="sm" horizontalSpacing="md">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th w={40}>
-                  <Checkbox
-                    checked={allSelected}
-                    indeterminate={someSelected}
-                    onChange={handleSelectAll}
-                  />
-                </Table.Th>
-                <Table.Th>IP Address / CIDR</Table.Th>
-                <Table.Th>Action</Table.Th>
-                <Table.Th>Description</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Created</Table.Th>
-                <Table.Th>Activity</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>{rows}</Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Box>
-    </Paper>
+    <Table.ScrollContainer minWidth={900}>
+      <Table verticalSpacing="sm" horizontalSpacing="md">
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th w={40}>
+              <Checkbox
+                checked={allSelected}
+                indeterminate={someSelected}
+                onChange={handleSelectAll}
+              />
+            </Table.Th>
+            <Table.Th>IP Address / CIDR</Table.Th>
+            <Table.Th>Action</Table.Th>
+            <Table.Th>Description</Table.Th>
+            <Table.Th>Status</Table.Th>
+            <Table.Th>Created</Table.Th>
+            <Table.Th>Activity</Table.Th>
+            <Table.Th />
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>{rows}</Table.Tbody>
+      </Table>
+    </Table.ScrollContainer>
   );
 }

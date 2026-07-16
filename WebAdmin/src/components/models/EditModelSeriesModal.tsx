@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, Button, Stack, Group, Textarea, Alert, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import type { ModelSeriesDto, UpdateModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
@@ -20,7 +20,6 @@ interface EditModelSeriesModalProps {
 export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: EditModelSeriesModalProps) {
   const [loading, setLoading] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const { executeWithAdmin } = useAdminClient();
 
   const form = useForm<UpdateModelSeriesDto & { parameters?: string }>({
     initialValues: {
@@ -76,21 +75,13 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
       };
       
       if (!series.id) throw new Error('Series ID is required');
-      await executeWithAdmin(client => client.modelSeries.update(series.id as number, dto));
-      notifications.show({
-        title: 'Success',
-        message: 'Model series updated successfully',
-        color: 'green',
-      });
+      await withAdminClient(client => client.modelSeries.update(series.id as number, dto));
+      notify.success('Model series updated successfully');
       handleClose();
       onSuccess();
     } catch (error) {
       console.error('Failed to update model series:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update model series',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to update model series');
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,8 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Gateway.Hubs;
+using ConduitLLM.Gateway.Interfaces;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
@@ -9,33 +10,34 @@ using Microsoft.Extensions.Caching.Memory;
 namespace ConduitLLM.Gateway.EventHandlers
 {
     /// <summary>
-    /// Handles VideoGenerationFailed events to update task status and track failures.
+    /// Handles VideoGenerationFailed events to update task status, track failure metrics, and analyze error patterns.
     /// </summary>
     public class VideoGenerationFailedHandler : IEventHandler<VideoGenerationFailed>
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
-        private readonly IHubContext<VideoGenerationHub> _hubContext;
+        private readonly IVideoGenerationNotificationService _notificationService;
         private readonly ILogger<VideoGenerationFailedHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "video_generation_progress_";
+        private const string FailureCountCacheKeyPrefix = "video_generation_failures_";
 
         public VideoGenerationFailedHandler(
             IAsyncTaskService asyncTaskService,
             IMemoryCache progressCache,
-            IHubContext<VideoGenerationHub> hubContext,
+            IVideoGenerationNotificationService notificationService,
             ILogger<VideoGenerationFailedHandler> logger)
         {
             _asyncTaskService = asyncTaskService;
             _progressCache = progressCache;
-            _hubContext = hubContext;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
         public async Task HandleAsync(VideoGenerationFailed message, IEventContext context)
         {
+            var provider = message.Provider ?? "unknown";
 
-            _logger.LogWarning("Video generation failed for request {RequestId}: {Error}", 
-                message.RequestId, message.Error);
+            _logger.LogError("Video generation failed for request {RequestId}: {Error} (Provider: {Provider}, Retryable: {IsRetryable}, Retry: {RetryCount}/{MaxRetries})",
+                message.RequestId, message.Error, provider, message.IsRetryable, message.RetryCount, message.MaxRetries);
 
             try
             {
@@ -43,7 +45,6 @@ namespace ConduitLLM.Gateway.EventHandlers
                 var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.RequestId, context.CancellationToken);
                 if (taskStatus != null)
                 {
-                    // This is an async task, update its status
                     var errorDetails = new
                     {
                         Error = message.Error,
@@ -54,7 +55,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                     };
 
                     await _asyncTaskService.UpdateTaskStatusAsync(
-                        message.RequestId, 
+                        message.RequestId,
                         TaskState.Failed,
                         progress: null,
                         errorDetails,
@@ -63,47 +64,68 @@ namespace ConduitLLM.Gateway.EventHandlers
                 }
                 else
                 {
-                    // This is a sync task failure, just log it
                     _logger.LogInformation("Sync video generation failed (no task record) for request {RequestId}", message.RequestId);
                 }
-                
+
                 // Clear progress cache for this task
-                var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";
+                var progressCacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
                 _progressCache.Remove(progressCacheKey);
-                
-                // Log failure metrics for monitoring
-                LogFailureMetrics(message);
-                
-                // Send failure notification via SignalR
-                await _hubContext.Clients.Group($"video-{message.RequestId}").SendAsync("VideoGenerationFailed", new
+
+                // Track per-provider failure count
+                var failureCount = MediaGenerationHandlerHelper.TrackFailureMetrics(
+                    _progressCache, FailureCountCacheKeyPrefix, provider, "video", _logger);
+
+                // Log structured metrics for monitoring/alerting pipelines
+                _logger.LogInformation("Video generation failure metrics: {@Metrics}", new
                 {
-                    taskId = message.RequestId,
-                    status = "failed",
-                    error = message.Error,
-                    errorCode = message.ErrorCode,
-                    isRetryable = message.IsRetryable,
-                    retryCount = message.RetryCount,
-                    maxRetries = message.MaxRetries,
-                    nextRetryAt = message.NextRetryAt,
-                    failedAt = message.FailedAt
+                    RequestId = message.RequestId,
+                    Provider = provider,
+                    ErrorCode = message.ErrorCode ?? "unknown",
+                    IsRetryable = message.IsRetryable,
+                    FailedAt = message.FailedAt,
+                    ErrorType = MediaGenerationHandlerHelper.DetermineErrorType(message.Error, message.ErrorCode),
+                    ProviderFailureCount = failureCount
                 });
-                
-                // Determine if automatic retry should be attempted
+
+                // Analyze error patterns for actionable diagnostics
+                MediaGenerationHandlerHelper.AnalyzeErrorPattern(
+                    message.Error, message.RequestId, _logger,
+                    VideoSpecificErrorPatterns);
+
+                // Send failure notification via notification service
+                await _notificationService.NotifyVideoGenerationFailedAsync(
+                    message.RequestId,
+                    message.Error,
+                    message.IsRetryable,
+                    errorCode: message.ErrorCode,
+                    retryCount: message.RetryCount,
+                    maxRetries: message.MaxRetries,
+                    nextRetryAt: message.NextRetryAt,
+                    failedAt: message.FailedAt);
+
+                // Log retry state or permanent failure
                 if (message.IsRetryable)
                 {
-                    _logger.LogInformation("Video generation failure is retryable for request {RequestId} (Retry {RetryCount}/{MaxRetries})", 
+                    _logger.LogInformation("Video generation failure is retryable for request {RequestId} (Retry {RetryCount}/{MaxRetries})",
                         message.RequestId, message.RetryCount, message.MaxRetries);
-                    
+
                     if (message.NextRetryAt.HasValue)
                     {
-                        _logger.LogInformation("Video generation will be retried at {NextRetryAt} for request {RequestId}", 
+                        _logger.LogInformation("Video generation will be retried at {NextRetryAt} for request {RequestId}",
                             message.NextRetryAt.Value, message.RequestId);
                     }
                 }
                 else
                 {
-                    _logger.LogError("Video generation failed permanently for request {RequestId}: {Error}", 
+                    _logger.LogError("Video generation failed permanently for request {RequestId}: {Error}",
                         message.RequestId, message.Error);
+                }
+
+                // Flag critical failures (auth, account, credits) for immediate attention
+                if (MediaGenerationHandlerHelper.IsCriticalFailure(message.Error))
+                {
+                    _logger.LogCritical("Critical video generation failure detected for provider {Provider}: {Error}",
+                        provider, message.Error);
                 }
             }
             catch (Exception ex)
@@ -113,43 +135,16 @@ namespace ConduitLLM.Gateway.EventHandlers
             }
         }
 
-        private void LogFailureMetrics(VideoGenerationFailed failure)
+        /// <summary>
+        /// Video-specific error patterns beyond the common set.
+        /// </summary>
+        private static readonly Dictionary<string, string> VideoSpecificErrorPatterns = new()
         {
-            var metrics = new
-            {
-                RequestId = failure.RequestId,
-                Provider = failure.Provider ?? "unknown",
-                ErrorCode = failure.ErrorCode ?? "unknown",
-                IsRetryable = failure.IsRetryable,
-                FailedAt = failure.FailedAt,
-                ErrorType = DetermineErrorType(failure.Error, failure.ErrorCode)
-            };
-            
-            _logger.LogInformation("Video generation failure metrics: {Metrics}", metrics);
-        }
-
-        private string DetermineErrorType(string error, string? errorCode)
-        {
-            // Categorize errors for better monitoring and alerting
-            if (string.IsNullOrEmpty(error))
-                return "unknown";
-            
-            var lowerError = error.ToLowerInvariant();
-            
-            if (lowerError.Contains("rate limit") || lowerError.Contains("quota"))
-                return "rate_limit";
-            if (lowerError.Contains("auth") || lowerError.Contains("unauthorized"))
-                return "authentication";
-            if (lowerError.Contains("timeout"))
-                return "timeout";
-            if (lowerError.Contains("invalid") || lowerError.Contains("bad request"))
-                return "validation";
-            if (lowerError.Contains("not found"))
-                return "not_found";
-            if (lowerError.Contains("server error") || lowerError.Contains("internal"))
-                return "server_error";
-            
-            return "other";
-        }
+            ["quota"] = "Provider quota exhausted - check account limits",
+            ["duration"] = "Requested video duration may exceed provider limits",
+            ["resolution"] = "Requested video resolution may not be supported",
+            ["codec"] = "Unsupported video codec or output format",
+            ["format"] = "Unsupported video format requested"
+        };
     }
 }

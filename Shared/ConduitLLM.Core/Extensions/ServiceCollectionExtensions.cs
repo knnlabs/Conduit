@@ -1,14 +1,18 @@
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Options;
+using ConduitLLM.Core.Policies;
 using ConduitLLM.Core.Services;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
-using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Extensions
 {
     /// <summary>
@@ -34,8 +38,13 @@ namespace ConduitLLM.Core.Extensions
             // Register token counter - changed to Scoped to match IModelCapabilityService lifetime
             services.AddScoped<ITokenCounter, TiktokenCounter>();
             
-            // Register image token calculator for accurate vision model billing
-            services.AddScoped<IImageTokenCalculator, ImageTokenCalculator>();
+            // Register image token calculator with retry-enabled HttpClient for accurate vision model billing
+            services.AddHttpClient<IImageTokenCalculator, ImageTokenCalculator>()
+                .AddPolicyHandler(HttpRetryPolicies.GetStandardRetryPolicy())
+                .ConfigureHttpClient(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30); // Reasonable timeout for image dimension checks
+                });
             
             // Register usage estimation service for streaming responses without usage data
             services.AddScoped<IUsageEstimationService, UsageEstimationService>();
@@ -56,9 +65,6 @@ namespace ConduitLLM.Core.Extensions
         {
             // Register model capability service if not already registered - use database-backed implementation
             services.TryAddScoped<IModelCapabilityService, DatabaseModelCapabilityService>();
-
-            // Register capability detector if not already registered
-            services.TryAddScoped<IModelCapabilityDetector, ModelCapabilityDetector>();
 
             // Register performance optimization services
             services.AddMemoryCache();
@@ -149,10 +155,7 @@ namespace ConduitLLM.Core.Extensions
             var directEnvVar = Environment.GetEnvironmentVariable("CONDUIT_MEDIA_STORAGE_TYPE");
             
             var storageProvider = configProvider ?? configEnvVar ?? directEnvVar ?? "InMemory";
-            
-            // Log the selected storage provider for debugging (will be logged when first service is resolved)
-            Console.WriteLine($"[MediaServices] Storage Provider Selected: {storageProvider}");
-            
+
             // Configure media storage based on provider
             if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
             {
@@ -161,53 +164,21 @@ namespace ConduitLLM.Core.Extensions
                 {
                     // First try to bind from the configuration section
                     configuration.GetSection(S3StorageOptions.SectionName).Bind(options);
-                    
+
                     // Then override with environment variables if they exist
-                    var endpoint = configuration["CONDUIT_S3_ENDPOINT"] ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ENDPOINT");
-                    if (!string.IsNullOrEmpty(endpoint))
-                    {
-                        options.ServiceUrl = endpoint;
-                    }
-                    
-                    var accessKey = configuration["CONDUIT_S3_ACCESS_KEY_ID"] 
-                        ?? configuration["CONDUIT_S3_ACCESS_KEY"] 
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ACCESS_KEY_ID")
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ACCESS_KEY");
-                    if (!string.IsNullOrEmpty(accessKey))
-                    {
-                        options.AccessKey = accessKey;
-                    }
-                    
-                    var secretKey = configuration["CONDUIT_S3_SECRET_ACCESS_KEY"] 
-                        ?? configuration["CONDUIT_S3_SECRET_KEY"]
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SECRET_ACCESS_KEY")
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SECRET_KEY");
-                    if (!string.IsNullOrEmpty(secretKey))
-                    {
-                        options.SecretKey = secretKey;
-                    }
-                    
-                    var bucketName = configuration["CONDUIT_S3_BUCKET_NAME"] 
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_BUCKET_NAME");
-                    if (!string.IsNullOrEmpty(bucketName))
-                    {
-                        options.BucketName = bucketName;
-                    }
-                    
-                    var region = configuration["CONDUIT_S3_REGION"] 
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_REGION");
-                    if (!string.IsNullOrEmpty(region))
-                    {
-                        options.Region = region;
-                    }
-                    
-                    var publicBaseUrl = configuration["CONDUIT_S3_PUBLIC_BASE_URL"] 
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_PUBLIC_BASE_URL");
-                    if (!string.IsNullOrEmpty(publicBaseUrl))
-                    {
-                        options.PublicBaseUrl = publicBaseUrl;
-                    }
-                    
+                    ApplyConfigOrEnvVar(configuration, value => options.ServiceUrl = value,
+                        "CONDUIT_S3_ENDPOINT");
+                    ApplyConfigOrEnvVar(configuration, value => options.AccessKey = value,
+                        "CONDUIT_S3_ACCESS_KEY_ID", "CONDUIT_S3_ACCESS_KEY");
+                    ApplyConfigOrEnvVar(configuration, value => options.SecretKey = value,
+                        "CONDUIT_S3_SECRET_ACCESS_KEY", "CONDUIT_S3_SECRET_KEY");
+                    ApplyConfigOrEnvVar(configuration, value => options.BucketName = value,
+                        "CONDUIT_S3_BUCKET_NAME");
+                    ApplyConfigOrEnvVar(configuration, value => options.Region = value,
+                        "CONDUIT_S3_REGION");
+                    ApplyConfigOrEnvVar(configuration, value => options.PublicBaseUrl = value,
+                        "CONDUIT_S3_PUBLIC_BASE_URL");
+
                     // Set defaults for S3 compatibility
                     options.ForcePathStyle = true;
                     options.AutoCreateBucket = true;
@@ -228,12 +199,60 @@ namespace ConduitLLM.Core.Extensions
             
             // Register media lifecycle service
             services.AddScoped<IMediaLifecycleService, MediaLifecycleService>();
-            
+
             // Register media lifecycle repository
             // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
             // Migration: 20250827194408_ConsolidateMediaTables.cs
-            
+
             return services;
+        }
+
+        /// <summary>
+        /// Registers application services shared by both Admin API and Gateway API.
+        /// Centralizes registrations that were previously duplicated across both services.
+        /// </summary>
+        public static IServiceCollection AddSharedApplicationServices(this IServiceCollection services)
+        {
+            // Global settings cache — loads settings at startup and provides fast access
+            services.AddSingleton<IGlobalSettingsCacheService, GlobalSettingsCacheService>();
+            services.AddHostedService(provider =>
+                provider.GetRequiredService<IGlobalSettingsCacheService>() as GlobalSettingsCacheService
+                ?? throw new InvalidOperationException("GlobalSettingsCacheService must be registered as singleton"));
+
+            // Provider service
+            services.AddScoped<IProviderService, ProviderService>();
+
+            // Model provider mapping with caching decorator
+            services.AddScoped<ModelProviderMappingService>();
+            services.AddScoped<IModelProviderMappingService>(provider =>
+            {
+                var innerService = provider.GetRequiredService<ModelProviderMappingService>();
+                var cacheManager = provider.GetRequiredService<ICacheManager>();
+                var logger = provider.GetRequiredService<ILogger<CachedModelProviderMappingService>>();
+                return new CachedModelProviderMappingService(innerService, cacheManager, logger);
+            });
+
+            // Provider metadata registry — single source of truth for provider metadata
+            services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
+
+            return services;
+        }
+
+        /// <summary>
+        /// Resolves a configuration value by checking IConfiguration keys and environment variables in order.
+        /// If a non-empty value is found, applies it via the setter.
+        /// </summary>
+        private static void ApplyConfigOrEnvVar(IConfiguration configuration, Action<string> setter, params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                var value = configuration[key] ?? Environment.GetEnvironmentVariable(key);
+                if (!string.IsNullOrEmpty(value))
+                {
+                    setter(value);
+                    return;
+                }
+            }
         }
     }
 }

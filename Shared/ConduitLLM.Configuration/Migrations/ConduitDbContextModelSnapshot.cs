@@ -17,7 +17,7 @@ namespace ConduitLLM.Configuration.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -280,159 +280,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasDatabaseName("IX_BillingAuditEvents_VirtualKeyId_Timestamp");
 
                     b.ToTable("BillingAuditEvents", (string)null);
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.CacheConfiguration", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<long?>("CompressionThresholdBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int?>("DefaultTtlSeconds")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("EnableCompression")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("EnableDetailedStats")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("EvictionPolicy")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("ExtendedConfig")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<long?>("MaxEntries")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("MaxMemoryBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<int?>("MaxTtlSeconds")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Region")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("UseDistributedCache")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("UseMemoryCache")
-                        .HasColumnType("boolean");
-
-                    b.Property<byte[]>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Region")
-                        .IsUnique()
-                        .HasFilter("\"IsActive\" = true");
-
-                    b.HasIndex("UpdatedAt");
-
-                    b.HasIndex("Region", "IsActive");
-
-                    b.ToTable("CacheConfigurations");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.CacheConfigurationAudit", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("ChangeSource")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("ChangedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ChangedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("NewConfigJson")
-                        .HasColumnType("text");
-
-                    b.Property<string>("OldConfigJson")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Region")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<bool>("Success")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChangedAt");
-
-                    b.HasIndex("ChangedBy");
-
-                    b.HasIndex("Region");
-
-                    b.HasIndex("Region", "ChangedAt");
-
-                    b.ToTable("CacheConfigurationAudits");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.GlobalSetting", b =>
@@ -1274,6 +1121,12 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CachedInputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CachedWriteTokens")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ClientIp")
                         .HasMaxLength(50)

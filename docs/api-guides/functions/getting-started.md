@@ -618,5 +618,5 @@ async function dailySummary() {
 
 - [Exa Provider Configuration](./exa-provider-guide.md)
 - [Functions System Architecture](../../architecture/functions/functions-system-architecture.md)
-- [Cost Optimization Guide](./cost-optimization.md)
-- [WebAdmin Functions Management](../../webadmin/functions-management.md)
+- [Cost Optimization Guide](../../../WebAdmin/docs/admin/routing/examples/cost-optimization.md)
+- [WebAdmin Functions Management](../../../WebAdmin/docs/README.md)

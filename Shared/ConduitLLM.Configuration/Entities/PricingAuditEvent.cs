@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ConduitLLM.Functions.Interfaces;
 
 namespace ConduitLLM.Configuration.Entities;
 
@@ -7,7 +8,7 @@ namespace ConduitLLM.Configuration.Entities;
 /// Represents an audit event for rules-based pricing evaluations.
 /// Tracks pricing decisions for billing disputes and analytics.
 /// </summary>
-public class PricingAuditEvent
+public class PricingAuditEvent : IAuditEvent
 {
     /// <summary>
     /// Unique identifier for the audit event.

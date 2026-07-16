@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Table, TextInput, Group, ActionIcon, Badge, Text, Tooltip, Stack } from '@mantine/core';
 import { IconEdit, IconTrash, IconSearch, IconEye } from '@tabler/icons-react';
-import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { useAdminClient, withAdminClient } from '@/lib/client/adminClient';
+import { notify } from '@/lib/notifications';
 import { EditModelAuthorModal } from './EditModelAuthorModal';
 import { ViewModelAuthorModal } from './ViewModelAuthorModal';
-import { DeleteModelAuthorModal } from './DeleteModelAuthorModal';
+import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
 import type { ModelAuthorDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -32,66 +32,41 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
   const loadAuthors = async () => {
     try {
       setLoading(true);
-      const data = await executeWithAdmin(client => client.modelAuthors.list());
+      // Fetch authors, series, and models in parallel (3 calls instead of 1 + N + M)
+      const [data, allSeries, allModels] = await Promise.all([
+        executeWithAdmin(client => client.modelAuthors.list()),
+        executeWithAdmin(client => client.modelSeries.list()),
+        executeWithAdmin(client => client.models.list()),
+      ]);
       setAuthors(data);
       setFilteredAuthors(data);
-      
-      // Load series counts for each author
-      await loadSeriesCounts(data);
+
+      // Count models per series from the full models list
+      const modelsPerSeries: Record<number, number> = {};
+      for (const model of allModels) {
+        if (model.modelSeriesId) {
+          modelsPerSeries[model.modelSeriesId] = (modelsPerSeries[model.modelSeriesId] ?? 0) + 1;
+        }
+      }
+
+      // Count series and models per author
+      const seriesCountsMap: Record<number, number> = {};
+      const modelCountsMap: Record<number, number> = {};
+      for (const series of allSeries) {
+        if (series.authorId) {
+          seriesCountsMap[series.authorId] = (seriesCountsMap[series.authorId] ?? 0) + 1;
+          modelCountsMap[series.authorId] = (modelCountsMap[series.authorId] ?? 0) + (series.id ? (modelsPerSeries[series.id] ?? 0) : 0);
+        }
+      }
+
+      setSeriesCounts(seriesCountsMap);
+      setModelCounts(modelCountsMap);
     } catch (error) {
       console.error('Failed to load authors:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load authors',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load authors');
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadSeriesCounts = async (authorsList: ModelAuthorDto[]) => {
-    const seriesCountsMap: Record<number, number> = {};
-    const modelCountsMap: Record<number, number> = {};
-    
-    await Promise.all(
-      authorsList.map(async (author) => {
-        if (author.id) {
-          try {
-            const series = await executeWithAdmin(client => 
-              client.modelAuthors.getSeries(author.id as number)
-            );
-            seriesCountsMap[author.id] = series.length;
-            
-            // Load model counts for each series
-            const modelCountPromises = series.map(async (s) => {
-              if (s.id) {
-                try {
-                  const models = await executeWithAdmin(client => 
-                    client.modelSeries.getModels(s.id as number)
-                  );
-                  return models.length;
-                } catch (error) {
-                  console.error(`Failed to load models for series ${s.id}:`, error);
-                  return 0;
-                }
-              }
-              return 0;
-            });
-            
-            const modelCountsPerSeries = await Promise.all(modelCountPromises);
-            modelCountsMap[author.id] = modelCountsPerSeries.reduce((sum, count) => sum + count, 0);
-          } catch (error) {
-            console.error(`Failed to load series count for author ${author.id}:`, error);
-            seriesCountsMap[author.id] = 0;
-            modelCountsMap[author.id] = 0;
-          }
-        }
-      })
-    );
-    
-    setSeriesCounts(seriesCountsMap);
-    setModelCounts(modelCountsMap);
   };
 
   useEffect(() => {
@@ -258,9 +233,15 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             }}
           />
 
-          <DeleteModelAuthorModal
+          <DeleteConfirmationModal
             isOpen={deleteModalOpen}
-            author={selectedAuthor}
+            title="Delete Author"
+            itemLabel="author"
+            itemName={selectedAuthor.name ?? ''}
+            description="This will permanently remove the author from the system. Model series created by this author will remain but will no longer be associated with this author."
+            confirmButtonText="Delete Author"
+            successMessage={`Author "${selectedAuthor.name}" deleted successfully`}
+            deleteAction={() => withAdminClient(client => client.modelAuthors.delete(selectedAuthor.id as number))}
             onClose={() => {
               setDeleteModalOpen(false);
               setSelectedAuthor(null);

@@ -1,34 +1,16 @@
+using ConduitLLM.Core.Models;
+
 namespace ConduitLLM.Gateway.Models
 {
     /// <summary>
     /// Represents the data stored in Redis for an ephemeral API key
     /// </summary>
-    public class EphemeralKeyData
+    public class EphemeralKeyData : EphemeralKeyDataBase
     {
-        /// <summary>
-        /// The ephemeral key token
-        /// </summary>
-        public string Key { get; set; } = string.Empty;
-
         /// <summary>
         /// The virtual key ID that this ephemeral key is associated with
         /// </summary>
         public int VirtualKeyId { get; set; }
-
-        /// <summary>
-        /// When the ephemeral key was created
-        /// </summary>
-        public DateTimeOffset CreatedAt { get; set; }
-
-        /// <summary>
-        /// When the ephemeral key expires
-        /// </summary>
-        public DateTimeOffset ExpiresAt { get; set; }
-
-        /// <summary>
-        /// Whether this key has been consumed (used)
-        /// </summary>
-        public bool IsConsumed { get; set; }
 
         /// <summary>
         /// Optional metadata about the ephemeral key

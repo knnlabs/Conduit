@@ -29,6 +29,14 @@ namespace ConduitLLM.Core.Services
         /// Number of concurrent batch publishers.
         /// </summary>
         public int ConcurrentPublishers { get; set; } = 3;
+
+        /// <summary>
+        /// Maximum number of webhooks held in the in-process staging queue.
+        /// Webhooks enqueued beyond this depth are dropped (and logged) to keep
+        /// memory bounded when the bus is unavailable. Matches the broker-side
+        /// webhook queue limit by default.
+        /// </summary>
+        public int MaxQueueDepth { get; set; } = 50_000;
     }
 
     /// <summary>
@@ -44,9 +52,11 @@ namespace ConduitLLM.Core.Services
         private readonly ConcurrentQueue<WebhookDeliveryRequested> _queue = new();
         private readonly SemaphoreSlim _batchSemaphore;
         private readonly Timer _batchTimer;
-        
+
         private long _totalPublished = 0;
         private long _totalBatches = 0;
+        private long _totalDropped = 0;
+        private int _queueDepth = 0;
 
         public BatchWebhookPublisher(
             IServiceProvider serviceProvider,
@@ -67,13 +77,20 @@ namespace ConduitLLM.Core.Services
         public void EnqueueWebhook(WebhookDeliveryRequested webhook)
         {
             ArgumentNullException.ThrowIfNull(webhook);
-            
-            _queue.Enqueue(webhook);
-            
-            // If we've reached the batch size, trigger immediate publishing
-            if (_queue.Count() >= _options.Value.MaxBatchSize)
+
+            if (!TryEnqueue(webhook))
             {
-                _ = Task.Run(async () => await PublishBatchAsync());
+                return;
+            }
+
+            // If we've reached the batch size, trigger immediate publishing
+            if (Volatile.Read(ref _queueDepth) >= _options.Value.MaxBatchSize)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try { await PublishBatchAsync(); }
+                    catch (Exception ex) { _logger.LogError(ex, "Unhandled error during webhook batch publish (threshold)"); }
+                });
             }
             else
             {
@@ -89,10 +106,35 @@ namespace ConduitLLM.Core.Services
         {
             foreach (var webhook in webhooks)
             {
-                _queue.Enqueue(webhook);
+                TryEnqueue(webhook);
             }
-            
-            _ = Task.Run(async () => await PublishBatchAsync());
+
+            _ = Task.Run(async () =>
+            {
+                try { await PublishBatchAsync(); }
+                catch (Exception ex) { _logger.LogError(ex, "Unhandled error during webhook bulk batch publish"); }
+            });
+        }
+
+        /// <summary>
+        /// Enqueues a webhook unless the staging queue is at capacity, in which case it is dropped.
+        /// </summary>
+        private bool TryEnqueue(WebhookDeliveryRequested webhook)
+        {
+            if (Interlocked.Increment(ref _queueDepth) > _options.Value.MaxQueueDepth)
+            {
+                Interlocked.Decrement(ref _queueDepth);
+                var dropped = Interlocked.Increment(ref _totalDropped);
+                _logger.LogError(
+                    "Webhook staging queue is full ({MaxQueueDepth}); dropping webhook for partition {PartitionKey}. Total dropped: {TotalDropped}",
+                    _options.Value.MaxQueueDepth,
+                    webhook.PartitionKey,
+                    dropped);
+                return false;
+            }
+
+            _queue.Enqueue(webhook);
+            return true;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -162,14 +204,15 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var batch = new List<WebhookDeliveryRequested>(_options.Value.MaxBatchSize);
-                
+
                 // Dequeue up to MaxBatchSize items
-                while (batch.Count() < _options.Value.MaxBatchSize && _queue.TryDequeue(out var webhook))
+                while (batch.Count < _options.Value.MaxBatchSize && _queue.TryDequeue(out var webhook))
                 {
+                    Interlocked.Decrement(ref _queueDepth);
                     batch.Add(webhook);
                 }
 
-                if (batch.Count() == 0)
+                if (!batch.Any())
                 {
                     return;
                 }
@@ -204,10 +247,11 @@ namespace ConduitLLM.Core.Services
                             webhooks.Count(),
                             group.Key);
 
-                        // Re-queue failed webhooks
+                        // Re-queue failed webhooks (dropped if the queue has since filled,
+                        // mirroring the broker-side reject-publish overflow policy)
                         foreach (var webhook in webhooks)
                         {
-                            _queue.Enqueue(webhook);
+                            TryEnqueue(webhook);
                         }
                     }
                 }
@@ -217,11 +261,12 @@ namespace ConduitLLM.Core.Services
                 {
                     _logger.LogInformation(
                         "Webhook batch publisher metrics: TotalPublished={TotalPublished}, TotalBatches={TotalBatches}, " +
-                        "AvgBatchSize={AvgBatchSize:F2}, QueueDepth={QueueDepth}",
+                        "AvgBatchSize={AvgBatchSize:F2}, QueueDepth={QueueDepth}, TotalDropped={TotalDropped}",
                         _totalPublished,
                         _totalBatches,
                         (double)_totalPublished / _totalBatches,
-                        _queue.Count());
+                        Volatile.Read(ref _queueDepth),
+                        Volatile.Read(ref _totalDropped));
                 }
             }
             finally

@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using ConduitLLM.Functions.Entities.Interfaces;
 using ConduitLLM.Functions.Enums;
 
 namespace ConduitLLM.Functions.Entities;
@@ -11,7 +12,7 @@ namespace ConduitLLM.Functions.Entities;
 /// Credentials are shared across all function configurations of the same provider type.
 /// </summary>
 [Table("FunctionCredentials")]
-public class FunctionCredential
+public class FunctionCredential : ICredentialEntity, IIdentifiableEntity<int>
 {
     /// <summary>
     /// Unique identifier for this credential

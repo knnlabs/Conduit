@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Controllers;
 using ConduitLLM.Gateway.Services;
 
 using Microsoft.AspNetCore.Authorization;
@@ -6,45 +7,53 @@ using Microsoft.AspNetCore.Mvc;
 namespace ConduitLLM.Gateway.Controllers
 {
     /// <summary>
-    /// Controller for SignalR health and monitoring endpoints
+    /// Controller for SignalR health and monitoring endpoints.
+    /// Access is controlled by the HealthEndpointAuthorizationMiddleware which allows
+    /// requests from private networks or with a valid X-Conduit-Health-Key header.
     /// </summary>
+    /// <remarks>
+    /// The middleware handles basic health endpoint authorization (private network or health key).
+    /// Methods without explicit auth attributes are protected by the middleware.
+    /// Methods with [Authorize(Policy = "AdminOnly")] require additional backend authentication.
+    /// </remarks>
     [ApiController]
     [Route("health/signalr")]
-    public class SignalRHealthController : ControllerBase
+    public class SignalRHealthController : GatewayControllerBase
     {
         private readonly ISignalRConnectionMonitor _connectionMonitor;
         private readonly ISignalRMessageQueueService _messageQueueService;
         private readonly ISignalRAcknowledgmentService _acknowledgmentService;
-        private readonly ILogger<SignalRHealthController> _logger;
 
         public SignalRHealthController(
             ISignalRConnectionMonitor connectionMonitor,
             ISignalRMessageQueueService messageQueueService,
             ISignalRAcknowledgmentService acknowledgmentService,
             ILogger<SignalRHealthController> logger)
+            : base(logger)
         {
             _connectionMonitor = connectionMonitor;
             _messageQueueService = messageQueueService;
             _acknowledgmentService = acknowledgmentService;
-            _logger = logger;
         }
 
         /// <summary>
-        /// Gets SignalR connection statistics
+        /// Gets SignalR connection statistics.
+        /// Access controlled by health endpoint middleware (private network or valid health key).
         /// </summary>
         [HttpGet("connections")]
-        [AllowAnonymous]
-        public ActionResult<ConnectionStatistics> GetConnectionStatistics()
+        [AllowAnonymous] // Middleware handles health endpoint authorization
+        public async Task<ActionResult<ConnectionStatistics>> GetConnectionStatistics()
         {
-            var stats = _connectionMonitor.GetStatistics();
+            var stats = await _connectionMonitor.GetStatisticsAsync();
             return Ok(stats);
         }
 
         /// <summary>
-        /// Gets SignalR message queue statistics
+        /// Gets SignalR message queue statistics.
+        /// Access controlled by health endpoint middleware (private network or valid health key).
         /// </summary>
         [HttpGet("queue")]
-        [AllowAnonymous]
+        [AllowAnonymous] // Middleware handles health endpoint authorization
         public ActionResult<QueueStatistics> GetQueueStatistics()
         {
             var stats = _messageQueueService.GetStatistics();
@@ -56,9 +65,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("connections/details")]
         [Authorize(Policy = "AdminOnly")]
-        public ActionResult<object> GetConnectionDetails()
+        public async Task<ActionResult<object>> GetConnectionDetails()
         {
-            var connections = _connectionMonitor.GetActiveConnections();
+            var connections = await _connectionMonitor.GetActiveConnectionsAsync();
             return Ok(new
             {
                 activeConnections = connections,
@@ -67,13 +76,14 @@ namespace ConduitLLM.Gateway.Controllers
         }
 
         /// <summary>
-        /// Gets connections for a specific hub
+        /// Gets connections for a specific hub.
+        /// Access controlled by health endpoint middleware (private network or valid health key).
         /// </summary>
         [HttpGet("connections/hub/{hubName}")]
-        [AllowAnonymous]
-        public ActionResult<object> GetHubConnections(string hubName)
+        [AllowAnonymous] // Middleware handles health endpoint authorization
+        public async Task<ActionResult<object>> GetHubConnections(string hubName)
         {
-            var connections = _connectionMonitor.GetHubConnections(hubName);
+            var connections = await _connectionMonitor.GetHubConnectionsAsync(hubName);
             return Ok(new
             {
                 hubName,
@@ -95,12 +105,12 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         [HttpGet("connections/key/{virtualKeyId}")]
         [Authorize]
-        public ActionResult<object> GetVirtualKeyConnections(int virtualKeyId)
+        public async Task<ActionResult<object>> GetVirtualKeyConnections(int virtualKeyId)
         {
             // Check if the requester has permission to view this virtual key's connections
             // This would normally involve checking if the requester owns or has admin access to the key
-            
-            var connections = _connectionMonitor.GetVirtualKeyConnections(virtualKeyId);
+
+            var connections = await _connectionMonitor.GetVirtualKeyConnectionsAsync(virtualKeyId);
             return Ok(new
             {
                 virtualKeyId,
@@ -117,13 +127,14 @@ namespace ConduitLLM.Gateway.Controllers
         }
 
         /// <summary>
-        /// Gets connections in a specific group
+        /// Gets connections in a specific group.
+        /// Access controlled by health endpoint middleware (private network or valid health key).
         /// </summary>
         [HttpGet("connections/group/{groupName}")]
-        [AllowAnonymous]
-        public ActionResult<object> GetGroupConnections(string groupName)
+        [AllowAnonymous] // Middleware handles health endpoint authorization
+        public async Task<ActionResult<object>> GetGroupConnections(string groupName)
         {
-            var connections = _connectionMonitor.GetGroupConnections(groupName);
+            var connections = await _connectionMonitor.GetGroupConnectionsAsync(groupName);
             return Ok(new
             {
                 groupName,
@@ -171,17 +182,19 @@ namespace ConduitLLM.Gateway.Controllers
         public async Task<ActionResult> RequeueDeadLetter(string messageId)
         {
             await _messageQueueService.RequeueDeadLetterAsync(messageId);
-            _logger.LogInformation("Dead letter message {MessageId} requeued by admin", messageId);
+            Logger.LogInformation("Dead letter message {MessageId} requeued by admin", messageId);
             return Ok(new { message = "Message requeued successfully" });
         }
 
         /// <summary>
-        /// Gets overall SignalR health status
+        /// Gets overall SignalR health status.
+        /// Access controlled by health endpoint middleware (private network or valid health key).
         /// </summary>
         [HttpGet]
-        public ActionResult<object> GetHealthStatus()
+        [AllowAnonymous] // Middleware handles health endpoint authorization
+        public async Task<ActionResult<object>> GetHealthStatus()
         {
-            var connectionStats = _connectionMonitor.GetStatistics();
+            var connectionStats = await _connectionMonitor.GetStatisticsAsync();
             var queueStats = _messageQueueService.GetStatistics();
 
             var isHealthy = connectionStats.TotalActiveConnections >= 0 &&

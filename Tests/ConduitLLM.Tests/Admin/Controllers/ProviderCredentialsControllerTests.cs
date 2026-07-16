@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Messaging;
+using FluentAssertions;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -99,9 +100,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
+
             Assert.Equal(ApiKeyTestResult.Success, response.Result);
             Assert.Contains("authorized", response.Message);
             Assert.NotNull(response.Details?.ModelsAvailable);
@@ -128,9 +129,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
+
             Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
             Assert.Contains("authorization test", response.Message);
             Assert.NotNull(response.Details);
@@ -157,9 +158,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
+
             Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
             Assert.Contains("authorization test", response.Message);
             Assert.NotNull(response.Details);
@@ -188,9 +189,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
+
             // Verify the connection test properly fails (no fallback models returned)
             Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
             Assert.Contains("authorization test", response.Message);
@@ -202,7 +203,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task TestProviderConnectionWithCredentials_WithEmptyApiKey_ShouldReturnInternalServerError()
+        public async Task TestProviderConnectionWithCredentials_WithEmptyApiKey_ShouldPropagateException()
         {
             // Arrange
             var testRequest = new TestProviderRequest
@@ -212,21 +213,19 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 BaseUrl = "https://api.openai.com/v1"
             };
 
-            // Mock the client factory to throw when creating client with empty key
+            // Mock the client factory to throw when creating client with empty key.
+            // CreateTestClient is invoked outside the action's try/catch, so the
+            // ArgumentException propagates and is mapped to 400 in AdminExceptionMiddleware.
             _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
                 .Throws(new ArgumentException("API key is required for testing credentials"));
 
-            // Act
-            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
-
-            // Assert - Client factory exceptions result in 500 Internal Server Error
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred.", statusResult.Value);
+            // Act & Assert
+            var act = async () => await _controller.TestProviderConnectionWithCredentials(testRequest);
+            await act.Should().ThrowAsync<ArgumentException>();
         }
 
         [Fact]
-        public async Task TestProviderConnectionWithCredentials_WithNullApiKey_ShouldReturnInternalServerError()
+        public async Task TestProviderConnectionWithCredentials_WithNullApiKey_ShouldPropagateException()
         {
             // Arrange
             var testRequest = new TestProviderRequest
@@ -236,17 +235,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 BaseUrl = "https://api.openai.com/v1"
             };
 
-            // Mock the client factory to throw when creating client with null key
+            // Mock the client factory to throw when creating client with null key.
+            // CreateTestClient is invoked outside the action's try/catch, so the
+            // ArgumentException propagates and is mapped to 400 in AdminExceptionMiddleware.
             _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
                 .Throws(new ArgumentException("API key is required for testing credentials"));
 
-            // Act
-            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
-
-            // Assert - Client factory exceptions result in 500 Internal Server Error
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred.", statusResult.Value);
+            // Act & Assert
+            var act = async () => await _controller.TestProviderConnectionWithCredentials(testRequest);
+            await act.Should().ThrowAsync<ArgumentException>();
         }
 
         [Fact]
@@ -269,8 +266,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
 
             Assert.Equal(ApiKeyTestResult.UnknownError, response.Result);
             Assert.Contains("unexpected error", response.Message);
@@ -293,8 +290,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
 
             _output.WriteLine($"Result: {response.Result}");
             _output.WriteLine($"Message: {response.Message}");
@@ -319,8 +316,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<StandardApiKeyTestResponse>().Subject;
 
             Assert.Equal(ApiKeyTestResult.Ignored, response.Result);
             Assert.Contains("untested", response.Message, StringComparison.OrdinalIgnoreCase);

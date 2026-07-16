@@ -47,10 +47,19 @@ namespace ConduitLLM.Gateway.Extensions
             services.AddEventHandler<MediaGenerationCompleted, Gateway.EventHandlers.MediaLifecycleHandler>();
             services.AddEventHandler<VideoGenerationStarted, Gateway.EventHandlers.VideoGenerationStartedHandler>();
 
-            // Model-mapping / model-cost / ip-filter caches
-            services.AddEventHandler<ModelMappingChanged, Gateway.Consumers.ModelMappingCacheInvalidationConsumer>();
+            // Model-mapping / model-cost / ip-filter / provider-tool caches
+            services.AddEventHandler<ModelMappingChanged, Gateway.Consumers.ModelMappingCacheInvalidationHandler>();
             services.AddEventHandler<ModelCostChanged, Gateway.Consumers.ModelCostCacheInvalidationHandler>();
             services.AddEventHandler<IpFilterChanged, Gateway.Consumers.IpFilterCacheInvalidationHandler>();
+            services.AddEventHandler<ProviderToolChanged, Gateway.Consumers.ProviderToolCacheInvalidationHandler>();
+
+            // Provider key-credential cache invalidation (one class, four event types).
+            // These events live in ConduitLLM.Configuration.Events (that is what the Admin
+            // publish sites emit), unlike the rest of this file which uses Core.Events.
+            services.AddEventHandler<Configuration.Events.ProviderKeyCredentialCreated, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
+            services.AddEventHandler<Configuration.Events.ProviderKeyCredentialUpdated, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
+            services.AddEventHandler<Configuration.Events.ProviderKeyCredentialDeleted, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
+            services.AddEventHandler<Configuration.Events.ProviderKeyCredentialPrimaryChanged, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
 
             return services;
         }
@@ -77,6 +86,11 @@ namespace ConduitLLM.Gateway.Extensions
             x.AddEventBridge<ModelMappingChanged>();
             x.AddEventBridge<ModelCostChanged>();
             x.AddEventBridge<IpFilterChanged>();
+            x.AddEventBridge<ProviderToolChanged>();
+            x.AddEventBridge<Configuration.Events.ProviderKeyCredentialCreated>();
+            x.AddEventBridge<Configuration.Events.ProviderKeyCredentialUpdated>();
+            x.AddEventBridge<Configuration.Events.ProviderKeyCredentialDeleted>();
+            x.AddEventBridge<Configuration.Events.ProviderKeyCredentialPrimaryChanged>();
         }
     }
 }

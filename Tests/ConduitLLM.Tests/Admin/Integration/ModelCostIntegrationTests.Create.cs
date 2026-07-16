@@ -46,9 +46,9 @@ namespace ConduitLLM.Tests.Admin.Integration
             var result = await _controller.CreateModelCost(createDto);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
-            
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
+
             createdCost.CostName.Should().Be("GPT-4 Pricing");
             createdCost.AssociatedModelAliases.Should().HaveCount(2);
             createdCost.AssociatedModelAliases.Should().Contain(new[] { "gpt-4", "gpt-3.5-turbo" });
@@ -60,11 +60,11 @@ namespace ConduitLLM.Tests.Admin.Integration
         }
 
         [Fact]
-        public async Task CreateModelCost_DuplicateName_ShouldReturnBadRequest()
+        public async Task CreateModelCost_DuplicateName_ShouldPropagateException()
         {
             // Arrange
             await SetupTestDataAsync();
-            
+
             // Create first cost
             var firstCost = new CreateModelCostDto
             {
@@ -83,11 +83,10 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
 
             // Act
-            var result = await _controller.CreateModelCost(duplicateCost);
+            var act = async () => await _controller.CreateModelCost(duplicateCost);
 
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            badRequestResult.Value.Should().Be("A model cost with name 'Standard Pricing' already exists");
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         #endregion

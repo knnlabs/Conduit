@@ -15,6 +15,8 @@ namespace ConduitLLM.Admin.Services
     {
         private string GenerateJsonExport(List<ModelCost> modelCosts)
         {
+            _logger.LogDebug("Generating JSON export for {Count} model costs", modelCosts.Count);
+
             var exportData = modelCosts.Select(mc => new ModelCostExportDto
             {
                 CostName = mc.CostName,
@@ -38,6 +40,8 @@ namespace ConduitLLM.Admin.Services
 
         private string GenerateCsvExport(List<ModelCost> modelCosts)
         {
+            _logger.LogDebug("Generating CSV export for {Count} model costs", modelCosts.Count);
+
             var csv = new StringBuilder();
             csv.AppendLine("Cost Name,Pricing Model,Pricing Configuration,Input Cost (per million tokens),Output Cost (per million tokens),Embedding Cost (per million tokens),Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Cached Input Cost (per million tokens),Cached Write Cost (per million tokens)");
 
@@ -65,6 +69,8 @@ namespace ConduitLLM.Admin.Services
             {
                 var importData = JsonSerializer.Deserialize<List<ModelCostExportDto>>(jsonData);
                 if (importData == null) return new List<CreateModelCostDto>();
+
+                _logger.LogDebug("Parsed {Count} model costs from JSON import", importData.Count);
 
                 return importData.Select(d => new CreateModelCostDto
                 {
@@ -133,6 +139,9 @@ namespace ConduitLLM.Admin.Services
                     throw new ArgumentException($"Invalid CSV data at line {i + 1}", ex);
                 }
             }
+
+            _logger.LogDebug("Parsed {Count} model costs from CSV import ({TotalLines} data lines)",
+                modelCosts.Count, lines.Length - 1);
 
             return modelCosts;
         }

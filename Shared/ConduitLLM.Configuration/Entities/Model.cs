@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
@@ -9,7 +11,7 @@ namespace ConduitLLM.Configuration.Entities
     /// This is a convenient way to associate costs, capabilities, and configurations with a specific model.
     /// We are assuming that the cost is primarily determined by the model variant and its associated provider.
     /// </summary>
-    public class Model
+    public class Model : IEntity<int>, IAuditableEntity
     {
         [Key]
         public int Id { get; set; }

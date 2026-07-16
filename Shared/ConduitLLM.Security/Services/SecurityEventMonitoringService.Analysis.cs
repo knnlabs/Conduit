@@ -151,7 +151,7 @@ namespace ConduitLLM.Security.Services
                 }
 
                 // Detect anomalies
-                if (state.EndpointAccess.Count() == 0 && state.EndpointAccess.Count() > _options.AnomalousEndpointThreshold &&
+                if (state.EndpointAccess.Count() > _options.AnomalousEndpointThreshold &&
                     state.TotalRequests > 50)
                 {
                     RecordAnomalousAccess(profile.Key, "", "Endpoint Scanning",

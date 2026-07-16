@@ -1,7 +1,44 @@
+using System.Collections.Generic;
 using ConduitLLM.Admin.Models.ModelSeries;
 
 namespace ConduitLLM.Admin.Models.Models
 {
+    /// <summary>
+    /// Lightweight DTO for a model's provider type association (identifier).
+    /// </summary>
+    public class ModelIdentifierDto
+    {
+        /// <summary>Gets or sets the unique identifier for this model-provider association.</summary>
+        public int Id { get; set; }
+
+        /// <summary>Gets or sets the provider-specific model identifier string (e.g., "gpt-4-turbo" for OpenAI).</summary>
+        public string Identifier { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the provider ID that offers this model, or null if unassigned.</summary>
+        public int? Provider { get; set; }
+
+        /// <summary>Gets or sets whether this is the primary (preferred) provider for the model.</summary>
+        public bool IsPrimary { get; set; }
+
+        /// <summary>Gets or sets the maximum input token limit for this provider's offering, or null if unknown.</summary>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>Gets or sets the maximum output token limit for this provider's offering, or null if unknown.</summary>
+        public int? MaxOutputTokens { get; set; }
+
+        /// <summary>Gets or sets the relative speed score for this provider's offering, used for routing decisions.</summary>
+        public decimal? SpeedScore { get; set; }
+
+        /// <summary>Gets or sets the relative quality score for this provider's offering, used for routing decisions.</summary>
+        public decimal? QualityScore { get; set; }
+
+        /// <summary>Gets or sets the provider-specific variation label (e.g., "turbo", "mini") if applicable.</summary>
+        public string? ProviderVariation { get; set; }
+
+        /// <summary>Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.</summary>
+        public int? ModelCostId { get; set; }
+    }
+
     /// <summary>
     /// Data transfer object representing a canonical AI model in the system.
     /// </summary>
@@ -149,5 +186,15 @@ namespace ConduitLLM.Admin.Models.Models
         /// </remarks>
         /// <value>JSON string containing parameter definitions, or null to use series defaults.</value>
         public string? ModelParameters { get; set; }
+
+        /// <summary>
+        /// Gets or sets the provider type associations (identifiers) for this model.
+        /// </summary>
+        /// <remarks>
+        /// Included when the model is fetched with details. Each identifier represents
+        /// a provider-specific mapping showing which providers offer this model and under
+        /// what identifier string.
+        /// </remarks>
+        public List<ModelIdentifierDto>? Identifiers { get; set; }
     }
 }

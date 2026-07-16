@@ -1,7 +1,6 @@
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Consumers
@@ -36,7 +35,6 @@ namespace ConduitLLM.Core.Consumers
 
             try
             {
-                // Invalidate the specific setting in the cache
                 await _cacheService.InvalidateSettingAsync(message.SettingKey);
 
                 _logger.LogInformation(
@@ -50,9 +48,7 @@ namespace ConduitLLM.Core.Consumers
                     "Failed to invalidate cache for setting '{SettingKey}' (ID: {SettingId})",
                     message.SettingKey,
                     message.SettingId);
-
-                // Rethrow to allow MassTransit retry policy to handle the failure
-                throw;
+                throw; // Re-throw to trigger transport retry logic
             }
         }
     }

@@ -1100,4 +1100,4 @@ To migrate:
 - [Progress and Notifications](./progress-and-notifications.md) - SignalR real-time progress tracking
 - [Provider Architecture](../provider-system/provider-architecture.md) - Provider integration details
 - [Background Services](../patterns/background-services-and-workers.md) - Background service patterns
-- [Event-Driven Architecture](../../claude/event-driven-architecture.md) - MassTransit events and domain events
+- [MassTransit Events](../events/masstransit-event-inventory.md) - Event-driven architecture

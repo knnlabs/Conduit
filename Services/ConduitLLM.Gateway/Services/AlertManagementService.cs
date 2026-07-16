@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -35,7 +36,11 @@ namespace ConduitLLM.Gateway.Services
             _activeAlerts = new ConcurrentDictionary<string, HealthAlert>();
             _alertRules = new ConcurrentDictionary<string, AlertRule>();
             _suppressions = new ConcurrentDictionary<string, AlertSuppression>();
-            _alertChannel = Channel.CreateUnbounded<HealthAlert>();
+            // Bounded so a stalled stream consumer cannot grow memory without limit;
+            // the oldest (least relevant) alerts are dropped first.
+            _alertChannel = Channel.CreateBounded<HealthAlert>(
+                new BoundedChannelOptions(1000) { FullMode = BoundedChannelFullMode.DropOldest },
+                dropped => _logger.LogWarning("Alert stream buffer full; dropped alert {AlertId} ({Title})", dropped.Id, dropped.Title));
 
             // Load existing data from cache
             LoadFromCache();
@@ -143,7 +148,7 @@ namespace ConduitLLM.Gateway.Services
             _alertRules[rule.Id] = rule;
             SaveToCache();
 
-            _logger.LogInformation("Alert rule {RuleId} saved: {RuleName}", rule.Id, rule.Name);
+            _logger.LogInformation("Alert rule {RuleId} saved: {RuleName}", rule.Id, LoggingSanitizer.S(rule.Name));
             return Task.FromResult(rule);
         }
 
@@ -229,7 +234,7 @@ namespace ConduitLLM.Gateway.Services
             // Check if alert should be suppressed
             if (await IsAlertSuppressedAsync(alert))
             {
-                _logger.LogDebug("Alert suppressed: {AlertTitle}", alert.Title);
+                _logger.LogDebug("Alert suppressed: {AlertTitle}", LoggingSanitizer.S(alert.Title));
                 return;
             }
 

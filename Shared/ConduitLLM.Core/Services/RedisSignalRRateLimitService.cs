@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Constants;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -72,44 +73,15 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisSignalRRateLimitService> _logger;
-        
-        private const string KEY_PREFIX = "signalr:vk:";
-        private const string CONN_SUFFIX = ":connections";
-        private const string RPM_SUFFIX = ":rpm";
-        private const string RPD_SUFFIX = ":rpd";
-        
-        // Lua script for atomic rate limit check with sliding window
-        private const string CHECK_AND_INCREMENT_SCRIPT = @"
-            local key = KEYS[1]
-            local now = tonumber(ARGV[1])
-            local window = tonumber(ARGV[2])
-            local limit = tonumber(ARGV[3])
-            
-            -- Clean old entries
-            redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
-            
-            -- Count current requests
-            local current = redis.call('ZCARD', key)
-            
-            -- Check limit
-            if current >= limit then
-                return {0, current, limit}
-            end
-            
-            -- Add new request
-            local id = redis.call('INCR', key .. ':seq')
-            redis.call('ZADD', key, now, now .. ':' .. id)
-            redis.call('EXPIRE', key, window / 1000 + 60)
-            
-            return {1, current + 1, limit}
-        ";
-        
+        private readonly SlidingWindowRateLimiter _slidingWindow;
+
         public RedisSignalRRateLimitService(
             IConnectionMultiplexer redis,
             ILogger<RedisSignalRRateLimitService> logger)
         {
             _redis = redis ?? throw new ArgumentNullException(nameof(redis));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _slidingWindow = new SlidingWindowRateLimiter(redis, logger);
         }
         
         public async Task<SignalRRateLimitResult> CheckMethodInvocationAsync(
@@ -122,17 +94,16 @@ namespace ConduitLLM.Core.Services
                 return new SignalRRateLimitResult { IsAllowed = true };
             }
             
-            var db = _redis.GetDatabase();
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            
+
             // Get current connection count
             var connectionCount = await GetConnectionCountAsync(virtualKeyHash);
-            
+
             // Check RPM limit first (more restrictive)
             if (rpmLimit.HasValue && rpmLimit.Value > 0)
             {
-                var rpmKey = $"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}";
-                var rpmResult = await CheckAndIncrementAsync(db, rpmKey, now, 60000, rpmLimit.Value);
+                var rpmKey = RedisKeys.SignalRRateLimit.Rpm(virtualKeyHash);
+                var rpmResult = await _slidingWindow.CheckAsync(rpmKey, now, 60000, rpmLimit.Value);
                 
                 if (!rpmResult.IsAllowed)
                 {
@@ -165,8 +136,8 @@ namespace ConduitLLM.Core.Services
             // Check RPD limit
             if (rpdLimit.HasValue && rpdLimit.Value > 0)
             {
-                var rpdKey = $"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}";
-                var rpdResult = await CheckAndIncrementAsync(db, rpdKey, now, 86400000, rpdLimit.Value);
+                var rpdKey = RedisKeys.SignalRRateLimit.Rpd(virtualKeyHash);
+                var rpdResult = await _slidingWindow.CheckAsync(rpdKey, now, 86400000, rpdLimit.Value);
                 
                 if (!rpdResult.IsAllowed)
                 {
@@ -204,36 +175,6 @@ namespace ConduitLLM.Core.Services
             };
         }
         
-        private async Task<RateLimitResult> CheckAndIncrementAsync(
-            IDatabase db, 
-            string key, 
-            long now, 
-            int windowMs, 
-            int limit)
-        {
-            try
-            {
-                var result = await db.ScriptEvaluateAsync(
-                    CHECK_AND_INCREMENT_SCRIPT,
-                    new RedisKey[] { key },
-                    new RedisValue[] { now, windowMs, limit });
-                
-                var array = (RedisValue[])result!;
-                return new RateLimitResult
-                {
-                    IsAllowed = (int)array[0] == 1,
-                    Current = (int)array[1],
-                    Limit = (int)array[2]
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking SignalR rate limit for key {Key}", key);
-                // Allow on error to prevent total failure
-                return new RateLimitResult { IsAllowed = true, Current = 0, Limit = limit };
-            }
-        }
-        
         public async Task<int> IncrementConnectionCountAsync(string virtualKeyHash)
         {
             if (string.IsNullOrEmpty(virtualKeyHash))
@@ -242,7 +183,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var count = await db.HashIncrementAsync(key, "count");
                 await db.HashSetAsync(key, "last_connected", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -268,7 +209,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var count = await db.HashDecrementAsync(key, "count");
                 
@@ -307,7 +248,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var count = await db.HashGetAsync(key, "count");
                 return count.HasValue ? (int)count : 0;
@@ -327,7 +268,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var lastActivity = await db.HashGetAsync(key, "last_disconnected");
                 if (lastActivity.HasValue)
@@ -375,11 +316,5 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        private class RateLimitResult
-        {
-            public bool IsAllowed { get; set; }
-            public int Current { get; set; }
-            public int Limit { get; set; }
-        }
     }
 }

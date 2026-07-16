@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using StackExchange.Redis;
 using Xunit;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.DTOs.SignalR;
 
@@ -194,29 +195,41 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.True(stats.IsHealthy);
         }
         
-        [Fact(Skip = "Known issue with mocking IServer.Keys() enumeration - needs investigation")]
+        [Fact]
         public async Task GetStatisticsAsync_AggregatesMultipleUrls()
         {
             // Arrange
-            var keys = new RedisKey[] 
-            { 
-                "webhook:metrics:urls:hash1",
-                "webhook:metrics:urls:hash2"
+            var keys = new RedisKey[]
+            {
+                RedisKeys.WebhookMetrics.UrlMetrics("hash1"),
+                RedisKeys.WebhookMetrics.UrlMetrics("hash2")
             };
-            
+
             // Setup Keys method to return test keys
+            // IServer has two Keys overloads - set up both
+            IEnumerable<RedisKey> keysList = keys.ToList();
+
+            // Setup 4-parameter overload
             _serverMock.Setup(s => s.Keys(
-                It.IsAny<int>(), 
-                It.IsAny<RedisValue>(), 
-                It.IsAny<int>(), 
-                It.IsAny<long>(), 
-                It.IsAny<int>(), 
+                It.IsAny<int>(),
+                It.IsAny<RedisValue>(),
+                It.IsAny<int>(),
                 It.IsAny<CommandFlags>()))
-                .Returns(keys);
-            
-            // Use a time that's definitely within the last hour
-            var recentTime = DateTime.UtcNow.AddMinutes(-30).ToString("O");
-            
+                .Returns(keysList);
+
+            // Setup 6-parameter overload
+            _serverMock.Setup(s => s.Keys(
+                It.IsAny<int>(),
+                It.IsAny<RedisValue>(),
+                It.IsAny<int>(),
+                It.IsAny<long>(),
+                It.IsAny<int>(),
+                It.IsAny<CommandFlags>()))
+                .Returns(keysList);
+
+            // Use current time - format as simple sortable string that DateTime.TryParse handles correctly
+            var recentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+
             var hashEntries1 = new HashEntry[]
             {
                 new HashEntry("url", "https://example1.com/webhook"),
@@ -225,7 +238,7 @@ namespace ConduitLLM.Tests.Core.Services
                 new HashEntry("failures", 5),
                 new HashEntry("last_attempt", recentTime)
             };
-            
+
             var hashEntries2 = new HashEntry[]
             {
                 new HashEntry("url", "https://example2.com/webhook"),
@@ -234,49 +247,41 @@ namespace ConduitLLM.Tests.Core.Services
                 new HashEntry("failures", 5),
                 new HashEntry("last_attempt", recentTime)
             };
-            
-            // Setup HashGetAllAsync to return data based on the key
+
+            // Setup HashGetAllAsync with specific key matchers
+            // In Moq, specific matchers take precedence over generic ones when set up later
             _databaseMock.Setup(d => d.HashGetAllAsync(
-                It.IsAny<RedisKey>(), 
+                It.IsAny<RedisKey>(),
                 It.IsAny<CommandFlags>()))
-                .ReturnsAsync((RedisKey key, CommandFlags flags) =>
-                {
-                    if (key.ToString().Contains("hash1"))
-                        return hashEntries1;
-                    else if (key.ToString().Contains("hash2"))
-                        return hashEntries2;
-                    else
-                        return new HashEntry[0];
-                });
-            
+                .ReturnsAsync(Array.Empty<HashEntry>());
+
+            _databaseMock.Setup(d => d.HashGetAllAsync(
+                It.Is<RedisKey>(k => k.ToString().Contains("hash1")),
+                It.IsAny<CommandFlags>()))
+                .ReturnsAsync(hashEntries1);
+
+            _databaseMock.Setup(d => d.HashGetAllAsync(
+                It.Is<RedisKey>(k => k.ToString().Contains("hash2")),
+                It.IsAny<CommandFlags>()))
+                .ReturnsAsync(hashEntries2);
+
             // Act
             var stats = await _metricsService.GetStatisticsAsync("last_hour");
-            
-            // Verify Keys was called and capture the actual call
+
+            // Verify Keys was called
             _serverMock.Verify(s => s.Keys(
-                It.IsAny<int>(), 
-                It.IsAny<RedisValue>(), 
-                It.IsAny<int>(), 
-                It.IsAny<long>(), 
-                It.IsAny<int>(), 
-                It.IsAny<CommandFlags>()), Times.Once);
-            
+                It.IsAny<int>(),
+                It.IsAny<RedisValue>(),
+                It.IsAny<int>(),
+                It.IsAny<long>(),
+                It.IsAny<int>(),
+                It.IsAny<CommandFlags>()), Times.AtLeastOnce);
+
             // Verify HashGetAllAsync was called for each key
             _databaseMock.Verify(d => d.HashGetAllAsync(
-                It.IsAny<RedisKey>(), 
+                It.IsAny<RedisKey>(),
                 It.IsAny<CommandFlags>()), Times.Exactly(2));
-            
-            // Check if error was logged (which would indicate the method caught an exception)
-            _loggerMock.Verify(
-                x => x.Log(
-                    It.Is<LogLevel>(l => l == LogLevel.Error),
-                    It.IsAny<EventId>(),
-                    It.IsAny<It.IsAnyType>(),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Never,
-                "No errors should be logged");
-            
+
             // Assert
             Assert.Equal("last_hour", stats.Period);
             Assert.Equal(2, stats.UrlStatistics.Count);

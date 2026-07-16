@@ -33,7 +33,7 @@ namespace ConduitLLM.Tests.Integration
             var services = new ServiceCollection();
 
             // Add MassTransit test harness.
-            // ModelMappingCacheInvalidationConsumer now implements the IEventHandler<T>
+            // ModelMappingCacheInvalidationHandler now implements the IEventHandler<T>
             // abstraction (epic #909), so register the generic bridge consumer on the bus
             // and register the handler + event bus on the service collection.
             services.AddMassTransitTestHarness(cfg =>
@@ -42,12 +42,12 @@ namespace ConduitLLM.Tests.Integration
             });
 
             services.AddMassTransitEventBus();
-            services.AddEventHandler<ModelMappingChanged, ConduitLLM.Gateway.Consumers.ModelMappingCacheInvalidationConsumer>();
+            services.AddEventHandler<ModelMappingChanged, ConduitLLM.Gateway.Consumers.ModelMappingCacheInvalidationHandler>();
 
             // Add mock services
             services.AddSingleton(Mock.Of<ICacheManager>());
             services.AddSingleton(Mock.Of<IDiscoveryCacheService>());
-            services.AddSingleton(Mock.Of<ILogger<ModelMappingCacheInvalidationConsumer>>());
+            services.AddSingleton(Mock.Of<ILogger<ModelMappingCacheInvalidationHandler>>());
 
             _serviceProvider = services.BuildServiceProvider();
             _harness = _serviceProvider.GetRequiredService<ITestHarness>();

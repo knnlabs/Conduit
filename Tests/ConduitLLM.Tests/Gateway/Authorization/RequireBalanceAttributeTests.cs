@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -60,9 +61,9 @@ namespace ConduitLLM.Tests.Http.Authorization
             await _attribute.OnAuthorizationAsync(context);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(context.Result);
+            var objectResult = context.Result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(StatusCodes.Status402PaymentRequired, objectResult.StatusCode);
-            
+
             // Check response body
             var responseBody = objectResult.Value;
             Assert.NotNull(responseBody);
@@ -89,7 +90,7 @@ namespace ConduitLLM.Tests.Http.Authorization
             await _attribute.OnAuthorizationAsync(context);
 
             // Assert
-            var objectResult = Assert.IsType<UnauthorizedObjectResult>(context.Result);
+            var objectResult = context.Result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
             Assert.Equal(StatusCodes.Status401Unauthorized, objectResult.StatusCode);
             
             // Verify service was never called
@@ -110,9 +111,9 @@ namespace ConduitLLM.Tests.Http.Authorization
             await _attribute.OnAuthorizationAsync(context);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(context.Result);
+            var objectResult = context.Result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(StatusCodes.Status402PaymentRequired, objectResult.StatusCode);
-            
+
             _virtualKeyServiceMock.Verify(s => s.ValidateVirtualKeyAsync("invalid-key", null), Times.Once);
         }
 
@@ -129,9 +130,9 @@ namespace ConduitLLM.Tests.Http.Authorization
             await _attribute.OnAuthorizationAsync(context);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(context.Result);
+            var objectResult = context.Result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
-            
+
             var responseBody = objectResult.Value;
             Assert.NotNull(responseBody);
             

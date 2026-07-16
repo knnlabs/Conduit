@@ -286,49 +286,4 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public DateTime ErrorTime { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Notification for batch operation item completion
-    /// </summary>
-    public class BatchOperationItemCompletedNotification
-    {
-        /// <summary>
-        /// Unique identifier for the batch operation
-        /// </summary>
-        public string OperationId { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Index of the completed item
-        /// </summary>
-        public int ItemIndex { get; set; }
-
-        /// <summary>
-        /// Identifier for the completed item
-        /// </summary>
-        public string? ItemIdentifier { get; set; }
-
-        /// <summary>
-        /// Whether the item was successful
-        /// </summary>
-        public bool Success { get; set; }
-
-        /// <summary>
-        /// Error message if failed
-        /// </summary>
-        public string? Error { get; set; }
-
-        /// <summary>
-        /// Processing duration for this item
-        /// </summary>
-        public TimeSpan Duration { get; set; }
-
-        /// <summary>
-        /// Result data from processing
-        /// </summary>
-        public object? Result { get; set; }
-
-        /// <summary>
-        /// Timestamp when the item completed
-        /// </summary>
-        public DateTime CompletedAt { get; set; } = DateTime.UtcNow;
-    }
 }

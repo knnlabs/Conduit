@@ -148,16 +148,6 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<BatchOperationHistory> BatchOperationHistory { get; set; } = null!;
 
-        /// <summary>
-        /// Database set for cache configurations
-        /// </summary>
-        public virtual DbSet<CacheConfiguration> CacheConfigurations { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for cache configuration audit logs
-        /// </summary>
-        public virtual DbSet<CacheConfigurationAudit> CacheConfigurationAudits { get; set; } = null!;
-
         // Function-related DbSets
 
         /// <summary>
@@ -381,6 +371,7 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<BatchOperationHistory>(entity =>
             {
                 entity.HasKey(e => e.OperationId);
+                entity.Ignore(e => e.Id);
                 entity.HasIndex(e => e.VirtualKeyId);
                 entity.HasIndex(e => e.OperationType);
                 entity.HasIndex(e => e.Status);
@@ -392,40 +383,6 @@ namespace ConduitLLM.Configuration
                       .WithMany()
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // Configure CacheConfiguration entity
-            modelBuilder.Entity<CacheConfiguration>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-
-                // Apply filtered index only for non-test environments (PostgreSQL)
-                if (!IsTestEnvironment)
-                {
-                    entity.HasIndex(e => e.Region).IsUnique().HasFilter("\"IsActive\" = true");
-                }
-                else
-                {
-                    // For SQLite in tests, use a regular unique index
-                    entity.HasIndex(e => e.Region).IsUnique();
-                }
-
-                entity.HasIndex(e => new { e.Region, e.IsActive });
-                entity.HasIndex(e => e.UpdatedAt);
-                entity.Property(e => e.Version).IsConcurrencyToken();
-
-                // Global query filter for active configurations (EF Core 10 named query filter)
-                entity.HasQueryFilter("Active", c => c.IsActive);
-            });
-
-            // Configure CacheConfigurationAudit entity
-            modelBuilder.Entity<CacheConfigurationAudit>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.Region);
-                entity.HasIndex(e => e.ChangedAt);
-                entity.HasIndex(e => new { e.Region, e.ChangedAt });
-                entity.HasIndex(e => e.ChangedBy);
             });
 
             // Configure VirtualKeyGroupTransaction entity

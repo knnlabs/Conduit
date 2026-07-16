@@ -1,3 +1,5 @@
+using System.Text.Json;
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.Http.Builders;
@@ -34,18 +36,19 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
-            dynamic model = ((IEnumerable<dynamic>)response.data).First();
-            
+            var model = ((List<JsonElement>)response.data).First();
+            var capabilities = model.GetProperty("capabilities");
+
             // Capabilities are now nested under a 'capabilities' object
-            Assert.True(model.capabilities.chat);
-            Assert.True(model.capabilities.chat_stream);
-            Assert.True(model.capabilities.vision);
-            Assert.True(model.capabilities.function_calling);
-            Assert.True(model.capabilities.video_generation);
-            Assert.True(model.capabilities.image_generation);
-            Assert.True(model.capabilities.embeddings);
+            Assert.True(capabilities.GetProperty("chat").GetBoolean());
+            Assert.True(capabilities.GetProperty("chat_stream").GetBoolean());
+            Assert.True(capabilities.GetProperty("vision").GetBoolean());
+            Assert.True(capabilities.GetProperty("function_calling").GetBoolean());
+            Assert.True(capabilities.GetProperty("video_generation").GetBoolean());
+            Assert.True(capabilities.GetProperty("image_generation").GetBoolean());
+            Assert.True(capabilities.GetProperty("embeddings").GetBoolean());
         }
 
         [Fact]
@@ -71,16 +74,16 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
-            dynamic model = ((IEnumerable<dynamic>)response.data).First();
-            
-            Assert.Equal("gpt-4", model.id);
-            Assert.Equal("gpt-4", model.display_name);
-            Assert.Equal("Advanced language model", model.description);
-            Assert.Equal("https://example.com/gpt-4", model.model_card_url);
-            Assert.Equal(8192, model.max_tokens);
-            Assert.Equal("cl100kbase", model.tokenizer_type);
+            var model = ((List<JsonElement>)response.data).First();
+
+            Assert.Equal("gpt-4", model.GetProperty("id").GetString());
+            Assert.Equal("gpt-4", model.GetProperty("display_name").GetString());
+            Assert.Equal("Advanced language model", model.GetProperty("description").GetString());
+            Assert.Equal("https://example.com/gpt-4", model.GetProperty("model_card_url").GetString());
+            Assert.Equal(8192, model.GetProperty("max_tokens").GetInt32());
+            Assert.Equal("cl100kbase", model.GetProperty("tokenizer_type").GetString());
         }
 
         [Fact]
@@ -104,12 +107,12 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
-            dynamic model = ((IEnumerable<dynamic>)response.data).First();
-            
-            Assert.Equal(string.Empty, model.description);
-            Assert.Equal(string.Empty, model.model_card_url);
+            var model = ((List<JsonElement>)response.data).First();
+
+            Assert.Equal(string.Empty, model.GetProperty("description").GetString());
+            Assert.Equal(string.Empty, model.GetProperty("model_card_url").GetString());
         }
 
         [Fact]
@@ -135,14 +138,14 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
-            dynamic model = ((IEnumerable<dynamic>)response.data).First();
-            
+            var model = ((List<JsonElement>)response.data).First();
+
             // Verify that association overrides are used, not model defaults
-            Assert.Equal(642111, (int)model.max_input_tokens); // Association override
-            Assert.Equal(4096, (int)model.max_output_tokens);  // Falls back to Model default since association is null
-            Assert.Equal(642111 + 4096, (int)model.max_tokens); // Combined total
+            Assert.Equal(642111, model.GetProperty("max_input_tokens").GetInt32()); // Association override
+            Assert.Equal(4096, model.GetProperty("max_output_tokens").GetInt32());  // Falls back to Model default since association is null
+            Assert.Equal(642111 + 4096, model.GetProperty("max_tokens").GetInt32()); // Combined total
         }
     }
 }

@@ -1,8 +1,12 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
+
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Models.SignalR;
 using ConduitLLM.Gateway.Models;
 
 using StackExchange.Redis;
-using System.Text.Json;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -43,23 +47,31 @@ namespace ConduitLLM.Gateway.Services
     }
 
     /// <summary>
-    /// Implementation of SignalR acknowledgment service using Redis
+    /// Implementation of SignalR acknowledgment service using Redis.
+    /// Uses periodic timer scanning for timeouts instead of per-message Tasks to prevent memory leaks.
     /// </summary>
     public class SignalRAcknowledgmentService : ISignalRAcknowledgmentService, IHostedService, IDisposable
     {
         private readonly ILogger<SignalRAcknowledgmentService> _logger;
         private readonly IConfiguration _configuration;
         private readonly RedisConnectionFactory _redisConnectionFactory;
-        
+
         private Timer? _cleanupTimer;
+        private Timer? _timeoutScanTimer;
         private IDatabase? _redis;
-        
+
         // Redis keys
         private readonly string _pendingAcknowledgmentsKey;
         private readonly string _connectionMessagesKeyPrefix;
-        
+
+        // Local timeout tracking - tracks messageId -> timeout time
+        // This prevents creating one Task per message for timeout handling
+        private readonly ConcurrentDictionary<string, DateTime> _pendingTimeouts = new();
+        private readonly SemaphoreSlim _timeoutScanLock = new(1, 1);
+
         private readonly TimeSpan _defaultTimeout;
         private readonly TimeSpan _cleanupInterval;
+        private readonly TimeSpan _timeoutScanInterval;
         private readonly int _maxRetryAttempts;
 
         public SignalRAcknowledgmentService(
@@ -72,30 +84,40 @@ namespace ConduitLLM.Gateway.Services
             _redisConnectionFactory = redisConnectionFactory;
 
             // Redis keys
-            _pendingAcknowledgmentsKey = "signalr:acknowledgments";
-            _connectionMessagesKeyPrefix = "signalr:conn_msgs";
+            _pendingAcknowledgmentsKey = RedisKeys.SignalR.PendingAcknowledgments;
+            _connectionMessagesKeyPrefix = RedisKeys.SignalR.ConnectionMessagesPrefix;
 
             _defaultTimeout = TimeSpan.FromSeconds(configuration.GetValue<int>("SignalR:Acknowledgment:TimeoutSeconds", 30));
             _cleanupInterval = TimeSpan.FromMinutes(configuration.GetValue<int>("SignalR:Acknowledgment:CleanupIntervalMinutes", 5));
+            _timeoutScanInterval = TimeSpan.FromSeconds(configuration.GetValue<int>("SignalR:Acknowledgment:TimeoutScanIntervalSeconds", 3));
             _maxRetryAttempts = configuration.GetValue<int>("SignalR:Acknowledgment:MaxRetryAttempts", 3);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("SignalR Acknowledgment Service starting");
-            
+
             try
             {
                 var connection = await _redisConnectionFactory.GetConnectionAsync();
                 _redis = connection.GetDatabase();
-                
+
                 _cleanupTimer = new Timer(
                     CleanupExpiredAcknowledgments,
                     null,
                     _cleanupInterval,
                     _cleanupInterval);
 
-                _logger.LogInformation("SignalR Acknowledgment Service started with Redis backend");
+                // Start periodic timeout scanner - replaces per-message Task.Run
+                _timeoutScanTimer = new Timer(
+                    _ => _ = ScanForTimeoutsAsync(),
+                    null,
+                    _timeoutScanInterval,
+                    _timeoutScanInterval);
+
+                _logger.LogInformation(
+                    "SignalR Acknowledgment Service started with Redis backend (timeout scan interval: {Interval}s)",
+                    _timeoutScanInterval.TotalSeconds);
             }
             catch (Exception ex)
             {
@@ -107,11 +129,12 @@ namespace ConduitLLM.Gateway.Services
         public Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("SignalR Acknowledgment Service stopping");
-            
-            _cleanupTimer?.Change(Timeout.Infinite, 0);
 
-            // TODO: Cancel pending acknowledgments from Redis if needed
-            // For now, they will timeout naturally or be processed by other instances
+            _cleanupTimer?.Change(Timeout.Infinite, 0);
+            _timeoutScanTimer?.Change(Timeout.Infinite, 0);
+
+            // Clear local timeout tracking - Redis will handle timeouts naturally via TTL
+            _pendingTimeouts.Clear();
 
             return Task.CompletedTask;
         }
@@ -159,19 +182,9 @@ namespace ConduitLLM.Gateway.Services
                 await _redis.SetAddAsync(connectionKey, message.MessageId);
                 await _redis.KeyExpireAsync(connectionKey, TimeSpan.FromHours(1)); // Cleanup connection tracking
 
-                // Schedule timeout handling
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await Task.Delay(effectiveTimeout, pending.TimeoutTokenSource.Token);
-                        await HandleTimeoutAsync(message.MessageId);
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        // Expected when acknowledgment is received before timeout
-                    }
-                });
+                // Track timeout locally for periodic scanning - replaces per-message Task.Run
+                // The periodic ScanForTimeoutsAsync will handle expired messages
+                _pendingTimeouts.TryAdd(message.MessageId, timeoutAt);
 
                 _logger.LogDebug(
                     "Registered message {MessageId} for acknowledgment on {HubName}.{MethodName} to {ConnectionId}, timeout at {TimeoutAt}",
@@ -233,7 +246,10 @@ namespace ConduitLLM.Gateway.Services
                 var connectionKey = $"{_connectionMessagesKeyPrefix}:{connectionId}";
                 await _redis.SetRemoveAsync(connectionKey, messageId);
 
-                _logger.LogDebug(
+                // Remove from local timeout tracking
+                _pendingTimeouts.TryRemove(messageId, out _);
+
+                _logger.LogInformation(
                     "Message {MessageId} acknowledged by {ConnectionId}, RTT: {RoundTripTime}ms",
                     messageId, connectionId, pending.RoundTripTime?.TotalMilliseconds ?? 0);
 
@@ -293,6 +309,9 @@ namespace ConduitLLM.Gateway.Services
                 // Remove from connection tracking
                 var connectionKey = $"{_connectionMessagesKeyPrefix}:{connectionId}";
                 await _redis.SetRemoveAsync(connectionKey, messageId);
+
+                // Remove from local timeout tracking
+                _pendingTimeouts.TryRemove(messageId, out _);
 
                 _logger.LogWarning(
                     "Message {MessageId} negatively acknowledged by {ConnectionId}: {ErrorMessage}",
@@ -414,11 +433,14 @@ namespace ConduitLLM.Gateway.Services
 
                 foreach (var messageId in messageIds)
                 {
+                    // Remove from local timeout tracking
+                    _pendingTimeouts.TryRemove(messageId.ToString(), out _);
+
                     try
                     {
                         var key = $"{_pendingAcknowledgmentsKey}:{messageId}";
                         var pendingData = await _redis.StringGetAsync(key);
-                        
+
                         if (pendingData.HasValue)
                         {
                             var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData.ToString());
@@ -455,6 +477,9 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task HandleTimeoutAsync(string messageId)
         {
+            // Ensure removed from local tracking (may already be removed by ScanForTimeoutsAsync)
+            _pendingTimeouts.TryRemove(messageId, out _);
+
             if (_redis == null)
             {
                 return;
@@ -464,7 +489,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var key = $"{_pendingAcknowledgmentsKey}:{messageId}";
                 var pendingData = await _redis.StringGetAsync(key);
-                
+
                 if (!pendingData.HasValue)
                 {
                     return; // Already processed or expired
@@ -488,7 +513,7 @@ namespace ConduitLLM.Gateway.Services
 
                 _logger.LogWarning(
                     "Message {MessageId} timed out after {Timeout}ms on {HubName}.{MethodName} to {ConnectionId}",
-                    messageId, 
+                    messageId,
                     (DateTime.UtcNow - pending.SentAt).TotalMilliseconds,
                     pending.HubName,
                     pending.MethodName,
@@ -513,22 +538,75 @@ namespace ConduitLLM.Gateway.Services
         {
             // Redis TTL automatically handles cleanup of expired acknowledgments
             // This cleanup is mainly handled by Redis expiration, so minimal work needed here
-            
+
             try
             {
-                _logger.LogTrace("Acknowledgment cleanup timer executed - Redis handles TTL automatically");
+                _logger.LogDebug("Acknowledgment cleanup timer executed - Redis handles TTL automatically");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during acknowledgment cleanup");
+                _logger.LogError(ex, "Error during acknowledgment cleanup, pending count: {PendingCount}", _pendingTimeouts.Count);
             }
         }
 
+        /// <summary>
+        /// Periodically scans for timed-out messages and handles them in batches.
+        /// This replaces per-message Task.Run to prevent memory leaks under high load.
+        /// </summary>
+        private async Task ScanForTimeoutsAsync()
+        {
+            if (!await _timeoutScanLock.WaitAsync(0))
+            {
+                // Another scan is in progress
+                return;
+            }
+
+            try
+            {
+                var now = DateTime.UtcNow;
+
+                // Find all expired messages
+                var timedOutIds = _pendingTimeouts
+                    .Where(kvp => kvp.Value <= now)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                if (timedOutIds.Count > 0)
+                {
+                    _logger.LogInformation("Timeout scan found {Count} expired messages", timedOutIds.Count);
+                }
+
+                foreach (var messageId in timedOutIds)
+                {
+                    // Remove from local tracking first
+                    _pendingTimeouts.TryRemove(messageId, out _);
+
+                    try
+                    {
+                        await HandleTimeoutAsync(messageId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error handling timeout for message {MessageId}", messageId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during timeout scan, pending count: {PendingCount}", _pendingTimeouts.Count);
+            }
+            finally
+            {
+                _timeoutScanLock.Release();
+            }
+        }
 
         public void Dispose()
         {
             _cleanupTimer?.Dispose();
-            // Redis handles cleanup automatically via TTL
+            _timeoutScanTimer?.Dispose();
+            _timeoutScanLock?.Dispose();
+            _pendingTimeouts.Clear();
         }
     }
 }

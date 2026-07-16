@@ -1,11 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
 /// Represents a virtual API key for accessing LLM services
 /// </summary>
-public partial class VirtualKey
+public partial class VirtualKey : IEntity<int>, IAuditableEntity
 {
     /// <summary>
     /// Unique identifier for the virtual key

@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Modal, Stack, Group, Text, Badge, Divider, Loader, ScrollArea } from '@mantine/core';
 import { CodeHighlight } from '@mantine/code-highlight';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { getModelPrimaryType, getModelTypeBadgeColor } from '@/utils/modelHelpers';
 import { useModelSeriesById } from '@/hooks/useModelSeries';
 import { getProviderTypeName } from '@/constants/providers';
@@ -41,7 +41,6 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
   const [providerMappings, setProviderMappings] = useState<ProviderMapping[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [capabilitiesName, setCapabilitiesName] = useState<string | null>(null);
-  const { executeWithAdmin } = useAdminClient();
   const { seriesName, seriesParameters } = useModelSeriesById(model.modelSeriesId);
 
 
@@ -64,7 +63,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
         
         // Get model identifiers
         promises.push(
-          executeWithAdmin(client => 
+          withAdminClient(client => 
             client.models.getIdentifiers(model.id as number)
           ).then(identifiers => {
             // Convert identifiers to provider mappings for display
@@ -90,11 +89,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
             console.warn('Failed to load model providers:', errorMessage);
             setProviderMappings([]);
             
-            notifications.show({
-              title: 'Warning',
-              message: 'Provider information could not be loaded',
-              color: 'yellow',
-            });
+            notify.warning('Provider information could not be loaded');
           })
         );
         
@@ -119,11 +114,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
         const errorMessage = getErrorMessage(error);
         console.warn('Failed to load model details:', errorMessage);
         
-        notifications.show({
-          title: 'Error',
-          message: 'Some model details could not be loaded',
-          color: 'red',
-        });
+        notify.error(error, 'Some model details could not be loaded');
       } finally {
         setLoadingProviders(false);
       }

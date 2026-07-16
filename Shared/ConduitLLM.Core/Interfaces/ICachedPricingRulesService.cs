@@ -22,10 +22,12 @@ public interface ICachedPricingRulesService
     /// Should be called when the model cost's pricing configuration is updated.
     /// </summary>
     /// <param name="modelCostId">The ID of the model cost entity.</param>
-    void InvalidateCache(int modelCostId);
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task InvalidateCacheAsync(int modelCostId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Invalidates all cached pricing rules configurations.
     /// </summary>
-    void InvalidateAll();
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task InvalidateAllAsync(CancellationToken cancellationToken = default);
 }

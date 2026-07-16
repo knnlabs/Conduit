@@ -22,7 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **These commands break the development container and force a 5+ minute restart:**
 - `npm run build` (anywhere in WebAdmin directory)
 - `cd WebAdmin && npm run build`
-- `./scripts/dev/dev-workflow.sh build-webadmin` (production testing only)
+- `./scripts/dev/dev-workflow.ps1 build-webadmin` (production testing only)
 
 **Why?** The development container uses an isolated `.next` directory. Running npm build on the host corrupts the container's build state.
 
@@ -33,7 +33,7 @@ Use these instead:
 - Hot reloading automatically validates code changes
 
 ### ❌ FORBIDDEN DEVELOPMENT COMMANDS
-- `docker compose up` for development (always use `./scripts/dev/start-dev.sh`)
+- `docker compose up` for development (always use `./scripts/dev/start-dev.ps1`)
 
 **If you run forbidden commands, you will:**
 1. Break the development environment
@@ -47,23 +47,26 @@ Use these instead:
 ## Starting Development Services
 
 **⚠️ CANONICAL DEVELOPMENT STARTUP:**
-```bash
-./scripts/dev/start-dev.sh
+```powershell
+./scripts/dev/start-dev.ps1
 ```
 
 ### Available Flags
-```bash
-./scripts/dev/start-dev.sh              # Standard startup
-./scripts/dev/start-dev.sh --webadmin   # Rebuild WebAdmin container
-./scripts/dev/start-dev.sh --clean      # Complete reset (removes all volumes)
-./scripts/dev/start-dev.sh --build      # Force rebuild with --no-cache
-./scripts/dev/start-dev.sh --help       # Show usage
+```powershell
+./scripts/dev/start-dev.ps1              # Standard startup
+./scripts/dev/start-dev.ps1 -WebAdmin    # Rebuild WebAdmin container
+./scripts/dev/start-dev.ps1 -Clean       # Complete reset (removes all volumes)
+./scripts/dev/start-dev.ps1 -Build       # Force rebuild (uses cache where possible)
+./scripts/dev/start-dev.ps1 -Rebuild     # Full rebuild with --no-cache (nuclear option)
+./scripts/dev/start-dev.ps1 -Logs -LogService webadmin  # Show container logs
 ```
 
 **Flag Details:**
-- `--webadmin`: Restarts WebAdmin container (fixes Next.js issues)
-- `--clean`: Removes containers, volumes, node_modules, build artifacts
-- `--build`: Rebuilds containers with `--no-cache` flag
+- `-WebAdmin`: Restarts WebAdmin container (fixes Next.js issues)
+- `-Clean`: Removes containers, volumes, node_modules, build artifacts
+- `-Build`: Rebuilds containers (uses cache where possible)
+- `-Rebuild`: Full rebuild with `--no-cache` flag (nuclear option)
+- `-Logs [-LogService <name>]`: Show container logs for specific service
 
 ## Available Services
 After startup, these services are available:
@@ -93,7 +96,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 ### Development vs Production
 
-| Aspect | Development (`start-dev.sh`) | Production (`docker compose up`) |
+| Aspect | Development (`start-dev.ps1`) | Production (`docker compose up`) |
 |--------|------------------------------|----------------------------------|
 | WebAdmin Container | `node:22-alpine` with mounted source | Built Next.js app in container |
 | Hot Reloading | ✅ Enabled via volume mounts | ❌ Static build |
@@ -121,65 +124,91 @@ export DOCKER_GROUP_ID=$(id -g)
 
 ## Helper Commands
 
-### dev-workflow.sh
-```bash
-./scripts/dev/dev-workflow.sh logs                 # WebAdmin logs (real-time)
-./scripts/dev/dev-workflow.sh shell                # Open shell in container
-./scripts/dev/dev-workflow.sh lint-fix-webadmin    # ESLint with --fix
-./scripts/dev/dev-workflow.sh build-sdks           # Build SDKs
-./scripts/dev/dev-workflow.sh exec [command]       # Execute custom command
+### dev-workflow.ps1
+```powershell
+# Build Commands
+./scripts/dev/dev-workflow.ps1 build-webadmin       # Build WebAdmin application
+./scripts/dev/dev-workflow.ps1 build-sdks           # Build all SDK packages
+./scripts/dev/dev-workflow.ps1 build-sdk <name>     # Build specific SDK (common|admin|core)
+
+# Lint/Type Commands
+./scripts/dev/dev-workflow.ps1 lint-webadmin        # Run ESLint on WebAdmin
+./scripts/dev/dev-workflow.ps1 lint-fix-webadmin    # Run ESLint with --fix
+./scripts/dev/dev-workflow.ps1 type-check-webadmin  # Run TypeScript type checking
+
+# NPM Commands
+./scripts/dev/dev-workflow.ps1 npm-install-webadmin # Install WebAdmin dependencies
+./scripts/dev/dev-workflow.ps1 npm-install-sdks     # Install all SDK dependencies
+
+# Container Commands
+./scripts/dev/dev-workflow.ps1 shell                # Open bash shell in container
+./scripts/dev/dev-workflow.ps1 logs                 # Show WebAdmin container logs
+./scripts/dev/dev-workflow.ps1 restart-webadmin     # Restart WebAdmin container
+./scripts/dev/dev-workflow.ps1 status               # Show container status
+./scripts/dev/dev-workflow.ps1 exec <cmd>           # Execute command in container
+
+# Local Development
+./scripts/dev/dev-workflow.ps1 install-local        # Install all dependencies locally
+./scripts/dev/dev-workflow.ps1 build-local          # Build all TypeScript projects locally
+./scripts/dev/dev-workflow.ps1 clean                # Clean node_modules and build artifacts
 ```
 
 ### Other Helper Scripts
-- `scripts/dev/fix-webadmin-errors.sh` - Automated TypeScript/ESLint fixes
-- `scripts/dev/fix-sdk-errors.sh` - SDK TypeScript compilation fixes
-- `scripts/dev/create-webadmin-key.sh` - Create virtual keys for testing
+- `scripts/dev/fix-webadmin-errors.ps1` - Automated TypeScript/ESLint fixes
+  - `-LintOnly` - Run linting and fixing only (skip build)
+  - `-BuildOnly` - Run build only (skip linting)
+  - `-CheckOnly` - Check environment and permissions only
+- `scripts/dev/fix-sdk-errors.ps1` - SDK TypeScript compilation fixes
+- `scripts/dev/create-webadmin-key.ps1` - Create virtual keys for testing
+- `scripts/dev/setup-r2-dev.ps1` - Setup Cloudflare R2 development environment
 - `scripts/test/validate-eslint.sh` - Validate ESLint configuration
+- `scripts/test/validate-eslint-strict.sh` - Strict ESLint validation (CI/CD)
+- `scripts/migrations/validate-migrations.sh` - Validate EF Core migrations
 
 ## Troubleshooting
 
 ### Permission Denied Errors
-```bash
+```powershell
 # Symptom: npm EACCES errors, cannot write to node_modules
-./scripts/dev/start-dev.sh --clean
+./scripts/dev/start-dev.ps1 -Clean
 ```
 
 ### After Adding New Packages
-```bash
-./scripts/dev/start-dev.sh --webadmin
+```powershell
+./scripts/dev/start-dev.ps1 -WebAdmin
 ```
 
 ### Container Conflicts
-```bash
+```powershell
 # Symptom: Containers already exist or port conflicts
 docker compose down --volumes --remove-orphans
-./scripts/dev/start-dev.sh --clean
+./scripts/dev/start-dev.ps1 -Clean
 ```
 
 ### Next.js Build Issues / Stale Builds
-```bash
-./scripts/dev/start-dev.sh --webadmin
+```powershell
+./scripts/dev/start-dev.ps1 -WebAdmin
 ```
 
 ### WebAdmin Not Starting
-```bash
+```powershell
 # Check logs
 docker compose -f docker-compose.yml -f docker-compose.dev.yml logs webadmin
 
 # Common causes:
 # 1. Port 3000 already in use
 # 2. Missing environment variables in .env
-# 3. Node modules corruption (use --clean)
+# 3. Node modules corruption (use -Clean)
 ```
 
 ### Hot Reload Not Working
-```bash
+```powershell
 # Verify file mounting
 docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webadmin ls -la /app/WebAdmin/
 
 # Clean host build artifacts (container has isolated .next)
-rm -rf WebAdmin/.next
-./scripts/dev/start-dev.sh --webadmin
+Remove-Item -Recurse -Force WebAdmin/.next
+./scripts/dev/start-dev.ps1 -WebAdmin
 ```
 
 ---
@@ -214,7 +243,7 @@ dotnet build ConduitLLM.Admin   # Admin API
 
 # SDKs
 cd SDKs/Node/Admin && npm run build
-cd SDKs/Node/Core && npm run build
+cd SDKs/Node/Gateway && npm run build
 cd SDKs/Node/Common && npm run build
 ```
 
@@ -359,7 +388,10 @@ public enum ProviderType
     Ultravox = 7,
     ElevenLabs = 8,     // Audio provider
     Cerebras = 9,       // High-performance inference
-    SambaNova = 10      // Ultra-fast inference
+    SambaNova = 10,     // Ultra-fast inference
+    DeepInfra = 11,     // OpenAI-compatible LLM inference
+    Cloudflare = 12,    // Serverless AI on Cloudflare's global network
+    OpenRouter = 13     // Multi-provider routing via OpenAI-compatible API
 }
 ```
 
@@ -380,6 +412,14 @@ public enum ProviderType
 - Server-to-server communication only
 - NOT for end-users or client applications
 - Configured on WebAdmin service
+
+### Health Monitoring Key
+**CONDUIT_HEALTH_MONITORING_KEY**:
+- Used by external monitoring services (BetterStack, Pingdom, etc.) to access health endpoints
+- Passed via `X-Conduit-Health-Key` header
+- Private network requests (10.x, 172.16-31.x, 192.168.x, 127.x) don't require this key
+- External requests without valid key receive `404 Not Found`
+- See `docs/operations/monitoring/health-checks.md` for configuration details
 
 ## WebAdmin API Architecture
 
@@ -407,7 +447,7 @@ public enum ProviderType
 - Development: S3-compatible storage (configure in .env)
 - Production: AWS S3 or Cloudflare R2
 - **MUST** configure storage provider in Admin API for automatic cleanup
-- See `docs/CRITICAL-Media-Cleanup-Configuration.md`
+- See `docs/operations/deployment/media-cleanup-configuration.md`
 
 ### Cloudflare R2 Specifics
 - Automatic detection based on service URL
@@ -437,7 +477,8 @@ public enum ProviderType
 - **SignalR** provides real-time updates via WebSockets
 - Redis backplane for horizontal scaling
 - Falls back to polling if WebSocket fails
-- Hubs: navigation-state, video-generation, image-generation
+- 15+ specialized hubs: content-generation, task-tracking, spend-notifications, virtual-key-management, webhook-delivery, usage-analytics, metrics, health-monitoring, security-monitoring, and others
+- Hub source: `Services/ConduitLLM.Gateway/Hubs/` and `Services/ConduitLLM.Admin/Hubs/`
 
 **See:** `docs/architecture/real-time/streaming-and-websockets.md`
 
@@ -454,45 +495,22 @@ public enum ProviderType
 
 # Documentation Index
 
-## Core Development Guides
-- **[API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)** - WebAdmin API patterns, SDK usage, error handling
-- **[LLM Client Factory Guide](docs/development/llm-client-factory-guide.md)** - Provider client creation patterns
-- **[Development Documentation](docs/development/README.md)** - Development guides index
+The full documentation lives in **[docs/README.md](docs/README.md)**. Key entry points:
 
-## Architecture Documentation
-- **[Architecture Overview](docs/architecture/README.md)** - Complete architecture index
-- **[Provider System](docs/architecture/provider-system/provider-architecture.md)** - Provider design, multi-instance support
-- **[Model & Cost Mapping](docs/architecture/provider-system/model-and-cost-mapping.md)** - Cost tracking details
-- **[Streaming & WebSockets](docs/architecture/real-time/streaming-and-websockets.md)** - Real-time communication, SSE
-- **[Webhook Delivery](docs/architecture/real-time/webhook-delivery.md)** - Distributed delivery, circuit breakers
-- **[Async Media Generation](docs/architecture/media-generation/async-media-generation.md)** - Event-driven image/video
-- **[Background Services](docs/architecture/patterns/background-services-and-workers.md)** - Worker patterns, distributed locking
-- **[Repository & Data Access](docs/architecture/patterns/repository-and-data-access.md)** - EF Core best practices
-- **[DTO Guidelines](docs/architecture/data-transfer/dto-guidelines.md)** - Data transfer patterns
-- **[Scaling Architecture](docs/architecture/infrastructure/scaling-architecture.md)** - 10,000+ concurrent sessions
+| Topic | Start Here |
+|-------|------------|
+| API usage | [docs/api-guides/](docs/api-guides/README.md) — Gateway API, Admin API, SDKs, SignalR |
+| Architecture | [docs/architecture/](docs/architecture/README.md) — Provider system, patterns, infrastructure |
+| Operations | [docs/operations/](docs/operations/README.md) — Deployment, monitoring, runbooks, security |
+| Model pricing | [docs/model-pricing/](docs/model-pricing/README.md) — Per-provider pricing reference |
+| Development | [docs/development/](docs/development/README.md) — Contributing, API patterns, testing |
 
-## Operations & Deployment
-- **[Operations Documentation](docs/operations/README.md)** - Operations index
-- **[SignalR Configuration](docs/operations/signalr/configuration.md)** - Real-time updates, Redis backplane
-- **[RabbitMQ Scaling](docs/operations/infrastructure/rabbitmq-scaling.md)** - 1,000+ tasks/min configuration
-- **[Redis Resilience](docs/operations/infrastructure/redis-resilience.md)** - Configuration and failover
-- **[PostgreSQL Scaling](docs/operations/infrastructure/postgresql-scaling.md)** - Database scaling
-- **[HTTP Connection Pooling](docs/operations/infrastructure/http-connection-pooling.md)** - Connection optimization
-- **[Provider Health Monitoring](docs/operations/providers/health-monitoring.md)** - Provider status tracking
-- **[Provider Usage Mappings](docs/operations/providers/usage-mappings.md)** - Usage tracking config
-- **[Deployment Configuration](docs/operations/deployment/DEPLOYMENT-CONFIGURATION.md)** - Production guide
-- **[Docker Optimization](docs/operations/deployment/docker-optimization.md)** - Container optimization
-
-## Media & Storage
-- **[Media Cleanup Configuration](docs/CRITICAL-Media-Cleanup-Configuration.md)** - ⚠️ CRITICAL - S3/R2 cleanup requirements
-
-## API Integration Guides
-- **[API Guides Index](docs/api-guides/README.md)** - API integration documentation
-- **[Gateway API Getting Started](docs/api-guides/core/getting-started.md)** - Gateway API usage
-- **[Admin API Getting Started](docs/api-guides/admin/getting-started.md)** - Admin API usage
-- **[SignalR Getting Started](docs/api-guides/signalr/getting-started.md)** - Real-time integration
-- **[SDK Best Practices](docs/api-guides/sdk/best-practices.md)** - SDK usage patterns
-- **[Next.js Integration](docs/api-guides/sdk/nextjs-integration.md)** - WebAdmin SDK integration
+### Frequently Referenced Docs
+- **[Provider Architecture](docs/architecture/provider-system/provider-architecture.md)** — Multi-instance provider design
+- **[Repository & Data Access](docs/architecture/patterns/repository-and-data-access.md)** — EF Core patterns
+- **[API Patterns](docs/development/API-PATTERNS-BEST-PRACTICES.md)** — Backend API conventions
+- **[LLM Client Factory](docs/development/llm-client-factory-guide.md)** — Adding LLM providers
+- **[Media Cleanup](docs/operations/deployment/media-cleanup-configuration.md)** — S3/R2 cleanup (CRITICAL)
 
 ---
 
@@ -521,6 +539,6 @@ public enum ProviderType
 
 ## Repository Information
 
-- **GitHub Repository**: knnlabs/Conduit
-- **Issues URL**: https://github.com/knnlabs/Conduit/issues
-- **Pull Requests URL**: https://github.com/knnlabs/Conduit/pulls
+- **GitHub Repository**: nickna/Conduit
+- **Issues URL**: https://github.com/nickna/Conduit/issues
+- **Pull Requests URL**: https://github.com/nickna/Conduit/pulls

@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 
 using FluentAssertions;
 
@@ -47,8 +48,8 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+            var createdResult = createResult.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
 
             // Update with different mappings
             var updateDto = new UpdateModelCostDto
@@ -64,7 +65,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             var updateResult = await _controller.UpdateModelCost(createdCost.Id, updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(updateResult);
+            updateResult.Should().BeOfType<NoContentResult>();
 
             // Verify updated mappings
             var updatedCost = await _modelCostRepository.GetByIdAsync(createdCost.Id);
@@ -81,7 +82,8 @@ namespace ConduitLLM.Tests.Admin.Integration
         {
             // Arrange
             await SetupTestDataAsync();
-            var mappings = await _modelMappingRepository.GetAllAsync();
+            var mappings = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _modelMappingRepository.GetPaginatedAsync);
             var mappingIds = mappings.Select(m => m.Id).ToList();
 
             // Create cost with mappings
@@ -94,8 +96,8 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+            var createdResult = createResult.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
 
             // Update to remove all mappings
             var updateDto = new UpdateModelCostDto
@@ -111,7 +113,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             var updateResult = await _controller.UpdateModelCost(createdCost.Id, updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(updateResult);
+            updateResult.Should().BeOfType<NoContentResult>();
 
             // Verify mappings removed
             using (var verifyContext = new ConduitDbContext(_dbContextOptions))

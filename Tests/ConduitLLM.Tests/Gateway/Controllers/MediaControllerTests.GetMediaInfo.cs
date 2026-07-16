@@ -1,5 +1,7 @@
 using ConduitLLM.Core.Models;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -38,8 +40,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMediaInfo(storageKey);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
-            var okResult = result as OkObjectResult;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.Equal(mediaInfo, okResult.Value);
         }
 
@@ -56,7 +57,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMediaInfo(storageKey);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         [Fact]
@@ -71,11 +72,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GetMediaInfo(storageKey);
 
-            // Assert
-            Assert.IsType<ObjectResult>(result);
-            var objectResult = result as ObjectResult;
+            // Assert - GatewayControllerBase returns OpenAIErrorResponse via ExceptionToResponseMapper
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
-            Assert.Equal("An error occurred while retrieving media information", objectResult.Value);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         #endregion

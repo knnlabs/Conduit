@@ -1,4 +1,7 @@
+using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Gateway.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.Interfaces;
@@ -12,10 +15,10 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/downloads")]
     [Authorize]
-    public class DownloadsController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class DownloadsController : GatewayControllerBase
     {
         private readonly IFileRetrievalService _fileRetrievalService;
-        private readonly ILogger<DownloadsController> _logger;
         private readonly IMediaRecordRepository _mediaRecordRepository;
 
         /// <summary>
@@ -25,9 +28,9 @@ namespace ConduitLLM.Gateway.Controllers
             IFileRetrievalService fileRetrievalService,
             ILogger<DownloadsController> logger,
             IMediaRecordRepository mediaRecordRepository)
+            : base(logger)
         {
             _fileRetrievalService = fileRetrievalService ?? throw new ArgumentNullException(nameof(fileRetrievalService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mediaRecordRepository = mediaRecordRepository ?? throw new ArgumentNullException(nameof(mediaRecordRepository));
         }
 
@@ -40,48 +43,43 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpGet("{**fileId}")]
         public async Task<IActionResult> DownloadFile(string fileId, [FromQuery] bool inline = false)
         {
-            try
+            var virtualKeyId = GetVirtualKeyId();
+            Logger.LogDebug("File download requested by Virtual Key {VirtualKeyId}: {FileId}, inline: {Inline}",
+                virtualKeyId, LoggingSanitizer.S(fileId), inline);
+
+            // Validate ownership
+            if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
-                // Validate ownership
-                var virtualKeyId = GetVirtualKeyId();
-                if (!await ValidateFileOwnership(fileId, virtualKeyId))
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
-                }
-
-                var result = await _fileRetrievalService.RetrieveFileAsync(fileId);
-                if (result == null)
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
-                }
-
-                using (result)
-                {
-                    // Set appropriate headers
-                    if (!inline && !string.IsNullOrEmpty(result.Metadata.FileName))
-                    {
-                        Response.Headers["Content-Disposition"] = $"attachment; filename=\"{result.Metadata.FileName}\"";
-                    }
-
-                    // Set cache headers
-                    if (!string.IsNullOrEmpty(result.Metadata.ETag))
-                    {
-                        Response.Headers["ETag"] = result.Metadata.ETag;
-                        Response.Headers["Cache-Control"] = "private, max-age=3600";
-                    }
-
-                    // Return file with range processing support
-                    return File(
-                        result.ContentStream, 
-                        result.Metadata.ContentType,
-                        result.Metadata.FileName,
-                        enableRangeProcessing: result.Metadata.SupportsRangeRequests);
-                }
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
             }
-            catch (Exception ex)
+
+            var result = await _fileRetrievalService.RetrieveFileAsync(fileId);
+            if (result == null)
             {
-                _logger.LogError(ex, "Error downloading file {FileId}", fileId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while downloading the file", "server_error")));
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+            }
+
+            using (result)
+            {
+                // Set appropriate headers
+                if (!inline && !string.IsNullOrEmpty(result.Metadata.FileName))
+                {
+                    Response.Headers["Content-Disposition"] = $"attachment; filename=\"{result.Metadata.FileName}\"";
+                }
+
+                // Set cache headers
+                if (!string.IsNullOrEmpty(result.Metadata.ETag))
+                {
+                    Response.Headers["ETag"] = result.Metadata.ETag;
+                    Response.Headers["Cache-Control"] = "private, max-age=3600";
+                }
+
+                // Return file with range processing support
+                return File(
+                    result.ContentStream,
+                    result.Metadata.ContentType,
+                    result.Metadata.FileName,
+                    enableRangeProcessing: result.Metadata.SupportsRangeRequests);
             }
         }
 
@@ -93,39 +91,31 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpGet("metadata/{**fileId}")]
         public async Task<IActionResult> GetFileMetadata(string fileId)
         {
-            try
+            // Validate ownership
+            var virtualKeyId = GetVirtualKeyId();
+            if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
-                // Validate ownership
-                var virtualKeyId = GetVirtualKeyId();
-                if (!await ValidateFileOwnership(fileId, virtualKeyId))
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
-                }
-
-                var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
-                if (metadata == null)
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
-                }
-
-                return Ok(new
-                {
-                    file_name = metadata.FileName,
-                    content_type = metadata.ContentType,
-                    size_bytes = metadata.SizeBytes,
-                    created_at = metadata.CreatedAt,
-                    modified_at = metadata.ModifiedAt,
-                    storage_provider = metadata.StorageProvider,
-                    etag = metadata.ETag,
-                    supports_range_requests = metadata.SupportsRangeRequests,
-                    additional_metadata = metadata.AdditionalMetadata
-                });
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
             }
-            catch (Exception ex)
+
+            var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
+            if (metadata == null)
             {
-                _logger.LogError(ex, "Error getting metadata for file {FileId}", fileId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while retrieving file metadata", "server_error")));
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
             }
+
+            return Ok(new
+            {
+                file_name = metadata.FileName,
+                content_type = metadata.ContentType,
+                size_bytes = metadata.SizeBytes,
+                created_at = metadata.CreatedAt,
+                modified_at = metadata.ModifiedAt,
+                storage_provider = metadata.StorageProvider,
+                etag = metadata.ETag,
+                supports_range_requests = metadata.SupportsRangeRequests,
+                additional_metadata = metadata.AdditionalMetadata
+            });
         }
 
         /// <summary>
@@ -136,46 +126,41 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpPost("generate-url")]
         public async Task<IActionResult> GenerateDownloadUrl([FromBody] GenerateUrlRequest request)
         {
-            try
+            if (string.IsNullOrWhiteSpace(request.FileId))
             {
-                if (string.IsNullOrWhiteSpace(request.FileId))
-                {
-                    return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("File ID is required", "invalid_request_error")));
-                }
-
-                // Validate ownership
-                var virtualKeyId = GetVirtualKeyId();
-                if (!await ValidateFileOwnership(request.FileId, virtualKeyId))
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
-                }
-
-                var expirationMinutes = request.ExpirationMinutes ?? 60; // Default 1 hour
-                if (expirationMinutes < 1 || expirationMinutes > 10080) // Max 1 week
-                {
-                    return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("Expiration must be between 1 minute and 1 week", "invalid_request_error")));
-                }
-
-                var expiration = TimeSpan.FromMinutes(expirationMinutes);
-                var url = await _fileRetrievalService.GetDownloadUrlAsync(request.FileId, expiration);
-
-                if (string.IsNullOrEmpty(url))
-                {
-                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found or URL generation failed", "not_found")));
-                }
-
-                return Ok(new
-                {
-                    url = url,
-                    expires_at = DateTime.UtcNow.Add(expiration),
-                    expiration_minutes = expirationMinutes
-                });
+                return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("File ID is required", "invalid_request_error")));
             }
-            catch (Exception ex)
+
+            var virtualKeyId = GetVirtualKeyId();
+            Logger.LogInformation("Download URL generation requested by Virtual Key {VirtualKeyId} for {FileId}, expiration: {ExpirationMinutes}m",
+                virtualKeyId, LoggingSanitizer.S(request.FileId), request.ExpirationMinutes ?? 60);
+
+            // Validate ownership
+            if (!await ValidateFileOwnership(request.FileId, virtualKeyId))
             {
-                _logger.LogError(ex, "Error generating download URL for file {FileId}", request.FileId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while generating download URL", "server_error")));
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
             }
+
+            var expirationMinutes = request.ExpirationMinutes ?? 60; // Default 1 hour
+            if (expirationMinutes < 1 || expirationMinutes > 10080) // Max 1 week
+            {
+                return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("Expiration must be between 1 minute and 1 week", "invalid_request_error")));
+            }
+
+            var expiration = TimeSpan.FromMinutes(expirationMinutes);
+            var url = await _fileRetrievalService.GetDownloadUrlAsync(request.FileId, expiration);
+
+            if (string.IsNullOrEmpty(url))
+            {
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found or URL generation failed", "not_found")));
+            }
+
+            return Ok(new
+            {
+                url = url,
+                expires_at = DateTime.UtcNow.Add(expiration),
+                expiration_minutes = expirationMinutes
+            });
         }
 
         /// <summary>
@@ -186,39 +171,31 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpHead("{**fileId}")]
         public async Task<IActionResult> CheckFileExists(string fileId)
         {
-            try
+            // Validate ownership
+            var virtualKeyId = GetVirtualKeyId();
+            if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
-                // Validate ownership
-                var virtualKeyId = GetVirtualKeyId();
-                if (!await ValidateFileOwnership(fileId, virtualKeyId))
-                {
-                    return NotFound();
-                }
-
-                var exists = await _fileRetrievalService.FileExistsAsync(fileId);
-                if (!exists)
-                {
-                    return NotFound();
-                }
-
-                var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
-                if (metadata != null)
-                {
-                    Response.Headers["Content-Type"] = metadata.ContentType;
-                    Response.Headers["Content-Length"] = metadata.SizeBytes.ToString();
-                    if (!string.IsNullOrEmpty(metadata.ETag))
-                    {
-                        Response.Headers["ETag"] = metadata.ETag;
-                    }
-                }
-
-                return Ok();
+                return NotFound();
             }
-            catch (Exception ex)
+
+            var exists = await _fileRetrievalService.FileExistsAsync(fileId);
+            if (!exists)
             {
-                _logger.LogError(ex, "Error checking existence of file {FileId}", fileId);
-                return StatusCode(500);
+                return NotFound();
             }
+
+            var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
+            if (metadata != null)
+            {
+                Response.Headers["Content-Type"] = metadata.ContentType;
+                Response.Headers["Content-Length"] = metadata.SizeBytes.ToString();
+                if (!string.IsNullOrEmpty(metadata.ETag))
+                {
+                    Response.Headers["ETag"] = metadata.ETag;
+                }
+            }
+
+            return Ok();
         }
 
         /// <summary>
@@ -241,7 +218,7 @@ namespace ConduitLLM.Gateway.Controllers
         {
             if (virtualKeyId <= 0)
             {
-                _logger.LogWarning("Invalid Virtual Key ID: {VirtualKeyId}", virtualKeyId);
+                Logger.LogWarning("Invalid Virtual Key ID: {VirtualKeyId}", virtualKeyId);
                 return false;
             }
 
@@ -249,23 +226,23 @@ namespace ConduitLLM.Gateway.Controllers
             if (fileId.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 fileId.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("URL-based file access attempted by Virtual Key {VirtualKeyId}: {FileId}", 
+                Logger.LogWarning("URL-based file access attempted by Virtual Key {VirtualKeyId}: {FileId}",
                     virtualKeyId, fileId);
                 return false;
             }
 
             // Check if the file exists in our media records
             var mediaRecord = await _mediaRecordRepository.GetByStorageKeyAsync(fileId);
-            
+
             if (mediaRecord == null)
             {
-                _logger.LogWarning("Media record not found for storage key: {StorageKey}", fileId);
+                Logger.LogWarning("Media record not found for storage key: {StorageKey}", fileId);
                 return false;
             }
 
             if (mediaRecord.VirtualKeyId != virtualKeyId)
             {
-                _logger.LogWarning("Virtual Key {RequestingKeyId} attempted to access file belonging to Virtual Key {OwnerKeyId}", 
+                Logger.LogWarning("Virtual Key {RequestingKeyId} attempted to access file belonging to Virtual Key {OwnerKeyId}",
                     virtualKeyId, mediaRecord.VirtualKeyId);
                 return false;
             }

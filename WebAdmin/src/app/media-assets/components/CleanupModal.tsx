@@ -1,9 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Modal, Stack, Text, Button, NumberInput, Alert, Group } from '@mantine/core';
 import { IconTrash, IconAlertCircle } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { useConfirmModal } from '@/hooks/useFormModal';
+import { withAdminClient } from '@/lib/client/adminClient';
+
+async function runCleanup(type: 'expired' | 'orphaned' | 'prune', daysToKeep?: number): Promise<void> {
+  await withAdminClient(client =>
+    client.media.cleanupMedia({
+      type,
+      ...(type === 'prune' && { daysToKeep })
+    })
+  );
+}
 
 interface CleanupModalProps {
   opened: boolean;
@@ -12,45 +22,33 @@ interface CleanupModalProps {
 }
 
 export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModalProps) {
-  const [loading, setLoading] = useState(false);
   const [daysToKeep, setDaysToKeep] = useState(90);
 
-  const handleCleanup = async (type: 'expired' | 'orphaned' | 'prune') => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/media/cleanup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type,
-          ...(type === 'prune' && { daysToKeep })
-        }),
-      });
+  const { loading: expiredLoading, handleConfirm: handleExpired } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction: () => runCleanup('expired'),
+    successMessage: 'Expired media cleaned up successfully',
+  });
 
-      if (!response.ok) {
-        throw new Error('Cleanup failed');
-      }
+  const { loading: orphanedLoading, handleConfirm: handleOrphaned } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction: () => runCleanup('orphaned'),
+    successMessage: 'Orphaned media cleaned up successfully',
+  });
 
-      const data = await response.json() as { message: string };
-      
-      notifications.show({
-        title: 'Cleanup Successful',
-        message: data.message,
-        color: 'green',
-      });
+  const { loading: pruneLoading, handleConfirm: handlePrune } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction: () => runCleanup('prune', daysToKeep),
+    successMessage: `Media older than ${daysToKeep} days pruned successfully`,
+  });
 
-      onSuccess();
-      onClose();
-    } catch {
-      notifications.show({
-        title: 'Cleanup Failed',
-        message: 'An error occurred during cleanup',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = useMemo(
+    () => expiredLoading || orphanedLoading || pruneLoading,
+    [expiredLoading, orphanedLoading, pruneLoading]
+  );
 
   return (
     <Modal
@@ -76,8 +74,9 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
               variant="light"
               color="orange"
               leftSection={<IconTrash size={16} />}
-              onClick={() => void handleCleanup('expired')}
-              loading={loading}
+              onClick={() => void handleExpired()}
+              loading={expiredLoading}
+              disabled={loading && !expiredLoading}
               fullWidth
             >
               Clean Expired Media
@@ -93,8 +92,9 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
               variant="light"
               color="orange"
               leftSection={<IconTrash size={16} />}
-              onClick={() => void handleCleanup('orphaned')}
-              loading={loading}
+              onClick={() => void handleOrphaned()}
+              loading={orphanedLoading}
+              disabled={loading && !orphanedLoading}
               fullWidth
             >
               Clean Orphaned Media
@@ -118,8 +118,9 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
               variant="light"
               color="red"
               leftSection={<IconTrash size={16} />}
-              onClick={() => void handleCleanup('prune')}
-              loading={loading}
+              onClick={() => void handlePrune()}
+              loading={pruneLoading}
+              disabled={loading && !pruneLoading}
               fullWidth
             >
               Prune Old Media

@@ -1,11 +1,10 @@
 using System.Text.Json;
-using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Gateway.Authorization;
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
+using ConduitLLM.Gateway.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,7 +18,8 @@ namespace ConduitLLM.Gateway.Controllers;
 [Authorize]
 [RequireBalance]
 [Tags("Functions")]
-public class FunctionsController : EventPublishingControllerBase
+[ServiceFilter(typeof(OperationLoggingFilter))]
+public class FunctionsController : GatewayControllerBase
 {
     private readonly IFunctionExecutionService _executionService;
     private readonly IFunctionConfigurationRepository _configurationRepository;
@@ -62,7 +62,7 @@ public class FunctionsController : EventPublishingControllerBase
         {
             if (request == null)
             {
-                return BadRequest(new ErrorResponseDto("Request body is required"));
+                return OpenAIError(400, "Request body is required", "invalid_request");
             }
 
             // Get virtual key ID from authentication context
@@ -70,19 +70,19 @@ public class FunctionsController : EventPublishingControllerBase
             if (string.IsNullOrEmpty(virtualKeyId) || !int.TryParse(virtualKeyId, out var keyId))
             {
                 _logger.LogWarning("Invalid or missing VirtualKeyId claim");
-                return Unauthorized(new ErrorResponseDto("Invalid authentication"));
+                return OpenAIError(401, "Invalid authentication", "invalid_auth", "authentication_error");
             }
 
             // Validate function configuration exists and is enabled
             var configuration = await _configurationRepository.GetByIdAsync(request.FunctionConfigurationId, cancellationToken);
             if (configuration == null)
             {
-                return NotFound(new ErrorResponseDto($"Function configuration {request.FunctionConfigurationId} not found"));
+                return OpenAIError(404, $"Function configuration {request.FunctionConfigurationId} not found", "not_found", "not_found_error");
             }
 
             if (!configuration.IsEnabled)
             {
-                return BadRequest(new ErrorResponseDto($"Function configuration {request.FunctionConfigurationId} is disabled"));
+                return OpenAIError(400, $"Function configuration {request.FunctionConfigurationId} is disabled", "invalid_request");
             }
 
             // Validate parameters against schema if available
@@ -97,8 +97,7 @@ public class FunctionsController : EventPublishingControllerBase
                     configuration.Id,
                     string.Join(", ", validationResult.Errors));
 
-                return BadRequest(new ErrorResponseDto(
-                    $"Parameter validation failed: {string.Join("; ", validationResult.Errors)}"));
+                return OpenAIError(400, $"Parameter validation failed: {string.Join("; ", validationResult.Errors)}", "invalid_request");
             }
 
             if (validationResult.Warnings.Count > 0)
@@ -158,13 +157,12 @@ public class FunctionsController : EventPublishingControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid function execution request");
-            return BadRequest(new ErrorResponseDto(ex.Message));
+            return OpenAIError(400, ex.Message, "invalid_request");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error executing function");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponseDto("An unexpected error occurred during function execution"));
+            return OpenAIError(500, "An unexpected error occurred during function execution", "internal_error", "server_error");
         }
     }
 
@@ -189,14 +187,14 @@ public class FunctionsController : EventPublishingControllerBase
             if (string.IsNullOrEmpty(virtualKeyId) || !int.TryParse(virtualKeyId, out var keyId))
             {
                 _logger.LogWarning("Invalid or missing VirtualKeyId claim");
-                return Unauthorized(new ErrorResponseDto("Invalid authentication"));
+                return OpenAIError(401, "Invalid authentication", "invalid_auth", "authentication_error");
             }
 
             var execution = await _executionService.GetExecutionAsync(executionId, cancellationToken);
 
             if (execution == null)
             {
-                return NotFound(new ErrorResponseDto($"Function execution {executionId} not found"));
+                return OpenAIError(404, $"Function execution {executionId} not found", "not_found", "not_found_error");
             }
 
             // Verify the execution belongs to the authenticated virtual key
@@ -205,7 +203,7 @@ public class FunctionsController : EventPublishingControllerBase
                 _logger.LogWarning(
                     "Virtual key {VirtualKeyId} attempted to access execution {ExecutionId} owned by key {OwnerKeyId}",
                     keyId, executionId, execution.VirtualKeyId);
-                return NotFound(new ErrorResponseDto($"Function execution {executionId} not found"));
+                return OpenAIError(404, $"Function execution {executionId} not found", "not_found", "not_found_error");
             }
 
             var response = new FunctionExecutionResponse
@@ -229,8 +227,7 @@ public class FunctionsController : EventPublishingControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting function execution {ExecutionId}", executionId);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponseDto("An unexpected error occurred"));
+            return OpenAIError(500, "An unexpected error occurred", "internal_error", "server_error");
         }
     }
 

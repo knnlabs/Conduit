@@ -48,7 +48,8 @@ namespace ConduitLLM.Core.Constants
             public const string VideoGenerationProgress = "VideoGenerationProgress";
             public const string VideoGenerationCompleted = "VideoGenerationCompleted";
             public const string VideoGenerationFailed = "VideoGenerationFailed";
-            
+            public const string VideoGenerationCancelled = "VideoGenerationCancelled";
+
             // Image generation specific events (legacy - kept for compatibility)
             public const string ImageGenerationStarted = "ImageGenerationStarted";
             public const string ImageGenerationProgress = "ImageGenerationProgress";

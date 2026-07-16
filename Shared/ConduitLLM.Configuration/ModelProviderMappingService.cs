@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Utilities;
 
@@ -86,8 +87,9 @@ namespace ConduitLLM.Configuration
         {
             try
             {
-                _logger.LogInformation("Getting all model-provider mappings");
-                return await _repository.GetAllAsync();
+                _logger.LogDebug("Getting all model-provider mappings");
+                return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _repository.GetPaginatedAsync);
             }
             catch (Exception ex)
             {
@@ -100,7 +102,7 @@ namespace ConduitLLM.Configuration
         {
             try
             {
-                _logger.LogInformation("Getting mapping by ID: {Id}", id);
+                _logger.LogDebug("Getting mapping by ID: {Id}", id);
                 return await _repository.GetByIdAsync(id);
             }
             catch (Exception ex)
@@ -119,7 +121,7 @@ namespace ConduitLLM.Configuration
 
             try
             {
-                _logger.LogInformation("Getting mapping by model alias: {ModelAlias}", LoggingSanitizer.S(modelAlias));
+                _logger.LogDebug("Getting mapping by model alias: {ModelAlias}", LoggingSanitizer.S(modelAlias));
                 return await _repository.GetByModelNameAsync(modelAlias);
             }
             catch (Exception ex)
@@ -298,8 +300,9 @@ namespace ConduitLLM.Configuration
         {
             try
             {
-                _logger.LogInformation("Getting all available providers");
-                var providers = await _providerRepository.GetAllAsync();
+                _logger.LogDebug("Getting all available providers");
+                var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _providerRepository.GetPaginatedAsync);
                 return providers.Select(p => (p.Id, p.ProviderName)).ToList();
             }
             catch (Exception ex)

@@ -82,16 +82,10 @@ namespace ConduitLLM.Core.Decorators
                         }
                         catch (Exception ex)
                         {
-                            // For debugging - write to console if logger is null
-                            if (_logger == null)
-                            {
-                                Console.WriteLine($"[ContextAwareLLMClient] Logger is NULL! Exception: {ex.GetType().Name}");
-                            }
-                            
                             _logger?.LogWarning(
                                 "Caught exception in streaming: Type={ExceptionType}, Message={Message}, HasStatusCode={HasStatusCode}",
                                 ex.GetType().Name, ex.Message.Substring(0, Math.Min(ex.Message.Length, 200)), (ex as LLMCommunicationException)?.StatusCode);
-                            
+
                             // Track error only once per stream
                             if (!errorTracked)
                             {
@@ -108,9 +102,6 @@ namespace ConduitLLM.Core.Decorators
                                 else
                                 {
                                     _logger?.LogWarning("Could not extract LLMCommunicationException from {ExceptionType}", ex.GetType().Name);
-                                    
-                                    // For debugging
-                                    Console.WriteLine($"[ContextAwareLLMClient] Failed to extract LLMCommunicationException from {ex.GetType().Name}");
                                 }
                             }
                             throw;
@@ -191,35 +182,32 @@ namespace ConduitLLM.Core.Decorators
             {
                 try
                 {
-                    // Check if inner client supports video generation
+                    // CreateVideoAsync is not on ILLMClient — only specific providers implement it.
+                    // Use reflection to invoke it on the concrete client type.
                     var innerClientType = _innerClient.GetType();
                     var createVideoMethod = innerClientType.GetMethod("CreateVideoAsync",
                         new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
-                    
+
                     if (createVideoMethod == null)
                     {
-                        throw new NotSupportedException($"The underlying client {innerClientType.Name} does not support video generation");
+                        throw new NotSupportedException(
+                            $"The underlying client {innerClientType.Name} does not support video generation");
                     }
-                    
-                    // Invoke the method on the inner client
-                    var task = createVideoMethod.Invoke(_innerClient, new object?[] { request, apiKey, cancellationToken }) as Task<VideoGenerationResponse>;
-                    if (task != null)
+
+                    var task = (Task<VideoGenerationResponse>?)createVideoMethod.Invoke(
+                        _innerClient, new object?[] { request, apiKey, cancellationToken });
+
+                    if (task == null)
                     {
-                        return await task;
+                        throw new InvalidOperationException(
+                            $"CreateVideoAsync on {innerClientType.Name} returned null");
                     }
-                    else
-                    {
-                        throw new InvalidOperationException($"CreateVideoAsync method on {innerClientType.Name} did not return expected Task<VideoGenerationResponse>");
-                    }
+
+                    return await task;
                 }
                 catch (LLMCommunicationException ex)
                 {
                     await TrackErrorAsync(ex);
-                    throw;
-                }
-                catch (Exception ex) when (!(ex is NotSupportedException || ex is InvalidOperationException))
-                {
-                    _logger?.LogError(ex, "Error in CreateVideoAsync");
                     throw;
                 }
             }

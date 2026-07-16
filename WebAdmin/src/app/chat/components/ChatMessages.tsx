@@ -1,13 +1,17 @@
-import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, Alert, HoverCard, CopyButton, Tooltip, Button } from '@mantine/core';
-import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp, IconInfoCircle, IconCopy, IconCheck, IconCode, IconEye, IconTool, IconCircleCheck, IconCircleX, IconLoader, IconRefresh } from '@tabler/icons-react';
-import { ChatMessage, ChatErrorType } from '../types';
-import React, { useEffect, useRef, useState } from 'react';
+import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, HoverCard, CopyButton, Tooltip } from '@mantine/core';
+import { IconUser, IconRobot, IconClock, IconBolt, IconChevronDown, IconChevronUp, IconInfoCircle, IconCopy, IconCheck, IconCode, IconEye } from '@tabler/icons-react';
+import { ChatMessage } from '../types';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { ImagePreview } from './ImagePreview';
-import { processStructuredContent, getBlockQuoteMetadata, cleanBlockQuoteContent } from '@knn_labs/conduit-gateway-client';
+import { processStructuredContent } from '@knn_labs/conduit-gateway-client';
+import { MessageErrorCard } from './MessageErrorCard';
+import { ToolExecutionDisplay } from './ToolExecutionDisplay';
+import { CollapsibleThinking } from './CollapsibleThinking';
+import { streamingMarkdownComponents, createMessageMarkdownComponents } from '../utils/markdown';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -19,37 +23,6 @@ interface ChatMessagesProps {
   onRetryMessage?: (messageId: string) => void;
 }
 
-// Helper function to get error type styling
-function getErrorTypeConfig(type: ChatErrorType) {
-  switch (type) {
-    case 'rate_limit':
-      return { icon: IconClock, color: 'orange', label: 'Rate Limit' };
-    case 'model_not_found':
-      return { icon: IconSearch, color: 'blue', label: 'Model Not Found' };
-    case 'auth_error':
-      return { icon: IconLock, color: 'red', label: 'Authentication Error' };
-    case 'network_error':
-      return { icon: IconNetwork, color: 'gray', label: 'Network Error' };
-    case 'server_error':
-    default:
-      return { icon: IconAlertTriangle, color: 'red', label: 'Server Error' };
-  }
-}
-
-// Helper function to get execution status color
-function getExecutionStatusColor(isFailed: boolean, isCompleted: boolean): string {
-  if (isFailed) return 'red';
-  if (isCompleted) return 'green';
-  return 'blue';
-}
-
-// Helper function to get execution status background color
-function getExecutionStatusBgColor(isFailed: boolean, isCompleted: boolean): string {
-  if (isFailed) return 'var(--mantine-color-red-light)';
-  if (isCompleted) return 'var(--mantine-color-green-light)';
-  return 'var(--mantine-color-blue-light)';
-}
-
 export function ChatMessages({ messages, isLoading, streamingContent, streamingChannel, tokensPerSecond, reasoningExpanded = true, onRetryMessage }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -57,199 +30,55 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
   const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set());
   const [rawViewMessages, setRawViewMessages] = useState<Set<string>>(new Set());
 
+  const messageMarkdownComponents = useMemo(
+    () => createMessageMarkdownComponents(CollapsibleThinking),
+    []
+  );
+
   useEffect(() => {
     if (lastMessageRef.current) {
       lastMessageRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, streamingContent]);
 
-  const toggleErrorDetails = (messageId: string) => {
-    setExpandedErrors(prev => {
+  const toggleSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) => {
+    setter(prev => {
       const next = new Set(prev);
-      if (next.has(messageId)) {
-        next.delete(messageId);
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        next.add(messageId);
+        next.add(id);
       }
       return next;
     });
   };
 
-  const toggleRawView = (messageId: string) => {
-    setRawViewMessages(prev => {
-      const next = new Set(prev);
-      if (next.has(messageId)) {
-        next.delete(messageId);
-      } else {
-        next.add(messageId);
-      }
-      return next;
-    });
-  };
-
-  // Component for collapsible thinking blocks
-  const CollapsibleThinking = ({ content, icon, title }: { content: string; icon: string; title: string }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    
-    return (
-      <Paper 
-        p="sm" 
-        radius="md" 
-        withBorder 
-        style={{ 
-          backgroundColor: 'var(--mantine-color-gray-light)',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          userSelect: 'none'
-        }}
-        className="thinking-block"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <Group 
-          gap="xs" 
-          wrap="nowrap"
-        >
-          <ActionIcon 
-            variant="subtle" 
-            size="sm"
-            style={{ pointerEvents: 'none' }}
-          >
-            {isOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
-          </ActionIcon>
-          <Text size="sm" fw={500} style={{ flex: 1 }}>
-            {icon} {title}
-          </Text>
-          <Text size="xs" c="dimmed">
-            {isOpen ? 'Click to collapse' : 'Click to expand'}
-          </Text>
-        </Group>
-        <Collapse in={isOpen}>
-          <div style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-          </div>
-        </Collapse>
-      </Paper>
-    );
-  };
+  const isReasoningExpanded = (messageId: string) =>
+    expandedReasoning.has(messageId) ? !reasoningExpanded : reasoningExpanded;
 
   const renderMessage = (message: ChatMessage, isStreaming = false) => {
     const isUser = message.role === 'user';
-    const content = message.content;  // Just use the content from the message
+    const content = message.content;
     const hasError = message.error && !isUser;
-    const errorConfig = hasError && message.error ? getErrorTypeConfig(message.error.type) : null;
-    const isExpanded = expandedErrors.has(message.id);
     const isRawView = rawViewMessages.has(message.id);
-    
-    // Check if this message has reasoning in metadata
+    const copyLabel = isRawView ? 'Copy JSON' : 'Copy message';
     const hasReasoning = !isUser && message.metadata?.hasReasoning && message.metadata?.reasoning;
     const reasoningText = hasReasoning ? message.metadata?.reasoning : null;
 
-    // For error messages, render special error UI
-    if (hasError && errorConfig && message.error) {
-      const Icon = errorConfig.icon;
+    // Error messages get a dedicated card
+    if (hasError && message.error) {
       return (
-        <Paper
+        <MessageErrorCard
           key={message.id}
-          p="md"
-          radius="md"
-          withBorder
-          className={`chat-message-error chat-message-error-${message.error.type.replace('_', '-')}`}
-          style={{
-            alignSelf: 'flex-start',
-            maxWidth: '80%',
-          }}
-        >
-          <Stack gap="sm">
-            {/* Error header with icon and type */}
-            <Group justify="space-between" wrap="nowrap">
-              <Group gap="sm">
-                <Icon size={20} color={`var(--mantine-color-${errorConfig.color}-6)`} />
-                <Badge color={errorConfig.color} variant="light">
-                  {errorConfig.label}
-                </Badge>
-              </Group>
-              {message.error.retryAfter && (
-                <Badge size="sm" variant="light" color="gray">
-                  Retry after {message.error.retryAfter}s
-                </Badge>
-              )}
-            </Group>
-
-            {/* User-friendly error message */}
-            <Text size="sm">
-              {content?.replace('Error: ', '')}
-            </Text>
-
-            {/* Suggestions if available */}
-            {message.error.suggestions && message.error.suggestions.length > 0 && (
-              <Alert icon={<IconAlertCircle size={16} />} color={errorConfig.color} variant="light">
-                <Stack gap="xs">
-                  <Text size="sm" fw={500}>Suggestions:</Text>
-                  {message.error.suggestions.map((suggestion) => (
-                    <Text key={suggestion} size="xs">• {suggestion}</Text>
-                  ))}
-                </Stack>
-              </Alert>
-            )}
-
-            {/* Technical details (expandable) */}
-            {(message.error.technical ?? message.error.code ?? message.error.statusCode) && (
-              <>
-                <Group gap="xs">
-                  <ActionIcon
-                    variant="subtle"
-                    size="sm"
-                    onClick={() => toggleErrorDetails(message.id)}
-                  >
-                    {isExpanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
-                  </ActionIcon>
-                  <Text size="xs" c="dimmed">Technical Details</Text>
-                </Group>
-                <Collapse in={isExpanded}>
-                  <Paper p="sm" radius="sm" withBorder className="error-details-box">
-                    <Stack gap="xs">
-                      {message.error.statusCode && (
-                        <Text size="xs">
-                          <Text span fw={500}>HTTP Status:</Text> {message.error.statusCode}
-                        </Text>
-                      )}
-                      {message.error.code && (
-                        <Text size="xs">
-                          <Text span fw={500}>Error Code:</Text> {message.error.code}
-                        </Text>
-                      )}
-                      {message.error.technical && (
-                        <Code block style={{ fontSize: '0.75rem' }}>
-                          {message.error.technical}
-                        </Code>
-                      )}
-                    </Stack>
-                  </Paper>
-                </Collapse>
-              </>
-            )}
-
-            {/* Retry button for recoverable errors */}
-            {message.error.recoverable && onRetryMessage && (
-              <Group justify="flex-end">
-                <Button
-                  size="xs"
-                  variant="light"
-                  color={errorConfig.color}
-                  leftSection={<IconRefresh size={14} />}
-                  onClick={() => onRetryMessage(message.id)}
-                  disabled={isLoading}
-                >
-                  Retry
-                </Button>
-              </Group>
-            )}
-          </Stack>
-        </Paper>
+          message={message}
+          isExpanded={expandedErrors.has(message.id)}
+          onToggleDetails={() => toggleSet(setExpandedErrors, message.id)}
+          onRetry={onRetryMessage ? () => onRetryMessage(message.id) : undefined}
+          isLoading={isLoading}
+        />
       );
     }
 
-    // Regular message rendering
     return (
       <Paper
         key={message.id}
@@ -262,18 +91,14 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
         }}
       >
         <Stack gap="xs">
+          {/* Message header */}
           <Group justify="space-between" wrap="nowrap">
             <Group gap="xs" wrap="wrap">
-              {isUser ? (
-                <IconUser size={16} />
-              ) : (
-                <IconRobot size={16} />
-              )}
+              {isUser ? <IconUser size={16} /> : <IconRobot size={16} />}
               <Text fw={600} size="sm">
                 {isUser ? 'You' : message.model ?? 'Assistant'}
               </Text>
 
-              {/* Function indicators for user messages */}
               {isUser && message.metadata?.functionNames && message.metadata.functionNames.length > 0 && (
                 <Group gap={4}>
                   {message.metadata.functionNames.map((name: string) => (
@@ -285,32 +110,28 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               )}
             </Group>
 
-            {/* User message metadata (code icon) */}
+            {/* Raw view toggle + metadata badges */}
             {isUser && (
-              <Group gap="xs">
-                {/* Toggle Raw View Button for user messages */}
-                <Tooltip label={isRawView ? 'Show formatted view' : 'Show raw request'} withArrow>
-                  <ActionIcon
-                    variant="subtle"
-                    size="sm"
-                    onClick={() => toggleRawView(message.id)}
-                    color={isRawView ? 'blue' : 'gray'}
-                  >
-                    {isRawView ? <IconEye size={16} /> : <IconCode size={16} />}
-                  </ActionIcon>
-                </Tooltip>
-              </Group>
+              <Tooltip label={isRawView ? 'Show formatted view' : 'Show raw request'} withArrow>
+                <ActionIcon
+                  variant="subtle"
+                  size="sm"
+                  onClick={() => toggleSet(setRawViewMessages, message.id)}
+                  color={isRawView ? 'blue' : 'gray'}
+                >
+                  {isRawView ? <IconEye size={16} /> : <IconCode size={16} />}
+                </ActionIcon>
+              </Tooltip>
             )}
 
             {!isUser && (message.metadata ?? (isStreaming && tokensPerSecond)) && (
               <Group gap="xs">
-                {/* Toggle Raw View Button */}
                 {message.metadata && !isStreaming && (
                   <Tooltip label={isRawView ? 'Show formatted view' : 'Show raw response'} withArrow>
-                    <ActionIcon 
-                      variant="subtle" 
-                      size="sm" 
-                      onClick={() => toggleRawView(message.id)}
+                    <ActionIcon
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => toggleSet(setRawViewMessages, message.id)}
                       color={isRawView ? 'blue' : 'gray'}
                     >
                       {isRawView ? <IconEye size={16} /> : <IconCode size={16} />}
@@ -341,7 +162,6 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                     </Group>
                   </Badge>
                 )}
-                {/* Metadata hover card */}
                 {(message.metadata?.provider ?? message.metadata?.model ?? message.metadata?.promptTokens ?? message.metadata?.completionTokens) && (
                   <HoverCard width={280} shadow="md" withArrow>
                     <HoverCard.Target>
@@ -389,11 +209,13 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               </Group>
             )}
           </Group>
-          
+
+          {/* Images */}
           {message.images && message.images.length > 0 && (
             <ImagePreview images={message.images} compact />
           )}
-          
+
+          {/* Function calls */}
           {message.functionCall && (
             <Paper p="xs" radius="sm" withBorder>
               <Text size="xs" fw={600} mb={4}>Function Call:</Text>
@@ -403,7 +225,8 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               </Code>
             </Paper>
           )}
-          
+
+          {/* Tool calls */}
           {message.toolCalls && message.toolCalls.length > 0 && (
             <Stack gap="xs">
               <Text size="xs" fw={600}>Tool Calls:</Text>
@@ -418,79 +241,18 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
             </Stack>
           )}
 
-          {/* Tool Execution Progress */}
+          {/* Tool execution progress */}
           {message.metadata?.toolExecutions && message.metadata.toolExecutions.length > 0 && (
-            <Stack gap="xs">
-              <Group gap="xs">
-                <IconTool size={14} />
-                <Text size="xs" fw={600}>Tool Execution:</Text>
-              </Group>
-              {message.metadata.toolExecutions.map((execution, idx) => {
-                const isStarted = execution.status === 'started';
-                const isCompleted = execution.status === 'completed';
-                const isFailed = execution.status === 'failed';
-
-                return (
-                  <Paper
-                    key={execution.tool_call_id ?? `${execution.function_name}-${idx}`}
-                    p="xs"
-                    radius="sm"
-                    withBorder
-                    style={{
-                      backgroundColor: getExecutionStatusBgColor(isFailed, isCompleted)
-                    }}
-                  >
-                    <Group justify="space-between" wrap="nowrap">
-                      <Group gap="xs">
-                        {isStarted && <IconLoader size={14} className="rotating-icon" />}
-                        {isCompleted && <IconCircleCheck size={14} color="var(--mantine-color-green-6)" />}
-                        {isFailed && <IconCircleX size={14} color="var(--mantine-color-red-6)" />}
-                        <Text size="xs" fw={500}>{execution.function_name}</Text>
-                      </Group>
-                      <Badge
-                        size="xs"
-                        color={getExecutionStatusColor(isFailed, isCompleted)}
-                        variant="light"
-                      >
-                        {execution.status}
-                      </Badge>
-                    </Group>
-
-                    {execution.error_message && (
-                      <Text size="xs" c="red" mt={4}>
-                        Error: {execution.error_message}
-                      </Text>
-                    )}
-
-                    {execution.result !== undefined && (
-                      <Code block mt={4} style={{ fontSize: '0.7rem', maxHeight: '100px', overflow: 'auto' }}>
-                        {(() => {
-                          const result = execution.result as unknown;
-                          return typeof result === 'string'
-                            ? result
-                            : JSON.stringify(result, null, 2);
-                        })()}
-                      </Code>
-                    )}
-
-                    {execution.cost !== undefined && execution.cost > 0 && (
-                      <Text size="xs" c="dimmed" mt={4}>
-                        Cost: ${execution.cost.toFixed(4)}
-                      </Text>
-                    )}
-                  </Paper>
-                );
-              })}
-            </Stack>
+            <ToolExecutionDisplay executions={message.metadata.toolExecutions} />
           )}
 
-          {/* Show reasoning if present - collapsible (only in normal view) */}
+          {/* Reasoning block (collapsible) */}
           {reasoningText && !isRawView && (
-            <Paper 
-              p="sm" 
-              radius="md" 
-              withBorder 
-              style={{ 
+            <Paper
+              p="sm"
+              radius="md"
+              withBorder
+              style={{
                 backgroundColor: 'var(--mantine-color-gray-light)',
                 marginBottom: '0.75rem',
                 cursor: 'pointer',
@@ -498,82 +260,38 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                 userSelect: 'none'
               }}
               className="reasoning-block"
-              onClick={() => {
-                const newExpanded = new Set(expandedReasoning);
-                if (newExpanded.has(message.id)) {
-                  newExpanded.delete(message.id);
-                } else {
-                  newExpanded.add(message.id);
-                }
-                setExpandedReasoning(newExpanded);
-              }}
+              onClick={() => toggleSet(setExpandedReasoning, message.id)}
             >
-              <Group 
-                gap="xs" 
-                wrap="nowrap"
-              >
-                <ActionIcon 
-                  variant="subtle" 
-                  size="sm"
-                  style={{ pointerEvents: 'none' }}
-                >
-                  {/* Check if this message's reasoning is expanded */}
-                  {(() => {
-                    const isExpanded = expandedReasoning.has(message.id) 
-                      ? !reasoningExpanded  // If in set, opposite of default
-                      : reasoningExpanded;  // Otherwise, use default
-                    return isExpanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />;
-                  })()}
+              <Group gap="xs" wrap="nowrap">
+                <ActionIcon variant="subtle" size="sm" style={{ pointerEvents: 'none' }}>
+                  {isReasoningExpanded(message.id) ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
                 </ActionIcon>
                 <Text size="sm" fw={500} style={{ flex: 1 }}>
-                  🧠 Reasoning
+                  {'\uD83E\uDDE0'} Reasoning
                 </Text>
                 <Text size="xs" c="dimmed">
-                  {(() => {
-                    const isExpanded = expandedReasoning.has(message.id) 
-                      ? !reasoningExpanded  // If in set, opposite of default
-                      : reasoningExpanded;  // Otherwise, use default
-                    return isExpanded ? 'Click to collapse' : 'Click to expand';
-                  })()}
+                  {isReasoningExpanded(message.id) ? 'Click to collapse' : 'Click to expand'}
                 </Text>
               </Group>
-              <Collapse in={(() => {
-                const isExpanded = expandedReasoning.has(message.id) 
-                  ? !reasoningExpanded  // If in set, opposite of default
-                  : reasoningExpanded;  // Otherwise, use default
-                return isExpanded;
-              })()}>
+              <Collapse in={isReasoningExpanded(message.id)}>
                 <div className="reasoning-content markdown-content" style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{reasoningText}</ReactMarkdown>
                 </div>
               </Collapse>
             </Paper>
           )}
-          
-          {/* Conditionally render normal view or raw JSON view */}
+
+          {/* Message content: raw JSON or formatted markdown */}
           {(() => {
-            // Raw view for user messages
             if (isRawView && !isStreaming && isUser) {
               return (
                 <Stack gap="md">
-                  {/* Message Data Section */}
                   <div>
                     <Text size="xs" fw={600} mb={4} c="dimmed">Message Data:</Text>
                     <div style={{ maxHeight: '300px', overflow: 'auto' }}>
-                      <SyntaxHighlighter
-                        language="json"
-                        style={vscDarkPlus}
-                        customStyle={{
-                          margin: 0,
-                          fontSize: '0.85rem',
-                          borderRadius: '4px'
-                        }}
-                      >
+                      <SyntaxHighlighter language="json" style={vscDarkPlus} customStyle={{ margin: 0, fontSize: '0.85rem', borderRadius: '4px' }}>
                         {JSON.stringify({
-                          id: message.id,
-                          role: message.role,
-                          timestamp: message.timestamp,
-                          content: message.content,
+                          id: message.id, role: message.role, timestamp: message.timestamp, content: message.content,
                           ...(message.images && message.images.length > 0 && { images: message.images }),
                           ...(message.metadata?.functionIds && { function_ids: message.metadata.functionIds }),
                           ...(message.metadata?.functionNames && { function_names: message.metadata.functionNames })
@@ -581,21 +299,11 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                       </SyntaxHighlighter>
                     </div>
                   </div>
-
-                  {/* API Request Section */}
                   {message.metadata?.apiRequest && (
                     <div>
                       <Text size="xs" fw={600} mb={4} c="dimmed">API Request Sent to Conduit:</Text>
                       <div style={{ maxHeight: '400px', overflow: 'auto' }}>
-                        <SyntaxHighlighter
-                          language="json"
-                          style={vscDarkPlus}
-                          customStyle={{
-                            margin: 0,
-                            fontSize: '0.85rem',
-                            borderRadius: '4px'
-                          }}
-                        >
+                        <SyntaxHighlighter language="json" style={vscDarkPlus} customStyle={{ margin: 0, fontSize: '0.85rem', borderRadius: '4px' }}>
                           {JSON.stringify(message.metadata.apiRequest, null, 2)}
                         </SyntaxHighlighter>
                       </div>
@@ -605,24 +313,13 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               );
             }
 
-            // Raw view for assistant messages
             if (isRawView && !isStreaming && !isUser) {
               return (
                 <div style={{ maxHeight: '400px', overflow: 'auto' }}>
-                  <SyntaxHighlighter
-                    language="json"
-                    style={vscDarkPlus}
-                    customStyle={{
-                      margin: 0,
-                      fontSize: '0.85rem',
-                      borderRadius: '4px'
-                    }}
-                  >
+                  <SyntaxHighlighter language="json" style={vscDarkPlus} customStyle={{ margin: 0, fontSize: '0.85rem', borderRadius: '4px' }}>
                     {JSON.stringify({
-                      id: message.id,
-                      timestamp: message.timestamp,
-                      model: message.model ?? message.metadata?.model,
-                      content: message.content,
+                      id: message.id, timestamp: message.timestamp,
+                      model: message.model ?? message.metadata?.model, content: message.content,
                       metadata: message.metadata ? {
                         ...(message.metadata.latency !== undefined && { latency_ms: message.metadata.latency }),
                         ...(message.metadata.timeToFirstToken !== undefined && { time_to_first_token_ms: message.metadata.timeToFirstToken }),
@@ -646,170 +343,40 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               );
             }
 
-            // Normal Markdown View
+            // Normal markdown view
             return (
-            <div className={`markdown-content ${isStreaming && streamingChannel === 'analysis' ? 'reasoning-content' : ''}`}>
-              {/* JUST SHOW THE RAW CONTENT */}
-              {isStreaming ? (
-                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{content}</pre>
-              ) : (
-              <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code({ className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className ?? '');
-                  const inline = !className;
-                  
-                  const getChildrenText = (node: React.ReactNode): string => {
-                    if (typeof node === 'string') return node;
-                    if (typeof node === 'number') return node.toString();
-                    if (Array.isArray(node)) return node.map(getChildrenText).join('');
-                    return '';
-                  };
-                  
-                  const childText = getChildrenText(children);
-                  
-                  return !inline && match ? (
-                    <SyntaxHighlighter
-                      style={vscDarkPlus}
-                      language={match[1]}
-                      PreTag="div"
-                      {...(props as Record<string, unknown>)}
-                    >
-                      {childText.replace(/\n$/, '')}
-                    </SyntaxHighlighter>
-                  ) : (
-                    <code className={className} {...props}>
-                      {childText}
-                    </code>
-                  );
-                },
-                blockquote({ children, ...props }) {
-                  const getChildrenText = (node: React.ReactNode): string => {
-                    if (typeof node === 'string') return node;
-                    if (typeof node === 'number') return node.toString();
-                    if (Array.isArray(node)) return node.map(getChildrenText).join('');
-                    if (!node || typeof node !== 'object') return '';
-                    
-                    // Type guard for React element
-                    if (React.isValidElement(node)) {
-                      const element = node as React.ReactElement<{children?: React.ReactNode}>;
-                      if (element.props?.children !== undefined) {
-                        return getChildrenText(element.props.children);
-                      }
-                    }
-                    return '';
-                  };
-                  
-                  const text = getChildrenText(children);
-                  const metadata = getBlockQuoteMetadata(text);
-                  
-                  // Handle thinking blocks with collapsible UI
-                  if (metadata.type === 'thinking') {
-                    const cleanedContent = cleanBlockQuoteContent(text);
-                    
-                    return (
-                      <CollapsibleThinking 
-                        content={cleanedContent}
-                        icon={metadata.icon}
-                        title={metadata.title}
-                      />
-                    );
-                  }
-                  
-                  // Handle warning blocks
-                  if (metadata.type === 'warning') {
-                    const cleanedContent = cleanBlockQuoteContent(text);
-                    
-                    return (
-                      <Alert 
-                        icon={<IconAlertTriangle size={16} />} 
-                        color="orange" 
-                        variant="light"
-                        radius="md"
-                      >
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{cleanedContent}</ReactMarkdown>
-                      </Alert>
-                    );
-                  }
-                  
-                  // Handle summary blocks
-                  if (metadata.type === 'summary') {
-                    const cleanedContent = cleanBlockQuoteContent(text);
-                    
-                    return (
-                      <Paper 
-                        p="md" 
-                        radius="md" 
-                        withBorder 
-                        style={{ 
-                          backgroundColor: 'var(--mantine-color-blue-light)',
-                          borderColor: 'var(--mantine-color-blue-6)'
-                        }}
-                      >
-                        <Text size="sm" fw={600} mb="xs">
-                          {metadata.icon} {metadata.title}
-                        </Text>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{cleanedContent}</ReactMarkdown>
-                      </Paper>
-                    );
-                  }
-                  
-                  // Default blockquote
-                  return <blockquote {...props}>{children}</blockquote>;
-                },
-              }}
-            >
-              {processStructuredContent(content ?? '')}
-              </ReactMarkdown>
-              )}
-            </div>
+              <div className={`markdown-content ${isStreaming && streamingChannel === 'analysis' ? 'reasoning-content' : ''}`}>
+                {isStreaming ? (
+                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{content}</pre>
+                ) : (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={messageMarkdownComponents}>
+                    {processStructuredContent(content ?? '')}
+                  </ReactMarkdown>
+                )}
+              </div>
             );
           })()}
-          
+
           {/* Copy button */}
           {content && (
             <Group justify="flex-end" mt="xs">
               <CopyButton value={(() => {
-                if (!isRawView) {
-                  return content;
-                }
+                if (!isRawView) return content;
                 if (isUser) {
                   return JSON.stringify({
-                    message_data: {
-                      id: message.id,
-                      role: message.role,
-                      timestamp: message.timestamp,
-                      content: message.content,
-                      images: message.images,
-                      function_ids: message.metadata?.functionIds,
-                      function_names: message.metadata?.functionNames
-                    },
+                    message_data: { id: message.id, role: message.role, timestamp: message.timestamp, content: message.content, images: message.images, function_ids: message.metadata?.functionIds, function_names: message.metadata?.functionNames },
                     api_request: message.metadata?.apiRequest
                   }, null, 2);
                 }
                 return JSON.stringify({
-                  id: message.id,
-                  timestamp: message.timestamp,
-                  model: message.model ?? message.metadata?.model,
-                  content: message.content,
-                  metadata: message.metadata,
-                  function_call: message.functionCall,
-                  tool_calls: message.toolCalls,
-                  images: message.images
+                  id: message.id, timestamp: message.timestamp, model: message.model ?? message.metadata?.model,
+                  content: message.content, metadata: message.metadata, function_call: message.functionCall,
+                  tool_calls: message.toolCalls, images: message.images
                 }, null, 2);
               })()} timeout={2000}>
                 {({ copied, copy }) => (
-                  <Tooltip label={(() => {
-                    if (copied) return 'Copied!';
-                    return isRawView ? 'Copy JSON' : 'Copy message';
-                  })()} withArrow position="left">
-                    <ActionIcon
-                      color={copied ? 'teal' : 'gray'}
-                      onClick={copy}
-                      variant="subtle"
-                      size="sm"
-                    >
+                  <Tooltip label={copied ? 'Copied!' : copyLabel} withArrow position="left">
+                    <ActionIcon color={copied ? 'teal' : 'gray'} onClick={copy} variant="subtle" size="sm">
                       {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
                     </ActionIcon>
                   </Tooltip>
@@ -823,8 +390,8 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
   };
 
   return (
-    <ScrollArea 
-      style={{ height: '100%', flex: 1 }} 
+    <ScrollArea
+      style={{ height: '100%', flex: 1 }}
       viewportRef={scrollAreaRef}
       type="auto"
       scrollbarSize={8}
@@ -838,10 +405,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
             p="md"
             radius="md"
             className="chat-message-assistant"
-            style={{
-              alignSelf: 'flex-start',
-              maxWidth: '80%',
-            }}
+            style={{ alignSelf: 'flex-start', maxWidth: '80%' }}
           >
             <Stack gap="xs">
               <Group gap="xs">
@@ -852,39 +416,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               </Group>
               {streamingContent ? (
                 <div className="markdown-content">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      code({ className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className ?? '');
-                        const inline = !className;
-                        
-                        const getChildrenText = (node: React.ReactNode): string => {
-                          if (typeof node === 'string') return node;
-                          if (typeof node === 'number') return node.toString();
-                          if (Array.isArray(node)) return node.map(getChildrenText).join('');
-                          return '';
-                        };
-                        
-                        const childText = getChildrenText(children);
-                        
-                        return !inline && match ? (
-                          <SyntaxHighlighter
-                            style={vscDarkPlus}
-                            language={match[1]}
-                            PreTag="div"
-                            {...(props as Record<string, unknown>)}
-                          >
-                            {childText.replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        ) : (
-                          <code className={className} {...props}>
-                            {childText}
-                          </code>
-                        );
-                      },
-                    }}
-                  >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={streamingMarkdownComponents}>
                     {streamingContent}
                   </ReactMarkdown>
                 </div>

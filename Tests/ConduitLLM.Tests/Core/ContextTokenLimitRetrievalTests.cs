@@ -77,8 +77,8 @@ namespace ConduitLLM.Tests.Core
             mappingServiceMock.Setup(x => x.GetMappingByModelAliasAsync(modelAlias))
                 .ReturnsAsync(mapping);
 
-            clientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Returns(clientMock.Object);
+            clientFactoryMock.Setup(x => x.GetClientAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(clientMock.Object);
 
             var request = new ChatCompletionRequest
             {
@@ -183,8 +183,8 @@ namespace ConduitLLM.Tests.Core
             mappingServiceMock.Setup(x => x.GetMappingByModelAliasAsync(modelAlias))
                 .ReturnsAsync(mapping);
 
-            clientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Returns(clientMock.Object);
+            clientFactoryMock.Setup(x => x.GetClientAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(clientMock.Object);
 
             var request = new ChatCompletionRequest
             {
@@ -287,8 +287,8 @@ namespace ConduitLLM.Tests.Core
             mappingServiceMock.Setup(x => x.GetMappingByModelAliasAsync(modelAlias))
                 .ReturnsAsync(mapping);
 
-            clientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Returns(clientMock.Object);
+            clientFactoryMock.Setup(x => x.GetClientAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(clientMock.Object);
 
             var request = new ChatCompletionRequest
             {

@@ -125,6 +125,24 @@ export const PROVIDER_REGISTRY: Record<number, ProviderMetadata> = {
     supportsQualityScore: true,
     supportsVariation: false,
     description: 'ElevenLabs audio synthesis'
+  },
+  [ProviderType.Cloudflare]: {
+    value: ProviderType.Cloudflare,
+    name: 'Cloudflare',
+    label: 'Cloudflare Workers AI',
+    supportsSpeedScore: true,
+    supportsQualityScore: true,
+    supportsVariation: false,
+    description: 'Cloudflare Workers AI serverless inference'
+  },
+  [ProviderType.OpenRouter]: {
+    value: ProviderType.OpenRouter,
+    name: 'OpenRouter',
+    label: 'OpenRouter',
+    supportsSpeedScore: true,
+    supportsQualityScore: true,
+    supportsVariation: true,
+    description: 'OpenRouter multi-provider routing'
   }
 };
 
@@ -197,7 +215,12 @@ export function normalizeProviderType(provider: string | number): ProviderType |
     'elevenlabs': ProviderType.ElevenLabs,
     'eleven-labs': ProviderType.ElevenLabs,
     'sambanova': ProviderType.SambaNova,
-    'samba-nova': ProviderType.SambaNova
+    'samba-nova': ProviderType.SambaNova,
+    'cloudflare': ProviderType.Cloudflare,
+    'workers-ai': ProviderType.Cloudflare,
+    'workersai': ProviderType.Cloudflare,
+    'openrouter': ProviderType.OpenRouter,
+    'open-router': ProviderType.OpenRouter
   };
   
   const lowerProvider = provider.toLowerCase().replace(/[\s_]/g, '');

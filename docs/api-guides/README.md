@@ -1,6 +1,6 @@
 # Conduit API Guides
 
-This directory contains comprehensive **feature guides** and **tutorials** for using the Conduit APIs. For quick endpoint reference, see [API Reference](../api-reference/).
+This directory contains comprehensive **feature guides**, **tutorials**, and **API references** for using the Conduit APIs.
 
 ## 📖 What's in This Directory
 
@@ -12,9 +12,9 @@ These guides provide **in-depth explanations**, **best practices**, and **practi
 
 The Gateway API provides an OpenAI-compatible interface for LLM interactions.
 
-- **[Gateway API Overview](./core/README.md)** - Introduction and capabilities
-- **[Getting Started](./core/getting-started.md)** - Authentication, quick start, basic usage
-- **[API Reference](./core/api-reference.md)** - Complete endpoint documentation
+- **[Gateway API Overview](./gateway/README.md)** - Introduction and capabilities
+- **[Getting Started](./gateway/getting-started.md)** - Authentication, quick start, basic usage
+- **[API Reference](./gateway/api-reference.md)** - Complete endpoint documentation
 
 **Key Features:** Chat completions, streaming, function calling, multimodal vision, embeddings, image generation
 
@@ -60,27 +60,18 @@ Real-time updates and WebSocket connections.
 - **[Client Examples](./signalr/client-examples.md)** - Integration examples
 - **[Authentication](./signalr/authentication.md)** - SignalR authentication
 
-## 📚 API Reference vs API Guides
+## 📚 Finding What You Need
 
-**Confused about which to use?**
-
-| Use **API Guides** (this directory) when... | Use **[API Reference](../api-reference/)** when... |
-|----------------------------------------------|---------------------------------------------------|
-| ✅ Learning how to use a feature | ✅ Looking up endpoint parameters |
-| ✅ Understanding best practices | ✅ Finding request/response schemas |
-| ✅ Following tutorials | ✅ Quick endpoint reference |
-| ✅ Implementing complex features | ✅ Checking available endpoints |
-
-**Example:**
-- **Want to learn about function calling?** → Read [Function Calling Guide](./features/function-calling.md)
-- **Need function calling endpoint details?** → Check [Gateway API Reference](./core/api-reference.md#function-calling)
+- **Want to learn about a feature?** → Read the relevant guide below (function calling, routing, vision, etc.)
+- **Need endpoint details?** → Check the API Reference for [Gateway](./gateway/api-reference.md) or [Admin](./admin/api-reference.md)
+- **Using the WebAdmin proxy?** → See [WebAdmin Gateway Endpoints](./gateway/webadmin-endpoints.md)
 
 ## 🚀 Getting Started Paths
 
 ### For New Users
 
-1. Start with [Gateway API Getting Started](./core/getting-started.md) - understand the basics
-2. Review [Gateway API Reference](./core/api-reference.md) - see full capabilities
+1. Start with [Gateway API Getting Started](./gateway/getting-started.md) - understand the basics
+2. Review [Gateway API Reference](./gateway/api-reference.md) - see full capabilities
 3. Explore [Feature Guides](./features/) as needed
 
 ### For Administrators
@@ -105,54 +96,6 @@ Real-time updates and WebSocket connections.
 
 ## 📋 Related Documentation
 
-- **[API Reference](../api-reference/)** - Endpoint specifications and parameters
 - **[Development](../development/)** - Contributing to Conduit codebase
 - **[Architecture](../architecture/)** - System design and patterns
 - **[Operations](../operations/)** - Deployment and operations guides
-
-## 💡 Tips for Using These Guides
-
-- **Code examples** are production-ready - copy and adapt them
-- **Best practices** sections highlight important patterns
-- **Common pitfalls** help you avoid mistakes
-- **Links to API Reference** for detailed parameter information
-
-## 📁 Directory Structure
-
-```
-api-guides/
-├── README.md (this file)
-├── core/
-│   ├── README.md
-│   ├── getting-started.md
-│   └── api-reference.md
-├── admin/
-│   ├── README.md
-│   ├── getting-started.md
-│   ├── typescript-sdk.md
-│   └── api-reference.md
-├── features/
-│   ├── README.md
-│   ├── function-calling.md
-│   ├── llm-routing.md
-│   ├── multimodal-vision.md
-│   └── webhooks.md
-├── sdk/
-│   ├── README.md
-│   ├── nextjs-integration.md
-│   ├── best-practices.md
-│   ├── quick-reference.md
-│   ├── troubleshooting.md
-│   ├── connection-management.md
-│   └── health-checks.md
-└── signalr/
-    ├── README.md
-    ├── getting-started.md
-    ├── hub-reference.md
-    ├── client-examples.md
-    └── authentication.md
-```
-
----
-
-*For endpoint specifications and quick reference, see [API Reference](../api-reference/)*

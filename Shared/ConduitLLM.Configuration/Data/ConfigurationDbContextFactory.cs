@@ -24,8 +24,6 @@ namespace ConduitLLM.Configuration.Data
                     "Example: postgresql://user:password@localhost:5432/conduitdb");
             }
 
-            Console.WriteLine("Using database connection from environment: DATABASE_URL");
-
             // Parse the connection string
             if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
             {

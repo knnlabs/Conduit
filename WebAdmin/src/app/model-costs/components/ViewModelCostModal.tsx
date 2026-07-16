@@ -164,7 +164,7 @@ function EmbeddingPricingSection({ modelCost }: { modelCost: ModelCost }) {
 function ImagePricingSection({ modelCost }: { modelCost: ModelCost }) {
   const hasPerImageCost = modelCost.imageCostPerImage !== undefined;
   const hasStepCost = modelCost.costPerInferenceStep !== undefined;
-  const hasMultipliers = modelCost.imageQualityMultipliers || modelCost.imageResolutionMultipliers;
+  const hasMultipliers = modelCost.imageQualityMultipliers ?? modelCost.imageResolutionMultipliers;
 
   if (!hasPerImageCost && !hasStepCost) {
     return (
@@ -185,8 +185,9 @@ function ImagePricingSection({ modelCost }: { modelCost: ModelCost }) {
     if (modelCost.imageResolutionMultipliers && modelCost.imageResolutionMultipliers !== '{}') {
       resolutionMultipliers = JSON.parse(modelCost.imageResolutionMultipliers) as Record<string, number>;
     }
-  } catch {
-    // Ignore parsing errors
+  } catch (error) {
+    // Multipliers stay null; surface that the stored JSON is corrupt
+    console.warn('Failed to parse image multipliers for model cost:', error);
   }
 
   return (
@@ -331,8 +332,9 @@ function VideoPricingSection({ modelCost }: { modelCost: ModelCost }) {
     if (modelCost.videoResolutionMultipliers && modelCost.videoResolutionMultipliers !== '{}') {
       resolutionMultipliers = JSON.parse(modelCost.videoResolutionMultipliers) as Record<string, number>;
     }
-  } catch {
-    // Ignore parsing errors
+  } catch (error) {
+    // Multipliers stay null; surface that the stored JSON is corrupt
+    console.warn('Failed to parse video resolution multipliers for model cost:', error);
   }
 
   if (!hasVideoCost) {

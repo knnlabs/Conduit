@@ -113,6 +113,12 @@ namespace ConduitLLM.Core.Models
         Monitoring,
 
         /// <summary>
+        /// Parsed pricing rules configurations for model cost billing.
+        /// Reduces JSON parsing overhead by caching deserialized PricingRulesConfig objects.
+        /// </summary>
+        PricingRules,
+
+        /// <summary>
         /// Default region for unspecified cache operations.
         /// Should be avoided in favor of specific regions.
         /// </summary>

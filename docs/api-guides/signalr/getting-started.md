@@ -521,7 +521,7 @@ Integrate SignalR events with your application's state management (Redux, Vuex, 
 For complete working examples in multiple languages, check out our sample repository:
 
 ```bash
-git clone https://github.com/knnlabs/conduit-signalr-examples
+git clone https://github.com/nickna/conduit-signalr-examples
 cd conduit-signalr-examples
 ```
 

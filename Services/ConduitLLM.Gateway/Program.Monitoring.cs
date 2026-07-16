@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Extensions;
+using ConduitLLM.Gateway.Filters;
 
 public partial class Program
 {
@@ -8,6 +9,12 @@ public partial class Program
     {
         // Add Controller support
         builder.Services.AddControllers();
+
+        // Operation-logging action filter — replaces the per-action success logging that used to
+        // live in GatewayControllerBase.ExecuteAsync. Applied per controller via [ServiceFilter]
+        // during the incremental Tier 1a migration (#902); promote to a global filter once all
+        // Gateway controllers are converted.
+        builder.Services.AddScoped<OperationLoggingFilter>();
 
         // Add OpenAPI support with Scalar
         builder.Services.AddEndpointsApiExplorer();
@@ -18,23 +25,10 @@ public partial class Program
         });
 
         // Get Redis and RabbitMQ configuration for health checks
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-        if (!string.IsNullOrEmpty(redisUrl))
-        {
-            try
-            {
-                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-            }
-            catch
-            {
-                // Failed to parse REDIS_URL, will use legacy connection string if available
-            }
-        }
+        var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
         var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
-        var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI", msg => Console.WriteLine(msg));
+        var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI");
 
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
             ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
@@ -80,10 +74,6 @@ public partial class Program
                     tags: new[] { "leader_election", "background_services", "distributed" });
             }
 
-            // Audio health checks removed per YAGNI principle
-            
-            // Add advanced health monitoring checks (includes SignalR and HTTP connection pool checks)
-            healthChecksBuilder.AddAdvancedHealthMonitoring(builder.Configuration);
         }
 
         // Add health monitoring services
@@ -109,5 +99,15 @@ public partial class Program
                 return new ConduitLLM.Gateway.Services.BusinessMetricsService(scopeFactory, logger);
             },
             "BusinessMetricsService");
+
+        // Add gateway operations metrics service for operation-level metrics
+        // Tracks LLM operations, batch operations, media operations, function executions, and routing decisions
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.GatewayOperationsMetricsService>(
+            serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.GatewayOperationsMetricsService>>();
+                return new ConduitLLM.Gateway.Services.GatewayOperationsMetricsService(serviceProvider, logger);
+            },
+            "GatewayOperationsMetricsService");
     }
 }

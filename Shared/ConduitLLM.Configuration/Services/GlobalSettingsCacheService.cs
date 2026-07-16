@@ -81,91 +81,15 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
     }
 
     public async Task<int> GetMaxAgenticIterationsAsync()
-    {
-        var value = await GetSettingAsync(KEY_MAX_AGENTIC_ITERATIONS);
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            _logger.LogDebug("Max agentic iterations setting not found, using default: {Default}", DEFAULT_MAX_AGENTIC_ITERATIONS);
-            return DEFAULT_MAX_AGENTIC_ITERATIONS;
-        }
-
-        if (!int.TryParse(value, out var maxIterations))
-        {
-            _logger.LogWarning("Failed to parse max agentic iterations value '{Value}', using default: {Default}",
-                value, DEFAULT_MAX_AGENTIC_ITERATIONS);
-            return DEFAULT_MAX_AGENTIC_ITERATIONS;
-        }
-
-        // Clamp to valid range
-        var clamped = Math.Clamp(maxIterations, MIN_VALID_ITERATIONS, MAX_VALID_ITERATIONS);
-        if (clamped != maxIterations)
-        {
-            _logger.LogWarning("Max agentic iterations {Value} out of valid range ({Min}-{Max}), clamping to {Clamped}",
-                maxIterations, MIN_VALID_ITERATIONS, MAX_VALID_ITERATIONS, clamped);
-        }
-
-        return clamped;
-    }
+        => await GetClampedIntSettingAsync(KEY_MAX_AGENTIC_ITERATIONS, DEFAULT_MAX_AGENTIC_ITERATIONS,
+            MIN_VALID_ITERATIONS, MAX_VALID_ITERATIONS, "Max agentic iterations");
 
     public async Task<int> GetMinAgenticIterationsAsync()
-    {
-        var value = await GetSettingAsync(KEY_MIN_AGENTIC_ITERATIONS);
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            _logger.LogDebug("Min agentic iterations setting not found, using default: {Default}", DEFAULT_MIN_AGENTIC_ITERATIONS);
-            return DEFAULT_MIN_AGENTIC_ITERATIONS;
-        }
-
-        if (!int.TryParse(value, out var minIterations))
-        {
-            _logger.LogWarning("Failed to parse min agentic iterations value '{Value}', using default: {Default}",
-                value, DEFAULT_MIN_AGENTIC_ITERATIONS);
-            return DEFAULT_MIN_AGENTIC_ITERATIONS;
-        }
-
-        // Clamp to valid range
-        var clamped = Math.Clamp(minIterations, MIN_VALID_ITERATIONS, MAX_VALID_ITERATIONS);
-        if (clamped != minIterations)
-        {
-            _logger.LogWarning("Min agentic iterations {Value} out of valid range ({Min}-{Max}), clamping to {Clamped}",
-                minIterations, MIN_VALID_ITERATIONS, MAX_VALID_ITERATIONS, clamped);
-        }
-
-        return clamped;
-    }
+        => await GetClampedIntSettingAsync(KEY_MIN_AGENTIC_ITERATIONS, DEFAULT_MIN_AGENTIC_ITERATIONS,
+            MIN_VALID_ITERATIONS, MAX_VALID_ITERATIONS, "Min agentic iterations");
 
     public async Task<bool> GetDefaultAgenticModeEnabledAsync()
-    {
-        var value = await GetSettingAsync(KEY_DEFAULT_AGENTIC_ENABLED);
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            _logger.LogDebug("Default agentic enabled setting not found, using default: {Default}", DEFAULT_AGENTIC_ENABLED);
-            return DEFAULT_AGENTIC_ENABLED;
-        }
-
-        if (bool.TryParse(value, out var enabled))
-        {
-            return enabled;
-        }
-
-        // Try parsing common string representations
-        var normalized = value.Trim().ToLowerInvariant();
-        if (normalized == "1" || normalized == "yes" || normalized == "on")
-        {
-            return true;
-        }
-        if (normalized == "0" || normalized == "no" || normalized == "off")
-        {
-            return false;
-        }
-
-        _logger.LogWarning("Failed to parse default agentic enabled value '{Value}', using default: {Default}",
-            value, DEFAULT_AGENTIC_ENABLED);
-        return DEFAULT_AGENTIC_ENABLED;
-    }
+        => await GetBoolSettingAsync(KEY_DEFAULT_AGENTIC_ENABLED, DEFAULT_AGENTIC_ENABLED, "Default agentic enabled");
 
     public async Task<bool> GetLLMCachingEnabledAsync()
     {
@@ -191,25 +115,87 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
             // Fall back to direct boolean parsing if not JSON
         }
 
-        if (bool.TryParse(value, out var enabled))
+        if (TryParseFuzzyBool(value, out var result))
         {
-            return enabled;
-        }
-
-        // Try parsing common string representations
-        var normalized = value.Trim().ToLowerInvariant();
-        if (normalized == "1" || normalized == "yes" || normalized == "on")
-        {
-            return true;
-        }
-        if (normalized == "0" || normalized == "no" || normalized == "off")
-        {
-            return false;
+            return result;
         }
 
         _logger.LogWarning("Failed to parse LLM caching enabled value '{Value}', using default: {Default}",
             value, DEFAULT_LLM_CACHING_ENABLED);
         return DEFAULT_LLM_CACHING_ENABLED;
+    }
+
+    /// <inheritdoc />
+    public Task<string?> GetSettingValueAsync(string key)
+    {
+        return GetSettingAsync(key);
+    }
+
+    /// <summary>
+    /// Parses a string value as boolean, accepting "true"/"false", "1"/"0", "yes"/"no", "on"/"off".
+    /// </summary>
+    private static bool TryParseFuzzyBool(string value, out bool result)
+    {
+        if (bool.TryParse(value, out result))
+            return true;
+
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized is "1" or "yes" or "on") { result = true; return true; }
+        if (normalized is "0" or "no" or "off") { result = false; return true; }
+
+        result = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Gets a boolean setting with fuzzy parsing and fallback to default.
+    /// </summary>
+    private async Task<bool> GetBoolSettingAsync(string key, bool defaultValue, string settingName)
+    {
+        var value = await GetSettingAsync(key);
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            _logger.LogDebug("{SettingName} setting not found, using default: {Default}", settingName, defaultValue);
+            return defaultValue;
+        }
+
+        if (TryParseFuzzyBool(value, out var result))
+            return result;
+
+        _logger.LogWarning("Failed to parse {SettingName} value '{Value}', using default: {Default}",
+            settingName, value, defaultValue);
+        return defaultValue;
+    }
+
+    /// <summary>
+    /// Gets an integer setting, clamped to the specified range, with fallback to default.
+    /// </summary>
+    private async Task<int> GetClampedIntSettingAsync(string key, int defaultValue, int min, int max, string settingName)
+    {
+        var value = await GetSettingAsync(key);
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            _logger.LogDebug("{SettingName} setting not found, using default: {Default}", settingName, defaultValue);
+            return defaultValue;
+        }
+
+        if (!int.TryParse(value, out var parsed))
+        {
+            _logger.LogWarning("Failed to parse {SettingName} value '{Value}', using default: {Default}",
+                settingName, value, defaultValue);
+            return defaultValue;
+        }
+
+        var clamped = Math.Clamp(parsed, min, max);
+        if (clamped != parsed)
+        {
+            _logger.LogWarning("{SettingName} {Value} out of valid range ({Min}-{Max}), clamping to {Clamped}",
+                settingName, parsed, min, max, clamped);
+        }
+
+        return clamped;
     }
 
     public async Task InvalidateSettingAsync(string settingKey)
@@ -319,7 +305,7 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
             using (var scope = _scopeFactory.CreateScope())
             {
                 var repository = scope.ServiceProvider.GetRequiredService<IGlobalSettingRepository>();
-                var settings = await repository.GetAllAsync();
+                var settings = await repository.GetAllUnboundedAsync();
 
                 foreach (var setting in settings)
                 {

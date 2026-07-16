@@ -1,6 +1,6 @@
+using ConduitLLM.Core.Constants;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
-using System.Collections.Concurrent;
 
 namespace ConduitLLM.Core.Services
 {
@@ -44,33 +44,26 @@ namespace ConduitLLM.Core.Services
     /// Redis-based implementation of webhook connection tracking
     /// Allows distributed tracking of which connections are monitoring which webhooks
     /// </summary>
-    public class RedisWebhookConnectionTracker : IWebhookConnectionTracker
+    public class RedisWebhookConnectionTracker : RedisWebhookServiceBase, IWebhookConnectionTracker
     {
-        private readonly IConnectionMultiplexer _redis;
-        private readonly ILogger<RedisWebhookConnectionTracker> _logger;
-        
-        private const string CONNECTION_WEBHOOKS_KEY = "webhook:connections:{0}:webhooks";
-        private const string WEBHOOK_CONNECTIONS_KEY = "webhook:webhooks:{0}:connections";
-        private const string CONNECTION_TIMESTAMP_KEY = "webhook:connections:{0}:timestamp";
         private const int CONNECTION_EXPIRY_HOURS = 24;
-        
+
         public RedisWebhookConnectionTracker(
             IConnectionMultiplexer redis,
             ILogger<RedisWebhookConnectionTracker> logger)
+            : base(redis, logger)
         {
-            _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         
         public async Task AddWebhooksToConnectionAsync(string connectionId, IEnumerable<string> webhookUrls)
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 
-                var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
-                var timestampKey = string.Format(CONNECTION_TIMESTAMP_KEY, connectionId);
+                var connectionKey = RedisKeys.WebhookConnection.ConnectionWebhooks(connectionId);
+                var timestampKey = RedisKeys.WebhookConnection.ConnectionTimestamp(connectionId);
                 
                 foreach (var webhookUrl in webhookUrls)
                 {
@@ -78,7 +71,7 @@ namespace ConduitLLM.Core.Services
                     _ = transaction.SetAddAsync(connectionKey, webhookUrl);
                     
                     // Add connection to webhook's set
-                    var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
+                    var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(GetUrlHash(webhookUrl));
                     _ = transaction.SetAddAsync(webhookKey, connectionId);
                     _ = transaction.KeyExpireAsync(webhookKey, TimeSpan.FromHours(CONNECTION_EXPIRY_HOURS));
                 }
@@ -90,12 +83,12 @@ namespace ConduitLLM.Core.Services
                 
                 await transaction.ExecuteAsync();
                 
-                _logger.LogDebug("Added {Count} webhooks to connection {ConnectionId}", 
+                Logger.LogDebug("Added {Count} webhooks to connection {ConnectionId}", 
                     webhookUrls.Count(), connectionId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding webhooks to connection {ConnectionId}", connectionId);
+                Logger.LogError(ex, "Error adding webhooks to connection {ConnectionId}", connectionId);
             }
         }
         
@@ -103,10 +96,10 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 
-                var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
+                var connectionKey = RedisKeys.WebhookConnection.ConnectionWebhooks(connectionId);
                 
                 foreach (var webhookUrl in webhookUrls)
                 {
@@ -114,18 +107,18 @@ namespace ConduitLLM.Core.Services
                     _ = transaction.SetRemoveAsync(connectionKey, webhookUrl);
                     
                     // Remove connection from webhook's set
-                    var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
+                    var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(GetUrlHash(webhookUrl));
                     _ = transaction.SetRemoveAsync(webhookKey, connectionId);
                 }
                 
                 await transaction.ExecuteAsync();
                 
-                _logger.LogDebug("Removed {Count} webhooks from connection {ConnectionId}", 
+                Logger.LogDebug("Removed {Count} webhooks from connection {ConnectionId}", 
                     webhookUrls.Count(), connectionId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing webhooks from connection {ConnectionId}", connectionId);
+                Logger.LogError(ex, "Error removing webhooks from connection {ConnectionId}", connectionId);
             }
         }
         
@@ -133,15 +126,15 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
-                var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
+                var db = Redis.GetDatabase();
+                var connectionKey = RedisKeys.WebhookConnection.ConnectionWebhooks(connectionId);
                 var webhooks = await db.SetMembersAsync(connectionKey);
                 
                 return webhooks.Select(w => w.ToString()).ToHashSet();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting webhooks for connection {ConnectionId}", connectionId);
+                Logger.LogError(ex, "Error getting webhooks for connection {ConnectionId}", connectionId);
                 return new HashSet<string>();
             }
         }
@@ -150,15 +143,15 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
-                var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
+                var db = Redis.GetDatabase();
+                var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(GetUrlHash(webhookUrl));
                 var connections = await db.SetMembersAsync(webhookKey);
                 
                 return connections.Select(c => c.ToString()).ToHashSet();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting connections for webhook {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error getting connections for webhook {WebhookUrl}", webhookUrl);
                 return new HashSet<string>();
             }
         }
@@ -167,10 +160,10 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 
                 // Get all webhooks for this connection
-                var connectionKey = string.Format(CONNECTION_WEBHOOKS_KEY, connectionId);
+                var connectionKey = RedisKeys.WebhookConnection.ConnectionWebhooks(connectionId);
                 var webhooks = await db.SetMembersAsync(connectionKey);
                 
                 if (webhooks.Length > 0)
@@ -180,7 +173,7 @@ namespace ConduitLLM.Core.Services
                     // Remove connection from all webhook sets
                     foreach (var webhook in webhooks)
                     {
-                        var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, 
+                        var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(
                             GetUrlHash(webhook.ToString()));
                         _ = transaction.SetRemoveAsync(webhookKey, connectionId);
                     }
@@ -189,18 +182,18 @@ namespace ConduitLLM.Core.Services
                     _ = transaction.KeyDeleteAsync(connectionKey);
                     
                     // Remove connection timestamp
-                    var timestampKey = string.Format(CONNECTION_TIMESTAMP_KEY, connectionId);
+                    var timestampKey = RedisKeys.WebhookConnection.ConnectionTimestamp(connectionId);
                     _ = transaction.KeyDeleteAsync(timestampKey);
                     
                     await transaction.ExecuteAsync();
                 }
                 
-                _logger.LogDebug("Removed connection {ConnectionId} and its {Count} webhook subscriptions", 
+                Logger.LogDebug("Removed connection {ConnectionId} and its {Count} webhook subscriptions", 
                     connectionId, webhooks.Length);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing connection {ConnectionId}", connectionId);
+                Logger.LogError(ex, "Error removing connection {ConnectionId}", connectionId);
             }
         }
         
@@ -208,26 +201,19 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
-                var webhookKey = string.Format(WEBHOOK_CONNECTIONS_KEY, GetUrlHash(webhookUrl));
+                var db = Redis.GetDatabase();
+                var webhookKey = RedisKeys.WebhookConnection.WebhookConnections(GetUrlHash(webhookUrl));
                 var count = await db.SetLengthAsync(webhookKey);
                 
                 return (int)count;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting connection count for webhook {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error getting connection count for webhook {WebhookUrl}", webhookUrl);
                 return 0;
             }
         }
         
-        private string GetUrlHash(string webhookUrl)
-        {
-            // Create a consistent hash for the URL to use as Redis key component
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(webhookUrl));
-            return Convert.ToBase64String(hashBytes).Replace("/", "-").Replace("+", "_").Substring(0, 16);
-        }
     }
     
     /// <summary>
@@ -236,122 +222,126 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public class InMemoryWebhookConnectionTracker : IWebhookConnectionTracker
     {
-        private readonly ConcurrentDictionary<string, HashSet<string>> _connectionWebhooks = new();
-        private readonly ConcurrentDictionary<string, HashSet<string>> _webhookConnections = new();
+        // Both maps are guarded by a single lock. This is the low-throughput fallback
+        // path (Redis unavailable), and one lock keeps the two maps consistent without
+        // the nested per-set locking this class previously relied on.
+        private readonly Dictionary<string, HashSet<string>> _connectionWebhooks = new();
+        private readonly Dictionary<string, HashSet<string>> _webhookConnections = new();
+        private readonly object _lock = new();
         private readonly ILogger<InMemoryWebhookConnectionTracker> _logger;
-        
+
         public InMemoryWebhookConnectionTracker(ILogger<InMemoryWebhookConnectionTracker> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        
+
         public Task AddWebhooksToConnectionAsync(string connectionId, IEnumerable<string> webhookUrls)
         {
-            var connectionSet = _connectionWebhooks.GetOrAdd(connectionId, _ => new HashSet<string>());
-            
-            lock (connectionSet)
+            var count = 0;
+
+            lock (_lock)
             {
+                if (!_connectionWebhooks.TryGetValue(connectionId, out var connectionSet))
+                {
+                    connectionSet = new HashSet<string>();
+                    _connectionWebhooks[connectionId] = connectionSet;
+                }
+
                 foreach (var webhookUrl in webhookUrls)
                 {
                     connectionSet.Add(webhookUrl);
-                    
-                    var webhookSet = _webhookConnections.GetOrAdd(webhookUrl, _ => new HashSet<string>());
-                    lock (webhookSet)
+
+                    if (!_webhookConnections.TryGetValue(webhookUrl, out var webhookSet))
                     {
-                        webhookSet.Add(connectionId);
+                        webhookSet = new HashSet<string>();
+                        _webhookConnections[webhookUrl] = webhookSet;
                     }
+
+                    webhookSet.Add(connectionId);
+                    count++;
                 }
             }
-            
-            _logger.LogDebug("Added {Count} webhooks to connection {ConnectionId} (in-memory)", 
-                webhookUrls.Count(), connectionId);
-            
+
+            _logger.LogDebug("Added {Count} webhooks to connection {ConnectionId} (in-memory)",
+                count, connectionId);
+
             return Task.CompletedTask;
         }
-        
+
         public Task RemoveWebhooksFromConnectionAsync(string connectionId, IEnumerable<string> webhookUrls)
         {
-            if (_connectionWebhooks.TryGetValue(connectionId, out var connectionSet))
+            lock (_lock)
             {
-                lock (connectionSet)
+                if (_connectionWebhooks.TryGetValue(connectionId, out var connectionSet))
                 {
                     foreach (var webhookUrl in webhookUrls)
                     {
                         connectionSet.Remove(webhookUrl);
-                        
+
                         if (_webhookConnections.TryGetValue(webhookUrl, out var webhookSet))
                         {
-                            lock (webhookSet)
-                            {
-                                webhookSet.Remove(connectionId);
-                            }
+                            webhookSet.Remove(connectionId);
                         }
                     }
                 }
             }
-            
+
             return Task.CompletedTask;
         }
-        
+
         public Task<HashSet<string>> GetConnectionWebhooksAsync(string connectionId)
         {
-            if (_connectionWebhooks.TryGetValue(connectionId, out var webhooks))
+            lock (_lock)
             {
-                lock (webhooks)
-                {
-                    return Task.FromResult(new HashSet<string>(webhooks));
-                }
+                return Task.FromResult(
+                    _connectionWebhooks.TryGetValue(connectionId, out var webhooks)
+                        ? new HashSet<string>(webhooks)
+                        : new HashSet<string>());
             }
-            
-            return Task.FromResult(new HashSet<string>());
         }
-        
+
         public Task<HashSet<string>> GetWebhookConnectionsAsync(string webhookUrl)
         {
-            if (_webhookConnections.TryGetValue(webhookUrl, out var connections))
+            lock (_lock)
             {
-                lock (connections)
-                {
-                    return Task.FromResult(new HashSet<string>(connections));
-                }
+                return Task.FromResult(
+                    _webhookConnections.TryGetValue(webhookUrl, out var connections)
+                        ? new HashSet<string>(connections)
+                        : new HashSet<string>());
             }
-            
-            return Task.FromResult(new HashSet<string>());
         }
-        
+
         public Task RemoveConnectionAsync(string connectionId)
         {
-            if (_connectionWebhooks.TryRemove(connectionId, out var webhooks))
+            lock (_lock)
             {
-                foreach (var webhook in webhooks)
+                if (_connectionWebhooks.Remove(connectionId, out var webhooks))
                 {
-                    if (_webhookConnections.TryGetValue(webhook, out var connections))
+                    foreach (var webhook in webhooks)
                     {
-                        lock (connections)
+                        if (_webhookConnections.TryGetValue(webhook, out var connections))
                         {
                             connections.Remove(connectionId);
                         }
                     }
+
+                    _logger.LogDebug("Removed connection {ConnectionId} with {Count} webhooks (in-memory)",
+                        connectionId, webhooks.Count);
                 }
-                
-                _logger.LogDebug("Removed connection {ConnectionId} with {Count} webhooks (in-memory)", 
-                    connectionId, webhooks.Count);
             }
-            
+
             return Task.CompletedTask;
         }
-        
+
         public Task<int> GetWebhookConnectionCountAsync(string webhookUrl)
         {
-            if (_webhookConnections.TryGetValue(webhookUrl, out var connections))
+            lock (_lock)
             {
-                lock (connections)
-                {
-                    return Task.FromResult(connections.Count);
-                }
+                return Task.FromResult(
+                    _webhookConnections.TryGetValue(webhookUrl, out var connections)
+                        ? connections.Count
+                        : 0);
             }
-            
-            return Task.FromResult(0);
         }
     }
 }

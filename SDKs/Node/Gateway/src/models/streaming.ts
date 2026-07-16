@@ -36,9 +36,11 @@ export interface BaseStreamChunk {
 }
 
 /**
- * Generic streaming response type
+ * Generic streaming response type.
+ * T is unconstrained because chat streams interleave non-chunk events
+ * (metrics, reasoning, tool, error) that do not carry BaseStreamChunk fields.
  */
-export interface StreamingResponse<T extends BaseStreamChunk> {
+export interface StreamingResponse<T> {
   /**
    * Async iterator for consuming stream chunks
    */

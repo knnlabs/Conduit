@@ -1,3 +1,5 @@
+using ConduitLLM.Admin.DTOs;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
@@ -6,27 +8,32 @@ using Microsoft.AspNetCore.Mvc;
 namespace ConduitLLM.Admin.Controllers
 {
     /// <summary>
-    /// Administrative controller for media lifecycle management.
+    /// Administrative controller for media lifecycle management including
+    /// statistics, search, cleanup operations, and cleanup service configuration.
     /// </summary>
     [ApiController]
     [Route("api/admin/[controller]")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class MediaController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class MediaController : AdminControllerBase
     {
         private readonly IAdminMediaService _mediaService;
-        private readonly ILogger<MediaController> _logger;
+        private readonly IMediaCleanupStatusService _cleanupStatusService;
 
         /// <summary>
         /// Initializes a new instance of the MediaController class.
         /// </summary>
         /// <param name="mediaService">The admin media service.</param>
+        /// <param name="cleanupStatusService">The media cleanup status service.</param>
         /// <param name="logger">The logger instance.</param>
         public MediaController(
             IAdminMediaService mediaService,
+            IMediaCleanupStatusService cleanupStatusService,
             ILogger<MediaController> logger)
+            : base(logger)
         {
             _mediaService = mediaService ?? throw new ArgumentNullException(nameof(mediaService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cleanupStatusService = cleanupStatusService ?? throw new ArgumentNullException(nameof(cleanupStatusService));
         }
 
         /// <summary>
@@ -37,16 +44,8 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("stats")]
         public async Task<IActionResult> GetOverallStats([FromQuery] int? virtualKeyGroupId = null)
         {
-            try
-            {
-                var stats = await _mediaService.GetOverallStorageStatsAsync(virtualKeyGroupId);
-                return Ok(stats);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting overall storage statistics");
-                return StatusCode(500, new ErrorResponseDto("Failed to get storage statistics"));
-            }
+            var stats = await _mediaService.GetOverallStorageStatsAsync(virtualKeyGroupId);
+            return Ok(stats);
         }
 
         /// <summary>
@@ -57,16 +56,8 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("stats/virtual-key/{virtualKeyId}")]
         public async Task<IActionResult> GetStatsByVirtualKey(int virtualKeyId)
         {
-            try
-            {
-                var stats = await _mediaService.GetStorageStatsByVirtualKeyAsync(virtualKeyId);
-                return Ok(stats);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting storage statistics for virtual key {VirtualKeyId}", virtualKeyId);
-                return StatusCode(500, new ErrorResponseDto("Failed to get storage statistics"));
-            }
+            var stats = await _mediaService.GetStorageStatsByVirtualKeyAsync(virtualKeyId);
+            return Ok(stats);
         }
 
         /// <summary>
@@ -76,16 +67,8 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("stats/by-provider")]
         public async Task<IActionResult> GetStatsByProvider()
         {
-            try
-            {
-                var stats = await _mediaService.GetStorageStatsByProviderAsync();
-                return Ok(stats);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting storage statistics by provider");
-                return StatusCode(500, new ErrorResponseDto("Failed to get storage statistics"));
-            }
+            var stats = await _mediaService.GetStorageStatsByProviderAsync();
+            return Ok(stats);
         }
 
         /// <summary>
@@ -95,16 +78,8 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("stats/by-type")]
         public async Task<IActionResult> GetStatsByMediaType()
         {
-            try
-            {
-                var stats = await _mediaService.GetStorageStatsByMediaTypeAsync();
-                return Ok(stats);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting storage statistics by media type");
-                return StatusCode(500, new ErrorResponseDto("Failed to get storage statistics"));
-            }
+            var stats = await _mediaService.GetStorageStatsByMediaTypeAsync();
+            return Ok(stats);
         }
 
         /// <summary>
@@ -115,16 +90,8 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("virtual-key/{virtualKeyId}")]
         public async Task<IActionResult> GetMediaByVirtualKey(int virtualKeyId)
         {
-            try
-            {
-                var media = await _mediaService.GetMediaByVirtualKeyAsync(virtualKeyId);
-                return Ok(media);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting media for virtual key {VirtualKeyId}", virtualKeyId);
-                return StatusCode(500, new ErrorResponseDto("Failed to get media records"));
-            }
+            var media = await _mediaService.GetMediaByVirtualKeyAsync(virtualKeyId);
+            return Ok(media);
         }
 
         /// <summary>
@@ -135,21 +102,13 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("search")]
         public async Task<IActionResult> SearchMedia([FromQuery] string pattern)
         {
-            try
+            if (string.IsNullOrWhiteSpace(pattern))
             {
-                if (string.IsNullOrWhiteSpace(pattern))
-                {
-                    return BadRequest(new ErrorResponseDto("Search pattern is required"));
-                }
+                return BadRequest(new ErrorResponseDto("Search pattern is required"));
+            }
 
-                var media = await _mediaService.SearchMediaByStorageKeyAsync(pattern);
-                return Ok(media);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching media with pattern {Pattern}", pattern);
-                return StatusCode(500, new ErrorResponseDto("Failed to search media"));
-            }
+            var media = await _mediaService.SearchMediaByStorageKeyAsync(pattern);
+            return Ok(media);
         }
 
         /// <summary>
@@ -160,21 +119,10 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{mediaId}")]
         public async Task<IActionResult> DeleteMedia(Guid mediaId)
         {
-            try
-            {
-                var result = await _mediaService.DeleteMediaAsync(mediaId);
-                if (!result)
-                {
-                    return NotFound(new ErrorResponseDto("Media record not found"));
-                }
-
-                return Ok(new { message = "Media deleted successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting media {MediaId}", mediaId);
-                return StatusCode(500, new ErrorResponseDto("Failed to delete media"));
-            }
+            if (!await _mediaService.DeleteMediaAsync(mediaId))
+                throw new KeyNotFoundException();
+            LogAdminAudit("Deleted", "Media", mediaId);
+            return Ok(new { message = "Media deleted successfully" });
         }
 
         /// <summary>
@@ -184,19 +132,13 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("cleanup/expired")]
         public async Task<IActionResult> CleanupExpiredMedia()
         {
-            try
+            var count = await _mediaService.CleanupExpiredMediaAsync();
+            LogAdminAudit("CleanedUpExpired", "Media", detail: $"DeletedCount: {count}");
+            return Ok(new
             {
-                var count = await _mediaService.CleanupExpiredMediaAsync();
-                return Ok(new { 
-                    message = $"Cleaned up {count} expired media files",
-                    deletedCount = count 
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during expired media cleanup");
-                return StatusCode(500, new ErrorResponseDto("Failed to cleanup expired media"));
-            }
+                message = $"Cleaned up {count} expired media files",
+                deletedCount = count
+            });
         }
 
         /// <summary>
@@ -206,19 +148,13 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("cleanup/orphaned")]
         public async Task<IActionResult> CleanupOrphanedMedia()
         {
-            try
+            var count = await _mediaService.CleanupOrphanedMediaAsync();
+            LogAdminAudit("CleanedUpOrphaned", "Media", detail: $"DeletedCount: {count}");
+            return Ok(new
             {
-                var count = await _mediaService.CleanupOrphanedMediaAsync();
-                return Ok(new { 
-                    message = $"Cleaned up {count} orphaned media files",
-                    deletedCount = count 
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during orphaned media cleanup");
-                return StatusCode(500, new ErrorResponseDto("Failed to cleanup orphaned media"));
-            }
+                message = $"Cleaned up {count} orphaned media files",
+                deletedCount = count
+            });
         }
 
         /// <summary>
@@ -229,24 +165,97 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("cleanup/prune")]
         public async Task<IActionResult> PruneOldMedia([FromBody] PruneMediaRequest request)
         {
-            try
+            if (request?.DaysToKeep == null || request.DaysToKeep <= 0)
             {
-                if (request?.DaysToKeep == null || request.DaysToKeep <= 0)
-                {
-                    return BadRequest(new ErrorResponseDto("DaysToKeep must be a positive number"));
-                }
+                return BadRequest(new ErrorResponseDto("DaysToKeep must be a positive number"));
+            }
 
-                var count = await _mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
-                return Ok(new { 
-                    message = $"Pruned {count} media files older than {request.DaysToKeep} days",
-                    deletedCount = count 
-                });
-            }
-            catch (Exception ex)
+            var count = await _mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
+            LogAdminAudit("Pruned", "Media", detail: $"DaysToKeep: {request.DaysToKeep}, DeletedCount: {count}");
+            return Ok(new
             {
-                _logger.LogError(ex, "Error during old media pruning");
-                return StatusCode(500, new ErrorResponseDto("Failed to prune old media"));
-            }
+                message = $"Pruned {count} media files older than {request.DaysToKeep} days",
+                deletedCount = count
+            });
+        }
+
+        // ─── Cleanup Service Configuration ──────────────────────────────
+        // Routes use absolute paths to maintain backward compatibility with api/admin/media-cleanup
+
+        /// <summary>
+        /// Gets the current status of the media cleanup service.
+        /// </summary>
+        [HttpGet("/api/admin/media-cleanup/status")]
+        [ProducesResponseType(typeof(MediaCleanupStatusDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetCleanupStatus()
+        {
+            var status = await _cleanupStatusService.GetStatusAsync();
+            return Ok(status);
+        }
+
+        /// <summary>
+        /// Gets whether the media cleanup service is currently enabled.
+        /// </summary>
+        [HttpGet("/api/admin/media-cleanup/enabled")]
+        public async Task<IActionResult> GetCleanupEnabled()
+        {
+            var isEnabled = await _cleanupStatusService.IsEnabledAsync();
+            return Ok(new { enabled = isEnabled });
+        }
+
+        /// <summary>
+        /// Enables or disables the media cleanup service at runtime.
+        /// This setting persists across restarts via GlobalSettings.
+        /// </summary>
+        [HttpPost("/api/admin/media-cleanup/enabled")]
+        public async Task<IActionResult> SetCleanupEnabled([FromBody] UpdateMediaCleanupEnabledRequest request)
+        {
+            await _cleanupStatusService.SetEnabledAsync(request.Enabled);
+            LogAdminAudit("SetEnabled", "MediaCleanupService", detail: $"Enabled: {request.Enabled}");
+            return Ok(new
+            {
+                enabled = request.Enabled,
+                message = request.Enabled
+                    ? "Media cleanup service has been enabled"
+                    : "Media cleanup service has been disabled"
+            });
+        }
+
+        /// <summary>
+        /// Gets the simple retention override setting.
+        /// </summary>
+        [HttpGet("/api/admin/media-cleanup/simple-retention")]
+        [ProducesResponseType(typeof(SimpleRetentionResponse), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetSimpleRetention()
+        {
+            var days = await _cleanupStatusService.GetSimpleRetentionOverrideAsync();
+            return Ok(new SimpleRetentionResponse
+            {
+                RetentionDays = days,
+                IsOverrideActive = days.HasValue
+            });
+        }
+
+        /// <summary>
+        /// Sets or clears the simple retention override.
+        /// Pass null for RetentionDays to clear the override and use policy-based retention.
+        /// </summary>
+        [HttpPost("/api/admin/media-cleanup/simple-retention")]
+        [ProducesResponseType(typeof(SimpleRetentionResponse), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SetSimpleRetention([FromBody] UpdateSimpleRetentionRequest request)
+        {
+            await _cleanupStatusService.SetSimpleRetentionOverrideAsync(request.RetentionDays);
+            var message = request.RetentionDays.HasValue
+                ? $"Simple retention override set to {request.RetentionDays} days - all media will be deleted after this period"
+                : "Simple retention override cleared - using policy-based retention";
+            LogAdminAudit("SetSimpleRetention", "MediaCleanupService",
+                detail: $"RetentionDays: {request.RetentionDays?.ToString() ?? "cleared"}");
+            return Ok(new SimpleRetentionResponse
+            {
+                RetentionDays = request.RetentionDays,
+                IsOverrideActive = request.RetentionDays.HasValue,
+                Message = message
+            });
         }
     }
 

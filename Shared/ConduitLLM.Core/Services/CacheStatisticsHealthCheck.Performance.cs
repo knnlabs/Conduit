@@ -29,7 +29,7 @@ namespace ConduitLLM.Core.Services
                     .OrderBy(l => l)
                     .ToList();
 
-                if (recordingLatencies.Count() > 0)
+                if (recordingLatencies.Any())
                 {
                     metrics.AvgRecordingLatencyMs = recordingLatencies.Average();
                     metrics.P95RecordingLatencyMs = GetPercentile(recordingLatencies, 0.95);
@@ -43,7 +43,7 @@ namespace ConduitLLM.Core.Services
                     .OrderBy(l => l)
                     .ToList();
 
-                if (aggregationLatencies.Count() > 0)
+                if (aggregationLatencies.Any())
                 {
                     metrics.AvgAggregationLatencyMs = aggregationLatencies.Average();
                 }
@@ -111,7 +111,7 @@ namespace ConduitLLM.Core.Services
             if (_performanceTrackers.TryGetValue("aggregate:overall", out var tracker))
             {
                 var latencies = tracker.GetLatencies();
-                return latencies.Count() > 0 ? latencies.Last() : 0;
+                return latencies.Any() ? latencies.Last() : 0;
             }
             return 0;
         }
@@ -127,7 +127,7 @@ namespace ConduitLLM.Core.Services
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (sortedValues.Count() == 0) return 0;
+            if (!sortedValues.Any()) return 0;
             
             var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
             return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
@@ -167,7 +167,7 @@ namespace ConduitLLM.Core.Services
                     
                     // Remove old operations outside time window
                     var cutoff = now.AddSeconds(-MaxTimeWindowSeconds);
-                    while (_operationTimes.Count() > 0 && _operationTimes.Peek() < cutoff)
+                    while (_operationTimes.Any() && _operationTimes.Peek() < cutoff)
                     {
                         _operationTimes.Dequeue();
                     }

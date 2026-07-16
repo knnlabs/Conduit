@@ -53,10 +53,12 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
+            IProviderErrorTrackingService errorTrackingService,
             ILogger<ImageGenerationOrchestrator> logger)
             : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics,
+                   errorTrackingService, logger)
         {
 
             // Initialize processing strategies
@@ -80,7 +82,7 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken)
         {
             // Get the client for the model
-            var client = _clientFactory.GetClient(modelInfo.ModelId);
+            var client = await _clientFactory.GetClientAsync(modelInfo.ModelId, cancellationToken);
             
             // Generate images
             return await client.CreateImageAsync(request, cancellationToken: cancellationToken);

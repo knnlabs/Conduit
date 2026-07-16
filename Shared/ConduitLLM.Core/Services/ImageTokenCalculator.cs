@@ -131,9 +131,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 // First try to get dimensions from headers (if server supports it)
-                var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
-                var headResponse = await _httpClient.SendAsync(headRequest);
-                
+                using var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
+                using var headResponse = await _httpClient.SendAsync(headRequest);
+
                 if (headResponse.Headers.TryGetValues("X-Image-Width", out var widthValues) &&
                     headResponse.Headers.TryGetValues("X-Image-Height", out var heightValues))
                 {
@@ -146,7 +146,7 @@ namespace ConduitLLM.Core.Services
 
                 // If headers don't contain dimensions, download the image
                 // We only need the first few bytes to determine dimensions for most formats
-                var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
                 using var stream = await response.Content.ReadAsStreamAsync();
                 
                 // Read enough bytes to get image dimensions (usually in the header)
@@ -237,8 +237,11 @@ namespace ConduitLLM.Core.Services
                     offset += segmentLength;
                 }
             }
-            catch { }
-            
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse JPEG dimensions from image bytes");
+            }
+
             return (0, 0);
         }
 
@@ -256,8 +259,11 @@ namespace ConduitLLM.Core.Services
                 int height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
                 return (width, height);
             }
-            catch { }
-            
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse PNG dimensions from image bytes");
+            }
+
             return (0, 0);
         }
 
@@ -274,8 +280,11 @@ namespace ConduitLLM.Core.Services
                 int height = bytes[8] | (bytes[9] << 8);
                 return (width, height);
             }
-            catch { }
-            
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse GIF dimensions from image bytes");
+            }
+
             return (0, 0);
         }
 
@@ -309,8 +318,11 @@ namespace ConduitLLM.Core.Services
                     }
                 }
             }
-            catch { }
-            
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse WebP dimensions from image bytes");
+            }
+
             return (0, 0);
         }
 

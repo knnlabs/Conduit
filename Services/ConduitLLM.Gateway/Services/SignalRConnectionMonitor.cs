@@ -1,4 +1,6 @@
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Interfaces;
 
 using StackExchange.Redis;
@@ -43,32 +45,32 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Gets information about a specific connection
         /// </summary>
-        ConduitLLM.Gateway.Models.ConnectionInfo? GetConnection(string connectionId);
+        Task<ConduitLLM.Gateway.Models.ConnectionInfo?> GetConnectionAsync(string connectionId);
 
         /// <summary>
         /// Gets all active connections
         /// </summary>
-        IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo> GetActiveConnections();
+        Task<IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo>> GetActiveConnectionsAsync();
 
         /// <summary>
         /// Gets connections for a specific hub
         /// </summary>
-        IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo> GetHubConnections(string hubName);
+        Task<IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo>> GetHubConnectionsAsync(string hubName);
 
         /// <summary>
         /// Gets connections for a specific virtual key
         /// </summary>
-        IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo> GetVirtualKeyConnections(int virtualKeyId);
+        Task<IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo>> GetVirtualKeyConnectionsAsync(int virtualKeyId);
 
         /// <summary>
         /// Gets connections in a specific group
         /// </summary>
-        IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo> GetGroupConnections(string groupName);
+        Task<IEnumerable<ConduitLLM.Gateway.Models.ConnectionInfo>> GetGroupConnectionsAsync(string groupName);
 
         /// <summary>
         /// Gets monitoring statistics
         /// </summary>
-        ConnectionStatistics GetStatistics();
+        Task<ConnectionStatistics> GetStatisticsAsync();
 
         /// <summary>
         /// Records a message sent to a connection
@@ -103,7 +105,7 @@ namespace ConduitLLM.Gateway.Services
     /// <summary>
     /// Implementation of SignalR connection monitor using Redis
     /// </summary>
-    public class SignalRConnectionMonitor : ISignalRConnectionMonitor, IHostedService, IDisposable
+    public partial class SignalRConnectionMonitor : ISignalRConnectionMonitor, IHostedService, IDisposable
     {
         private readonly ILogger<SignalRConnectionMonitor> _logger;
         private readonly IConfiguration _configuration;
@@ -111,7 +113,8 @@ namespace ConduitLLM.Gateway.Services
         
         private Timer? _cleanupTimer;
         private IDatabase? _redis;
-        
+        private IServer? _server;
+
         // Redis keys
         private readonly string _connectionsKey;
         private readonly string _groupConnectionsKeyPrefix;
@@ -129,8 +132,8 @@ namespace ConduitLLM.Gateway.Services
             _redisConnectionFactory = redisConnectionFactory;
 
             // Redis keys
-            _connectionsKey = "signalr:connections";
-            _groupConnectionsKeyPrefix = "signalr:groups";
+            _connectionsKey = RedisKeys.SignalR.ActiveConnections;
+            _groupConnectionsKeyPrefix = RedisKeys.SignalR.GroupConnectionsPrefix;
 
             _staleConnectionThreshold = TimeSpan.FromMinutes(
                 configuration.GetValue<int>("SignalR:ConnectionMonitor:StaleThresholdMinutes", 60));
@@ -146,6 +149,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var connection = await _redisConnectionFactory.GetConnectionAsync();
                 _redis = connection.GetDatabase();
+                _server = connection.GetPrimaryServer();
 
                 _cleanupTimer = new Timer(
                     CleanupStaleConnections,
@@ -213,7 +217,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to track connection {ConnectionId}", connectionId);
+                _logger.LogError(ex, "Failed to track connection {ConnectionId} on hub {HubName}", connectionId, hubName);
                 // Don't throw - connection tracking failure shouldn't break the connection
             }
         }
@@ -248,16 +252,12 @@ namespace ConduitLLM.Gateway.Services
                 await _redis.HashDeleteAsync(_connectionsKey, connectionId);
 
                 // Remove from all groups - scan group keys for this connection
-                var groupKeys = await _redis.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Resp2Type == ResultType.Array)
+                if (_server != null)
                 {
                     var tasks = new List<Task>();
-                    foreach (var groupKey in (RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>())
+                    foreach (var groupKey in _server.Keys(pattern: $"{_groupConnectionsKeyPrefix}:*"))
                     {
-                        if (groupKey.ToString() is { } keyStr)
-                        {
-                            tasks.Add(_redis.SetRemoveAsync(keyStr, connectionId));
-                        }
+                        tasks.Add(_redis.SetRemoveAsync(groupKey, connectionId));
                     }
                     await Task.WhenAll(tasks);
                 }
@@ -307,78 +307,6 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to record activity for connection {ConnectionId}", connectionId);
-            }
-        }
-
-        public async Task AddToGroupAsync(string connectionId, string groupName)
-        {
-            if (_redis == null)
-            {
-                return;
-            }
-
-            try
-            {
-                // Update connection info to include the group
-                var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
-                if (connectionData.HasValue)
-                {
-                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
-                    if (connectionInfo != null)
-                    {
-                        connectionInfo.Groups.Add(groupName);
-                        var updatedData = JsonSerializer.Serialize(connectionInfo);
-                        await _redis.HashSetAsync(_connectionsKey, connectionId, updatedData);
-                    }
-                }
-
-                // Add connection to group set
-                var groupKey = $"{_groupConnectionsKeyPrefix}:{groupName}";
-                await _redis.SetAddAsync(groupKey, connectionId);
-
-                _logger.LogDebug(
-                    "Connection {ConnectionId} added to group {GroupName}",
-                    connectionId, groupName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to add connection {ConnectionId} to group {GroupName}", connectionId, groupName);
-            }
-        }
-
-        public async Task RemoveFromGroupAsync(string connectionId, string groupName)
-        {
-            if (_redis == null)
-            {
-                return;
-            }
-
-            try
-            {
-                // Update connection info to remove the group
-                var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
-                if (connectionData.HasValue)
-                {
-                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
-                    if (connectionInfo != null)
-                    {
-                        connectionInfo.Groups.Remove(groupName);
-                        var updatedData = JsonSerializer.Serialize(connectionInfo);
-                        await _redis.HashSetAsync(_connectionsKey, connectionId, updatedData);
-                    }
-                }
-
-                // Remove connection from group set
-                var groupKey = $"{_groupConnectionsKeyPrefix}:{groupName}";
-                await _redis.SetRemoveAsync(groupKey, connectionId);
-
-                _logger.LogDebug(
-                    "Connection {ConnectionId} removed from group {GroupName}",
-                    connectionId, groupName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to remove connection {ConnectionId} from group {GroupName}", connectionId, groupName);
             }
         }
 
@@ -436,440 +364,6 @@ namespace ConduitLLM.Gateway.Services
             {
                 _logger.LogWarning(ex, "Failed to record message acknowledged for connection {ConnectionId}", connectionId);
             }
-        }
-
-        public async Task<SignalRConnectionInfo?> GetConnectionAsync(string connectionId)
-        {
-            if (_redis == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
-                if (connectionData.HasValue)
-                {
-                    return JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to get connection {ConnectionId}", connectionId);
-            }
-
-            return null;
-        }
-
-        public SignalRConnectionInfo? GetConnection(string connectionId)
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetConnectionAsync(connectionId).GetAwaiter().GetResult();
-        }
-
-        public async Task<IEnumerable<SignalRConnectionInfo>> GetActiveConnectionsAsync()
-        {
-            if (_redis == null)
-            {
-                return Enumerable.Empty<SignalRConnectionInfo>();
-            }
-
-            try
-            {
-                var allConnections = await _redis.HashGetAllAsync(_connectionsKey);
-                var activeConnections = new List<SignalRConnectionInfo>();
-
-                foreach (var connectionData in allConnections)
-                {
-                    try
-                    {
-                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!.ToString());
-                        if (connectionInfo != null && !connectionInfo.IsStale(_staleConnectionThreshold))
-                        {
-                            activeConnections.Add(connectionInfo);
-                        }
-                    }
-                    catch (JsonException ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to deserialize connection info for {ConnectionId}", connectionData.Name);
-                    }
-                }
-
-                return activeConnections;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get active connections");
-                return Enumerable.Empty<SignalRConnectionInfo>();
-            }
-        }
-
-        public IEnumerable<SignalRConnectionInfo> GetActiveConnections()
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetActiveConnectionsAsync().GetAwaiter().GetResult();
-        }
-
-        public IEnumerable<SignalRConnectionInfo> GetHubConnections(string hubName)
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetHubConnectionsAsync(hubName).GetAwaiter().GetResult();
-        }
-
-        public async Task<IEnumerable<SignalRConnectionInfo>> GetHubConnectionsAsync(string hubName)
-        {
-            if (_redis == null)
-            {
-                return Enumerable.Empty<SignalRConnectionInfo>();
-            }
-
-            try
-            {
-                var allConnections = await _redis.HashGetAllAsync(_connectionsKey);
-                var hubConnections = new List<SignalRConnectionInfo>();
-
-                foreach (var connectionData in allConnections)
-                {
-                    try
-                    {
-                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!.ToString());
-                        if (connectionInfo != null && connectionInfo.HubName == hubName && !connectionInfo.IsStale(_staleConnectionThreshold))
-                        {
-                            hubConnections.Add(connectionInfo);
-                        }
-                    }
-                    catch (JsonException ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to deserialize connection info for {ConnectionId}", connectionData.Name);
-                    }
-                }
-
-                return hubConnections;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get hub connections for {HubName}", hubName);
-                return Enumerable.Empty<SignalRConnectionInfo>();
-            }
-        }
-
-        public IEnumerable<SignalRConnectionInfo> GetVirtualKeyConnections(int virtualKeyId)
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetVirtualKeyConnectionsAsync(virtualKeyId).GetAwaiter().GetResult();
-        }
-
-        public async Task<IEnumerable<SignalRConnectionInfo>> GetVirtualKeyConnectionsAsync(int virtualKeyId)
-        {
-            if (_redis == null)
-            {
-                return Enumerable.Empty<SignalRConnectionInfo>();
-            }
-
-            try
-            {
-                var allConnections = await _redis.HashGetAllAsync(_connectionsKey);
-                var virtualKeyConnections = new List<SignalRConnectionInfo>();
-
-                foreach (var connectionData in allConnections)
-                {
-                    try
-                    {
-                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!.ToString());
-                        if (connectionInfo != null && connectionInfo.VirtualKeyId == virtualKeyId && !connectionInfo.IsStale(_staleConnectionThreshold))
-                        {
-                            virtualKeyConnections.Add(connectionInfo);
-                        }
-                    }
-                    catch (JsonException ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to deserialize connection info for {ConnectionId}", connectionData.Name);
-                    }
-                }
-
-                return virtualKeyConnections;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get virtual key connections for {VirtualKeyId}", virtualKeyId);
-                return Enumerable.Empty<SignalRConnectionInfo>();
-            }
-        }
-
-        public IEnumerable<SignalRConnectionInfo> GetGroupConnections(string groupName)
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetGroupConnectionsAsync(groupName).GetAwaiter().GetResult();
-        }
-
-        public async Task<IEnumerable<SignalRConnectionInfo>> GetGroupConnectionsAsync(string groupName)
-        {
-            if (_redis == null)
-            {
-                return Enumerable.Empty<SignalRConnectionInfo>();
-            }
-
-            try
-            {
-                var groupKey = $"{_groupConnectionsKeyPrefix}:{groupName}";
-                var connectionIds = await _redis.SetMembersAsync(groupKey);
-
-                var groupConnections = new List<SignalRConnectionInfo>();
-                var tasks = connectionIds.Select(async connectionId =>
-                {
-                    try
-                    {
-                        var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId!);
-                        if (connectionData.HasValue)
-                        {
-                            var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
-                            if (connectionInfo != null && !connectionInfo.IsStale(_staleConnectionThreshold))
-                            {
-                                return connectionInfo;
-                            }
-                        }
-                    }
-                    catch (JsonException ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to deserialize connection info for {ConnectionId}", connectionId);
-                    }
-                    return null;
-                });
-
-                var results = await Task.WhenAll(tasks);
-                return results.Where(c => c != null).Cast<SignalRConnectionInfo>();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get group connections for {GroupName}", groupName);
-                return Enumerable.Empty<SignalRConnectionInfo>();
-            }
-        }
-
-        public ConnectionStatistics GetStatistics()
-        {
-            // Synchronous wrapper for backward compatibility
-            return GetStatisticsAsync().GetAwaiter().GetResult();
-        }
-
-        public async Task<ConnectionStatistics> GetStatisticsAsync()
-        {
-            if (_redis == null)
-            {
-                return new ConnectionStatistics();
-            }
-
-            try
-            {
-                var allConnections = await GetAllConnectionsFromRedisAsync();
-                List<Models.ConnectionInfo> activeConnections = [..allConnections.Where(c => !c.IsStale(_staleConnectionThreshold))];
-
-                var stats = new ConnectionStatistics
-                {
-                    TotalActiveConnections = activeConnections.Count,
-                    StaleConnections = allConnections.Count - activeConnections.Count,
-                    TotalGroups = await GetGroupCountAsync(),
-                    TotalMessagesSent = allConnections.Sum(c => c.MessagesSent),
-                    TotalMessagesAcknowledged = allConnections.Sum(c => c.MessagesAcknowledged)
-                };
-
-                // Connections by hub
-                stats.ConnectionsByHub = activeConnections
-                    .GroupBy(c => c.HubName)
-                    .ToDictionary(g => g.Key, g => g.Count());
-
-                // Connections by transport
-                stats.ConnectionsByTransport = activeConnections
-                    .Where(c => c.TransportType != null)
-                    .GroupBy(c => c.TransportType!)
-                    .ToDictionary(g => g.Key, g => g.Count());
-
-                if (activeConnections.Count > 0)
-                {
-                    stats.AverageConnectionDurationMinutes = activeConnections
-                        .Average(c => c.ConnectionDuration.TotalMinutes);
-                    stats.AverageIdleTimeMinutes = activeConnections
-                        .Average(c => c.IdleTime.TotalMinutes);
-                    stats.OldestConnectionTime = activeConnections
-                        .Min(c => c.ConnectedAt);
-                    stats.NewestConnectionTime = activeConnections
-                        .Max(c => c.ConnectedAt);
-                }
-
-                if (stats.TotalMessagesSent > 0)
-                {
-                    stats.AcknowledgmentRate = (double)stats.TotalMessagesAcknowledged / stats.TotalMessagesSent * 100;
-                }
-
-                return stats;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get connection statistics");
-                return new ConnectionStatistics();
-            }
-        }
-
-        private async Task<List<SignalRConnectionInfo>> GetAllConnectionsFromRedisAsync()
-        {
-            var allConnections = new List<SignalRConnectionInfo>();
-
-            try
-            {
-                var connectionData = await _redis!.HashGetAllAsync(_connectionsKey);
-                foreach (var data in connectionData)
-                {
-                    try
-                    {
-                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(data.Value!.ToString());
-                        if (connectionInfo != null)
-                        {
-                            allConnections.Add(connectionInfo);
-                        }
-                    }
-                    catch (JsonException ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to deserialize connection info for {ConnectionId}", data.Name);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get all connections from Redis");
-            }
-
-            return allConnections;
-        }
-
-        private async Task<int> GetGroupCountAsync()
-        {
-            try
-            {
-                var groupKeys = await _redis!.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Resp2Type == ResultType.Array)
-                {
-                    return ((RedisResult[]?)groupKeys)?.Length ?? 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to get group count from Redis");
-            }
-
-            return 0;
-        }
-
-        private async void CleanupStaleConnections(object? state)
-        {
-            if (_redis == null)
-            {
-                return;
-            }
-
-            try
-            {
-                var allConnections = await GetAllConnectionsFromRedisAsync();
-                List<Models.ConnectionInfo> staleConnections = [
-                    ..allConnections.Where(c => c.IsStale(_staleConnectionThreshold))
-                ];
-
-                var cleanupTasks = new List<Task>();
-                foreach (var connection in staleConnections)
-                {
-                    cleanupTasks.Add(CleanupStaleConnectionAsync(connection));
-                }
-
-                await Task.WhenAll(cleanupTasks);
-
-                // Clean up empty groups
-                var emptyGroupCount = await CleanupEmptyGroupsAsync();
-
-                if (staleConnections.Count > 0)
-                {
-                    _logger.LogInformation(
-                        "Cleaned up {Count} stale connections and {GroupCount} empty groups",
-                        staleConnections.Count, emptyGroupCount);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during stale connection cleanup");
-            }
-        }
-
-        private async Task CleanupStaleConnectionAsync(SignalRConnectionInfo connection)
-        {
-            try
-            {
-                // Remove from connections hash
-                await _redis!.HashDeleteAsync(_connectionsKey, connection.ConnectionId);
-
-                // Remove from all groups
-                var groupKeys = await _redis.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Resp2Type == ResultType.Array)
-                {
-                    var removalTasks = new List<Task>();
-                    foreach (var groupKey in (RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>())
-                    {
-                        if (groupKey.ToString() is { } keyStr)
-                        {
-                            removalTasks.Add(_redis.SetRemoveAsync(keyStr, connection.ConnectionId));
-                        }
-                    }
-                    await Task.WhenAll(removalTasks);
-                }
-
-                _logger.LogWarning(
-                    "Cleaned up stale connection {ConnectionId} from {HubName} (idle for {IdleMinutes}min)",
-                    connection.ConnectionId,
-                    connection.HubName,
-                    connection.IdleTime.TotalMinutes);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to cleanup stale connection {ConnectionId}", connection.ConnectionId);
-            }
-        }
-
-        private async Task<int> CleanupEmptyGroupsAsync()
-        {
-            try
-            {
-                var groupKeys = await _redis!.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Resp2Type == ResultType.Array)
-                {
-                    var emptyGroups = new List<string>();
-                    var checkTasks = ((RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>()).Select(async groupKey =>
-                    {
-                        if (groupKey.ToString() is { } keyStr)
-                        {
-                            var count = await _redis.SetLengthAsync(keyStr);
-                            if (count == 0)
-                            {
-                                lock (emptyGroups)
-                                {
-                                    emptyGroups.Add(keyStr);
-                                }
-                            }
-                        }
-                    });
-
-                    await Task.WhenAll(checkTasks);
-
-                    if (emptyGroups.Count > 0)
-                    {
-                        await _redis.KeyDeleteAsync([..emptyGroups.Select(g => (RedisKey)g)]);
-                    }
-
-                    return emptyGroups.Count;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to cleanup empty groups");
-            }
-
-            return 0;
         }
 
         public void Dispose()

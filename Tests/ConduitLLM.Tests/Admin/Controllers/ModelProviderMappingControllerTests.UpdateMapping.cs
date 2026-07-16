@@ -41,11 +41,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var actionResult = await _controller.UpdateMapping(1, mapping.ToDto());
 
             // Assert
-            Assert.IsType<NoContentResult>(actionResult);
+            actionResult.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
-        public async Task UpdateMapping_WithNonExistingId_ShouldReturnNotFound()
+        public async Task UpdateMapping_WithNonExistingId_ShouldPropagateException()
         {
             // Arrange
             var mapping = new ModelProviderMapping
@@ -61,13 +61,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.GetMappingByIdAsync(999))
                 .ReturnsAsync((ModelProviderMapping?)null);
 
-            // Act
-            var actionResult = await _controller.UpdateMapping(999, mapping.ToDto());
-
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(actionResult);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            errorResponse.error.ToString().Should().Be("Model provider mapping not found");
+            // Act & Assert — not-found now throws KeyNotFoundException, mapped in AdminExceptionMiddleware
+            var act = async () => await _controller.UpdateMapping(999, mapping.ToDto());
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion

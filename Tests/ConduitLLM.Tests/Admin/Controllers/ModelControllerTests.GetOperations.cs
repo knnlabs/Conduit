@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
@@ -75,72 +76,55 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 }
             };
 
-            _mockRepository.Setup(r => r.GetAllWithDetailsAsync())
-                .ReturnsAsync(models);
+            _mockRepository.Setup(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null))
+                .ReturnsAsync((models, models.Count));
 
-            // Act
+            // Act — no pagination params returns flat array
             var result = await _controller.GetAllModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>();
-            var dtos = (IEnumerable<ModelDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>().Subject;
             dtos.Should().HaveCount(2);
 
             var firstDto = dtos.First();
             firstDto.Id.Should().Be(1);
             firstDto.Name.Should().Be("test-model-1");
             firstDto.IsActive.Should().BeTrue();
-            // Capabilities are now flat fields on the model - just verify they exist by checking the Id
             firstDto.Id.Should().BePositive();
 
-            _mockRepository.Verify(r => r.GetAllWithDetailsAsync(), Times.Once);
+            _mockRepository.Verify(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null), Times.Once);
         }
 
         [Fact]
         public async Task GetAllModels_WithEmptyList_ShouldReturnOkWithEmptyList()
         {
             // Arrange
-            _mockRepository.Setup(r => r.GetAllWithDetailsAsync())
-                .ReturnsAsync(new List<Model>());
+            _mockRepository.Setup(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null))
+                .ReturnsAsync((new List<Model>(), 0));
 
             // Act
             var result = await _controller.GetAllModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>();
-            var dtos = (IEnumerable<ModelDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>().Subject;
             dtos.Should().BeEmpty();
 
-            _mockRepository.Verify(r => r.GetAllWithDetailsAsync(), Times.Once);
+            _mockRepository.Verify(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null), Times.Once);
         }
 
         [Fact]
-        public async Task GetAllModels_WhenRepositoryThrows_ShouldReturn500()
+        public async Task GetAllModels_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var exception = new Exception("Database connection failed");
-            _mockRepository.Setup(r => r.GetAllWithDetailsAsync())
+            _mockRepository.Setup(r => r.GetPaginatedWithFilterAsync(null, null, null, null, null))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.GetAllModels();
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while retrieving models");
-
-            // Verify logging occurred
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error getting all models")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.GetAllModels();
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -173,8 +157,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelById(modelId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dto = okResult.Value.Should().BeOfType<ModelDto>().Subject;
             dto.Id.Should().Be(modelId);
             dto.Name.Should().Be("test-model");
             dto.IsActive.Should().BeTrue();
@@ -196,14 +180,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelById(modelId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.Code.Should().Be("not_found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
         }
 
         [Fact]
-        public async Task GetModelById_WhenRepositoryThrows_ShouldReturn500()
+        public async Task GetModelById_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var modelId = 1;
@@ -211,23 +196,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.GetModelById(modelId);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while retrieving the model");
-
-            // Verify logging occurred
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error getting model with ID")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.GetModelById(modelId);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -285,9 +256,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<object>>();
-            var identifiers = (IEnumerable<object>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var identifiers = okResult.Value.Should().BeAssignableTo<IEnumerable<object>>().Subject;
             identifiers.Should().HaveCount(3);
 
             // Verify the structure by serializing to JSON and deserializing
@@ -333,9 +303,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<object>>();
-            var identifiers = (IEnumerable<object>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var identifiers = okResult.Value.Should().BeAssignableTo<IEnumerable<object>>().Subject;
             identifiers.Should().BeEmpty();
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
@@ -353,14 +322,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.Code.Should().Be("not_found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
         }
 
         [Fact]
-        public async Task GetModelIdentifiers_WhenRepositoryThrows_ShouldReturn500()
+        public async Task GetModelIdentifiers_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var modelId = 1;
@@ -368,23 +338,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.GetModelIdentifiers(modelId);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while retrieving model identifiers");
-
-            // Verify logging occurred
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error getting identifiers for model with ID")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.GetModelIdentifiers(modelId);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

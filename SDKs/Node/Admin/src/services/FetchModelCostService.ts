@@ -11,7 +11,7 @@ import {
   UpdateModelCostMappingDto,
   ModelCostMappingDto,
 } from '../models/modelCost';
-import { PagedResult } from '../models/security';
+import { PagedResult } from '../models/common-types';
 import { ValidationError } from '../utils/errors';
 import { validateRequired, validateStringLength, validateNonEmptyArray, validateNumberRange } from '../utils/validation';
 

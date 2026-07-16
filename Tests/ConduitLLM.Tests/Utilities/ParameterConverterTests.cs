@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ConduitLLM.Providers.Utilities;
 
 namespace ConduitLLM.Tests.Utilities
@@ -142,7 +143,7 @@ namespace ConduitLLM.Tests.Utilities
             var result = ParameterConverter.ConvertStopSequences(input);
 
             // Assert
-            Assert.IsType<string>(result);
+            result.Should().BeOfType<string>();
             Assert.Equal("stop1", result);
         }
 
@@ -156,8 +157,7 @@ namespace ConduitLLM.Tests.Utilities
             var result = ParameterConverter.ConvertStopSequences(input);
 
             // Assert
-            Assert.IsType<List<string>>(result);
-            var resultList = (List<string>)result;
+            var resultList = result.Should().BeOfType<List<string>>().Subject;
             Assert.Equal(3, resultList.Count);
             Assert.Equal("stop1", resultList[0]);
             Assert.Equal("stop2", resultList[1]);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Events;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -171,7 +172,8 @@ namespace ConduitLLM.Core.Services
                     await _errorStore.AddDisabledKeyToProviderAsync(key.ProviderId, keyId);
                     
                     // Check if all keys are now disabled - if so, disable the provider
-                    var allKeys = await keyRepo.GetByProviderIdAsync(key.ProviderId);
+                    var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                        keyRepo.GetByProviderIdPaginatedAsync, key.ProviderId);
                     if (allKeys.All(k => !k.IsEnabled))
                     {
                         var provider = await providerRepo.GetByIdAsync(key.ProviderId);
@@ -210,13 +212,20 @@ namespace ConduitLLM.Core.Services
         }
 
         public async Task<IReadOnlyList<ProviderErrorInfo>> GetRecentErrorsAsync(
-            int? providerId = null, 
+            int? providerId = null,
             int? keyId = null,
             int limit = 100)
         {
-            var entries = await _errorStore.GetRecentErrorsAsync(limit);
+            bool hasFilter = providerId.HasValue || keyId.HasValue;
+            // When filtering, fetch more entries to compensate for post-filter reduction
+            int fetchLimit = hasFilter ? limit * 5 : limit;
+            // Cap to prevent excessive Redis reads
+            if (fetchLimit > 5000)
+                fetchLimit = 5000;
+
+            var entries = await _errorStore.GetRecentErrorsAsync(fetchLimit);
             var errors = new List<ProviderErrorInfo>();
-            
+
             foreach (var entry in entries)
             {
                 // Apply filters
@@ -224,7 +233,7 @@ namespace ConduitLLM.Core.Services
                     continue;
                 if (keyId.HasValue && entry.KeyId != keyId.Value)
                     continue;
-                
+
                 errors.Add(new ProviderErrorInfo
                 {
                     KeyCredentialId = entry.KeyId,
@@ -233,8 +242,11 @@ namespace ConduitLLM.Core.Services
                     ErrorMessage = entry.Message,
                     OccurredAt = entry.Timestamp
                 });
+
+                if (errors.Count >= limit)
+                    break;
             }
-            
+
             return errors;
         }
 
@@ -242,8 +254,9 @@ namespace ConduitLLM.Core.Services
         {
             using var scope = _scopeFactory.CreateScope();
             var keyRepo = scope.ServiceProvider.GetRequiredService<IProviderKeyCredentialRepository>();
-            
-            var keys = await keyRepo.GetByProviderIdAsync(providerId);
+
+            var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                keyRepo.GetByProviderIdPaginatedAsync, providerId);
             var keyIds = keys.Select(k => k.Id).ToList();
             
             var errorCounts = await _errorStore.GetErrorCountsByKeysAsync(providerId, keyIds, window);
@@ -251,9 +264,9 @@ namespace ConduitLLM.Core.Services
             return errorCounts.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count);
         }
 
-        public async Task ClearErrorsForKeyAsync(int keyId)
+        public async Task ClearErrorsForKeyAsync(int keyId, int? providerId = null)
         {
-            await _errorStore.ClearErrorsForKeyAsync(keyId);
+            await _errorStore.ClearErrorsForKeyAsync(keyId, providerId);
         }
 
         public async Task<KeyErrorDetails?> GetKeyErrorDetailsAsync(int keyId)
@@ -332,14 +345,18 @@ namespace ConduitLLM.Core.Services
                 TotalErrors = statsData.TotalErrors,
                 FatalErrors = statsData.FatalErrors,
                 Warnings = statsData.Warnings,
-                ErrorsByType = statsData.ErrorsByType
+                ErrorsByType = statsData.ErrorsByType,
+                ErrorsByProvider = statsData.ErrorsByProvider.ToDictionary(
+                    kvp => kvp.Key.ToString(),
+                    kvp => kvp.Value)
             };
             
             // Count disabled keys
             using (var scope = _scopeFactory.CreateScope())
             {
                 var keyRepo = scope.ServiceProvider.GetRequiredService<IProviderKeyCredentialRepository>();
-                var keys = await keyRepo.GetAllAsync();
+                var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    keyRepo.GetPaginatedAsync);
                 stats.DisabledKeys = keys.Count(k => !k.IsEnabled);
             }
             

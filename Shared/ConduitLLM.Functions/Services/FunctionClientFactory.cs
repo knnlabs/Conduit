@@ -32,19 +32,24 @@ public class FunctionClientFactory : IFunctionClientFactory
         _httpClientFactory = httpClientFactory;
     }
 
-    /// <inheritdoc />
-    public IFunctionClient GetClient(FunctionProviderType providerType, int functionConfigurationId)
+    /// <summary>
+    /// Gets a function client asynchronously.
+    /// </summary>
+    /// <param name="providerType">The type of function provider.</param>
+    /// <param name="functionConfigurationId">The function configuration ID.</param>
+    /// <returns>The function client for the specified provider.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when configuration or credentials are not found.</exception>
+    /// <exception cref="NotSupportedException">Thrown when the provider type is not supported.</exception>
+    public async Task<IFunctionClient> GetClientAsync(FunctionProviderType providerType, int functionConfigurationId)
     {
-        // Load configuration synchronously (already loaded in ExecuteAsync, this is just for client creation)
-        var configuration = _configurationRepository.GetByIdAsync(functionConfigurationId).GetAwaiter().GetResult();
+        var configuration = await _configurationRepository.GetByIdAsync(functionConfigurationId);
         if (configuration == null)
         {
             throw new InvalidOperationException($"Function configuration {functionConfigurationId} not found");
         }
 
         // Get credentials for this provider type
-        var credentials = _credentialRepository.GetByProviderTypeAsync(configuration.ProviderType)
-            .GetAwaiter().GetResult();
+        var credentials = await _credentialRepository.GetByProviderTypeAsync(configuration.ProviderType);
 
         var credential = credentials.FirstOrDefault(c => c.IsEnabled);
         if (credential == null)

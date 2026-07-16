@@ -9,11 +9,8 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Critical for maintaining cache consistency when keys change
     /// </summary>
     /// <remarks>
-    /// NOTE: this handler is not currently registered on any endpoint (no handler /
-    /// bridge registration exists) — a pre-existing gap kept as-is during the epic #909
-    /// migration to avoid a behavior change. Register via
-    /// <c>AddEventHandler&lt;TEvent, ProviderKeyCredentialCacheInvalidationHandler&gt;</c>
-    /// + <c>AddEventBridge&lt;TEvent&gt;</c> to activate it.
+    /// Registered via <c>CacheInvalidationMessagingExtensions</c> (handler + bridge per
+    /// event type).
     /// </remarks>
     public class ProviderKeyCredentialCacheInvalidationHandler :
         IEventHandler<ProviderKeyCredentialCreated>,

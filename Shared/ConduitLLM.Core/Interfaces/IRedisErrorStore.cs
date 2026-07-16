@@ -60,11 +60,18 @@ namespace ConduitLLM.Core.Interfaces
         Task MarkProviderDisabledAsync(int providerId, DateTime disabledAt, string reason);
 
         /// <summary>
-        /// Add a key to the provider's disabled keys list
+        /// Add a key to the provider's disabled keys set
         /// </summary>
         /// <param name="providerId">The provider ID</param>
         /// <param name="keyId">The key credential ID</param>
         Task AddDisabledKeyToProviderAsync(int providerId, int keyId);
+
+        /// <summary>
+        /// Remove a key from the provider's disabled keys set (when re-enabled)
+        /// </summary>
+        /// <param name="providerId">The provider ID</param>
+        /// <param name="keyId">The key credential ID</param>
+        Task RemoveDisabledKeyFromProviderAsync(int providerId, int keyId);
 
         /// <summary>
         /// Get recent errors from the feed
@@ -83,10 +90,11 @@ namespace ConduitLLM.Core.Interfaces
         Task<Dictionary<int, ErrorCountInfo>> GetErrorCountsByKeysAsync(int providerId, IEnumerable<int> keyIds, TimeSpan window);
 
         /// <summary>
-        /// Clear all error data for a key
+        /// Clear all error data for a key and optionally remove from provider's disabled keys
         /// </summary>
         /// <param name="keyId">The key credential ID</param>
-        Task ClearErrorsForKeyAsync(int keyId);
+        /// <param name="providerId">Optional provider ID to also clean up the provider's disabled keys set</param>
+        Task ClearErrorsForKeyAsync(int keyId, int? providerId = null);
 
         /// <summary>
         /// Get all error data for a key
@@ -187,5 +195,6 @@ namespace ConduitLLM.Core.Interfaces
         public int FatalErrors { get; set; }
         public int Warnings { get; set; }
         public Dictionary<string, int> ErrorsByType { get; set; } = new();
+        public Dictionary<int, int> ErrorsByProvider { get; set; } = new();
     }
 }

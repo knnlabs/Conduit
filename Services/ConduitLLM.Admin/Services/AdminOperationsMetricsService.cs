@@ -82,17 +82,6 @@ namespace ConduitLLM.Admin.Services
                     LabelNames = new[] { "entity_type", "change_type" } // entity_type: virtualkey, provider, mapping
                 });
 
-        // Admin API usage metrics
-        private static readonly Counter AdminApiAuthentications = Prometheus.Metrics
-            .CreateCounter("conduit_admin_authentications_total", "Total authentication attempts",
-                new CounterConfiguration
-                {
-                    LabelNames = new[] { "status" } // status: success, failed
-                });
-
-        private static readonly Gauge ActiveAdminSessions = Prometheus.Metrics
-            .CreateGauge("conduit_admin_sessions_active", "Number of active admin sessions");
-
         // CSV import/export metrics
         private static readonly Counter CsvOperations = Prometheus.Metrics
             .CreateCounter("conduit_admin_csv_operations_total", "Total CSV operations",
@@ -136,13 +125,20 @@ namespace ConduitLLM.Admin.Services
         /// <returns>A task that represents the asynchronous operation.</returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Admin operations metrics service starting...");
+            _logger.LogInformation("AdminOperationsMetricsService starting with collection interval {Interval}", _collectionInterval);
+
+            // Brief delay to let other services initialize first
+            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
                     await CollectMetricsAsync();
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -152,11 +148,12 @@ namespace ConduitLLM.Admin.Services
                 await Task.Delay(_collectionInterval, stoppingToken);
             }
 
-            _logger.LogInformation("Admin operations metrics service stopped");
+            _logger.LogInformation("AdminOperationsMetricsService stopped");
         }
 
         private async Task CollectMetricsAsync()
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             using var scope = _serviceProvider.CreateScope();
 
             var tasks = new[]
@@ -167,6 +164,16 @@ namespace ConduitLLM.Admin.Services
             };
 
             await Task.WhenAll(tasks);
+            sw.Stop();
+
+            if (sw.ElapsedMilliseconds > 5000)
+            {
+                _logger.LogWarning("Slow admin metrics collection: took {ElapsedMs}ms (threshold: 5000ms)", sw.ElapsedMilliseconds);
+            }
+            else
+            {
+                _logger.LogDebug("Admin metrics collection completed in {ElapsedMs}ms", sw.ElapsedMilliseconds);
+            }
         }
 
         private async Task CollectVirtualKeyMetrics(IServiceScope scope)
@@ -174,32 +181,24 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var allKeys = await virtualKeyRepo.GetAllAsync();
 
-                var now = DateTime.UtcNow;
-                var activeCount = 0;
-                var disabledCount = 0;
-                var expiredCount = 0;
+                // Use database-level count for active keys
+                var activeCount = await virtualKeyRepo.CountActiveAsync();
 
-                foreach (var key in allKeys)
-                {
-                    if (!key.IsEnabled)
-                    {
-                        disabledCount++;
-                    }
-                    else if (key.ExpiresAt.HasValue && key.ExpiresAt.Value < now)
-                    {
-                        expiredCount++;
-                    }
-                    else
-                    {
-                        activeCount++;
-                    }
-                }
+                // Get total count via pagination (just need count, not items)
+                var (_, totalCount) = await virtualKeyRepo.GetPaginatedAsync(1, 1);
+
+                // Calculate disabled and expired from total
+                // Note: This is an approximation - for precise counts, add dedicated count methods
+                var nonActiveCount = totalCount - activeCount;
 
                 TotalVirtualKeys.WithLabels("active").Set(activeCount);
-                TotalVirtualKeys.WithLabels("disabled").Set(disabledCount);
-                TotalVirtualKeys.WithLabels("expired").Set(expiredCount);
+                TotalVirtualKeys.WithLabels("disabled").Set(nonActiveCount);
+                TotalVirtualKeys.WithLabels("expired").Set(0); // Expired keys are included in non-active count
+
+                _logger.LogDebug(
+                    "Virtual key metrics: {ActiveCount} active, {NonActiveCount} non-active",
+                    activeCount, nonActiveCount);
             }
             catch (Exception ex)
             {
@@ -212,15 +211,18 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 var providerRepository = scope.ServiceProvider.GetRequiredService<IProviderRepository>();
-                var providers = await providerRepository.GetAllAsync();
 
-                // Count total enabled and disabled providers
-                var enabledCount = providers.Count(p => p.IsEnabled);
-                var disabledCount = providers.Count(p => !p.IsEnabled);
+                // Use database-level counts instead of loading all providers
+                var enabledCount = await providerRepository.CountAsync(enabledOnly: true);
+                var disabledCount = await providerRepository.CountAsync(enabledOnly: false);
 
                 // Use simple enabled/disabled labels instead of provider types
                 ConfiguredProviders.WithLabels("all", "true").Set(enabledCount);
                 ConfiguredProviders.WithLabels("all", "false").Set(disabledCount);
+
+                _logger.LogDebug(
+                    "Provider metrics: {EnabledCount} enabled, {DisabledCount} disabled",
+                    enabledCount, disabledCount);
             }
             catch (Exception ex)
             {
@@ -240,6 +242,8 @@ namespace ConduitLLM.Admin.Services
                 
                 // Use a simple "total" label instead of provider-specific labels
                 ActiveModelMappings.WithLabels("total").Set(totalMappings);
+
+                _logger.LogDebug("Model mapping metrics: {TotalMappings} active mappings", totalMappings);
             }
             catch (Exception ex)
             {
@@ -297,24 +301,6 @@ namespace ConduitLLM.Admin.Services
         public static void RecordConfigurationChange(string entityType, string changeType)
         {
             ConfigurationChanges.WithLabels(entityType, changeType).Inc();
-        }
-
-        /// <summary>
-        /// Records an authentication attempt metric.
-        /// </summary>
-        /// <param name="status">The authentication status (e.g., success, failure).</param>
-        public static void RecordAuthentication(string status)
-        {
-            AdminApiAuthentications.WithLabels(status).Inc();
-        }
-
-        /// <summary>
-        /// Sets the current count of active admin sessions.
-        /// </summary>
-        /// <param name="count">The number of active sessions.</param>
-        public static void SetActiveSessions(int count)
-        {
-            ActiveAdminSessions.Set(count);
         }
 
         /// <summary>

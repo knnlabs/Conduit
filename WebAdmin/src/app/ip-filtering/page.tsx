@@ -23,6 +23,8 @@ import {
   IconFileTypeCsv,
   IconJson,
   IconTestPipe,
+  IconChevronDown,
+  IconTemplate,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -30,6 +32,9 @@ import { type IpRule } from '@/hooks/useSecurityApi';
 import { IpRulesTable } from '@/components/ip-filtering/IpRulesTable';
 import { IpRuleModal } from '@/components/ip-filtering/IpRuleModal';
 import { IpTestModal } from '@/components/ip-filtering/IpTestModal';
+import { IpTemplateModal } from '@/components/ip-filtering/IpTemplateModal';
+import { IpFilterPolicyBanner } from '@/components/ip-filtering/IpFilterPolicyBanner';
+import { ipFilterTemplates, type IpFilterTemplate } from '@/components/ip-filtering/ipFilterTemplates';
 import { useIpFilteringData } from './hooks';
 import { useIpFilteringHandlers } from './handlers';
 import { IpFilteringStats } from './IpFilteringStats';
@@ -40,6 +45,8 @@ export default function IpFilteringPage() {
   const [selectedRule, setSelectedRule] = useState<IpRule | null>(null);
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const [testModalOpened, { open: openTestModal, close: closeTestModal }] = useDisclosure(false);
+  const [templateModalOpened, { open: openTemplateModal, close: closeTemplateModal }] = useDisclosure(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<IpFilterTemplate | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { isLoading, rules, stats, fetchIpRules } = useIpFilteringData();
@@ -50,6 +57,7 @@ export default function IpFilteringPage() {
     handleDeleteRule,
     handleToggleRule,
     handleModalSubmit,
+    handleApplyTemplate,
   } = useIpFilteringHandlers(fetchIpRules, setSelectedRules);
 
   useEffect(() => {
@@ -137,15 +145,43 @@ export default function IpFilteringPage() {
               Import
             </Button>
             
-            <Button
-              leftSection={<IconPlus size={16} />}
-              onClick={() => {
-                setSelectedRule(null);
-                openModal();
-              }}
-            >
-              Add Rule
-            </Button>
+            <Button.Group>
+              <Button
+                leftSection={<IconPlus size={16} />}
+                onClick={() => {
+                  setSelectedRule(null);
+                  openModal();
+                }}
+              >
+                Add Rule
+              </Button>
+              <Menu shadow="md" width={280} position="bottom-end">
+                <Menu.Target>
+                  <Button
+                    variant="filled"
+                    px="xs"
+                    aria-label="Template rules"
+                  >
+                    <IconChevronDown size={14} />
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Apply Template</Menu.Label>
+                  {ipFilterTemplates.map(template => (
+                    <Menu.Item
+                      key={template.id}
+                      leftSection={<IconTemplate style={{ width: rem(14), height: rem(14) }} />}
+                      onClick={() => {
+                        setSelectedTemplate(template);
+                        openTemplateModal();
+                      }}
+                    >
+                      {template.label}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
+            </Button.Group>
           </Group>
         </Group>
       </Card>
@@ -233,7 +269,7 @@ export default function IpFilteringPage() {
             
             {/* IP Rules Table */}
             <Card.Section>
-              <IpRulesTable 
+              <IpRulesTable
                 data={filteredRules}
                 selectedRules={selectedRules}
                 onSelectionChange={setSelectedRules}
@@ -242,6 +278,13 @@ export default function IpFilteringPage() {
                 onToggle={(ruleId: string, enabled: boolean) => void handleToggleRule(ruleId, enabled, rules)}
               />
             </Card.Section>
+
+            {/* Effective Policy Banner */}
+            {!isLoading && (
+              <Card.Section p="md">
+                <IpFilterPolicyBanner rules={rules} />
+              </Card.Section>
+            )}
           </div>
         </Tabs>
       </Card>
@@ -263,6 +306,24 @@ export default function IpFilteringPage() {
     <IpTestModal
       opened={testModalOpened}
       onClose={closeTestModal}
+    />
+
+    {/* IP Template Modal */}
+    <IpTemplateModal
+      opened={templateModalOpened}
+      onClose={() => {
+        closeTemplateModal();
+        setSelectedTemplate(null);
+      }}
+      template={selectedTemplate}
+      existingRules={rules}
+      onConfirm={(template, rulesToCreate) => {
+        void handleApplyTemplate(template, rulesToCreate, setIsSubmitting).then(() => {
+          closeTemplateModal();
+          setSelectedTemplate(null);
+        });
+      }}
+      isLoading={isSubmitting}
     />
     </>
   );

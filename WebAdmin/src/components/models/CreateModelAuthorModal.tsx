@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
 import { Modal, TextInput, Switch, Button, Stack, Group } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
 import type { CreateModelAuthorDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -15,9 +15,6 @@ interface CreateModelAuthorModalProps {
 }
 
 export function CreateModelAuthorModal({ isOpen, onClose, onSuccess }: CreateModelAuthorModalProps) {
-  const [loading, setLoading] = useState(false);
-  const { executeWithAdmin } = useAdminClient();
-
   const form = useForm<CreateModelAuthorDto>({
     initialValues: {
       name: '',
@@ -34,33 +31,18 @@ export function CreateModelAuthorModal({ isOpen, onClose, onSuccess }: CreateMod
     }
   });
 
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
+  const submitAction = useCallback(
+    (values: CreateModelAuthorDto) => withAdminClient(client => client.modelAuthors.create(values)),
+    []
+  );
 
-  const handleSubmit = async (values: CreateModelAuthorDto) => {
-    try {
-      setLoading(true);
-      await executeWithAdmin(client => client.modelAuthors.create(values));
-      notifications.show({
-        title: 'Success',
-        message: 'Author created successfully',
-        color: 'green',
-      });
-      handleClose();
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to create author:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to create author',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction,
+    successMessage: 'Author created successfully',
+  });
 
   return (
     <Modal

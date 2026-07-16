@@ -1,9 +1,11 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Controllers;
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -59,7 +61,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetFileMetadata(fileId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value;
             Assert.Equal("document.pdf", response.file_name.ToString());
             Assert.Equal("application/pdf", response.content_type.ToString());
@@ -93,11 +95,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetFileMetadata(fileId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("File not found", errorDetails.Message);
-            Assert.Equal("not_found", errorDetails.Type);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("File not found");
+            errorDetails.Type.Should().Be("not_found");
         }
 
         [Fact]
@@ -131,12 +133,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GetFileMetadata(fileId);
 
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusCodeResult.StatusCode);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("An error occurred while retrieving file metadata", errorDetails.Message);
+            // Assert — GatewayControllerBase returns OpenAIErrorResponse for unhandled exceptions
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
+            statusCodeResult.StatusCode.Should().Be(500);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            errorResponse.Error.Should().NotBeNull();
+            errorResponse.Error!.Type.Should().Be("server_error");
         }
 
         #endregion
@@ -183,7 +185,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateDownloadUrl(request);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value;
             Assert.Equal(expectedUrl, response.url.ToString());
             Assert.Equal(30, (int)response.expiration_minutes);
@@ -233,7 +235,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateDownloadUrl(request);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value;
             Assert.Equal(60, (int)response.expiration_minutes);
         }
@@ -261,11 +263,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateDownloadUrl(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("File ID is required", errorDetails.Message);
-            Assert.Equal("invalid_request_error", errorDetails.Type);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("File ID is required");
+            errorDetails.Type.Should().Be("invalid_request_error");
         }
 
         [Theory]
@@ -304,10 +306,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateDownloadUrl(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("Expiration must be between 1 minute and 1 week", errorDetails.Message);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("Expiration must be between 1 minute and 1 week");
         }
 
         [Fact]
@@ -337,11 +339,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GenerateDownloadUrl(request);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("File not found", errorDetails.Message);
-            Assert.Equal("not_found", errorDetails.Type);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("File not found");
+            errorDetails.Type.Should().Be("not_found");
         }
 
         [Fact]
@@ -381,12 +383,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GenerateDownloadUrl(request);
 
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusCodeResult.StatusCode);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("An error occurred while generating download URL", errorDetails.Message);
+            // Assert — GatewayControllerBase returns OpenAIErrorResponse for unhandled exceptions
+            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
+            statusCodeResult.StatusCode.Should().Be(500);
+            var errorResponse = statusCodeResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            errorResponse.Error.Should().NotBeNull();
+            errorResponse.Error!.Type.Should().Be("server_error");
         }
 
         #endregion

@@ -15,7 +15,7 @@ import {
   Badge,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { validators } from '@/lib/utils/form-validators';
@@ -113,22 +113,14 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
         client.providers.update(provider.id, payload)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Provider updated successfully',
-        color: 'green',
-      });
+      notify.success('Provider updated successfully');
       
       onClose();
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to update provider',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to update provider');
     } finally {
       setIsSubmitting(false);
     }

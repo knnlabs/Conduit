@@ -1,7 +1,6 @@
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Consumers;
@@ -53,7 +52,7 @@ public class FunctionConfigurationCacheInvalidationHandler : ConduitLLM.Configur
                 message.ConfigurationName,
                 message.FunctionConfigurationId);
 
-            // Rethrow to allow MassTransit retry policy to handle the failure
+            // Rethrow to allow the transport retry policy to handle the failure
             throw;
         }
     }
@@ -98,7 +97,7 @@ public class FunctionDiscoveryCacheInvalidationRequestHandler : ConduitLLM.Confi
                 "Failed to invalidate function discovery cache. Reason: {Reason}",
                 message.Reason);
 
-            // Rethrow to allow MassTransit retry policy to handle the failure
+            // Rethrow to allow the transport retry policy to handle the failure
             throw;
         }
     }

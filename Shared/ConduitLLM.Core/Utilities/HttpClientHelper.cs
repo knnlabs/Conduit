@@ -227,18 +227,6 @@ namespace ConduitLLM.Core.Utilities
                         null);
                 }
                 
-                // Check for Anthropic authentication errors
-                if (errorContent.Contains("invalid bearer token", StringComparison.OrdinalIgnoreCase) ||
-                    errorContent.Contains("bearer", StringComparison.OrdinalIgnoreCase) && errorContent.Contains("anthropic", StringComparison.OrdinalIgnoreCase))
-                {
-                    logger?.LogWarning("Detected Anthropic authentication error - Bearer token used instead of x-api-key");
-                    throw new LLMCommunicationException(
-                        "Anthropic authentication error: Invalid API key or authentication method. Anthropic requires 'x-api-key' header, not Bearer tokens. Please verify your API key is valid and starts with 'sk-ant-'.",
-                        response.StatusCode,
-                        errorContent,
-                        null);
-                }
-                
                 throw new LLMCommunicationException(
                     $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}",
                     response.StatusCode,
@@ -336,18 +324,6 @@ namespace ConduitLLM.Core.Utilities
                 {
                     var errorContent = await ReadErrorContentAsync(response, cancellationToken);
                     logger?.LogError("API streaming error: {StatusCode} - {Content}", response.StatusCode, errorContent);
-                    
-                    // Check for Anthropic authentication errors
-                    if (errorContent.Contains("invalid bearer token", StringComparison.OrdinalIgnoreCase) ||
-                        errorContent.Contains("bearer", StringComparison.OrdinalIgnoreCase) && errorContent.Contains("anthropic", StringComparison.OrdinalIgnoreCase))
-                    {
-                        logger?.LogWarning("Detected Anthropic authentication error - Bearer token used instead of x-api-key");
-                        throw new LLMCommunicationException(
-                            "Anthropic authentication error: Invalid API key or authentication method. Anthropic requires 'x-api-key' header, not Bearer tokens. Please verify your API key is valid and starts with 'sk-ant-'.",
-                            response.StatusCode,
-                            errorContent,
-                            null);
-                    }
                     
                     throw new LLMCommunicationException(
                         $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}",

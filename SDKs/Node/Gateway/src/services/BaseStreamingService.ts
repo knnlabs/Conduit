@@ -30,7 +30,7 @@ export abstract class BaseStreamingService {
    * @returns A streaming response
    * @protected
    */
-  protected async createStandardStream<T extends BaseStreamChunk>(
+  protected async createStandardStream<T>(
     request: unknown,
     options?: RequestOptions
   ): Promise<StreamingResponse<T>> {

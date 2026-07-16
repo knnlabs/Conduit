@@ -1,3 +1,6 @@
+using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Models;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,13 +13,11 @@ namespace ConduitLLM.Gateway.Controllers
     [Route("v1")]
     [Authorize(AuthenticationSchemes = "VirtualKey")]
     [Tags("Completions")]
-    public class CompletionsController : ControllerBase
+    public class CompletionsController : GatewayControllerBase
     {
-        private readonly ILogger<CompletionsController> _logger;
-
         public CompletionsController(ILogger<CompletionsController> logger)
+            : base(logger)
         {
-            _logger = logger;
         }
 
         /// <summary>
@@ -24,13 +25,18 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         /// <returns>A 501 Not Implemented response directing users to use /chat/completions.</returns>
         [HttpPost("completions")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status501NotImplemented)]
+        [ProducesResponseType(typeof(OpenAIErrorResponse), StatusCodes.Status501NotImplemented)]
         public IActionResult CreateCompletion()
         {
-            _logger.LogInformation("Legacy /completions endpoint called.");
-            return StatusCode(501, new
+            Logger.LogInformation("Legacy /completions endpoint called.");
+            return StatusCode(501, new OpenAIErrorResponse
             {
-                error = "The /completions endpoint is not implemented. Please use /chat/completions."
+                Error = new OpenAIError
+                {
+                    Message = "The /completions endpoint is not implemented. Please use /chat/completions.",
+                    Type = "invalid_request_error",
+                    Code = "not_implemented"
+                }
             });
         }
     }

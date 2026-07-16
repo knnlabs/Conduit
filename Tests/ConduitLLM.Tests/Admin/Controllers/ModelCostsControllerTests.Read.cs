@@ -1,9 +1,6 @@
-using ConduitLLM.Tests.Admin.TestHelpers;
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Controllers
@@ -29,8 +26,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModelCosts();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCosts = Assert.IsAssignableFrom<IEnumerable<ModelCostDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedCosts = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostDto>>().Subject;
             returnedCosts.Should().HaveCount(2);
             returnedCosts.First().CostName.Should().Be("GPT-4 Pricing");
         }
@@ -52,9 +49,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModelCosts(page: 2, pageSize: 10);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             okResult.Value.Should().NotBeNull();
-            
+
             // Use reflection to access anonymous type properties
             var responseType = okResult.Value!.GetType();
             var totalCount = (int)responseType.GetProperty("totalCount")!.GetValue(okResult.Value)!;
@@ -62,13 +59,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var pageSize = (int)responseType.GetProperty("pageSize")!.GetValue(okResult.Value)!;
             var totalPages = (int)responseType.GetProperty("totalPages")!.GetValue(okResult.Value)!;
             var items = responseType.GetProperty("items")!.GetValue(okResult.Value) as IEnumerable<ModelCostDto>;
-            
+
             // Verify pagination metadata
             totalCount.Should().Be(25);
             page.Should().Be(2);
             pageSize.Should().Be(10);
             totalPages.Should().Be(3);
-            
+
             // Verify items
             items.Should().NotBeNull();
             items!.Count().Should().Be(10);
@@ -93,9 +90,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModelCosts(page: 3, pageSize: 10);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             okResult.Value.Should().NotBeNull();
-            
+
             // Use reflection to access anonymous type properties
             var responseType = okResult.Value!.GetType();
             var totalCount = (int)responseType.GetProperty("totalCount")!.GetValue(okResult.Value)!;
@@ -103,13 +100,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var pageSize = (int)responseType.GetProperty("pageSize")!.GetValue(okResult.Value)!;
             var totalPages = (int)responseType.GetProperty("totalPages")!.GetValue(okResult.Value)!;
             var items = responseType.GetProperty("items")!.GetValue(okResult.Value) as IEnumerable<ModelCostDto>;
-            
+
             // Verify pagination metadata
             totalCount.Should().Be(25);
             page.Should().Be(3);
             pageSize.Should().Be(10);
             totalPages.Should().Be(3);
-            
+
             // Verify items - should only have 5 items on last page
             items.Should().NotBeNull();
             items!.Count().Should().Be(5);
@@ -134,26 +131,23 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModelCosts(page: 1, pageSize: null);
 
             // Assert - Should return all items without pagination
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCosts = Assert.IsAssignableFrom<IEnumerable<ModelCostDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedCosts = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostDto>>().Subject;
             returnedCosts.Should().HaveCount(2);
         }
 
         [Fact]
-        public async Task GetAllModelCosts_WithException_ShouldReturn500()
+        public async Task GetAllModelCosts_WithException_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.GetAllModelCostsAsync())
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            var result = await _controller.GetAllModelCosts();
+            var act = async () => await _controller.GetAllModelCosts();
 
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error getting all model costs");
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -179,8 +173,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelCostById(1);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCost = Assert.IsType<ModelCostDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedCost = okResult.Value.Should().BeOfType<ModelCostDto>().Subject;
             returnedCost.Id.Should().Be(1);
             returnedCost.InputCostPerMillionTokens.Should().Be(30.00m);
         }
@@ -196,9 +190,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelCostById(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Model cost not found");
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion
@@ -222,8 +216,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelCostsByProvider(1);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCosts = Assert.IsAssignableFrom<IEnumerable<ModelCostDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedCosts = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostDto>>().Subject;
             returnedCosts.Should().HaveCount(2);
         }
 
@@ -238,8 +232,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelCostsByProvider(999);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCosts = Assert.IsAssignableFrom<IEnumerable<ModelCostDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedCosts = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostDto>>().Subject;
             returnedCosts.Should().BeEmpty();
         }
 
@@ -265,8 +259,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelCostByCostName("GPT-4 Turbo Pricing");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCost = Assert.IsType<ModelCostDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedCost = okResult.Value.Should().BeOfType<ModelCostDto>().Subject;
             returnedCost.CostName.Should().Be("GPT-4 Turbo Pricing");
         }
 
@@ -281,9 +275,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelCostByCostName("Unknown Cost");
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Model cost not found");
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion
@@ -310,8 +304,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelCostOverview(startDate, endDate);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedOverview = Assert.IsAssignableFrom<IEnumerable<ModelCostOverviewDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedOverview = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostOverviewDto>>().Subject;
             returnedOverview.Should().HaveCount(2);
             returnedOverview.Sum(o => o.TotalCost).Should().Be(351.25m);
         }
@@ -327,7 +321,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelCostOverview(startDate, endDate);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Start date cannot be after end date");
         }
 

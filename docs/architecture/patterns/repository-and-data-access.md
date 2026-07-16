@@ -360,6 +360,113 @@ public class VirtualKeyGroupRepository
 
 ---
 
+## Unbounded Query Prevention
+
+To prevent accidental full table scans and protect production systems, ConduitLLM enforces query result size limits across all repositories.
+
+### The Problem
+
+Unbounded queries like `GetAllAsync()` can cause severe performance issues:
+- **Memory pressure**: Loading millions of records into memory
+- **Database strain**: Full table scans blocking other queries
+- **Response timeouts**: Requests timing out under load
+- **Cascading failures**: One bad query affecting entire system
+
+### Solution: Query Monitoring and Explicit Opt-In
+
+#### 1. Query Monitoring Interceptor
+
+All database queries are monitored via `QueryMonitoringInterceptor`:
+
+```csharp
+// Configuration (appsettings.json or environment variables)
+{
+  "QueryMonitoring": {
+    "Enabled": true,
+    "SlowQueryThresholdMs": 5000,      // Log warning for queries > 5 seconds
+    "LargeResultSetThreshold": 1000,   // Log warning for result sets > 1000 rows
+    "LogFullCommand": false            // Set true to include SQL in logs (dev only)
+  }
+}
+```
+
+#### 2. Deprecated GetAllAsync Methods
+
+The `GetAllAsync()` method is deprecated on all repository interfaces:
+
+```csharp
+// ❌ DEPRECATED - Triggers compile-time warning
+var allItems = await repository.GetAllAsync();
+
+// ✅ PREFERRED - Bounded pagination
+var (items, totalCount) = await repository.GetPaginatedAsync(page: 1, pageSize: 50);
+
+// ✅ EXPLICIT OPT-IN - For legitimate batch operations (cache warming, exports)
+var allItems = await repository.GetAllUnboundedAsync();
+```
+
+#### 3. Legitimate Unbounded Queries
+
+Use `GetAllUnboundedAsync()` only for:
+- **Cache warming**: Loading small reference tables at startup
+- **Data exports**: Admin-initiated bulk exports with user awareness
+- **Migrations**: One-time data migration scripts
+- **Small reference tables**: Tables guaranteed to have <100 records
+
+```csharp
+// Safe - Small reference table, used for cache warming
+var settings = await _globalSettingRepository.GetAllUnboundedAsync();
+var ipFilters = await _ipFilterRepository.GetAllUnboundedAsync();
+
+// UNSAFE - High-risk tables, always use pagination
+// var logs = await _requestLogRepository.GetAllUnboundedAsync(); // DON'T DO THIS
+var (logs, total) = await _requestLogRepository.GetPaginatedAsync(1, 100);
+```
+
+### Table Risk Classification
+
+| Risk Level | Tables | Policy |
+|------------|--------|--------|
+| **Critical** | RequestLog, VirtualKeySpendHistory, MediaRecord, AsyncTask | Pagination required, no unbounded access |
+| **High** | VirtualKey, Notification, BatchOperationHistory | Pagination strongly recommended |
+| **Low** | GlobalSetting, IpFilter, Provider, ModelSeries, ModelAuthor | Unbounded allowed (small tables) |
+
+### Best Practices
+
+1. **Default to pagination**: Always use `GetPaginatedAsync()` unless you have a specific need
+2. **Set reasonable page sizes**: Max 100 items per page, default 20
+3. **Implement cursor-based pagination**: For real-time data streams
+4. **Add WHERE clauses**: Filter at the database level, not in memory
+5. **Monitor query performance**: Check logs for `SlowQueryThresholdMs` warnings
+
+### Example: Migrating from GetAllAsync
+
+**Before (anti-pattern):**
+```csharp
+public async Task<IEnumerable<ItemDto>> GetAllItemsAsync()
+{
+    var items = await _repository.GetAllAsync(); // Loads ALL records
+    return items.Select(MapToDto);
+}
+```
+
+**After (pagination):**
+```csharp
+public async Task<PagedResult<ItemDto>> GetItemsAsync(int page, int pageSize)
+{
+    var (items, totalCount) = await _repository.GetPaginatedAsync(page, pageSize);
+    return new PagedResult<ItemDto>
+    {
+        Items = items.Select(MapToDto).ToList(),
+        TotalCount = totalCount,
+        Page = page,
+        PageSize = pageSize
+    };
+}
+```
+
+---
+
 ## Testing
 
 Repositories make it easier to write tests that don't depend on a database:

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using ConduitLLM.Admin.Options;
+using ConduitLLM.Security.Options;
 using ConduitLLM.Admin.Services;
 
 namespace ConduitLLM.Tests.Admin.Services
@@ -18,7 +18,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IMemoryCache> _memoryCacheMock;
         private readonly Mock<IDistributedCache> _distributedCacheMock;
         private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
-        private readonly IOptions<SecurityOptions> _securityOptions;
+        private readonly IOptions<AdminSecurityOptions> _securityOptions;
         private readonly SecurityService _securityService;
 
         public SecurityServiceTests()
@@ -29,17 +29,18 @@ namespace ConduitLLM.Tests.Admin.Services
             _distributedCacheMock = new Mock<IDistributedCache>();
             _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
 
-            var securityOptions = new SecurityOptions
+            var securityOptions = new AdminSecurityOptions
             {
                 ApiAuth = new ApiAuthOptions
                 {
                     ApiKeyHeader = "X-API-Key",
                     AlternativeHeaders = new List<string> { "X-Master-Key" }
-                },
-                RateLimiting = new RateLimitingOptions { Enabled = false },
-                IpFiltering = new IpFilteringOptions { Enabled = false },
-                FailedAuth = new FailedAuthOptions { Enabled = false }
+                }
             };
+            // Disable security features for testing
+            securityOptions.RateLimiting.Enabled = false;
+            securityOptions.IpFiltering.Enabled = false;
+            securityOptions.FailedAuth.Enabled = false;
             _securityOptions = Microsoft.Extensions.Options.Options.Create(securityOptions);
 
             _securityService = new SecurityService(

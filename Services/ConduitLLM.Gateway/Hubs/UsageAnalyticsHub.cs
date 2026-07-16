@@ -15,9 +15,22 @@ namespace ConduitLLM.Gateway.Hubs
         private readonly ILogger<UsageAnalyticsHub> _logger;
         private readonly IVirtualKeyService _virtualKeyService;
         
-        // Track analytics subscriptions
-        private static readonly Dictionary<string, HashSet<string>> _analyticsSubscriptions = new();
-        private static readonly object _subscriptionLock = new();
+        // Per-connection key into Context.Items tracking subscribed analytics types.
+        // Connection-scoped state lives in Context.Items so it is freed with the
+        // connection instead of accumulating in static server state.
+        private const string SubscriptionsKey = "analytics-subscriptions";
+
+        private HashSet<string> GetOrCreateSubscriptions()
+        {
+            if (Context.Items.TryGetValue(SubscriptionsKey, out var existing) && existing is HashSet<string> set)
+            {
+                return set;
+            }
+
+            var subscriptions = new HashSet<string>();
+            Context.Items[SubscriptionsKey] = subscriptions;
+            return subscriptions;
+        }
         
         /// <summary>
         /// Initializes a new instance of the <see cref="UsageAnalyticsHub"/> class.
@@ -68,12 +81,7 @@ namespace ConduitLLM.Gateway.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            // Clean up subscriptions
-            lock (_subscriptionLock)
-            {
-                _analyticsSubscriptions.Remove(Context.ConnectionId);
-            }
-            
+            // Subscription state lives in Context.Items and is freed with the connection
             await base.OnDisconnectedAsync(exception);
         }
 
@@ -114,26 +122,16 @@ namespace ConduitLLM.Gateway.Hubs
                         await Groups.AddToGroupAsync(Context.ConnectionId, $"analytics-cost-{virtualKeyId}");
                         await Groups.AddToGroupAsync(Context.ConnectionId, $"analytics-performance-{virtualKeyId}");
                         await Groups.AddToGroupAsync(Context.ConnectionId, $"analytics-errors-{virtualKeyId}");
-                        
+
                         // Track subscriptions
-                        lock (_subscriptionLock)
-                        {
-                            _analyticsSubscriptions[Context.ConnectionId] = new HashSet<string> { "usage", "cost", "performance", "errors" };
-                        }
+                        Context.Items[SubscriptionsKey] = new HashSet<string> { "usage", "cost", "performance", "errors" };
                     }
                     else
                     {
                         await Groups.AddToGroupAsync(Context.ConnectionId, $"analytics-{analyticsType}-{virtualKeyId}");
-                        
+
                         // Track subscription
-                        lock (_subscriptionLock)
-                        {
-                            if (!_analyticsSubscriptions.ContainsKey(Context.ConnectionId))
-                            {
-                                _analyticsSubscriptions[Context.ConnectionId] = new HashSet<string>();
-                            }
-                            _analyticsSubscriptions[Context.ConnectionId].Add(analyticsType);
-                        }
+                        GetOrCreateSubscriptions().Add(analyticsType);
                     }
                     
                     _logger.LogInformation(
@@ -174,22 +172,16 @@ namespace ConduitLLM.Gateway.Hubs
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"analytics-cost-{virtualKeyId}");
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"analytics-performance-{virtualKeyId}");
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"analytics-errors-{virtualKeyId}");
-                    
-                    lock (_subscriptionLock)
-                    {
-                        _analyticsSubscriptions.Remove(Context.ConnectionId);
-                    }
+
+                    Context.Items.Remove(SubscriptionsKey);
                 }
                 else
                 {
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"analytics-{analyticsType}-{virtualKeyId}");
-                    
-                    lock (_subscriptionLock)
+
+                    if (Context.Items.TryGetValue(SubscriptionsKey, out var existing) && existing is HashSet<string> subscriptions)
                     {
-                        if (_analyticsSubscriptions.ContainsKey(Context.ConnectionId))
-                        {
-                            _analyticsSubscriptions[Context.ConnectionId].Remove(analyticsType);
-                        }
+                        subscriptions.Remove(analyticsType);
                     }
                 }
                 
@@ -493,9 +485,9 @@ namespace ConduitLLM.Gateway.Hubs
             {
                 // Get subscribed analytics types
                 HashSet<string>? subscribedTypes = null;
-                lock (_subscriptionLock)
+                if (Context.Items.TryGetValue(SubscriptionsKey, out var existing) && existing is HashSet<string> set)
                 {
-                    _analyticsSubscriptions.TryGetValue(Context.ConnectionId, out subscribedTypes);
+                    subscribedTypes = set;
                 }
                 
                 var summary = new AnalyticsSummaryNotification

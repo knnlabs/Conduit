@@ -70,7 +70,7 @@ public partial class CostCalculationService
 
         // Validate refund amounts don't exceed original amounts
         var validationMessages = ValidateRefundAmounts(originalUsage, refundUsage);
-        if (validationMessages.Count() > 0)
+        if (validationMessages.Any())
         {
             result.ValidationMessages.AddRange(validationMessages);
             result.IsPartialRefund = true;

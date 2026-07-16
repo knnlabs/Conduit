@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
-using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Controllers;
 using ConduitLLM.Configuration.DTOs.BatchOperations;
 using ConduitLLM.Core.Services.BatchOperations;
+using ConduitLLM.Gateway.Filters;
+using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 namespace ConduitLLM.Gateway.Controllers
 {
@@ -15,9 +17,9 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/batch")]
     [Authorize]
-    public class BatchOperationsController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class BatchOperationsController : GatewayControllerBase
     {
-        private readonly ILogger<BatchOperationsController> _logger;
         private readonly IBatchOperationService _batchOperationService;
         private readonly IBatchVirtualKeyUpdateOperation _batchVirtualKeyUpdateOperation;
         private readonly IBatchWebhookSendOperation _batchWebhookSendOperation;
@@ -31,8 +33,8 @@ namespace ConduitLLM.Gateway.Controllers
             IBatchWebhookSendOperation batchWebhookSendOperation,
             IVirtualKeyService virtualKeyService,
             BatchSpendUpdateOperation batchSpendUpdateOperation)
+            : base(logger)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _batchOperationService = batchOperationService ?? throw new ArgumentNullException(nameof(batchOperationService));
             _batchVirtualKeyUpdateOperation = batchVirtualKeyUpdateOperation ?? throw new ArgumentNullException(nameof(batchVirtualKeyUpdateOperation));
             _batchWebhookSendOperation = batchWebhookSendOperation ?? throw new ArgumentNullException(nameof(batchWebhookSendOperation));
@@ -59,14 +61,30 @@ namespace ConduitLLM.Gateway.Controllers
             var virtualKeyId = GetVirtualKeyId();
 
             // Validate request
-            if (request.Updates == null || request.Updates.Count() == 0)
+            if (request.Updates == null || !request.Updates.Any())
             {
-                return BadRequest(new ErrorResponseDto("No updates provided"));
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "No updates provided",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
             }
 
             if (request.Updates.Count() > 10000)
             {
-                return BadRequest(new ErrorResponseDto("Maximum 10,000 items per batch"));
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Maximum 10,000 items per batch",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
             }
 
             // Convert to internal model
@@ -89,12 +107,13 @@ namespace ConduitLLM.Gateway.Controllers
                 idempotencyToken,
                 HttpContext.RequestAborted);
 
-            _logger.LogInformation(
+            Logger.LogInformation(
                 "Started batch spend update operation {OperationId} with {Count} items (Idempotent: {Idempotent})",
                 result.OperationId,
                 request.Updates.Count(),
                 !string.IsNullOrWhiteSpace(idempotencyToken));
 
+            GatewayOpsMetrics.RecordBatchOperation("spend_update", "accepted", request.Updates.Count());
             return Accepted(new BatchOperationStartResponse
             {
                 OperationId = result.OperationId,
@@ -118,7 +137,7 @@ namespace ConduitLLM.Gateway.Controllers
         public async Task<IActionResult> StartBatchVirtualKeyUpdate([FromBody] BatchVirtualKeyUpdateRequest request)
         {
             var virtualKeyId = GetVirtualKeyId();
-            
+
             // Check if user has admin permissions
             var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyInfoAsync(virtualKeyId);
             bool isAdmin = false;
@@ -137,21 +156,37 @@ namespace ConduitLLM.Gateway.Controllers
                     // Invalid metadata format
                 }
             }
-            
+
             if (!isAdmin)
             {
                 return Forbid("Admin permissions required for batch virtual key updates");
             }
 
             // Validate request
-            if (request.Updates == null || request.Updates.Count() == 0)
+            if (request.Updates == null || !request.Updates.Any())
             {
-                return BadRequest(new ErrorResponseDto("No updates provided"));
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "No updates provided",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
             }
 
             if (request.Updates.Count() > 1000)
             {
-                return BadRequest(new ErrorResponseDto("Maximum 1,000 items per batch"));
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Maximum 1,000 items per batch",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
             }
 
             // Convert to internal model
@@ -171,7 +206,7 @@ namespace ConduitLLM.Gateway.Controllers
                 virtualKeyId,
                 HttpContext.RequestAborted);
 
-            _logger.LogInformation(
+            Logger.LogInformation(
                 "Started batch virtual key update operation {OperationId} with {Count} items",
                 result.OperationId,
                 request.Updates.Count());
@@ -199,16 +234,32 @@ namespace ConduitLLM.Gateway.Controllers
         public async Task<IActionResult> StartBatchWebhookSend([FromBody] BatchWebhookSendRequest request)
         {
             var virtualKeyId = GetVirtualKeyId();
-            
+
             // Validate request
-            if (request.Webhooks == null || request.Webhooks.Count() == 0)
+            if (request.Webhooks == null || !request.Webhooks.Any())
             {
-                return BadRequest(new ErrorResponseDto("No webhooks provided"));
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "No webhooks provided",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
             }
 
             if (request.Webhooks.Count() > 5000)
             {
-                return BadRequest(new ErrorResponseDto("Maximum 5,000 webhooks per batch"));
+                return BadRequest(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Maximum 5,000 webhooks per batch",
+                        Type = "invalid_request_error",
+                        Code = "invalid_request"
+                    }
+                });
             }
 
             // Convert to internal model
@@ -228,7 +279,7 @@ namespace ConduitLLM.Gateway.Controllers
                 virtualKeyId,
                 HttpContext.RequestAborted);
 
-            _logger.LogInformation(
+            Logger.LogInformation(
                 "Started batch webhook send operation {OperationId} with {Count} items",
                 result.OperationId,
                 request.Webhooks.Count());
@@ -254,10 +305,20 @@ namespace ConduitLLM.Gateway.Controllers
         [ProducesResponseType(404)]
         public IActionResult GetOperationStatus(string operationId)
         {
+            Logger.LogDebug("Getting status for batch operation {OperationId}", operationId);
             var status = _batchOperationService.GetOperationStatus(operationId);
             if (status == null)
             {
-                return NotFound(new ErrorResponseDto("Operation not found"));
+                Logger.LogWarning("Batch operation {OperationId} not found", operationId);
+                return NotFound(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Operation not found",
+                        Type = "not_found_error",
+                        Code = "not_found"
+                    }
+                });
             }
 
             return Ok(new BatchOperationStatusResponse
@@ -292,21 +353,45 @@ namespace ConduitLLM.Gateway.Controllers
             var status = _batchOperationService.GetOperationStatus(operationId);
             if (status == null)
             {
-                return NotFound(new ErrorResponseDto("Operation not found"));
+                return NotFound(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Operation not found",
+                        Type = "not_found_error",
+                        Code = "not_found"
+                    }
+                });
             }
 
             if (!status.CanCancel)
             {
-                return Conflict(new ErrorResponseDto("Operation cannot be cancelled"));
+                return Conflict(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Operation cannot be cancelled",
+                        Type = "invalid_request_error",
+                        Code = "operation_not_cancellable"
+                    }
+                });
             }
 
             var cancelled = await _batchOperationService.CancelBatchOperationAsync(operationId);
             if (!cancelled)
             {
-                return Conflict(new ErrorResponseDto("Failed to cancel operation"));
+                return Conflict(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Failed to cancel operation",
+                        Type = "invalid_request_error",
+                        Code = "cancellation_failed"
+                    }
+                });
             }
 
-            _logger.LogInformation("Cancelled batch operation {OperationId}", operationId);
+            Logger.LogInformation("Cancelled batch operation {OperationId}", operationId);
             return NoContent();
         }
 

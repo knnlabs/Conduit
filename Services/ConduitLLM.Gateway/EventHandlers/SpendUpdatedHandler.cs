@@ -66,6 +66,24 @@ namespace ConduitLLM.Gateway.EventHandlers
                     provider = providerHeader?.ToString() ?? "unknown";
                 }
 
+                // Log budget proximity warnings
+                if (maxBudget.HasValue && maxBudget.Value > 0)
+                {
+                    var usagePercent = (message.NewTotalSpend / maxBudget.Value) * 100;
+                    if (usagePercent >= 100)
+                    {
+                        _logger.LogWarning(
+                            "Virtual Key {KeyId} has exceeded its budget: ${NewTotal:F2} / ${MaxBudget:F2} ({UsagePercent:F0}%)",
+                            message.KeyId, message.NewTotalSpend, maxBudget.Value, usagePercent);
+                    }
+                    else if (usagePercent >= 90)
+                    {
+                        _logger.LogWarning(
+                            "Virtual Key {KeyId} approaching budget limit: ${NewTotal:F2} / ${MaxBudget:F2} ({UsagePercent:F0}%)",
+                            message.KeyId, message.NewTotalSpend, maxBudget.Value, usagePercent);
+                    }
+                }
+
                 // Send the spend notification
                 await _notificationService.NotifySpendUpdateAsync(
                     message.KeyId,

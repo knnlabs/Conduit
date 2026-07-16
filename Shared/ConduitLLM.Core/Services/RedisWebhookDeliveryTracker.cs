@@ -1,6 +1,7 @@
+using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
-using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Services
 {
@@ -8,20 +9,15 @@ namespace ConduitLLM.Core.Services
     /// Redis-based implementation of webhook delivery tracking
     /// Provides deduplication and statistics for webhook deliveries
     /// </summary>
-    public class RedisWebhookDeliveryTracker : IWebhookDeliveryTracker
+    public class RedisWebhookDeliveryTracker : RedisWebhookServiceBase, IWebhookDeliveryTracker
     {
-        private readonly IConnectionMultiplexer _redis;
-        private readonly ILogger<RedisWebhookDeliveryTracker> _logger;
-        private const string DELIVERY_KEY_PREFIX = "webhook:delivered:";
-        private const string STATS_KEY_PREFIX = "webhook:stats:";
         private const int DELIVERY_KEY_EXPIRY_HOURS = 24;
-        
+
         public RedisWebhookDeliveryTracker(
             IConnectionMultiplexer redis,
             ILogger<RedisWebhookDeliveryTracker> logger)
+            : base(redis, logger)
         {
-            _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         
         /// <inheritdoc/>
@@ -29,19 +25,19 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
-                var result = await db.KeyExistsAsync($"{DELIVERY_KEY_PREFIX}{deliveryKey}");
+                var db = Redis.GetDatabase();
+                var result = await db.KeyExistsAsync(RedisKeys.WebhookDelivery.Delivered(deliveryKey));
                 
                 if (result)
                 {
-                    _logger.LogDebug("Webhook delivery key {DeliveryKey} already exists", deliveryKey);
+                    Logger.LogDebug("Webhook delivery key {DeliveryKey} already exists", deliveryKey);
                 }
                 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking webhook delivery status for key {DeliveryKey}", deliveryKey);
+                Logger.LogError(ex, "Error checking webhook delivery status for key {DeliveryKey}", deliveryKey);
                 // In case of Redis failure, assume not delivered to avoid blocking webhooks
                 return false;
             }
@@ -52,18 +48,18 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 
                 // Mark as delivered with expiry
                 var deliveryTimestamp = DateTime.UtcNow.ToString("O");
                 _ = transaction.StringSetAsync(
-                    $"{DELIVERY_KEY_PREFIX}{deliveryKey}", 
+                    RedisKeys.WebhookDelivery.Delivered(deliveryKey), 
                     deliveryTimestamp, 
                     TimeSpan.FromHours(DELIVERY_KEY_EXPIRY_HOURS));
                 
                 // Update delivery statistics
-                var statsKey = $"{STATS_KEY_PREFIX}{webhookUrl}";
+                var statsKey = RedisKeys.WebhookDelivery.Stats(webhookUrl);
                 _ = transaction.HashIncrementAsync(statsKey, "delivered", 1);
                 _ = transaction.HashSetAsync(statsKey, "last_delivery", deliveryTimestamp);
                 
@@ -74,21 +70,21 @@ namespace ConduitLLM.Core.Services
                 
                 if (committed)
                 {
-                    _logger.LogInformation(
+                    Logger.LogInformation(
                         "Marked webhook as delivered: {DeliveryKey} to {WebhookUrl}", 
                         deliveryKey, 
                         webhookUrl);
                 }
                 else
                 {
-                    _logger.LogWarning(
+                    Logger.LogWarning(
                         "Failed to commit webhook delivery transaction for {DeliveryKey}", 
                         deliveryKey);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
+                Logger.LogError(ex, 
                     "Error marking webhook as delivered: {DeliveryKey} to {WebhookUrl}", 
                     deliveryKey, 
                     webhookUrl);
@@ -101,8 +97,8 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
-                var statsKey = $"{STATS_KEY_PREFIX}{webhookUrl}";
+                var db = Redis.GetDatabase();
+                var statsKey = RedisKeys.WebhookDelivery.Stats(webhookUrl);
                 var stats = await db.HashGetAllAsync(statsKey);
                 
                 var deliveredCount = 0L;
@@ -145,7 +141,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving webhook stats for {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error retrieving webhook stats for {WebhookUrl}", webhookUrl);
                 return new WebhookDeliveryStats();
             }
         }
@@ -155,11 +151,11 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 
                 // Update failure statistics
-                var statsKey = $"{STATS_KEY_PREFIX}{webhookUrl}";
+                var statsKey = RedisKeys.WebhookDelivery.Stats(webhookUrl);
                 var failureTimestamp = DateTime.UtcNow.ToString("O");
                 
                 _ = transaction.HashIncrementAsync(statsKey, "failed", 1);
@@ -170,7 +166,7 @@ namespace ConduitLLM.Core.Services
                 _ = transaction.KeyExpireAsync(statsKey, TimeSpan.FromDays(30));
                 
                 // Store failure details with shorter expiry
-                var failureKey = $"webhook:failure:{deliveryKey}";
+                var failureKey = RedisKeys.WebhookDelivery.Failure(deliveryKey);
                 _ = transaction.StringSetAsync(
                     failureKey, 
                     $"{failureTimestamp}|{error}", 
@@ -180,7 +176,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (committed)
                 {
-                    _logger.LogWarning(
+                    Logger.LogWarning(
                         "Recorded webhook failure: {DeliveryKey} to {WebhookUrl} - {Error}", 
                         deliveryKey, 
                         webhookUrl, 
@@ -189,7 +185,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
+                Logger.LogError(ex, 
                     "Error recording webhook failure: {DeliveryKey} to {WebhookUrl}", 
                     deliveryKey, 
                     webhookUrl);

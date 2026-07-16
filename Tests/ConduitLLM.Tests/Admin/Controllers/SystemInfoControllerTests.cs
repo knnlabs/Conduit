@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
+using FluentAssertions;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -44,7 +45,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.InvalidateDiscoveryCache();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
 
             // Verify the event was published
@@ -58,7 +59,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task InvalidateDiscoveryCache_WhenPublishThrowsException_ReturnsInternalServerError()
+        public async Task InvalidateDiscoveryCache_WhenPublishThrowsException_ShouldPropagateException()
         {
             // Arrange
             var exceptionMessage = "Event publishing failed";
@@ -67,21 +68,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ThrowsAsync(new System.Exception(exceptionMessage));
 
             // Act
-            var result = await _controller.InvalidateDiscoveryCache();
+            var act = async () => await _controller.InvalidateDiscoveryCache();
 
-            // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
-
-            // Verify error was logged
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => true),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-                Times.Once);
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping and logging
+            await act.Should().ThrowAsync<System.Exception>();
         }
 
         [Fact]
@@ -96,7 +86,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.InvalidateDiscoveryCache();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.NotNull(okResult.Value);
 
             // Check the response structure using JSON serialization

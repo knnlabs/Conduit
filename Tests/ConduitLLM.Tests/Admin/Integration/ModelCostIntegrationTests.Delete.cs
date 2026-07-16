@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Extensions;
 
 using FluentAssertions;
 
@@ -19,7 +20,8 @@ namespace ConduitLLM.Tests.Admin.Integration
         {
             // Arrange
             var providerId = await SetupTestDataAsync();
-            var mappings = await _modelMappingRepository.GetAllAsync();
+            var mappings = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _modelMappingRepository.GetPaginatedAsync);
             var mappingIds = mappings.Select(m => m.Id).ToList();
 
             var createDto = new CreateModelCostDto
@@ -31,14 +33,14 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
-            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
+            var createdResult = createResult.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var createdCost = createdResult.Value.Should().BeOfType<ModelCostDto>().Subject;
 
             // Act
             var deleteResult = await _controller.DeleteModelCost(createdCost.Id);
 
             // Assert
-            Assert.IsType<NoContentResult>(deleteResult);
+            deleteResult.Should().BeOfType<NoContentResult>();
 
             // Verify cost deleted
             var deletedCost = await _modelCostRepository.GetByIdAsync(createdCost.Id);

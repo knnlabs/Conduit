@@ -15,16 +15,20 @@ namespace ConduitLLM.Tests.Http.Services
         private readonly ConduitDbContext _context;
         private readonly Mock<ILogger<ToolCostCalculationService>> _loggerMock;
         private readonly ToolCostCalculationService _service;
+        private readonly DbContextOptions<ConduitDbContext> _options;
 
         public ToolCostCalculationServiceTests()
         {
-            var options = new DbContextOptionsBuilder<ConduitDbContext>()
+            _options = new DbContextOptionsBuilder<ConduitDbContext>()
                 .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
                 .Options;
 
-            _context = new ConduitDbContext(options);
+            _context = new ConduitDbContext(_options);
             _loggerMock = new Mock<ILogger<ToolCostCalculationService>>();
-            _service = new ToolCostCalculationService(_context, _loggerMock.Object);
+            var factoryMock = new Mock<IDbContextFactory<ConduitDbContext>>();
+            factoryMock.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => new ConduitDbContext(_options));
+            _service = new ToolCostCalculationService(factoryMock.Object, _loggerMock.Object);
         }
 
         public void Dispose()
@@ -63,7 +67,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
 
             // Assert
-            Assert.Equal(toolCount * costPerUnit, result);
+            Assert.False(result.Failed);
+            Assert.False(result.HasUnconfiguredTools);
+            Assert.Equal(toolCount * costPerUnit, result.TotalCost);
         }
 
         [Fact]
@@ -71,7 +77,7 @@ namespace ConduitLLM.Tests.Http.Services
         {
             // Arrange
             var providerType = ProviderType.Groq;
-            
+
             _context.ProviderTools.AddRange(
                 new ProviderTool
                 {
@@ -105,11 +111,11 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
 
             // Assert
-            Assert.Equal((3 * 0.03m) + (2 * 0.05m), result); // 0.09 + 0.10 = 0.19
+            Assert.Equal((3 * 0.03m) + (2 * 0.05m), result.TotalCost); // 0.09 + 0.10 = 0.19
         }
 
         [Fact]
-        public async Task CalculateToolCostsAsync_WithMissingToolConfig_ReturnsZero()
+        public async Task CalculateToolCostsAsync_WithMissingToolConfig_ReturnsZeroAndReportsUnconfigured()
         {
             // Arrange
             var toolUsage = new ToolUsageData
@@ -124,15 +130,44 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(toolUsage, ProviderType.Groq);
 
             // Assert
-            Assert.Equal(0m, result);
-            _loggerMock.Verify(
-                x => x.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("No cost configuration found")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            Assert.Equal(0m, result.TotalCost);
+            Assert.True(result.HasUnconfiguredTools);
+            Assert.Contains("nonexistent_tool", result.UnconfiguredToolNames);
+        }
+
+        [Fact]
+        public async Task CalculateToolCostsAsync_WithMixedConfiguredAndUnconfigured_ReportsUnconfigured()
+        {
+            // Arrange
+            var providerType = ProviderType.Groq;
+
+            _context.ProviderTools.Add(new ProviderTool
+            {
+                Provider = providerType,
+                ToolName = "code_interpreter",
+                CostPerUnit = 0.03m,
+                BillingUnit = "requests",
+                IsActive = true
+            });
+            await _context.SaveChangesAsync();
+
+            var toolUsage = new ToolUsageData
+            {
+                Tools = new List<ToolUsageItem>
+                {
+                    new ToolUsageItem { ToolName = "code_interpreter", Count = 2 },
+                    new ToolUsageItem { ToolName = "unknown_tool", Count = 3 }
+                }
+            };
+
+            // Act
+            var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
+
+            // Assert — cost only from configured tool, but unconfigured tool is reported
+            Assert.Equal(2 * 0.03m, result.TotalCost);
+            Assert.True(result.HasUnconfiguredTools);
+            Assert.Contains("unknown_tool", result.UnconfiguredToolNames);
+            Assert.DoesNotContain("code_interpreter", result.UnconfiguredToolNames);
         }
 
         [Fact]
@@ -164,7 +199,8 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
 
             // Assert
-            Assert.Equal(0m, result);
+            Assert.Equal(0m, result.TotalCost);
+            Assert.True(result.HasUnconfiguredTools);
         }
 
         [Fact]
@@ -198,7 +234,7 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
 
             // Assert
-            Assert.Equal(durationHours * costPerHour, result);
+            Assert.Equal(durationHours * costPerHour, result.TotalCost);
         }
 
         [Fact]
@@ -232,7 +268,113 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
 
             // Assert
-            Assert.Equal(durationMinutes * costPerMinute, result);
+            Assert.Equal(durationMinutes * costPerMinute, result.TotalCost);
+        }
+
+        [Fact]
+        public async Task CalculateToolCostsAsync_WithDurationSeconds_ConvertsToHours()
+        {
+            // Arrange
+            var providerType = ProviderType.Groq;
+            var toolName = "code_interpreter";
+            var costPerHour = 1.00m;
+            var durationSeconds = 7200m; // 2 hours
+
+            _context.ProviderTools.Add(new ProviderTool
+            {
+                Provider = providerType,
+                ToolName = toolName,
+                CostPerUnit = costPerHour,
+                BillingUnit = "hours",
+                IsActive = true
+            });
+            await _context.SaveChangesAsync();
+
+            var toolUsage = new ToolUsageData
+            {
+                Tools = new List<ToolUsageItem>
+                {
+                    new ToolUsageItem { ToolName = toolName, Count = 1, DurationSeconds = durationSeconds }
+                }
+            };
+
+            // Act
+            var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
+
+            // Assert - 7200 seconds = 2 hours × $1.00 = $2.00
+            Assert.Equal(2.00m, result.TotalCost);
+        }
+
+        [Fact]
+        public async Task CalculateToolCostsAsync_WithDurationSeconds_ConvertsToMinutes()
+        {
+            // Arrange
+            var providerType = ProviderType.Groq;
+            var toolName = "code_interpreter";
+            var costPerMinute = 0.10m;
+            var durationSeconds = 300m; // 5 minutes
+
+            _context.ProviderTools.Add(new ProviderTool
+            {
+                Provider = providerType,
+                ToolName = toolName,
+                CostPerUnit = costPerMinute,
+                BillingUnit = "minutes",
+                IsActive = true
+            });
+            await _context.SaveChangesAsync();
+
+            var toolUsage = new ToolUsageData
+            {
+                Tools = new List<ToolUsageItem>
+                {
+                    new ToolUsageItem { ToolName = toolName, Count = 1, DurationSeconds = durationSeconds }
+                }
+            };
+
+            // Act
+            var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
+
+            // Assert - 300 seconds = 5 minutes × $0.10 = $0.50
+            Assert.Equal(0.50m, result.TotalCost);
+        }
+
+        [Fact]
+        public async Task CalculateToolCostsAsync_DurationSeconds_TakesPriorityOverDuration()
+        {
+            // Arrange
+            var providerType = ProviderType.Groq;
+            var toolName = "code_interpreter";
+
+            _context.ProviderTools.Add(new ProviderTool
+            {
+                Provider = providerType,
+                ToolName = toolName,
+                CostPerUnit = 1.00m,
+                BillingUnit = "hours",
+                IsActive = true
+            });
+            await _context.SaveChangesAsync();
+
+            var toolUsage = new ToolUsageData
+            {
+                Tools = new List<ToolUsageItem>
+                {
+                    new ToolUsageItem
+                    {
+                        ToolName = toolName,
+                        Count = 1,
+                        Duration = 99m, // Should be ignored
+                        DurationSeconds = 3600m // 1 hour — should take priority
+                    }
+                }
+            };
+
+            // Act
+            var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
+
+            // Assert - DurationSeconds (3600s = 1hr) takes priority over Duration (99)
+            Assert.Equal(1.00m, result.TotalCost);
         }
 
         [Fact]
@@ -242,7 +384,8 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(null!, ProviderType.Groq);
 
             // Assert
-            Assert.Equal(0m, result);
+            Assert.Equal(0m, result.TotalCost);
+            Assert.False(result.HasUnconfiguredTools);
         }
 
         [Fact]
@@ -258,7 +401,7 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(toolUsage, ProviderType.Groq);
 
             // Assert
-            Assert.Equal(0m, result);
+            Assert.Equal(0m, result.TotalCost);
         }
 
         [Fact]
@@ -281,7 +424,7 @@ namespace ConduitLLM.Tests.Http.Services
             Assert.NotNull(result);
             Assert.Contains("code_interpreter", result);
             Assert.Contains("browser_search", result);
-            
+
             // Verify it's valid JSON
             var deserialized = JsonSerializer.Deserialize<ToolUsageData>(result, new JsonSerializerOptions
             {
@@ -302,7 +445,7 @@ namespace ConduitLLM.Tests.Http.Services
         }
 
         [Fact]
-        public async Task CalculateToolCostsAsync_HandlesExceptionGracefully()
+        public async Task CalculateToolCostsAsync_OnDbFailure_ReturnsFailed()
         {
             // Arrange
             var toolUsage = new ToolUsageData
@@ -313,22 +456,19 @@ namespace ConduitLLM.Tests.Http.Services
                 }
             };
 
-            // Force an exception by disposing the context
-            _context.Dispose();
+            // Force an exception
+            var failingFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
+            failingFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Database unavailable"));
+
+            var failingService = new ToolCostCalculationService(failingFactory.Object, _loggerMock.Object);
 
             // Act
-            var result = await _service.CalculateToolCostsAsync(toolUsage, ProviderType.Groq);
+            var result = await failingService.CalculateToolCostsAsync(toolUsage, ProviderType.Groq);
 
             // Assert
-            Assert.Equal(0m, result);
-            _loggerMock.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to calculate tool costs")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            Assert.True(result.Failed);
+            Assert.Equal(-1m, result.TotalCost);
         }
 
         [Fact]
@@ -360,7 +500,8 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
 
             // Assert
-            Assert.Equal(0m, result);
+            Assert.Equal(0m, result.TotalCost);
+            Assert.True(result.HasUnconfiguredTools);
         }
     }
 }

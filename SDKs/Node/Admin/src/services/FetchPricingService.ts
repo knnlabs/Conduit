@@ -1,6 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import { PagedResult } from '../models/security';
+import { PagedResult } from '../models/common-types';
 import {
   PricingRulesConfig,
   PricingValidationResult,

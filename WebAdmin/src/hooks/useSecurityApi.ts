@@ -1,16 +1,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type {
   IpFilterDto,
   CreateIpFilterDto,
   UpdateIpFilterDto,
-  SecurityEvent,
-  ThreatDetection,
-  SecurityEventFilters,
-  ComplianceMetrics,
 } from '@knn_labs/conduit-admin-client';
 
 // Legacy interface for backward compatibility - maps to IpFilterDto
@@ -64,79 +60,6 @@ export function useSecurityApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getSecurityEvents = useCallback(async (params?: {
-    page?: number;
-    pageSize?: number;
-    severity?: string;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ events: SecurityEvent[]; total: number }> => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const filters: SecurityEventFilters = {
-        page: params?.page,
-        pageSize: params?.pageSize,
-        severity: params?.severity as SecurityEventFilters['severity'],
-        startDate: params?.startDate,
-        endDate: params?.endDate,
-      };
-
-      const result = await withAdminClient(client =>
-        client.security.getEvents(filters)
-      );
-
-      return { events: result.items, total: result.totalCount };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch security events';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const getThreats = useCallback(async (params?: {
-    status?: 'active' | 'mitigated' | 'resolved';
-    severity?: string;
-  }): Promise<ThreatDetection[]> => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const result = await withAdminClient(client =>
-        client.security.getThreats()
-      );
-
-      // Filter threats based on parameters (client-side filtering since SDK doesn't support it yet)
-      let filteredThreats = result;
-      
-      if (params?.status) {
-        // Map 'mitigated' to 'acknowledged' since that's what the API supports
-        const mappedStatus = params.status === 'mitigated' ? 'acknowledged' : params.status;
-        filteredThreats = result.filter(threat => 
-          threat.status === mappedStatus || 
-          (params.status === 'mitigated' && threat.status === 'acknowledged')
-        );
-      }
-      
-      if (params?.severity) {
-        filteredThreats = filteredThreats.filter(threat => 
-          threat.severity === params.severity
-        );
-      }
-
-      return filteredThreats;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch threats';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   const getIpRules = useCallback(async (): Promise<IpRule[]> => {
     setIsLoading(true);
     setError(null);
@@ -168,22 +91,14 @@ export function useSecurityApi() {
         client.ipFilters.create(createDto)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'IP rule created successfully',
-        color: 'green',
-      });
+      notify.success('IP rule created successfully');
 
       // Convert back to legacy format
       return ipFilterToLegacyRule(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create IP rule';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -213,11 +128,7 @@ export function useSecurityApi() {
         client.ipFilters.update(numericId, updateDto)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'IP rule updated successfully',
-        color: 'green',
-      });
+      notify.success('IP rule updated successfully');
 
       // Return the updated rule (we need to fetch it to get the complete data)
       const updatedFilter = await withAdminClient(client =>
@@ -228,11 +139,7 @@ export function useSecurityApi() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update IP rule';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -253,19 +160,11 @@ export function useSecurityApi() {
         client.ipFilters.deleteById(numericId)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'IP rule deleted successfully',
-        color: 'green',
-      });
+      notify.success('IP rule deleted successfully');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete IP rule';
       setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err);
       throw err;
     } finally {
       setIsLoading(false);
@@ -303,35 +202,12 @@ export function useSecurityApi() {
     }
   }, []);
 
-  const getComplianceStatus = useCallback(async (): Promise<ComplianceMetrics> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await withAdminClient(client =>
-        client.security.getComplianceStatus()
-      );
-
-      // The SDK returns unknown, so we cast to ComplianceMetrics
-      return result as ComplianceMetrics;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch compliance status';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   return {
-    getSecurityEvents,
-    getThreats,
     getIpRules,
     createIpRule,
     updateIpRule,
     deleteIpRule,
     getIpStats,
-    getComplianceStatus,
     isLoading,
     error,
   };

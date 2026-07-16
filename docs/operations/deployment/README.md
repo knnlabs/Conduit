@@ -17,7 +17,7 @@ This directory contains guides for deploying and operating Conduit in production
 docker-compose up -d
 
 # Using standalone Docker
-docker run -p 5000:5000 ghcr.io/knnlabs/conduit:latest
+docker run -p 5000:5000 ghcr.io/nickna/conduit:latest
 ```
 
 ### Production Checklist

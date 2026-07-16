@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
 /// Represents an IP address or subnet filter used for API access control.
 /// Supports both IPv4 and IPv6 addresses with CIDR notation.
 /// </summary>
-public class IpFilterEntity
+public class IpFilterEntity : IEntity<int>, IAuditableEntity
 {
     /// <summary>
     /// Unique identifier for the IP filter

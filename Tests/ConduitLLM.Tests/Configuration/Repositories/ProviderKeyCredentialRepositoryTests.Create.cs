@@ -30,10 +30,11 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             };
 
             // Act
-            var result = await _repository.CreateAsync(keyCredential);
+            var resultId = await _repository.CreateAsync(keyCredential);
 
             // Assert
-            Assert.True(result.IsPrimary, "First enabled key should automatically be set as primary");
+            Assert.True(keyCredential.IsPrimary, "First enabled key should automatically be set as primary");
+            Assert.True(resultId > 0, "Should return the created ID");
         }
 
         [Fact]
@@ -74,10 +75,11 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             };
 
             // Act
-            var result = await _repository.CreateAsync(secondKeyCredential);
+            var resultId = await _repository.CreateAsync(secondKeyCredential);
 
             // Assert
-            Assert.False(result.IsPrimary, "Second enabled key should not automatically be set as primary");
+            Assert.False(secondKeyCredential.IsPrimary, "Second enabled key should not automatically be set as primary");
+            Assert.True(resultId > 0, "Should return the created ID");
         }
 
         [Fact]
@@ -105,10 +107,11 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             };
 
             // Act
-            var result = await _repository.CreateAsync(keyCredential);
+            var resultId = await _repository.CreateAsync(keyCredential);
 
             // Assert
-            Assert.False(result.IsPrimary, "Disabled key should not automatically be set as primary");
+            Assert.False(keyCredential.IsPrimary, "Disabled key should not automatically be set as primary");
+            Assert.True(resultId > 0, "Should return the created ID");
         }
 
         [Fact]
@@ -136,10 +139,11 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             };
 
             // Act
-            var result = await _repository.CreateAsync(keyCredential);
+            var resultId = await _repository.CreateAsync(keyCredential);
 
             // Assert
-            Assert.True(result.IsPrimary, "Explicitly set primary should remain primary");
+            Assert.True(keyCredential.IsPrimary, "Explicitly set primary should remain primary");
+            Assert.True(resultId > 0, "Should return the created ID");
         }
     }
 }

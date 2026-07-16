@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -6,20 +7,53 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Providers.Authentication;
 using ConduitLLM.Providers.Common.Models;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
     /// <summary>
-    /// Base class for LLM client implementations that provides common functionality 
+    /// Base class for LLM client implementations that provides common functionality
     /// and standardized handling of requests, responses, and errors.
     /// </summary>
     public abstract class BaseLLMClient : ILLMClient, IAuthenticationVerifiable
     {
+        /// <summary>
+        /// Default timeout for standard API requests (2 minutes).
+        /// Matches <see cref="ProviderHttpClientOptions.DefaultTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(120);
+
+        /// <summary>
+        /// Timeout for authentication verification requests (30 seconds).
+        /// Matches <see cref="ProviderHttpClientOptions.AuthVerificationTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan AuthVerificationTimeout = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Timeout for image generation requests (3 minutes).
+        /// Matches <see cref="ProviderHttpClientOptions.ImageGenerationTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan ImageGenerationTimeout = TimeSpan.FromSeconds(180);
+
+        /// <summary>
+        /// Timeout for video generation requests (10 minutes).
+        /// Matches <see cref="ProviderHttpClientOptions.VideoGenerationTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan VideoGenerationTimeout = TimeSpan.FromMinutes(10);
+
+        /// <summary>
+        /// Timeout for large file downloads (30 minutes).
+        /// Matches <see cref="ProviderHttpClientOptions.LargeFileDownloadTimeoutSeconds"/>.
+        /// </summary>
+        protected static readonly TimeSpan LargeFileDownloadTimeout = TimeSpan.FromMinutes(30);
+
         protected readonly Provider Provider;
         protected readonly ProviderKeyCredential PrimaryKeyCredential;
         protected readonly string ProviderModelId;
@@ -33,6 +67,24 @@ namespace ConduitLLM.Providers
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
+
+        /// <summary>
+        /// Gets the authentication strategy for this provider.
+        /// Override in derived classes to use provider-specific authentication methods.
+        /// </summary>
+        /// <remarks>
+        /// Default is Bearer token authentication. Override this property in derived classes
+        /// for providers that use different authentication methods (e.g., Token, api-key header).
+        /// </remarks>
+        protected virtual IAuthenticationStrategy AuthenticationStrategy => BearerTokenStrategy.Instance;
+
+        /// <summary>
+        /// Gets the provider configuration from the registry.
+        /// Returns null if no configuration is registered for this provider type.
+        /// </summary>
+        protected virtual ProviderConfiguration? ProviderConfig =>
+            ProviderConfigurationRegistry.TryGetConfiguration(Provider.ProviderType, out var config)
+                ? config : null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BaseLLMClient"/> class.
@@ -81,18 +133,18 @@ namespace ConduitLLM.Providers
         /// </summary>
         /// <param name="apiKey">Optional API key to override the one in credentials.</param>
         /// <returns>A configured HttpClient instance.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when IHttpClientFactory is not available.</exception>
         protected virtual HttpClient CreateHttpClient(string? apiKey = null)
         {
-            HttpClient client;
+            if (HttpClientFactory == null)
+            {
+                throw new InvalidOperationException(
+                    $"IHttpClientFactory is required for {ProviderName} but was not injected. " +
+                    "Ensure IHttpClientFactory is registered in the dependency injection container. " +
+                    "Creating HttpClient instances directly can cause socket exhaustion under load.");
+            }
 
-            if (HttpClientFactory != null)
-            {
-                client = HttpClientFactory.CreateClient($"{ProviderName}LLMClient");
-            }
-            else
-            {
-                client = new HttpClient();
-            }
+            var client = HttpClientFactory.CreateClient($"{ProviderName}LLMClient");
 
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
@@ -118,21 +170,21 @@ namespace ConduitLLM.Providers
 
             // Configure authentication
             ConfigureAuthentication(client, apiKey);
-            
-            // Configure timeout
-            client.Timeout = TimeSpan.FromMinutes(5);
+
+            // Configure default timeout (can be overridden per-request)
+            client.Timeout = DefaultRequestTimeout;
         }
         
         /// <summary>
         /// Configures authentication for the HttpClient.
-        /// Override in derived classes to use provider-specific authentication methods.
+        /// Uses the <see cref="AuthenticationStrategy"/> property to determine the authentication method.
+        /// Override the <see cref="AuthenticationStrategy"/> property in derived classes to change the authentication method.
         /// </summary>
         /// <param name="client">The HttpClient to configure.</param>
         /// <param name="apiKey">The API key to use for authentication.</param>
         protected virtual void ConfigureAuthentication(HttpClient client, string apiKey)
         {
-            // Default Bearer token authentication - can be overridden by providers
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            AuthenticationStrategy.ApplyAuthentication(client, apiKey);
         }
 
         /// <summary>
@@ -141,29 +193,30 @@ namespace ConduitLLM.Providers
         /// </summary>
         /// <param name="apiKey">The API key to use for authentication.</param>
         /// <returns>A configured HttpClient for authentication verification.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when IHttpClientFactory is not available.</exception>
         protected virtual HttpClient CreateAuthenticationVerificationClient(string apiKey)
         {
-            HttpClient client;
-            if (HttpClientFactory != null)
+            if (HttpClientFactory == null)
             {
-                client = HttpClientFactory.CreateClient($"{ProviderName}AuthVerification");
+                throw new InvalidOperationException(
+                    $"IHttpClientFactory is required for {ProviderName} authentication verification but was not injected. " +
+                    "Ensure IHttpClientFactory is registered in the dependency injection container. " +
+                    "Creating HttpClient instances directly can cause socket exhaustion under load.");
             }
-            else
-            {
-                client = new HttpClient();
-            }
+
+            var client = HttpClientFactory.CreateClient($"{ProviderName}AuthVerification");
 
             // Configure basic headers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            
+
             // Configure authentication
             ConfigureAuthentication(client, apiKey);
-            
+
             // Use a shorter timeout for health checks
-            client.Timeout = TimeSpan.FromSeconds(30);
-            
+            client.Timeout = AuthVerificationTimeout;
+
             // Do NOT set BaseAddress - we'll be using absolute URLs
             return client;
         }
@@ -278,7 +331,8 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
-        /// Safely executes an API request with standardized error handling.
+        /// Safely executes an API request with standardized error handling, tracing,
+        /// metrics, and structured logging scope.
         /// </summary>
         /// <typeparam name="TResult">The type of result expected from the operation.</typeparam>
         /// <param name="operation">The operation to execute.</param>
@@ -290,14 +344,133 @@ namespace ConduitLLM.Providers
             string operationName,
             CancellationToken cancellationToken)
         {
-            return await ExceptionHandler.HandleHttpRequestAsync(
-                async () =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return await operation();
-                },
-                Logger,
-                $"{ProviderName} ({operationName})");
+            using var activity = ProviderInstrumentation.StartRequestActivity(
+                operationName, ProviderName, ProviderTypeName, ProviderModelId);
+            using var scope = BeginProviderLogScope(operationName);
+            var stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                var result = await ExceptionHandler.HandleHttpRequestAsync(
+                    async () =>
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return await operation();
+                    },
+                    Logger,
+                    $"{ProviderName} ({operationName})");
+
+                stopwatch.Stop();
+                ProviderInstrumentation.RecordRequest(
+                    operationName, ProviderName, ProviderTypeName, ProviderModelId,
+                    stopwatch.Elapsed.TotalMilliseconds, success: true);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                stopwatch.Stop();
+                ProviderInstrumentation.RecordRequest(
+                    operationName, ProviderName, ProviderTypeName, ProviderModelId,
+                    stopwatch.Elapsed.TotalMilliseconds, success: false,
+                    errorType: nameof(OperationCanceledException));
+                activity?.SetStatus(ActivityStatusCode.Error, "cancelled");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                ProviderInstrumentation.RecordRequest(
+                    operationName, ProviderName, ProviderTypeName, ProviderModelId,
+                    stopwatch.Elapsed.TotalMilliseconds, success: false,
+                    errorType: ex.GetType().Name);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Provider type name (e.g., "OpenAI", "Groq") used as a tag on spans and metrics.
+        /// </summary>
+        protected string ProviderTypeName => Provider.ProviderType.ToString();
+
+        /// <summary>
+        /// Opens an <see cref="ILogger"/> scope populated with provider, model, key, and
+        /// operation context so that all downstream log entries inherit correlation tags.
+        /// </summary>
+        /// <param name="operationName">The current operation name (e.g., "ChatCompletion").</param>
+        /// <returns>A disposable scope; may be null if the underlying logger does not support scopes.</returns>
+        protected IDisposable? BeginProviderLogScope(string operationName)
+        {
+            return Logger.BeginScope(new Dictionary<string, object?>
+            {
+                ["ProviderName"] = ProviderName,
+                ["ProviderType"] = ProviderTypeName,
+                ["ProviderId"] = Provider.Id,
+                ["KeyCredentialId"] = PrimaryKeyCredential.Id,
+                ["Model"] = ProviderModelId,
+                ["Operation"] = operationName
+            });
+        }
+
+        /// <summary>
+        /// Records token usage metrics + tags reported by the provider.
+        /// Safe to call with a null <paramref name="usage"/>; counters are only incremented
+        /// for token dimensions that are populated.
+        /// </summary>
+        /// <param name="usage">The usage object returned by the provider, or null.</param>
+        /// <param name="operationName">The operation that produced the usage (e.g., "ChatCompletion").</param>
+        protected void RecordUsage(Usage? usage, string operationName)
+        {
+            if (usage == null)
+            {
+                return;
+            }
+
+            ProviderInstrumentation.RecordUsage(
+                operationName,
+                ProviderName,
+                ProviderTypeName,
+                ProviderModelId,
+                usage.PromptTokens,
+                usage.CompletionTokens,
+                usage.TotalTokens);
+
+            if ((usage.PromptTokens ?? 0) > 0 ||
+                (usage.CompletionTokens ?? 0) > 0 ||
+                (usage.TotalTokens ?? 0) > 0)
+            {
+                Logger.LogDebug(
+                    "{Provider} {Operation} usage: Prompt={Prompt}, Completion={Completion}, Total={Total}",
+                    ProviderName, operationName,
+                    usage.PromptTokens ?? 0,
+                    usage.CompletionTokens ?? 0,
+                    usage.TotalTokens ?? 0);
+            }
+        }
+
+        /// <summary>
+        /// Begins an instrumentation scope for a streaming provider request.
+        /// Use inside an async iterator with try/finally; call <c>RecordChunk()</c> per chunk
+        /// and <c>RecordFailure(...)</c> before re-throwing on error.
+        /// </summary>
+        /// <param name="operationName">The operation name (e.g., "StreamChatCompletion").</param>
+        protected ProviderInstrumentation.StreamingScope BeginStreamingScope(string operationName)
+        {
+            return ProviderInstrumentation.BeginStreaming(
+                operationName, ProviderName, ProviderTypeName, ProviderModelId);
+        }
+
+        /// <summary>
+        /// Begins an instrumentation scope for a long-running async-job poll loop
+        /// (e.g., Replicate predictions, MiniMax video generation).
+        /// Pair with <c>using</c> and pass to <c>AsyncJobPoller.PollAsync</c>.
+        /// </summary>
+        /// <param name="operationName">The operation name (e.g., "CreateVideo", "CreateImage").</param>
+        protected ProviderInstrumentation.PollingScope BeginPollingScope(string operationName)
+        {
+            return ProviderInstrumentation.BeginPolling(
+                operationName, ProviderName, ProviderTypeName, ProviderModelId);
         }
 
         /// <summary>
@@ -319,6 +492,7 @@ namespace ConduitLLM.Providers
 
         /// <summary>
         /// Creates a dictionary of standard headers for API requests.
+        /// Uses the <see cref="AuthenticationStrategy"/> property to determine the authentication header.
         /// </summary>
         /// <param name="apiKey">Optional API key to override the one in credentials.</param>
         /// <returns>A dictionary of headers.</returns>
@@ -331,9 +505,17 @@ namespace ConduitLLM.Providers
                 ["User-Agent"] = "ConduitLLM"
             };
 
-            // Add authentication - default to Bearer
-            // Override in derived classes to use different auth methods
-            headers["Authorization"] = $"Bearer {effectiveApiKey}";
+            // Add authentication using the strategy
+            var authHeader = AuthenticationStrategy.CreateAuthenticationHeader(effectiveApiKey);
+            if (authHeader != null)
+            {
+                headers["Authorization"] = $"{authHeader.Scheme} {authHeader.Parameter}";
+            }
+            else if (AuthenticationStrategy is ApiKeyHeaderStrategy apiKeyStrategy)
+            {
+                // For header-based auth strategies that don't use Authorization header
+                headers[apiKeyStrategy.HeaderName] = effectiveApiKey;
+            }
 
             return headers;
         }
@@ -346,40 +528,93 @@ namespace ConduitLLM.Providers
         /// <param name="cancellationToken">Cancellation token for the operation.</param>
         /// <returns>An authentication result indicating success or failure.</returns>
         /// <remarks>
-        /// This default implementation performs a basic check that the API key exists.
-        /// Derived classes should override this method to implement provider-specific
-        /// authentication verification logic.
+        /// This implementation makes an actual HTTP request to verify the API key works.
+        /// It uses <see cref="GetHealthCheckUrl"/> to determine the endpoint.
+        /// Derived classes can override this for provider-specific verification logic,
+        /// or just override <see cref="GetHealthCheckUrl"/> if only the endpoint differs.
         /// </remarks>
         public virtual async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
             string? apiKey = null,
             string? baseUrl = null,
             CancellationToken cancellationToken = default)
         {
+            var startTime = DateTime.UtcNow;
+
             try
             {
                 // Use provided API key or fall back to configured one
                 var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
-                
+
                 // Basic validation
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
                     return Core.Interfaces.AuthenticationResult.Failure(
                         "API key is required",
-                        "No API key provided for authentication verification");
+                        $"No API key provided for {ProviderName} authentication");
                 }
 
-                // For base implementation, just verify key exists
-                // Derived classes should override with actual API calls
-                Logger.LogInformation("Basic authentication check passed for {Provider}", ProviderName);
-                
-                // Return completed task to make this properly async
-                await Task.CompletedTask;
-                
-                return Core.Interfaces.AuthenticationResult.Success($"Authentication verified for {ProviderName}");
+                // Create HTTP client and make verification request
+                using var client = CreateAuthenticationVerificationClient(effectiveApiKey);
+                var healthCheckUrl = GetHealthCheckUrl(baseUrl);
+
+                Logger.LogDebug("Verifying {Provider} authentication with endpoint: {Endpoint}", ProviderName, healthCheckUrl);
+
+                using var response = await client.GetAsync(healthCheckUrl, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                Logger.LogInformation("{Provider} auth check returned status {StatusCode}", ProviderName, response.StatusCode);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success(
+                        $"Connected successfully to {ProviderName}",
+                        responseTime);
+                }
+
+                // Handle specific error cases
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    Logger.LogWarning("{Provider} authentication failed: {Response}", ProviderName, responseContent);
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Authentication failed",
+                        $"Invalid API key for {ProviderName}");
+                }
+
+                if (response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Access forbidden",
+                        $"API key does not have sufficient permissions for {ProviderName}");
+                }
+
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Unexpected response: {response.StatusCode}",
+                    responseContent);
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogError(ex, "Network error verifying {Provider} authentication", ProviderName);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Network error: {ex.Message}",
+                    ex.ToString());
+            }
+            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+            {
+                Logger.LogError(ex, "Timeout verifying {Provider} authentication", ProviderName);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    "Request timeout",
+                    "Authentication request timed out");
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogDebug("{Provider} authentication verification was cancelled", ProviderName);
+                throw;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error verifying authentication for {Provider}", ProviderName);
+                Logger.LogError(ex, "Error verifying {Provider} authentication", ProviderName);
                 return Core.Interfaces.AuthenticationResult.Failure(
                     $"Authentication verification failed: {ex.Message}",
                     ex.ToString());
@@ -392,16 +627,19 @@ namespace ConduitLLM.Providers
         /// <param name="baseUrl">Optional base URL override. If null, uses the configured URL.</param>
         /// <returns>The URL to use for health checks.</returns>
         /// <remarks>
-        /// This default implementation returns a generic /health endpoint.
-        /// Derived classes should override this method to return provider-specific URLs.
+        /// This default implementation uses the health check endpoint from the provider configuration registry,
+        /// falling back to the /models endpoint which is commonly used by OpenAI-compatible APIs.
+        /// Derived classes can override this method for provider-specific endpoints.
         /// </remarks>
         public virtual string GetHealthCheckUrl(string? baseUrl = null)
         {
-            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
-                ? baseUrl.TrimEnd('/') 
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                ? baseUrl.TrimEnd('/')
                 : (Provider.BaseUrl ?? GetDefaultBaseUrl()).TrimEnd('/');
-            
-            return $"{effectiveBaseUrl}/health";
+
+            // Use the health check endpoint from configuration, or default to /models
+            var healthCheckEndpoint = ProviderConfigurationRegistry.GetHealthCheckEndpoint(Provider.ProviderType);
+            return $"{effectiveBaseUrl}{healthCheckEndpoint}";
         }
 
         /// <summary>
@@ -409,11 +647,14 @@ namespace ConduitLLM.Providers
         /// </summary>
         /// <returns>The default base URL.</returns>
         /// <remarks>
-        /// Override in derived classes to provide provider-specific default URLs.
+        /// Uses the default URL from the provider configuration registry.
+        /// Override in derived classes to provide provider-specific default URLs
+        /// if not defined in the registry.
         /// </remarks>
         protected virtual string GetDefaultBaseUrl()
         {
-            return "https://api.example.com";
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(Provider.ProviderType)
+                ?? "https://api.example.com";
         }
 
         /// <summary>
@@ -453,12 +694,145 @@ namespace ConduitLLM.Providers
         /// <param name="responseBody">The response body for additional context.</param>
         /// <returns>The refined error type.</returns>
         protected virtual ProviderErrorType RefineErrorClassification(
-            ProviderErrorType baseType, 
+            ProviderErrorType baseType,
             string? responseBody)
         {
-            // Base implementation returns the status code-based classification
-            // Derived classes should override to parse provider-specific error messages
+            if (string.IsNullOrEmpty(responseBody))
+                return baseType;
+
+            var lowerBody = responseBody.ToLowerInvariant();
+
+            // Common pattern: 403 with quota/billing keywords → InsufficientBalance
+            if (baseType == ProviderErrorType.AccessForbidden &&
+                (lowerBody.Contains("insufficient_quota") ||
+                 lowerBody.Contains("exceeded your current quota") ||
+                 lowerBody.Contains("billing") ||
+                 lowerBody.Contains("payment") ||
+                 lowerBody.Contains("credit")))
+            {
+                return ProviderErrorType.InsufficientBalance;
+            }
+
+            // Common pattern: authentication method mismatch (e.g., Bearer token
+            // sent to a provider that requires a custom API key header)
+            if (baseType == ProviderErrorType.InvalidApiKey &&
+                (lowerBody.Contains("invalid bearer token") ||
+                 lowerBody.Contains("invalid api key") ||
+                 lowerBody.Contains("invalid x-api-key") ||
+                 lowerBody.Contains("authentication_error")))
+            {
+                return ProviderErrorType.InvalidApiKey;
+            }
+
+            // Common pattern: rate limit keywords regardless of status code
+            if (lowerBody.Contains("rate limit") ||
+                lowerBody.Contains("too many requests"))
+            {
+                return ProviderErrorType.RateLimitExceeded;
+            }
+
+            // Common pattern: model not found keywords
+            if (lowerBody.Contains("model") &&
+                (lowerBody.Contains("not found") ||
+                 lowerBody.Contains("does not exist") ||
+                 lowerBody.Contains("invalid model")))
+            {
+                return ProviderErrorType.ModelNotFound;
+            }
+
             return baseType;
+        }
+
+        /// <summary>
+        /// Extracts a more helpful error message from exception details.
+        /// Checks Response: patterns, embedded JSON, Data["Body"], and InnerException.
+        /// </summary>
+        /// <param name="ex">The exception to extract information from.</param>
+        /// <returns>An enhanced error message.</returns>
+        protected virtual string ExtractEnhancedErrorMessage(Exception ex)
+        {
+            // 1. Look for "Response:" pattern in the message
+            var msg = ex.Message;
+            var responseIdx = msg.IndexOf("Response:");
+            if (responseIdx >= 0)
+            {
+                var extracted = msg.Substring(responseIdx + "Response:".Length).Trim();
+                if (!string.IsNullOrEmpty(extracted))
+                {
+                    return extracted;
+                }
+            }
+
+            // 2. Look for JSON content in the message
+            var jsonStart = msg.IndexOf("{");
+            var jsonEnd = msg.LastIndexOf("}");
+            if (jsonStart >= 0 && jsonEnd > jsonStart)
+            {
+                var jsonPart = msg.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                try
+                {
+                    var json = JsonDocument.Parse(jsonPart);
+                    if (json.RootElement.TryGetProperty("error", out var errorElement))
+                    {
+                        if (errorElement.TryGetProperty("message", out var messageElement))
+                        {
+                            return messageElement.GetString() ?? msg;
+                        }
+                    }
+                }
+                catch
+                {
+                    // If parsing fails, continue to the next method
+                }
+            }
+
+            // 3. Look for Body data in the exception's Data dictionary
+            if (ex.Data.Contains("Body") && ex.Data["Body"] is string body && !string.IsNullOrEmpty(body))
+            {
+                return body;
+            }
+
+            // 4. Try inner exception
+            if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
+            {
+                return ex.InnerException.Message;
+            }
+
+            // 5. Fallback to original message
+            return msg;
+        }
+
+        /// <summary>
+        /// Extracts a user-friendly error message from a JSON string by checking common error paths:
+        /// error.message, error (as string), and message.
+        /// </summary>
+        /// <param name="jsonContent">The JSON content to parse.</param>
+        /// <param name="fallback">The fallback message if parsing fails.</param>
+        /// <returns>The extracted error message or the fallback.</returns>
+        protected static string ExtractErrorFromJson(string jsonContent, string fallback)
+        {
+            try
+            {
+                var json = JsonDocument.Parse(jsonContent);
+
+                if (json.RootElement.TryGetProperty("error", out var error))
+                {
+                    if (error.TryGetProperty("message", out var message))
+                        return message.GetString() ?? fallback;
+
+                    if (error.ValueKind == JsonValueKind.String)
+                        return error.GetString() ?? fallback;
+                }
+
+                if (json.RootElement.TryGetProperty("message", out var directMessage))
+                    return directMessage.GetString() ?? fallback;
+            }
+            catch
+            {
+                // Not JSON or parsing failed
+            }
+
+            return fallback;
         }
 
         /// <summary>
@@ -483,34 +857,14 @@ namespace ConduitLLM.Providers
                 }
             }
 
-            // Try to parse JSON error message
+            var fallback = $"{response.StatusCode}: {response.ReasonPhrase ?? "Unknown error"}";
+
             if (!string.IsNullOrEmpty(responseBody))
             {
-                try
-                {
-                    var json = JsonDocument.Parse(responseBody);
-                    
-                    // Common error message patterns
-                    if (json.RootElement.TryGetProperty("error", out var error))
-                    {
-                        if (error.TryGetProperty("message", out var message))
-                            return message.GetString() ?? responseBody;
-                        
-                        if (error.ValueKind == JsonValueKind.String)
-                            return error.GetString() ?? responseBody;
-                    }
-                    
-                    if (json.RootElement.TryGetProperty("message", out var directMessage))
-                        return directMessage.GetString() ?? responseBody;
-                }
-                catch
-                {
-                    // Not JSON or parsing failed
-                }
+                return ExtractErrorFromJson(responseBody, fallback);
             }
 
-            // Fallback to status code description
-            return $"{response.StatusCode}: {response.ReasonPhrase ?? "Unknown error"}";
+            return fallback;
         }
 
         /// <summary>

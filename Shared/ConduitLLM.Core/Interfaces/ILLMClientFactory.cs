@@ -8,23 +8,24 @@ namespace ConduitLLM.Core.Interfaces;
 public interface ILLMClientFactory
 {
     /// <summary>
-    /// Gets an appropriate ILLMClient instance for the specified model alias based on the loaded configuration.
+    /// Asynchronously gets an appropriate ILLMClient instance for the specified model alias.
     /// </summary>
     /// <param name="modelAlias">The model alias specified in the request (e.g., "gpt-4-turbo").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An instance of ILLMClient capable of handling the request for the specified model.</returns>
     /// <exception cref="ConfigurationException">Thrown if the configuration for the model alias or its provider is invalid or missing.</exception>
     /// <exception cref="UnsupportedProviderException">Thrown if the provider specified in the configuration is not supported by this factory.</exception>
-    ILLMClient GetClient(string modelAlias);
+    Task<ILLMClient> GetClientAsync(string modelAlias, CancellationToken cancellationToken = default);
 
-    
     /// <summary>
-    /// Gets an ILLMClient instance for the specified provider ID directly.
+    /// Asynchronously gets an ILLMClient instance for the specified provider ID directly.
     /// </summary>
     /// <param name="providerId">The ID of the provider.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An instance of ILLMClient for the specified provider.</returns>
     /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
     /// <exception cref="UnsupportedProviderException">Thrown if the specified provider is not supported by this factory.</exception>
-    ILLMClient GetClientByProviderId(int providerId);
+    Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets provider metadata for the specified provider type without requiring credentials.
@@ -34,14 +35,14 @@ public interface ILLMClientFactory
     IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType);
 
     /// <summary>
-    /// Gets an ILLMClient instance for the specified provider type directly.
-    /// This method looks up the provider by its enum type rather than database ID.
+    /// Asynchronously gets an ILLMClient instance for the specified provider type directly.
     /// </summary>
     /// <param name="providerType">The provider type enum value.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An instance of ILLMClient for the specified provider type.</returns>
     /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
     /// <exception cref="UnsupportedProviderException">Thrown if the specified provider type is not supported by this factory.</exception>
-    ILLMClient GetClientByProviderType(ConduitLLM.Configuration.ProviderType providerType);
+    Task<ILLMClient> GetClientByProviderTypeAsync(ConduitLLM.Configuration.ProviderType providerType, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a lightweight ILLMClient instance for testing provider credentials.

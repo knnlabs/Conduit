@@ -3,14 +3,13 @@ using System.Text.Json;
 
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
-
-using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -35,8 +34,8 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
         IModelProviderMappingRepository mappingRepository,
         IProviderRepository providerRepository,
         IModelRepository modelRepository,
-        IEventBus? eventBus,
-        ILogger<AdminModelProviderMappingService> logger)
+        ILogger<AdminModelProviderMappingService> logger,
+        IEventBus? eventBus = null)
         : base(eventBus, logger)
     {
         _mappingRepository = mappingRepository ?? throw new ArgumentNullException(nameof(mappingRepository));
@@ -50,31 +49,31 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     /// <inheritdoc />
     public async Task<IEnumerable<ModelProviderMapping>> GetAllMappingsAsync()
     {
-        _logger.LogInformation("Getting all model provider mappings");
-        return await _mappingRepository.GetAllAsync();
+        _logger.LogDebug("Getting all model provider mappings");
+        return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+            _mappingRepository.GetPaginatedAsync);
     }
 
     /// <inheritdoc />
     public async Task<ModelProviderMapping?> GetMappingByIdAsync(int id)
     {
-        _logger.LogInformation("Getting model provider mapping with ID: {Id}", id);
+        _logger.LogDebug("Getting model provider mapping with ID: {Id}", id);
         return await _mappingRepository.GetByIdAsync(id);
     }
 
     /// <inheritdoc />
     public async Task<ModelProviderMapping?> GetMappingByModelIdAsync(int modelId)
     {
-        _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId);
-        var mappings = await _mappingRepository.GetAllAsync();
-        return mappings.FirstOrDefault(m => m.ModelProviderTypeAssociation?.ModelId == modelId);
+        _logger.LogDebug("Getting model provider mapping for model ID: {ModelId}", modelId);
+        var mappings = await _mappingRepository.GetByModelIdAsync(modelId);
+        return mappings.FirstOrDefault();
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ModelProviderMapping>> GetMappingsByModelIdAsync(int modelId)
     {
-        _logger.LogInformation("Getting all model provider mappings for model ID: {ModelId}", modelId);
-        var mappings = await _mappingRepository.GetAllAsync();
-        return mappings.Where(m => m.ModelProviderTypeAssociation?.ModelId == modelId).ToList();
+        _logger.LogDebug("Getting all model provider mappings for model ID: {ModelId}", modelId);
+        return await _mappingRepository.GetByModelIdAsync(modelId);
     }
 
     /// <inheritdoc />
@@ -82,7 +81,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     {
         try
         {
-            _logger.LogInformation("Adding new model provider mapping for model ID: {ModelId}", LoggingSanitizer.S(mapping.ModelAlias));
+            _logger.LogDebug("Adding new model provider mapping for model ID: {ModelId}", LoggingSanitizer.S(mapping.ModelAlias));
 
             // Validate provider exists by ID
             var provider = await _providerRepository.GetByIdAsync(mapping.ProviderId);
@@ -106,7 +105,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
 
             // Add the mapping
             await _mappingRepository.CreateAsync(mapping);
-            
+
             // Publish ModelMappingChanged event for creation
             await PublishEventAsync(
                 new ModelMappingChanged
@@ -120,7 +119,10 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                 },
                 $"create model mapping for {mapping.ModelAlias}",
                 new { ModelAlias = mapping.ModelAlias, ProviderId = mapping.ProviderId });
-            
+
+            _logger.LogInformation("Created model provider mapping {ModelAlias} -> provider {ProviderId}",
+                LoggingSanitizer.S(mapping.ModelAlias), mapping.ProviderId);
+
             return true;
         }
         catch (Exception ex)
@@ -135,7 +137,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     {
         try
         {
-            _logger.LogInformation("Updating model provider mapping with ID: {Id}", mapping.Id);
+            _logger.LogDebug("Updating model provider mapping with ID: {Id}", mapping.Id);
 
             // Check if the mapping exists
             var existingMapping = await _mappingRepository.GetByIdAsync(mapping.Id);
@@ -180,8 +182,11 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                     },
                     $"update model mapping {existingMapping.Id}",
                     new { ModelAlias = existingMapping.ModelAlias, ProviderId = existingMapping.ProviderId });
+
+                _logger.LogInformation("Updated model provider mapping {MappingId} ({ModelAlias} -> provider {ProviderId})",
+                    existingMapping.Id, LoggingSanitizer.S(existingMapping.ModelAlias), existingMapping.ProviderId);
             }
-            
+
             return result;
         }
         catch (Exception ex)
@@ -196,7 +201,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     {
         try
         {
-            _logger.LogInformation("Deleting model provider mapping with ID: {Id}", id);
+            _logger.LogDebug("Deleting model provider mapping with ID: {Id}", id);
 
             // Check if the mapping exists
             var existingMapping = await _mappingRepository.GetByIdAsync(id);
@@ -224,8 +229,11 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                     },
                     $"delete model mapping {existingMapping.Id}",
                     new { ModelAlias = existingMapping.ModelAlias, ProviderId = existingMapping.ProviderId });
+
+                _logger.LogInformation("Deleted model provider mapping {MappingId} ({ModelAlias})",
+                    existingMapping.Id, LoggingSanitizer.S(existingMapping.ModelAlias));
             }
-            
+
             return result;
         }
         catch (Exception ex)
@@ -240,8 +248,9 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     {
         try
         {
-            _logger.LogInformation("Getting all providers");
-            return await _providerRepository.GetAllAsync();
+            _logger.LogDebug("Getting all providers");
+            return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _providerRepository.GetPaginatedAsync);
         }
         catch (Exception ex)
         {
@@ -253,16 +262,18 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     /// <inheritdoc />
     public async Task<(IEnumerable<ModelProviderMapping> created, IEnumerable<string> errors)> CreateBulkMappingsAsync(IEnumerable<ModelProviderMapping> mappings)
     {
-        _logger.LogInformation("Creating bulk model provider mappings");
+        _logger.LogDebug("Creating bulk model provider mappings");
 
         var created = new List<ModelProviderMapping>();
         var errors = new List<string>();
         var mappingsList = mappings.ToList();
 
         // Pre-load all providers and existing mappings to avoid N+1 queries
-        var allProviders = await _providerRepository.GetAllAsync();
+        var allProviders = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+            _providerRepository.GetPaginatedAsync);
         var providerLookup = allProviders.ToDictionary(p => p.Id, p => p);
-        var allMappings = await _mappingRepository.GetAllAsync();
+        var allMappings = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+            _mappingRepository.GetPaginatedAsync);
         var existingMappingsLookup = allMappings.ToDictionary(m => m.ModelAlias.ToLowerInvariant(), m => m);
         
         // Pre-load all models with details for API parameter merging

@@ -1,7 +1,10 @@
+using System.Diagnostics;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Controllers;
-using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Metrics;
+using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using ConduitLLM.Configuration.Messaging;
 using MassTransit;
@@ -9,6 +12,7 @@ using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Gateway.Authorization;
+using ConduitLLM.Gateway.Filters;
 
 namespace ConduitLLM.Gateway.Controllers
 {
@@ -20,10 +24,10 @@ namespace ConduitLLM.Gateway.Controllers
     [Authorize(AuthenticationSchemes = "VirtualKey")]
     [RequireBalance]
     [Tags("Embeddings")]
-    public class EmbeddingsController : EventPublishingControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class EmbeddingsController : GatewayControllerBase
     {
         private readonly Conduit _conduit;
-        private readonly ILogger<EmbeddingsController> _logger;
         private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
 
         public EmbeddingsController(
@@ -33,7 +37,6 @@ namespace ConduitLLM.Gateway.Controllers
             IEventBus eventBus) : base(eventBus, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
 
@@ -64,43 +67,31 @@ namespace ConduitLLM.Gateway.Controllers
                 });
             }
 
+            using var activity = GatewayRequestMetrics.StartEmbeddingsActivity(request.Model);
+            var sw = Stopwatch.StartNew();
+
+            Logger.LogInformation("Processing embeddings request for model: {Model}", LoggingSanitizer.S(request.Model));
+
+            // Get provider info for usage tracking
             try
             {
-                _logger.LogInformation("Processing embeddings request for model: {Model}", request.Model);
-                
-                // Get provider info for usage tracking
-                try
+                var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                if (modelMapping != null)
                 {
-                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
-                    if (modelMapping != null)
-                    {
-                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
-                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
-                    }
+                    HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                    HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
-                }
-                
-                // Get the client for the specified model and create embeddings
-                var client = _conduit.GetClient(request.Model);
-                var response = await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
-                return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing embeddings request for model: {Model}", request.Model);
-                return StatusCode(500, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = ex.Message,
-                        Type = "server_error",
-                        Code = "internal_error"
-                    }
-                });
+                Logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
             }
+
+            // Get the client for the specified model and create embeddings
+            var client = await _conduit.GetClientAsync(request.Model, cancellationToken);
+            var result = await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
+            GatewayOpsMetrics.RecordLlmOperation("embedding", request.Model, "success", sw.Elapsed.TotalSeconds);
+            return Ok(result);
         }
     }
 }

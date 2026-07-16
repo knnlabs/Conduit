@@ -5,12 +5,12 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 using ConduitLLM.Configuration.DTOs.BatchOperations;
 using ConduitLLM.Core.Services.BatchOperations;
+using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit.Abstractions;
-using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -88,8 +88,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = _controller.GetOperationStatus(operationId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<BatchOperationStatusResponse>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<BatchOperationStatusResponse>().Subject;
             Assert.Equal(operationId, response.OperationId);
             Assert.Equal("Running", response.Status);
             Assert.Equal(50, response.ProcessedCount);
@@ -107,9 +107,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = _controller.GetOperationStatus(operationId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            Assert.Equal("Operation not found", errorResponse.error.ToString());
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Operation not found", errorResponse.Error.Message);
         }
 
         #endregion
@@ -137,7 +137,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelOperation(operationId);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -158,9 +158,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelOperation(operationId);
 
             // Assert
-            var conflictResult = Assert.IsType<ConflictObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(conflictResult.Value);
-            Assert.Equal("Operation cannot be cancelled", errorResponse.error.ToString());
+            var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
+            var errorResponse = conflictResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Operation cannot be cancelled", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -184,9 +184,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelOperation(operationId);
 
             // Assert
-            var conflictResult = Assert.IsType<ConflictObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(conflictResult.Value);
-            Assert.Equal("Failed to cancel operation", errorResponse.error.ToString());
+            var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
+            var errorResponse = conflictResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Failed to cancel operation", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -201,9 +201,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelOperation(operationId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            Assert.Equal("Operation not found", errorResponse.error.ToString());
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Operation not found", errorResponse.Error.Message);
         }
 
         #endregion
@@ -259,8 +259,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.StartBatchSpendUpdate(request);
 
             // Assert
-            var acceptedResult = Assert.IsType<AcceptedResult>(result);
-            var response = Assert.IsType<BatchOperationStartResponse>(acceptedResult.Value);
+            var acceptedResult = result.Should().BeOfType<AcceptedResult>().Subject;
+            var response = acceptedResult.Value.Should().BeOfType<BatchOperationStartResponse>().Subject;
             Assert.Equal("batch-op-123", response.OperationId);
             Assert.Equal("spend_update", response.OperationType);
             Assert.Equal(1, response.TotalItems);
@@ -290,9 +290,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.StartBatchSpendUpdate(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
-            Assert.Equal("No updates provided", errorResponse.error.ToString());
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("No updates provided", errorResponse.Error.Message);
         }
 
         #endregion

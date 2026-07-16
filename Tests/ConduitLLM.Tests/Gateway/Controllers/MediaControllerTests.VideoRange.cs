@@ -1,5 +1,7 @@
 using ConduitLLM.Core.Models;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -52,8 +54,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<FileStreamResult>(result);
-            
+            result.Should().BeOfType<FileStreamResult>();
+
             // Verify partial content status and headers
             Assert.Equal(206, _controller.Response.StatusCode);
             Assert.Equal("bytes", _controller.Response.Headers["Accept-Ranges"]);
@@ -90,8 +92,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<ObjectResult>(result);
-            var objectResult = result as ObjectResult;
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(416, objectResult.StatusCode);
         }
 
@@ -124,7 +125,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(416, objectResult.StatusCode);
         }
 
@@ -160,7 +161,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         [Fact]
@@ -195,8 +196,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<ObjectResult>(result);
-            var objectResult = result as ObjectResult;
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(500, objectResult.StatusCode);
         }
 
@@ -251,8 +251,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<FileStreamResult>(result);
-            
+            result.Should().BeOfType<FileStreamResult>();
+
             // Verify the correct range was requested
             _mockStorageService.Verify(x => x.GetVideoStreamAsync(storageKey, expectedStart, expectedEnd), 
                 Times.Once);
@@ -293,7 +293,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(416, objectResult.StatusCode);
         }
 
@@ -325,8 +325,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Act
             var result = await _controller.GetMedia(storageKey);
 
-            // Assert
-            Assert.IsType<BadRequestObjectResult>(result);
+            // Assert - OpenAIError returns ObjectResult with status 400
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
         }
 
         #endregion

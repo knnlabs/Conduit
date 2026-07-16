@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ConduitLLM.Functions.Entities.Interfaces;
 using ConduitLLM.Functions.Enums;
 
 namespace ConduitLLM.Functions.Entities;
@@ -9,7 +10,7 @@ namespace ConduitLLM.Functions.Entities;
 /// Supports multiple pricing models via the Strategy pattern.
 /// </summary>
 [Table("FunctionCosts")]
-public class FunctionCost
+public class FunctionCost : IIdentifiableEntity<int>
 {
     /// <summary>
     /// Unique identifier for this cost configuration

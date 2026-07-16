@@ -37,28 +37,33 @@ namespace ConduitLLM.Gateway.EventHandlers
         {
             // For created events, we don't need to invalidate cache
             // The task was just created in DB and will be cached on first access
-            _logger.LogDebug("Async task created event received for task {TaskId}", message.TaskId);
-            
+            _logger.LogDebug("Async task created event received for task {TaskId} (type: {TaskType}, no cache invalidation needed)",
+                message.TaskId, message.TaskType);
+
             await Task.CompletedTask;
         }
 
         /// <inheritdoc/>
         public async Task HandleAsync(AsyncTaskUpdated message, IEventContext context)
         {
+            _logger.LogDebug("Processing AsyncTaskUpdated event for task {TaskId}, new state: {State}",
+                message.TaskId, message.State);
+
             try
             {
                 // Invalidate cache for updated task
                 var cacheKey = GetTaskKey(message.TaskId);
                 await _cache.RemoveAsync(cacheKey);
-                
+
                 _logger.LogInformation(
-                    "Cache invalidated for async task {TaskId} after update to state {State}", 
-                    message.TaskId, 
+                    "Cache invalidated for async task {TaskId} after update to state {State}",
+                    message.TaskId,
                     message.State);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invalidating cache for async task {TaskId}", message.TaskId);
+                _logger.LogError(ex, "Failed to invalidate cache for async task {TaskId} (state: {State})",
+                    message.TaskId, message.State);
                 // Don't throw - cache invalidation failures shouldn't break the system
             }
         }
@@ -66,17 +71,19 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <inheritdoc/>
         public async Task HandleAsync(AsyncTaskDeleted message, IEventContext context)
         {
+            _logger.LogDebug("Processing AsyncTaskDeleted event for task {TaskId}", message.TaskId);
+
             try
             {
                 // Invalidate cache for deleted task
                 var cacheKey = GetTaskKey(message.TaskId);
                 await _cache.RemoveAsync(cacheKey);
-                
+
                 _logger.LogInformation("Cache invalidated for deleted async task {TaskId}", message.TaskId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invalidating cache for async task {TaskId}", message.TaskId);
+                _logger.LogError(ex, "Failed to invalidate cache for deleted async task {TaskId}", message.TaskId);
                 // Don't throw - cache invalidation failures shouldn't break the system
             }
         }

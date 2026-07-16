@@ -61,9 +61,6 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IFunctionCredentialRepository, FunctionCredentialRepository>();
             services.AddScoped<IFunctionExecutionRepository, FunctionExecutionRepository>();
 
-            // Register cache configuration service
-            services.AddScoped<ICacheConfigurationService, CacheConfigurationService>();
-
             return services;
         }
 

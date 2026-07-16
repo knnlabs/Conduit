@@ -18,6 +18,7 @@ namespace ConduitLLM.Core.Extensions
     {
         /// <summary>
         /// Adds the unified cache manager to the service collection.
+        /// Automatically detects Redis configuration and uses distributed statistics if available.
         /// </summary>
         /// <param name="services">The service collection.</param>
         /// <param name="configuration">The configuration.</param>
@@ -31,13 +32,64 @@ namespace ConduitLLM.Core.Extensions
             services.Configure<CacheManagerOptions>(configuration.GetSection("CacheManager"));
             services.Configure<CacheStatisticsOptions>(configuration.GetSection("CacheStatistics"));
 
-            // Register statistics collector (local mode only)
+            // Check if Redis is configured for distributed statistics
+            var redisConnection = configuration.GetConnectionString("Redis") ?? configuration["Redis:Configuration"];
+            if (!string.IsNullOrEmpty(redisConnection))
+            {
+                // Add Redis distributed cache
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConnection;
+                    options.InstanceName = "conduit:cache:";
+                });
+
+                // Register statistics store for Redis
+                services.TryAddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
+
+                // Register Redis connection multiplexer with lazy initialization
+                services.TryAddSingleton<IConnectionMultiplexer>(sp =>
+                {
+                    var logger = sp.GetRequiredService<ILogger<CacheManager>>();
+                    logger.LogInformation("Creating Redis connection for cache statistics");
+
+                    var configOptions = ConfigurationOptions.Parse(redisConnection);
+                    configOptions.AbortOnConnectFail = false;
+                    configOptions.ConnectTimeout = 5000;
+                    configOptions.ConnectRetry = 3;
+
+                    try
+                    {
+                        return ConnectionMultiplexer.Connect(configOptions);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to create Redis connection. Cache statistics will use in-memory storage.");
+                        throw;
+                    }
+                });
+
+                // Register distributed statistics collector
+                services.TryAddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
+            }
+
+            // Register statistics collector (hybrid if Redis is available, local otherwise)
             services.AddSingleton<ICacheStatisticsCollector>(sp =>
             {
-                return new CacheStatisticsCollector(
+                var distributedCollector = sp.GetService<IDistributedCacheStatisticsCollector>();
+                var localCollector = new CacheStatisticsCollector(
                     sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
                     sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
                     sp.GetService<ICacheStatisticsStore>());
+
+                if (distributedCollector != null)
+                {
+                    return new HybridCacheStatisticsCollector(
+                        localCollector,
+                        distributedCollector,
+                        sp.GetRequiredService<ILogger<HybridCacheStatisticsCollector>>());
+                }
+
+                return localCollector;
             });
 
             // Register policy engine
@@ -53,6 +105,8 @@ namespace ConduitLLM.Core.Extensions
 
         /// <summary>
         /// Adds the unified cache manager with custom options.
+        /// Note: This overload does not support distributed statistics as it lacks configuration access.
+        /// Use <see cref="AddCacheManager(IServiceCollection, IConfiguration)"/> for Redis-backed statistics.
         /// </summary>
         /// <param name="services">The service collection.</param>
         /// <param name="configureOptions">Action to configure options.</param>

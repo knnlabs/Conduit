@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
@@ -37,12 +38,6 @@ namespace ConduitLLM.Core.Services
         private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(CacheDurationMinutes);
         private const CacheRegion Region = CacheRegion.ModelMetadata;
 
-        // Cache key patterns
-        private const string CacheKeyPrefix = "model:mapping";
-        private const string ByAliasKeyPattern = "model:mapping:{0}";
-        private const string ByIdKeyPattern = "model:mapping:id:{0}";
-        private const string AllMappingsKey = "model:mapping:all";
-
         public CachedModelProviderMappingService(
             IModelProviderMappingService innerService,
             ICacheManager cacheManager,
@@ -58,7 +53,7 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public async Task<ModelProviderMapping?> GetMappingByIdAsync(int id)
         {
-            var cacheKey = string.Format(ByIdKeyPattern, id);
+            var cacheKey = CacheKeys.ModelMapping.ById(id);
 
             try
             {
@@ -89,7 +84,7 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Model alias cannot be null or empty", nameof(modelAlias));
             }
 
-            var cacheKey = string.Format(ByAliasKeyPattern, modelAlias);
+            var cacheKey = CacheKeys.ModelMapping.ByAlias(modelAlias);
 
             try
             {
@@ -117,7 +112,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var cached = await _cacheManager.GetOrCreateAsync(
-                    AllMappingsKey,
+                    CacheKeys.ModelMapping.AllMappings,
                     async () => await _innerService.GetAllMappingsAsync(),
                     Region,
                     CacheTtl);
@@ -256,16 +251,16 @@ namespace ConduitLLM.Core.Services
                 var keysToRemove = new List<string>();
 
                 // Always invalidate the ID-based key
-                keysToRemove.Add(string.Format(ByIdKeyPattern, id));
+                keysToRemove.Add(CacheKeys.ModelMapping.ById(id));
 
                 // Invalidate alias-based key if we know the alias
                 if (!string.IsNullOrEmpty(modelAlias))
                 {
-                    keysToRemove.Add(string.Format(ByAliasKeyPattern, modelAlias));
+                    keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(modelAlias));
                 }
 
                 // Invalidate the "all mappings" cache
-                keysToRemove.Add(AllMappingsKey);
+                keysToRemove.Add(CacheKeys.ModelMapping.AllMappings);
 
                 var removed = await _cacheManager.RemoveManyAsync(keysToRemove, Region);
 

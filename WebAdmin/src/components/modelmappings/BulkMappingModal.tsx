@@ -18,7 +18,7 @@ import {
   ScrollArea,
   Tooltip,
 } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { 
   IconAlertCircle, 
   IconCheck, 
@@ -113,12 +113,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
       setSelectedModels(newSelected);
       
       if (result.conflictCount > 0) {
-        notifications.show({
-          title: 'Conflicts Detected',
-          message: `${result.conflictCount} models already have mappings`,
-          color: 'yellow',
-          icon: <IconAlertCircle />,
-        });
+        notify.warning(`${result.conflictCount} models already have mappings`, 'Conflicts Detected');
       }
     } catch {
       // Error handled by hook
@@ -154,11 +149,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     const modelsToCreate = discoveredModels.filter(m => selectedModels.has(m.modelId));
     
     if (modelsToCreate.length === 0) {
-      notifications.show({
-        title: 'No Models Selected',
-        message: 'Please select at least one model to create mappings',
-        color: 'red',
-      });
+      notify.error(new Error('Please select at least one model to create mappings'));
       return;
     }
     
@@ -169,12 +160,11 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
         enableByDefault,
       });
       
-      notifications.show({
-        title: 'Bulk Mapping Complete',
-        message: `Successfully created ${result.created} mappings${result.failed > 0 ? `, ${result.failed} failed` : ''}`,
-        color: result.failed > 0 ? 'yellow' : 'green',
-        icon: result.failed > 0 ? <IconAlertCircle /> : <IconCheck />,
-      });
+      if (result.failed > 0) {
+        notify.warning(`Successfully created ${result.created} mappings, ${result.failed} failed`, 'Bulk Mapping Complete');
+      } else {
+        notify.success(`Successfully created ${result.created} mappings`, 'Bulk Mapping Complete');
+      }
       
       onSuccess();
     } catch {

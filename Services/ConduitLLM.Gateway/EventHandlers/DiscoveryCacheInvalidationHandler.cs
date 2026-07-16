@@ -1,7 +1,8 @@
-using MassTransit;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Gateway.EventHandlers
 {
@@ -27,28 +28,26 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// </summary>
         public async Task HandleAsync(DiscoveryCacheInvalidationRequested message, IEventContext context)
         {
-            var @event = message;
-
             try
             {
                 _logger.LogInformation(
                     "Processing discovery cache invalidation request. Reason: {Reason}, Requested by: {RequestedBy}",
-                    @event.Reason,
-                    @event.RequestedBy);
+                    message.Reason,
+                    message.RequestedBy);
 
                 // Invalidate all discovery cache entries
                 await _discoveryCacheService.InvalidateAllDiscoveryAsync();
 
                 _logger.LogInformation(
                     "Successfully invalidated all discovery cache entries. Reason: {Reason}",
-                    @event.Reason);
+                    message.Reason);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
                     "Failed to invalidate discovery cache. Reason: {Reason}",
-                    @event.Reason);
-                throw; // Re-throw to trigger MassTransit retry logic
+                    message.Reason);
+                throw; // Re-throw to trigger transport retry logic
             }
         }
     }

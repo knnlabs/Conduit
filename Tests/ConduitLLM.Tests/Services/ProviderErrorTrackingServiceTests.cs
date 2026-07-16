@@ -114,8 +114,10 @@ namespace ConduitLLM.Tests.Services
                 .ReturnsAsync(testKey);
             _keyRepoMock.Setup(x => x.UpdateAsync(It.IsAny<ProviderKeyCredential>()))
                 .ReturnsAsync(true);
-            _keyRepoMock.Setup(x => x.GetByProviderIdAsync(error.ProviderId))
-                .ReturnsAsync(new List<ProviderKeyCredential> { testKey });
+            var keyList = new List<ProviderKeyCredential> { testKey };
+            _keyRepoMock.Setup(x => x.GetByProviderIdPaginatedAsync(
+                    error.ProviderId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((keyList, keyList.Count));
 
             // Act
             await _service.TrackErrorAsync(error);
@@ -196,7 +198,22 @@ namespace ConduitLLM.Tests.Services
             await _service.ClearErrorsForKeyAsync(keyId);
 
             // Assert
-            _errorStoreMock.Verify(x => x.ClearErrorsForKeyAsync(keyId), 
+            _errorStoreMock.Verify(x => x.ClearErrorsForKeyAsync(keyId, null),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ClearErrorsForKeyAsync_WithProviderId_PassesProviderIdToStore()
+        {
+            // Arrange
+            var keyId = 123;
+            var providerId = 456;
+
+            // Act
+            await _service.ClearErrorsForKeyAsync(keyId, providerId);
+
+            // Assert
+            _errorStoreMock.Verify(x => x.ClearErrorsForKeyAsync(keyId, providerId),
                 Times.Once);
         }
 
@@ -234,7 +251,7 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            _errorStoreMock.Setup(x => x.GetRecentErrorsAsync(100))
+            _errorStoreMock.Setup(x => x.GetRecentErrorsAsync(It.IsAny<int>()))
                 .ReturnsAsync(feedEntries);
 
             // Act
@@ -382,8 +399,10 @@ namespace ConduitLLM.Tests.Services
 
             _keyRepoMock.Setup(x => x.GetByIdAsync(keyId))
                 .ReturnsAsync(secondaryKey);
-            _keyRepoMock.Setup(x => x.GetByProviderIdAsync(providerId))
-                .ReturnsAsync(new List<ProviderKeyCredential> { secondaryKey, otherKey });
+            var providerKeys = new List<ProviderKeyCredential> { secondaryKey, otherKey };
+            _keyRepoMock.Setup(x => x.GetByProviderIdPaginatedAsync(
+                    providerId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((providerKeys, providerKeys.Count));
 
             // Act
             await _service.DisableKeyAsync(keyId, reason);
@@ -430,8 +449,10 @@ namespace ConduitLLM.Tests.Services
 
             _keyRepoMock.Setup(x => x.GetByIdAsync(keyId))
                 .ReturnsAsync(key1);
-            _keyRepoMock.Setup(x => x.GetByProviderIdAsync(providerId))
-                .ReturnsAsync(new List<ProviderKeyCredential> { key1, key2 });
+            var providerKeys = new List<ProviderKeyCredential> { key1, key2 };
+            _keyRepoMock.Setup(x => x.GetByProviderIdPaginatedAsync(
+                    providerId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((providerKeys, providerKeys.Count));
             _providerRepoMock.Setup(x => x.GetByIdAsync(providerId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(provider);
 
@@ -546,15 +567,16 @@ namespace ConduitLLM.Tests.Services
             _errorStoreMock.Setup(x => x.GetErrorStatisticsAsync(window))
                 .ReturnsAsync(statsData);
             
-            var allKeys = new[]
+            var allKeys = new List<ProviderKeyCredential>
             {
                 new ProviderKeyCredential { Id = 1, IsEnabled = true },
                 new ProviderKeyCredential { Id = 2, IsEnabled = false },
                 new ProviderKeyCredential { Id = 3, IsEnabled = false }
             };
-            
-            _keyRepoMock.Setup(x => x.GetAllAsync())
-                .ReturnsAsync(allKeys.ToList());
+
+            _keyRepoMock.Setup(x => x.GetPaginatedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((allKeys, allKeys.Count));
 
             // Act
             var stats = await _service.GetErrorStatisticsAsync(window);

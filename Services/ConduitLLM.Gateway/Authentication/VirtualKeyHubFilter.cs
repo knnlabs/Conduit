@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Utilities;
 
@@ -64,7 +65,7 @@ namespace ConduitLLM.Gateway.Authentication
             invocationContext.Context.Items["VirtualKey"] = virtualKey;
 
             _logger.LogDebug("Authenticated Virtual Key {KeyName} for method {Method}",
-                keyEntity.KeyName, invocationContext.HubMethodName);
+                LoggingSanitizer.S(keyEntity.KeyName), invocationContext.HubMethodName);
 
             return await next(invocationContext);
         }
@@ -105,7 +106,7 @@ namespace ConduitLLM.Gateway.Authentication
             // (User is read-only in SignalR hub context)
 
             _logger.LogInformation("Virtual Key {KeyName} connected to SignalR hub {Hub}",
-                keyEntity.KeyName, context.Hub.GetType().Name);
+                LoggingSanitizer.S(keyEntity.KeyName), context.Hub.GetType().Name);
 
             await next(context);
         }
@@ -123,7 +124,7 @@ namespace ConduitLLM.Gateway.Authentication
                 : "Unknown";
 
             _logger.LogInformation("Virtual Key {KeyName} disconnected from SignalR hub {Hub}",
-                keyName, context.Hub.GetType().Name);
+                LoggingSanitizer.S(keyName), context.Hub.GetType().Name);
 
             await next(context, exception);
         }

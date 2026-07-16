@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Checkbox, Paper, SimpleGrid, Tooltip, ActionIcon } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { IconAlertCircle, IconSettings, IconLink, IconTransform } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
@@ -167,11 +167,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       setSeries(seriesData);
     } catch (error) {
       console.warn('Failed to load data:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load series data',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load series data'));
     }
   };
 
@@ -220,19 +216,11 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       
       // Cast to unknown first to bypass type checking until SDK is updated
       await executeWithAdmin(client => client.models.update(modelId, dto as unknown as UpdateModelDto));
-      notifications.show({
-        title: 'Success',
-        message: 'Model updated successfully',
-        color: 'green',
-      });
+      notify.success('Model updated successfully');
       onSuccess();
     } catch (error) {
       console.error('Failed to update model:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update model',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to update model');
     } finally {
       setLoading(false);
     }
@@ -274,11 +262,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       console.warn('Failed to load provider associations:', error);
       // Don't show error notification for 404s - just means no associations exist yet
       if (error && typeof error === 'object' && 'status' in error && error.status !== 404) {
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load provider associations',
-          color: 'red',
-        });
+        notify.error(new Error('Failed to load provider associations'));
       }
     } finally {
       setLoadingAssociations(false);
@@ -308,11 +292,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       
       console.warn('Delete successful, reloading associations...');
       
-      notifications.show({
-        title: 'Success',
-        message: 'Provider association deleted successfully',
-        color: 'green',
-      });
+      notify.success('Provider association deleted successfully');
       
       // Reload associations
       await loadProviderAssociations();
@@ -323,11 +303,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       setDeletingAssociation(null);
     } catch (error) {
       console.error('Failed to delete provider association:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete provider association',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to delete provider association');
     } finally {
       setDeletingAssociationLoading(false);
     }
@@ -467,29 +443,17 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                   onClick={() => {
                     const currentValue = form.values.modelParameters;
                     if (!currentValue.trim()) {
-                      notifications.show({
-                        title: 'No content',
-                        message: 'Paste a Replicate schema in the parameters field first',
-                        color: 'yellow',
-                      });
+                      notify.warning('Paste a Replicate schema in the parameters field first', 'No content');
                       return;
                     }
-                    
+
                     if (isValidReplicateSchema(currentValue)) {
                       const converted = tryConvertReplicateSchema(currentValue);
                       form.setFieldValue('modelParameters', converted);
                       validateJson(converted);
-                      notifications.show({
-                        title: 'Success',
-                        message: 'Replicate schema converted successfully',
-                        color: 'green',
-                      });
+                      notify.success('Replicate schema converted successfully');
                     } else {
-                      notifications.show({
-                        title: 'Not a Replicate schema',
-                        message: 'The content doesn\'t appear to be a valid Replicate schema',
-                        color: 'yellow',
-                      });
+                      notify.warning('The content doesn\'t appear to be a valid Replicate schema', 'Not a Replicate schema');
                     }
                   }}
                 >

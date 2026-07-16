@@ -1,13 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
     /// Represents a media file (image or video) generated through Conduit.
     /// </summary>
     [Table("MediaRecords")]
-    public class MediaRecord
+    public class MediaRecord : IEntity<Guid>
     {
         /// <summary>
         /// Gets or sets the unique identifier for the media record.

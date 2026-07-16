@@ -85,5 +85,5 @@ When adding new documentation:
 ## Additional Resources
 
 - [WebAdmin README](../README.md) - Main project documentation
-- [Conduit Documentation](https://github.com/knnlabs/Conduit/docs) - Platform documentation
+- [Conduit Documentation](https://github.com/nickna/Conduit/docs) - Platform documentation
 - [SDK Documentation](https://www.npmjs.com/package/@knn_labs/conduit-gateway-client) - SDK reference

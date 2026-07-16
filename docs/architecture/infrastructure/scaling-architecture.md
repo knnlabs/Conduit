@@ -183,10 +183,10 @@ kubectl autoscale deployment conduit-api --cpu-percent=70 --min=3 --max=20
 
 ## 📚 Related Documentation
 
-- **[RabbitMQ High-Throughput Configuration](claude/rabbitmq-high-throughput.md)** - Detailed RabbitMQ scaling guide
-- **[SignalR Configuration](claude/signalr-configuration.md)** - Real-time scaling and Redis backplane
-- **[Event-Driven Architecture](claude/event-driven-architecture.md)** - MassTransit implementation details
-- **[Media Storage Configuration](claude/media-storage-configuration.md)** - S3/CDN scaling strategies
+- **[RabbitMQ Scaling](../../operations/infrastructure/rabbitmq-scaling.md)** - High-throughput RabbitMQ configuration
+- **[SignalR Configuration](../../operations/signalr/configuration.md)** - Real-time scaling and Redis backplane
+- **[MassTransit Events](../events/masstransit-event-inventory.md)** - Event-driven architecture inventory
+- **[Media Cleanup Configuration](../../operations/deployment/media-cleanup-configuration.md)** - S3/R2 storage management
 
 ---
 

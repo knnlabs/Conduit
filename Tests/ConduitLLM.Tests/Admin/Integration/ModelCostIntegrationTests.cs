@@ -73,8 +73,8 @@ namespace ConduitLLM.Tests.Admin.Integration
                 _modelCostRepository,
                 _requestLogRepository,
                 mockDbContextFactory.Object,
-                _mockPublishEndpoint.Object,
-                _mockServiceLogger.Object);
+                _mockServiceLogger.Object,
+                _mockPublishEndpoint.Object);
 
             // Create controller with real service
             _controller = new ModelCostsController(_service, _mockPricingValidator.Object, _mockControllerLogger.Object);

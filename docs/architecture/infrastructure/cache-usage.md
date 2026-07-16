@@ -119,9 +119,9 @@ Multiple event handlers for cache invalidation:
    - Removes task data from cache on completion/failure
    - Key pattern: `async:task:{taskId}`
 
-3. **ResilientSpendUpdateProcessor**
-   - Manages spend update cache
-   - Ensures eventual consistency
+3. **SpendUpdateProcessor**
+   - Processes spend updates in ordered fashion per virtual key via MassTransit
+   - Ensures eventual consistency through retry logic and event publishing
 
 ## Cache Statistics & Monitoring
 

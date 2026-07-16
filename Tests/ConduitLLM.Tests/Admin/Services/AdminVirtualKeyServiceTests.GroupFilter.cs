@@ -20,8 +20,9 @@ namespace ConduitLLM.Tests.Admin.Services
                 new VirtualKey { Id = 3, KeyName = "Key3", VirtualKeyGroupId = 1 }
             };
 
-            _mockVirtualKeyRepository.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(allKeys);
+            _mockVirtualKeyRepository.Setup(x => x.GetPaginatedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((allKeys, allKeys.Count));
 
             // Act
             var result = await _service.ListVirtualKeysAsync();
@@ -29,8 +30,10 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.NotNull(result);
             Assert.Equal(3, result.Count);
-            _mockVirtualKeyRepository.Verify(x => x.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
-            _mockVirtualKeyRepository.Verify(x => x.GetByVirtualKeyGroupIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            _mockVirtualKeyRepository.Verify(x => x.GetPaginatedAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            _mockVirtualKeyRepository.Verify(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -44,8 +47,9 @@ namespace ConduitLLM.Tests.Admin.Services
                 new VirtualKey { Id = 3, KeyName = "Key3", VirtualKeyGroupId = groupId }
             };
 
-            _mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdAsync(groupId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(groupKeys);
+            _mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                    groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((groupKeys, groupKeys.Count));
 
             // Act
             var result = await _service.ListVirtualKeysAsync(groupId);
@@ -54,8 +58,10 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.NotNull(result);
             Assert.Equal(2, result.Count);
             Assert.All(result, dto => Assert.Equal(groupId, dto.VirtualKeyGroupId));
-            _mockVirtualKeyRepository.Verify(x => x.GetByVirtualKeyGroupIdAsync(groupId, It.IsAny<CancellationToken>()), Times.Once);
-            _mockVirtualKeyRepository.Verify(x => x.GetAllAsync(It.IsAny<CancellationToken>()), Times.Never);
+            _mockVirtualKeyRepository.Verify(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            _mockVirtualKeyRepository.Verify(x => x.GetPaginatedAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -65,8 +71,9 @@ namespace ConduitLLM.Tests.Admin.Services
             const int groupId = 999;
             var emptyList = new List<VirtualKey>();
 
-            _mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdAsync(groupId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(emptyList);
+            _mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                    groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((emptyList, 0));
 
             // Act
             var result = await _service.ListVirtualKeysAsync(groupId);
@@ -74,7 +81,8 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.NotNull(result);
             Assert.Empty(result);
-            _mockVirtualKeyRepository.Verify(x => x.GetByVirtualKeyGroupIdAsync(groupId, It.IsAny<CancellationToken>()), Times.Once);
+            _mockVirtualKeyRepository.Verify(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Fact]
@@ -87,8 +95,9 @@ namespace ConduitLLM.Tests.Admin.Services
                 new VirtualKey { Id = 1, KeyName = "Key1", VirtualKeyGroupId = groupId }
             };
 
-            _mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdAsync(groupId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(groupKeys);
+            _mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                    groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((groupKeys, groupKeys.Count));
 
             // Act
             await _service.ListVirtualKeysAsync(groupId);
@@ -96,7 +105,7 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Listing virtual keys for group {groupId}")),
                     It.IsAny<Exception>(),
@@ -115,8 +124,9 @@ namespace ConduitLLM.Tests.Admin.Services
                 new VirtualKey { Id = 2, KeyName = "Key2", VirtualKeyGroupId = 2 }
             };
 
-            _mockVirtualKeyRepository.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(allKeys);
+            _mockVirtualKeyRepository.Setup(x => x.GetPaginatedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((allKeys, allKeys.Count));
 
             // Act
             var result = await _service.ListVirtualKeysAsync(groupId);
@@ -124,8 +134,10 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.NotNull(result);
             Assert.Equal(2, result.Count);
-            _mockVirtualKeyRepository.Verify(x => x.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
-            _mockVirtualKeyRepository.Verify(x => x.GetByVirtualKeyGroupIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            _mockVirtualKeyRepository.Verify(x => x.GetPaginatedAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            _mockVirtualKeyRepository.Verify(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

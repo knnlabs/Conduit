@@ -1,4 +1,4 @@
-using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.DTOs;
 
 using Moq;
 
@@ -14,37 +14,36 @@ namespace ConduitLLM.Tests.Admin.Services
         [Fact]
         public async Task GetCostSummaryAsync_CalculatesTotals()
         {
-            // Arrange
-            var testLogs = new List<RequestLog>
+            // Arrange — mock database-level aggregation methods
+            var modelAggregations = new List<ModelAggregation>
             {
-                new() { 
-                    ModelName = "gpt-4", 
-                    Cost = 0.05m, 
-                    Timestamp = DateTime.UtcNow.AddHours(-12), // Within last 24 hours
-                    InputTokens = 100,
-                    OutputTokens = 50
-                },
-                new() { 
-                    ModelName = "gpt-3.5-turbo", 
-                    Cost = 0.02m, 
-                    Timestamp = DateTime.UtcNow.AddDays(-2),
-                    InputTokens = 200,
-                    OutputTokens = 100
-                }
+                new() { ModelName = "gpt-4", TotalCost = 0.05m, RequestCount = 1, InputTokens = 100, OutputTokens = 50 },
+                new() { ModelName = "gpt-3.5-turbo", TotalCost = 0.02m, RequestCount = 1, InputTokens = 200, OutputTokens = 100 }
             };
-            
-            var virtualKeys = new List<VirtualKey>
+
+            var dailyCosts = new List<DateCostAggregation>
             {
-                new() { Id = 1, KeyName = "Test Key 1" }
+                new() { Date = DateTime.UtcNow.Date, TotalCost = 0.05m, RequestCount = 1 },
+                new() { Date = DateTime.UtcNow.AddDays(-2).Date, TotalCost = 0.02m, RequestCount = 1 }
             };
-            
+
+            var last24hSummary = new RequestLogSummary { TotalRequests = 1, TotalCost = 0.05m };
+
             _mockRequestLogRepository
-                .Setup(x => x.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(testLogs);
-            
-            _mockVirtualKeyRepository
-                .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKeys);
+                .Setup(x => x.GetAggregatedByModelAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelAggregations);
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetAggregatedByVirtualKeyAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<VirtualKeyAggregation>());
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetCostsByDateAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(dailyCosts);
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetSummaryAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(last24hSummary);
 
             // Act
             var result = await _service.GetCostSummaryAsync();
@@ -59,21 +58,33 @@ namespace ConduitLLM.Tests.Admin.Services
         [Fact]
         public async Task GetCostSummaryAsync_GroupsByModel()
         {
-            // Arrange
-            var testLogs = new List<RequestLog>
+            // Arrange — pre-aggregated model data (as the DB would return)
+            var modelAggregations = new List<ModelAggregation>
             {
-                new() { ModelName = "gpt-4", Cost = 0.05m, Timestamp = DateTime.UtcNow },
-                new() { ModelName = "gpt-4", Cost = 0.03m, Timestamp = DateTime.UtcNow },
-                new() { ModelName = "claude-3", Cost = 0.02m, Timestamp = DateTime.UtcNow }
+                new() { ModelName = "gpt-4", TotalCost = 0.08m, RequestCount = 2, InputTokens = 300, OutputTokens = 100 },
+                new() { ModelName = "claude-3", TotalCost = 0.02m, RequestCount = 1, InputTokens = 100, OutputTokens = 50 }
             };
-            
+
+            var dailyCosts = new List<DateCostAggregation>
+            {
+                new() { Date = DateTime.UtcNow.Date, TotalCost = 0.10m, RequestCount = 3 }
+            };
+
             _mockRequestLogRepository
-                .Setup(x => x.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(testLogs);
-            
-            _mockVirtualKeyRepository
-                .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<VirtualKey>());
+                .Setup(x => x.GetAggregatedByModelAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelAggregations);
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetAggregatedByVirtualKeyAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<VirtualKeyAggregation>());
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetCostsByDateAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(dailyCosts);
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetSummaryAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new RequestLogSummary { TotalRequests = 3, TotalCost = 0.10m });
 
             // Act
             var result = await _service.GetCostSummaryAsync();

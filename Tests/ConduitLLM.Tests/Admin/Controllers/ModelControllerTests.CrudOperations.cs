@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
@@ -71,8 +72,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByNameAsync(createDto.Name))
                 .ReturnsAsync((Model?)null);
-            _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Model>()))
-                .ReturnsAsync((Model m) => {
+            _mockRepository.Setup(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Model m, CancellationToken _) => {
                     m.Id = 1; // Simulate the database setting the ID
                     return m;
                 });
@@ -83,17 +84,17 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
             createdResult.StatusCode.Should().Be(StatusCodes.Status201Created);
             createdResult.ActionName.Should().Be(nameof(ModelController.GetModelById));
             createdResult.RouteValues!["id"].Should().Be(1);
 
-            var dto = Assert.IsType<ModelDto>(createdResult.Value);
+            var dto = createdResult.Value.Should().BeOfType<ModelDto>().Subject;
             dto.Id.Should().Be(1);
             dto.Name.Should().Be("new-test-model");
             dto.IsActive.Should().BeTrue();
 
-            _mockRepository.Verify(r => r.CreateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.CreateModelAsync(It.Is<Model>(m => 
                 m.Name == createDto.Name &&
                 m.ModelSeriesId == createDto.ModelSeriesId &&
                 m.IsActive == createDto.IsActive)), Times.Once);
@@ -129,8 +130,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByNameAsync(createDto.Name))
                 .ReturnsAsync((Model?)null);
-            _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Model>()))
-                .ReturnsAsync((Model m) => {
+            _mockRepository.Setup(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Model m, CancellationToken _) => {
                     m.Id = 1;
                     return m;
                 });
@@ -141,11 +142,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
-            var dto = Assert.IsType<ModelDto>(createdResult.Value);
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var dto = createdResult.Value.Should().BeOfType<ModelDto>().Subject;
             dto.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 1.5}}");
 
-            _mockRepository.Verify(r => r.CreateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.CreateModelAsync(It.Is<Model>(m => 
                 m.ModelParameters == createDto.ModelParameters)), Times.Once);
         }
 
@@ -159,10 +160,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Model data is required");
 
-            _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -181,10 +182,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Model name is required");
 
-            _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -212,44 +213,31 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            var conflictResult = Assert.IsType<ConflictObjectResult>(result);
+            var conflictResult = result.Should().BeOfType<ConflictObjectResult>().Subject;
             conflictResult.Value.Should().Be("A model with name 'existing-model' already exists");
 
-            _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task CreateModel_WhenRepositoryThrows_ShouldReturn500()
+        public async Task CreateModel_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var createDto = new CreateModelDto
             {
                 Name = "test-model",
                 ModelSeriesId = 1,
-                
+
                 IsActive = true
             };
 
             var exception = new Exception("Database connection failed");
-            _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Model>()))
+            _mockRepository.Setup(r => r.CreateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.CreateModel(createDto);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while creating the model");
-
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error creating model")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.CreateModel(createDto);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -294,21 +282,21 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ReturnsAsync(existingModel);
-            _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+            _mockRepository.Setup(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(updatedModel);
 
             // Act
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dto = okResult.Value.Should().BeOfType<ModelDto>().Subject;
             dto.Id.Should().Be(modelId);
             dto.Name.Should().Be("updated-model-name");
             dto.IsActive.Should().BeFalse();
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
-            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.Is<Model>(m => 
                 m.Id == modelId &&
                 m.Name == updateDto.Name &&
                 m.IsActive == updateDto.IsActive)), Times.Once);
@@ -332,11 +320,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
-            _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -378,18 +366,18 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ReturnsAsync(existingModel);
-            _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+            _mockRepository.Setup(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(updatedModel);
 
             // Act
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dto = okResult.Value.Should().BeOfType<ModelDto>().Subject;
             dto.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 2}}");
 
-            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.Is<Model>(m => 
                 m.ModelParameters == updateDto.ModelParameters)), Times.Once);
         }
 
@@ -432,18 +420,18 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ReturnsAsync(existingModel);
-            _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+            _mockRepository.Setup(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(updatedModel);
 
             // Act
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dto = okResult.Value.Should().BeOfType<ModelDto>().Subject;
             dto.ModelParameters.Should().BeNull();
 
-            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.Is<Model>(m => 
                 m.ModelParameters == null)), Times.Once);
         }
 
@@ -458,15 +446,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Update data is required");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(It.IsAny<int>()), Times.Never);
-            _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task UpdateModel_WhenGetByIdFails_ShouldReturn500()
+        public async Task UpdateModel_WhenGetByIdFails_ShouldPropagateException()
         {
             // Arrange
             var modelId = 1;
@@ -480,19 +468,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.UpdateModel(modelId, updateDto);
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.UpdateModel(modelId, updateDto);
+            await act.Should().ThrowAsync<Exception>();
 
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while updating the model");
-
-            _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
+            _mockRepository.Verify(r => r.UpdateModelAsync(It.IsAny<Model>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task UpdateModel_WhenRepositoryThrows_ShouldReturn500()
+        public async Task UpdateModel_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var modelId = 1;
@@ -506,22 +490,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.UpdateModel(modelId, updateDto);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while updating the model");
-
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error updating model with ID")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.UpdateModel(modelId, updateDto);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -575,7 +546,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteModel(modelId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
 
             _mockRepository.Verify(r => r.GetByIdAsync(modelId), Times.Once);
@@ -583,7 +554,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task DeleteModel_WhenRepositoryThrows_ShouldReturn500()
+        public async Task DeleteModel_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var modelId = 1;
@@ -591,22 +562,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Setup(r => r.GetByIdAsync(modelId))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.DeleteModel(modelId);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while deleting the model");
-
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error deleting model with ID")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.DeleteModel(modelId);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

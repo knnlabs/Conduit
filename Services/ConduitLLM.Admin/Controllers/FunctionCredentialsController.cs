@@ -1,3 +1,5 @@
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.Interfaces;
@@ -12,12 +14,12 @@ namespace ConduitLLM.Admin.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "MasterKeyPolicy")]
-public class FunctionCredentialsController : ControllerBase
+[ServiceFilter(typeof(OperationLoggingFilter))]
+public class FunctionCredentialsController : AdminControllerBase
 {
     private readonly IFunctionCredentialRepository _credentialRepository;
     private readonly IFunctionConfigurationRepository _configurationRepository;
     private readonly IFunctionClientFactory _clientFactory;
-    private readonly ILogger<FunctionCredentialsController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the FunctionCredentialsController.
@@ -27,11 +29,11 @@ public class FunctionCredentialsController : ControllerBase
         IFunctionConfigurationRepository configurationRepository,
         IFunctionClientFactory clientFactory,
         ILogger<FunctionCredentialsController> logger)
+        : base(logger)
     {
         _credentialRepository = credentialRepository ?? throw new ArgumentNullException(nameof(credentialRepository));
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -40,19 +42,10 @@ public class FunctionCredentialsController : ControllerBase
     /// <returns>List of all credentials</returns>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAllCredentials()
     {
-        try
-        {
-            var credentials = await _credentialRepository.GetAllAsync();
-            return Ok(credentials);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all function credentials");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        var credentials = await _credentialRepository.GetAllUnboundedAsync();
+        return Ok(credentials);
     }
 
     /// <summary>
@@ -63,31 +56,19 @@ public class FunctionCredentialsController : ControllerBase
     [HttpGet("configuration/{functionConfigurationId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCredentialsByConfiguration(int functionConfigurationId)
     {
-        try
+        // Get the configuration to determine its provider type
+        var configuration = await _configurationRepository.GetByIdAsync(functionConfigurationId);
+        if (configuration == null)
         {
-            // Get the configuration to determine its provider type
-            var configuration = await _configurationRepository.GetByIdAsync(functionConfigurationId);
-            if (configuration == null)
-            {
-                return NotFound($"Function configuration {functionConfigurationId} not found");
-            }
-
-            // Get credentials for this provider type
-            var credentials = await _credentialRepository.GetByProviderTypeAsync(
-                configuration.ProviderType);
-
-            return Ok(credentials);
+            throw new KeyNotFoundException();
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Error getting credentials for function configuration {FunctionConfigurationId}",
-                functionConfigurationId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+
+        // Get credentials for this provider type
+        var credentials = await _credentialRepository.GetByProviderTypeAsync(
+            configuration.ProviderType);
+        return Ok(credentials);
     }
 
     /// <summary>
@@ -98,25 +79,14 @@ public class FunctionCredentialsController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCredentialById(int id)
     {
-        try
+        var credential = await _credentialRepository.GetByIdAsync(id);
+        if (credential == null)
         {
-            var credential = await _credentialRepository.GetByIdAsync(id);
-
-            if (credential == null)
-            {
-                return NotFound(new ErrorResponseDto("Function credential not found"));
-            }
-
-            return Ok(credential);
+            return this.NotFoundEntity("Function credential", id);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function credential with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        return Ok(credential);
     }
 
     /// <summary>
@@ -127,32 +97,24 @@ public class FunctionCredentialsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateCredential(
         [FromBody] ConduitLLM.Functions.Entities.FunctionCredential credential)
     {
-        try
+        if (credential == null)
         {
-            if (credential == null)
-            {
-                return BadRequest(new ErrorResponseDto("Function credential data is required"));
-            }
-
-            int id = await _credentialRepository.CreateAsync(credential);
-
-            // Fetch the created entity to return
-            var created = await _credentialRepository.GetByIdAsync(id);
-
-            return CreatedAtAction(
-                nameof(GetCredentialById),
-                new { id },
-                created);
+            return BadRequest(new ErrorResponseDto("Function credential data is required"));
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating function credential");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+
+        int id = await _credentialRepository.CreateAsync(credential);
+
+        // Fetch the created entity to return
+        var created = await _credentialRepository.GetByIdAsync(id);
+
+        LogAdminAudit("Created", "FunctionCredential", id, $"ProviderType: {credential.ProviderType}");
+        return CreatedAtAction(
+            nameof(GetCredentialById),
+            new { id },
+            created);
     }
 
     /// <summary>
@@ -165,40 +127,32 @@ public class FunctionCredentialsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateCredential(
         int id,
         [FromBody] ConduitLLM.Functions.Entities.FunctionCredential credential)
     {
-        try
+        if (credential == null)
         {
-            if (credential == null)
-            {
-                return BadRequest(new ErrorResponseDto("Function credential data is required"));
-            }
-
-            if (id != credential.Id)
-            {
-                return BadRequest(new ErrorResponseDto("ID mismatch"));
-            }
-
-            await _credentialRepository.UpdateAsync(credential);
-
-            // Fetch the updated entity to return
-            var updated = await _credentialRepository.GetByIdAsync(id);
-
-            if (updated == null)
-            {
-                return NotFound(new ErrorResponseDto("Function credential not found"));
-            }
-
-            return Ok(updated);
+            return BadRequest(new ErrorResponseDto("Function credential data is required"));
         }
-        catch (Exception ex)
+
+        if (id != credential.Id)
         {
-            _logger.LogError(ex, "Error updating function credential with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            return BadRequest(new ErrorResponseDto("ID mismatch"));
         }
+
+        await _credentialRepository.UpdateAsync(credential);
+
+        // Fetch the updated entity to return
+        var updated = await _credentialRepository.GetByIdAsync(id);
+
+        if (updated == null)
+        {
+            throw new KeyNotFoundException();
+        }
+
+        LogAdminAudit("Updated", "FunctionCredential", id, $"ProviderType: {credential.ProviderType}");
+        return Ok(updated);
     }
 
     /// <summary>
@@ -209,20 +163,12 @@ public class FunctionCredentialsController : ControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteCredential(int id)
     {
-        try
-        {
-            await _credentialRepository.DeleteAsync(id);
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting function credential with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
+        var credential = await _credentialRepository.GetByIdAsync(id);
+        await _credentialRepository.DeleteAsync(id);
+        LogAdminAudit("Deleted", "FunctionCredential", id, credential != null ? $"ProviderType: {credential.ProviderType}" : null);
+        return NoContent();
     }
 
     /// <summary>
@@ -233,52 +179,43 @@ public class FunctionCredentialsController : ControllerBase
     [HttpPost("test")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> TestCredential([FromBody] TestCredentialRequest testRequest)
     {
-        try
+        if (testRequest == null)
         {
-            if (testRequest == null)
-            {
-                return BadRequest(new ErrorResponseDto("Test request data is required"));
-            }
-
-            // Get the credential
-            var credential = await _credentialRepository.GetByIdAsync(testRequest.CredentialId);
-            if (credential == null)
-            {
-                return NotFound(new ErrorResponseDto("Function credential not found"));
-            }
-
-            // Get any configuration that uses this provider type (for client factory)
-            var configurations = await _configurationRepository.GetByProviderTypeAsync(credential.ProviderType);
-            var configuration = configurations.FirstOrDefault();
-            if (configuration == null)
-            {
-                return NotFound(new ErrorResponseDto($"No function configuration found for provider type {credential.ProviderType}"));
-            }
-
-            // Create client and test authentication
-            var client = _clientFactory.GetClient(
-                credential.ProviderType,
-                configuration.Id);
-
-            var authResult = await client.VerifyAuthenticationAsync(
-                testRequest.ApiKeyOverride ?? credential.ApiKey);
-
-            return Ok(new
-            {
-                success = authResult.IsSuccess,
-                message = authResult.Message,
-                details = authResult.Details,
-                durationMs = authResult.ResponseTimeMs
-            });
+            return BadRequest(new ErrorResponseDto("Test request data is required"));
         }
-        catch (Exception ex)
+
+        // Get the credential
+        var credential = await _credentialRepository.GetByIdAsync(testRequest.CredentialId);
+        if (credential == null)
         {
-            _logger.LogError(ex, "Error testing function credential");
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            throw new KeyNotFoundException();
         }
+
+        // Get any configuration that uses this provider type (for client factory)
+        var configurations = await _configurationRepository.GetByProviderTypeAsync(credential.ProviderType);
+        var configuration = configurations.FirstOrDefault();
+        if (configuration == null)
+        {
+            throw new KeyNotFoundException();
+        }
+
+        // Create client and test authentication
+        var client = await _clientFactory.GetClientAsync(
+            credential.ProviderType,
+            configuration.Id);
+
+        var authResult = await client.VerifyAuthenticationAsync(
+            testRequest.ApiKeyOverride ?? credential.ApiKey);
+
+        return Ok(new
+        {
+            success = authResult.IsSuccess,
+            message = authResult.Message,
+            details = authResult.Details,
+            durationMs = authResult.ResponseTimeMs
+        });
     }
 
     /// <summary>

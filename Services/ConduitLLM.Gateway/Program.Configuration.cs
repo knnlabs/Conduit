@@ -17,11 +17,7 @@ public partial class Program
 
         if (skipDatabaseInit)
         {
-            Console.WriteLine("[Conduit] WARNING: Skipping database initialization. Ensure database schema is up to date.");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] Database will be initialized automatically.");
+            Console.Error.WriteLine("[Conduit] WARNING: Skipping database initialization. Ensure database schema is up to date.");
         }
 
         // Configure JSON options for snake_case serialization (OpenAI compatibility)
@@ -40,6 +36,5 @@ public partial class Program
             .Bind(builder.Configuration.GetSection("Conduit"))
             .ValidateDataAnnotations(); // Add validation if using DataAnnotations in settings classes
 
-        // Database settings loading removed - provider configuration is now entirely database-driven
     }
 }

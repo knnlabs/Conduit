@@ -5,7 +5,7 @@ import { createStreamingResponse } from './stream-response';
 /**
  * Creates a typed streaming response from a web ReadableStream
  */
-export function createWebStream<T extends BaseStreamChunk>(
+export function createWebStream<T>(
   stream: ReadableStream<Uint8Array>,
   options?: StreamOptions
 ): StreamingResponse<T> {
