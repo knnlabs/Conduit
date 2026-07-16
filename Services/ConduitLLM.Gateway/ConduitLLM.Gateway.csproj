@@ -40,6 +40,8 @@
     <!-- Override vulnerable transitive (GHSA-9mv3-2cwr-p262, critical); fixed in 10.0.4+ -->
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <!-- Override vulnerable transitive from AspNetCore.OpenApi (GHSA-v5pm-xwqc-g5wc, high); fixed in 2.7.5 -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.2" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
