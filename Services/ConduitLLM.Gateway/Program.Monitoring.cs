@@ -42,8 +42,13 @@ public partial class Program
             // Add basic health checks
             var healthChecksBuilder = builder.Services.AddHealthChecks();
 
-            // Add comprehensive RabbitMQ health check if RabbitMQ is configured
-            if (useRabbitMq)
+            // Add comprehensive RabbitMQ health check if RabbitMQ is configured AND the
+            // MassTransit backend is active — the check injects MassTransit's IBus, which
+            // is not registered on the Wolverine backend (#925; Wolverine-native health
+            // checks land in #931).
+            if (useRabbitMq
+                && ConduitLLM.Configuration.Messaging.MessagingBackendResolver.Resolve(builder.Configuration)
+                    == ConduitLLM.Configuration.Messaging.MessagingBackend.MassTransit)
             {
                 healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.RabbitMQHealthCheck>(
                     "rabbitmq_comprehensive",

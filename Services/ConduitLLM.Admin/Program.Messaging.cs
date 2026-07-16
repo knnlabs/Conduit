@@ -9,28 +9,38 @@ namespace ConduitLLM.Admin;
 public partial class Program
 {
     /// <summary>
-    /// Configures MassTransit event bus with RabbitMQ or in-memory transport.
+    /// Configures the event bus: MassTransit (RabbitMQ or in-memory) by default, or
+    /// Wolverine on the PostgreSQL transport when selected by
+    /// <c>ConduitLLM:Messaging:Backend</c> (epic #909 Phase 2).
     /// </summary>
     private static void ConfigureMessagingServices(WebApplicationBuilder builder, ILogger startupLogger)
     {
-        // Phase 2 backend flag (#924): when ConduitLLM:Messaging:Backend=Wolverine, boot
-        // the Wolverine host (PostgreSQL transport + durable persistence) alongside
-        // MassTransit. MassTransit below stays the active IEventBus backend until the
-        // Wolverine IEventBus/handler host lands (#925); this stage proves boot and
-        // durability provisioning only.
+        // Backend-neutral: the shared cache-invalidation IEventHandler<T> implementations (#919).
+        ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationHandlers(builder.Services);
+
+        // Phase 2 backend switch (#924/#925): ConduitLLM:Messaging:Backend selects the
+        // host for the abstraction. Wolverine runs on the PostgreSQL transport with
+        // durable persistence; MassTransit (default) keeps the Phase 1 wiring unchanged.
         if (MessagingBackendResolver.Resolve(builder.Configuration) == MessagingBackend.Wolverine)
         {
+            builder.Services.AddWolverineEventBus();
+
             var (_, wolverineConnectionString) = new ConduitLLM.Core.Data.ConnectionStringManager()
                 .GetProviderAndConnectionString("AdminAPI", msg => startupLogger.LogInformation("{Message}", msg));
-            builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-admin");
-            startupLogger.LogInformation("Wolverine host enabled (PostgreSQL transport) behind Messaging:Backend flag (#924); MassTransit remains the active IEventBus backend until #925");
+
+            builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-admin", opts =>
+            {
+                ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(opts);
+            });
+
+            startupLogger.LogInformation(
+                "Event bus configured with the Wolverine backend (PostgreSQL transport, durable persistence). " +
+                "Cross-service queue topology follows in #926");
+            return;
         }
 
         // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
         builder.Services.AddMassTransitEventBus();
-
-        // Register the shared cache-invalidation IEventHandler<T> implementations (#919).
-        ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationHandlers(builder.Services);
 
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>()
