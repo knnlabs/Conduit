@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.MassTransit;
+using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
@@ -9,6 +10,18 @@ public partial class Program
 {
     public static void ConfigureMessagingServices(WebApplicationBuilder builder)
     {
+        // Phase 2 backend flag (#924): when ConduitLLM:Messaging:Backend=Wolverine, boot
+        // the Wolverine host (PostgreSQL transport + durable persistence) alongside
+        // MassTransit. MassTransit below stays the active IEventBus backend until the
+        // Wolverine IEventBus/handler host lands (#925); this stage proves boot and
+        // durability provisioning only.
+        if (MessagingBackendResolver.Resolve(builder.Configuration) == MessagingBackend.Wolverine)
+        {
+            var (_, wolverineConnectionString) = new ConduitLLM.Core.Data.ConnectionStringManager()
+                .GetProviderAndConnectionString("CoreAPI");
+            builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-gateway");
+        }
+
         // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
         // Scoped so follow-on publishes inside a consume scope stay correlation-aware,
         // exactly as injecting IPublishEndpoint behaved before.
