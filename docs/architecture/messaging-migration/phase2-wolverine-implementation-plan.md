@@ -27,11 +27,25 @@ Both backends bind the **same** `IEventBus`/`IEventHandler<T>` contracts and con
 **same** `EndpointPolicy` descriptors (`ConduitEndpointPolicies`), so handlers and call
 sites are untouched.
 
-## I2.1 — Bootstrap (#924)
+## I2.1 — Bootstrap (#924) — ✅ implemented
 
-- Add `WolverineFx` + `WolverineFx.PostgreSQL` to Gateway and Admin.
-- `builder.Host.UseWolverine(opts => { opts.PersistMessagesWithPostgresql(connString); opts.Policies.AutoApplyTransactions(); })`.
-- Provision durability tables via `opts.Services.AddResourceSetupOnStartup()` / `.AutoProvision()` in dev, or an EF migration for prod (reuse the existing Npgsql connection — no new broker).
+- `WolverineFx` + `WolverineFx.Postgresql` 6.14.0 referenced from `ConduitLLM.Configuration`
+  (same placement as the MassTransit adapter; flows transitively to Gateway/Admin).
+- `AddConduitWolverine(configuration, connectionString, serviceName)`
+  (`ConduitLLM.Configuration.Messaging.Wolverine`) wraps `UseWolverine`:
+  `UsePostgresqlPersistenceAndTransport` on the service's existing EF connection
+  ("CoreAPI"/"AdminAPI"), `Policies.AutoApplyTransactions()`, and
+  **`Discovery.DisableConventionalDiscovery()`** — without it Wolverine's conventions
+  would pick up Conduit's `*Handler`/`*Consumer` classes (whose `HandleAsync` takes an
+  `IEventContext` Wolverine can't resolve). Dispatch is exclusively via the explicit
+  bridges added in #925.
+- Config keys: `ConduitLLM:Messaging:Backend` (`MassTransit` default; unrecognized values
+  **throw at boot**), `…:Wolverine:SchemaName` (default `wolverine`),
+  `…:Wolverine:AutoProvision` (default `true` → `AutoCreate.CreateOrUpdate`; prod sets
+  `false` and provisions by script).
+- Staging note (#924 as landed): with the flag set, the Wolverine host boots **alongside**
+  MassTransit, which remains the active `IEventBus` backend; #925 turns the flag into the
+  either/or composition-root switch shown above.
 - Acceptance: app boots with Wolverine configured but **inactive** (flag still `MassTransit`).
 
 ## I2.2 — IEventBus / handler host on Wolverine (#925)

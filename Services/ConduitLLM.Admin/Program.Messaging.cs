@@ -1,4 +1,6 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.MassTransit;
+using ConduitLLM.Configuration.Messaging.Wolverine;
 
 using MassTransit;
 
@@ -11,6 +13,19 @@ public partial class Program
     /// </summary>
     private static void ConfigureMessagingServices(WebApplicationBuilder builder, ILogger startupLogger)
     {
+        // Phase 2 backend flag (#924): when ConduitLLM:Messaging:Backend=Wolverine, boot
+        // the Wolverine host (PostgreSQL transport + durable persistence) alongside
+        // MassTransit. MassTransit below stays the active IEventBus backend until the
+        // Wolverine IEventBus/handler host lands (#925); this stage proves boot and
+        // durability provisioning only.
+        if (MessagingBackendResolver.Resolve(builder.Configuration) == MessagingBackend.Wolverine)
+        {
+            var (_, wolverineConnectionString) = new ConduitLLM.Core.Data.ConnectionStringManager()
+                .GetProviderAndConnectionString("AdminAPI", msg => startupLogger.LogInformation("{Message}", msg));
+            builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-admin");
+            startupLogger.LogInformation("Wolverine host enabled (PostgreSQL transport) behind Messaging:Backend flag (#924); MassTransit remains the active IEventBus backend until #925");
+        }
+
         // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
         builder.Services.AddMassTransitEventBus();
 
