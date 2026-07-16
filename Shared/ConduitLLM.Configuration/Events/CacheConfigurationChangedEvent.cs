@@ -62,11 +62,4 @@ namespace ConduitLLM.Configuration.Events
         /// </summary>
         public string? ChangeSource { get; set; }
     }
-
-    /// <summary>
-    /// Event consumer interface for cache configuration changes.
-    /// </summary>
-    public interface ICacheConfigurationChangedConsumer : MassTransit.IConsumer<CacheConfigurationChangedEvent>
-    {
-    }
 }

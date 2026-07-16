@@ -4,6 +4,18 @@ Living checklist for the MassTransit → Wolverine migration (epic #909). This i
 Phase 1 burn-down: every publish site, consumer, event type, tuned endpoint, and
 coupled test file, tagged by risk tier.
 
+> **STATUS (2026-07-16): Phase 1 consumer migration COMPLETE.** All publish sites
+> (#918) and all consumers — cache invalidation (#919), media orchestrators (#920),
+> spend/webhook (#921) — are on `IEventBus`/`IEventHandler<T>`; the four tuned
+> endpoints bind `MassTransitConsumerBridge<T>` configured from the
+> `ConduitEndpointPolicies` descriptors. The only remaining `IConsumer<T>`
+> implementations are the bridge itself and the dead, never-registered
+> `ResilientEventHandlerBase<T>`/`ResilientSpendUpdateProcessor` (removed in Phase 3,
+> see the decommission runbook). `IEventBus` gained `PublishBatchAsync` for the
+> webhook batch path. Remaining gate work (#923): staging smoke on real
+> RabbitMQ/Redis — see the queue-topology note in the Phase 1 plan (bridge-named
+> queues replace per-consumer queues on deploy).
+
 **Risk tiers**
 - 🟢 **low** — cache-invalidation fan-out (idempotent, no ordering, no money)
 - 🟡 **med** — media-generation orchestrators (progress/complete/fail, partitioned)
@@ -89,9 +101,12 @@ Two seams currently wrap `IPublishEndpoint`:
 | `Gateway/EventHandlers/SpendUpdateProcessor` | SpendUpdateRequested | **spend-update-events** | 🔴 |
 | `Gateway/Consumers/WebhookDeliveryConsumer` | WebhookDeliveryRequested | **webhook-delivery** | 🔴 |
 
-**Abstract bases that also implement `IConsumer<T>`** (must move to `IEventHandler<T>`):
-`Gateway/EventHandlers/BatchInvalidationEventHandler<T>`,
-`Gateway/EventHandlers/ResilientEventHandlerBase<T>`.
+**Abstract bases:** `Gateway/EventHandlers/BatchInvalidationEventHandler<T>` is
+migrated to `IEventHandler<T>` (#919). `Gateway/EventHandlers/ResilientEventHandlerBase<T>`
+(and `ResilientSpendUpdateProcessor`) remain on `IConsumer<T>` but are dead code —
+never registered on any bus — and are removed in Phase 3 (#932).
+`ProviderKeyCredentialCacheInvalidationHandler` is migrated but was never registered
+on any endpoint (pre-existing gap, preserved as-is).
 
 ## 3. Event types (45)
 

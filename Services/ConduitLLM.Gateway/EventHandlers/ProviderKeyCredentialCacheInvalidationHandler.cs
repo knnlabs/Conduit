@@ -1,5 +1,5 @@
-using MassTransit;
 using ConduitLLM.Configuration.Events;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Gateway.EventHandlers
@@ -8,11 +8,18 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles ProviderKeyCredential events to invalidate cache
     /// Critical for maintaining cache consistency when keys change
     /// </summary>
-    public class ProviderKeyCredentialCacheInvalidationHandler : 
-        IConsumer<ProviderKeyCredentialCreated>,
-        IConsumer<ProviderKeyCredentialUpdated>,
-        IConsumer<ProviderKeyCredentialDeleted>,
-        IConsumer<ProviderKeyCredentialPrimaryChanged>
+    /// <remarks>
+    /// NOTE: this handler is not currently registered on any endpoint (no handler /
+    /// bridge registration exists) — a pre-existing gap kept as-is during the epic #909
+    /// migration to avoid a behavior change. Register via
+    /// <c>AddEventHandler&lt;TEvent, ProviderKeyCredentialCacheInvalidationHandler&gt;</c>
+    /// + <c>AddEventBridge&lt;TEvent&gt;</c> to activate it.
+    /// </remarks>
+    public class ProviderKeyCredentialCacheInvalidationHandler :
+        IEventHandler<ProviderKeyCredentialCreated>,
+        IEventHandler<ProviderKeyCredentialUpdated>,
+        IEventHandler<ProviderKeyCredentialDeleted>,
+        IEventHandler<ProviderKeyCredentialPrimaryChanged>
     {
         private readonly IProviderCache _cache;
         private readonly ILogger<ProviderKeyCredentialCacheInvalidationHandler> _logger;
@@ -28,10 +35,8 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles ProviderKeyCredentialCreated events
         /// </summary>
-        public async Task Consume(ConsumeContext<ProviderKeyCredentialCreated> context)
+        public async Task HandleAsync(ProviderKeyCredentialCreated @event, IEventContext context)
         {
-            var @event = context.Message;
-            
             try
             {
                 _logger.LogInformation(
@@ -41,7 +46,7 @@ namespace ConduitLLM.Gateway.EventHandlers
 
                 // Invalidate the provider's cache entry
                 await _cache.InvalidateProviderAsync(@event.ProviderId);
-                
+
                 _logger.LogInformation(
                     "Successfully invalidated cache after creating key {KeyId} for provider {ProviderId}",
                     @event.KeyId,
@@ -49,21 +54,19 @@ namespace ConduitLLM.Gateway.EventHandlers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
-                    "Failed to invalidate cache after creating key {KeyId} for provider {ProviderId}", 
+                _logger.LogError(ex,
+                    "Failed to invalidate cache after creating key {KeyId} for provider {ProviderId}",
                     @event.KeyId,
                     @event.ProviderId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the endpoint retry policy
             }
         }
 
         /// <summary>
         /// Handles ProviderKeyCredentialUpdated events
         /// </summary>
-        public async Task Consume(ConsumeContext<ProviderKeyCredentialUpdated> context)
+        public async Task HandleAsync(ProviderKeyCredentialUpdated @event, IEventContext context)
         {
-            var @event = context.Message;
-            
             try
             {
                 _logger.LogInformation(
@@ -73,7 +76,7 @@ namespace ConduitLLM.Gateway.EventHandlers
 
                 // Invalidate the provider's cache entry
                 await _cache.InvalidateProviderAsync(@event.ProviderId);
-                
+
                 _logger.LogInformation(
                     "Successfully invalidated cache after updating key {KeyId} for provider {ProviderId}",
                     @event.KeyId,
@@ -81,21 +84,19 @@ namespace ConduitLLM.Gateway.EventHandlers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
-                    "Failed to invalidate cache after updating key {KeyId} for provider {ProviderId}", 
+                _logger.LogError(ex,
+                    "Failed to invalidate cache after updating key {KeyId} for provider {ProviderId}",
                     @event.KeyId,
                     @event.ProviderId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the endpoint retry policy
             }
         }
 
         /// <summary>
         /// Handles ProviderKeyCredentialDeleted events
         /// </summary>
-        public async Task Consume(ConsumeContext<ProviderKeyCredentialDeleted> context)
+        public async Task HandleAsync(ProviderKeyCredentialDeleted @event, IEventContext context)
         {
-            var @event = context.Message;
-            
             try
             {
                 _logger.LogInformation(
@@ -105,7 +106,7 @@ namespace ConduitLLM.Gateway.EventHandlers
 
                 // Invalidate the provider's cache entry
                 await _cache.InvalidateProviderAsync(@event.ProviderId);
-                
+
                 _logger.LogInformation(
                     "Successfully invalidated cache after deleting key {KeyId} for provider {ProviderId}",
                     @event.KeyId,
@@ -113,21 +114,19 @@ namespace ConduitLLM.Gateway.EventHandlers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
-                    "Failed to invalidate cache after deleting key {KeyId} for provider {ProviderId}", 
+                _logger.LogError(ex,
+                    "Failed to invalidate cache after deleting key {KeyId} for provider {ProviderId}",
                     @event.KeyId,
                     @event.ProviderId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the endpoint retry policy
             }
         }
 
         /// <summary>
         /// Handles ProviderKeyCredentialPrimaryChanged events
         /// </summary>
-        public async Task Consume(ConsumeContext<ProviderKeyCredentialPrimaryChanged> context)
+        public async Task HandleAsync(ProviderKeyCredentialPrimaryChanged @event, IEventContext context)
         {
-            var @event = context.Message;
-            
             try
             {
                 _logger.LogInformation(
@@ -138,17 +137,17 @@ namespace ConduitLLM.Gateway.EventHandlers
 
                 // Invalidate the provider's cache entry
                 await _cache.InvalidateProviderAsync(@event.ProviderId);
-                
+
                 _logger.LogInformation(
                     "Successfully invalidated cache after changing primary key for provider {ProviderId}",
                     @event.ProviderId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
-                    "Failed to invalidate cache after changing primary key for provider {ProviderId}", 
+                _logger.LogError(ex,
+                    "Failed to invalidate cache after changing primary key for provider {ProviderId}",
                     @event.ProviderId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the endpoint retry policy
             }
         }
     }
