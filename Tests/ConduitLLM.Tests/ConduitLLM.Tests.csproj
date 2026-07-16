@@ -19,6 +19,8 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+    <!-- Override vulnerable transitive from EFCore.Sqlite (GHSA-2m69-gcr7-jv3q, high); fixed in 2.1.12 -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
     <!-- Tests has no Microsoft.AspNetCore.App framework ref; pin vulnerable transitives directly. -->
     <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.9" />
