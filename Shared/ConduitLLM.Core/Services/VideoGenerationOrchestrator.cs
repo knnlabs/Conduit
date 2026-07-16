@@ -12,10 +12,10 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Services.Strategies;
 using ConduitLLM.Core.Validation;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -29,8 +29,7 @@ namespace ConduitLLM.Core.Services
         VideoGenerationRequest,
         VideoGenerationResponse,
         VideoGenerationRequested>,
-        IConsumer<VideoGenerationRequested>,
-        IConsumer<VideoGenerationCancelled>
+        IEventHandler<VideoGenerationCancelled>
     {
         private readonly VideoGenerationRetryConfiguration _retryConfiguration;
         private readonly IMediaProcessingStrategy<VideoData> _base64Processor;
@@ -49,7 +48,7 @@ namespace ConduitLLM.Core.Services
             ILLMClientFactory clientFactory,
             IAsyncTaskService taskService,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IModelProviderMappingService modelMappingService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
@@ -60,16 +59,16 @@ namespace ConduitLLM.Core.Services
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
             ILogger<VideoGenerationOrchestrator> logger)
-            : base(clientFactory, taskService, storageService, publishEndpoint,
+            : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
                    webhookService, httpClientFactory, parameterValidator, metrics, logger)
         {
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
-            
+
             // Initialize processing strategies
-            _base64Processor = new Base64MediaProcessor(storageService, publishEndpoint,
+            _base64Processor = new Base64MediaProcessor(storageService, eventBus,
                 logger as ILogger<Base64MediaProcessor> ?? new NullLogger<Base64MediaProcessor>());
-            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, publishEndpoint,
+            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, eventBus,
                 logger as ILogger<UrlMediaProcessor> ?? new NullLogger<UrlMediaProcessor>());
         }
 
@@ -159,7 +158,7 @@ namespace ConduitLLM.Core.Services
                         progress: progressPercentage);
 
                     // Publish progress event
-                    await _publishEndpoint.Publish(new VideoGenerationProgress
+                    await _eventBus.PublishAsync(new VideoGenerationProgress
                     {
                         RequestId = requestId,
                         ProgressPercentage = progressPercentage,
@@ -371,7 +370,7 @@ namespace ConduitLLM.Core.Services
 
         protected override async Task PublishStartedEventAsync(VideoGenerationRequested request)
         {
-            await _publishEndpoint.Publish(new VideoGenerationStarted
+            await _eventBus.PublishAsync(new VideoGenerationStarted
             {
                 RequestId = request.RequestId,
                 Provider = "pending",
@@ -408,7 +407,7 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            await _publishEndpoint.Publish(new VideoGenerationCompleted
+            await _eventBus.PublishAsync(new VideoGenerationCompleted
             {
                 RequestId = request.RequestId,
                 VideoUrl = media.Url ?? string.Empty,
@@ -439,7 +438,7 @@ namespace ConduitLLM.Core.Services
                 nextRetryAt = DateTime.UtcNow.AddSeconds(delaySeconds);
             }
 
-            await _publishEndpoint.Publish(new VideoGenerationFailed
+            await _eventBus.PublishAsync(new VideoGenerationFailed
             {
                 RequestId = request.RequestId,
                 Error = ex.Message,
@@ -459,7 +458,7 @@ namespace ConduitLLM.Core.Services
             int total,
             string status)
         {
-            await _publishEndpoint.Publish(new VideoGenerationProgress
+            await _eventBus.PublishAsync(new VideoGenerationProgress
             {
                 RequestId = request.RequestId,
                 ProgressPercentage = total > 0 ? (current * 100 / total) : 0,
@@ -521,10 +520,9 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Handles video generation cancellation events.
         /// </summary>
-        public async Task Consume(ConsumeContext<VideoGenerationCancelled> context)
+        public async Task HandleAsync(VideoGenerationCancelled cancellationEvent, IEventContext context)
         {
-            var cancellationEvent = context.Message;
-            _logger.LogInformation("Received cancellation request for video generation task {RequestId}", 
+            _logger.LogInformation("Received cancellation request for video generation task {RequestId}",
                 cancellationEvent.RequestId);
 
             // Cancel the task using the task registry
@@ -542,7 +540,7 @@ namespace ConduitLLM.Core.Services
                     error: "Task cancelled by user request");
                 
                 // Publish cancellation completed event
-                await _publishEndpoint.Publish(new VideoGenerationProgress
+                await _eventBus.PublishAsync(new VideoGenerationProgress
                 {
                     RequestId = cancellationEvent.RequestId,
                     Status = "cancelled",

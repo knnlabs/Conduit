@@ -659,10 +659,9 @@ public partial class Program
             
             // Register media generation metrics
             builder.Services.AddSingleton<ConduitLLM.Core.Metrics.MediaGenerationMetrics>();
-            
-            // Register media generation orchestrators
-            builder.Services.AddScoped<ImageGenerationOrchestrator>();
-            builder.Services.AddScoped<VideoGenerationOrchestrator>();
+
+            // Media generation orchestrators are registered as IEventHandler<T> in
+            // Program.Messaging.cs (AddMediaGenerationHandlers, epic #909 / #920).
         }
 
         Console.WriteLine("[Conduit] Image generation configured with database-first architecture");

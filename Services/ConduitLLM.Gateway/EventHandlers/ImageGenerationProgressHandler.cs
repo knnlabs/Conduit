@@ -1,6 +1,6 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 
 using ConduitLLM.Gateway.Interfaces;
@@ -9,7 +9,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// <summary>
     /// Handles ImageGenerationProgress events to track generation progress and enable real-time updates.
     /// </summary>
-    public class ImageGenerationProgressHandler : IConsumer<ImageGenerationProgress>
+    public class ImageGenerationProgressHandler : IEventHandler<ImageGenerationProgress>
     {
         private readonly IMemoryCache _progressCache;
         private readonly IAsyncTaskService _taskService;
@@ -29,10 +29,9 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<ImageGenerationProgress> context)
+        public async Task HandleAsync(ImageGenerationProgress message, IEventContext context)
         {
-            var message = context.Message;
-            
+
             _logger.LogInformation("Processing image generation progress for task {TaskId}: {Status} ({ImagesCompleted}/{TotalImages})", 
                 message.TaskId, message.Status, message.ImagesCompleted, message.TotalImages);
 
@@ -87,7 +86,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing image generation progress for task {TaskId}", message.TaskId);
-                throw; // Let MassTransit handle retry
+                throw; // Let the endpoint retry policy handle it
             }
 
             await Task.CompletedTask;

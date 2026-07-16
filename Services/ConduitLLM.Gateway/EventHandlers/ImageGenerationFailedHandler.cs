@@ -1,6 +1,6 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 
 using ConduitLLM.Gateway.Interfaces;
@@ -9,11 +9,11 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// <summary>
     /// Handles ImageGenerationFailed events to log failures, implement retry logic, and clean up resources.
     /// </summary>
-    public class ImageGenerationFailedHandler : IConsumer<ImageGenerationFailed>
+    public class ImageGenerationFailedHandler : IEventHandler<ImageGenerationFailed>
     {
         private readonly IMemoryCache _progressCache;
         private readonly IMediaStorageService _storageService;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationFailedHandler> _logger;
         private const string ProgressCacheKeyPrefix = "image_generation_progress_";
@@ -23,21 +23,20 @@ namespace ConduitLLM.Gateway.EventHandlers
         public ImageGenerationFailedHandler(
             IMemoryCache progressCache,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IImageGenerationNotificationService notificationService,
             ILogger<ImageGenerationFailedHandler> logger)
         {
             _progressCache = progressCache;
             _storageService = storageService;
-            _publishEndpoint = publishEndpoint;
+            _eventBus = eventBus;
             _notificationService = notificationService;
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<ImageGenerationFailed> context)
+        public async Task HandleAsync(ImageGenerationFailed message, IEventContext context)
         {
-            var message = context.Message;
-            
+
             _logger.LogError("Image generation failed for task {TaskId}: {Error} (Provider: {Provider}, Retryable: {IsRetryable}, Attempt: {AttemptCount})", 
                 message.TaskId, message.Error, message.Provider, message.IsRetryable, message.AttemptCount);
 
@@ -57,13 +56,15 @@ namespace ConduitLLM.Gateway.EventHandlers
                         message.TaskId, message.AttemptCount + 1, MaxRetryAttempts);
                     
                     // Future: Re-queue the image generation request with increased attempt count
-                    // await _publishEndpoint.Publish(new ImageGenerationRequested
-                    // {
-                    //     TaskId = message.TaskId,
-                    //     VirtualKeyId = message.VirtualKeyId,
-                    //     // ... copy original request details ...
-                    //     AttemptCount = message.AttemptCount + 1
-                    // }, context => context.Delay = TimeSpan.FromSeconds(Math.Pow(2, message.AttemptCount)));
+                    // await context.SchedulePublishAsync(
+                    //     DateTime.UtcNow.AddSeconds(Math.Pow(2, message.AttemptCount)),
+                    //     new ImageGenerationRequested
+                    //     {
+                    //         TaskId = message.TaskId,
+                    //         VirtualKeyId = message.VirtualKeyId,
+                    //         // ... copy original request details ...
+                    //         AttemptCount = message.AttemptCount + 1
+                    //     });
                     
                     // For now, just log the retry intention
                     _logger.LogWarning("Retry mechanism not yet implemented - task {TaskId} will not be retried automatically", 
@@ -100,7 +101,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing image generation failure for task {TaskId}", message.TaskId);
-                throw; // Let MassTransit handle retry
+                throw; // Let the endpoint retry policy handle it
             }
 
             await Task.CompletedTask;

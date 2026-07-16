@@ -4,13 +4,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Validation;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
@@ -25,8 +25,8 @@ namespace ConduitLLM.Core.Services.Abstractions
     /// <typeparam name="TRequest">The generation request type</typeparam>
     /// <typeparam name="TResponse">The generation response type</typeparam>
     /// <typeparam name="TEventRequest">The event request type</typeparam>
-    public abstract class MediaGenerationOrchestrator<TRequest, TResponse, TEventRequest> 
-        : IConsumer<TEventRequest>
+    public abstract class MediaGenerationOrchestrator<TRequest, TResponse, TEventRequest>
+        : IEventHandler<TEventRequest>
         where TRequest : class
         where TResponse : class
         where TEventRequest : class
@@ -44,7 +44,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected readonly ILLMClientFactory _clientFactory;
         protected readonly IAsyncTaskService _taskService;
         protected readonly IMediaStorageService _storageService;
-        protected readonly IPublishEndpoint _publishEndpoint;
+        protected readonly IEventBus _eventBus;
         protected readonly IModelProviderMappingService _modelMappingService;
         protected readonly IVirtualKeyService _virtualKeyService;
         protected readonly ICostCalculationService _costService;
@@ -59,7 +59,7 @@ namespace ConduitLLM.Core.Services.Abstractions
             ILLMClientFactory clientFactory,
             IAsyncTaskService taskService,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IModelProviderMappingService modelMappingService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
@@ -73,7 +73,7 @@ namespace ConduitLLM.Core.Services.Abstractions
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
@@ -88,9 +88,8 @@ namespace ConduitLLM.Core.Services.Abstractions
         /// <summary>
         /// Template method defining the main processing flow for media generation.
         /// </summary>
-        public async Task Consume(ConsumeContext<TEventRequest> context)
+        public async Task HandleAsync(TEventRequest request, IEventContext context)
         {
-            var request = context.Message;
             var stopwatch = Stopwatch.StartNew();
             GenerationModelInfo? modelInfo = null;
             
@@ -458,7 +457,7 @@ namespace ConduitLLM.Core.Services.Abstractions
 
         protected virtual async Task UpdateSpendAsync(int virtualKeyId, decimal amount, string requestId, string? correlationId)
         {
-            await _publishEndpoint.Publish(new SpendUpdateRequested
+            await _eventBus.PublishAsync(new SpendUpdateRequested
             {
                 KeyId = virtualKeyId,
                 Amount = amount,
@@ -479,7 +478,7 @@ namespace ConduitLLM.Core.Services.Abstractions
                 _ => WebhookEventType.TaskProgress
             };
             
-            await _publishEndpoint.Publish(new WebhookDeliveryRequested
+            await _eventBus.PublishAsync(new WebhookDeliveryRequested
             {
                 TaskId = GetRequestId(request),
                 TaskType = GetMediaType().ToLowerInvariant(),
