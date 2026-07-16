@@ -209,11 +209,14 @@ public partial class Program
     }
 
     /// <summary>
-    /// Wolverine backend wiring (#925): IEventBus adapter + one bridge handler per
-    /// bridged event type, on the PostgreSQL transport with durable persistence.
-    /// Publishes route to the local durable queues of this process's bridges; the
-    /// tuned endpoint policies (ordering, deferral, concurrency — the analogue of the
-    /// RabbitMQ endpoints below) and cross-service queue topology land in I2.3/#926.
+    /// Wolverine backend wiring (#925/#926): IEventBus adapter + one bridge handler per
+    /// bridged event type, on the PostgreSQL transport with durable persistence. Events
+    /// route through the shared queue topology (<c>ConduitMessagingTopology</c>): the four
+    /// tuned queues carry the <c>ConduitEndpointPolicies</c> descriptors translated by
+    /// <c>WolverineEndpointPolicy</c> (strict ordering for spend/image, concurrency cap +
+    /// circuit breaker for webhooks, per-type retry rules), everything else rides
+    /// <c>gateway-events</c>. Cross-service delivery (Admin→Gateway) flows over the same
+    /// queues.
     /// </summary>
     private static void ConfigureWolverineMessaging(WebApplicationBuilder builder)
     {
@@ -228,11 +231,16 @@ public partial class Program
             ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(opts);
             ConduitLLM.Gateway.Extensions.MediaGenerationMessagingExtensions.AddMediaGenerationBridges(opts);
 
-            // High-risk bridges (#921): endpoint tuning for these (single/sequential
-            // listener for spend ordering, webhook deferral/concurrency) follows in #926.
+            // High-risk bridges (#921); their endpoint tuning is applied by
+            // ListenAsConduitGateway below (#926).
             opts.AddEventBridge<SpendUpdateRequested>();
             opts.AddEventBridge<WebhookDeliveryRequested>();
             opts.AddEventBridge<ConduitLLM.Configuration.Events.BatchSpendFlushRequestedEvent>();
+
+            // Event→queue topology (#926): publish routing identical on all hosts;
+            // the Gateway listens on the four tuned queues + gateway-events.
+            ConduitLLM.Core.Messaging.ConduitMessagingTopology.ApplyConduitPublishRouting(opts);
+            ConduitLLM.Core.Messaging.ConduitMessagingTopology.ListenAsConduitGateway(opts);
         });
 
         // Batch webhook publisher: publishes via IEventBus, so it is backend-agnostic.

@@ -83,23 +83,36 @@ sites are untouched.
   through the bridge to an `IEventHandler` with envelope metadata; adapter/bridge/context
   unit tests mirror the MassTransit set.
 
-## I2.3 — Map the 4 tuned endpoints (#926)
+## I2.3 — Map the 4 tuned endpoints (#926) — ✅ implemented (behavioral parity gate = #929)
 
-Translate `ConduitEndpointPolicies` → Wolverine, the analogue of
-`MassTransitEndpointPolicy.ApplyResiliencePolicies`:
+Implemented as `WolverineEndpointPolicy` (descriptor translation) +
+`ConduitMessagingTopology` in `ConduitLLM.Core.Messaging` (the declared event→queue
+topology Postgres point-to-point queues need where RabbitMQ derived it from exchanges):
 
-| Descriptor | Wolverine translation |
+| Descriptor | Wolverine translation (as landed) |
 |---|---|
-| `SingleActiveConsumer` / `ConcurrentMessageLimit = 1` (spend) | `ListenToPostgresQueue("spend-update-events").Sequential()` (single, ordered listener) |
-| `ConcurrentMessageLimit` / `PrefetchCount` | `.MaximumParallelMessages(n)` / buffered listener options |
-| `Retry` (Immediate/Incremental/Exponential) | `opts.OnException<…>().RetryWithCooldown(...)` / `policy.RetryTimes` per endpoint |
-| `DelayedRedeliveryIntervals` | `.ScheduleRetry(...)` intervals |
-| `CircuitBreaker` | `opts.Policies.OnException(...).Pause(...)` / app-level Polly retained where richer |
-| `RateLimit` (webhook 100/s) | endpoint throttle, or retain the existing app-level `IWebhookCircuitBreaker`/rate logic |
-| deferred retry (`SchedulePublishAsync`) | native `ScheduleAsync` (durable; better than today's unconfigured MT scheduler) |
+| `SingleActiveConsumer` / `ConcurrentMessageLimit = 1` (spend, image) | `ListenToPostgresqlQueue(name).ListenWithStrictOrdering()` — cluster-wide single active listener + sequential handling |
+| `ConcurrentMessageLimit` (webhook 75) | `.MaximumParallelMessages(n)`; `PrefetchCount` has no Postgres analogue |
+| `Retry` shapes | `EndpointRetryHandlerPolicy : IHandlerPolicy` scopes `RetryWithCooldown(...)` to each endpoint's message types (Wolverine's failure DSL is global-or-generic; the descriptors carry runtime `Type` lists). Cooldowns via `ComputeRetryCooldowns`: Immediate → zeros; Incremental → min + step·n; Exponential → min + step·(2ⁿ−1) capped at max |
+| `DelayedRedeliveryIntervals` | `ScheduleRetry(...)` after inline attempts (then Postgres dead-letter storage) |
+| `CircuitBreaker` | listener `CircuitBreaker` (TrackingPeriod/FailurePercentageThreshold/MinimumThreshold/PauseTime) |
+| `RateLimit` (webhook 100/s) | NOT translated — app-level webhook rate limiting/circuit breaking retained (as this plan allowed) |
+| `QuorumQueue` / `QueueArguments` | RabbitMQ-native, not applicable |
+| deferred retry (`SchedulePublishAsync`) | already native + durable since #925 |
 
-Acceptance: each endpoint's behavior matches the MassTransit baseline in tests (ordering,
-deferral, concurrency).
+**Topology** (single source of truth, applied identically on both hosts; a rule for a
+type a host never publishes is inert): 4 tuned queues + `gateway-events` (all other
+Gateway-consumed events) + `admin-events` (shared cache events; shared types fan out to
+BOTH service queues). Gateway listens tuned + `gateway-events`; Admin listens
+`admin-events`. Instances of a service compete on its queue — the same
+one-consumer-per-event semantics as today's per-service RabbitMQ queues (per-instance
+cache fan-out remains the Redis pub/sub cache bus's job). The Gateway bridge-extension
+`BridgedEventTypes` lists now derive from the topology so routing and bridge
+registration cannot drift (unit-tested: every bridged type routed exactly once).
+
+Acceptance: translation + topology invariants unit-tested; live ordering/deferral/
+concurrency behavior vs the MassTransit baseline is measured in I2.6/#929 (needs real
+Postgres + load).
 
 ## I2.4 — Transactional outbox (#927)
 

@@ -70,33 +70,12 @@ namespace ConduitLLM.Gateway.Extensions
         /// <summary>
         /// The event types bridged to the Gateway-hosted cache-invalidation/notification
         /// handlers. One list drives both backends' bridge registration so they cannot
-        /// drift (epic #909 Phase 2, #925).
+        /// drift (epic #909 Phase 2, #925); the canonical list lives in
+        /// <see cref="ConduitLLM.Core.Messaging.ConduitMessagingTopology"/> because the
+        /// Wolverine queue routing (#926) needs it from both hosts.
         /// </summary>
-        public static readonly IReadOnlyList<Type> BridgedEventTypes = new[]
-        {
-            typeof(VirtualKeyUpdated),
-            typeof(VirtualKeyCreated),
-            typeof(VirtualKeyDeleted),
-            typeof(SpendUpdated),
-            typeof(ProviderCreated),
-            typeof(ProviderUpdated),
-            typeof(ProviderDeleted),
-            typeof(ModelUpdated),
-            typeof(DiscoveryCacheInvalidationRequested),
-            typeof(AsyncTaskCreated),
-            typeof(AsyncTaskUpdated),
-            typeof(AsyncTaskDeleted),
-            typeof(MediaGenerationCompleted),
-            typeof(VideoGenerationStarted),
-            typeof(ModelMappingChanged),
-            typeof(ModelCostChanged),
-            typeof(IpFilterChanged),
-            typeof(ProviderToolChanged),
-            typeof(Configuration.Events.ProviderKeyCredentialCreated),
-            typeof(Configuration.Events.ProviderKeyCredentialUpdated),
-            typeof(Configuration.Events.ProviderKeyCredentialDeleted),
-            typeof(Configuration.Events.ProviderKeyCredentialPrimaryChanged),
-        };
+        public static IReadOnlyList<Type> BridgedEventTypes =>
+            ConduitLLM.Core.Messaging.ConduitMessagingTopology.GatewayCacheInvalidationEvents;
 
         /// <summary>
         /// Registers the MassTransit bridge consumers for the Gateway-hosted cache events.
