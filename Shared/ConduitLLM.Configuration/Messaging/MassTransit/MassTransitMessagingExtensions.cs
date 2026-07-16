@@ -46,5 +46,15 @@ namespace ConduitLLM.Configuration.Messaging.MassTransit
         {
             configurator.AddConsumer<MassTransitConsumerBridge<TEvent>>();
         }
+
+        /// <summary>
+        /// Non-generic overload of <see cref="AddEventBridge{TEvent}(IRegistrationConfigurator)"/>
+        /// for registering bridges from a shared event-type list (the same list drives the
+        /// Wolverine backend's bridge registration, keeping the two backends in sync).
+        /// </summary>
+        public static void AddEventBridge(this IRegistrationConfigurator configurator, Type eventType)
+        {
+            configurator.AddConsumer(typeof(MassTransitConsumerBridge<>).MakeGenericType(eventType));
+        }
     }
 }

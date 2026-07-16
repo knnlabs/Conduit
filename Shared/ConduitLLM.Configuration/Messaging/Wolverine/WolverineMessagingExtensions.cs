@@ -1,6 +1,7 @@
 using JasperFx;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Wolverine;
@@ -46,11 +47,17 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         /// Wolverine service identity (e.g. <c>conduit-gateway</c>); distinguishes each
         /// service's durability agent and node records in the shared database.
         /// </param>
+        /// <param name="configure">
+        /// Per-service Wolverine configuration applied after the Conduit defaults —
+        /// bridge registrations (<see cref="AddEventBridge{TEvent}"/>) and, from
+        /// I2.3/#926, the tuned endpoint policies.
+        /// </param>
         public static IHostBuilder AddConduitWolverine(
             this IHostBuilder host,
             IConfiguration configuration,
             string connectionString,
-            string serviceName)
+            string serviceName,
+            Action<WolverineOptions>? configure = null)
         {
             var schemaName = configuration[SchemaNameKey] ?? "wolverine";
             var autoProvision = configuration.GetValue(AutoProvisionKey, true);
@@ -59,6 +66,13 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
             {
                 opts.ServiceName = serviceName;
 
+                // Wolverine 6 split the Roslyn runtime compiler out of the core package;
+                // the default TypeLoadMode.Dynamic fails at startup without it. Explicit
+                // (rather than relying on referenced-assembly auto-registration) so boot
+                // does not depend on assembly load order. Pre-generated static codegen
+                // ('codegen write' + TypeLoadMode.Static) is a cutover optimization (#930).
+                opts.UseRuntimeCompilation();
+
                 // Persistence (inbox/outbox/scheduled messages) AND the message transport
                 // share the existing Postgres database, in an isolated schema.
                 opts.UsePostgresqlPersistenceAndTransport(connectionString, schemaName);
@@ -66,6 +80,12 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 // Wraps handlers in a database transaction where one applies — the
                 // foundation for the transactional outbox work in I2.4/#927.
                 opts.Policies.AutoApplyTransactions();
+
+                // Local queues (where in-process bridge handlers receive publishes) are
+                // backed by the Postgres durability tables, so buffered messages survive
+                // a crash — already an improvement on MassTransit's in-memory transport.
+                // Full outbox semantics for the financial paths land in I2.4/#927.
+                opts.Policies.UseDurableLocalQueues();
 
                 // Conduit's IEventHandler<T> implementations are named *Handler/*Consumer
                 // with HandleAsync methods, which Wolverine's conventional discovery would
@@ -77,7 +97,43 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 opts.AutoBuildMessageStorageOnStartup = autoProvision
                     ? AutoCreate.CreateOrUpdate
                     : AutoCreate.None;
+
+                configure?.Invoke(opts);
             });
+        }
+
+        /// <summary>
+        /// Registers the <see cref="IEventBus"/> adapter over Wolverine's
+        /// <see cref="IMessageBus"/>. Scoped for the same reason as
+        /// <c>AddMassTransitEventBus</c>: inside a handler scope the bus is the active
+        /// message context, so follow-on publishes stay correlation-aware.
+        /// </summary>
+        public static IServiceCollection AddWolverineEventBus(this IServiceCollection services)
+        {
+            services.AddScoped<IEventBus, WolverineEventBus>();
+            return services;
+        }
+
+        /// <summary>
+        /// Registers the generic Wolverine bridge handler for an event type — the
+        /// Wolverine analogue of the MassTransit <c>AddEventBridge</c>. Causes the event
+        /// type to be consumed and dispatched to every registered
+        /// <see cref="IEventHandler{TEvent}"/>. Required because conventional discovery
+        /// is disabled.
+        /// </summary>
+        public static void AddEventBridge<TEvent>(this WolverineOptions options)
+            where TEvent : class
+        {
+            options.AddEventBridge(typeof(TEvent));
+        }
+
+        /// <summary>
+        /// Non-generic overload of <see cref="AddEventBridge{TEvent}(WolverineOptions)"/>
+        /// for registering bridges from a shared event-type list.
+        /// </summary>
+        public static void AddEventBridge(this WolverineOptions options, Type eventType)
+        {
+            options.Discovery.IncludeType(typeof(WolverineHandlerBridge<>).MakeGenericType(eventType));
         }
     }
 }

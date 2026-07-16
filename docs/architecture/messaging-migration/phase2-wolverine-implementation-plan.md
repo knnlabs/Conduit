@@ -48,18 +48,40 @@ sites are untouched.
   either/or composition-root switch shown above.
 - Acceptance: app boots with Wolverine configured but **inactive** (flag still `MassTransit`).
 
-## I2.2 — IEventBus / handler host on Wolverine (#925)
+## I2.2 — IEventBus / handler host on Wolverine (#925) — ✅ implemented
 
-- `WolverineEventBus : IEventBus` → `PublishAsync<T>` delegates to Wolverine `IMessageBus.PublishAsync`.
-- `WolverineEventContext : IEventContext` → wraps Wolverine's message context:
-  `CancellationToken`, `Envelope.Id` → `MessageId`, `Envelope.CorrelationId`, header
-  lookup, `PublishAsync` (cascading), and `SchedulePublishAsync` → `bus.ScheduleAsync(evt, deliveryTime)`.
-- Handler host: a generic Wolverine handler `WolverineHandlerBridge<TEvent>` (or a
-  conventional handler discovered by Wolverine) resolves all `IEventHandler<TEvent>` and
-  invokes each — the mirror of `MassTransitConsumerBridge<TEvent>`. Throwing propagates to
-  Wolverine's retry/redelivery (configured from the descriptors in #926).
-- Acceptance: every event type publishes/consumes via Wolverine in a dev run; the existing
-  abstraction unit tests + the in-memory pilot pass against the Wolverine backend.
+- `WolverineEventBus : IEventBus` (scoped, like the MassTransit adapter — inside a handler
+  scope Wolverine's `IMessageBus` is the active message context, so follow-on publishes are
+  correlation-aware and outbox-eligible). `PublishBatchAsync` = sequential publishes
+  (Wolverine has no batch API; the batch is an optimization, not a semantic guarantee).
+- `WolverineEventContext : IEventContext` → `Envelope.Id`/`CorrelationId`/`Headers`,
+  cascading `PublishAsync`, and `SchedulePublishAsync` →
+  `PublishAsync(evt, new DeliveryOptions { ScheduledTime = … })` (the interface form of
+  `ScheduleAsync`, which is an extension method; unspecified `DateTime.Kind` treated as UTC).
+  The `CancellationToken` is captured from the handler-method parameter (Wolverine does not
+  expose it on the context).
+- `WolverineHandlerBridge<TEvent>.Handle(TEvent, IMessageContext, CancellationToken)` —
+  sequential dispatch to all `IEventHandler<TEvent>`, exceptions propagate to Wolverine's
+  retry. Closed bridge types registered per event type via `AddEventBridge` /
+  `Discovery.IncludeType` (conventional discovery stays off). One shared
+  `BridgedEventTypes` list per extension class drives BOTH backends' registration
+  (`CacheInvalidationMessagingExtensions`, `SharedCacheInvalidationMessagingExtensions`,
+  `MediaGenerationMessagingExtensions`).
+- Composition roots are now the either/or switch from the plan; handler registrations are
+  backend-neutral and shared. `RabbitMQHealthCheck` (injects MassTransit `IBus`) is gated
+  to the MassTransit backend (#931 replaces it). `BatchWebhookPublisher` registers
+  unconditionally on Wolverine (it publishes via `IEventBus`).
+- **Gotcha:** Wolverine 6 split the Roslyn runtime compiler out of the core package —
+  without `WolverineFx.RuntimeCompilation` + `opts.UseRuntimeCompilation()`, hosts throw at
+  startup in the default `TypeLoadMode.Dynamic`. Pre-generated static codegen
+  (`codegen write` + `TypeLoadMode.Static`) is a cutover-time optimization (#930).
+- Local queues are durable (`UseDurableLocalQueues`, Postgres-backed). Publishes route to
+  this process's bridge handlers; **cross-service queue topology is #926 scope** — parity
+  with today's in-memory MassTransit mode, where cross-service invalidation likewise rides
+  the (separate, retained) Redis pub/sub cache bus.
+- Acceptance met: in-memory pilot (`WolverineBridgePilotTests`) publishes via `IEventBus`
+  through the bridge to an `IEventHandler` with envelope metadata; adapter/bridge/context
+  unit tests mirror the MassTransit set.
 
 ## I2.3 — Map the 4 tuned endpoints (#926)
 
