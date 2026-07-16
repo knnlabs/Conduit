@@ -1,16 +1,17 @@
-using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Gateway.EventHandlers;
+using ConduitLLM.Tests.Messaging;
 
 namespace ConduitLLM.Tests.Http.EventHandlers
 {
     /// <summary>
     /// Unit tests for BatchSpendFlushRequestedHandler.
-    /// Tests event consumption, service interaction, error handling, and completion event publishing.
+    /// Tests event handling, service interaction, error handling, and completion event publishing.
     /// Note: These tests focus on the handler logic rather than the BatchSpendUpdateService implementation.
     /// </summary>
     [Trait("Category", "Unit")]
@@ -20,9 +21,9 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
         private readonly Mock<IServiceScope> _serviceScopeMock;
         private readonly Mock<IServiceProvider> _serviceProviderMock;
-        private readonly Mock<IPublishEndpoint> _publishEndpointMock;
+        private readonly Mock<IEventBus> _eventBusMock;
         private readonly Mock<ILogger<BatchSpendFlushRequestedHandler>> _loggerMock;
-        private readonly Mock<ConsumeContext<BatchSpendFlushRequestedEvent>> _contextMock;
+        private readonly TestEventContext _context;
         private readonly BatchSpendFlushRequestedHandler _handler;
 
         public BatchSpendFlushRequestedHandlerTests()
@@ -30,9 +31,9 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
             _serviceScopeMock = new Mock<IServiceScope>();
             _serviceProviderMock = new Mock<IServiceProvider>();
-            _publishEndpointMock = new Mock<IPublishEndpoint>();
+            _eventBusMock = new Mock<IEventBus>();
             _loggerMock = new Mock<ILogger<BatchSpendFlushRequestedHandler>>();
-            _contextMock = new Mock<ConsumeContext<BatchSpendFlushRequestedEvent>>();
+            _context = new TestEventContext();
 
             // Setup service scope chain
             _serviceScopeFactoryMock.Setup(x => x.CreateScope()).Returns(_serviceScopeMock.Object);
@@ -40,7 +41,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
 
             _handler = new BatchSpendFlushRequestedHandler(
                 _serviceScopeFactoryMock.Object,
-                _publishEndpointMock.Object,
+                _eventBusMock.Object,
                 _loggerMock.Object);
         }
 
@@ -58,19 +59,19 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new BatchSpendFlushRequestedHandler(null!, _publishEndpointMock.Object, _loggerMock.Object));
+                new BatchSpendFlushRequestedHandler(null!, _eventBusMock.Object, _loggerMock.Object));
 
             Assert.Equal("serviceScopeFactory", exception.ParamName);
         }
 
         [Fact]
-        public void Constructor_WithNullPublishEndpoint_ThrowsArgumentNullException()
+        public void Constructor_WithNullEventBus_ThrowsArgumentNullException()
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
                 new BatchSpendFlushRequestedHandler(_serviceScopeFactoryMock.Object, null!, _loggerMock.Object));
 
-            Assert.Equal("publishEndpoint", exception.ParamName);
+            Assert.Equal("eventBus", exception.ParamName);
         }
 
         [Fact]
@@ -78,7 +79,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new BatchSpendFlushRequestedHandler(_serviceScopeFactoryMock.Object, _publishEndpointMock.Object, null!));
+                new BatchSpendFlushRequestedHandler(_serviceScopeFactoryMock.Object, _eventBusMock.Object, null!));
 
             Assert.Equal("logger", exception.ParamName);
         }
@@ -88,7 +89,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         #region Service Unavailable Tests
 
         [Fact]
-        public async Task Consume_WhenBatchServiceNotAvailable_PublishesFailureEvent()
+        public async Task HandleAsync_WhenBatchServiceNotAvailable_PublishesFailureEvent()
         {
             // Arrange
             var requestId = Guid.NewGuid().ToString();
@@ -97,16 +98,13 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _serviceProviderMock.Setup(x => x.GetService(typeof(IBatchSpendUpdateService)))
                 .Returns((IBatchSpendUpdateService?)null);
 
-            _contextMock.Setup(x => x.Message).Returns(flushRequest);
-            _contextMock.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
-
             BatchSpendFlushCompletedEvent? publishedEvent = null;
-            _publishEndpointMock.Setup(x => x.Publish(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
+            _eventBusMock.Setup(x => x.PublishAsync(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
                 .Callback<BatchSpendFlushCompletedEvent, CancellationToken>((evt, ct) => publishedEvent = evt)
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _handler.Consume(_contextMock.Object);
+            await _handler.HandleAsync(flushRequest, _context);
 
             // Assert
             Assert.NotNull(publishedEvent);
@@ -117,7 +115,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
-        public async Task Consume_WhenServiceIsWrongType_PublishesFailureEvent()
+        public async Task HandleAsync_WhenServiceIsWrongType_PublishesFailureEvent()
         {
             // Arrange
             var requestId = Guid.NewGuid().ToString();
@@ -127,16 +125,13 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _serviceProviderMock.Setup(x => x.GetService(typeof(IBatchSpendUpdateService)))
                 .Returns(wrongServiceMock.Object);
 
-            _contextMock.Setup(x => x.Message).Returns(flushRequest);
-            _contextMock.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
-
             BatchSpendFlushCompletedEvent? publishedEvent = null;
-            _publishEndpointMock.Setup(x => x.Publish(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
+            _eventBusMock.Setup(x => x.PublishAsync(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
                 .Callback<BatchSpendFlushCompletedEvent, CancellationToken>((evt, ct) => publishedEvent = evt)
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _handler.Consume(_contextMock.Object);
+            await _handler.HandleAsync(flushRequest, _context);
 
             // Assert
             Assert.NotNull(publishedEvent);
@@ -150,7 +145,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         #region Error Handling Tests
 
         [Fact]
-        public async Task Consume_WhenPublishFails_DoesNotThrowException()
+        public async Task HandleAsync_WhenPublishFails_DoesNotThrowException()
         {
             // Arrange
             var flushRequest = new BatchSpendFlushRequestedEvent { RequestId = Guid.NewGuid().ToString() };
@@ -158,14 +153,11 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _serviceProviderMock.Setup(x => x.GetService(typeof(IBatchSpendUpdateService)))
                 .Returns((IBatchSpendUpdateService?)null);
 
-            _contextMock.Setup(x => x.Message).Returns(flushRequest);
-            _contextMock.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
-
-            _publishEndpointMock.Setup(x => x.Publish(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
+            _eventBusMock.Setup(x => x.PublishAsync(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Message bus unavailable"));
 
             // Act & Assert
-            await _handler.Consume(_contextMock.Object); // Should not throw
+            await _handler.HandleAsync(flushRequest, _context); // Should not throw
         }
 
         #endregion
@@ -173,12 +165,12 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         #region Event Structure Tests
 
         [Fact]
-        public async Task Consume_Always_PublishesCompletionEventWithCorrectStructure()
+        public async Task HandleAsync_Always_PublishesCompletionEventWithCorrectStructure()
         {
             // Arrange
             var requestId = Guid.NewGuid().ToString();
-            var flushRequest = new BatchSpendFlushRequestedEvent 
-            { 
+            var flushRequest = new BatchSpendFlushRequestedEvent
+            {
                 RequestId = requestId,
                 RequestedBy = "TestUser",
                 Source = "Unit Test"
@@ -187,16 +179,13 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _serviceProviderMock.Setup(x => x.GetService(typeof(IBatchSpendUpdateService)))
                 .Returns((IBatchSpendUpdateService?)null);
 
-            _contextMock.Setup(x => x.Message).Returns(flushRequest);
-            _contextMock.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
-
             BatchSpendFlushCompletedEvent? publishedEvent = null;
-            _publishEndpointMock.Setup(x => x.Publish(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
+            _eventBusMock.Setup(x => x.PublishAsync(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
                 .Callback<BatchSpendFlushCompletedEvent, CancellationToken>((evt, ct) => publishedEvent = evt)
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _handler.Consume(_contextMock.Object);
+            await _handler.HandleAsync(flushRequest, _context);
 
             // Assert - Verify event structure
             Assert.NotNull(publishedEvent);
@@ -204,13 +193,13 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             Assert.True(publishedEvent.CompletedAt <= DateTime.UtcNow);
             Assert.True(publishedEvent.CompletedAt >= DateTime.UtcNow.AddSeconds(-5));
             Assert.True(publishedEvent.Duration >= TimeSpan.Zero);
-            
+
             // Verify audit trail information is preserved
             Assert.NotNull(publishedEvent.ErrorMessage);
         }
 
         [Fact]
-        public async Task Consume_WithDifferentRequestProperties_PreservesRequestId()
+        public async Task HandleAsync_WithDifferentRequestProperties_PreservesRequestId()
         {
             // Arrange
             var testCases = new[]
@@ -223,20 +212,15 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _serviceProviderMock.Setup(x => x.GetService(typeof(IBatchSpendUpdateService)))
                 .Returns((IBatchSpendUpdateService?)null);
 
-            _contextMock.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
-
             foreach (var testCase in testCases)
             {
-                // Arrange for this test case
-                _contextMock.Setup(x => x.Message).Returns(testCase);
-
                 BatchSpendFlushCompletedEvent? publishedEvent = null;
-                _publishEndpointMock.Setup(x => x.Publish(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
+                _eventBusMock.Setup(x => x.PublishAsync(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
                     .Callback<BatchSpendFlushCompletedEvent, CancellationToken>((evt, ct) => publishedEvent = evt)
                     .Returns(Task.CompletedTask);
 
                 // Act
-                await _handler.Consume(_contextMock.Object);
+                await _handler.HandleAsync(testCase, _context);
 
                 // Assert
                 Assert.NotNull(publishedEvent);
@@ -249,7 +233,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         #region Service Scope Tests
 
         [Fact]
-        public async Task Consume_Always_CreatesServiceScope()
+        public async Task HandleAsync_Always_CreatesServiceScope()
         {
             // Arrange
             var flushRequest = new BatchSpendFlushRequestedEvent { RequestId = Guid.NewGuid().ToString() };
@@ -257,14 +241,11 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _serviceProviderMock.Setup(x => x.GetService(typeof(IBatchSpendUpdateService)))
                 .Returns((IBatchSpendUpdateService?)null);
 
-            _contextMock.Setup(x => x.Message).Returns(flushRequest);
-            _contextMock.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
-
-            _publishEndpointMock.Setup(x => x.Publish(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
+            _eventBusMock.Setup(x => x.PublishAsync(It.IsAny<BatchSpendFlushCompletedEvent>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _handler.Consume(_contextMock.Object);
+            await _handler.HandleAsync(flushRequest, _context);
 
             // Assert
             _serviceScopeFactoryMock.Verify(x => x.CreateScope(), Times.Once);

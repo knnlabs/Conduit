@@ -25,6 +25,12 @@ public partial class Program
         // image-/video-generation endpoints.
         ConduitLLM.Gateway.Extensions.MediaGenerationMessagingExtensions.AddMediaGenerationHandlers(builder.Services);
 
+        // High-risk handlers (#921): ordered spend processing (spend-update-events),
+        // deferred-retry webhook delivery (webhook-delivery), and the batch spend flush.
+        builder.Services.AddEventHandler<ConduitLLM.Core.Events.SpendUpdateRequested, ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>();
+        builder.Services.AddEventHandler<ConduitLLM.Configuration.Events.BatchSpendFlushRequestedEvent, ConduitLLM.Gateway.EventHandlers.BatchSpendFlushRequestedHandler>();
+        builder.Services.AddEventHandler<ConduitLLM.Core.Events.WebhookDeliveryRequested, ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>();
+
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
             ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
@@ -42,19 +48,16 @@ public partial class Program
             ConduitLLM.Gateway.Extensions.CacheInvalidationMessagingExtensions.AddGatewayCacheInvalidationBridges(x);
             ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(x);
 
-            // High-risk ordered spend processor (still IConsumer — migrated in #921)
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>();
-
             // Media-generation orchestrators + progress/completed/failed handlers (#920),
             // dispatched through the generic bridge like the cache handlers above.
             ConduitLLM.Gateway.Extensions.MediaGenerationMessagingExtensions.AddMediaGenerationBridges(x);
 
-            // Add webhook delivery consumer for scalable webhook processing (migrated in #921)
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>();
-            
-            // Add batch spend flush handler for admin operations and integration testing
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.BatchSpendFlushRequestedHandler>();
-            
+            // High-risk bridges (#921): ordered spend processor (spend-update-events),
+            // webhook delivery (webhook-delivery), batch spend flush (default endpoint).
+            x.AddEventBridge<ConduitLLM.Core.Events.SpendUpdateRequested>();
+            x.AddEventBridge<ConduitLLM.Core.Events.WebhookDeliveryRequested>();
+            x.AddEventBridge<ConduitLLM.Configuration.Events.BatchSpendFlushRequestedEvent>();
+
             // Note: Media lifecycle consumers moved to Admin API
             // See ConduitLLM.Admin.Consumers.MediaRetentionConsumer and MediaDeletionConsumer
 
@@ -87,40 +90,17 @@ public partial class Program
                     cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
                     
                     // Configure webhook delivery endpoint optimized for 1000+ webhooks/minute
-                    cfg.ReceiveEndpoint("webhook-delivery", e =>
+                    // (#917/#921). Behavior comes from ConduitEndpointPolicies.WebhookDelivery:
+                    // prefetch 100 / concurrency 75, quorum queue with delivery-limit/max-length/
+                    // overflow arguments, exponential retry, circuit breaker, rate limit 100/s.
+                    cfg.ReceiveEndpoint(ConduitEndpointPolicies.WebhookDelivery.Name, e =>
                     {
-                        // Configure for high throughput - balanced for memory usage
-                        e.PrefetchCount = 100; // Reduced from 200 to prevent memory overload
-                        e.ConcurrentMessageLimit = 75; // Balanced concurrency
-                        
-                        // Use quorum queue for better reliability
-                        e.SetQuorumQueue();
-                        e.SetQueueArgument("x-delivery-limit", 10); // Max redelivery attempts
-                        e.SetQueueArgument("x-max-length", 50000); // Queue size limit
-                        e.SetQueueArgument("x-overflow", "reject-publish"); // Reject new messages when full
-                        
-                        // Configure retry with exponential backoff
-                        e.UseMessageRetry(r => r.Exponential(3, 
-                            TimeSpan.FromSeconds(1),
-                            TimeSpan.FromSeconds(30),
-                            TimeSpan.FromSeconds(2)));
-                        
-                        // Circuit breaker to prevent cascading failures
-                        e.UseCircuitBreaker(cb =>
-                        {
-                            cb.TrackingPeriod = TimeSpan.FromMinutes(1);
-                            cb.TripThreshold = 15; // 15% failure rate
-                            cb.ActiveThreshold = 10; // Minimum attempts before evaluating
-                            cb.ResetInterval = TimeSpan.FromMinutes(5);
-                        });
-                        
-                        // Rate limiting to prevent consumer overload
-                        e.UseRateLimit(100, TimeSpan.FromSeconds(1)); // 100 messages per second
-                        
+                        ApplyRabbitMqEndpointPolicy(e, ConduitEndpointPolicies.WebhookDelivery, rabbitMqConfig);
+
                         // Prevents duplicate sends during retries
                         // Note: UseInMemoryOutbox is now configured at the bus level
-                        
-                        e.ConfigureConsumer<ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>(context, c =>
+
+                        e.ConfigureConsumer<MassTransitConsumerBridge<WebhookDeliveryRequested>>(context, c =>
                         {
                             c.UseConcurrentMessageLimit(75);
                         });
@@ -151,19 +131,15 @@ public partial class Program
                         e.ConfigureConsumer<MassTransitConsumerBridge<ImageGenerationCancelled>>(context);
                     });
                     
-                    // Configure spend update endpoint with strict ordering
-                    cfg.ReceiveEndpoint("spend-update-events", e =>
+                    // Configure spend update endpoint with strict ordering (#917/#921):
+                    // prefetch 10, concurrency 1, single-active-consumer, immediate retry x3
+                    // — from ConduitEndpointPolicies.SpendUpdate. Ordering is RabbitMQ-native
+                    // and MUST be preserved exactly.
+                    cfg.ReceiveEndpoint(ConduitEndpointPolicies.SpendUpdate.Name, e =>
                     {
-                        e.PrefetchCount = 10; // Lower prefetch for ordered processing
-                        e.ConcurrentMessageLimit = 1; // Sequential processing per partition
-                        
-                        e.SetQuorumQueue();
-                        e.SetQueueArgument("x-single-active-consumer", true);
-                        e.SetQueueArgument("x-max-length", 10000);
-                        
-                        e.UseMessageRetry(r => r.Immediate(3));
-                        
-                        e.ConfigureConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>(context);
+                        ApplyRabbitMqEndpointPolicy(e, ConduitEndpointPolicies.SpendUpdate, rabbitMqConfig);
+
+                        e.ConfigureConsumer<MassTransitConsumerBridge<SpendUpdateRequested>>(context);
                     });
 
                     // Note: Media lifecycle endpoints moved to Admin API
@@ -211,8 +187,8 @@ public partial class Program
                         
                         // Prevents duplicate sends during retries
                         // Note: UseInMemoryOutbox is now configured at the bus level
-                        
-                        e.ConfigureConsumer<ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>(context, c =>
+
+                        e.ConfigureConsumer<MassTransitConsumerBridge<WebhookDeliveryRequested>>(context, c =>
                         {
                             // Configure consumer concurrency for in-memory
                             c.UseConcurrentMessageLimit(50); // Lower for single instance

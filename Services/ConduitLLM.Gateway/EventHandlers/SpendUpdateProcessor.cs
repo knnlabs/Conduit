@@ -1,7 +1,7 @@
-using MassTransit;
-using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Gateway.EventHandlers
 {
@@ -10,25 +10,25 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Eliminates race conditions and dual update paths
     /// Uses proper dependency injection with IServiceScopeFactory
     /// </summary>
-    public class SpendUpdateProcessor : IConsumer<SpendUpdateRequested>
+    public class SpendUpdateProcessor : IEventHandler<SpendUpdateRequested>
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<SpendUpdateProcessor> _logger;
 
         /// <summary>
         /// Initializes a new instance of the SpendUpdateProcessor
         /// </summary>
         /// <param name="serviceScopeFactory">Service scope factory for creating scoped services</param>
-        /// <param name="publishEndpoint">MassTransit publish endpoint for publishing events</param>
+        /// <param name="eventBus">Event bus for publishing follow-on events</param>
         /// <param name="logger">Logger instance</param>
         public SpendUpdateProcessor(
             IServiceScopeFactory serviceScopeFactory,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<SpendUpdateProcessor> logger)
         {
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -36,11 +36,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// Processes spend update requests in ordered fashion
         /// This replaces the dual update paths (individual + batch) with single ordered processing
         /// </summary>
-        /// <param name="context">Message context containing the spend update request</param>
-        public async Task Consume(ConsumeContext<SpendUpdateRequested> context)
+        /// <param name="request">The spend update request</param>
+        /// <param name="context">Delivery context</param>
+        public async Task HandleAsync(SpendUpdateRequested request, IEventContext context)
         {
-            var request = context.Message;
-            
             if (request.Amount <= 0)
             {
                 _logger.LogDebug("Spend update request for key {KeyId} has zero or negative amount {Amount} - skipping", 
@@ -62,7 +61,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 
                 // Still publish the event so other services can react
                 // This allows the Admin API or other services to handle the update
-                await _publishEndpoint.Publish(new SpendUpdateDeferred
+                await _eventBus.PublishAsync(new SpendUpdateDeferred
                 {
                     KeyId = request.KeyId,
                     Amount = request.Amount,
@@ -114,7 +113,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 if (success)
                 {
                     // Publish SpendUpdated event for cache invalidation and audit
-                    await _publishEndpoint.Publish(new SpendUpdated
+                    await _eventBus.PublishAsync(new SpendUpdated
                     {
                         KeyId = request.KeyId,
                         KeyHash = virtualKey.KeyHash,
@@ -133,7 +132,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                     {
                         // Balance just hit zero
                         
-                        await _publishEndpoint.Publish(new SpendThresholdExceeded
+                        await _eventBus.PublishAsync(new SpendThresholdExceeded
                         {
                             VirtualKeyId = virtualKey.Id,
                             VirtualKeyHash = virtualKey.KeyHash,
@@ -163,7 +162,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex, 
                     "Error processing spend update for virtual key {KeyId}, amount {Amount}, requestId {RequestId}", 
                     request.KeyId, request.Amount, request.RequestId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the endpoint retry policy
             }
         }
         

@@ -24,5 +24,18 @@ namespace ConduitLLM.Configuration.Messaging
         /// <returns>A task that completes once the event has been handed to the transport.</returns>
         Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
             where TEvent : class;
+
+        /// <summary>
+        /// Publishes a batch of domain events of the same type in one transport operation
+        /// where the backend supports it (MassTransit <c>PublishBatch</c>), falling back to
+        /// sequential publishes otherwise. Used by the high-throughput webhook batch path
+        /// (<c>BatchWebhookPublisher</c>).
+        /// </summary>
+        /// <typeparam name="TEvent">The event type. Routing is by the closed generic type.</typeparam>
+        /// <param name="events">The event instances to publish. Must not be null.</param>
+        /// <param name="cancellationToken">Token used to cancel the publish operation.</param>
+        /// <returns>A task that completes once the batch has been handed to the transport.</returns>
+        Task PublishBatchAsync<TEvent>(IEnumerable<TEvent> events, CancellationToken cancellationToken = default)
+            where TEvent : class;
     }
 }

@@ -43,5 +43,13 @@ namespace ConduitLLM.Configuration.Messaging.MassTransit
             ArgumentNullException.ThrowIfNull(@event);
             return _publishEndpoint.Publish(@event, cancellationToken);
         }
+
+        /// <inheritdoc />
+        public Task PublishBatchAsync<TEvent>(IEnumerable<TEvent> events, CancellationToken cancellationToken = default)
+            where TEvent : class
+        {
+            ArgumentNullException.ThrowIfNull(events);
+            return _publishEndpoint.PublishBatch(events, cancellationToken);
+        }
     }
 }

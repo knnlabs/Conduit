@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
 
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
-
-using MassTransit;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -184,10 +183,10 @@ namespace ConduitLLM.Core.Services
                     
                     try
                     {
-                        // Use PublishBatch for efficiency
+                        // Use the batch publish path for efficiency (MassTransit PublishBatch underneath)
                         using var scope = _serviceProvider.CreateScope();
-                        var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
-                        await publishEndpoint.PublishBatch(webhooks);
+                        var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+                        await eventBus.PublishBatchAsync(webhooks);
                         
                         Interlocked.Add(ref _totalPublished, webhooks.Count());
                         Interlocked.Increment(ref _totalBatches);

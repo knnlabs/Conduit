@@ -1,12 +1,12 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Gateway.EventHandlers;
+using ConduitLLM.Tests.Messaging;
 
 using FluentAssertions;
-
-using MassTransit;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,7 +23,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
         private readonly Mock<IServiceScope> _serviceScopeMock;
         private readonly Mock<IServiceProvider> _serviceProviderMock;
-        private readonly Mock<IPublishEndpoint> _publishEndpointMock;
+        private readonly Mock<IEventBus> _eventBusMock;
         private readonly Mock<IVirtualKeyRepository> _virtualKeyRepositoryMock;
         private readonly Mock<IVirtualKeyGroupRepository> _groupRepositoryMock;
         private readonly SpendUpdateProcessor _processor;
@@ -33,7 +33,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
             _serviceScopeMock = new Mock<IServiceScope>();
             _serviceProviderMock = new Mock<IServiceProvider>();
-            _publishEndpointMock = new Mock<IPublishEndpoint>();
+            _eventBusMock = new Mock<IEventBus>();
             _virtualKeyRepositoryMock = new Mock<IVirtualKeyRepository>();
             _groupRepositoryMock = new Mock<IVirtualKeyGroupRepository>();
             
@@ -49,12 +49,12 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             
             _processor = new SpendUpdateProcessor(
                 _serviceScopeFactoryMock.Object,
-                _publishEndpointMock.Object,
+                _eventBusMock.Object,
                 logger.Object);
         }
 
         [Fact]
-        public async Task Consume_WithRepositoryAvailable_UpdatesSpendSuccessfully()
+        public async Task HandleAsync_WithRepositoryAvailable_UpdatesSpendSuccessfully()
         {
             // Arrange
             _serviceProviderMock
@@ -108,11 +108,8 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 CorrelationId = "corr-123"
             };
 
-            var context = new Mock<ConsumeContext<SpendUpdateRequested>>();
-            context.Setup(c => c.Message).Returns(@event);
-
             // Act
-            await _processor.Consume(context.Object);
+            await _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
             // Verify group balance was adjusted with correct reference type
@@ -124,7 +121,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 ReferenceType.VirtualKey,
                 "123"), Times.Once);
 
-            _publishEndpointMock.Verify(p => p.Publish(It.Is<SpendUpdated>(su =>
+            _eventBusMock.Verify(p => p.PublishAsync(It.Is<SpendUpdated>(su =>
                 su.KeyId == 123 &&
                 su.Amount == 50m &&
                 su.NewTotalSpend == 150m &&
@@ -134,7 +131,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
-        public async Task Consume_WithRepositoryUnavailable_PublishesDeferredEvent()
+        public async Task HandleAsync_WithRepositoryUnavailable_PublishesDeferredEvent()
         {
             // Arrange
             _serviceProviderMock
@@ -153,14 +150,11 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 CorrelationId = "corr-456"
             };
 
-            var context = new Mock<ConsumeContext<SpendUpdateRequested>>();
-            context.Setup(c => c.Message).Returns(@event);
-
             // Act
-            await _processor.Consume(context.Object);
+            await _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
-            _publishEndpointMock.Verify(p => p.Publish(It.Is<SpendUpdateDeferred>(sud =>
+            _eventBusMock.Verify(p => p.PublishAsync(It.Is<SpendUpdateDeferred>(sud =>
                 sud.KeyId == 456 &&
                 sud.Amount == 75m &&
                 sud.RequestId == "req-456" &&
@@ -172,7 +166,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
-        public async Task Consume_WithZeroAmount_SkipsProcessing()
+        public async Task HandleAsync_WithZeroAmount_SkipsProcessing()
         {
             // Arrange
             var @event = new SpendUpdateRequested
@@ -183,19 +177,16 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 RequestId = "req-789"
             };
 
-            var context = new Mock<ConsumeContext<SpendUpdateRequested>>();
-            context.Setup(c => c.Message).Returns(@event);
-
             // Act
-            await _processor.Consume(context.Object);
+            await _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _serviceProviderMock.Verify(sp => sp.GetService(It.IsAny<Type>()), Times.Never);
-            _publishEndpointMock.Verify(p => p.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
+            _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task Consume_WithNegativeAmount_SkipsProcessing()
+        public async Task HandleAsync_WithNegativeAmount_SkipsProcessing()
         {
             // Arrange
             var @event = new SpendUpdateRequested
@@ -206,19 +197,16 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 RequestId = "req-999"
             };
 
-            var context = new Mock<ConsumeContext<SpendUpdateRequested>>();
-            context.Setup(c => c.Message).Returns(@event);
-
             // Act
-            await _processor.Consume(context.Object);
+            await _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _serviceProviderMock.Verify(sp => sp.GetService(It.IsAny<Type>()), Times.Never);
-            _publishEndpointMock.Verify(p => p.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
+            _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task Consume_WithNonExistentVirtualKey_SkipsUpdate()
+        public async Task HandleAsync_WithNonExistentVirtualKey_SkipsUpdate()
         {
             // Arrange
             _serviceProviderMock
@@ -240,20 +228,17 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 RequestId = "req-111"
             };
 
-            var context = new Mock<ConsumeContext<SpendUpdateRequested>>();
-            context.Setup(c => c.Message).Returns(@event);
-
             // Act
-            await _processor.Consume(context.Object);
+            await _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _virtualKeyRepositoryMock.Verify(r => r.GetByIdAsync(111, It.IsAny<CancellationToken>()), Times.Once);
             _groupRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<int>()), Times.Never);
-            _publishEndpointMock.Verify(p => p.Publish(It.IsAny<SpendUpdated>(), It.IsAny<CancellationToken>()), Times.Never);
+            _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<SpendUpdated>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task Consume_WithUpdateFailure_ThrowsException()
+        public async Task HandleAsync_WithUpdateFailure_ThrowsException()
         {
             // Arrange
             _serviceProviderMock
@@ -304,11 +289,8 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 RequestId = "req-222"
             };
 
-            var context = new Mock<ConsumeContext<SpendUpdateRequested>>();
-            context.Setup(c => c.Message).Returns(@event);
-
             // Act
-            var act = () => _processor.Consume(context.Object);
+            var act = () => _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
             await act.Should().ThrowAsync<InvalidOperationException>()
@@ -316,7 +298,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
-        public async Task Consume_WithRepositoryException_ThrowsToTriggerRetry()
+        public async Task HandleAsync_WithRepositoryException_ThrowsToTriggerRetry()
         {
             // Arrange
             _serviceProviderMock
@@ -338,11 +320,8 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 RequestId = "req-333"
             };
 
-            var context = new Mock<ConsumeContext<SpendUpdateRequested>>();
-            context.Setup(c => c.Message).Returns(@event);
-
             // Act
-            var act = () => _processor.Consume(context.Object);
+            var act = () => _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
             await act.Should().ThrowAsync<InvalidOperationException>()
@@ -358,7 +337,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             // Act
             var act = () => new SpendUpdateProcessor(
                 null,
-                _publishEndpointMock.Object,
+                _eventBusMock.Object,
                 logger.Object);
 
             // Assert
@@ -367,7 +346,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
-        public void Constructor_WithNullPublishEndpoint_ThrowsArgumentNullException()
+        public void Constructor_WithNullEventBus_ThrowsArgumentNullException()
         {
             // Arrange
             var logger = CreateLogger<SpendUpdateProcessor>();
@@ -380,7 +359,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
 
             // Assert
             act.Should().Throw<ArgumentNullException>()
-                .WithParameterName("publishEndpoint");
+                .WithParameterName("eventBus");
         }
 
         [Fact]
@@ -389,7 +368,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             // Act
             var act = () => new SpendUpdateProcessor(
                 _serviceScopeFactoryMock.Object,
-                _publishEndpointMock.Object,
+                _eventBusMock.Object,
                 null);
 
             // Assert
