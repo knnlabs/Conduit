@@ -196,12 +196,30 @@ real Postgres runs with the #929 parity gate.
   switchable for instant rollback for one release cycle. Both backends remain in the build.
 - **Operational rollout — performed in the deployment pipeline, not from a code change.**
 
-## I2.8 — Observability (#931)
+## I2.8 — Observability (#931) — ✅ implemented (dashboards/alerts = ops-side at #930)
 
-- Wolverine OpenTelemetry metrics/tracing + health checks; replace `RabbitMQHealthCheck`
-  with a bus/queue-depth health check; update dashboards/alerts.
-- Acceptance: Wolverine queue depth/failures/retries visible; health endpoint reflects the
-  new bus.
+- **Health check**: `WolverineBusHealthCheck` (Configuration/Messaging/Wolverine) probes
+  `IMessageStore.Admin.FetchCountsAsync()` — Unhealthy when the Postgres message store is
+  unreachable, Degraded at ≥ `…:Wolverine:HealthCheck:DeadLetterDegradedThreshold`
+  (default 1) dead-lettered messages, counts always in the health entry data. Registered
+  in BOTH hosts as `wolverine_bus` (tags `messaging`/`wolverine`/`ready`), gated on
+  backend == Wolverine AND the Postgresql transport (the in-memory mode has no store).
+  Unlike the `RabbitMQHealthCheck` it replaces (which only proved `IBus` resolved, and
+  was Gateway-only), it verifies the durability layer end-to-end. `RabbitMQHealthCheck`
+  itself stays until Phase 3 (#932) for instant rollback.
+- **Metrics/tracing**: both hosts' OTel registrations add meter `Wolverine*` (the meter
+  name is `Wolverine:{ServiceName}` — wildcard required) → sent/succeeded/failure
+  counters, execution/effective-time histograms, dead-letter counter, and
+  inbox/outbox/scheduled queue-depth gauges on the Postgres transport; plus meter
+  `MassTransit` so the current backend is measurable for the #929 parity comparison.
+  Tracing adds source `Wolverine`; `NodeAssignmentHealthCheckTracingEnabled = false` in
+  `AddConduitWolverine` suppresses the durability agent's no-op span noise. Everything
+  exports through the existing Prometheus `/metrics` + OTLP pipeline.
+- Ops docs updated: `docs/operations/monitoring/health-checks.md` gained a "Message Bus
+  Health & Metrics" section (check semantics, metric names, suggested alerts). Actual
+  dashboard/alert provisioning happens with the cutover (#930).
+- Acceptance: queue depth/failures/dead-letters visible at `/metrics`; health endpoint
+  reflects the active bus on both hosts; unit tests cover the status mapping.
 
 ## Why this is staged, not done in one PR
 

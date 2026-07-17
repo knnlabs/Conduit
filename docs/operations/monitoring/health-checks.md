@@ -447,3 +447,45 @@ For internal monitoring dashboards, additional detailed endpoints are available:
 - `/api/health/history` - Health metrics history (Admin API)
 
 These endpoints return the same `404 Not Found` for unauthorized external requests.
+
+## Message Bus Health & Metrics
+
+The event bus health check depends on the active messaging backend
+(`ConduitLLM:Messaging:Backend`, epic #909):
+
+| Backend | Check name | What it verifies |
+|---------|------------|------------------|
+| MassTransit (default) | `rabbitmq_comprehensive` (Gateway only) | MassTransit `IBus` resolves (RabbitMQ connectivity at startup) |
+| Wolverine | `wolverine_bus` (Gateway + Admin) | Postgres message store reachable; reports inbox/outbox/scheduled/dead-letter counts in the health entry data |
+
+`wolverine_bus` surfaces on `/health` and `/health/ready` (tags `messaging`,
+`wolverine`, `ready`) and reports:
+
+- **Unhealthy** — the message store is unreachable (the bus cannot persist or
+  deliver messages).
+- **Degraded** — dead-lettered messages at or above
+  `ConduitLLM:Messaging:Wolverine:HealthCheck:DeadLetterDegradedThreshold`
+  (default `1`) — messages are exhausting their retries; for the spend/webhook
+  queues this warrants investigation.
+- It is only registered on the Postgresql transport
+  (`ConduitLLM:Messaging:Wolverine:Transport` = `Postgresql`); the in-memory
+  dev/CI mode has no message store to probe.
+
+### Bus metrics (`/metrics`, Prometheus)
+
+Both hosts export bus metrics through OpenTelemetry:
+
+- **Wolverine** (meter `Wolverine:{service}`): `wolverine-messages-sent`,
+  `wolverine-messages-succeeded`, `wolverine-execution-failure` (tagged by
+  exception type), `wolverine-dead-letter-queue`, execution/effective-time
+  histograms, and queue-depth gauges `wolverine-inbox-count`,
+  `wolverine-outbox-count`, `wolverine-scheduled-count` (Postgres transport).
+- **MassTransit** (meter `MassTransit`): built-in consume/publish counters and
+  durations — exported so the #929 parity gate can compare backends.
+
+Wolverine message-processing traces are exported under the `Wolverine`
+activity source when `Telemetry:TracingEnabled` is on.
+
+Suggested alerts: `wolverine-dead-letter-queue` rate > 0 (financial queues),
+`wolverine-inbox-count` sustained growth (consumer lag), health endpoint
+Degraded/Unhealthy transitions.

@@ -135,6 +135,10 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                     opts.AutoBuildMessageStorageOnStartup = autoProvision
                         ? AutoCreate.CreateOrUpdate
                         : AutoCreate.None;
+
+                    // The durability agent's periodic node-assignment checks would
+                    // otherwise emit a steady stream of no-op spans (#931).
+                    opts.Durability.NodeAssignmentHealthCheckTracingEnabled = false;
                 }
 
                 // Wraps handlers in a database transaction where one applies.

@@ -32,6 +32,14 @@ public static class ObservabilityExtensions
                     .AddMeter("ConduitLLM.MediaGeneration")
                     .AddMeter("ConduitLLM.Gateway.Requests")
                     .AddMeter("ConduitLLM.Providers")
+                    // Bus metrics (#931). Wolverine's meter is "Wolverine:{ServiceName}",
+                    // so the wildcard is required; it emits sent/succeeded/failure
+                    // counters, execution/effective-time histograms, and (on the Postgres
+                    // transport) inbox/outbox/scheduled depth gauges + dead-letter counts.
+                    // The MassTransit meter keeps the current backend measurable for the
+                    // #929 parity gate. Inactive meters cost nothing.
+                    .AddMeter("Wolverine*")
+                    .AddMeter("MassTransit")
                     .AddPrometheusExporter();
             });
 
@@ -60,6 +68,8 @@ public static class ObservabilityExtensions
                     .AddSource("ConduitLLM.MediaGeneration")
                     .AddSource("ConduitLLM.Gateway.Requests")
                     .AddSource("ConduitLLM.Providers")
+                    // Wolverine message-processing spans (#931); inactive on MassTransit.
+                    .AddSource("Wolverine")
                     .AddOtlpExporter(options =>
                     {
                         options.Endpoint = new Uri(otlpEndpoint);
