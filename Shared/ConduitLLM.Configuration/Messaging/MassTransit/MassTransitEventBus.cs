@@ -13,14 +13,15 @@ namespace ConduitLLM.Configuration.Messaging.MassTransit
     /// <c>IPublishEndpoint.Publish&lt;TEvent&gt;</c>, so MassTransit routes by the closed
     /// generic type just as the previous direct calls did.
     /// <para>
-    /// <b>Durability gap (flagged for #927):</b> this adapter does not itself swallow
-    /// failures — but the existing fire-and-forget seams
+    /// <b>Durability gap (closed on the Wolverine backend by I2.4/#927):</b> this adapter
+    /// does not itself swallow failures — but the fire-and-forget seams
     /// (<c>EventPublishingControllerBase</c> / <c>EventPublishingServiceBase</c>) call it
-    /// inside a background <c>Task.Run</c> and swallow exceptions, and there is no outbox.
-    /// A crash (or broker outage) between the business commit and the publish loses the
-    /// event. The Wolverine Postgres transactional outbox closes this in I2.4 (#927);
-    /// Phase 1 deliberately preserves the current (lossy) semantics for a zero-behavior
-    /// change checkpoint.
+    /// inside a background <c>Task.Run</c> and swallow exceptions, and MassTransit has no
+    /// outbox here, so a crash (or broker outage) between the business commit and the
+    /// publish loses the event. This MassTransit backend deliberately keeps those
+    /// semantics (zero-behavior-change rollback target); on Wolverine, sends are durable
+    /// and spend processing is idempotent, and the financial publish sites fall back to a
+    /// direct write on failure (see #927).
     /// </para>
     /// </remarks>
     public sealed class MassTransitEventBus : IEventBus

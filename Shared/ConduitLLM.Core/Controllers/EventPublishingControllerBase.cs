@@ -83,8 +83,10 @@ namespace ConduitLLM.Core.Controllers
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    // NOTE(#927): failures are swallowed below (fire-and-forget, no outbox);
-                    // the transactional outbox in Phase 2 closes this durability gap.
+                    // Failures are swallowed below (fire-and-forget). Acceptable here:
+                    // these call sites are non-financial (media requests, admin config).
+                    // On the Wolverine backend an accepted publish is durable (#927);
+                    // financial paths use TryPublishEventAsync + direct-write fallback.
                     await _eventBus.PublishAsync(domainEvent);
                     sw.Stop();
                     _logger.LogDebug(
@@ -140,8 +142,10 @@ namespace ConduitLLM.Core.Controllers
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    // NOTE(#927): failures are swallowed below (fire-and-forget, no outbox);
-                    // the transactional outbox in Phase 2 closes this durability gap.
+                    // Failures are swallowed below (fire-and-forget). Acceptable here:
+                    // these call sites are non-financial (media requests, admin config).
+                    // On the Wolverine backend an accepted publish is durable (#927);
+                    // financial paths use TryPublishEventAsync + direct-write fallback.
                     await _eventBus.PublishAsync(domainEvent);
                     sw.Stop();
                     _logger.LogDebug(

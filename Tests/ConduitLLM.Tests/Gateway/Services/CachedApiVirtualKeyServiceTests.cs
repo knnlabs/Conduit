@@ -246,6 +246,95 @@ namespace ConduitLLM.Tests.Http.Services
             _virtualKeyRepositoryMock.Verify(r => r.GetByKeyHashAsync(keyHash, default), Times.Once);
         }
 
+        [Fact]
+        public async Task UpdateSpendAsync_WhenPublishSucceeds_ReturnsTrueWithoutDirectWrite()
+        {
+            // Arrange - event bus accepts the publish
+            _publishEndpointMock
+                .Setup(p => p.PublishAsync(It.IsAny<ConduitLLM.Core.Events.SpendUpdateRequested>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _service.UpdateSpendAsync(1, 5m);
+
+            // Assert
+            Assert.True(result);
+            _publishEndpointMock.Verify(p => p.PublishAsync(
+                It.Is<ConduitLLM.Core.Events.SpendUpdateRequested>(e => e.KeyId == 1 && e.Amount == 5m),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            // No direct write on the happy path - the SpendUpdateProcessor owns the debit
+            _virtualKeyRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            _groupRepositoryMock.Verify(g => g.AdjustBalanceIdempotentAsync(
+                It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<ConduitLLM.Configuration.Enums.ReferenceType>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateSpendAsync_WhenPublishFails_FallsBackToIdempotentDirectWrite()
+        {
+            // Arrange - event bus rejects the publish (#927 durability fallback)
+            _publishEndpointMock
+                .Setup(p => p.PublishAsync(It.IsAny<ConduitLLM.Core.Events.SpendUpdateRequested>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("bus unavailable"));
+
+            var virtualKey = CreateEnabledVirtualKey();
+            _virtualKeyRepositoryMock
+                .Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(virtualKey);
+            _groupRepositoryMock
+                .Setup(g => g.GetByKeyIdAsync(1))
+                .ReturnsAsync(CreateGroupWithBalance(100m));
+            _groupRepositoryMock
+                .Setup(g => g.AdjustBalanceIdempotentAsync(
+                    1, -5m, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    ConduitLLM.Configuration.Enums.ReferenceType.VirtualKey, "1"))
+                .ReturnsAsync(new BalanceAdjustmentResult(95m, 105m, Applied: true));
+
+            // Act
+            var result = await _service.UpdateSpendAsync(1, 5m);
+
+            // Assert - the charge is applied directly with a RequestId-derived idempotency
+            // key, so a late event delivery cannot double-charge
+            Assert.True(result);
+            _groupRepositoryMock.Verify(g => g.AdjustBalanceIdempotentAsync(
+                1, -5m, It.Is<string>(k => k.StartsWith("spend:")), It.IsAny<string>(), "System",
+                ConduitLLM.Configuration.Enums.ReferenceType.VirtualKey, "1"), Times.Once);
+            _cacheMock.Verify(c => c.InvalidateVirtualKeyAsync(virtualKey.KeyHash), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateSpendAsync_WithoutEventBus_UsesDirectWrite()
+        {
+            // Arrange - service constructed without an event bus
+            var service = new CachedApiVirtualKeyService(
+                _virtualKeyRepositoryMock.Object,
+                _spendHistoryRepositoryMock.Object,
+                _groupRepositoryMock.Object,
+                _cacheMock.Object,
+                eventBus: null,
+                _loggerMock.Object);
+
+            var virtualKey = CreateEnabledVirtualKey();
+            _virtualKeyRepositoryMock
+                .Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(virtualKey);
+            _groupRepositoryMock
+                .Setup(g => g.GetByKeyIdAsync(1))
+                .ReturnsAsync(CreateGroupWithBalance(100m));
+            _groupRepositoryMock
+                .Setup(g => g.AdjustBalanceAsync(1, -5m))
+                .ReturnsAsync(95m);
+
+            // Act
+            var result = await service.UpdateSpendAsync(1, 5m);
+
+            // Assert
+            Assert.True(result);
+            _groupRepositoryMock.Verify(g => g.AdjustBalanceAsync(1, -5m), Times.Once);
+            _cacheMock.Verify(c => c.InvalidateVirtualKeyAsync(virtualKey.KeyHash), Times.Once);
+        }
+
         /// <summary>
         /// Creates an enabled virtual key for testing
         /// </summary>

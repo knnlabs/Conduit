@@ -114,16 +114,49 @@ Acceptance: translation + topology invariants unit-tested; live ordering/deferra
 concurrency behavior vs the MassTransit baseline is measured in I2.6/#929 (needs real
 Postgres + load).
 
-## I2.4 — Transactional outbox (#927)
+## I2.4 — Transactional outbox (#927) — ✅ implemented (fault injection on real Postgres = #929)
 
-- Turn on the Postgres-backed outbox for spend/financial + webhook publishes
-  (`AutoApplyTransactions` + durable outbox), closing the fire-and-forget swallow gap
-  flagged in `MassTransitEventBus` and [I0.3](admin-gateway-cache-trace.md). The
-  invalidation/spend publish commits in the **same transaction** as the business write.
-- Add an inbox / idempotency key where consumers are not naturally idempotent (spend is
-  keyed by `RequestId`).
-- Acceptance: a crash injected between business commit and publish no longer loses the
-  event (fault-injection test).
+Investigation reshaped the plan: **the financial paths have no business-commit-then-publish
+pair on the publish side.** Spend publishes (`CachedApiVirtualKeyService.UpdateSpendAsync`,
+`MediaGenerationOrchestrator.UpdateSpendAsync`) and webhook publishes are publish-only —
+the financial DB write happens in the *consumer* (`SpendUpdateProcessor`), which had **no**
+RequestId idempotency (it was log-only), so at-least-once redelivery could double-charge.
+As landed:
+
+- **Durable sends** — `opts.Policies.UseDurableOutboxOnAllSendingEndpoints()` in
+  `AddConduitWolverine`: every publish persists the envelope to the Postgres outbox before
+  delivery; the durability agent retries, so an accepted publish survives a crash.
+  Publishes from inside a handler additionally flush atomically with handler completion
+  (the scoped `IMessageBus` *is* the message context — this covers the consumer's
+  follow-on `SpendUpdated`/`SpendThresholdExceeded` and the webhook retry re-publish).
+- **Spend inbox / idempotency** — the idempotency key rides the existing
+  `VirtualKeyGroupTransaction` ledger row (nullable `IdempotencyKey` + filtered unique
+  index; migration `AddIdempotencyKeyToVirtualKeyGroupTransactions`), written in the
+  **same atomic save** as the balance adjustment
+  (`IVirtualKeyGroupRepository.AdjustBalanceIdempotentAsync`, key = `spend:{RequestId}`
+  via `SpendIdempotency.KeyFor`). A redelivered `SpendUpdateRequested` republishes the
+  `SpendUpdated` notification (in case the first attempt crashed pre-publish) but cannot
+  debit twice. This also fixed a latent bug: the old `newBalance >= 0` "success" check
+  threw *after* the debit committed whenever a balance legitimately went negative, so
+  each endpoint retry re-charged the group.
+- **Publish-failure fallback** — `EventPublishingServiceBase.TryPublishEventAsync`
+  reports failure instead of swallowing; `CachedApiVirtualKeyService.UpdateSpendAsync`
+  falls back to a **direct idempotent balance adjustment with the same RequestId key**,
+  so the charge is never lost and a late event delivery dedups against the fallback row.
+- **Webhook path** — consumer is Redis-tracker idempotent already; its deferred retry
+  (`SchedulePublishAsync`) is durable since #925. `BatchWebhookPublisher`'s in-memory
+  drop-on-overflow queue has **no production call sites** (orchestrators publish
+  directly) — flagged for Phase 3 removal rather than hardened.
+
+Residual risks (accepted, documented): a crash *before* the publish call on the request
+path loses the spend (nothing was committed anywhere — inherent to post-hoc billing, not
+fixable by an outbox); Admin config-invalidation publishes still have the tiny
+crash-between-commit-and-publish window (idempotent + TTL-backed consumers; true
+same-transaction enrollment would require re-plumbing every Admin service through an EF
+outbox and is deliberately out of scope).
+
+Acceptance: dedup/atomicity/fallback covered by unit tests; the crash fault-injection on
+real Postgres runs with the #929 parity gate.
 
 ## I2.5 — Port the test suite (#928)
 
