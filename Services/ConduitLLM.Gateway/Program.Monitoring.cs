@@ -42,18 +42,36 @@ public partial class Program
             // Add basic health checks
             var healthChecksBuilder = builder.Services.AddHealthChecks();
 
+            var messagingBackend =
+                ConduitLLM.Configuration.Messaging.MessagingBackendResolver.Resolve(builder.Configuration);
+
             // Add comprehensive RabbitMQ health check if RabbitMQ is configured AND the
             // MassTransit backend is active — the check injects MassTransit's IBus, which
-            // is not registered on the Wolverine backend (#925; Wolverine-native health
-            // checks land in #931).
+            // is not registered on the Wolverine backend (#925).
             if (useRabbitMq
-                && ConduitLLM.Configuration.Messaging.MessagingBackendResolver.Resolve(builder.Configuration)
-                    == ConduitLLM.Configuration.Messaging.MessagingBackend.MassTransit)
+                && messagingBackend == ConduitLLM.Configuration.Messaging.MessagingBackend.MassTransit)
             {
                 healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.RabbitMQHealthCheck>(
                     "rabbitmq_comprehensive",
                     failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                     tags: new[] { "messaging", "rabbitmq", "performance", "monitoring" });
+            }
+
+            // Wolverine bus health check (#931): probes the Postgres message store
+            // (inbox/outbox/scheduled/dead-letter counts). Only on the Postgresql
+            // transport — the in-memory dev/CI mode has no store to probe.
+            if (messagingBackend == ConduitLLM.Configuration.Messaging.MessagingBackend.Wolverine
+                && !ConduitLLM.Configuration.Messaging.Wolverine.WolverineMessagingExtensions
+                    .UsesInMemoryTransport(builder.Configuration))
+            {
+                var deadLetterThreshold = builder.Configuration.GetValue(
+                    ConduitLLM.Configuration.Messaging.Wolverine.WolverineBusHealthCheck.DeadLetterThresholdKey, 1);
+
+                healthChecksBuilder.AddTypeActivatedCheck<ConduitLLM.Configuration.Messaging.Wolverine.WolverineBusHealthCheck>(
+                    "wolverine_bus",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                    tags: new[] { "messaging", "wolverine", "ready" },
+                    args: new object[] { deadLetterThreshold });
             }
 
             // Add Redis health check if Redis is configured

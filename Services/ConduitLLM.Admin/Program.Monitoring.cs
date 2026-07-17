@@ -17,7 +17,25 @@ public partial class Program
     private static void ConfigureMonitoringServices(WebApplicationBuilder builder, ILogger startupLogger)
     {
         // Add basic health checks
-        builder.Services.AddHealthChecks();
+        var healthChecksBuilder = builder.Services.AddHealthChecks();
+
+        // Wolverine bus health check (#931): probes the Postgres message store
+        // (inbox/outbox/scheduled/dead-letter counts). Only on the Postgresql
+        // transport — the in-memory dev/CI mode has no store to probe.
+        if (ConduitLLM.Configuration.Messaging.MessagingBackendResolver.Resolve(builder.Configuration)
+                == ConduitLLM.Configuration.Messaging.MessagingBackend.Wolverine
+            && !ConduitLLM.Configuration.Messaging.Wolverine.WolverineMessagingExtensions
+                .UsesInMemoryTransport(builder.Configuration))
+        {
+            var deadLetterThreshold = builder.Configuration.GetValue(
+                ConduitLLM.Configuration.Messaging.Wolverine.WolverineBusHealthCheck.DeadLetterThresholdKey, 1);
+
+            healthChecksBuilder.AddTypeActivatedCheck<ConduitLLM.Configuration.Messaging.Wolverine.WolverineBusHealthCheck>(
+                "wolverine_bus",
+                failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                tags: new[] { "messaging", "wolverine", "ready" },
+                args: new object[] { deadLetterThreshold });
+        }
 
         // Add connection pool warmer with coordinated warming to prevent thundering herd during deployments
         builder.Services.AddCoordinatedConnectionPoolWarming(builder.Configuration, "AdminAPI");
@@ -41,6 +59,14 @@ public partial class Program
                     .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
                     .AddMeter("ConduitLLM.Admin.Requests")
                     .AddMeter("ConduitLLM.Providers")
+                    // Bus metrics (#931). Wolverine's meter is "Wolverine:{ServiceName}",
+                    // so the wildcard is required; it emits sent/succeeded/failure
+                    // counters, execution/effective-time histograms, and (on the Postgres
+                    // transport) inbox/outbox/scheduled depth gauges + dead-letter counts.
+                    // The MassTransit meter keeps the current backend measurable for the
+                    // #929 parity gate. Inactive meters cost nothing.
+                    .AddMeter("Wolverine*")
+                    .AddMeter("MassTransit")
                     .AddPrometheusExporter();
             });
 
@@ -62,6 +88,8 @@ public partial class Program
                     .AddHttpClientInstrumentation()
                     .AddSource("ConduitLLM.Admin.Requests")
                     .AddSource("ConduitLLM.Providers")
+                    // Wolverine message-processing spans (#931); inactive on MassTransit.
+                    .AddSource("Wolverine")
                     .AddOtlpExporter(options =>
                     {
                         options.Endpoint = new Uri(otlpEndpoint);
