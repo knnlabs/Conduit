@@ -10,32 +10,15 @@ public partial class Program
 {
     public static void ConfigureMessagingServices(WebApplicationBuilder builder)
     {
-        // Phase 2 backend flag (#924): when ConduitLLM:Messaging:Backend=Wolverine, boot
-        // the Wolverine host (PostgreSQL transport + durable persistence) alongside
-        // MassTransit. MassTransit below stays the active IEventBus backend until the
-        // Wolverine IEventBus/handler host lands (#925); this stage proves boot and
-        // durability provisioning only.
-        if (MessagingBackendResolver.Resolve(builder.Configuration) == MessagingBackend.Wolverine)
-        {
-            var (_, wolverineConnectionString) = new ConduitLLM.Core.Data.ConnectionStringManager()
-                .GetProviderAndConnectionString("CoreAPI");
-            builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-gateway");
-        }
-
-        // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
-        // Scoped so follow-on publishes inside a consume scope stay correlation-aware,
-        // exactly as injecting IPublishEndpoint behaved before.
-        builder.Services.AddMassTransitEventBus();
-
-        // Register the cache-invalidation / notification IEventHandler<T> implementations (#919).
-        // Their MassTransit bridges are registered inside AddMassTransit below.
+        // Backend-neutral handler registrations — identical for both backends.
+        //
+        // Cache-invalidation / notification IEventHandler<T> implementations (#919):
         ConduitLLM.Gateway.Extensions.CacheInvalidationMessagingExtensions.AddGatewayCacheInvalidationHandlers(builder.Services);
         ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationHandlers(builder.Services);
 
-        // Register the media-generation orchestrator / notification IEventHandler<T>
-        // implementations (#920). Their MassTransit bridges are registered inside
-        // AddMassTransit below; the orchestrator bridges are bound to the tuned
-        // image-/video-generation endpoints.
+        // Media-generation orchestrator / notification IEventHandler<T> implementations
+        // (#920). On MassTransit the orchestrator bridges are bound to the tuned
+        // image-/video-generation endpoints below.
         ConduitLLM.Gateway.Extensions.MediaGenerationMessagingExtensions.AddMediaGenerationHandlers(builder.Services);
 
         // High-risk handlers (#921): ordered spend processing (spend-update-events),
@@ -43,6 +26,20 @@ public partial class Program
         builder.Services.AddEventHandler<ConduitLLM.Core.Events.SpendUpdateRequested, ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>();
         builder.Services.AddEventHandler<ConduitLLM.Configuration.Events.BatchSpendFlushRequestedEvent, ConduitLLM.Gateway.EventHandlers.BatchSpendFlushRequestedHandler>();
         builder.Services.AddEventHandler<ConduitLLM.Core.Events.WebhookDeliveryRequested, ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>();
+
+        // Phase 2 backend switch (#924/#925): ConduitLLM:Messaging:Backend selects the
+        // host for the abstraction. Wolverine runs on the PostgreSQL transport with
+        // durable persistence; MassTransit (default) keeps the Phase 1 wiring unchanged.
+        if (MessagingBackendResolver.Resolve(builder.Configuration) == MessagingBackend.Wolverine)
+        {
+            ConfigureWolverineMessaging(builder);
+            return;
+        }
+
+        // Register the Conduit-owned IEventBus abstraction over MassTransit (epic #909).
+        // Scoped so follow-on publishes inside a consume scope stay correlation-aware,
+        // exactly as injecting IPublishEndpoint behaved before.
+        builder.Services.AddMassTransitEventBus();
 
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
@@ -209,6 +206,43 @@ public partial class Program
                 options.ConcurrentPublishers = 3;
             });
         }
+    }
+
+    /// <summary>
+    /// Wolverine backend wiring (#925): IEventBus adapter + one bridge handler per
+    /// bridged event type, on the PostgreSQL transport with durable persistence.
+    /// Publishes route to the local durable queues of this process's bridges; the
+    /// tuned endpoint policies (ordering, deferral, concurrency — the analogue of the
+    /// RabbitMQ endpoints below) and cross-service queue topology land in I2.3/#926.
+    /// </summary>
+    private static void ConfigureWolverineMessaging(WebApplicationBuilder builder)
+    {
+        builder.Services.AddWolverineEventBus();
+
+        var (_, connectionString) = new ConduitLLM.Core.Data.ConnectionStringManager()
+            .GetProviderAndConnectionString("CoreAPI");
+
+        builder.Host.AddConduitWolverine(builder.Configuration, connectionString, "conduit-gateway", opts =>
+        {
+            ConduitLLM.Gateway.Extensions.CacheInvalidationMessagingExtensions.AddGatewayCacheInvalidationBridges(opts);
+            ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(opts);
+            ConduitLLM.Gateway.Extensions.MediaGenerationMessagingExtensions.AddMediaGenerationBridges(opts);
+
+            // High-risk bridges (#921): endpoint tuning for these (single/sequential
+            // listener for spend ordering, webhook deferral/concurrency) follows in #926.
+            opts.AddEventBridge<SpendUpdateRequested>();
+            opts.AddEventBridge<WebhookDeliveryRequested>();
+            opts.AddEventBridge<ConduitLLM.Configuration.Events.BatchSpendFlushRequestedEvent>();
+        });
+
+        // Batch webhook publisher: publishes via IEventBus, so it is backend-agnostic.
+        // Registered unconditionally on Wolverine (there is no RabbitMQ to gate on).
+        builder.Services.AddBatchWebhookPublisher(options =>
+        {
+            options.MaxBatchSize = 100;
+            options.MaxBatchDelay = TimeSpan.FromMilliseconds(100);
+            options.ConcurrentPublishers = 3;
+        });
     }
 
     /// <summary>

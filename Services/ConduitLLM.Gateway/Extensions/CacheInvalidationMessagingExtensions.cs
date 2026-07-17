@@ -1,9 +1,12 @@
 using ConduitLLM.Configuration.Messaging.MassTransit;
+using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Events;
 
 using MassTransit;
 
 using Microsoft.Extensions.DependencyInjection;
+
+using Wolverine;
 
 namespace ConduitLLM.Gateway.Extensions
 {
@@ -65,32 +68,56 @@ namespace ConduitLLM.Gateway.Extensions
         }
 
         /// <summary>
+        /// The event types bridged to the Gateway-hosted cache-invalidation/notification
+        /// handlers. One list drives both backends' bridge registration so they cannot
+        /// drift (epic #909 Phase 2, #925).
+        /// </summary>
+        public static readonly IReadOnlyList<Type> BridgedEventTypes = new[]
+        {
+            typeof(VirtualKeyUpdated),
+            typeof(VirtualKeyCreated),
+            typeof(VirtualKeyDeleted),
+            typeof(SpendUpdated),
+            typeof(ProviderCreated),
+            typeof(ProviderUpdated),
+            typeof(ProviderDeleted),
+            typeof(ModelUpdated),
+            typeof(DiscoveryCacheInvalidationRequested),
+            typeof(AsyncTaskCreated),
+            typeof(AsyncTaskUpdated),
+            typeof(AsyncTaskDeleted),
+            typeof(MediaGenerationCompleted),
+            typeof(VideoGenerationStarted),
+            typeof(ModelMappingChanged),
+            typeof(ModelCostChanged),
+            typeof(IpFilterChanged),
+            typeof(ProviderToolChanged),
+            typeof(Configuration.Events.ProviderKeyCredentialCreated),
+            typeof(Configuration.Events.ProviderKeyCredentialUpdated),
+            typeof(Configuration.Events.ProviderKeyCredentialDeleted),
+            typeof(Configuration.Events.ProviderKeyCredentialPrimaryChanged),
+        };
+
+        /// <summary>
         /// Registers the MassTransit bridge consumers for the Gateway-hosted cache events.
         /// </summary>
         public static void AddGatewayCacheInvalidationBridges(this IRegistrationConfigurator x)
         {
-            x.AddEventBridge<VirtualKeyUpdated>();
-            x.AddEventBridge<VirtualKeyCreated>();
-            x.AddEventBridge<VirtualKeyDeleted>();
-            x.AddEventBridge<SpendUpdated>();
-            x.AddEventBridge<ProviderCreated>();
-            x.AddEventBridge<ProviderUpdated>();
-            x.AddEventBridge<ProviderDeleted>();
-            x.AddEventBridge<ModelUpdated>();
-            x.AddEventBridge<DiscoveryCacheInvalidationRequested>();
-            x.AddEventBridge<AsyncTaskCreated>();
-            x.AddEventBridge<AsyncTaskUpdated>();
-            x.AddEventBridge<AsyncTaskDeleted>();
-            x.AddEventBridge<MediaGenerationCompleted>();
-            x.AddEventBridge<VideoGenerationStarted>();
-            x.AddEventBridge<ModelMappingChanged>();
-            x.AddEventBridge<ModelCostChanged>();
-            x.AddEventBridge<IpFilterChanged>();
-            x.AddEventBridge<ProviderToolChanged>();
-            x.AddEventBridge<Configuration.Events.ProviderKeyCredentialCreated>();
-            x.AddEventBridge<Configuration.Events.ProviderKeyCredentialUpdated>();
-            x.AddEventBridge<Configuration.Events.ProviderKeyCredentialDeleted>();
-            x.AddEventBridge<Configuration.Events.ProviderKeyCredentialPrimaryChanged>();
+            foreach (var eventType in BridgedEventTypes)
+            {
+                x.AddEventBridge(eventType);
+            }
+        }
+
+        /// <summary>
+        /// Registers the Wolverine bridge handlers for the Gateway-hosted cache events (#925).
+        /// </summary>
+        public static void AddGatewayCacheInvalidationBridges(this WolverineOptions options)
+        {
+            foreach (var eventType in BridgedEventTypes)
+            {
+                options.AddEventBridge(eventType);
+            }
         }
     }
 }
