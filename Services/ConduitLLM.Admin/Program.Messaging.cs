@@ -28,20 +28,29 @@ public partial class Program
             var (_, wolverineConnectionString) = new ConduitLLM.Core.Data.ConnectionStringManager()
                 .GetProviderAndConnectionString("AdminAPI", msg => startupLogger.LogInformation("{Message}", msg));
 
+            var postgresTransport = !WolverineMessagingExtensions.UsesInMemoryTransport(builder.Configuration);
+
             builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-admin", opts =>
             {
                 ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(opts);
 
                 // Event→queue topology (#926): the same publish routing as the Gateway
                 // (so Admin publishes land on the Gateway's queues), listening only on
-                // admin-events (the shared cache events).
-                ConduitLLM.Core.Messaging.ConduitMessagingTopology.ApplyConduitPublishRouting(opts);
-                ConduitLLM.Core.Messaging.ConduitMessagingTopology.ListenAsConduitAdmin(opts);
+                // admin-events (the shared cache events). Postgres queues only exist on
+                // the Postgresql transport — in-memory mode (dev/CI, #928) routes
+                // everything to local queues instead, like MassTransit in-memory.
+                if (postgresTransport)
+                {
+                    ConduitLLM.Core.Messaging.ConduitMessagingTopology.ApplyConduitPublishRouting(opts);
+                    ConduitLLM.Core.Messaging.ConduitMessagingTopology.ListenAsConduitAdmin(opts);
+                }
             });
 
             startupLogger.LogInformation(
-                "Event bus configured with the Wolverine backend (PostgreSQL transport, durable persistence, " +
-                "shared event->queue topology). Admin publishes route to the Gateway's tuned queues");
+                postgresTransport
+                    ? "Event bus configured with the Wolverine backend (PostgreSQL transport, durable persistence, " +
+                      "shared event->queue topology). Admin publishes route to the Gateway's tuned queues"
+                    : "Event bus configured with the Wolverine backend (in-memory transport, local queues only - dev/CI mode)");
             return;
         }
 

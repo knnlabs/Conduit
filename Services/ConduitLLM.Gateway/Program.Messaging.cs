@@ -225,6 +225,8 @@ public partial class Program
         var (_, connectionString) = new ConduitLLM.Core.Data.ConnectionStringManager()
             .GetProviderAndConnectionString("CoreAPI");
 
+        var postgresTransport = !WolverineMessagingExtensions.UsesInMemoryTransport(builder.Configuration);
+
         builder.Host.AddConduitWolverine(builder.Configuration, connectionString, "conduit-gateway", opts =>
         {
             ConduitLLM.Gateway.Extensions.CacheInvalidationMessagingExtensions.AddGatewayCacheInvalidationBridges(opts);
@@ -238,9 +240,14 @@ public partial class Program
             opts.AddEventBridge<ConduitLLM.Configuration.Events.BatchSpendFlushRequestedEvent>();
 
             // Event→queue topology (#926): publish routing identical on all hosts;
-            // the Gateway listens on the four tuned queues + gateway-events.
-            ConduitLLM.Core.Messaging.ConduitMessagingTopology.ApplyConduitPublishRouting(opts);
-            ConduitLLM.Core.Messaging.ConduitMessagingTopology.ListenAsConduitGateway(opts);
+            // the Gateway listens on the four tuned queues + gateway-events. Postgres
+            // queues only exist on the Postgresql transport — in-memory mode (dev/CI,
+            // #928) routes everything to local queues instead, like MassTransit in-memory.
+            if (postgresTransport)
+            {
+                ConduitLLM.Core.Messaging.ConduitMessagingTopology.ApplyConduitPublishRouting(opts);
+                ConduitLLM.Core.Messaging.ConduitMessagingTopology.ListenAsConduitGateway(opts);
+            }
         });
 
         // Batch webhook publisher: publishes via IEventBus, so it is backend-agnostic.
