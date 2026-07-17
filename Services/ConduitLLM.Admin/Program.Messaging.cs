@@ -31,11 +31,17 @@ public partial class Program
             builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-admin", opts =>
             {
                 ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(opts);
+
+                // Event→queue topology (#926): the same publish routing as the Gateway
+                // (so Admin publishes land on the Gateway's queues), listening only on
+                // admin-events (the shared cache events).
+                ConduitLLM.Core.Messaging.ConduitMessagingTopology.ApplyConduitPublishRouting(opts);
+                ConduitLLM.Core.Messaging.ConduitMessagingTopology.ListenAsConduitAdmin(opts);
             });
 
             startupLogger.LogInformation(
-                "Event bus configured with the Wolverine backend (PostgreSQL transport, durable persistence). " +
-                "Cross-service queue topology follows in #926");
+                "Event bus configured with the Wolverine backend (PostgreSQL transport, durable persistence, " +
+                "shared event->queue topology). Admin publishes route to the Gateway's tuned queues");
             return;
         }
 

@@ -49,22 +49,16 @@ namespace ConduitLLM.Gateway.Extensions
 
         /// <summary>
         /// The media-generation event types bridged to handlers. One list drives both
-        /// backends' bridge registration so they cannot drift (epic #909 Phase 2, #925).
+        /// backends' bridge registration so they cannot drift (epic #909 Phase 2, #925);
+        /// the canonical per-queue lists live in
+        /// <see cref="ConduitLLM.Core.Messaging.ConduitMessagingTopology"/> because the
+        /// Wolverine queue routing (#926) needs them from both hosts.
         /// </summary>
-        public static readonly IReadOnlyList<Type> BridgedEventTypes = new[]
-        {
-            typeof(ImageGenerationRequested),
-            typeof(ImageGenerationCancelled),
-            typeof(VideoGenerationRequested),
-            typeof(VideoGenerationCancelled),
-            typeof(VideoProgressCheckRequested),
-            typeof(ImageGenerationProgress),
-            typeof(ImageGenerationCompleted),
-            typeof(ImageGenerationFailed),
-            typeof(VideoGenerationProgress),
-            typeof(VideoGenerationCompleted),
-            typeof(VideoGenerationFailed),
-        };
+        public static readonly IReadOnlyList<Type> BridgedEventTypes =
+            ConduitLLM.Core.Messaging.ConduitMessagingTopology.ImageGenerationEvents
+                .Concat(ConduitLLM.Core.Messaging.ConduitMessagingTopology.VideoGenerationEvents)
+                .Concat(ConduitLLM.Core.Messaging.ConduitMessagingTopology.MediaGenerationDefaultEvents)
+                .ToArray();
 
         /// <summary>
         /// Registers the MassTransit bridge consumers for the media-generation events.
