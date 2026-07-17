@@ -183,11 +183,14 @@ real Postgres runs with the #929 parity gate.
   required); running the FULL suite with the flag flipped to Wolverine in staging is
   part of the #929 gate.
 
-## I2.6 — Parity & ordering validation (#929) — GATE
+## I2.6 — Parity & ordering validation (#929) — GATE (runbook ready)
 
 - Side-by-side load: spend per-key ordering under ~17 msg/s, webhook deferral timing, 1000+
   webhooks/min throughput, zero message loss. Compare to captured MassTransit behavior.
 - **Requires real Postgres + load infra — runs in CI/staging, not a unit environment.**
+- **Execution runbook: [phase2-parity-gate-runbook.md](phase2-parity-gate-runbook.md)** —
+  absorbs the #923 staging smoke, the financial-path 2nd review, and the #927 crash
+  fault-injection; includes the rollback drill that sets the #930 rollback SLA.
 - Acceptance: documented parity report; sign-off to cut over.
 
 ## I2.7 — Staged cutover (#930)
