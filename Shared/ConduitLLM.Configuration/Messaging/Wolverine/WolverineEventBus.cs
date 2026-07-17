@@ -12,8 +12,9 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// Registered scoped, like <c>MassTransitEventBus</c>: Wolverine's
     /// <see cref="IMessageBus"/> is itself scoped, and inside a handler scope it is the
     /// active <see cref="IMessageContext"/>, so follow-on publishes from handlers flow
-    /// through the current envelope (correlation-aware) and participate in the
-    /// transactional outbox once a transaction is applied (#927).
+    /// through the current envelope (correlation-aware) and flush atomically with
+    /// handler completion. All sending endpoints are durable (I2.4/#927), so an
+    /// accepted publish is persisted to the Postgres outbox before delivery.
     /// <para>
     /// Wolverine's publish APIs carry no <see cref="CancellationToken"/>; the token is
     /// honored by checking it before handing each event to the transport.

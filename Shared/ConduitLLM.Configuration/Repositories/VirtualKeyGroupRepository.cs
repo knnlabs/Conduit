@@ -5,6 +5,8 @@ using ConduitLLM.Configuration.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using Npgsql;
+
 namespace ConduitLLM.Configuration.Repositories;
 
 /// <summary>
@@ -165,45 +167,8 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         {
             return await ExecuteAsync(async context =>
             {
-                var group = await GetDbSet(context).FirstOrDefaultAsync(g => g.Id == groupId);
-                if (group == null)
-                {
-                    throw new InvalidOperationException($"Virtual key group {groupId} not found");
-                }
-
-                var previousBalance = group.Balance;
-                group.Balance += amount;
-
-                if (amount > 0)
-                {
-                    group.LifetimeCreditsAdded += amount;
-                }
-                else
-                {
-                    group.LifetimeSpent += Math.Abs(amount);
-                }
-
-                group.UpdatedAt = DateTime.UtcNow;
-
-                // Create transaction record
-                var transaction = CreateTransaction(
-                    groupId,
-                    amount,
-                    group.Balance,
-                    amount > 0 ? TransactionType.Credit : TransactionType.Debit,
-                    referenceType,
-                    description ?? (amount > 0 ? "Credits added" : "Usage deducted"),
-                    referenceId,
-                    initiatedBy ?? "System"
-                );
-
-                context.VirtualKeyGroupTransactions.Add(transaction);
-
-                await context.SaveChangesAsync();
-
-                Logger.LogInformation("Adjusted balance for group {GroupId} by {Amount}. Previous: {PreviousBalance}, New: {Balance}, ReferenceType: {ReferenceType}",
-                    groupId, amount, previousBalance, group.Balance, referenceType);
-
+                var group = await ApplyBalanceAdjustmentAsync(
+                    context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey: null);
                 return group.Balance;
             });
         }
@@ -216,6 +181,146 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
             Logger.LogError(ex, "Error adjusting balance for virtual key group {GroupId}", groupId);
             throw;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<BalanceAdjustmentResult> AdjustBalanceIdempotentAsync(
+        int groupId,
+        decimal amount,
+        string idempotencyKey,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
+
+        try
+        {
+            return await ExecuteAsync(async context =>
+            {
+                // Includes soft-deleted rows: a deleted ledger entry still proves the
+                // adjustment was applied once.
+                var duplicate = await context.VirtualKeyGroupTransactions
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .AnyAsync(t => t.IdempotencyKey == idempotencyKey);
+
+                if (duplicate)
+                {
+                    Logger.LogWarning(
+                        "Duplicate balance adjustment for group {GroupId} with idempotency key {IdempotencyKey} - skipping",
+                        groupId, idempotencyKey);
+                    return await GetCurrentStateAsync(context, groupId, applied: false);
+                }
+
+                var group = await ApplyBalanceAdjustmentAsync(
+                    context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey);
+                return new BalanceAdjustmentResult(group.Balance, group.LifetimeSpent, Applied: true);
+            });
+        }
+        catch (DbUpdateException ex) when (IsIdempotencyKeyViolation(ex))
+        {
+            // Race backstop: a concurrent delivery inserted the key between the check
+            // and the save. The unique index guarantees single application.
+            Logger.LogWarning(
+                "Concurrent duplicate balance adjustment for group {GroupId} with idempotency key {IdempotencyKey} - skipping",
+                groupId, idempotencyKey);
+            return await ExecuteAsync(context => GetCurrentStateAsync(context, groupId, applied: false));
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error adjusting balance idempotently for virtual key group {GroupId}", groupId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Applies a balance adjustment and its ledger row in one atomic save on the
+    /// supplied context. The optional idempotency key is stored on the ledger row,
+    /// whose unique index enforces exactly-once application (#927).
+    /// </summary>
+    private async Task<VirtualKeyGroup> ApplyBalanceAdjustmentAsync(
+        ConduitDbContext context,
+        int groupId,
+        decimal amount,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId,
+        string? idempotencyKey)
+    {
+        var group = await GetDbSet(context).FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group == null)
+        {
+            throw new InvalidOperationException($"Virtual key group {groupId} not found");
+        }
+
+        var previousBalance = group.Balance;
+        group.Balance += amount;
+
+        if (amount > 0)
+        {
+            group.LifetimeCreditsAdded += amount;
+        }
+        else
+        {
+            group.LifetimeSpent += Math.Abs(amount);
+        }
+
+        group.UpdatedAt = DateTime.UtcNow;
+
+        // Create transaction record
+        var transaction = CreateTransaction(
+            groupId,
+            amount,
+            group.Balance,
+            amount > 0 ? TransactionType.Credit : TransactionType.Debit,
+            referenceType,
+            description ?? (amount > 0 ? "Credits added" : "Usage deducted"),
+            referenceId,
+            initiatedBy ?? "System"
+        );
+        transaction.IdempotencyKey = idempotencyKey;
+
+        context.VirtualKeyGroupTransactions.Add(transaction);
+
+        await context.SaveChangesAsync();
+
+        Logger.LogInformation("Adjusted balance for group {GroupId} by {Amount}. Previous: {PreviousBalance}, New: {Balance}, ReferenceType: {ReferenceType}",
+            groupId, amount, previousBalance, group.Balance, referenceType);
+
+        return group;
+    }
+
+    private async Task<BalanceAdjustmentResult> GetCurrentStateAsync(ConduitDbContext context, int groupId, bool applied)
+    {
+        var group = await GetDbSet(context).AsNoTracking().FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group == null)
+        {
+            throw new InvalidOperationException($"Virtual key group {groupId} not found");
+        }
+
+        return new BalanceAdjustmentResult(group.Balance, group.LifetimeSpent, applied);
+    }
+
+    private static bool IsIdempotencyKeyViolation(DbUpdateException ex)
+    {
+        for (Exception? inner = ex.InnerException; inner != null; inner = inner.InnerException)
+        {
+            if (inner is PostgresException pg &&
+                pg.SqlState == PostgresErrorCodes.UniqueViolation &&
+                pg.ConstraintName?.Contains("IdempotencyKey", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <inheritdoc />

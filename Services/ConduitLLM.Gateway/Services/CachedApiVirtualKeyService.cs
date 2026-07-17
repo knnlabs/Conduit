@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 using ConduitLLM.Core.Events;
@@ -187,7 +188,7 @@ namespace ConduitLLM.Gateway.Services
                     // Event-driven approach - publish SpendUpdateRequested event
                     var requestId = Guid.NewGuid().ToString();
 
-                    await PublishEventAsync(
+                    var published = await TryPublishEventAsync(
                         new SpendUpdateRequested
                         {
                             KeyId = keyId,
@@ -198,41 +199,29 @@ namespace ConduitLLM.Gateway.Services
                         $"spend update for key {keyId}",
                         new { KeyId = keyId, Amount = cost, RequestId = requestId });
 
-                    // Event-driven approach returns true immediately - processing happens asynchronously
-                    // The SpendUpdateProcessor will handle the actual database update and cache invalidation
-                    return true;
+                    if (published)
+                    {
+                        // Event-driven approach returns true immediately - processing happens asynchronously
+                        // The SpendUpdateProcessor will handle the actual database update and cache invalidation
+                        return true;
+                    }
+
+                    // Publish failure fallback (#927): charge directly instead of losing the
+                    // spend. The same RequestId-derived idempotency key is written to the
+                    // ledger, so if the event WAS actually delivered despite the reported
+                    // failure, the consumer's dedup makes it a no-op — no double charge.
+                    _logger.LogError(
+                        "Spend update event for key {KeyId} (requestId {RequestId}) could not be published - falling back to direct balance adjustment",
+                        keyId, requestId);
+
+                    return await UpdateSpendDirectAsync(keyId, cost, SpendIdempotency.KeyFor(requestId));
                 }
                 else
                 {
                     // FALLBACK: Direct database update approach when event bus not configured
                     _logger.LogDebug("Event publishing not configured - using direct database update for key {KeyId}", keyId);
 
-                    var virtualKey = await VirtualKeyRepository.GetByIdAsync(keyId);
-                    if (virtualKey == null)
-                    {
-                        _logger.LogWarning("Virtual key {KeyId} not found for spend update", keyId);
-                        return false;
-                    }
-
-                    // Get the key's group and adjust its balance
-                    var group = await GroupRepository.GetByKeyIdAsync(keyId);
-                    if (group == null)
-                    {
-                        _logger.LogWarning("No group found for virtual key with ID {KeyId}", keyId);
-                        return false;
-                    }
-
-                    var newBalance = await GroupRepository.AdjustBalanceAsync(group.Id, -cost);
-
-                    // Invalidate cache after spend update
-                    await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-
-                    _logger.LogInformation("Updated spend for key ID {KeyId} in group {GroupId}. New balance: {NewBalance}",
-                        keyId, group.Id, newBalance);
-
-                    bool success = true;
-
-                    return success;
+                    return await UpdateSpendDirectAsync(keyId, cost, idempotencyKey: null);
                 }
             }
             catch (Exception ex)
@@ -240,6 +229,56 @@ namespace ConduitLLM.Gateway.Services
                 _logger.LogError(ex, "Error updating spend for key ID {KeyId}.", keyId);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Adjusts the key's group balance directly, bypassing the event bus. Used when
+        /// event publishing is not configured, and as the durability fallback when a
+        /// spend publish fails (#927) — in the latter case with the RequestId-derived
+        /// idempotency key so the adjustment applies at most once across both paths.
+        /// </summary>
+        private async Task<bool> UpdateSpendDirectAsync(int keyId, decimal cost, string? idempotencyKey)
+        {
+            var virtualKey = await VirtualKeyRepository.GetByIdAsync(keyId);
+            if (virtualKey == null)
+            {
+                _logger.LogWarning("Virtual key {KeyId} not found for spend update", keyId);
+                return false;
+            }
+
+            // Get the key's group and adjust its balance
+            var group = await GroupRepository.GetByKeyIdAsync(keyId);
+            if (group == null)
+            {
+                _logger.LogWarning("No group found for virtual key with ID {KeyId}", keyId);
+                return false;
+            }
+
+            decimal newBalance;
+            if (idempotencyKey != null)
+            {
+                var result = await GroupRepository.AdjustBalanceIdempotentAsync(
+                    group.Id,
+                    -cost,
+                    idempotencyKey,
+                    $"API usage by virtual key #{keyId}",
+                    "System",
+                    ReferenceType.VirtualKey,
+                    keyId.ToString());
+                newBalance = result.NewBalance;
+            }
+            else
+            {
+                newBalance = await GroupRepository.AdjustBalanceAsync(group.Id, -cost);
+            }
+
+            // Invalidate cache after spend update
+            await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
+
+            _logger.LogInformation("Updated spend for key ID {KeyId} in group {GroupId}. New balance: {NewBalance}",
+                keyId, group.Id, newBalance);
+
+            return true;
         }
 
         /// <inheritdoc />

@@ -396,6 +396,12 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.ReferenceType);
                 entity.HasIndex(e => e.TransactionType);
 
+                // Idempotency for at-least-once spend processing (#927): one ledger row
+                // per idempotency key. Filtered so the many rows without a key are exempt.
+                entity.HasIndex(e => e.IdempotencyKey)
+                      .IsUnique()
+                      .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+
                 // Store enums as integers
                 entity.Property(e => e.TransactionType)
                       .HasConversion<int>();

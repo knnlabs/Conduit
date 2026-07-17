@@ -77,15 +77,21 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 // share the existing Postgres database, in an isolated schema.
                 opts.UsePostgresqlPersistenceAndTransport(connectionString, schemaName);
 
-                // Wraps handlers in a database transaction where one applies — the
-                // foundation for the transactional outbox work in I2.4/#927.
+                // Wraps handlers in a database transaction where one applies.
                 opts.Policies.AutoApplyTransactions();
 
                 // Local queues (where in-process bridge handlers receive publishes) are
                 // backed by the Postgres durability tables, so buffered messages survive
                 // a crash — already an improvement on MassTransit's in-memory transport.
-                // Full outbox semantics for the financial paths land in I2.4/#927.
                 opts.Policies.UseDurableLocalQueues();
+
+                // Transactional outbox (I2.4/#927): every sending endpoint persists the
+                // envelope to the Postgres outbox before delivery, so a publish accepted
+                // by the bus survives a crash and is retried by the durability agent —
+                // the fire-and-forget publish seams no longer lose events on transient
+                // failure. Messages published from inside a handler additionally flush
+                // atomically with handler completion (the message-context outbox).
+                opts.Policies.UseDurableOutboxOnAllSendingEndpoints();
 
                 // Conduit's IEventHandler<T> implementations are named *Handler/*Consumer
                 // with HandleAsync methods, which Wolverine's conventional discovery would

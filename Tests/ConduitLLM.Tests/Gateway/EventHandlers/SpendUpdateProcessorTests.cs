@@ -90,14 +90,15 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 .Returns(Task.FromResult(group));
 
             _groupRepositoryMock
-                .Setup(r => r.AdjustBalanceAsync(
+                .Setup(r => r.AdjustBalanceIdempotentAsync(
                     1,
                     -50m,
+                    "spend:req-123",
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     ReferenceType.VirtualKey,
                     It.IsAny<string>()))
-                .Returns(Task.FromResult(50m)); // New balance
+                .Returns(Task.FromResult(new BalanceAdjustmentResult(50m, 150m, Applied: true)));
 
             var @event = new SpendUpdateRequested
             {
@@ -112,10 +113,11 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             await _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
-            // Verify group balance was adjusted with correct reference type
-            _groupRepositoryMock.Verify(r => r.AdjustBalanceAsync(
+            // Verify group balance was adjusted idempotently with correct reference type
+            _groupRepositoryMock.Verify(r => r.AdjustBalanceIdempotentAsync(
                 1,
                 -50m,
+                "spend:req-123",
                 "API usage by virtual key #123",
                 "System",
                 ReferenceType.VirtualKey,
@@ -238,9 +240,131 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
-        public async Task HandleAsync_WithUpdateFailure_ThrowsException()
+        public async Task HandleAsync_WithBalanceDepleted_PublishesThresholdExceeded()
         {
             // Arrange
+            SetupRepositories(keyId: 222, keyHash: "test-hash-222", groupBalance: 20m, groupLifetimeSpent: 100m);
+
+            // Debit takes the balance negative — a legitimate depletion, not a failure
+            _groupRepositoryMock
+                .Setup(r => r.AdjustBalanceIdempotentAsync(
+                    1,
+                    -30m,
+                    "spend:req-222",
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    ReferenceType.VirtualKey,
+                    It.IsAny<string>()))
+                .Returns(Task.FromResult(new BalanceAdjustmentResult(-10m, 130m, Applied: true)));
+
+            var @event = new SpendUpdateRequested
+            {
+                EventId = Guid.NewGuid().ToString(),
+                KeyId = 222,
+                Amount = 30m,
+                RequestId = "req-222",
+                CorrelationId = "corr-222"
+            };
+
+            // Act
+            await _processor.HandleAsync(@event, new TestEventContext());
+
+            // Assert
+            _eventBusMock.Verify(p => p.PublishAsync(It.Is<SpendUpdated>(su =>
+                su.KeyId == 222 &&
+                su.NewTotalSpend == 130m),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            _eventBusMock.Verify(p => p.PublishAsync(It.Is<SpendThresholdExceeded>(ste =>
+                ste.VirtualKeyId == 222 &&
+                ste.CurrentSpend == 130m &&
+                ste.AmountOver == 10m),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WithDuplicateRequestId_SkipsThresholdButRepublishesNotification()
+        {
+            // Arrange - previous balance positive and result balance negative, so ONLY the
+            // duplicate (Applied=false) guard prevents the threshold event from firing again
+            SetupRepositories(keyId: 333, keyHash: "test-hash-333", groupBalance: 20m, groupLifetimeSpent: 130m);
+
+            // Repository reports the idempotency key was already recorded
+            _groupRepositoryMock
+                .Setup(r => r.AdjustBalanceIdempotentAsync(
+                    1,
+                    -30m,
+                    "spend:req-333",
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    ReferenceType.VirtualKey,
+                    It.IsAny<string>()))
+                .Returns(Task.FromResult(new BalanceAdjustmentResult(-10m, 130m, Applied: false)));
+
+            var @event = new SpendUpdateRequested
+            {
+                EventId = Guid.NewGuid().ToString(),
+                KeyId = 333,
+                Amount = 30m,
+                RequestId = "req-333"
+            };
+
+            // Act
+            await _processor.HandleAsync(@event, new TestEventContext());
+
+            // Assert - notification republished (in case the first attempt crashed before
+            // publishing), but the threshold crossing is not reported a second time
+            _eventBusMock.Verify(p => p.PublishAsync(It.Is<SpendUpdated>(su =>
+                su.KeyId == 333 &&
+                su.NewTotalSpend == 130m),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<SpendThresholdExceeded>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WithoutRequestId_FallsBackToNonIdempotentAdjustment()
+        {
+            // Arrange
+            SetupRepositories(keyId: 444, keyHash: "test-hash-444", groupBalance: 100m, groupLifetimeSpent: 100m);
+
+            _groupRepositoryMock
+                .Setup(r => r.AdjustBalanceAsync(
+                    1,
+                    -50m,
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    ReferenceType.VirtualKey,
+                    It.IsAny<string>()))
+                .Returns(Task.FromResult(50m));
+
+            var @event = new SpendUpdateRequested
+            {
+                EventId = Guid.NewGuid().ToString(),
+                KeyId = 444,
+                Amount = 50m,
+                RequestId = string.Empty
+            };
+
+            // Act
+            await _processor.HandleAsync(@event, new TestEventContext());
+
+            // Assert
+            _groupRepositoryMock.Verify(r => r.AdjustBalanceAsync(
+                1, -50m, It.IsAny<string>(), It.IsAny<string>(), ReferenceType.VirtualKey, It.IsAny<string>()),
+                Times.Once);
+            _groupRepositoryMock.Verify(r => r.AdjustBalanceIdempotentAsync(
+                It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<ReferenceType>(), It.IsAny<string>()),
+                Times.Never);
+
+            _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<SpendUpdated>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        private void SetupRepositories(int keyId, string keyHash, decimal groupBalance, decimal groupLifetimeSpent)
+        {
             _serviceProviderMock
                 .Setup(sp => sp.GetService(typeof(IVirtualKeyRepository)))
                 .Returns(_virtualKeyRepositoryMock.Object);
@@ -250,51 +374,26 @@ namespace ConduitLLM.Tests.Http.EventHandlers
 
             var virtualKey = new VirtualKey
             {
-                Id = 222,
-                KeyHash = "test-hash-222",
+                Id = keyId,
+                KeyHash = keyHash,
                 VirtualKeyGroupId = 1
             };
-            
+
             var group = new VirtualKeyGroup
             {
                 Id = 1,
                 GroupName = "Test Group",
-                Balance = 100m
+                Balance = groupBalance,
+                LifetimeSpent = groupLifetimeSpent
             };
 
             _virtualKeyRepositoryMock
-                .Setup(r => r.GetByIdAsync(222, It.IsAny<CancellationToken>()))
+                .Setup(r => r.GetByIdAsync(keyId, It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(virtualKey));
-            
+
             _groupRepositoryMock
                 .Setup(r => r.GetByIdAsync(1))
                 .Returns(Task.FromResult(group));
-
-            // AdjustBalanceAsync returns negative balance indicating failure
-            _groupRepositoryMock
-                .Setup(r => r.AdjustBalanceAsync(
-                    1,
-                    -30m,
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    ReferenceType.VirtualKey,
-                    It.IsAny<string>()))
-                .Returns(Task.FromResult(-1m));
-
-            var @event = new SpendUpdateRequested
-            {
-                EventId = Guid.NewGuid().ToString(),
-                KeyId = 222,
-                Amount = 30m,
-                RequestId = "req-222"
-            };
-
-            // Act
-            var act = () => _processor.HandleAsync(@event, new TestEventContext());
-
-            // Assert
-            await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("Failed to update spend for virtual key group 1");
         }
 
         [Fact]

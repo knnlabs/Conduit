@@ -75,6 +75,15 @@ namespace ConduitLLM.Configuration.Entities
         public string? InitiatedByUserId { get; set; }
 
         /// <summary>
+        /// Idempotency key for at-least-once message processing (e.g. the
+        /// SpendUpdateRequested RequestId, prefixed with the flow name). Unique when
+        /// present: a redelivered message is detected by this key and the balance
+        /// adjustment is not applied twice.
+        /// </summary>
+        [MaxLength(100)]
+        public string? IdempotencyKey { get; set; }
+
+        /// <summary>
         /// When this transaction was created
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

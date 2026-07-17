@@ -132,6 +132,55 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
+        /// Publishes a domain event and reports whether the bus accepted it, so callers
+        /// on financial paths can fall back to a direct write instead of losing the
+        /// event (#927). Failures are logged, never thrown.
+        /// </summary>
+        /// <typeparam name="TEvent">The type of event to publish.</typeparam>
+        /// <param name="domainEvent">The event to publish.</param>
+        /// <param name="operationName">A descriptive name for the operation that triggered the event.</param>
+        /// <param name="contextData">Optional context data to include in log messages.</param>
+        /// <returns>True when the event was handed to the bus; false when event publishing
+        /// is not configured or the publish failed.</returns>
+        protected async Task<bool> TryPublishEventAsync<TEvent>(
+            TEvent domainEvent,
+            string operationName,
+            object? contextData = null) where TEvent : class
+        {
+            if (domainEvent == null)
+            {
+                _logger.LogWarning(
+                    "Attempted to publish null event of type {EventType} for {Operation}",
+                    nameof(TEvent), operationName);
+                return false;
+            }
+
+            if (_eventBus == null)
+            {
+                _logger.LogDebug(
+                    "Event publishing not configured - skipping {EventType} for {Operation}",
+                    nameof(TEvent), operationName);
+                return false;
+            }
+
+            try
+            {
+                await _eventBus.PublishAsync(domainEvent);
+                _logger.LogDebug(
+                    "Published {EventType} event for {Operation} with context {ContextData}",
+                    nameof(TEvent), operationName, contextData);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to publish {EventType} event for {Operation} with context {ContextData} - reporting failure to caller",
+                    nameof(TEvent), operationName, contextData);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Logs the event publishing configuration status on service initialization.
         /// </summary>
         /// <param name="serviceName">The name of the service for logging context.</param>

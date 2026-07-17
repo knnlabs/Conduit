@@ -54,6 +54,29 @@ public interface IVirtualKeyGroupRepository : IRepositoryBase<VirtualKeyGroup, i
     Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId = null);
 
     /// <summary>
+    /// Adjusts the balance of a virtual key group exactly once per idempotency key.
+    /// The key is stored on the transaction ledger row in the same atomic save as the
+    /// balance adjustment, so a redelivered message (at-least-once transport, #927)
+    /// is detected and not applied twice.
+    /// </summary>
+    /// <param name="groupId">The group ID</param>
+    /// <param name="amount">The amount to adjust (positive for credit, negative for debit)</param>
+    /// <param name="idempotencyKey">Unique key identifying this adjustment (e.g. "spend:{RequestId}")</param>
+    /// <param name="description">Description of the transaction</param>
+    /// <param name="initiatedBy">User who initiated the transaction</param>
+    /// <param name="referenceType">The type of reference that triggered this transaction</param>
+    /// <param name="referenceId">Optional reference ID (e.g., virtual key ID)</param>
+    /// <returns>The resulting balance state and whether the adjustment was applied (false = duplicate key)</returns>
+    Task<BalanceAdjustmentResult> AdjustBalanceIdempotentAsync(
+        int groupId,
+        decimal amount,
+        string idempotencyKey,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId = null);
+
+    /// <summary>
     /// Gets groups with low balance (below threshold) with pagination
     /// </summary>
     /// <param name="threshold">The balance threshold</param>
@@ -67,3 +90,11 @@ public interface IVirtualKeyGroupRepository : IRepositoryBase<VirtualKeyGroup, i
         int pageSize,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Result of an idempotent balance adjustment.
+/// </summary>
+/// <param name="NewBalance">Group balance after the operation (current balance when the adjustment was a duplicate).</param>
+/// <param name="LifetimeSpent">Group lifetime spend after the operation.</param>
+/// <param name="Applied">False when the idempotency key was already recorded and no adjustment was made.</param>
+public sealed record BalanceAdjustmentResult(decimal NewBalance, decimal LifetimeSpent, bool Applied);

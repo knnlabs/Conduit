@@ -94,67 +94,84 @@ namespace ConduitLLM.Gateway.EventHandlers
                     return;
                 }
 
-                // Calculate new spend total at group level
-                var previousSpend = group.LifetimeSpent;
-                var newSpend = previousSpend + request.Amount;
                 var previousBalance = group.Balance;
+                var description = $"API usage by virtual key #{request.KeyId}";
 
-                // Update the group balance and lifetime spent
-                var newBalance = await groupRepository.AdjustBalanceAsync(
-                    group.Id,
-                    -request.Amount,
-                    $"API usage by virtual key #{request.KeyId}",
-                    "System",
-                    ReferenceType.VirtualKey,
-                    request.KeyId.ToString());
-                
-                var success = newBalance >= 0; // Success if we got a valid balance back
-                
-                if (success)
+                // Debit the group exactly once per RequestId (#927): the idempotency key
+                // rides the ledger row inside the same atomic save as the balance change,
+                // so an at-least-once redelivery cannot double-charge.
+                BalanceAdjustmentResult result;
+                if (!string.IsNullOrWhiteSpace(request.RequestId))
                 {
-                    // Publish SpendUpdated event for cache invalidation and audit
-                    await _eventBus.PublishAsync(new SpendUpdated
-                    {
-                        KeyId = request.KeyId,
-                        KeyHash = virtualKey.KeyHash,
-                        Amount = request.Amount,
-                        NewTotalSpend = newSpend,
-                        RequestId = request.RequestId,
-                        CorrelationId = request.CorrelationId
-                    });
-
-                    _logger.LogInformation(
-                        "Spend updated for virtual key {KeyId} in group {GroupId}: {PreviousSpend} + {Amount} = {NewSpend}, new balance: {NewBalance} (requestId: {RequestId})",
-                        request.KeyId, group.Id, previousSpend, request.Amount, newSpend, newBalance, request.RequestId);
-                    
-                    // Check if group balance is depleted
-                    if (newBalance <= 0 && previousBalance > 0)
-                    {
-                        // Balance just hit zero
-                        
-                        await _eventBus.PublishAsync(new SpendThresholdExceeded
-                        {
-                            VirtualKeyId = virtualKey.Id,
-                            VirtualKeyHash = virtualKey.KeyHash,
-                            KeyName = virtualKey.KeyName,
-                            CurrentSpend = newSpend,
-                            MaxBudget = previousBalance, // The balance that was available
-                            AmountOver = -newBalance, // How much we're over
-                            BudgetDuration = null, // No longer applicable in bank account model
-                            ExceededAt = DateTime.UtcNow,
-                            KeyDisabled = false, // We don't auto-disable in this handler
-                            CorrelationId = request.CorrelationId
-                        });
-                        
-                        _logger.LogWarning(
-                            "Virtual key group {GroupId} for key {KeyId} ({KeyName}) has depleted balance: {NewBalance:C}",
-                            group.Id, virtualKey.Id, virtualKey.KeyName, newBalance);
-                    }
+                    result = await groupRepository.AdjustBalanceIdempotentAsync(
+                        group.Id,
+                        -request.Amount,
+                        SpendIdempotency.KeyFor(request.RequestId),
+                        description,
+                        "System",
+                        ReferenceType.VirtualKey,
+                        request.KeyId.ToString());
                 }
                 else
                 {
-                    _logger.LogError("Failed to update spend for virtual key group {GroupId} (key {KeyId}) - balance adjustment failed", group.Id, request.KeyId);
-                    throw new InvalidOperationException($"Failed to update spend for virtual key group {group.Id}");
+                    var balance = await groupRepository.AdjustBalanceAsync(
+                        group.Id,
+                        -request.Amount,
+                        description,
+                        "System",
+                        ReferenceType.VirtualKey,
+                        request.KeyId.ToString());
+                    result = new BalanceAdjustmentResult(balance, group.LifetimeSpent + request.Amount, Applied: true);
+                }
+
+                var newBalance = result.NewBalance;
+                var newSpend = result.LifetimeSpent;
+
+                if (!result.Applied)
+                {
+                    _logger.LogWarning(
+                        "Spend update for key {KeyId} with requestId {RequestId} was already applied - republishing notification only",
+                        request.KeyId, request.RequestId);
+                }
+
+                // Publish SpendUpdated for cache invalidation and audit. Also republished on
+                // a duplicate delivery, in case the first attempt crashed after the debit
+                // committed but before this notification went out.
+                await _eventBus.PublishAsync(new SpendUpdated
+                {
+                    KeyId = request.KeyId,
+                    KeyHash = virtualKey.KeyHash,
+                    Amount = request.Amount,
+                    NewTotalSpend = newSpend,
+                    RequestId = request.RequestId,
+                    CorrelationId = request.CorrelationId
+                });
+
+                _logger.LogInformation(
+                    "Spend updated for virtual key {KeyId} in group {GroupId}: +{Amount} = {NewSpend}, new balance: {NewBalance} (requestId: {RequestId}, applied: {Applied})",
+                    request.KeyId, group.Id, request.Amount, newSpend, newBalance, request.RequestId, result.Applied);
+
+                // Check if this debit depleted the group balance (skipped on duplicate:
+                // the crossing was already reported when the debit first applied)
+                if (result.Applied && newBalance <= 0 && previousBalance > 0)
+                {
+                    await _eventBus.PublishAsync(new SpendThresholdExceeded
+                    {
+                        VirtualKeyId = virtualKey.Id,
+                        VirtualKeyHash = virtualKey.KeyHash,
+                        KeyName = virtualKey.KeyName,
+                        CurrentSpend = newSpend,
+                        MaxBudget = previousBalance, // The balance that was available
+                        AmountOver = -newBalance, // How much we're over
+                        BudgetDuration = null, // No longer applicable in bank account model
+                        ExceededAt = DateTime.UtcNow,
+                        KeyDisabled = false, // We don't auto-disable in this handler
+                        CorrelationId = request.CorrelationId
+                    });
+
+                    _logger.LogWarning(
+                        "Virtual key group {GroupId} for key {KeyId} ({KeyName}) has depleted balance: {NewBalance:C}",
+                        group.Id, virtualKey.Id, virtualKey.KeyName, newBalance);
                 }
             }
             catch (Exception ex)
