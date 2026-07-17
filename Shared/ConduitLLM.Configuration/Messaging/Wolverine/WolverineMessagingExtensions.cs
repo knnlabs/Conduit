@@ -35,6 +35,37 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         public const string AutoProvisionKey = "ConduitLLM:Messaging:Wolverine:AutoProvision";
 
         /// <summary>
+        /// Configuration key selecting the Wolverine transport (I2.5/#928):
+        /// <c>Postgresql</c> (default — durable persistence + cross-service queues) or
+        /// <c>InMemory</c> (local queues only, no Postgres required — dev/CI parity with
+        /// MassTransit's in-memory mode). Unrecognized values throw at boot.
+        /// </summary>
+        public const string TransportKey = "ConduitLLM:Messaging:Wolverine:Transport";
+
+        /// <summary>
+        /// Resolves whether the in-memory transport is selected (see <see cref="TransportKey"/>).
+        /// Hosts use this to skip the Postgres queue topology, which only exists on the
+        /// Postgresql transport.
+        /// </summary>
+        public static bool UsesInMemoryTransport(IConfiguration configuration)
+        {
+            var transport = configuration[TransportKey] ?? "Postgresql";
+
+            if (transport.Equals("Postgresql", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (transport.Equals("InMemory", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            throw new InvalidOperationException(
+                $"Unrecognized value '{transport}' for '{TransportKey}'. Valid values: Postgresql, InMemory.");
+        }
+
+        /// <summary>
         /// Adds the Wolverine host on the PostgreSQL transport with durable persistence.
         /// </summary>
         /// <param name="host">The host builder.</param>
@@ -61,6 +92,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         {
             var schemaName = configuration[SchemaNameKey] ?? "wolverine";
             var autoProvision = configuration.GetValue(AutoProvisionKey, true);
+            var inMemory = UsesInMemoryTransport(configuration);
 
             return host.UseWolverine(opts =>
             {
@@ -73,25 +105,40 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 // ('codegen write' + TypeLoadMode.Static) is a cutover optimization (#930).
                 opts.UseRuntimeCompilation();
 
-                // Persistence (inbox/outbox/scheduled messages) AND the message transport
-                // share the existing Postgres database, in an isolated schema.
-                opts.UsePostgresqlPersistenceAndTransport(connectionString, schemaName);
+                if (inMemory)
+                {
+                    // In-memory transport (I2.5/#928): local queues only, no persistence —
+                    // dev/CI can run the Wolverine backend without Postgres, matching the
+                    // durability level of MassTransit's in-memory mode. Solo skips the
+                    // multi-node leader-election agents a single test host never needs.
+                    opts.Durability.Mode = DurabilityMode.Solo;
+                }
+                else
+                {
+                    // Persistence (inbox/outbox/scheduled messages) AND the message
+                    // transport share the existing Postgres database, in an isolated schema.
+                    opts.UsePostgresqlPersistenceAndTransport(connectionString, schemaName);
+
+                    // Local queues (where in-process bridge handlers receive publishes) are
+                    // backed by the Postgres durability tables, so buffered messages survive
+                    // a crash — already an improvement on MassTransit's in-memory transport.
+                    opts.Policies.UseDurableLocalQueues();
+
+                    // Transactional outbox (I2.4/#927): every sending endpoint persists the
+                    // envelope to the Postgres outbox before delivery, so a publish accepted
+                    // by the bus survives a crash and is retried by the durability agent —
+                    // the fire-and-forget publish seams no longer lose events on transient
+                    // failure. Messages published from inside a handler additionally flush
+                    // atomically with handler completion (the message-context outbox).
+                    opts.Policies.UseDurableOutboxOnAllSendingEndpoints();
+
+                    opts.AutoBuildMessageStorageOnStartup = autoProvision
+                        ? AutoCreate.CreateOrUpdate
+                        : AutoCreate.None;
+                }
 
                 // Wraps handlers in a database transaction where one applies.
                 opts.Policies.AutoApplyTransactions();
-
-                // Local queues (where in-process bridge handlers receive publishes) are
-                // backed by the Postgres durability tables, so buffered messages survive
-                // a crash — already an improvement on MassTransit's in-memory transport.
-                opts.Policies.UseDurableLocalQueues();
-
-                // Transactional outbox (I2.4/#927): every sending endpoint persists the
-                // envelope to the Postgres outbox before delivery, so a publish accepted
-                // by the bus survives a crash and is retried by the durability agent —
-                // the fire-and-forget publish seams no longer lose events on transient
-                // failure. Messages published from inside a handler additionally flush
-                // atomically with handler completion (the message-context outbox).
-                opts.Policies.UseDurableOutboxOnAllSendingEndpoints();
 
                 // Conduit's IEventHandler<T> implementations are named *Handler/*Consumer
                 // with HandleAsync methods, which Wolverine's conventional discovery would
@@ -99,10 +146,6 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 // Dispatch goes exclusively through the explicit bridge registrations
                 // added in I2.2/#925.
                 opts.Discovery.DisableConventionalDiscovery();
-
-                opts.AutoBuildMessageStorageOnStartup = autoProvision
-                    ? AutoCreate.CreateOrUpdate
-                    : AutoCreate.None;
 
                 configure?.Invoke(opts);
             });

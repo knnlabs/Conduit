@@ -158,14 +158,30 @@ outbox and is deliberately out of scope).
 Acceptance: dedup/atomicity/fallback covered by unit tests; the crash fault-injection on
 real Postgres runs with the #929 parity gate.
 
-## I2.5 — Port the test suite (#928)
+## I2.5 — Port the test suite (#928) — ✅ implemented
 
-- Dev/CI uses Wolverine **in-memory local queues** (`opts.UseInMemory...` / `Durability =
-  DurabilityMode.MediatorOnly` style) so the suite runs without Postgres.
-- Extend the Phase 1 test doubles: run the abstraction/handler tests against BOTH backends
-  (parameterize the pilot harness). `TestEventContext` already covers handler-level tests
-  unchanged.
-- Acceptance: suite green on the Wolverine backend in CI.
+- **In-memory transport mode**: `ConduitLLM:Messaging:Wolverine:Transport` = `Postgresql`
+  (default) | `InMemory` (unrecognized → throw at boot). `InMemory` skips Postgres
+  persistence/transport and the durability policies (durable local queues, sending-endpoint
+  outbox, storage auto-provisioning) and runs `DurabilityMode.Solo` on in-memory local
+  queues — the same durability level as MassTransit's in-memory mode, no Postgres needed.
+  Hosts gate the #926 queue topology on the transport (`ApplyConduitPublishRouting` /
+  `ListenAsConduit*` are Postgres-queue APIs); in-memory mode routes everything to local
+  queues, exactly like MassTransit in-memory. Verified by
+  `WolverineInMemoryTransportTests`: the production `AddConduitWolverine` composition
+  boots and delivers end-to-end with a deliberately unusable connection string.
+- **Dual-backend contract**: `EventBusBackendContractTests` — one abstract contract
+  (publish→handler dispatch with envelope metadata, multi-handler fan-out,
+  `PublishBatchAsync`, handler cascade via `IEventContext.PublishAsync`) with a subclass
+  per backend (MassTransit in-memory test harness / Wolverine in-memory local queues),
+  so the two `IEventBus` implementations cannot drift. `TestEventContext` continues to
+  cover handler-level tests unchanged. **Contract note discovered by these tests:**
+  `CorrelationId` on a bare publish is backend-dependent (Wolverine auto-generates,
+  MassTransit leaves it null) — it is deliberately excluded from the contract; Conduit's
+  `DomainEvent`s carry their own correlation ids.
+- Acceptance: suite green with both backends' harnesses in CI (no Postgres/RabbitMQ
+  required); running the FULL suite with the flag flipped to Wolverine in staging is
+  part of the #929 gate.
 
 ## I2.6 — Parity & ordering validation (#929) — GATE
 
