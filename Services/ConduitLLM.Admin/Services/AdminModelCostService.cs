@@ -302,16 +302,38 @@ namespace ConduitLLM.Admin.Services
                     }
                 }
 
-                // Track changes for event publishing
+                // Track changes for event publishing (compare before UpdateFrom mutates the entity)
                 var changedProperties = new List<string>();
                 if (existingModelCost.CostName != modelCost.CostName)
                     changedProperties.Add(nameof(modelCost.CostName));
+                if (existingModelCost.PricingModel != modelCost.PricingModel)
+                    changedProperties.Add(nameof(modelCost.PricingModel));
+                if (existingModelCost.PricingConfiguration != modelCost.PricingConfiguration)
+                    changedProperties.Add(nameof(modelCost.PricingConfiguration));
+                if (existingModelCost.ModelType != modelCost.ModelType)
+                    changedProperties.Add(nameof(modelCost.ModelType));
+                if (existingModelCost.IsActive != modelCost.IsActive)
+                    changedProperties.Add(nameof(modelCost.IsActive));
+                if (existingModelCost.Priority != modelCost.Priority)
+                    changedProperties.Add(nameof(modelCost.Priority));
+                if (existingModelCost.Description != modelCost.Description)
+                    changedProperties.Add(nameof(modelCost.Description));
                 if (existingModelCost.InputCostPerMillionTokens != modelCost.InputCostPerMillionTokens)
                     changedProperties.Add(nameof(modelCost.InputCostPerMillionTokens));
                 if (existingModelCost.OutputCostPerMillionTokens != modelCost.OutputCostPerMillionTokens)
                     changedProperties.Add(nameof(modelCost.OutputCostPerMillionTokens));
                 if (existingModelCost.EmbeddingCostPerMillionTokens != modelCost.EmbeddingCostPerMillionTokens)
                     changedProperties.Add(nameof(modelCost.EmbeddingCostPerMillionTokens));
+                if (existingModelCost.BatchProcessingMultiplier != modelCost.BatchProcessingMultiplier)
+                    changedProperties.Add(nameof(modelCost.BatchProcessingMultiplier));
+                if (existingModelCost.SupportsBatchProcessing != modelCost.SupportsBatchProcessing)
+                    changedProperties.Add(nameof(modelCost.SupportsBatchProcessing));
+                if (existingModelCost.CachedInputCostPerMillionTokens != modelCost.CachedInputCostPerMillionTokens)
+                    changedProperties.Add(nameof(modelCost.CachedInputCostPerMillionTokens));
+                if (existingModelCost.CachedInputWriteCostPerMillionTokens != modelCost.CachedInputWriteCostPerMillionTokens)
+                    changedProperties.Add(nameof(modelCost.CachedInputWriteCostPerMillionTokens));
+                if (existingModelCost.CostPerSearchUnit != modelCost.CostPerSearchUnit)
+                    changedProperties.Add(nameof(modelCost.CostPerSearchUnit));
 
                 // Update entity
                 existingModelCost.UpdateFrom(modelCost);
@@ -319,32 +341,42 @@ namespace ConduitLLM.Admin.Services
                 // Save changes
                 var result = await _modelCostRepository.UpdateAsync(existingModelCost);
 
-                // Update ModelProviderTypeAssociations if provided
+                // Update ModelProviderTypeAssociations only when the caller provided them.
+                // Null means "leave associations unchanged" (a GET→PUT round-trip does not carry
+                // association IDs); an explicit empty list clears all associations.
                 if (modelCost.ModelProviderTypeAssociationIds != null)
                 {
                     using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                    
+
                     // Clear existing associations for this cost
                     var existingAssociations = await dbContext.ModelProviderTypeAssociations
                         .Where(mpta => mpta.ModelCostId == modelCost.Id)
                         .ToListAsync();
-                    
+
                     foreach (var association in existingAssociations)
                     {
                         association.ModelCostId = null;
                     }
-                    
+
                     // Set new associations
                     var newAssociations = await dbContext.ModelProviderTypeAssociations
                         .Where(mpta => modelCost.ModelProviderTypeAssociationIds.Contains(mpta.Id))
                         .ToListAsync();
-                    
+
                     foreach (var association in newAssociations)
                     {
                         association.ModelCostId = modelCost.Id;
                     }
-                    
+
                     await dbContext.SaveChangesAsync();
+
+                    // Publish an event when the set of associated models changed so caches
+                    // keyed by model identifier are invalidated too
+                    if (!existingAssociations.Select(a => a.Id).OrderBy(id => id)
+                            .SequenceEqual(newAssociations.Select(a => a.Id).OrderBy(id => id)))
+                    {
+                        changedProperties.Add("ModelProviderTypeAssociations");
+                    }
                 }
 
                 if (result)

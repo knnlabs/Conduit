@@ -56,6 +56,47 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// Overrides the graph-traversing <c>DbSet.Update()</c> in the base class and marks only
+        /// the root <see cref="ModelCost"/> entity as modified. Entities returned by
+        /// <c>GetByIdAsync</c>/<c>GetByCostNameAsync</c> carry the included
+        /// ModelProviderTypeAssociations → Model graph, and <c>Model.Series</c> is a phantom
+        /// <c>new ModelSeries()</c> (Id = 0, with a phantom <c>ModelAuthor</c>) because the
+        /// query does not include it. A graph-wide Update() attached those phantoms as Added,
+        /// inserting empty ModelSeries/ModelAuthor rows and failing with unique-constraint
+        /// violations on subsequent saves (issue #977). Association changes are managed
+        /// explicitly by the Admin service, not through this method.
+        /// </remarks>
+        public override async Task<bool> UpdateAsync(ModelCost entity, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(entity);
+
+            try
+            {
+                await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                OnBeforeUpdate(entity);
+
+                // Attach only the root entity — never the detached navigation graph.
+                context.Entry(entity).State = EntityState.Modified;
+                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
+
+                return rowsAffected > 0;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                Logger.LogWarning(ex, "Concurrency conflict updating {EntityType} with ID {Id} — another process modified this entity",
+                    EntityTypeName, entity.Id);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error updating {EntityType} with ID {Id}", EntityTypeName, entity.Id);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
         public async Task<ModelCost?> GetByCostNameAsync(string costName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(costName))
