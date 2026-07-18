@@ -401,6 +401,9 @@ helm/requirements.lock
 uploads/
 usage_tracking*.json
 
+# .NET tool publish output
+/out/
+
 # Node.js build artifacts
 Clients/Node/*/dist/
 Clients/Node/*/node_modules/
