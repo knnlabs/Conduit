@@ -24,8 +24,8 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// listens (failover semantics of RabbitMQ's <c>x-single-active-consumer</c>) but
     /// handles messages in parallel, matching MassTransit's concurrent processing.</item>
     /// <item><c>ConcurrentMessageLimit</c> → <c>MaximumParallelMessages</c>; null inherits
-    /// Wolverine's default. <c>PrefetchCount</c> has no Postgres-transport analogue (the
-    /// listener batches its own polling).</item>
+    /// Wolverine's default. <c>PrefetchCount</c> → <c>MaximumMessagesToReceive</c> (the
+    /// per-poll receive batch), polled every 250ms instead of the 5s default.</item>
     /// <item><c>Retry</c> → failure rules scoped to the endpoint's message types (see
     /// <see cref="ComputeRetryCooldowns"/>); <c>DelayedRedeliveryIntervals</c> →
     /// scheduled retries after the inline attempts. Exhausted messages land in
@@ -47,6 +47,13 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         private const int DefaultSingleActiveParallelism = 50;
 
         /// <summary>
+        /// Per-poll receive batch for endpoints whose descriptor leaves
+        /// <c>PrefetchCount</c> null — mirrors the RabbitMQ prefetch the same endpoints
+        /// get from the <c>ConduitLLM:RabbitMQ</c> defaults.
+        /// </summary>
+        private const int DefaultReceiveBatchSize = 50;
+
+        /// <summary>
         /// Configures a listener for the policy's queue on this host and registers the
         /// policy's retry rules for the given event types. Call only on the host that
         /// consumes the queue; publishers need only the routing rules
@@ -58,6 +65,13 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         public static void ListenWithPolicy(this WolverineOptions options, EndpointPolicy policy, IReadOnlyList<Type> eventTypes)
         {
             var listener = options.ListenToPostgresqlQueue(policy.Name);
+
+            // The Postgres queue listener defaults to 20 messages per poll on the 5s
+            // ScheduledJobPollingTime cadence — a ~4 msg/s ceiling per queue (#929 parity
+            // gate finding W4). Poll aggressively and map PrefetchCount to the per-poll
+            // batch size, which IS its Postgres-transport analogue.
+            listener.PollingInterval(TimeSpan.FromMilliseconds(250));
+            listener.MaximumMessagesToReceive(policy.PrefetchCount ?? DefaultReceiveBatchSize);
 
             if (policy.ConcurrentMessageLimit == 1)
             {
