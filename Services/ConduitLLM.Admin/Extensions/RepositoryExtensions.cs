@@ -283,6 +283,10 @@ namespace ConduitLLM.Admin.Extensions
             entity.CostName = dto.CostName;
             entity.PricingModel = dto.PricingModel;
             entity.PricingConfiguration = dto.PricingConfiguration;
+            entity.ModelType = dto.ModelType;
+            entity.IsActive = dto.IsActive;
+            entity.Priority = dto.Priority;
+            entity.Description = dto.Description;
             entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens;
             entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens;
             entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
