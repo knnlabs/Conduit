@@ -328,8 +328,9 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 return await ExecuteAsync(async context =>
                 {
-                    using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-
+                    // No explicit transaction: the single SaveChangesAsync is atomic on
+                    // its own, and racing workers are arbitrated by the Version
+                    // concurrency token.
                     var now = DateTime.UtcNow;
                     var query = context.AsyncTasks
                         .Where(t => t.State == 0 && !t.IsArchived &&
@@ -354,7 +355,6 @@ namespace ConduitLLM.Configuration.Repositories
                         task.Version++;
 
                         await context.SaveChangesAsync(cancellationToken);
-                        await transaction.CommitAsync(cancellationToken);
 
                         Logger.LogInformation("Worker {WorkerId} leased task {TaskId} until {ExpiryTime}",
                             workerId, task.Id, task.LeaseExpiryTime);

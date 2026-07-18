@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 
@@ -22,8 +23,8 @@ namespace ConduitLLM.Admin.Extensions
             // Add caching services
             services.AddCachingServices(configuration);
 
-            // Add database initialization
-            services.AddDatabaseInitialization();
+            // Add database migration services (CONDUIT_MIGRATION_MODE handling)
+            services.AddDatabaseMigration();
 
             // Shared application services (GlobalSettingsCache, ProviderService,
             // ModelProviderMapping+decorator, ProviderMetadataRegistry)

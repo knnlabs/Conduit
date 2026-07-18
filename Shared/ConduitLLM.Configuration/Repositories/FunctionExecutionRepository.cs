@@ -171,8 +171,9 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
+            // No explicit transaction: the single SaveChangesAsync is atomic on its own,
+            // and racing workers are arbitrated by the Version concurrency token.
             try
             {
                 var now = DateTime.UtcNow;
@@ -187,7 +188,6 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
 
                 if (execution == null)
                 {
-                    await transaction.RollbackAsync(cancellationToken);
                     return null;
                 }
 
@@ -197,7 +197,6 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
                 execution.Version++;
 
                 await context.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
 
                 Logger.LogInformation("Leased execution {ExecutionId} to worker {WorkerId} until {LeaseExpiry}",
                     execution.Id, workerId, leaseExpiry);
@@ -207,13 +206,11 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
             catch (DbUpdateConcurrencyException ex)
             {
                 // Another worker grabbed this execution, that's okay
-                await transaction.RollbackAsync(cancellationToken);
                 Logger.LogDebug(ex, "Concurrency conflict while leasing execution (another worker may have claimed it)");
                 return null;
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync(cancellationToken);
                 Logger.LogError(ex, "Error leasing next pending execution for worker {WorkerId}",
                     LoggingSanitizer.S(workerId));
                 throw;
@@ -239,27 +236,16 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
-            try
+            if (execution.Id == Guid.Empty)
             {
-                if (execution.Id == Guid.Empty)
-                {
-                    execution.Id = Guid.NewGuid();
-                }
-
-                GetDbSet(context).Add(execution);
-                await context.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-
-                return execution.Id;
+                execution.Id = Guid.NewGuid();
             }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                Logger.LogError(ex, "Transaction rolled back while creating function execution");
-                throw;
-            }
+
+            GetDbSet(context).Add(execution);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return execution.Id;
         }
         catch (DbUpdateException ex)
         {
@@ -281,7 +267,6 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
             try
             {
@@ -297,22 +282,13 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
                 context.Entry(execution).Property(e => e.Version).OriginalValue = originalVersion;
 
                 int rowsAffected = await context.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
 
                 return rowsAffected > 0;
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                await transaction.RollbackAsync(cancellationToken);
                 Logger.LogWarning(ex, "Concurrency conflict updating execution {ExecutionId}", execution.Id);
                 return false;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                Logger.LogError(ex, "Transaction rolled back while updating {EntityType} {ExecutionId}",
-                    EntityTypeName, LoggingSanitizer.S(execution.Id));
-                throw;
             }
         }
         catch (Exception ex) when (ex is not DbUpdateConcurrencyException)
@@ -329,43 +305,30 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
-            try
+            var execution = await GetDbSet(context)
+                .FirstOrDefaultAsync(e => e.Id == executionId, cancellationToken);
+
+            if (execution != null)
             {
-                var execution = await GetDbSet(context)
-                    .FirstOrDefaultAsync(e => e.Id == executionId, cancellationToken);
+                execution.State = state;
+                execution.ErrorMessage = errorMessage;
+                execution.Version++;
 
-                if (execution != null)
+                if (state == ExecutionState.Running && !execution.StartedAt.HasValue)
                 {
-                    execution.State = state;
-                    execution.ErrorMessage = errorMessage;
-                    execution.Version++;
-
-                    if (state == ExecutionState.Running && !execution.StartedAt.HasValue)
+                    execution.StartedAt = DateTime.UtcNow;
+                }
+                else if (state == ExecutionState.Completed || state == ExecutionState.Failed || state == ExecutionState.Cancelled)
+                {
+                    execution.CompletedAt = DateTime.UtcNow;
+                    if (execution.StartedAt.HasValue)
                     {
-                        execution.StartedAt = DateTime.UtcNow;
+                        execution.Duration = execution.CompletedAt.Value - execution.StartedAt.Value;
                     }
-                    else if (state == ExecutionState.Completed || state == ExecutionState.Failed || state == ExecutionState.Cancelled)
-                    {
-                        execution.CompletedAt = DateTime.UtcNow;
-                        if (execution.StartedAt.HasValue)
-                        {
-                            execution.Duration = execution.CompletedAt.Value - execution.StartedAt.Value;
-                        }
-                    }
-
-                    await context.SaveChangesAsync(cancellationToken);
                 }
 
-                await transaction.CommitAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                Logger.LogError(ex, "Transaction rolled back while updating state for execution {ExecutionId}",
-                    LoggingSanitizer.S(executionId));
-                throw;
+                await context.SaveChangesAsync(cancellationToken);
             }
         }
         catch (Exception ex)
@@ -413,30 +376,18 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
-            try
-            {
-                var oldExecutions = await GetDbSet(context)
-                    .Where(e => e.RequestedAt < olderThan)
-                    .ToListAsync(cancellationToken);
+            var oldExecutions = await GetDbSet(context)
+                .Where(e => e.RequestedAt < olderThan)
+                .ToListAsync(cancellationToken);
 
-                GetDbSet(context).RemoveRange(oldExecutions);
-                int count = await context.SaveChangesAsync(cancellationToken);
+            GetDbSet(context).RemoveRange(oldExecutions);
+            int count = await context.SaveChangesAsync(cancellationToken);
 
-                await transaction.CommitAsync(cancellationToken);
+            Logger.LogInformation("Deleted {Count} old function executions older than {OlderThan}",
+                count, olderThan);
 
-                Logger.LogInformation("Deleted {Count} old function executions older than {OlderThan}",
-                    count, olderThan);
-
-                return count;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                Logger.LogError(ex, "Transaction rolled back while deleting old executions");
-                throw;
-            }
+            return count;
         }
         catch (Exception ex)
         {

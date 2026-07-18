@@ -21,8 +21,16 @@ public partial class Program
     /// Application entry point that configures and starts the web application
     /// </summary>
     /// <param name="args">Command line arguments</param>
-    public static async Task Main(string[] args)
+    /// <returns>Process exit code (nonzero when the "migrate" verb fails)</returns>
+    public static async Task<int> Main(string[] args)
     {
+        // "migrate" verb: run the standalone migrator (release-hook entry point)
+        // instead of the web host — e.g. `dotnet ConduitLLM.Admin.dll migrate`.
+        if (MigrationCommand.Matches(args))
+        {
+            return await MigrationCommand.RunAsync();
+        }
+
         var builder = WebApplication.CreateBuilder(args);
 
         // Create a startup logger for structured logging during service registration
@@ -95,13 +103,9 @@ public partial class Program
             }
         }
 
-        // Run database migrations
+        // Run database migration startup handling (CONDUIT_MIGRATION_MODE); Apply mode
+        // also seeds default data under the migration lock.
         await app.RunDatabaseMigrationAsync();
-        app.Logger.LogInformation("Database migrations completed successfully");
-
-        // Seed default data (e.g., default retention policy)
-        await app.SeedDefaultDataAsync();
-        app.Logger.LogInformation("Default data seeding completed");
 
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())
@@ -144,6 +148,8 @@ public partial class Program
             string.Join(", ", app.Urls));
 
         app.Run();
+
+        return 0;
     }
 }
 

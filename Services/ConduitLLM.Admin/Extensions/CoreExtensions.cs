@@ -60,7 +60,14 @@ namespace ConduitLLM.Admin.Extensions
             services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>((sp, options) =>
             {
                 var interceptor = sp.GetRequiredService<ConduitLLM.Configuration.Interceptors.QueryMonitoringInterceptor>();
-                options.UseNpgsql(dbConnectionString)
+                options.UseNpgsql(dbConnectionString, npgsql =>
+                           // Transient-failure resilience. Explicit BeginTransaction calls are
+                           // incompatible with a retrying strategy — use
+                           // ExecuteInTransactionAsync (ExecutionStrategyExtensions) instead.
+                           npgsql.EnableRetryOnFailure(
+                               maxRetryCount: 5,
+                               maxRetryDelay: TimeSpan.FromSeconds(10),
+                               errorCodesToAdd: null))
                        .AddInterceptors(interceptor);
             });
             startupLogger?.LogInformation("Query monitoring interceptor configured for performance tracking");

@@ -120,18 +120,5 @@ namespace ConduitLLM.Configuration.Extensions
             return services;
         }
 
-        /// <summary>
-        /// Adds database initialization services to the service collection
-        /// </summary>
-        /// <param name="services">The service collection</param>
-        /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddDatabaseInitialization(this IServiceCollection services)
-        {
-            // Register the simple migration service
-            services.AddScoped<SimpleMigrationService>();
-
-            return services;
-        }
-
     }
 }

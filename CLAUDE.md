@@ -351,6 +351,11 @@ if (isMetricsData(event.data)) {
 - Use standard EF Core workflow: `dotnet ef migrations add` → `dotnet ef database update`
 - PostgreSQL syntax only (double quotes for identifiers, `true`/`false` booleans)
 - Test tooling first: `dotnet ef --version`
+- **Expand/contract policy**: migrations must be backward-compatible with the previous
+  release's code; destructive steps (drop/rename) ship one release later — see
+  `docs/architecture/adr-002-expand-contract-migration-policy.md`
+- Runtime application is governed by `CONDUIT_MIGRATION_MODE` (Apply/Wait/Skip) and the
+  `migrate` CLI verb — see `docs/operations/deployment/migration-deployment-strategy.md`
 - See `docs/architecture/patterns/repository-and-data-access.md` for best practices
 
 ### Common Mistakes

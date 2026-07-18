@@ -53,6 +53,7 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles VirtualKeyCreated events by invalidating the cache to force a fresh load
         /// </summary>
+        /// <param name="message">The virtual key created event</param>
         /// <param name="context">Message context containing the event</param>
         public async Task HandleAsync(VirtualKeyCreated message, IEventContext context)
         {
@@ -86,6 +87,7 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles VirtualKeyDeleted events by invalidating the cache
         /// </summary>
+        /// <param name="message">The virtual key deleted event</param>
         /// <param name="context">Message context containing the event</param>
         public async Task HandleAsync(VirtualKeyDeleted message, IEventContext context)
         {
@@ -116,6 +118,7 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles SpendUpdated events by invalidating the cache for the affected virtual key
         /// </summary>
+        /// <param name="message">The spend updated event</param>
         /// <param name="context">Message context containing the event</param>
         public async Task HandleAsync(SpendUpdated message, IEventContext context)
         {

@@ -50,7 +50,7 @@ We've created a robust, maintainable solution using the existing .NET toolchain:
 
 ### Using the EF Wrapper
 ```powershell
-cd ConduitLLM.Configuration
+cd Shared/ConduitLLM.Configuration
 
 # List migrations with enhanced error handling
 ../scripts/migrations/ef-wrapper.ps1 migrations list
@@ -72,7 +72,7 @@ cd ConduitLLM.Configuration
 
 - `DATABASE_URL`: PostgreSQL connection string (required)
   - Format: `postgresql://user:password@host:port/database`
-- .NET 9.0 SDK
+- .NET 10.0 SDK
 - EF Core tools: `dotnet tool install --global dotnet-ef`
 - PowerShell Core 7+ (cross-platform)
 
@@ -105,7 +105,7 @@ $env:DATABASE_URL = "postgresql://user:password@localhost:5432/conduitdb"
 ### "Not in ConduitLLM.Configuration directory"
 Navigate to the correct directory:
 ```powershell
-cd ConduitLLM.Configuration
+cd Shared/ConduitLLM.Configuration
 ```
 
 ### "EF Core tools not installed"

@@ -19,6 +19,14 @@ public partial class Program
         // Add basic health checks
         var healthChecksBuilder = builder.Services.AddHealthChecks();
 
+        // Gate /health/ready on the schema being current. Tag must be "ready" —
+        // that's what the readiness endpoint filters on. Only Wait mode can fail
+        // this check; Apply/Skip set the state before the server binds.
+        healthChecksBuilder.AddCheck<ConduitLLM.Configuration.HealthChecks.PendingMigrationsReadinessCheck>(
+            "pending_migrations",
+            failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+            tags: new[] { "ready", "database", "migrations" });
+
         // Wolverine bus health check (#931): probes the Postgres message store
         // (inbox/outbox/scheduled/dead-letter counts). Only on the Postgresql
         // transport — the in-memory dev/CI mode has no store to probe.
