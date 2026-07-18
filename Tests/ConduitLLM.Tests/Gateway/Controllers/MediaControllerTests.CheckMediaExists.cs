@@ -105,14 +105,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockStorageService.Setup(x => x.ExistsAsync(storageKey))
                 .ThrowsAsync(new Exception("Storage error"));
 
-            // Act
-            var result = await _controller.CheckMediaExists(storageKey);
-
-            // Assert - GatewayControllerBase returns OpenAIErrorResponse via ExceptionToResponseMapper
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("server_error", errorResponse.Error.Type);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.CheckMediaExists(storageKey);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Storage error");
         }
 
         #endregion

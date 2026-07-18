@@ -38,6 +38,16 @@ namespace ConduitLLM.Tests.Http.Controllers
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskId);
 
+            // The event is published fire-and-forget on the thread pool
+            // (PublishEventFireAndForget); signal completion so the Verify below
+            // doesn't race the publish under parallel test load.
+            var published = new TaskCompletionSource();
+            _mockEventBus.Setup(x => x.PublishAsync(
+                    It.IsAny<VideoGenerationRequested>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback(() => published.TrySetResult())
+                .Returns(Task.CompletedTask);
+
             _controller.ControllerContext = CreateControllerContext();
             _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
             _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
@@ -48,6 +58,7 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Act
             var result = await _controller.GenerateVideoAsync(request);
+            await published.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
             // Assert
             var acceptedResult = result.Should().BeOfType<AcceptedResult>().Subject;
@@ -225,14 +236,9 @@ namespace ConduitLLM.Tests.Http.Controllers
                     new System.Security.Claims.Claim("VirtualKeyId", "123")
                 }, "Test"));
 
-            // Act
-            var result = await _controller.GenerateVideoAsync(request);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("server_error", errorResponse.Error.Type);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GenerateVideoAsync(request);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Internal error");
         }
 
         #endregion

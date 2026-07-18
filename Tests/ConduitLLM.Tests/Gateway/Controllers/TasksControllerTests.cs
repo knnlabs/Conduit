@@ -114,16 +114,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
-            // Act
-            var result = await _controller.GetTaskStatus(taskId);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-
-            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
-            Assert.Equal("server_error", errorResponse.Error.Type);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GetTaskStatus(taskId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Service error");
         }
 
         #endregion
@@ -172,16 +165,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTaskService.Setup(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
-            // Act
-            var result = await _controller.CancelTask(taskId);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-
-            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
-            Assert.Equal("server_error", errorResponse.Error.Type);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.CancelTask(taskId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Service error");
         }
 
         #endregion
@@ -303,15 +289,9 @@ namespace ConduitLLM.Tests.Http.Controllers
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
-            // Act
-            var result = await _controller.PollTask(taskId);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-
-            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.PollTask(taskId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Service error");
         }
 
         #endregion

@@ -39,6 +39,16 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTaskService.Setup(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
+            // The event is published fire-and-forget on the thread pool
+            // (PublishEventFireAndForget); signal completion so the Verify below
+            // doesn't race the publish under parallel test load.
+            var published = new TaskCompletionSource();
+            _mockEventBus.Setup(x => x.PublishAsync(
+                    It.IsAny<VideoGenerationCancelled>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback(() => published.TrySetResult())
+                .Returns(Task.CompletedTask);
+
             _controller.ControllerContext = CreateControllerContext();
             _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
             _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
@@ -49,6 +59,7 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Act
             var result = await _controller.CancelTask(taskId);
+            await published.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
             // Assert
             result.Should().BeOfType<NoContentResult>();
