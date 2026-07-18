@@ -63,6 +63,10 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
+      # Messaging backend cutover (#930): Wolverine on the Postgres transport is the
+      # default; set CONDUIT_MESSAGING_BACKEND=MassTransit for instant rollback
+      # (kept switchable for one release cycle — see phase2-parity-report.md S6).
+      ConduitLLM__Messaging__Backend: "${CONDUIT_MESSAGING_BACKEND:-Wolverine}"
       # Using new REDIS_URL format (old variables still work for backward compatibility)
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
@@ -155,6 +159,9 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
+      # Messaging backend cutover (#930): Wolverine default; MassTransit rollback
+      # via CONDUIT_MESSAGING_BACKEND=MassTransit (one release cycle).
+      ConduitLLM__Messaging__Backend: "${CONDUIT_MESSAGING_BACKEND:-Wolverine}"
       # API-to-API authentication key for backend services
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       # Redis cache configuration - using new REDIS_URL format
