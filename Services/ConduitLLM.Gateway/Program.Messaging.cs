@@ -89,7 +89,12 @@ public partial class Program
                     
                     // Configure prefetch count for consumer concurrency
                     cfg.PrefetchCount = rabbitMqConfig.PrefetchCount;
-                    
+
+                    // Enable message scheduling via the RabbitMQ delayed-message-exchange plugin.
+                    // Required for context.ScheduleSend (e.g. WebhookDeliveryConsumer deferred retries);
+                    // without it every ScheduleSend throws and faults the consume.
+                    cfg.UseDelayedMessageScheduler();
+
                     // Configure retry policy for reliability
                     cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
                     
@@ -159,7 +164,11 @@ public partial class Program
                 {
                     // NOTE: Using in-memory transport for single-instance deployments
                     // Configure RabbitMQ environment variables for multi-instance production
-                    
+
+                    // Enable message scheduling (in-memory transport supports delayed delivery natively).
+                    // Required for context.ScheduleSend (e.g. WebhookDeliveryConsumer deferred retries).
+                    cfg.UseDelayedMessageScheduler();
+
                     // Configure retry policy for reliability
                     cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
                     
