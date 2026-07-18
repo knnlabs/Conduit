@@ -227,5 +227,5 @@ numbers were captured with those fixes; without them Wolverine runs at ~5 msg/s.
 Gate result: PASS (conditional on PR #974 merged)
 Financial 2nd review: independent adversarial review, 2026-07-18 — PASS with
   concerns (all pre-existing/latent; see phase2-financial-second-review.md)
-Sign-off to cut over (#930): ____________________, ____
+Sign-off to cut over (#930): Nick Nassiri (merge of PR #978), 2026-07-18
 ```
