@@ -294,7 +294,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CreateImageAsync(request);
 
             // Assert
-            Assert.IsType<UnauthorizedObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
         }
 
         #endregion
