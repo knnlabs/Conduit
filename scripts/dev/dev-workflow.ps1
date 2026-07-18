@@ -99,7 +99,7 @@ function Test-Containers {
         $runningServices = docker compose -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running" 2>&1
         if ($runningServices -notmatch $webAdminService) {
             Write-Err "WebAdmin container is not running. Start development environment first:"
-            Write-Info "  ./scripts/dev/start-dev.ps1"
+            Write-Info "  ./scripts/dev.ps1"
             exit 1
         }
     }
