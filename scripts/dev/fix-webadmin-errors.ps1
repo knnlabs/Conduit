@@ -97,7 +97,7 @@ function Test-DevelopmentEnvironment {
             Write-Err "Production containers detected (not development setup)"
             Write-Err "Found: $webAdminContainers"
             Write-Err "To fix: docker compose down --volumes --remove-orphans"
-            Write-Err "Then run: ./scripts/dev/start-dev.ps1"
+            Write-Err "Then run: ./scripts/dev.ps1"
             $script:EnvironmentIssues = $true
             return $false
         }
@@ -136,7 +136,7 @@ function Test-Permissions {
         if (-not (Test-WriteAccess -Path $nextPath)) {
             Write-Err "Cannot write to .next folder"
             Write-Err "This will cause build failures"
-            Write-Err "Fix with: ./scripts/dev/start-dev.ps1 --clean"
+            Write-Err "Fix with: ./scripts/dev.ps1 -Clean"
             $issuesFound = $true
         }
     }
@@ -147,7 +147,7 @@ function Test-Permissions {
         if (-not (Test-WriteAccess -Path $nodeModulesPath)) {
             Write-Err "Cannot write to node_modules folder"
             Write-Err "This will cause npm install failures"
-            Write-Err "Fix with: ./scripts/dev/start-dev.ps1 --clean"
+            Write-Err "Fix with: ./scripts/dev.ps1 -Clean"
             $issuesFound = $true
         }
     }
@@ -161,7 +161,7 @@ function Test-Permissions {
     foreach ($dir in $buildDirs) {
         if ((Test-Path $dir) -and -not (Test-WriteAccess -Path $dir)) {
             Write-Err "Cannot write to build directory: $dir"
-            Write-Err "Fix with: ./scripts/dev/start-dev.ps1 --clean"
+            Write-Err "Fix with: ./scripts/dev.ps1 -Clean"
             $issuesFound = $true
         }
     }
@@ -171,7 +171,7 @@ function Test-Permissions {
         Write-Err "Permission issues detected - builds may fail"
         Write-Host ""
         Write-Err "RECOMMENDED FIXES:"
-        Write-Err "1. Full environment cleanup: ./scripts/dev/start-dev.ps1 --clean"
+        Write-Err "1. Full environment cleanup: ./scripts/dev.ps1 -Clean"
         if (-not (Test-IsWindows)) {
             Write-Err "2. Manual fix (if above fails): sudo chown -R `$USER:`$USER ./WebAdmin"
         }
@@ -428,7 +428,7 @@ function Write-Summary {
 
     if ($script:PermissionIssues) {
         Write-Err "Permission issues detected"
-        Write-Err "Run: ./scripts/dev/start-dev.ps1 --clean"
+        Write-Err "Run: ./scripts/dev.ps1 -Clean"
     }
     else {
         Write-Success "No permission issues found"
@@ -446,7 +446,7 @@ function Write-Summary {
         Write-Err "Build failed"
         if ($script:PermissionIssues) {
             Write-Err "Likely cause: Permission issues"
-            Write-Err "Fix: ./scripts/dev/start-dev.ps1 --clean"
+            Write-Err "Fix: ./scripts/dev.ps1 -Clean"
         }
     }
     else {

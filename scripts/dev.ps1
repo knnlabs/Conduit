@@ -27,16 +27,16 @@
     Specific service to show logs for (api|core|admin|rabbitmq|webadmin).
 
 .EXAMPLE
-    ./scripts/dev/start-dev.ps1
+    ./scripts/dev.ps1
 
 .EXAMPLE
-    ./scripts/dev/start-dev.ps1 -Clean
+    ./scripts/dev.ps1 -Clean
 
 .EXAMPLE
-    ./scripts/dev/start-dev.ps1 -WebAdmin
+    ./scripts/dev.ps1 -WebAdmin
 
 .EXAMPLE
-    ./scripts/dev/start-dev.ps1 -Logs -LogService webadmin
+    ./scripts/dev.ps1 -Logs -LogService webadmin
 #>
 
 [CmdletBinding()]
@@ -66,7 +66,7 @@ $ErrorActionPreference = 'Stop'
 
 # Import common utilities
 $scriptDir = $PSScriptRoot
-Import-Module (Join-Path $scriptDir 'lib' 'Common.psm1') -Force
+Import-Module (Join-Path $scriptDir 'dev' 'lib' 'Common.psm1') -Force
 
 # Get project root
 $projectRoot = Get-ProjectRoot -FromPath $scriptDir
@@ -182,7 +182,7 @@ function Show-Usage {
     Write-Host @"
 Conduit Development Environment Startup
 
-Usage: start-dev.ps1 [options]
+Usage: dev.ps1 [options]
 
 Options:
   -Clean           Delete volumes for fresh experience
