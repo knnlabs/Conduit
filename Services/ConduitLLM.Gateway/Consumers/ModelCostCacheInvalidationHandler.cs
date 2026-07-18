@@ -35,6 +35,7 @@ namespace ConduitLLM.Gateway.Consumers
         /// <summary>
         /// Consumes ModelCostChanged events and logs them for monitoring
         /// </summary>
+        /// <param name="message">The model cost change event</param>
         /// <param name="context">The consume context containing the event</param>
         public async Task HandleAsync(ModelCostChanged message, IEventContext context)
         {

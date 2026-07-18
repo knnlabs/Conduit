@@ -31,6 +31,7 @@ namespace ConduitLLM.Gateway.Consumers
         /// <summary>
         /// Consumes IpFilterChanged events and logs them for monitoring
         /// </summary>
+        /// <param name="message">The IP filter change event</param>
         /// <param name="context">The consume context containing the event</param>
         public async Task HandleAsync(IpFilterChanged message, IEventContext context)
         {

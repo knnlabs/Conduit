@@ -33,6 +33,7 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// Handles ProviderUpdated events
         /// Invalidates cached credentials and triggers capability rediscovery
         /// </summary>
+        /// <param name="message">The provider updated event</param>
         /// <param name="context">Message context containing the event</param>
         public async Task HandleAsync(ProviderUpdated message, IEventContext context)
         {
@@ -73,6 +74,7 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// Handles ProviderDeleted events
         /// Cleans up cached data for the deleted provider
         /// </summary>
+        /// <param name="message">The provider deleted event</param>
         /// <param name="context">Message context containing the event</param>
         public async Task HandleAsync(ProviderDeleted message, IEventContext context)
         {
