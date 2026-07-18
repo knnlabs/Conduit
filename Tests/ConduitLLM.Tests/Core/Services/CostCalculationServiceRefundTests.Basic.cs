@@ -95,7 +95,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task CalculateRefundAsync_WithRefundExceedingOriginal_ReturnsPartialRefund()
+        public async Task CalculateRefundAsync_WithRefundExceedingOriginal_RejectsWithZeroAmount()
         {
             // Arrange
             var modelId = "openai/gpt-4o";
@@ -116,12 +116,39 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateRefundAsync(
                 modelId, originalUsage, refundUsage, "Excessive refund test");
 
-            // Assert
+            // Assert - a refund exceeding the original charge must be rejected, not credited.
             result.Should().NotBeNull();
-            result.IsPartialRefund.Should().BeTrue();
+            result.RefundAmount.Should().Be(0m, "an over-limit refund must never produce a credit");
             result.ValidationMessages.Should().HaveCount(2);
             result.ValidationMessages.Should().Contain(m => m.Contains("Refund prompt tokens (1500) cannot exceed original (1000)"));
             result.ValidationMessages.Should().Contain(m => m.Contains("Refund completion tokens (750) cannot exceed original (500)"));
+        }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithRefundExceedingOriginalOnOneDimension_RejectsEntireRefund()
+        {
+            // Arrange - completion tokens exceed original by 1; everything else is within bounds.
+            var modelId = "openai/gpt-4o";
+            var originalUsage = new Usage { PromptTokens = 1000, CompletionTokens = 500, TotalTokens = 1500 };
+            var refundUsage = new Usage { PromptTokens = 1000, CompletionTokens = 501, TotalTokens = 1501 };
+
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateRefundAsync(
+                modelId, originalUsage, refundUsage, "Boundary test");
+
+            // Assert - a single over-limit dimension rejects the whole refund (no partial credit).
+            result.RefundAmount.Should().Be(0m);
+            result.ValidationMessages.Should().Contain(m => m.Contains("Refund completion tokens (501) cannot exceed original (500)"));
         }
     }
 }

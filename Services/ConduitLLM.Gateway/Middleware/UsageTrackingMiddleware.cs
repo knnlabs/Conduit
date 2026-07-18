@@ -310,8 +310,25 @@ namespace ConduitLLM.Gateway.Middleware
                     }
                 }
 
-                // Add tool cost to total cost
-                var totalCost = cost + (toolCost ?? 0m);
+                // Add agentic function-execution cost (in-chat function/tool calls executed by the
+                // orchestrator, e.g. Exa/Tavily search). The controller stores this in HttpContext.Items
+                // for both streaming and non-streaming responses; the streaming path already bills it,
+                // but this non-streaming path previously dropped it, so those executions were free.
+                decimal functionExecutionCost = 0m;
+                if (endpointType == "chat"
+                    && context.Items.TryGetValue(HttpContextKeys.ChatFunctionCost, out var funcCostObj)
+                    && funcCostObj is decimal funcCost)
+                {
+                    functionExecutionCost = funcCost;
+                    if (functionExecutionCost > 0)
+                    {
+                        _logger.LogDebug("Non-streaming function executions detected, total cost: {Cost:C}",
+                            functionExecutionCost);
+                    }
+                }
+
+                // Add tool cost and function-execution cost to total cost
+                var totalCost = cost + (toolCost ?? 0m) + functionExecutionCost;
 
                 // Update metrics
                 UsageMetrics.UsageTrackingRequests.WithLabels(endpointType, "success").Inc();

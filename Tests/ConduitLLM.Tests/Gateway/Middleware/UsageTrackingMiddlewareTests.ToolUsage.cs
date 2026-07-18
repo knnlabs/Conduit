@@ -131,6 +131,56 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
+        public async Task ProcessResponseAsync_NonStreamingChat_BillsAgenticFunctionCost()
+        {
+            // Arrange - non-streaming chat request where the controller executed agentic functions
+            // (e.g. Exa/Tavily search) and stored the total function cost in HttpContext.Items.
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(123)
+                .AsGroq()
+                .WithItem("ChatFunctionCost", 0.05m)
+                .WithTestResponseBody(CreateGroqResponseWithoutToolUsage())
+                .Build();
+
+            Fixture.SetupDefaultCost(0.10m); // base token cost
+
+            // Act
+            await Invoker
+                .WithTestResponseBodyDelegate()
+                .InvokeWithRealToolServiceAsync(context);
+
+            // Assert - total billed cost must include the function-execution cost (0.10 tokens + 0.05 functions).
+            // Previously the non-streaming path ignored ChatFunctionCost, billing only 0.10.
+            var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
+            Assert.Equal(BillingAuditEventType.UsageTracked, billingEvent.EventType);
+            Assert.Equal(0.15m, billingEvent.CalculatedCost);
+        }
+
+        [Fact]
+        public async Task ProcessResponseAsync_NonStreamingChat_WithoutFunctionCost_BillsTokensOnly()
+        {
+            // Arrange - no ChatFunctionCost in Items; billing must be unaffected by the new logic.
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(123)
+                .AsGroq()
+                .WithTestResponseBody(CreateGroqResponseWithoutToolUsage())
+                .Build();
+
+            Fixture.SetupDefaultCost(0.10m);
+
+            // Act
+            await Invoker
+                .WithTestResponseBodyDelegate()
+                .InvokeWithRealToolServiceAsync(context);
+
+            // Assert
+            var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
+            Assert.Equal(0.10m, billingEvent.CalculatedCost);
+        }
+
+        [Fact]
         public async Task TrackStreamingUsageAsync_WithToolUsage_PersistsToolData()
         {
             // Arrange

@@ -386,7 +386,7 @@ namespace ConduitLLM.Admin.Controllers
             var responseDto = MapToRefundResultDto(refundResult, group.Balance);
 
             LogAdminAudit("Refunded", "VirtualKeyGroup", id,
-                $"Amount: {refundResult.RefundAmount:C}, Model: {request.ModelId}, Reason: {request.RefundReason}, TransactionId: {refundResult.OriginalTransactionId}");
+                $"Amount: {refundResult.RefundAmount:C}, Model: {request.ModelId}, Reason: {request.RefundReason}, TransactionId: {refundResult.RefundTransactionId}, OriginalTransactionId: {refundResult.OriginalTransactionId ?? "none"}");
 
             return Ok(responseDto);
         }
@@ -422,7 +422,7 @@ namespace ConduitLLM.Admin.Controllers
         {
             return new RefundResultDto
             {
-                TransactionId = long.Parse(result.OriginalTransactionId ?? "0"),
+                TransactionId = result.RefundTransactionId,
                 ModelId = result.ModelId,
                 OriginalUsage = MapToUsageDto(result.OriginalUsage),
                 RefundUsage = MapToUsageDto(result.RefundUsage),
