@@ -63,6 +63,11 @@ namespace ConduitLLM.Core.Services
                     Region,
                     CacheTtl);
 
+                if (IsMissingNavigationGraph(cached))
+                {
+                    return await ReloadAndRecacheAsync(cacheKey, () => _innerService.GetMappingByIdAsync(id), $"ID {id}");
+                }
+
                 _logger.LogDebug("Retrieved model provider mapping by ID {Id} from cache", id);
                 return cached;
             }
@@ -94,6 +99,11 @@ namespace ConduitLLM.Core.Services
                     Region,
                     CacheTtl);
 
+                if (IsMissingNavigationGraph(cached))
+                {
+                    return await ReloadAndRecacheAsync(cacheKey, () => _innerService.GetMappingByModelAliasAsync(modelAlias), $"alias '{modelAlias}'");
+                }
+
                 _logger.LogDebug("Retrieved model provider mapping for alias '{ModelAlias}' from cache", modelAlias);
                 return cached;
             }
@@ -116,6 +126,14 @@ namespace ConduitLLM.Core.Services
                     async () => await _innerService.GetAllMappingsAsync(),
                     Region,
                     CacheTtl);
+
+                if (cached == null || cached.Any(IsMissingNavigationGraph))
+                {
+                    LogIncompleteCacheEntry("all-mappings list");
+                    var fresh = await _innerService.GetAllMappingsAsync();
+                    await _cacheManager.SetAsync(AllMappingsKey, fresh, Region, CacheTtl);
+                    return fresh;
+                }
 
                 _logger.LogDebug("Retrieved all model provider mappings from cache");
                 return cached;
@@ -237,6 +255,55 @@ namespace ConduitLLM.Core.Services
         public async Task<List<(int Id, string ProviderName)>> GetAvailableProvidersAsync()
         {
             return await _innerService.GetAvailableProvidersAsync();
+        }
+
+        /// <summary>
+        /// Detects cache entries that lost their navigation graph while round-tripping the
+        /// distributed cache. ModelProviderTypeAssociation.Model is [JsonIgnore] (to break
+        /// serialization cycles), so entries deserialized from Redis come back with a null Model
+        /// and all capability flags read false. A mapping loaded from the repository always has
+        /// Provider, ModelProviderTypeAssociation, and Model populated.
+        /// </summary>
+        private static bool IsMissingNavigationGraph(ModelProviderMapping? mapping)
+        {
+            return mapping != null &&
+                   (mapping.Provider == null ||
+                    mapping.ModelProviderTypeAssociation == null ||
+                    mapping.ModelProviderTypeAssociation.Model == null);
+        }
+
+        /// <summary>
+        /// Reloads a mapping from the database when the cached entry is missing its navigation
+        /// graph, and refreshes the cache (repopulating the memory tier with the full object).
+        /// </summary>
+        private async Task<ModelProviderMapping?> ReloadAndRecacheAsync(
+            string cacheKey,
+            Func<Task<ModelProviderMapping?>> loader,
+            string identifier)
+        {
+            LogIncompleteCacheEntry(identifier);
+
+            var fresh = await loader();
+            if (fresh != null)
+            {
+                await _cacheManager.SetAsync(cacheKey, fresh, Region, CacheTtl);
+            }
+            else
+            {
+                // The mapping no longer exists; drop the stale entry so it stops resurfacing.
+                await _cacheManager.RemoveAsync(cacheKey, Region);
+            }
+
+            return fresh;
+        }
+
+        private void LogIncompleteCacheEntry(string identifier)
+        {
+            _logger.LogWarning(
+                "Cached model provider mapping for {Identifier} is missing its navigation graph " +
+                "(entries deserialized from the distributed cache lose [JsonIgnore] navigation properties); " +
+                "reloading from database",
+                identifier);
         }
 
         /// <summary>
