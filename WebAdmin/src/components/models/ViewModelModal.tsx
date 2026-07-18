@@ -12,10 +12,8 @@ import { getProviderTypeName } from '@/constants/providers';
 import { getErrorMessage, isProviderMapping } from '@/utils/typeGuards';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 
-// Extend ModelDto to include modelParameters until SDK types are updated
-interface ExtendedModelDto extends ModelDto {
-  modelParameters?: string | null;
-}
+// The SDK's generated ModelDto now includes modelParameters directly
+type ExtendedModelDto = ModelDto;
 
 interface ViewModelModalProps {
   isOpen: boolean;

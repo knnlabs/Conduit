@@ -2,10 +2,10 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import type { components } from '../generated/admin-api';
 
-type ProviderErrorDto = components['schemas']['ConduitLLM.Admin.DTOs.ProviderErrorDto'];
-type ProviderErrorSummaryDto = components['schemas']['ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto'];
-type ErrorStatisticsDto = components['schemas']['ConduitLLM.Admin.DTOs.ErrorStatisticsDto'];
-type KeyErrorDetailsDto = components['schemas']['ConduitLLM.Admin.DTOs.KeyErrorDetailsDto'];
+type ProviderErrorDto = components['schemas']['ProviderErrorDto'];
+type ProviderErrorSummaryDto = components['schemas']['ProviderErrorSummaryDto'];
+type ErrorStatisticsDto = components['schemas']['ErrorStatisticsDto'];
+type KeyErrorDetailsDto = components['schemas']['KeyErrorDetailsDto'];
 
 export class FetchProviderErrorsService {
   constructor(private readonly client: FetchBaseApiClient) {}

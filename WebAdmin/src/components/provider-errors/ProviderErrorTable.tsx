@@ -3,7 +3,7 @@ import { IconRefresh, IconKey } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import type { components } from '@knn_labs/conduit-admin-client';
 
-type ProviderErrorSummaryDto = components['schemas']['ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto'];
+type ProviderErrorSummaryDto = components['schemas']['ProviderErrorSummaryDto'];
 
 interface ProviderErrorTableProps {
   summaries: ProviderErrorSummaryDto[];

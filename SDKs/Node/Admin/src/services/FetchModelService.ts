@@ -28,10 +28,10 @@ import {
 } from '../errors/modelErrors';
 
 // Type aliases for better readability
-type ModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.ModelDto'];
-type CreateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.CreateModelDto'];
-type UpdateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.UpdateModelDto'];
-type ModelProviderMappingDto = components['schemas']['ConduitLLM.Configuration.DTOs.ModelProviderMappingDto'];
+type ModelDto = components['schemas']['ModelDto'];
+type CreateModelDto = components['schemas']['CreateModelDto'];
+type UpdateModelDto = components['schemas']['UpdateModelDto'];
+type ModelProviderMappingDto = components['schemas']['ModelProviderMappingDto'];
 
 /**
  * Type-safe Model service using native fetch

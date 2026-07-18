@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { components } from '@knn_labs/conduit-admin-client';
 
-type ProviderErrorDto = components['schemas']['ConduitLLM.Admin.DTOs.ProviderErrorDto'];
-type ProviderErrorSummaryDto = components['schemas']['ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto'];
-type ErrorStatisticsDto = components['schemas']['ConduitLLM.Admin.DTOs.ErrorStatisticsDto'];
+type ProviderErrorDto = components['schemas']['ProviderErrorDto'];
+type ProviderErrorSummaryDto = components['schemas']['ProviderErrorSummaryDto'];
+type ErrorStatisticsDto = components['schemas']['ErrorStatisticsDto'];
 
 interface UseProviderErrorsReturn {
   stats: ErrorStatisticsDto | null;

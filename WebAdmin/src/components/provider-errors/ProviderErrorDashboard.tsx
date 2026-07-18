@@ -7,7 +7,7 @@ import {
 } from '@tabler/icons-react';
 import type { components } from '@knn_labs/conduit-admin-client';
 
-type ErrorStatisticsDto = components['schemas']['ConduitLLM.Admin.DTOs.ErrorStatisticsDto'];
+type ErrorStatisticsDto = components['schemas']['ErrorStatisticsDto'];
 
 interface ProviderErrorDashboardProps {
   stats: ErrorStatisticsDto | null;
