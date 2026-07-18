@@ -376,9 +376,138 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             }
         }
 
+        [Fact]
+        public async Task HandleAsync_WhenMappingHasModelCostId_ShouldUseDirectCostLookupAndPublishSpend()
+        {
+            // Arrange - mapping resolved through the model catalog: legacy ProviderModelId is stale
+            // ("unknown"), but the association carries a direct ModelCost link (issue #955)
+            SetupMappingWithAssociation(providerModelId: "unknown", modelCostId: 42, identifier: "canonical-model-id");
+
+            CostServiceMock.Setup(x => x.CalculateCostByIdAsync(
+                42,
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(0.05m);
+
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert - direct lookup used, string matching skipped
+            CostServiceMock.Verify(x => x.CalculateCostByIdAsync(
+                42,
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                It.IsAny<string>(),
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+
+            // Assert - spend event published with the calculated cost
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<SpendUpdateRequested>(e => e.KeyId == 1 && e.Amount == 0.05m),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenNoModelCostId_ShouldFallBackToAssociationIdentifierLookup()
+        {
+            // Arrange - no direct cost link; the string fallback must use the association's
+            // canonical identifier (what cost records match against), not the stale ProviderModelId
+            SetupMappingWithAssociation(providerModelId: "unknown", modelCostId: null, identifier: "canonical-model-id");
+
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                "canonical-model-id",
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            CostServiceMock.Verify(x => x.CalculateCostByIdAsync(
+                It.IsAny<int>(),
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenCostIsZero_ShouldNotPublishSpendEvent()
+        {
+            // Arrange
+            SetupMappingWithAssociation(providerModelId: "unknown", modelCostId: 42, identifier: "canonical-model-id");
+
+            CostServiceMock.Setup(x => x.CalculateCostByIdAsync(
+                42,
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(0m);
+
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.IsAny<SpendUpdateRequested>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
         // ==========================================
         // Helper Methods
         // ==========================================
+
+        /// <summary>
+        /// Configures the model mapping service to return a mapping whose
+        /// ModelProviderTypeAssociation carries the given cost linkage.
+        /// </summary>
+        protected void SetupMappingWithAssociation(string providerModelId, int? modelCostId, string identifier)
+        {
+            var testProvider = new Provider
+            {
+                Id = 1,
+                ProviderName = "Test Provider",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+
+            ModelMappingServiceMock.Setup(x => x.GetMappingByModelAliasAsync(It.IsAny<string>()))
+                .ReturnsAsync(new ModelProviderMapping
+                {
+                    Id = 1,
+                    ModelAlias = "test-model",
+                    ProviderModelId = providerModelId,
+                    ProviderId = 1,
+                    Provider = testProvider,
+                    IsEnabled = true,
+                    ModelProviderTypeAssociationId = 10,
+                    ModelProviderTypeAssociation = new ModelProviderTypeAssociation
+                    {
+                        Id = 10,
+                        ModelId = 100,
+                        Identifier = identifier,
+                        ModelCostId = modelCostId,
+                        IsEnabled = true
+                    }
+                });
+        }
 
         protected abstract void SetupSuccessfulGeneration(TResponse response);
         protected abstract void SetupFailedGeneration(Exception exception);

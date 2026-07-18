@@ -250,12 +250,21 @@ namespace ConduitLLM.Core.Services.Abstractions
                 return null;
             }
             
+            var association = mapping.ModelProviderTypeAssociation;
+
             return new GenerationModelInfo
             {
-                ModelId = mapping.ProviderModelId,
+                // The legacy ProviderModelId column can be stale on mappings created through the
+                // model-catalog flow; fall back to the association's canonical identifier so the
+                // provider call and cost lookup never receive an empty model id.
+                ModelId = !string.IsNullOrWhiteSpace(mapping.ProviderModelId)
+                    ? mapping.ProviderModelId
+                    : association?.Identifier ?? mapping.ModelAlias,
                 ModelAlias = mapping.ModelAlias,
                 ProviderId = mapping.ProviderId,
-                Provider = mapping.Provider // Use the Provider navigation property directly
+                Provider = mapping.Provider, // Use the Provider navigation property directly
+                ModelCostId = association?.ModelCostId,
+                CostIdentifier = association?.Identifier
             };
         }
 
@@ -317,7 +326,21 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected virtual async Task<decimal> CalculateCostAsync(TEventRequest request, GenerationModelInfo modelInfo, ProcessedMedia media)
         {
             var usage = CreateUsageObject(request, media);
-            return await _costService.CalculateCostAsync(modelInfo.ModelId, usage);
+
+            // Prefer the ModelCost link resolved from the model association — string matching can
+            // silently return 0 when the mapping's legacy ProviderModelId doesn't match any cost
+            // record's identifier (see issue #955).
+            if (modelInfo.ModelCostId.HasValue)
+            {
+                return await _costService.CalculateCostByIdAsync(modelInfo.ModelCostId.Value, usage);
+            }
+
+            // Fall back to string matching using the association's canonical identifier, which is
+            // the value cost records are matched against.
+            var costLookupModelId = !string.IsNullOrWhiteSpace(modelInfo.CostIdentifier)
+                ? modelInfo.CostIdentifier
+                : modelInfo.ModelId;
+            return await _costService.CalculateCostAsync(costLookupModelId, usage);
         }
 
         protected virtual bool IsRetryableError(Exception ex)
