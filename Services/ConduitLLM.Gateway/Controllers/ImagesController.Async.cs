@@ -133,13 +133,20 @@ namespace ConduitLLM.Gateway.Controllers
                     CorrelationId = correlationId
                 };
 
-                // Create metadata for the task including the serialized request
+                // Create metadata for the task including the serialized request.
+                // The orchestrator reads ExtensionData["VirtualKey"] for re-validation
+                // (MediaGenerationOrchestrator.ProcessRequestAsync) — without it every
+                // async image task fails with "Virtual key not found in task metadata".
                 var metadata = new TaskMetadata(virtualKeyId)
                 {
                     Model = modelName,
                     Prompt = request.Prompt,
                     CorrelationId = correlationId,
-                    Payload = System.Text.Json.JsonSerializer.Serialize(generationRequest)
+                    Payload = System.Text.Json.JsonSerializer.Serialize(generationRequest),
+                    ExtensionData = new Dictionary<string, object>
+                    {
+                        ["VirtualKey"] = CurrentVirtualKey ?? string.Empty
+                    }
                 };
 
                 // Create the task using the correct method signature
