@@ -23,8 +23,24 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// </remarks>
     public static class WolverineMessagingExtensions
     {
-        /// <summary>Configuration key for the durability/queue schema name (default <c>wolverine</c>).</summary>
+        /// <summary>
+        /// Configuration key for the durability schema name. Default is per-service
+        /// (<c>wolverine_conduit_gateway</c> / <c>wolverine_conduit_admin</c>): the node,
+        /// agent-assignment, and envelope tables MUST NOT be shared between services, or
+        /// the two hosts form a single agent cluster and the leader (which may be the
+        /// Admin) fails to assign the Gateway-only exclusive strict-ordering listeners
+        /// (spend-update-events / image-generation-events) — leaving those queues with
+        /// no consumer.
+        /// </summary>
         public const string SchemaNameKey = "ConduitLLM:Messaging:Wolverine:SchemaName";
+
+        /// <summary>
+        /// Schema holding the PostgreSQL transport queue tables. Shared by all services —
+        /// cross-service delivery (Admin -&gt; Gateway) works by writing to the same queue
+        /// tables, so this schema must stay common even though durability schemas are
+        /// per-service.
+        /// </summary>
+        public const string TransportSchemaName = "wolverine_queues";
 
         /// <summary>
         /// Configuration key controlling automatic provisioning of Wolverine's durability
@@ -90,13 +106,24 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
             string serviceName,
             Action<WolverineOptions>? configure = null)
         {
-            var schemaName = configuration[SchemaNameKey] ?? "wolverine";
+            var schemaName = configuration[SchemaNameKey]
+                ?? $"wolverine_{serviceName.Replace('-', '_')}";
             var autoProvision = configuration.GetValue(AutoProvisionKey, true);
             var inMemory = UsesInMemoryTransport(configuration);
 
             return host.UseWolverine(opts =>
             {
                 opts.ServiceName = serviceName;
+
+                // The bridge handlers are container-resolved per message (see
+                // AddEventBridge): their IEventHandler<T> graphs use scoped services and
+                // opaque factory registrations that codegen cannot inline-construct.
+                // Wolverine 6's default ServiceLocationPolicy.NotAllowed throws
+                // InvalidServiceLocationException at first delivery for exactly that
+                // resolution style, so the policy must be relaxed here. AllowedButWarn
+                // keeps a startup warning per located type as a nudge toward
+                // codegen-friendly registrations for any future native handlers.
+                opts.ServiceLocationPolicy = JasperFx.CodeGeneration.Model.ServiceLocationPolicy.AllowedButWarn;
 
                 // Wolverine 6 split the Roslyn runtime compiler out of the core package;
                 // the default TypeLoadMode.Dynamic fails at startup without it. Explicit
@@ -116,8 +143,12 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 else
                 {
                     // Persistence (inbox/outbox/scheduled messages) AND the message
-                    // transport share the existing Postgres database, in an isolated schema.
-                    opts.UsePostgresqlPersistenceAndTransport(connectionString, schemaName);
+                    // transport share the existing Postgres database. The durability
+                    // schema is per-service (see SchemaNameKey) so each host runs its own
+                    // agent cluster; the transport schema is shared so cross-service
+                    // queues (Admin -> Gateway) keep working.
+                    opts.UsePostgresqlPersistenceAndTransport(
+                        connectionString, schemaName, transportSchema: TransportSchemaName);
 
                     // Local queues (where in-process bridge handlers receive publishes) are
                     // backed by the Postgres durability tables, so buffered messages survive
@@ -186,7 +217,21 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         /// </summary>
         public static void AddEventBridge(this WolverineOptions options, Type eventType)
         {
-            options.Discovery.IncludeType(typeof(WolverineHandlerBridge<>).MakeGenericType(eventType));
+            var bridgeType = typeof(WolverineHandlerBridge<>).MakeGenericType(eventType);
+
+            options.Discovery.IncludeType(bridgeType);
+
+            // The bridge must be container-resolved per message, not codegen-inlined:
+            // its IEnumerable<IEventHandler<T>> dependency is scoped, and the handler
+            // implementations behind it use scoped services, IServiceScopeFactory, and
+            // opaque lambda-factory registrations (typed HttpClients, IModelCostService)
+            // that Wolverine's inline construction cannot build. Without this opt-in,
+            // ServiceLocationPolicy.NotAllowed (the Wolverine 6 default) throws
+            // InvalidServiceLocationException at first delivery of the event type.
+            // Container resolution per message is the same semantics the MassTransit
+            // bridge has always had.
+            options.CodeGeneration.AlwaysUseServiceLocationFor(bridgeType);
+            options.Services.AddScoped(bridgeType);
         }
     }
 }
