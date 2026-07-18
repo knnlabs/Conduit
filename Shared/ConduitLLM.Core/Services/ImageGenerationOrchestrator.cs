@@ -81,8 +81,9 @@ namespace ConduitLLM.Core.Services
             VirtualKey virtualKey,
             CancellationToken cancellationToken)
         {
-            // Get the client for the model
-            var client = await _clientFactory.GetClientAsync(modelInfo.ModelId, cancellationToken);
+            // Get the client via the already-resolved provider — modelInfo.ModelId is the
+            // provider's model id, not a model alias, so it must not be re-resolved by name
+            var client = await _clientFactory.GetClientByProviderIdAsync(modelInfo.ProviderId, modelInfo.ModelId, cancellationToken);
             
             // Generate images
             return await client.CreateImageAsync(request, cancellationToken: cancellationToken);

@@ -152,6 +152,51 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
+        public async Task GetClientByProviderIdAsync_WithProviderModelId_DoesNotResolveModelAlias()
+        {
+            // Arrange - provider exists but has no key, so client creation stops after the
+            // provider lookup; the mapping service must never be consulted on this path
+            var providerId = 1;
+            var provider = new Provider
+            {
+                Id = providerId,
+                ProviderName = "TestProvider",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+
+            _mockCredentialService.Setup(x => x.GetProviderByIdAsync(providerId))
+                .ReturnsAsync(provider);
+            _mockCredentialService.Setup(x => x.GetKeyCredentialsByProviderIdAsync(providerId))
+                .ReturnsAsync(new List<ProviderKeyCredential>());
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ConfigurationException>(
+                async () => await _factory.GetClientByProviderIdAsync(providerId, "gpt-image-1")
+            );
+
+            _mockMappingService.Verify(x => x.GetMappingByModelAliasAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetClientByProviderIdAsync_WithProviderModelIdAndNonExistentProvider_ThrowsInvalidRequestException()
+        {
+            // Arrange
+            var providerId = 999;
+            _mockCredentialService.Setup(x => x.GetProviderByIdAsync(providerId))
+                .ReturnsAsync((Provider?)null);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidRequestException>(
+                async () => await _factory.GetClientByProviderIdAsync(providerId, "gpt-image-1")
+            );
+
+            Assert.Equal($"Provider with ID '{providerId}' not found.", exception.Message);
+            Assert.Equal("provider_not_found", exception.ErrorCode);
+            Assert.Equal("providerId", exception.Param);
+        }
+
+        [Fact]
         public async Task GetClientByProviderTypeAsync_WithNoProvider_ThrowsInvalidRequestException()
         {
             // Arrange

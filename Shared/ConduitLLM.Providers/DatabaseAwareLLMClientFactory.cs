@@ -89,9 +89,14 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public async Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default)
+        public Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default)
+            => GetClientByProviderIdAsync(providerId, "default-model-id", cancellationToken);
+
+        /// <inheritdoc />
+        public async Task<ILLMClient> GetClientByProviderIdAsync(int providerId, string providerModelId, CancellationToken cancellationToken = default)
         {
-            _logger.LogDebug("Getting client for provider ID {ProviderId} using database credentials", providerId);
+            _logger.LogDebug("Getting client for provider ID {ProviderId} and model {ProviderModelId} using database credentials",
+                providerId, providerModelId);
 
             var provider = await _credentialService.GetProviderByIdAsync(providerId);
 
@@ -102,7 +107,7 @@ namespace ConduitLLM.Providers
             }
 
             var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
-            return CreateClientForProvider(provider, primaryKey, "default-model-id");
+            return CreateClientForProvider(provider, primaryKey, providerModelId);
         }
 
         /// <inheritdoc />

@@ -28,6 +28,19 @@ public interface ILLMClientFactory
     Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Asynchronously gets an ILLMClient instance for the specified provider ID, configured with the
+    /// given provider model id. Use this when a model mapping has already been resolved — the
+    /// provider model id is not a model alias and must not go through alias resolution again.
+    /// </summary>
+    /// <param name="providerId">The ID of the provider.</param>
+    /// <param name="providerModelId">The provider's model identifier (e.g. the mapping's ProviderModelId).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>An instance of ILLMClient for the specified provider and model.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
+    /// <exception cref="UnsupportedProviderException">Thrown if the specified provider is not supported by this factory.</exception>
+    Task<ILLMClient> GetClientByProviderIdAsync(int providerId, string providerModelId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets provider metadata for the specified provider type without requiring credentials.
     /// </summary>
     /// <param name="providerType">The provider type to get metadata for.</param>
