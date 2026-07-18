@@ -396,7 +396,8 @@ public enum ProviderType
     SambaNova = 10,     // Ultra-fast inference
     DeepInfra = 11,     // OpenAI-compatible LLM inference
     Cloudflare = 12,    // Serverless AI on Cloudflare's global network
-    OpenRouter = 13     // Multi-provider routing via OpenAI-compatible API
+    OpenRouter = 13,    // Multi-provider routing via OpenAI-compatible API
+    Meta = 14           // Meta Model API (Muse Spark models)
 }
 ```
 

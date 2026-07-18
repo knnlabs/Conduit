@@ -67,6 +67,9 @@ The factory currently supports **9 active providers** (as of 2025-11-08):
 | `Cerebras` | `CerebrasClient` | High-performance inference | ✅ Active |
 | `SambaNova` | `SambaNovaClient` | Ultra-fast inference | ✅ Active |
 | `DeepInfra` | `DeepInfraClient` | OpenAI-compatible inference platform | ✅ Active |
+| `Cloudflare` | `CloudflareClient` | Cloudflare Workers AI serverless inference | ✅ Active |
+| `OpenRouter` | `OpenRouterClient` | Multi-provider routing | ✅ Active |
+| `Meta` | `MetaClient` | Meta Model API (Muse Spark models) | ✅ Active |
 
 **Obsolete Providers (removed):**
 - `Ultravox` (Audio functionality removed)

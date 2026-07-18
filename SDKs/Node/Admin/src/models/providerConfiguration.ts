@@ -21,6 +21,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.DeepInfra]: 'DeepInfra',
   [ProviderType.Cloudflare]: 'Cloudflare Workers AI',
   [ProviderType.OpenRouter]: 'OpenRouter',
+  [ProviderType.Meta]: 'Meta AI',
 };
 
 /** Provider categories for grouping in UI */
@@ -48,6 +49,7 @@ export const PROVIDER_CATEGORIES: Record<ProviderType, ProviderCategory[]> = {
   [ProviderType.DeepInfra]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Embedding],
   [ProviderType.Cloudflare]: [ProviderCategory.Chat, ProviderCategory.Embedding, ProviderCategory.Image],
   [ProviderType.OpenRouter]: [ProviderCategory.Chat],
+  [ProviderType.Meta]: [ProviderCategory.Chat],
 };
 
 /** Provider-specific configuration requirements */
@@ -174,6 +176,15 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRe
     supportsCustomEndpoint: false,
     helpUrl: 'https://openrouter.ai/keys',
     helpText: 'Get your API key from openrouter.ai/keys - Routes to 100+ models from multiple providers',
+    supportedModelTypes: [ModelType.Chat]
+  },
+  [ProviderType.Meta]: {
+    requiresApiKey: true,
+    requiresEndpoint: false,
+    requiresOrganizationId: false,
+    supportsCustomEndpoint: true,
+    helpUrl: 'https://ai.developer.meta.com',
+    helpText: 'Get your API key from ai.developer.meta.com - Meta Model API with Muse Spark multimodal reasoning models',
     supportedModelTypes: [ModelType.Chat]
   },
 };
