@@ -9,10 +9,11 @@
 
 import {
   CircuitBreaker,
-  CircuitState,
-  isCircuitBreakerOpenError
+  isCircuitBreakerOpenError,
+  type CircuitBreakerStats,
+  type CircuitBreakerCallbacks,
+  type CircuitState
 } from '@knn_labs/conduit-common';
-import type { CircuitBreakerStats, CircuitBreakerCallbacks } from '@knn_labs/conduit-common';
 import type { StreamingCircuitBreakerConfig, CircuitBreakerEvent, StreamingError } from './types';
 
 /**

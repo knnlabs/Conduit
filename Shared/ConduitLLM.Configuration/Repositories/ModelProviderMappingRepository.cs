@@ -1,6 +1,6 @@
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Utilities;
-using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,11 +10,8 @@ namespace ConduitLLM.Configuration.Repositories
     /// <summary>
     /// Repository implementation for model provider mappings using Entity Framework Core.
     /// </summary>
-    public class ModelProviderMappingRepository : IModelProviderMappingRepository
+    public class ModelProviderMappingRepository : RepositoryBase<ModelProviderMapping, int>, IModelProviderMappingRepository
     {
-        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-        private readonly ILogger<ModelProviderMappingRepository> _logger;
-
         /// <summary>
         /// Creates a new instance of the repository
         /// </summary>
@@ -23,36 +20,34 @@ namespace ConduitLLM.Configuration.Repositories
         public ModelProviderMappingRepository(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ModelProviderMappingRepository> logger)
+            : base(dbContextFactory, logger)
         {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <inheritdoc/>
-        public async Task<ModelProviderMappingEntity?> GetByIdAsync(
-            int id,
-            CancellationToken cancellationToken = default)
+        protected override DbSet<ModelProviderMapping> GetDbSet(ConduitDbContext context)
         {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.ModelProviderMappings
-                    .Include(m => m.Provider)
-                    .Include(m => m.ModelProviderTypeAssociation)
-                        .ThenInclude(a => a.Model)
-                            .ThenInclude(m => m.Series)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting model provider mapping with ID {MappingId}", id);
-                throw;
-            }
+            return context.ModelProviderMappings;
         }
 
         /// <inheritdoc/>
-        public async Task<ModelProviderMappingEntity?> GetByModelNameAsync(
+        protected override IQueryable<ModelProviderMapping> ApplyDefaultIncludes(IQueryable<ModelProviderMapping> query)
+        {
+            return query
+                .Include(m => m.Provider)
+                .Include(m => m.ModelProviderTypeAssociation)
+                    .ThenInclude(a => a.Model)
+                        .ThenInclude(m => m.Series);
+        }
+
+        /// <inheritdoc/>
+        protected override IQueryable<ModelProviderMapping> ApplyDefaultOrdering(IQueryable<ModelProviderMapping> query)
+        {
+            return query.OrderBy(m => m.ModelAlias);
+        }
+
+        /// <inheritdoc/>
+        public async Task<ModelProviderMapping?> GetByModelNameAsync(
             string modelName,
             CancellationToken cancellationToken = default)
         {
@@ -61,129 +56,89 @@ namespace ConduitLLM.Configuration.Repositories
                 throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
             }
 
-            try
+            return await ExecuteAsync(async context =>
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.ModelProviderMappings
-                    .Include(m => m.Provider)
-                    .Include(m => m.ModelProviderTypeAssociation)
-                        .ThenInclude(a => a.Model)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting model provider mapping for model {ModelName}", LoggingSanitizer.S(modelName));
-                throw;
-            }
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query.FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
+            }, cancellationToken, $"getting by model name {LoggingSanitizer.S(modelName)}");
         }
 
         /// <inheritdoc/>
-        public async Task<List<ModelProviderMappingEntity>> GetAllAsync(
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.ModelProviderMappings
-                    .Include(m => m.Provider)
-                    .Include(m => m.ModelProviderTypeAssociation)
-                        .ThenInclude(a => a.Model)
-                    .AsNoTracking()
-                    .OrderBy(m => m.ModelAlias)
-                    .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all model provider mappings");
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<List<ModelProviderMappingEntity>> GetByProviderAsync(
+        [Obsolete("Use GetByProviderPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
+        public async Task<List<ModelProviderMapping>> GetByProviderAsync(
             ProviderType providerType,
             CancellationToken cancellationToken = default)
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                var credential = await dbContext.Providers
+                var credential = await context.Providers
                     .AsNoTracking()
                     .FirstOrDefaultAsync(pc => pc.ProviderType == providerType, cancellationToken);
 
                 if (credential == null)
                 {
-                    return new List<ModelProviderMappingEntity>();
+                    return new List<ModelProviderMapping>();
                 }
 
                 // Then find mappings with this credential ID
-                return await dbContext.ModelProviderMappings
-                    .Include(m => m.Provider)
-                    .AsNoTracking()
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query
                     .Where(m => m.ProviderId == credential.Id)
                     .OrderBy(m => m.ModelAlias)
                     .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting model provider mappings for provider type {ProviderType}", providerType);
-                throw;
-            }
+            }, cancellationToken, $"getting by provider type {providerType}");
         }
 
         /// <inheritdoc/>
-        public async Task<int> CreateAsync(
-            ModelProviderMappingEntity modelProviderMapping,
+        public async Task<(List<ModelProviderMapping> Items, int TotalCount)> GetByProviderPaginatedAsync(
+            int providerId,
+            int pageNumber,
+            int pageSize,
             CancellationToken cancellationToken = default)
         {
-            if (modelProviderMapping == null)
-            {
-                throw new ArgumentNullException(nameof(modelProviderMapping));
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // Set timestamps
-                modelProviderMapping.CreatedAt = DateTime.UtcNow;
-                modelProviderMapping.UpdatedAt = DateTime.UtcNow;
-
-                dbContext.ModelProviderMappings.Add(modelProviderMapping);
-                await dbContext.SaveChangesAsync(cancellationToken);
-
-                return modelProviderMapping.Id;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating model provider mapping for {ModelAlias}", LoggingSanitizer.S(modelProviderMapping.ModelAlias));
-                throw;
-            }
+            return await GetFilteredPaginatedAsync(
+                m => m.ProviderId == providerId,
+                pageNumber,
+                pageSize,
+                q => q.OrderBy(m => m.ModelAlias),
+                cancellationToken,
+                $"getting paginated for provider {providerId}");
         }
 
         /// <inheritdoc/>
-        public async Task<bool> UpdateAsync(
-            ModelProviderMappingEntity modelProviderMapping,
+        public async Task<List<ModelProviderMapping>> GetByModelIdAsync(
+            int modelId,
             CancellationToken cancellationToken = default)
         {
-            if (modelProviderMapping == null)
+            return await ExecuteAsync(async context =>
             {
-                throw new ArgumentNullException(nameof(modelProviderMapping));
-            }
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query
+                    .Where(m => m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.ModelId == modelId)
+                    .OrderBy(m => m.ModelAlias)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting by model ID {modelId}");
+        }
 
-            try
+        /// <inheritdoc/>
+        public override async Task<bool> UpdateAsync(
+            ModelProviderMapping modelProviderMapping,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(modelProviderMapping);
+
+            return await ExecuteAsync(async context =>
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
                 // Get existing entity to ensure it exists
-                var existingEntity = await dbContext.ModelProviderMappings
+                var existingEntity = await GetDbSet(context)
                     .FirstOrDefaultAsync(m => m.Id == modelProviderMapping.Id, cancellationToken);
 
                 if (existingEntity == null)
                 {
-                    _logger.LogWarning("Cannot update non-existent model provider mapping with ID {MappingId}", modelProviderMapping.Id);
+                    Logger.LogWarning("Cannot update non-existent model provider mapping with ID {MappingId}", modelProviderMapping.Id);
                     return false;
                 }
 
@@ -193,50 +148,17 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.ProviderId = modelProviderMapping.ProviderId;
                 existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
                 existingEntity.ModelProviderTypeAssociationId = modelProviderMapping.ModelProviderTypeAssociationId;
-                
+
                 existingEntity.UpdatedAt = DateTime.UtcNow;
 
-                _logger.LogInformation(
+                Logger.LogInformation(
                     "Updating model mapping {ModelAlias} with AssociationId={AssociationId}",
                     existingEntity.ModelAlias,
                     existingEntity.ModelProviderTypeAssociationId);
 
-                await dbContext.SaveChangesAsync(cancellationToken);
+                await context.SaveChangesAsync(cancellationToken);
                 return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating model provider mapping with ID {MappingId}", modelProviderMapping.Id);
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                var entity = await dbContext.ModelProviderMappings
-                    .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
-
-                if (entity == null)
-                {
-                    _logger.LogWarning("Cannot delete non-existent model provider mapping with ID {MappingId}", id);
-                    return false;
-                }
-
-                dbContext.ModelProviderMappings.Remove(entity);
-                await dbContext.SaveChangesAsync(cancellationToken);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting model provider mapping with ID {MappingId}", id);
-                throw;
-            }
+            }, cancellationToken, $"updating ID {modelProviderMapping.Id}");
         }
     }
 }

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -10,7 +11,7 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Redis-based distributed cache statistics collector with atomic operations.
     /// </summary>
-    public class RedisCacheStatisticsCollector : IDistributedCacheStatisticsCollector
+    public class RedisCacheStatisticsCollector : IDistributedCacheStatisticsCollector, IAsyncDisposable, IDisposable
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly IDatabase _db;
@@ -21,15 +22,6 @@ namespace ConduitLLM.Core.Services
         private Timer? _heartbeatTimer;
         private readonly ConcurrentDictionary<CacheRegion, CacheAlertThresholds> _alertThresholds;
         private readonly ConcurrentDictionary<string, DateTime> _activeAlerts;
-        
-        private const string STATS_HASH_KEY = "conduit:cache:stats:{0}:{1}"; // {region}:{instanceId}
-        private const string GLOBAL_STATS_HASH_KEY = "conduit:cache:stats:{0}:global"; // {region}
-        private const string RESPONSE_TIMES_KEY = "conduit:cache:response:{0}:{1}:{2}"; // {region}:{operation}:{instanceId}
-        private const string INSTANCE_SET_KEY = "conduit:cache:instances";
-        private const string INSTANCE_HEARTBEAT_KEY = "conduit:cache:heartbeat:{0}"; // {instanceId}
-        private const string ALERTS_HASH_KEY = "conduit:cache:alerts:{0}"; // {region}
-        private const string STATS_UPDATE_CHANNEL = "conduit:cache:stats:updates";
-        private const string ALERT_CHANNEL = "conduit:cache:alerts";
 
         public string InstanceId => _instanceId;
 
@@ -51,8 +43,8 @@ namespace ConduitLLM.Core.Services
 
             // Subscribe to distributed events
             var subscriber = _redis.GetSubscriber();
-            subscriber.Subscribe(RedisChannel.Literal(STATS_UPDATE_CHANNEL), HandleDistributedStatsUpdate);
-            subscriber.Subscribe(RedisChannel.Literal(ALERT_CHANNEL), HandleDistributedAlert);
+            subscriber.Subscribe(RedisChannel.Literal(CacheKeys.DistributedStats.UpdateChannel), HandleDistributedStatsUpdate);
+            subscriber.Subscribe(RedisChannel.Literal(CacheKeys.DistributedStats.AlertChannel), HandleDistributedAlert);
 
             // Start heartbeat
             _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, _instanceHeartbeatInterval);
@@ -64,8 +56,8 @@ namespace ConduitLLM.Core.Services
             {
                 var tasks = new List<Task>();
                 var region = operation.Region;
-                var statsKey = string.Format(STATS_HASH_KEY, region, _instanceId);
-                var globalKey = string.Format(GLOBAL_STATS_HASH_KEY, region);
+                var statsKey = CacheKeys.DistributedStats.StatsHash(region.ToString(), _instanceId);
+                var globalKey = CacheKeys.DistributedStats.GlobalStatsHash(region.ToString());
 
                 // Update counters atomically
                 switch (operation.OperationType)
@@ -102,7 +94,7 @@ namespace ConduitLLM.Core.Services
                 if (operation.OperationType == CacheOperationType.Get || 
                     operation.OperationType == CacheOperationType.Set)
                 {
-                    var responseKey = string.Format(RESPONSE_TIMES_KEY, region, operation.OperationType, _instanceId);
+                    var responseKey = CacheKeys.DistributedStats.ResponseTimes(region.ToString(), operation.OperationType.ToString(), _instanceId);
                     var score = operation.Duration.TotalMilliseconds;
                     var member = $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}:{Guid.NewGuid():N}";
                     
@@ -133,7 +125,7 @@ namespace ConduitLLM.Core.Services
                     Timestamp = DateTime.UtcNow
                 });
                 
-                await _db.PublishAsync(RedisChannel.Literal(STATS_UPDATE_CHANNEL), updateMessage);
+                await _db.PublishAsync(RedisChannel.Literal(CacheKeys.DistributedStats.UpdateChannel), updateMessage);
 
                 // Raise local event
                 var stats = await GetStatisticsAsync(region, cancellationToken);
@@ -158,7 +150,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task<CacheStatistics> GetStatisticsAsync(CacheRegion region, CancellationToken cancellationToken = default)
         {
-            var statsKey = string.Format(STATS_HASH_KEY, region, _instanceId);
+            var statsKey = CacheKeys.DistributedStats.StatsHash(region.ToString(), _instanceId);
             var entries = await _db.HashGetAllAsync(statsKey);
             
             return ParseStatistics(region, entries);
@@ -178,7 +170,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task<CacheStatistics> GetAggregatedStatisticsAsync(CacheRegion region, CancellationToken cancellationToken = default)
         {
-            var globalKey = string.Format(GLOBAL_STATS_HASH_KEY, region);
+            var globalKey = CacheKeys.DistributedStats.GlobalStatsHash(region.ToString());
             var entries = await _db.HashGetAllAsync(globalKey);
             
             var stats = ParseStatistics(region, entries);
@@ -208,7 +200,7 @@ namespace ConduitLLM.Core.Services
             
             foreach (var instance in instances)
             {
-                var statsKey = string.Format(STATS_HASH_KEY, region, instance);
+                var statsKey = CacheKeys.DistributedStats.StatsHash(region.ToString(), instance);
                 var entries = await _db.HashGetAllAsync(statsKey);
                 
                 if (entries.Length > 0)
@@ -222,14 +214,14 @@ namespace ConduitLLM.Core.Services
 
         public async Task<IEnumerable<string>> GetActiveInstancesAsync(CancellationToken cancellationToken = default)
         {
-            var members = await _db.SetMembersAsync(INSTANCE_SET_KEY);
+            var members = await _db.SetMembersAsync(CacheKeys.DistributedStats.InstanceSet);
             var activeInstances = new List<string>();
             var now = DateTimeOffset.UtcNow;
             
             foreach (var member in members)
             {
                 var instanceId = member.ToString();
-                var heartbeatKey = string.Format(INSTANCE_HEARTBEAT_KEY, instanceId);
+                var heartbeatKey = CacheKeys.DistributedStats.Heartbeat(instanceId);
                 var lastHeartbeat = await _db.StringGetAsync(heartbeatKey);
                 
                 if (lastHeartbeat.HasValue &&
@@ -245,15 +237,15 @@ namespace ConduitLLM.Core.Services
 
         public async Task RegisterInstanceAsync(CancellationToken cancellationToken = default)
         {
-            await _db.SetAddAsync(INSTANCE_SET_KEY, _instanceId);
+            await _db.SetAddAsync(CacheKeys.DistributedStats.InstanceSet, _instanceId);
             await SendHeartbeatAsync();
             _logger.LogInformation("Registered cache statistics collector instance: {InstanceId}", _instanceId);
         }
 
         public async Task UnregisterInstanceAsync(CancellationToken cancellationToken = default)
         {
-            await _db.SetRemoveAsync(INSTANCE_SET_KEY, _instanceId);
-            var heartbeatKey = string.Format(INSTANCE_HEARTBEAT_KEY, _instanceId);
+            await _db.SetRemoveAsync(CacheKeys.DistributedStats.InstanceSet, _instanceId);
+            var heartbeatKey = CacheKeys.DistributedStats.Heartbeat(_instanceId);
             await _db.KeyDeleteAsync(heartbeatKey);
             _logger.LogInformation("Unregistered cache statistics collector instance: {InstanceId}", _instanceId);
         }
@@ -295,13 +287,13 @@ namespace ConduitLLM.Core.Services
             var tasks = new List<Task>();
             
             // Reset instance stats
-            var statsKey = string.Format(STATS_HASH_KEY, region, _instanceId);
+            var statsKey = CacheKeys.DistributedStats.StatsHash(region.ToString(), _instanceId);
             tasks.Add(_db.KeyDeleteAsync(statsKey));
             
             // Reset response times
             foreach (var opType in new[] { CacheOperationType.Get, CacheOperationType.Set })
             {
-                var responseKey = string.Format(RESPONSE_TIMES_KEY, region, opType, _instanceId);
+                var responseKey = CacheKeys.DistributedStats.ResponseTimes(region.ToString(), opType.ToString(), _instanceId);
                 tasks.Add(_db.KeyDeleteAsync(responseKey));
             }
             
@@ -337,7 +329,7 @@ namespace ConduitLLM.Core.Services
             _alertThresholds[region] = thresholds ?? throw new ArgumentNullException(nameof(thresholds));
             
             // Store in Redis for persistence
-            var alertsKey = string.Format(ALERTS_HASH_KEY, region);
+            var alertsKey = CacheKeys.DistributedStats.AlertsHash(region.ToString());
             var json = JsonSerializer.Serialize(thresholds);
             await _db.HashSetAsync(alertsKey, "thresholds", json);
         }
@@ -403,17 +395,17 @@ namespace ConduitLLM.Core.Services
             foreach (var instance in instances)
             {
                 // Get response times
-                var getKey = string.Format(RESPONSE_TIMES_KEY, region, CacheOperationType.Get, instance);
+                var getKey = CacheKeys.DistributedStats.ResponseTimes(region.ToString(), CacheOperationType.Get.ToString(), instance);
                 var getEntries = await _db.SortedSetRangeByRankWithScoresAsync(getKey, 0, -1);
                 getTimes.AddRange(getEntries.Select(e => e.Score));
 
                 // Set response times
-                var setKey = string.Format(RESPONSE_TIMES_KEY, region, CacheOperationType.Set, instance);
+                var setKey = CacheKeys.DistributedStats.ResponseTimes(region.ToString(), CacheOperationType.Set.ToString(), instance);
                 var setEntries = await _db.SortedSetRangeByRankWithScoresAsync(setKey, 0, -1);
                 setTimes.AddRange(setEntries.Select(e => e.Score));
             }
 
-            if (getTimes.Count() > 0)
+            if (getTimes.Any())
             {
                 getTimes.Sort();
                 stats.AverageGetTime = TimeSpan.FromMilliseconds(getTimes.Average());
@@ -422,7 +414,7 @@ namespace ConduitLLM.Core.Services
                 stats.MaxResponseTime = TimeSpan.FromMilliseconds(getTimes.Max());
             }
 
-            if (setTimes.Count() > 0)
+            if (setTimes.Any())
             {
                 setTimes.Sort();
                 stats.AverageSetTime = TimeSpan.FromMilliseconds(setTimes.Average());
@@ -431,7 +423,7 @@ namespace ConduitLLM.Core.Services
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (sortedValues.Count() == 0) return 0;
+            if (!sortedValues.Any()) return 0;
             
             var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
             return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
@@ -494,7 +486,7 @@ namespace ConduitLLM.Core.Services
 
             // Publish alert
             var alertMessage = JsonSerializer.Serialize(alert);
-            await _db.PublishAsync(RedisChannel.Literal(ALERT_CHANNEL), alertMessage);
+            await _db.PublishAsync(RedisChannel.Literal(CacheKeys.DistributedStats.AlertChannel), alertMessage);
 
             // Raise local event
             AlertTriggered?.Invoke(this, new CacheAlertEventArgs { Alert = alert, IsNew = true });
@@ -512,7 +504,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var heartbeatKey = string.Format(INSTANCE_HEARTBEAT_KEY, _instanceId);
+                var heartbeatKey = CacheKeys.DistributedStats.Heartbeat(_instanceId);
                 await _db.StringSetAsync(heartbeatKey, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), 
                     expiry: _instanceTimeout);
             }
@@ -594,10 +586,32 @@ namespace ConduitLLM.Core.Services
             return string.Join("\n", lines);
         }
 
+        public async ValueTask DisposeAsync()
+        {
+            if (_heartbeatTimer != null)
+            {
+                await _heartbeatTimer.DisposeAsync();
+            }
+
+            try
+            {
+                await UnregisterInstanceAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error unregistering instance during async disposal");
+            }
+        }
+
         public void Dispose()
         {
             _heartbeatTimer?.Dispose();
-            UnregisterInstanceAsync().GetAwaiter().GetResult();
+
+            // Best-effort unregistration without blocking on Redis I/O; if it doesn't
+            // complete, the instance is dropped once its heartbeat key expires.
+            _ = UnregisterInstanceAsync().ContinueWith(
+                t => _logger.LogError(t.Exception, "Error unregistering instance during disposal"),
+                TaskContinuationOptions.OnlyOnFaulted);
         }
     }
 }

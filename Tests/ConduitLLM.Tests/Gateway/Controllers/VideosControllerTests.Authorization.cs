@@ -18,16 +18,16 @@ namespace ConduitLLM.Tests.Http.Controllers
         }
 
         [Fact]
-        public void Controller_ShouldHaveRateLimiting()
+        public void Controller_ShouldNotCarryFrameworkRateLimitingAttribute()
         {
-            // Arrange & Act
+            // Rate limiting is enforced by VirtualKeyRateLimitMiddleware against the
+            // Redis-backed IVirtualKeyRateLimitService, not the framework rate limiter.
+            // This test guards against a future regression that re-adds the attribute,
+            // which would silently route through the deleted no-op policy.
             var controllerType = typeof(VideosController);
             var rateLimitAttribute = Attribute.GetCustomAttribute(controllerType, typeof(Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute));
 
-            // Assert
-            Assert.NotNull(rateLimitAttribute);
-            var attr = (Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute)rateLimitAttribute;
-            Assert.Equal("VirtualKeyPolicy", attr.PolicyName);
+            Assert.Null(rateLimitAttribute);
         }
 
         #endregion

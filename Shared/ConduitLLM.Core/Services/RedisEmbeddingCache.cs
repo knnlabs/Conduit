@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -30,10 +32,6 @@ namespace ConduitLLM.Core.Services
         private readonly EmbeddingCacheConfig _config;
         private readonly EmbeddingCacheStats _stats;
         private readonly object _statsLock = new object();
-
-        private const string CACHE_KEY_PREFIX = "emb:";
-        private const string STATS_KEY = "emb:stats";
-        private const string MODEL_INDEX_PREFIX = "emb:idx:";
 
         /// <summary>
         /// Initializes a new instance of the RedisEmbeddingCache.
@@ -83,7 +81,7 @@ namespace ConduitLLM.Core.Services
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                var cacheKeyWithPrefix = CACHE_KEY_PREFIX + cacheKey;
+                var cacheKeyWithPrefix = CacheKeys.Embedding.ByHash(cacheKey);
                 var cachedData = await _database.StringGetAsync(cacheKeyWithPrefix);
 
                 if (cachedData.HasValue)
@@ -137,7 +135,7 @@ namespace ConduitLLM.Core.Services
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                var cacheKeyWithPrefix = CACHE_KEY_PREFIX + cacheKey;
+                var cacheKeyWithPrefix = CacheKeys.Embedding.ByHash(cacheKey);
                 var serializedResponse = JsonSerializer.Serialize(response);
                 var effectiveTtl = ttl ?? _config.DefaultTtl;
 
@@ -147,7 +145,7 @@ namespace ConduitLLM.Core.Services
                 // Add to model index for efficient invalidation
                 if (!string.IsNullOrEmpty(response.Model))
                 {
-                    var modelIndexKey = MODEL_INDEX_PREFIX + response.Model;
+                    var modelIndexKey = CacheKeys.Embedding.ModelIndex(response.Model);
                     await _database.SetAddAsync(modelIndexKey, cacheKey);
                     await _database.KeyExpireAsync(modelIndexKey, effectiveTtl.Add(TimeSpan.FromMinutes(5))); // Index expires slightly later
                 }
@@ -230,13 +228,13 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                var modelIndexKey = MODEL_INDEX_PREFIX + modelName;
+                var modelIndexKey = CacheKeys.Embedding.ModelIndex(modelName);
                 var cacheKeys = await _database.SetMembersAsync(modelIndexKey);
 
                 if (cacheKeys.Length > 0)
                 {
                     // Delete all cache entries for this model
-                    var keysToDelete = cacheKeys.Select(key => (RedisKey)(CACHE_KEY_PREFIX + key)).ToArray();
+                    var keysToDelete = cacheKeys.Select(key => (RedisKey)(CacheKeys.Embedding.ByHash(key.ToString()))).ToArray();
                     await _database.KeyDeleteAsync(keysToDelete);
 
                     // Remove the model index
@@ -269,7 +267,7 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                var keyArray = cacheKeys.Select(key => (RedisKey)(CACHE_KEY_PREFIX + key)).ToArray();
+                var keyArray = cacheKeys.Select(key => (RedisKey)(CacheKeys.Embedding.ByHash(key.ToString()))).ToArray();
                 if (keyArray.Length > 0)
                 {
                     var deletedCount = await _database.KeyDeleteAsync(keyArray);
@@ -314,8 +312,8 @@ namespace ConduitLLM.Core.Services
             {
                 try
                 {
-                    var pattern = CACHE_KEY_PREFIX + "*";
-                    var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+                    var pattern = CacheKeys.Embedding.Prefix + "*";
+                    var server = _database.Multiplexer.GetPrimaryServer();
                     var keys = server.Keys(pattern: pattern, pageSize: 1000).Take(1000);
                     currentStats.EntryCount = keys.Count();
                 }
@@ -339,8 +337,8 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                var pattern = CACHE_KEY_PREFIX + "*";
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+                var pattern = CacheKeys.Embedding.Prefix + "*";
+                var server = _database.Multiplexer.GetPrimaryServer();
                 var keys = server.Keys(pattern: pattern, pageSize: 1000);
 
                 var keyArray = keys.Select(key => (RedisKey)key).ToArray();
@@ -359,7 +357,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Also clear model indexes
-                var indexPattern = MODEL_INDEX_PREFIX + "*";
+                var indexPattern = CacheKeys.Embedding.IndexPrefix + "*";
                 var indexKeys = server.Keys(pattern: indexPattern, pageSize: 1000);
                 var indexKeyArray = indexKeys.Select(key => (RedisKey)key).ToArray();
                 if (indexKeyArray.Length > 0)

@@ -282,10 +282,8 @@ var client = await _factory.GetClientByProviderId(providerId: 1);
 
 ## Related Documentation
 
-- **Provider Architecture:** `/docs/architecture/provider-multi-instance.md`
-- **Model Cost Mapping:** `/docs/architecture/model-cost-mapping.md`
-- **Provider Models:** `/docs/claude/provider-models.md`
-- **Database Migration Guide:** `/docs/claude/database-migration-guide.md`
+- **Provider Architecture:** [Provider Architecture](../architecture/provider-system/provider-architecture.md)
+- **Model & Cost Mapping:** [Model & Cost Mapping](../architecture/provider-system/model-and-cost-mapping.md)
 
 ---
 

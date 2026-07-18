@@ -62,27 +62,27 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc />
-        public Task<int> EstimateTokenCountAsync(string modelName, List<Message> messages)
+        public async Task<int> EstimateTokenCountAsync(string modelName, List<Message> messages)
         {
-            if (messages == null || messages.Count() == 0)
+            if (messages == null || !messages.Any())
             {
-                return Task.FromResult(0);
+                return 0;
             }
 
             try
             {
-                var encoding = GetEncodingForModel(modelName);
+                var encoding = await GetEncodingForModelAsync(modelName);
                 if (encoding == null)
                 {
                     // Fallback strategy if we can't get the right encoding
                     _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return Task.FromResult(FallbackEstimateTokens(messages));
+                    return FallbackEstimateTokens(messages);
                 }
 
                 int tokenCount = 0;
                 foreach (var message in messages)
                 {
-                    // OpenAI adds tokens per message and per role. 
+                    // OpenAI adds tokens per message and per role.
                     // These numbers are based on OpenAI's tokenization approach
                     tokenCount += 4; // Every message follows <|start|>{role/name}\n{content}<|end|>\n
 
@@ -148,73 +148,56 @@ namespace ConduitLLM.Core.Services
 
                 tokenCount += 3; // Every reply is primed with <|start|>assistant<|message|>
 
-                return Task.FromResult(tokenCount);
+                return tokenCount;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return Task.FromResult(FallbackEstimateTokens(messages));
+                return FallbackEstimateTokens(messages);
             }
         }
 
         /// <inheritdoc />
-        public Task<int> EstimateTokenCountAsync(string modelName, string text)
+        public async Task<int> EstimateTokenCountAsync(string modelName, string text)
         {
             if (string.IsNullOrEmpty(text))
             {
-                return Task.FromResult(0);
+                return 0;
             }
 
             try
             {
-                var encoding = GetEncodingForModel(modelName);
+                var encoding = await GetEncodingForModelAsync(modelName);
                 if (encoding == null)
                 {
                     // Fallback strategy
                     _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return Task.FromResult(FallbackEstimateTokens(text));
+                    return FallbackEstimateTokens(text);
                 }
 
                 try
                 {
-                    return Task.FromResult(encoding.Encode(text).Count);
+                    return encoding.Encode(text).Count;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error encoding text. Using fallback estimate.");
-                    return Task.FromResult(FallbackEstimateTokens(text));
+                    return FallbackEstimateTokens(text);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return Task.FromResult(FallbackEstimateTokens(text));
+                return FallbackEstimateTokens(text);
             }
         }
 
         /// <summary>
-        /// Gets the appropriate TikToken encoding for a given model.
+        /// Gets the appropriate TikToken encoding for a given model asynchronously.
         /// </summary>
         /// <param name="modelName">The name of the model to get encoding for.</param>
         /// <returns>The appropriate TikToken encoding, or null if it cannot be determined.</returns>
-        /// <remarks>
-        /// <para>
-        /// This method determines the appropriate encoding based on the model name using these steps:
-        /// </para>
-        /// <list type="number">
-        ///   <item><description>Identifies the encoding type based on model name patterns</description></item>
-        ///   <item><description>Uses a thread-safe caching mechanism to avoid repeatedly creating encodings</description></item>
-        ///   <item><description>Falls back to the most modern encoding (cl100k_base) when uncertain</description></item>
-        /// </list>
-        /// <para>
-        /// The current encoding mappings are:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>cl100k_base: GPT-3.5 and GPT-4 models</description></item>
-        ///   <item><description>p50k_base: Legacy models (davinci, curie, babbage, ada)</description></item>
-        /// </list>
-        /// </remarks>
-        private TikToken? GetEncodingForModel(string modelName)
+        private async Task<TikToken?> GetEncodingForModelAsync(string modelName)
         {
             try
             {
@@ -225,7 +208,7 @@ namespace ConduitLLM.Core.Services
                 {
                     try
                     {
-                        var tokenizerType = _capabilityService.GetTokenizerTypeAsync(modelName).GetAwaiter().GetResult();
+                        var tokenizerType = await _capabilityService.GetTokenizerTypeAsync(modelName);
                         if (!string.IsNullOrEmpty(tokenizerType))
                         {
                             encodingName = tokenizerType;
@@ -238,63 +221,74 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
-                // Map non-OpenAI tokenizer types to their closest OpenAI equivalent
-                // since TiktokenSharp only supports OpenAI encodings
-                if (encodingName == "claude" || encodingName == "gemini")
-                {
-                    // Use cl100k_base as approximation for non-OpenAI models
-                    _logger.LogDebug("Using cl100k_base approximation for {TokenizerType} tokenizer on model {Model}", encodingName, modelName);
-                    encodingName = "cl100k_base";
-                }
-                else if (encodingName == "o200k_base")
-                {
-                    // o200k_base is newer than cl100k_base, but if not supported, fall back
-                    // Try to use it, but we'll handle the error below if it's not supported
-                    _logger.LogDebug("Attempting to use o200k_base tokenizer for model {Model}", modelName);
-                }
-
-                lock (_lock)
-                {
-                    if (!_encodings.TryGetValue(encodingName, out var encoding))
-                    {
-                        try
-                        {
-                            encoding = TikToken.EncodingForModel(encodingName);
-                            _encodings[encodingName] = encoding;
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to get encoding {EncodingName} for model {ModelName}, trying cl100k_base fallback", encodingName, modelName);
-
-                            // Try fallback to cl100k_base if the specific encoding isn't supported
-                            if (encodingName != "cl100k_base")
-                            {
-                                try
-                                {
-                                    encodingName = "cl100k_base";
-                                    encoding = TikToken.EncodingForModel(encodingName);
-                                    _encodings[encodingName] = encoding;
-                                    _logger.LogInformation("Successfully used cl100k_base fallback for model {ModelName}", modelName);
-                                }
-                                catch (Exception fallbackEx)
-                                {
-                                    _logger.LogError(fallbackEx, "Failed to get fallback encoding cl100k_base");
-                                    return null;
-                                }
-                            }
-                            else
-                            {
-                                return null;
-                            }
-                        }
-                    }
-                    return encoding;
-                }
+                return GetOrCreateEncoding(encodingName, modelName);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in GetEncodingForModel");
+                _logger.LogError(ex, "Error in GetEncodingForModelAsync");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets or creates a TikToken encoding with thread-safe caching.
+        /// </summary>
+        /// <param name="encodingName">The name of the encoding to get or create.</param>
+        /// <param name="modelName">The model name (for logging purposes).</param>
+        /// <returns>The TikToken encoding, or null if it cannot be created.</returns>
+        private TikToken? GetOrCreateEncoding(string encodingName, string modelName)
+        {
+            // Map non-OpenAI tokenizer types to their closest OpenAI equivalent
+            // since TiktokenSharp only supports OpenAI encodings
+            if (encodingName == "claude" || encodingName == "gemini")
+            {
+                // Use cl100k_base as approximation for non-OpenAI models
+                _logger.LogDebug("Using cl100k_base approximation for {TokenizerType} tokenizer on model {Model}", encodingName, modelName);
+                encodingName = "cl100k_base";
+            }
+            else if (encodingName == "o200k_base")
+            {
+                // o200k_base is newer than cl100k_base, but if not supported, fall back
+                // Try to use it, but we'll handle the error below if it's not supported
+                _logger.LogDebug("Attempting to use o200k_base tokenizer for model {Model}", modelName);
+            }
+
+            lock (_lock)
+            {
+                if (!_encodings.TryGetValue(encodingName, out var encoding))
+                {
+                    try
+                    {
+                        encoding = TikToken.EncodingForModel(encodingName);
+                        _encodings[encodingName] = encoding;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to get encoding {EncodingName} for model {ModelName}, trying cl100k_base fallback", encodingName, modelName);
+
+                        // Try fallback to cl100k_base if the specific encoding isn't supported
+                        if (encodingName != "cl100k_base")
+                        {
+                            try
+                            {
+                                encodingName = "cl100k_base";
+                                encoding = TikToken.EncodingForModel(encodingName);
+                                _encodings[encodingName] = encoding;
+                                _logger.LogInformation("Successfully used cl100k_base fallback for model {ModelName}", modelName);
+                            }
+                            catch (Exception fallbackEx)
+                            {
+                                _logger.LogError(fallbackEx, "Failed to get fallback encoding cl100k_base");
+                                return null;
+                            }
+                        }
+                        else
+                        {
+                            return null;
+                        }
+                    }
+                }
+                return encoding;
             }
         }
 

@@ -86,7 +86,7 @@ Real-time notifications for asynchronous operations like video generation, image
 
 ## Related Documentation
 
-- **[Gateway API](../core/)** - Main API documentation
+- **[Gateway API](../gateway/)** - Main API documentation
 - **[Admin API](../admin/)** - Configuration and management
 - **[SDK Documentation](../sdk/)** - SDK integration guides
 - **[SignalR](../signalr/)** - Real-time updates and connections
@@ -94,5 +94,5 @@ Real-time notifications for asynchronous operations like video generation, image
 ## Support
 
 For questions or issues:
-- **GitHub Issues**: https://github.com/knnlabs/Conduit/issues
+- **GitHub Issues**: https://github.com/nickna/Conduit/issues
 - **Documentation**: https://docs.conduit.ai

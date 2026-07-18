@@ -4,11 +4,12 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -30,15 +31,15 @@ namespace ConduitLLM.Admin.Services
         /// <param name="modelCostRepository">The model cost repository</param>
         /// <param name="requestLogRepository">The request log repository</param>
         /// <param name="dbContextFactory">The database context factory</param>
-        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+        /// <param name="eventBus">Optional event bus (null if not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminModelCostService(
             IModelCostRepository modelCostRepository,
             IRequestLogRepository requestLogRepository,
             IDbContextFactory<ConduitDbContext> dbContextFactory,
-            IPublishEndpoint? publishEndpoint,
-            ILogger<AdminModelCostService> logger)
-            : base(publishEndpoint, logger)
+            ILogger<AdminModelCostService> logger,
+            IEventBus? eventBus = null)
+            : base(eventBus, logger)
         {
             _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));
             _requestLogRepository = requestLogRepository ?? throw new ArgumentNullException(nameof(requestLogRepository));
@@ -70,7 +71,7 @@ namespace ConduitLLM.Admin.Services
                 var id = await _modelCostRepository.CreateAsync(modelCostEntity);
 
                 // Update ModelProviderTypeAssociations to reference this cost if provided
-                if (modelCost.ModelProviderTypeAssociationIds != null && modelCost.ModelProviderTypeAssociationIds.Count() > 0)
+                if (modelCost.ModelProviderTypeAssociationIds != null && modelCost.ModelProviderTypeAssociationIds.Any())
                 {
                     using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                     
@@ -168,7 +169,8 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                var modelCosts = await _modelCostRepository.GetAllAsync();
+                var modelCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _modelCostRepository.GetPaginatedAsync);
                 return modelCosts.Select(mc => mc.ToDto()).ToList();
             }
             catch (Exception ex)
@@ -226,29 +228,24 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                // Get request logs for the specified time period
-                var logs = await _requestLogRepository.GetByDateRangeAsync(startDate, endDate);
-                if (logs == null || logs.Count() == 0)
+                // Use database-level aggregation instead of loading all logs into memory
+                var modelAggregations = await _requestLogRepository.GetAggregatedByModelAsync(startDate, endDate);
+                if (modelAggregations.Count == 0)
                 {
                     return Enumerable.Empty<ModelCostOverviewDto>();
                 }
 
-                // Group by model and aggregate cost data
-                var modelGroups = logs
-                    .Where(l => !string.IsNullOrEmpty(l.ModelName)) // Filter out logs with no model name
-                    .GroupBy(l => l.ModelName)
-                    .Select(g => new ModelCostOverviewDto
+                return modelAggregations
+                    .Where(m => !string.IsNullOrEmpty(m.ModelName))
+                    .Select(m => new ModelCostOverviewDto
                     {
-                        Model = g.Key ?? "Unknown",
-                        RequestCount = g.Count(),
-                        TotalCost = g.Sum(l => l.Cost),
-                        InputTokens = g.Sum(l => l.InputTokens),
-                        OutputTokens = g.Sum(l => l.OutputTokens)
+                        Model = m.ModelName,
+                        RequestCount = m.RequestCount,
+                        TotalCost = m.TotalCost,
+                        InputTokens = (int)Math.Min(m.InputTokens, int.MaxValue),
+                        OutputTokens = (int)Math.Min(m.OutputTokens, int.MaxValue)
                     })
-                    .OrderByDescending(m => m.TotalCost)
                     .ToList();
-
-                return modelGroups;
             }
             catch (Exception ex)
             {
@@ -265,7 +262,8 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                var modelCosts = await _modelCostRepository.GetByProviderAsync(providerId);
+                var modelCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _modelCostRepository.GetByProviderPaginatedAsync, providerId);
                 return modelCosts.Select(mc => mc.ToDto()).ToList();
             }
             catch (Exception ex)
@@ -352,7 +350,7 @@ namespace ConduitLLM.Admin.Services
                 if (result)
                 {
                     // Publish ModelCostChanged event for cache invalidation and cross-service coordination
-                    if (changedProperties.Count() > 0)
+                    if (changedProperties.Any())
                     {
                         await PublishEventAsync(
                             new ModelCostChanged

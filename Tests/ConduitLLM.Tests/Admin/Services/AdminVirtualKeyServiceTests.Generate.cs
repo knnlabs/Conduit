@@ -57,7 +57,7 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.Equal("Test API Key", result.KeyInfo.KeyName);
 
             // Verify event was published
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.IsAny<VirtualKeyCreated>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }

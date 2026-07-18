@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using ConduitLLM.Core.Events;
 
@@ -70,7 +72,7 @@ namespace ConduitLLM.Gateway.Authentication
             {
                 _logger.LogWarning("Virtual Key {KeyHash} exceeded {LimitType} limit for SignalR method {Method}. " +
                     "Current: {Current}/{Limit}, Connections: {Connections}",
-                    virtualKeyHash, result.LimitType, invocationContext.HubMethodName,
+                    LoggingSanitizer.S(virtualKeyHash), result.LimitType, invocationContext.HubMethodName,
                     result.Limit - result.RequestsRemaining, result.Limit, result.ActiveConnections);
                 
                 // Publish rate limit exceeded event
@@ -115,7 +117,7 @@ namespace ConduitLLM.Gateway.Authentication
                     {
                         _logger.LogWarning(
                             "Virtual Key {KeyHash} connection rejected: {Reason}. Current: {Current}/{Max}",
-                            virtualKeyHash, limitResult.DenialReason,
+                            LoggingSanitizer.S(virtualKeyHash), limitResult.DenialReason,
                             limitResult.CurrentConnections, limitResult.MaxConnections);
 
                         PublishConnectionLimitExceeded(virtualKeyHash, limitResult, context);
@@ -127,7 +129,7 @@ namespace ConduitLLM.Gateway.Authentication
                 var connectionCount = await _signalRRateLimitService.IncrementConnectionCountAsync(virtualKeyHash);
 
                 _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections across all instances: {Count}",
-                    virtualKeyHash, connectionCount);
+                    LoggingSanitizer.S(virtualKeyHash), connectionCount);
             }
 
             await next(context);
@@ -149,7 +151,7 @@ namespace ConduitLLM.Gateway.Authentication
                 var connectionCount = await _signalRRateLimitService.DecrementConnectionCountAsync(virtualKeyHash);
                 
                 _logger.LogDebug("Virtual Key {KeyHash} disconnected. Active connections across all instances: {Count}",
-                    virtualKeyHash, connectionCount);
+                    LoggingSanitizer.S(virtualKeyHash), connectionCount);
                 
                 // Clean up stale connections if needed
                 if (connectionCount == 0)
@@ -199,11 +201,11 @@ namespace ConduitLLM.Gateway.Authentication
                 try
                 {
                     using var scope = _serviceProvider.CreateScope();
-                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
+                    var eventBus = scope.ServiceProvider.GetService<IEventBus>();
                     
-                    if (publishEndpoint != null)
+                    if (eventBus != null)
                     {
-                        await publishEndpoint.Publish(new RateLimitExceeded
+                        await eventBus.PublishAsync(new RateLimitExceeded
                         {
                             VirtualKeyId = virtualKeyId,
                             VirtualKeyHash = virtualKeyHash,
@@ -220,7 +222,7 @@ namespace ConduitLLM.Gateway.Authentication
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to publish RateLimitExceeded event for key {KeyHash}", virtualKeyHash);
+                    _logger.LogWarning(ex, "Failed to publish RateLimitExceeded event for key {KeyHash}", LoggingSanitizer.S(virtualKeyHash));
                 }
             });
         }
@@ -248,11 +250,11 @@ namespace ConduitLLM.Gateway.Authentication
                 try
                 {
                     using var scope = _serviceProvider.CreateScope();
-                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
+                    var eventBus = scope.ServiceProvider.GetService<IEventBus>();
 
-                    if (publishEndpoint != null)
+                    if (eventBus != null)
                     {
-                        await publishEndpoint.Publish(new ConnectionLimitExceeded
+                        await eventBus.PublishAsync(new ConnectionLimitExceeded
                         {
                             VirtualKeyId = virtualKeyId,
                             VirtualKeyHash = virtualKeyHash,
@@ -266,7 +268,7 @@ namespace ConduitLLM.Gateway.Authentication
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to publish ConnectionLimitExceeded event for key {KeyHash}", virtualKeyHash);
+                    _logger.LogWarning(ex, "Failed to publish ConnectionLimitExceeded event for key {KeyHash}", LoggingSanitizer.S(virtualKeyHash));
                 }
             });
         }

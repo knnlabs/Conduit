@@ -34,5 +34,11 @@ export enum ProviderType {
   SambaNova = 10,
   
   /** DeepInfra (OpenAI-compatible LLM inference platform) */
-  DeepInfra = 11
+  DeepInfra = 11,
+
+  /** Cloudflare Workers AI (serverless AI inference on Cloudflare's global network) */
+  Cloudflare = 12,
+
+  /** OpenRouter (multi-provider routing via OpenAI-compatible API) */
+  OpenRouter = 13
 }

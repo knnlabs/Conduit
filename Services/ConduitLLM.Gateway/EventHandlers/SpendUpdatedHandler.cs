@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using CoreInterfaces = ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Interfaces;
@@ -9,7 +10,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// <summary>
     /// Handles SpendUpdated events and sends real-time notifications through SignalR.
     /// </summary>
-    public class SpendUpdatedHandler : IConsumer<SpendUpdated>
+    public class SpendUpdatedHandler : IEventHandler<SpendUpdated>
     {
         private readonly ISpendNotificationService _notificationService;
         private readonly CoreInterfaces.IVirtualKeyService _virtualKeyService;
@@ -28,10 +29,8 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task Consume(ConsumeContext<SpendUpdated> context)
+        public async Task HandleAsync(SpendUpdated message, IEventContext context)
         {
-            var message = context.Message;
-
             try
             {
                 _logger.LogInformation(
@@ -58,13 +57,31 @@ namespace ConduitLLM.Gateway.EventHandlers
                 var provider = "unknown";
                 
                 // Get model/provider from message properties if available
-                if (context.Headers.TryGetHeader("Model", out var modelHeader))
+                if (context.TryGetHeader("Model", out var modelHeader))
                 {
                     model = modelHeader?.ToString() ?? "unknown";
                 }
-                if (context.Headers.TryGetHeader("Provider", out var providerHeader))
+                if (context.TryGetHeader("Provider", out var providerHeader))
                 {
                     provider = providerHeader?.ToString() ?? "unknown";
+                }
+
+                // Log budget proximity warnings
+                if (maxBudget.HasValue && maxBudget.Value > 0)
+                {
+                    var usagePercent = (message.NewTotalSpend / maxBudget.Value) * 100;
+                    if (usagePercent >= 100)
+                    {
+                        _logger.LogWarning(
+                            "Virtual Key {KeyId} has exceeded its budget: ${NewTotal:F2} / ${MaxBudget:F2} ({UsagePercent:F0}%)",
+                            message.KeyId, message.NewTotalSpend, maxBudget.Value, usagePercent);
+                    }
+                    else if (usagePercent >= 90)
+                    {
+                        _logger.LogWarning(
+                            "Virtual Key {KeyId} approaching budget limit: ${NewTotal:F2} / ${MaxBudget:F2} ({UsagePercent:F0}%)",
+                            message.KeyId, message.NewTotalSpend, maxBudget.Value, usagePercent);
+                    }
                 }
 
                 // Send the spend notification

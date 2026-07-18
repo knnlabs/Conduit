@@ -1,6 +1,9 @@
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +16,10 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class ModelSeriesController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class ModelSeriesController : AdminControllerBase
     {
         private readonly IModelSeriesRepository _repository;
-        private readonly ILogger<ModelSeriesController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ModelSeriesController
@@ -24,9 +27,9 @@ namespace ConduitLLM.Admin.Controllers
         public ModelSeriesController(
             IModelSeriesRepository repository,
             ILogger<ModelSeriesController> logger)
+            : base(logger)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -35,20 +38,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of all model series</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelSeriesDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAll()
         {
-            try
-            {
-                var series = await _repository.GetAllWithAuthorAsync();
-                var dtos = series.Select(s => MapToDto(s));
-                return Ok(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all model series");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving model series");
-            }
+            var series = await _repository.GetAllWithAuthorAsync();
+            return Ok(series.Select(s => s.ToDto()));
         }
 
         /// <summary>
@@ -59,24 +52,15 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ModelSeriesDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetById(int id)
         {
-            try
+            var series = await _repository.GetByIdWithAuthorAsync(id);
+            if (series == null)
             {
-                var series = await _repository.GetByIdWithAuthorAsync(id);
-                if (series == null)
-                {
-                    return NotFound($"Model series with ID {id} not found");
-                }
+                return this.NotFoundEntity("Model series", id);
+            }
 
-                return Ok(MapToDto(series));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting model series with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the model series");
-            }
+            return Ok(series.ToDto());
         }
 
         /// <summary>
@@ -87,32 +71,23 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}/models")]
         [ProducesResponseType(typeof(IEnumerable<SeriesSimpleModelDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetModelsInSeries(int id)
         {
-            try
+            var models = await _repository.GetModelsInSeriesAsync(id);
+            if (models == null)
             {
-                var models = await _repository.GetModelsInSeriesAsync(id);
-                if (models == null)
-                {
-                    return NotFound($"Model series with ID {id} not found");
-                }
-
-                var dtos = models.Select(m => new SeriesSimpleModelDto
-                {
-                    Id = m.Id,
-                    Name = m.Name,
-                    Version = m.Version,
-                    IsActive = m.IsActive
-                });
-
-                return Ok(dtos);
+                return this.NotFoundEntity("Model series", id);
             }
-            catch (Exception ex)
+
+            var dtos = models.Select(m => new SeriesSimpleModelDto
             {
-                _logger.LogError(ex, "Error getting models in series {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving models");
-            }
+                Id = m.Id,
+                Name = m.Name,
+                Version = m.Version,
+                IsActive = m.IsActive
+            });
+
+            return Ok(dtos);
         }
 
         /// <summary>
@@ -124,51 +99,39 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(ModelSeriesDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Create([FromBody] CreateModelSeriesDto dto)
         {
-            try
+            // Check if series with same name and author already exists
+            var existing = await _repository.GetByNameAndAuthorAsync(dto.Name, dto.AuthorId);
+            if (existing != null)
             {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                // Check if series with same name and author already exists
-                var existing = await _repository.GetByNameAndAuthorAsync(dto.Name, dto.AuthorId);
-                if (existing != null)
-                {
-                    return Conflict($"A model series with name '{dto.Name}' already exists for this author");
-                }
-
-                var series = new ModelSeries
-                {
-                    AuthorId = dto.AuthorId,
-                    Name = dto.Name,
-                    Description = dto.Description,
-                    TokenizerType = dto.TokenizerType,
-                    Parameters = dto.Parameters ?? "{}"
-                };
-
-                await _repository.CreateAsync(series);
-
-                // Reload with author
-                series = await _repository.GetByIdWithAuthorAsync(series.Id);
-                if (series == null)
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to reload created series");
-                }
-                
-                return CreatedAtAction(
-                    nameof(GetById),
-                    new { id = series.Id },
-                    MapToDto(series));
+                throw new InvalidOperationException($"A model series with name '{dto.Name}' already exists for this author");
             }
-            catch (Exception ex)
+
+            var series = new ModelSeries
             {
-                _logger.LogError(ex, "Error creating model series");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating the model series");
+                AuthorId = dto.AuthorId,
+                Name = dto.Name,
+                Description = dto.Description,
+                TokenizerType = dto.TokenizerType,
+                Parameters = dto.Parameters ?? "{}"
+            };
+
+            await _repository.CreateAsync(series);
+
+            // Reload with author
+            var reloaded = await _repository.GetByIdWithAuthorAsync(series.Id);
+            if (reloaded == null)
+            {
+                throw new InvalidOperationException("Failed to reload created series");
             }
+
+            LogAdminAudit("Created", "ModelSeries", reloaded.Id, $"Name: {LoggingSanitizer.S(reloaded.Name)}");
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = reloaded.Id },
+                reloaded.ToDto());
         }
 
         /// <summary>
@@ -182,54 +145,41 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateModelSeriesDto dto)
         {
-            try
+            if (id != dto.Id)
             {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                if (id != dto.Id)
-                {
-                    return BadRequest("ID mismatch");
-                }
-
-                var series = await _repository.GetByIdAsync(id);
-                if (series == null)
-                {
-                    return NotFound($"Model series with ID {id} not found");
-                }
-
-                // Check for name conflicts if name is being changed
-                if (!string.IsNullOrEmpty(dto.Name) && dto.Name != series.Name)
-                {
-                    var existing = await _repository.GetByNameAndAuthorAsync(dto.Name, series.AuthorId);
-                    if (existing != null && existing.Id != id)
-                    {
-                        return Conflict($"A model series with name '{dto.Name}' already exists for this author");
-                    }
-                    series.Name = dto.Name;
-                }
-
-                if (dto.Description != null)
-                    series.Description = dto.Description;
-                if (dto.TokenizerType.HasValue)
-                    series.TokenizerType = dto.TokenizerType.Value;
-                if (dto.Parameters != null)
-                    series.Parameters = dto.Parameters;
-
-                await _repository.UpdateAsync(series);
-
-                return NoContent();
+                return BadRequest("ID mismatch");
             }
-            catch (Exception ex)
+
+            var series = await _repository.GetByIdAsync(id);
+            if (series == null)
             {
-                _logger.LogError(ex, "Error updating model series with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the model series");
+                throw new KeyNotFoundException($"Model series with ID {id} not found");
             }
+
+            // Check for name conflicts if name is being changed
+            if (!string.IsNullOrEmpty(dto.Name) && dto.Name != series.Name)
+            {
+                var existing = await _repository.GetByNameAndAuthorAsync(dto.Name, series.AuthorId);
+                if (existing != null && existing.Id != id)
+                {
+                    throw new InvalidOperationException($"A model series with name '{dto.Name}' already exists for this author");
+                }
+                series.Name = dto.Name;
+            }
+
+            if (dto.Description != null)
+                series.Description = dto.Description;
+            if (dto.TokenizerType.HasValue)
+                series.TokenizerType = dto.TokenizerType.Value;
+            if (dto.Parameters != null)
+                series.Parameters = dto.Parameters;
+
+            await _repository.UpdateAsync(series);
+            LogAdminAudit("Updated", "ModelSeries", id, $"Name: {LoggingSanitizer.S(series.Name)}");
+
+            return NoContent();
         }
 
         /// <summary>
@@ -241,47 +191,26 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Delete(int id)
         {
-            try
+            var series = await _repository.GetByIdAsync(id);
+            if (series == null)
             {
-                var series = await _repository.GetByIdAsync(id);
-                if (series == null)
-                {
-                    return NotFound($"Model series with ID {id} not found");
-                }
-
-                // Check if series has models
-                var models = await _repository.GetModelsInSeriesAsync(id);
-                if (models != null && models.Any())
-                {
-                    return Conflict($"Cannot delete model series with {models.Count()} associated models. Delete the models first.");
-                }
-
-                await _repository.DeleteAsync(id);
-
-                return NoContent();
+                throw new KeyNotFoundException($"Model series with ID {id} not found");
             }
-            catch (Exception ex)
+
+            // Check if series has models
+            var models = await _repository.GetModelsInSeriesAsync(id);
+            if (models != null && models.Any())
             {
-                _logger.LogError(ex, "Error deleting model series with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the model series");
+                throw new InvalidOperationException($"Cannot delete model series with {models.Count()} associated models. Delete the models first.");
             }
+
+            await _repository.DeleteAsync(id);
+            LogAdminAudit("Deleted", "ModelSeries", id, $"Name: {LoggingSanitizer.S(series.Name)}");
+
+            return NoContent();
         }
 
-        private static ModelSeriesDto MapToDto(ModelSeries series)
-        {
-            return new ModelSeriesDto
-            {
-                Id = series.Id,
-                AuthorId = series.AuthorId,
-                AuthorName = series.Author?.Name,
-                Name = series.Name,
-                Description = series.Description,
-                TokenizerType = series.TokenizerType,
-                Parameters = series.Parameters
-            };
-        }
     }
 }

@@ -29,7 +29,7 @@ namespace ConduitLLM.Core.Services
                     // Get per-instance statistics
                     var perInstance = await _statisticsCollector.GetPerInstanceStatisticsAsync(region, cancellationToken);
                     
-                    if (perInstance.Count() == 0) continue;
+                    if (!perInstance.Any()) continue;
 
                     // Validate hit count
                     var sumHitCount = perInstance.Sum(kvp => kvp.Value.HitCount);
@@ -74,13 +74,13 @@ namespace ConduitLLM.Core.Services
                     }
 
                     // Check for instances with suspiciously high variance
-                    var avgHitCount = perInstance.Count() > 0 ? perInstance.Average(kvp => kvp.Value.HitCount) : 0;
+                    var avgHitCount = perInstance.Any() ? perInstance.Average(kvp => kvp.Value.HitCount) : 0;
                     var outliers = perInstance
                         .Where(kvp => Math.Abs(kvp.Value.HitCount - avgHitCount) > avgHitCount * 0.5) // 50% variance
                         .Select(kvp => kvp.Key)
                         .ToList();
 
-                    if (outliers.Count() > 0)
+                    if (outliers.Any())
                     {
                         report.InconsistentInstances.AddRange(outliers);
                     }

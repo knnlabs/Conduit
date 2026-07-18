@@ -278,13 +278,13 @@ jobs:
       matrix:
         include:
           - service: webadmin
-            image: ghcr.io/knnlabs/conduit-webadmin
+            image: ghcr.io/nickna/conduit-webadmin
             dockerfile: ./ConduitLLM.WebAdmin/Dockerfile
           - service: http
-            image: ghcr.io/knnlabs/conduit-http
+            image: ghcr.io/nickna/conduit-http
             dockerfile: ./ConduitLLM.Http/Dockerfile
           - service: admin
-            image: ghcr.io/knnlabs/conduit-admin
+            image: ghcr.io/nickna/conduit-admin
             dockerfile: ./ConduitLLM.Admin/Dockerfile
 
     steps:
@@ -364,11 +364,11 @@ jobs:
       matrix:
         include:
           - service: webadmin
-            image: ghcr.io/knnlabs/conduit-webadmin
+            image: ghcr.io/nickna/conduit-webadmin
           - service: http
-            image: ghcr.io/knnlabs/conduit-http
+            image: ghcr.io/nickna/conduit-http
           - service: admin
-            image: ghcr.io/knnlabs/conduit-admin
+            image: ghcr.io/nickna/conduit-admin
 
     steps:
       - name: Set up Docker Buildx
@@ -450,6 +450,6 @@ jobs:
           echo "Docker images have been successfully built:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Images are available at:" >> $GITHUB_STEP_SUMMARY
-          echo "- 🌐 `ghcr.io/knnlabs/conduit-webadmin` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔌 `ghcr.io/knnlabs/conduit-http` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
-          echo "- 🛠️ `ghcr.io/knnlabs/conduit-admin` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 `ghcr.io/nickna/conduit-webadmin` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔌 `ghcr.io/nickna/conduit-http` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🛠️ `ghcr.io/nickna/conduit-admin` (linux/amd64)" >> $GITHUB_STEP_SUMMARY

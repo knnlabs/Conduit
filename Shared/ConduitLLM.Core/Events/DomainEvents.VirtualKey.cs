@@ -133,6 +133,20 @@ namespace ConduitLLM.Core.Events
     }
 
     /// <summary>
+    /// Idempotency-key convention for spend processing (#927). A spend debit is applied
+    /// at most once per <see cref="SpendUpdateRequested.RequestId"/>, whether it arrives
+    /// via the event bus or the publish-failure direct-write fallback.
+    /// </summary>
+    public static class SpendIdempotency
+    {
+        /// <summary>
+        /// Builds the ledger idempotency key for a spend update request.
+        /// </summary>
+        /// <param name="requestId">The spend update's RequestId.</param>
+        public static string KeyFor(string requestId) => $"spend:{requestId}";
+    }
+
+    /// <summary>
     /// Confirmation that virtual key spend was updated
     /// Used for cache invalidation and audit logging
     /// </summary>

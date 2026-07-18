@@ -37,8 +37,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetProviders();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedProviders = Assert.IsAssignableFrom<IEnumerable<Provider>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedProviders = okResult.Value.Should().BeAssignableTo<IEnumerable<Provider>>().Subject;
             returnedProviders.Should().HaveCount(3);
         }
 
@@ -82,8 +82,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResponse = Assert.IsType<BulkMappingResult>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedResponse = okResult.Value.Should().BeOfType<BulkMappingResult>().Subject;
             returnedResponse.TotalProcessed.Should().Be(2);
             returnedResponse.Created.Should().HaveCount(2);
             returnedResponse.SuccessCount.Should().Be(2);
@@ -117,8 +117,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResponse = Assert.IsType<BulkMappingResult>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedResponse = okResult.Value.Should().BeOfType<BulkMappingResult>().Subject;
             returnedResponse.SuccessCount.Should().Be(1);
             returnedResponse.FailureCount.Should().Be(2);
         }
@@ -133,8 +133,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.error.ToString().Should().Be("No mappings provided");
         }
 
@@ -157,8 +157,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResponse = Assert.IsType<BulkMappingResult>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedResponse = okResult.Value.Should().BeOfType<BulkMappingResult>().Subject;
             returnedResponse.Errors.Should().HaveCount(1);
             returnedResponse.Created.Should().BeEmpty();
         }

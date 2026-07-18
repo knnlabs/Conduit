@@ -823,7 +823,7 @@ if (deltaToolCalls && Array.isArray(deltaToolCalls)) {
 
 ## Related Documentation
 
-- [Function Calling Guide](./functions/function-calling.md)
-- [Gateway API Getting Started](./core/getting-started.md)
+- [Function Calling Guide](./features/function-calling.md)
+- [Gateway API Getting Started](./gateway/getting-started.md)
 - [SDK Best Practices](./sdk/best-practices.md)
 - [Real-time Streaming Architecture](../architecture/real-time/streaming-and-websockets.md)

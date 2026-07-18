@@ -3,7 +3,8 @@ using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Exceptions;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -20,20 +21,20 @@ namespace ConduitLLM.Configuration
         private readonly IProviderRepository _repository;
         private readonly IProviderKeyCredentialRepository _keyRepository;
         private readonly ProviderKeyCredentialValidator _keyValidator;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
 
         public ProviderService(
             ILogger<ProviderService> logger,
             IProviderRepository repository,
             IProviderKeyCredentialRepository keyRepository,
             ProviderKeyCredentialValidator keyValidator,
-            IPublishEndpoint publishEndpoint)
+            IEventBus eventBus)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _keyRepository = keyRepository ?? throw new ArgumentNullException(nameof(keyRepository));
             _keyValidator = keyValidator ?? throw new ArgumentNullException(nameof(keyValidator));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         }
 
         public async Task AddProviderAsync(Provider provider)
@@ -82,12 +83,13 @@ namespace ConduitLLM.Configuration
 
         public async Task<List<Provider>> GetAllProvidersAsync()
         {
-            _logger.LogInformation("Getting all providers");
-            
+            _logger.LogDebug("Getting all providers");
+
             try
             {
-                var providers = await _repository.GetAllAsync();
-                _logger.LogInformation("Retrieved {Count} providers", providers.Count());
+                var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _repository.GetPaginatedAsync);
+                _logger.LogDebug("Retrieved {Count} providers", providers.Count);
                 return providers;
             }
             catch (Exception ex)
@@ -99,18 +101,18 @@ namespace ConduitLLM.Configuration
 
         public async Task<Provider?> GetProviderByIdAsync(int id)
         {
-            _logger.LogInformation("Getting provider by ID: {Id}", id);
-            
+            _logger.LogDebug("Getting provider by ID: {Id}", id);
+
             try
             {
                 var provider = await _repository.GetByIdAsync(id);
                 if (provider == null)
                 {
-                    _logger.LogInformation("Provider with ID {Id} not found", id);
+                    _logger.LogDebug("Provider with ID {Id} not found", id);
                 }
                 else
                 {
-                    _logger.LogInformation("Retrieved provider {ProviderId}: {ProviderName}", provider.Id, provider.ProviderName);
+                    _logger.LogDebug("Retrieved provider {ProviderId}: {ProviderName}", provider.Id, provider.ProviderName);
                 }
                 return provider;
             }
@@ -129,13 +131,14 @@ namespace ConduitLLM.Configuration
 
         public async Task<List<Provider>> GetAllEnabledProvidersAsync()
         {
-            _logger.LogInformation("Getting all enabled providers");
-            
+            _logger.LogDebug("Getting all enabled providers");
+
             try
             {
-                var providers = await _repository.GetAllAsync();
+                var providers = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _repository.GetPaginatedAsync);
                 var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
-                _logger.LogInformation("Retrieved {Count} enabled providers out of {Total} total", enabledProviders.Count(), providers.Count());
+                _logger.LogDebug("Retrieved {Count} enabled providers out of {Total} total", enabledProviders.Count, providers.Count);
                 return enabledProviders;
             }
             catch (Exception ex)
@@ -179,12 +182,13 @@ namespace ConduitLLM.Configuration
         // Provider Key Credential methods
         public async Task<List<ProviderKeyCredential>> GetAllCredentialsAsync()
         {
-            _logger.LogInformation("Getting all key credentials across all providers");
-            
+            _logger.LogDebug("Getting all key credentials across all providers");
+
             try
             {
-                var credentials = await _keyRepository.GetAllAsync();
-                _logger.LogInformation("Retrieved {Count} key credentials across all providers", credentials.Count());
+                var credentials = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetPaginatedAsync);
+                _logger.LogDebug("Retrieved {Count} key credentials across all providers", credentials.Count);
                 return credentials;
             }
             catch (Exception ex)
@@ -196,11 +200,12 @@ namespace ConduitLLM.Configuration
 
         public async Task<List<ProviderKeyCredential>> GetKeyCredentialsByProviderIdAsync(int providerId)
         {
-            _logger.LogInformation("Getting key credentials for provider ID: {ProviderId}", providerId);
-            
+            _logger.LogDebug("Getting key credentials for provider ID: {ProviderId}", providerId);
+
             try
             {
-                return await _keyRepository.GetByProviderIdAsync(providerId);
+                return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
             }
             catch (Exception ex)
             {
@@ -211,7 +216,7 @@ namespace ConduitLLM.Configuration
 
         public async Task<ProviderKeyCredential?> GetKeyCredentialByIdAsync(int keyId)
         {
-            _logger.LogInformation("Getting key credential by ID: {KeyId}", keyId);
+            _logger.LogDebug("Getting key credential by ID: {KeyId}", keyId);
             
             try
             {
@@ -243,8 +248,9 @@ namespace ConduitLLM.Configuration
                 }
 
                 // If this is the first key or marked as primary, ensure it's the only primary
-                var existingKeys = await _keyRepository.GetByProviderIdAsync(providerId);
-                if (existingKeys.Count() == 0 || keyCredential.IsPrimary)
+                var existingKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
+                if (!existingKeys.Any() || keyCredential.IsPrimary)
                 {
                     // Unset any existing primary keys
                     foreach (var existingKey in existingKeys.Where(k => k.IsPrimary))
@@ -256,9 +262,10 @@ namespace ConduitLLM.Configuration
                 }
 
                 keyCredential.ProviderId = providerId;
-                
+
                 // Check if this API key already exists for this provider
-                var allProviderKeys = await _keyRepository.GetByProviderIdAsync(providerId);
+                var allProviderKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
                 if (allProviderKeys.Any(k => k.ApiKey == keyCredential.ApiKey))
                 {
                     var provider = await _repository.GetByIdAsync(providerId);
@@ -275,23 +282,25 @@ namespace ConduitLLM.Configuration
                 
                 try
                 {
-                    var created = await _keyRepository.CreateAsync(keyCredential);
-                    
-                    _logger.LogInformation("Successfully added key credential {KeyId} for provider {ProviderId}", 
-                        created.Id, providerId);
-                
+                    var createdId = await _keyRepository.CreateAsync(keyCredential);
+
+                    // After CreateAsync, the keyCredential entity has its Id populated
+                    // and any auto-set properties (like IsPrimary) are updated
+                    _logger.LogInformation("Successfully added key credential {KeyId} for provider {ProviderId}",
+                        createdId, providerId);
+
                 // Publish domain event
-                await _publishEndpoint.Publish(new ProviderKeyCredentialCreated
+                await _eventBus.PublishAsync(new ProviderKeyCredentialCreated
                 {
-                    KeyId = created.Id,
+                    KeyId = createdId,
                     ProviderId = providerId,
-                    IsPrimary = created.IsPrimary,
-                    IsEnabled = created.IsEnabled,
+                    IsPrimary = keyCredential.IsPrimary,
+                    IsEnabled = keyCredential.IsEnabled,
                     Timestamp = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid()
                 });
-                    
-                    return created;
+
+                    return keyCredential;
                 }
                 catch (DbUpdateException dbEx)
                 {
@@ -330,7 +339,7 @@ namespace ConduitLLM.Configuration
             }
 
             _logger.LogInformation("Updating key credential ID: {KeyId}", keyId);
-            
+
             try
             {
                 // Validate the update
@@ -343,28 +352,42 @@ namespace ConduitLLM.Configuration
                     }
                 }
 
+                // Fetch the existing entity to track actual changes
+                var existing = await _keyRepository.GetByIdAsync(keyId);
+                if (existing == null)
+                {
+                    _logger.LogWarning("Failed to update key credential {KeyId} - not found", keyId);
+                    return false;
+                }
+
+                var changedProperties = new List<string>();
+                if (keyCredential.ApiKey != existing.ApiKey) changedProperties.Add(nameof(ProviderKeyCredential.ApiKey));
+                if (keyCredential.BaseUrl != existing.BaseUrl) changedProperties.Add(nameof(ProviderKeyCredential.BaseUrl));
+                if (keyCredential.Organization != existing.Organization) changedProperties.Add(nameof(ProviderKeyCredential.Organization));
+                if (keyCredential.IsEnabled != existing.IsEnabled) changedProperties.Add(nameof(ProviderKeyCredential.IsEnabled));
+                if (keyCredential.IsPrimary != existing.IsPrimary) changedProperties.Add(nameof(ProviderKeyCredential.IsPrimary));
+                if (keyCredential.KeyName != existing.KeyName) changedProperties.Add(nameof(ProviderKeyCredential.KeyName));
+                if (keyCredential.ProviderAccountGroup != existing.ProviderAccountGroup) changedProperties.Add(nameof(ProviderKeyCredential.ProviderAccountGroup));
+
                 keyCredential.Id = keyId;
                 var success = await _keyRepository.UpdateAsync(keyCredential);
-                
+
                 if (success)
                 {
-                    _logger.LogInformation("Successfully updated key credential {KeyId}", keyId);
-                    
-                    // Publish domain event
-                    await _publishEndpoint.Publish(new ProviderKeyCredentialUpdated
+                    _logger.LogInformation("Successfully updated key credential {KeyId}, changed: [{ChangedProperties}]",
+                        keyId, string.Join(", ", changedProperties));
+
+                    // Publish domain event with actual changed properties
+                    await _eventBus.PublishAsync(new ProviderKeyCredentialUpdated
                     {
                         KeyId = keyId,
                         ProviderId = keyCredential.ProviderId,
-                        ChangedProperties = new[] { "ApiKey", "BaseUrl", "ApiVersion", "IsEnabled", "IsPrimary" }, // TODO: Track actual changes
+                        ChangedProperties = changedProperties.ToArray(),
                         Timestamp = DateTime.UtcNow,
                         CorrelationId = Guid.NewGuid()
                     });
                 }
-                else
-                {
-                    _logger.LogWarning("Failed to update key credential {KeyId} - not found", keyId);
-                }
-                
+
                 return success;
             }
             catch (Exception ex)
@@ -401,7 +424,7 @@ namespace ConduitLLM.Configuration
                     _logger.LogInformation("Successfully deleted key credential {KeyId}", keyId);
                     
                     // Publish domain event
-                    await _publishEndpoint.Publish(new ProviderKeyCredentialDeleted
+                    await _eventBus.PublishAsync(new ProviderKeyCredentialDeleted
                     {
                         KeyId = keyId,
                         ProviderId = key.ProviderId,
@@ -444,7 +467,7 @@ namespace ConduitLLM.Configuration
                         keyId, providerId);
                     
                     // Publish domain event
-                    await _publishEndpoint.Publish(new ProviderKeyCredentialPrimaryChanged
+                    await _eventBus.PublishAsync(new ProviderKeyCredentialPrimaryChanged
                     {
                         ProviderId = providerId,
                         OldPrimaryKeyId = oldPrimaryKeyId,

@@ -1,3 +1,5 @@
+using System.Text.Json;
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.Http.Builders;
@@ -43,7 +45,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(3, response.count);
         }
@@ -59,10 +61,10 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(0, response.count);
-            Assert.Empty((IEnumerable<object>)response.data);
+            Assert.Empty((List<JsonElement>)response.data);
         }
 
         [Fact]
@@ -85,10 +87,10 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             Assert.Equal(150, response.count);
-            Assert.Equal(150, ((IEnumerable<object>)response.data).Count());
+            Assert.Equal(150, ((List<JsonElement>)response.data).Count);
         }
     }
 }

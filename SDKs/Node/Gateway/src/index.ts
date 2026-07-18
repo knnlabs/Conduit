@@ -24,10 +24,12 @@ export { ContentHelpers } from './models/chat';
 
 // Enhanced streaming types
 export type {
+  ChatStreamEvent,
   EnhancedStreamEvent,
   EnhancedSSEEventType,
   StreamingMetrics,
   FinalMetrics,
+  StreamingErrorEvent,
   ReasoningEvent,
   ToolExecutingEvent,
   ToolResultEvent,
@@ -41,6 +43,7 @@ export {
   isChatCompletionChunk,
   isStreamingMetrics,
   isFinalMetrics,
+  isStreamingErrorEvent,
   isReasoningEvent,
   isToolExecutingEvent,
   isToolResultEvent,

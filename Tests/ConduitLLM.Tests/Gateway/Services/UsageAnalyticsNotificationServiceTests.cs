@@ -175,7 +175,7 @@ namespace ConduitLLM.Tests.Http.Services
             _mockLogger.Verify(x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to send usage metrics")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to send")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
         }
@@ -474,7 +474,7 @@ namespace ConduitLLM.Tests.Http.Services
             _mockLogger.Verify(x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to send global usage metrics")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to send")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
         }

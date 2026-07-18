@@ -55,7 +55,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var actionResult = await _controller.CreateMapping(mapping.ToDto());
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(actionResult);
+            var createdResult = actionResult.Should().BeOfType<CreatedAtActionResult>().Subject;
             createdResult.ActionName.Should().Be(nameof(ModelProviderMappingController.GetMappingById));
             createdResult.RouteValues!["id"].Should().Be(123);
         }
@@ -89,8 +89,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var actionResult = await _controller.CreateMapping(mapping.ToDto());
 
             // Assert
-            var conflictResult = Assert.IsType<ConflictObjectResult>(actionResult);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(conflictResult.Value);
+            var conflictResult = actionResult.Should().BeOfType<ConflictObjectResult>().Subject;
+            var errorResponse = conflictResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.error.ToString().Should().Contain("A mapping for model alias 'existing-model' already exists");
         }
 
@@ -118,8 +118,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var actionResult = await _controller.CreateMapping(mapping.ToDto());
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var badRequestResult = actionResult.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
             errorResponse.error.ToString().Should().Contain("Failed to create");
         }
 

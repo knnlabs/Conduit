@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Modal, Stack, Group, Text, Badge, Title, Divider, ScrollArea } from '@mantine/core';
 import { CodeHighlight } from '@mantine/code-highlight';
-import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { notify } from '@/lib/notifications';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import type { ModelSeriesDto, SeriesSimpleModelDto } from '@knn_labs/conduit-admin-client';
 
@@ -18,7 +18,6 @@ interface ViewModelSeriesModalProps {
 export function ViewModelSeriesModal({ isOpen, series, onClose }: ViewModelSeriesModalProps) {
   const [models, setModels] = useState<SeriesSimpleModelDto[]>([]);
   const [loading, setLoading] = useState(false);
-  const { executeWithAdmin } = useAdminClient();
 
   useEffect(() => {
     if (isOpen && series?.id) {
@@ -31,15 +30,11 @@ export function ViewModelSeriesModal({ isOpen, series, onClose }: ViewModelSerie
     try {
       setLoading(true);
       if (!series.id) throw new Error('Series ID is required');
-      const data = await executeWithAdmin(client => client.modelSeries.getModels(series.id as number));
+      const data = await withAdminClient(client => client.modelSeries.getModels(series.id as number));
       setModels(data);
     } catch (error) {
       console.error('Failed to load models in series:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load models in series',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load models in series');
     } finally {
       setLoading(false);
     }

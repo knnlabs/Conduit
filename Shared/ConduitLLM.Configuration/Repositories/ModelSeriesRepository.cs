@@ -1,103 +1,150 @@
 using ConduitLLM.Configuration.Entities;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Configuration.Repositories
+namespace ConduitLLM.Configuration.Repositories;
+
+/// <summary>
+/// Repository implementation for ModelSeries entity operations.
+/// Inherits common CRUD operations from RepositoryBase.
+/// </summary>
+public class ModelSeriesRepository : RepositoryBase<ModelSeries, int>, IModelSeriesRepository
 {
     /// <summary>
-    /// Repository for ModelSeries entity operations.
+    /// Creates a new instance of the repository.
     /// </summary>
-    public class ModelSeriesRepository : IModelSeriesRepository
+    /// <param name="dbContextFactory">The database context factory</param>
+    /// <param name="logger">The logger</param>
+    public ModelSeriesRepository(
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
+        ILogger<ModelSeriesRepository> logger)
+        : base(dbContextFactory, logger)
     {
-        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
+    }
 
-        public ModelSeriesRepository(IDbContextFactory<ConduitDbContext> dbContextFactory)
-        {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-        }
+    /// <inheritdoc/>
+    protected override DbSet<ModelSeries> GetDbSet(ConduitDbContext context) => context.ModelSeries;
 
-        public async Task<ModelSeries?> GetByIdAsync(int id)
-        {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<ModelSeries>()
-                .FirstOrDefaultAsync(s => s.Id == id);
-        }
+    /// <inheritdoc/>
+    protected override IQueryable<ModelSeries> ApplyDefaultOrdering(IQueryable<ModelSeries> query)
+    {
+        return query.OrderBy(s => s.Name);
+    }
 
-        public async Task<ModelSeries?> GetByIdWithAuthorAsync(int id)
+    /// <inheritdoc/>
+    public async Task<ModelSeries?> GetByIdWithAuthorAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<ModelSeries>()
+            return await GetDbSet(context)
                 .Include(s => s.Author)
-                .FirstOrDefaultAsync(s => s.Id == id);
-        }
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+        }, cancellationToken, $"getting with author for ID {id}");
+    }
 
-        public async Task<List<ModelSeries>> GetAllAsync()
+    /// <inheritdoc/>
+    public async Task<List<ModelSeries>> GetAllWithAuthorAsync(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<ModelSeries>()
-                .OrderBy(s => s.Name)
-                .ToListAsync();
-        }
-
-        public async Task<List<ModelSeries>> GetAllWithAuthorAsync()
-        {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<ModelSeries>()
+            return await GetDbSet(context)
                 .Include(s => s.Author)
+                .AsNoTracking()
                 .OrderBy(s => s.Name)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, "getting all with author");
+    }
+
+    /// <inheritdoc/>
+    public async Task<ModelSeries?> GetByNameAndAuthorAsync(string name, int authorId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return null;
         }
 
-        public async Task<ModelSeries?> GetByNameAndAuthorAsync(string name, int authorId)
+        return await ExecuteAsync(async context =>
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<ModelSeries>()
-                .FirstOrDefaultAsync(s => s.Name == name && s.AuthorId == authorId);
-        }
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Name == name && s.AuthorId == authorId, cancellationToken);
+        }, cancellationToken, $"getting by name {name} and author ID {authorId}");
+    }
 
-        public async Task<List<Model>?> GetModelsInSeriesAsync(int seriesId)
+    /// <inheritdoc/>
+    public async Task<List<Model>?> GetModelsInSeriesAsync(int seriesId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            var exists = await context.Set<ModelSeries>()
-                .AnyAsync(s => s.Id == seriesId);
-            
+            var exists = await GetDbSet(context)
+                .AnyAsync(s => s.Id == seriesId, cancellationToken);
+
             if (!exists)
+            {
                 return null;
+            }
 
-            return await context.Set<Model>()
+            return await context.Models
+                .AsNoTracking()
                 .Where(m => m.ModelSeriesId == seriesId)
                 .OrderBy(m => m.Name)
-                .ToListAsync();
-        }
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, $"getting models for series ID {seriesId}");
+    }
 
-        public async Task<ModelSeries> CreateAsync(ModelSeries series)
+    /// <inheritdoc/>
+    public async Task<ModelSeries> CreateSeriesAsync(ModelSeries series, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(series);
+
+        try
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            context.Set<ModelSeries>().Add(series);
-            await context.SaveChangesAsync();
-            return series;
+            return await ExecuteAsync(async context =>
+            {
+                OnBeforeCreate(series);
+                GetDbSet(context).Add(series);
+                await context.SaveChangesAsync(cancellationToken);
+                return series;
+            }, cancellationToken);
         }
-
-        public async Task<ModelSeries> UpdateAsync(ModelSeries series)
+        catch (DbUpdateException ex)
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            context.Set<ModelSeries>().Update(series);
-            await context.SaveChangesAsync();
-            return series;
+            Logger.LogError(ex, "Database error creating {EntityType}", EntityTypeName);
+            throw;
         }
-
-        public async Task<bool> DeleteAsync(int id)
+        catch (Exception ex)
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            var series = await context.Set<ModelSeries>()
-                .FirstOrDefaultAsync(s => s.Id == id);
-            
-            if (series == null)
-                return false;
+            Logger.LogError(ex, "Error creating {EntityType}", EntityTypeName);
+            throw;
+        }
+    }
 
-            context.Set<ModelSeries>().Remove(series);
-            await context.SaveChangesAsync();
-            return true;
+    /// <inheritdoc/>
+    public async Task<ModelSeries> UpdateSeriesAsync(ModelSeries series, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(series);
+
+        try
+        {
+            return await ExecuteAsync(async context =>
+            {
+                OnBeforeUpdate(series);
+                GetDbSet(context).Update(series);
+                await context.SaveChangesAsync(cancellationToken);
+                return series;
+            }, cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            Logger.LogError(ex, "Concurrency error updating {EntityType} with ID {Id}", EntityTypeName, series.Id);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating {EntityType} with ID {Id}", EntityTypeName, series.Id);
+            throw;
         }
     }
 }

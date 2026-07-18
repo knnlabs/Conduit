@@ -36,7 +36,7 @@ public partial class CostCalculationService
             }
         }
 
-        if (config == null || config.Rates == null || config.Rates.Count() == 0)
+        if (config == null || config.Rates == null || !config.Rates.Any())
         {
             _logger.LogError("No per-video pricing rates configured for model {ModelId}", modelId);
             throw new InvalidOperationException($"No per-video pricing rates configured for model {modelId}");
@@ -161,7 +161,7 @@ public partial class CostCalculationService
             }
         }
 
-        if (config == null || config.Tiers == null || config.Tiers.Count() == 0)
+        if (config == null || config.Tiers == null || !config.Tiers.Any())
         {
             _logger.LogError("No tiered tokens pricing configuration for model {ModelId}", modelId);
             throw new InvalidOperationException($"No tiered tokens pricing configuration for model {modelId}");

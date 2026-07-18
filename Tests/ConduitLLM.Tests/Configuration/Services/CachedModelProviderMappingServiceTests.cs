@@ -36,13 +36,41 @@ namespace ConduitLLM.Tests.Configuration.Services
                 _mockCacheManager.Object,
                 _mockLogger.Object);
 
-            _testMapping = new ModelProviderMapping
+            _testMapping = CreateFullyLoadedMapping();
+        }
+
+        /// <summary>
+        /// Creates a mapping with the full navigation graph the repository always loads
+        /// (Provider, ModelProviderTypeAssociation, and Model).
+        /// </summary>
+        private static ModelProviderMapping CreateFullyLoadedMapping()
+        {
+            return new ModelProviderMapping
             {
                 Id = TestMappingId,
                 ModelAlias = TestModelAlias,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4-0613",
-                IsEnabled = true
+                IsEnabled = true,
+                Provider = new Provider
+                {
+                    Id = 1,
+                    ProviderName = "OpenAI",
+                    ProviderType = ProviderType.OpenAI
+                },
+                ModelProviderTypeAssociationId = 10,
+                ModelProviderTypeAssociation = new ModelProviderTypeAssociation
+                {
+                    Id = 10,
+                    ModelId = 20,
+                    Identifier = "gpt-4-0613",
+                    Model = new Model
+                    {
+                        Id = 20,
+                        Name = "GPT-4",
+                        SupportsImageGeneration = true
+                    }
+                }
             };
         }
 
@@ -384,6 +412,204 @@ namespace ConduitLLM.Tests.Configuration.Services
                 CacheRegion.ModelMetadata,
                 It.IsAny<TimeSpan>(),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        #endregion
+
+        #region Incomplete Cache Entry Fallback Tests (issue #959)
+
+        /// <summary>
+        /// Simulates what the distributed cache tier does to a mapping: a System.Text.Json
+        /// round-trip, which drops [JsonIgnore] navigation properties like
+        /// ModelProviderTypeAssociation.Model (and its capability flags with it).
+        /// </summary>
+        private static ModelProviderMapping RoundTripThroughJson(ModelProviderMapping mapping)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(mapping);
+            return System.Text.Json.JsonSerializer.Deserialize<ModelProviderMapping>(json)!;
+        }
+
+        [Fact]
+        public void JsonRoundTrip_DropsModelNavigationProperty()
+        {
+            // Documents the root cause of issue #959: the distributed cache serializes entities
+            // with System.Text.Json, and [JsonIgnore] strips the Model graph.
+            var lossy = RoundTripThroughJson(CreateFullyLoadedMapping());
+
+            Assert.NotNull(lossy.ModelProviderTypeAssociation);
+            Assert.Null(lossy.ModelProviderTypeAssociation.Model);
+        }
+
+        [Fact]
+        public async Task GetMappingByModelAliasAsync_CachedEntryMissingModelGraph_ReloadsFromDatabaseAndRecaches()
+        {
+            // Arrange
+            var cacheKey = $"model:mapping:{TestModelAlias}";
+            var lossyMapping = RoundTripThroughJson(_testMapping);
+
+            _mockCacheManager
+                .Setup(x => x.GetOrCreateAsync(
+                    cacheKey,
+                    It.IsAny<Func<Task<ModelProviderMapping?>>>(),
+                    CacheRegion.ModelMetadata,
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(lossyMapping);
+
+            _mockInnerService
+                .Setup(x => x.GetMappingByModelAliasAsync(TestModelAlias))
+                .ReturnsAsync(_testMapping);
+
+            // Act
+            var result = await _cachedService.GetMappingByModelAliasAsync(TestModelAlias);
+
+            // Assert - the incomplete cached entry is bypassed and the full mapping returned
+            Assert.NotNull(result);
+            Assert.NotNull(result.ModelProviderTypeAssociation?.Model);
+            Assert.True(result.ModelProviderTypeAssociation.Model.SupportsImageGeneration);
+
+            _mockInnerService.Verify(x => x.GetMappingByModelAliasAsync(TestModelAlias), Times.Once);
+
+            // The full mapping is re-cached (repopulating the memory tier)
+            _mockCacheManager.Verify(x => x.SetAsync(
+                cacheKey,
+                _testMapping,
+                CacheRegion.ModelMetadata,
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetMappingByModelAliasAsync_CachedEntryMissingModelGraph_MappingDeleted_RemovesStaleEntry()
+        {
+            // Arrange
+            var cacheKey = $"model:mapping:{TestModelAlias}";
+            var lossyMapping = RoundTripThroughJson(_testMapping);
+
+            _mockCacheManager
+                .Setup(x => x.GetOrCreateAsync(
+                    cacheKey,
+                    It.IsAny<Func<Task<ModelProviderMapping?>>>(),
+                    CacheRegion.ModelMetadata,
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(lossyMapping);
+
+            _mockInnerService
+                .Setup(x => x.GetMappingByModelAliasAsync(TestModelAlias))
+                .ReturnsAsync((ModelProviderMapping?)null);
+
+            // Act
+            var result = await _cachedService.GetMappingByModelAliasAsync(TestModelAlias);
+
+            // Assert
+            Assert.Null(result);
+
+            _mockCacheManager.Verify(x => x.RemoveAsync(
+                cacheKey,
+                CacheRegion.ModelMetadata,
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetMappingByIdAsync_CachedEntryMissingModelGraph_ReloadsFromDatabaseAndRecaches()
+        {
+            // Arrange
+            var cacheKey = $"model:mapping:id:{TestMappingId}";
+            var lossyMapping = RoundTripThroughJson(_testMapping);
+
+            _mockCacheManager
+                .Setup(x => x.GetOrCreateAsync(
+                    cacheKey,
+                    It.IsAny<Func<Task<ModelProviderMapping?>>>(),
+                    CacheRegion.ModelMetadata,
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(lossyMapping);
+
+            _mockInnerService
+                .Setup(x => x.GetMappingByIdAsync(TestMappingId))
+                .ReturnsAsync(_testMapping);
+
+            // Act
+            var result = await _cachedService.GetMappingByIdAsync(TestMappingId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotNull(result.ModelProviderTypeAssociation?.Model);
+
+            _mockInnerService.Verify(x => x.GetMappingByIdAsync(TestMappingId), Times.Once);
+            _mockCacheManager.Verify(x => x.SetAsync(
+                cacheKey,
+                _testMapping,
+                CacheRegion.ModelMetadata,
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAllMappingsAsync_CachedEntryMissingModelGraph_ReloadsFromDatabaseAndRecaches()
+        {
+            // Arrange
+            var lossyMappings = new List<ModelProviderMapping> { RoundTripThroughJson(_testMapping) };
+            var freshMappings = new List<ModelProviderMapping> { _testMapping };
+
+            _mockCacheManager
+                .Setup(x => x.GetOrCreateAsync(
+                    "model:mapping:all",
+                    It.IsAny<Func<Task<List<ModelProviderMapping>>>>(),
+                    CacheRegion.ModelMetadata,
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(lossyMappings);
+
+            _mockInnerService
+                .Setup(x => x.GetAllMappingsAsync())
+                .ReturnsAsync(freshMappings);
+
+            // Act
+            var result = await _cachedService.GetAllMappingsAsync();
+
+            // Assert
+            Assert.Single(result);
+            Assert.NotNull(result[0].ModelProviderTypeAssociation?.Model);
+
+            _mockInnerService.Verify(x => x.GetAllMappingsAsync(), Times.Once);
+            _mockCacheManager.Verify(x => x.SetAsync(
+                "model:mapping:all",
+                freshMappings,
+                CacheRegion.ModelMetadata,
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetMappingByModelAliasAsync_CachedEntryComplete_DoesNotHitDatabase()
+        {
+            // Arrange
+            var cacheKey = $"model:mapping:{TestModelAlias}";
+
+            _mockCacheManager
+                .Setup(x => x.GetOrCreateAsync(
+                    cacheKey,
+                    It.IsAny<Func<Task<ModelProviderMapping?>>>(),
+                    CacheRegion.ModelMetadata,
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(_testMapping);
+
+            // Act
+            var result = await _cachedService.GetMappingByModelAliasAsync(TestModelAlias);
+
+            // Assert
+            Assert.NotNull(result);
+            _mockInnerService.Verify(x => x.GetMappingByModelAliasAsync(It.IsAny<string>()), Times.Never);
+            _mockCacheManager.Verify(x => x.SetAsync(
+                It.IsAny<string>(),
+                It.IsAny<ModelProviderMapping>(),
+                It.IsAny<CacheRegion>(),
+                It.IsAny<TimeSpan?>(),
+                It.IsAny<CancellationToken>()), Times.Never);
         }
 
         #endregion

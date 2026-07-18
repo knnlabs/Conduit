@@ -17,28 +17,17 @@ namespace ConduitLLM.Providers.Replicate
 
             Logger.LogInformation("Creating image with Replicate for model '{ModelId}'", ProviderModelId);
 
-            try
+            return await ExecuteApiRequestAsync(async () =>
             {
-                // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToImageGenerationRequest(request);
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
 
-                // Poll until prediction completes or fails
-                var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
+                using var pollScope = BeginPollingScope("CreateImage");
+                var finalPrediction = await PollPredictionUntilCompletedAsync(
+                    predictionResponse.Id, apiKey, cancellationToken, pollScope);
 
-                // Process the final result
                 return MapToImageGenerationResponse(finalPrediction, request.Model);
-            }
-            catch (LLMCommunicationException)
-            {
-                // Re-throw LLMCommunicationException directly
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "An unexpected error occurred while processing Replicate image generation");
-                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-            }
+            }, "CreateImage", cancellationToken);
         }
 
         /// <summary>
@@ -55,43 +44,29 @@ namespace ConduitLLM.Providers.Replicate
         {
             ValidateRequest(request, "CreateVideoAsync");
 
-            Logger.LogInformation("Creating video with Replicate for model '{ModelId}' with prompt: '{Prompt}'", 
+            Logger.LogInformation("Creating video with Replicate for model '{ModelId}' with prompt: '{Prompt}'",
                 ProviderModelId, request.Prompt);
 
-            try
+            return await ExecuteApiRequestAsync(async () =>
             {
-                // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToVideoGenerationRequest(request);
-                
+
                 Logger.LogDebug("Video generation request mapped. Input parameters: {@InputParams}", predictionRequest.Input);
-                
+
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
-                
-                Logger.LogInformation("Video generation prediction started with ID: {PredictionId}, Status: {Status}", 
+
+                Logger.LogInformation("Video generation prediction started with ID: {PredictionId}, Status: {Status}",
                     predictionResponse.Id, predictionResponse.Status);
 
-                // Poll until prediction completes or fails
-                var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
+                using var pollScope = BeginPollingScope("CreateVideo");
+                var finalPrediction = await PollPredictionUntilCompletedAsync(
+                    predictionResponse.Id, apiKey, cancellationToken, pollScope);
 
-                Logger.LogInformation("Video generation completed for prediction {PredictionId}. Final status: {Status}, Output: {@Output}", 
+                Logger.LogInformation("Video generation completed for prediction {PredictionId}. Final status: {Status}, Output: {@Output}",
                     finalPrediction.Id, finalPrediction.Status, finalPrediction.Output);
 
-                // Process the final result
                 return MapToVideoGenerationResponse(finalPrediction, request.Model);
-            }
-            catch (LLMCommunicationException ex)
-            {
-                Logger.LogError(ex, "Video generation failed with LLMCommunicationException for model {ModelId}, prompt: '{Prompt}'", 
-                    ProviderModelId, request.Prompt);
-                // Re-throw LLMCommunicationException directly
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "An unexpected error occurred while processing Replicate video generation for model {ModelId}, prompt: '{Prompt}'", 
-                    ProviderModelId, request.Prompt);
-                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-            }
+            }, "CreateVideo", cancellationToken);
         }
 
         private ReplicatePredictionRequest MapToImageGenerationRequest(ImageGenerationRequest request)

@@ -52,6 +52,12 @@ export type {
   CustomDelaysConfig
 } from './client/retry-strategy';
 
+// Formatting utilities
+export * from './formatting';
+
+// Validation utilities (type guards, model patterns, form validators)
+export * from './validation';
+
 // Circuit breaker types and classes
 export {
   CircuitState,

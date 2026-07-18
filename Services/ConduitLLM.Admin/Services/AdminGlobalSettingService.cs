@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
@@ -22,13 +22,13 @@ namespace ConduitLLM.Admin.Services
         /// Initializes a new instance of the AdminGlobalSettingService
         /// </summary>
         /// <param name="globalSettingRepository">The global setting repository</param>
-        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+        /// <param name="eventBus">Optional event bus (null if not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminGlobalSettingService(
             IGlobalSettingRepository globalSettingRepository,
-            IPublishEndpoint? publishEndpoint,
-            ILogger<AdminGlobalSettingService> logger)
-            : base(publishEndpoint, logger)
+            ILogger<AdminGlobalSettingService> logger,
+            IEventBus? eventBus = null)
+            : base(eventBus, logger)
         {
             _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -42,9 +42,9 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting all global settings");
+                _logger.LogDebug("Getting all global settings");
 
-                var settings = await _globalSettingRepository.GetAllAsync();
+                var settings = await _globalSettingRepository.GetAllUnboundedAsync();
                 return settings.Select(s => s.ToDto()).ToList();
             }
             catch (Exception ex)
@@ -59,7 +59,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting global setting with ID: {Id}", id);
+                _logger.LogDebug("Getting global setting with ID: {Id}", id);
 
                 var setting = await _globalSettingRepository.GetByIdAsync(id);
                 return setting?.ToDto();
@@ -76,7 +76,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting global setting with key: {Key}", LoggingSanitizer.S(key));
+                _logger.LogDebug("Getting global setting with key: {Key}", LoggingSanitizer.S(key));
 
                 var setting = await _globalSettingRepository.GetByKeyAsync(key);
                 return setting?.ToDto();
@@ -93,7 +93,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Creating new global setting with key: {Key}", LoggingSanitizer.S(setting.Key));
+                _logger.LogDebug("Creating new global setting with key: {Key}", LoggingSanitizer.S(setting.Key));
 
                 // Check if a setting with the same key already exists
                 var existingSetting = await _globalSettingRepository.GetByKeyAsync(setting.Key);
@@ -142,7 +142,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Updating global setting with ID: {Id}", setting.Id);
+                _logger.LogDebug("Updating global setting with ID: {Id}", setting.Id);
 
                 // Get the existing setting
                 var existingSetting = await _globalSettingRepository.GetByIdAsync(setting.Id);
@@ -168,7 +168,7 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Only proceed if there are actual changes
-                if (changedProperties.Count() == 0)
+                if (!changedProperties.Any())
                 {
                     _logger.LogDebug("No changes detected for global setting {Id} - skipping update", setting.Id);
                     return true;
@@ -210,7 +210,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Updating global setting with key: {Key}", LoggingSanitizer.S(setting.Key));
+                _logger.LogDebug("Updating global setting with key: {Key}", LoggingSanitizer.S(setting.Key));
 
                 // Get existing setting to determine if this is an update or create
                 var existingSetting = await _globalSettingRepository.GetByKeyAsync(setting.Key);
@@ -254,7 +254,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Deleting global setting with ID: {Id}", id);
+                _logger.LogDebug("Deleting global setting with ID: {Id}", id);
 
                 // Get the setting before deleting for event publishing
                 var setting = await _globalSettingRepository.GetByIdAsync(id);
@@ -296,7 +296,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Deleting global setting with key: {Key}", LoggingSanitizer.S(key));
+                _logger.LogDebug("Deleting global setting with key: {Key}", LoggingSanitizer.S(key));
 
                 // Get the setting before deleting for event publishing
                 var setting = await _globalSettingRepository.GetByKeyAsync(key);

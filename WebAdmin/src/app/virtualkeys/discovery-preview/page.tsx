@@ -32,7 +32,7 @@ import {
   IconCheck,
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useClipboard } from '@mantine/hooks';
@@ -106,11 +106,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
     } catch (err) {
       console.error('Error fetching virtual keys:', err);
       setError(err as Error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load virtual keys',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load virtual keys'));
     } finally {
       setIsLoadingKeys(false);
     }
@@ -118,11 +114,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
 
   const fetchDiscoveryPreview = useCallback(async () => {
     if (!selectedKeyId) {
-      notifications.show({
-        title: 'No key selected',
-        message: 'Please select a virtual key first',
-        color: 'yellow',
-      });
+      notify.warning('Please select a virtual key first', 'No key selected');
       return;
     }
 
@@ -141,11 +133,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
     } catch (err) {
       console.error('Error fetching discovery preview:', err);
       setError(err as Error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load discovery preview',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load discovery preview'));
     } finally {
       setIsLoadingDiscovery(false);
     }
@@ -165,11 +153,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
   const copyJson = () => {
     if (discoveryData) {
       clipboard.copy(JSON.stringify(discoveryData, null, 2));
-      notifications.show({
-        title: 'Copied',
-        message: 'JSON response copied to clipboard',
-        color: 'green',
-      });
+      notify.success('JSON response copied to clipboard', 'Copied');
     }
   };
 

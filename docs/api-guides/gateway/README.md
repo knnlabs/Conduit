@@ -6,7 +6,7 @@ The Conduit Gateway API provides an OpenAI-compatible interface for interacting 
 
 - **[Getting Started](./getting-started.md)** - Authentication, basic usage, and quick start guide
 - **[API Reference](./api-reference.md)** - Complete endpoint documentation with examples
-- **[Node.js SDK](../../SDKs/Node/Core/README.md)** - Type-safe client for Node.js/TypeScript
+- **[Node.js SDK](../../SDKs/Node/Gateway/README.md)** - Type-safe client for Node.js/TypeScript
 
 ## What You Can Do
 

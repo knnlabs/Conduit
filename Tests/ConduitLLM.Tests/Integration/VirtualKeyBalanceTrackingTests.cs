@@ -23,18 +23,24 @@ namespace ConduitLLM.Tests.Integration
         private readonly ConduitDbContext _concreteDbContext;
         private readonly VirtualKeyGroupRepository _repository;
         private readonly Mock<ILogger<VirtualKeyGroupRepository>> _mockLogger;
+        private readonly DbContextOptions<ConduitDbContext> _dbOptions;
 
         public VirtualKeyBalanceTrackingTests()
         {
             // Setup in-memory database for integration testing
-            var options = new DbContextOptionsBuilder<ConduitDbContext>()
+            _dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
-            _concreteDbContext = new ConduitDbContext(options);
+            _concreteDbContext = new ConduitDbContext(_dbOptions);
             _dbContext = _concreteDbContext;
-            
+
+            // Create a mock factory that returns contexts with the same database
+            var mockFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
+            mockFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => new ConduitDbContext(_dbOptions));
+
             _mockLogger = new Mock<ILogger<VirtualKeyGroupRepository>>();
-            _repository = new VirtualKeyGroupRepository(_concreteDbContext, _mockLogger.Object);
+            _repository = new VirtualKeyGroupRepository(mockFactory.Object, _mockLogger.Object);
         }
 
         [Fact]

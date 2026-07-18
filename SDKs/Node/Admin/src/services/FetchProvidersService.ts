@@ -120,11 +120,11 @@ export class FetchProvidersService {
   }
 
   /**
-   * Get all providers with optional pagination
+   * Get all providers with pagination
    */
   async list(
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 50,
     config?: RequestConfig
   ): Promise<ProviderListResponseDto> {
     const params = new URLSearchParams({
@@ -132,8 +132,8 @@ export class FetchProvidersService {
       pageSize: pageSize.toString(),
     });
 
-    // The backend returns an array directly, not a paginated response
-    const response = await this.client['get']<ApiProviderDto[]>(
+    // Backend returns a paginated response with items, totalCount, etc.
+    return this.client['get']<ProviderListResponseDto>(
       `${ENDPOINTS.PROVIDERS.BASE}?${params.toString()}`,
       {
         signal: config?.signal,
@@ -141,15 +141,6 @@ export class FetchProvidersService {
         headers: config?.headers,
       }
     );
-
-    // Convert array response to expected paginated format
-    return {
-      items: response,
-      totalCount: response.length,
-      page: page,
-      pageSize: pageSize,
-      totalPages: Math.ceil(response.length / pageSize)
-    };
   }
 
   /**

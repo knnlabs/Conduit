@@ -708,5 +708,3 @@ const LazyImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => (
 ## Related Documentation
 
 - [Responsive Design Patterns](./responsive-design-patterns.md) - Mobile-first design methodology
-- [CSS Development Guidelines](./css-development-guidelines.md) - CSS standards and best practices
-- [Integration Examples](./examples/INTEGRATION-EXAMPLES.md) - Real-world component usage examples

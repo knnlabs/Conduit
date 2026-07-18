@@ -31,8 +31,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetSettingById(1);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedSetting = Assert.IsType<GlobalSettingDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedSetting = okResult.Value.Should().BeOfType<GlobalSettingDto>().Subject;
             returnedSetting.Id.Should().Be(1);
             returnedSetting.Key.Should().Be("rate_limit");
             returnedSetting.Value.Should().Be("1000");
@@ -49,9 +49,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetSettingById(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Global setting not found");
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion

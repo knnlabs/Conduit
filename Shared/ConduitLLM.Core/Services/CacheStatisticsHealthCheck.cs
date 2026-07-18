@@ -153,10 +153,10 @@ namespace ConduitLLM.Core.Services
 
                 result.MissingInstances = missingInstances.Count();
                 
-                if (missingInstances.Count() > 0)
+                if (missingInstances.Any())
                 {
                     result.Status = HealthStatus.Degraded;
-                    result.Messages.Add($"{missingInstances.Count()} instances not reporting");
+                    result.Messages.Add($"{missingInstances.Count} instances not reporting");
                 }
 
                 // Check aggregation performance

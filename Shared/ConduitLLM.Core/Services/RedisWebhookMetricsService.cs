@@ -1,7 +1,9 @@
+using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Collections.Concurrent;
-using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Core.Services
 {
@@ -49,33 +51,25 @@ namespace ConduitLLM.Core.Services
     /// - Architecture: docs/architecture/webhook-delivery-system.md
     /// - Operations: docs/operations/webhook-monitoring.md
     /// </summary>
-    public class RedisWebhookMetricsService : IWebhookMetricsService
+    public class RedisWebhookMetricsService : RedisWebhookServiceBase, IWebhookMetricsService
     {
-        private readonly IConnectionMultiplexer _redis;
-        private readonly ILogger<RedisWebhookMetricsService> _logger;
-        
-        private const string METRICS_KEY_PREFIX = "webhook:metrics:";
-        private const string RECENT_EVENTS_KEY = "webhook:events:recent";
-        private const string URL_METRICS_HASH = "webhook:metrics:urls:{0}";
-        private const string RESPONSE_TIMES_KEY = "webhook:metrics:response:{0}";
         private const int MAX_RECENT_EVENTS = 1000;
         private const int MAX_RESPONSE_TIMES = 100;
-        
+
         public RedisWebhookMetricsService(
             IConnectionMultiplexer redis,
             ILogger<RedisWebhookMetricsService> logger)
+            : base(redis, logger)
         {
-            _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         
         public async Task RecordAttemptAsync(string webhookUrl, string taskId, string taskType, string eventType)
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
-                var metricsKey = string.Format(URL_METRICS_HASH, urlHash);
+                var metricsKey = RedisKeys.WebhookMetrics.UrlMetrics(urlHash);
                 
                 var transaction = db.CreateTransaction();
                 
@@ -92,11 +86,11 @@ namespace ConduitLLM.Core.Services
                 
                 await transaction.ExecuteAsync();
                 
-                _logger.LogDebug("Recorded delivery attempt for {WebhookUrl}", webhookUrl);
+                Logger.LogDebug("Recorded delivery attempt for {WebhookUrl}", webhookUrl);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording delivery attempt for {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error recording delivery attempt for {WebhookUrl}", webhookUrl);
             }
         }
         
@@ -104,9 +98,9 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
-                var metricsKey = string.Format(URL_METRICS_HASH, urlHash);
+                var metricsKey = RedisKeys.WebhookMetrics.UrlMetrics(urlHash);
                 
                 var transaction = db.CreateTransaction();
                 
@@ -115,7 +109,7 @@ namespace ConduitLLM.Core.Services
                 _ = transaction.HashSetAsync(metricsKey, "last_success", DateTime.UtcNow.ToString("O"));
                 
                 // Store response time in sorted set for percentile calculations
-                var responseTimesKey = string.Format(RESPONSE_TIMES_KEY, urlHash);
+                var responseTimesKey = RedisKeys.WebhookMetrics.ResponseTimes(urlHash);
                 _ = transaction.SortedSetAddAsync(responseTimesKey, 
                     $"{Guid.NewGuid()}", responseTimeMs);
                 
@@ -135,12 +129,12 @@ namespace ConduitLLM.Core.Services
                 
                 await transaction.ExecuteAsync();
                 
-                _logger.LogDebug("Recorded successful delivery for {WebhookUrl}, response time: {ResponseTime}ms", 
+                Logger.LogDebug("Recorded successful delivery for {WebhookUrl}, response time: {ResponseTime}ms", 
                     webhookUrl, responseTimeMs);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording success for {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error recording success for {WebhookUrl}", webhookUrl);
             }
         }
         
@@ -148,9 +142,9 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
-                var metricsKey = string.Format(URL_METRICS_HASH, urlHash);
+                var metricsKey = RedisKeys.WebhookMetrics.UrlMetrics(urlHash);
                 
                 var transaction = db.CreateTransaction();
                 
@@ -175,12 +169,12 @@ namespace ConduitLLM.Core.Services
                 
                 await transaction.ExecuteAsync();
                 
-                _logger.LogDebug("Recorded failed delivery for {WebhookUrl}, permanent: {IsPermanent}", 
+                Logger.LogDebug("Recorded failed delivery for {WebhookUrl}, permanent: {IsPermanent}", 
                     webhookUrl, isPermanent);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording failure for {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error recording failure for {WebhookUrl}", webhookUrl);
             }
         }
         
@@ -188,7 +182,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var stats = new WebhookStatistics
                 {
                     Period = period,
@@ -199,8 +193,8 @@ namespace ConduitLLM.Core.Services
                 var cutoffTime = GetCutoffTime(period);
                 
                 // Get all webhook URL metrics keys
-                var server = _redis.GetServer(_redis.GetEndPoints().First());
-                var keys = server.Keys(pattern: "webhook:metrics:urls:*").ToList();
+                var server = Redis.GetPrimaryServer();
+                var keys = server.Keys(pattern: RedisKeys.WebhookMetrics.UrlMetricsScanPattern).ToList();
                 
                 var tasks = new List<Task<WebhookUrlStatistics?>>();
                 
@@ -243,7 +237,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting webhook statistics for period {Period}", period);
+                Logger.LogError(ex, "Error getting webhook statistics for period {Period}", period);
                 return new WebhookStatistics { Period = period, UrlStatistics = new List<WebhookUrlStatistics>() };
             }
         }
@@ -252,9 +246,9 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var urlHash = GetUrlHash(webhookUrl);
-                var metricsKey = string.Format(URL_METRICS_HASH, urlHash);
+                var metricsKey = RedisKeys.WebhookMetrics.UrlMetrics(urlHash);
                 
                 var hashEntries = await db.HashGetAllAsync(metricsKey);
                 
@@ -282,7 +276,7 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 // Get percentile response times
-                var responseTimesKey = string.Format(RESPONSE_TIMES_KEY, urlHash);
+                var responseTimesKey = RedisKeys.WebhookMetrics.ResponseTimes(urlHash);
                 var p95ResponseTime = await GetPercentileResponseTimeAsync(db, responseTimesKey, 0.95);
                 var p99ResponseTime = await GetPercentileResponseTimeAsync(db, responseTimesKey, 0.99);
                 
@@ -302,7 +296,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting statistics for webhook URL {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error getting statistics for webhook URL {WebhookUrl}", webhookUrl);
                 return new WebhookUrlStatistics { Url = webhookUrl, IsHealthy = true };
             }
         }
@@ -311,14 +305,14 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
+                var db = Redis.GetDatabase();
                 var transaction = db.CreateTransaction();
                 await AddRecentEventInternalAsync(transaction, webhookUrl, eventType, responseTimeMs, isPermanent);
                 await transaction.ExecuteAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding recent event for {WebhookUrl}", webhookUrl);
+                Logger.LogError(ex, "Error adding recent event for {WebhookUrl}", webhookUrl);
             }
         }
         
@@ -345,14 +339,14 @@ namespace ConduitLLM.Core.Services
             var eventJson = System.Text.Json.JsonSerializer.Serialize(eventData);
             
             // Add to sorted set with timestamp as score
-            _ = transaction.SortedSetAddAsync(RECENT_EVENTS_KEY, eventJson, 
+            _ = transaction.SortedSetAddAsync(RedisKeys.WebhookMetrics.RecentEvents, eventJson, 
                 new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
             
             // Keep only recent events
-            _ = transaction.SortedSetRemoveRangeByRankAsync(RECENT_EVENTS_KEY, 0, -MAX_RECENT_EVENTS - 1);
+            _ = transaction.SortedSetRemoveRangeByRankAsync(RedisKeys.WebhookMetrics.RecentEvents, 0, -MAX_RECENT_EVENTS - 1);
             
             // Set expiry
-            _ = transaction.KeyExpireAsync(RECENT_EVENTS_KEY, TimeSpan.FromDays(1));
+            _ = transaction.KeyExpireAsync(RedisKeys.WebhookMetrics.RecentEvents, TimeSpan.FromDays(1));
             
             await Task.CompletedTask;
         }
@@ -452,12 +446,5 @@ namespace ConduitLLM.Core.Services
             return 0;
         }
         
-        private string GetUrlHash(string webhookUrl)
-        {
-            // Create a consistent hash for the URL to use as Redis key component
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(webhookUrl));
-            return Convert.ToBase64String(hashBytes).Replace("/", "-").Replace("+", "_").Substring(0, 16);
-        }
     }
 }

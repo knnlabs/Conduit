@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Filters;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ConduitLLM.Gateway.Controllers
@@ -11,10 +13,10 @@ namespace ConduitLLM.Gateway.Controllers
     [ApiController]
     [Route("v1/tasks")]
     [Authorize]
-    public class TasksController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class TasksController : GatewayControllerBase
     {
         private readonly IAsyncTaskService _taskService;
-        private readonly ILogger<TasksController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TasksController"/> class.
@@ -22,9 +24,9 @@ namespace ConduitLLM.Gateway.Controllers
         /// <param name="taskService">The async task service.</param>
         /// <param name="logger">The logger.</param>
         public TasksController(IAsyncTaskService taskService, ILogger<TasksController> logger)
+            : base(logger)
         {
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -35,6 +37,7 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpGet("{taskId}")]
         public async Task<IActionResult> GetTaskStatus(string taskId)
         {
+            Logger.LogDebug("Getting status for task {TaskId}", taskId);
             try
             {
                 var status = await _taskService.GetTaskStatusAsync(taskId);
@@ -42,12 +45,15 @@ namespace ConduitLLM.Gateway.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto(ex.Message, "not_found")));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving task {TaskId}", taskId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while retrieving the task", "server_error")));
+                return NotFound(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = ex.Message,
+                        Type = "not_found_error",
+                        Code = "not_found"
+                    }
+                });
             }
         }
 
@@ -62,16 +68,20 @@ namespace ConduitLLM.Gateway.Controllers
             try
             {
                 await _taskService.CancelTaskAsync(taskId);
+                Logger.LogInformation("Task {TaskId} cancelled successfully", taskId);
                 return NoContent();
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto(ex.Message, "not_found")));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error cancelling task {TaskId}", taskId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while cancelling the task", "server_error")));
+                return NotFound(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = ex.Message,
+                        Type = "not_found_error",
+                        Code = "not_found"
+                    }
+                });
             }
         }
 
@@ -85,12 +95,15 @@ namespace ConduitLLM.Gateway.Controllers
         [HttpGet("{taskId}/poll")]
         public async Task<IActionResult> PollTask(string taskId, [FromQuery] int timeout = 300, [FromQuery] int interval = 2)
         {
+            // Validate and clamp parameters
+            timeout = Math.Clamp(timeout, 1, 600); // Max 10 minutes
+            interval = Math.Max(interval, 1); // Min 1 second
+
+            Logger.LogDebug("Polling task {TaskId} with timeout {TimeoutSeconds}s, interval {IntervalSeconds}s",
+                taskId, timeout, interval);
+
             try
             {
-                // Validate and clamp parameters
-                timeout = Math.Clamp(timeout, 1, 600); // Max 10 minutes
-                interval = Math.Max(interval, 1); // Min 1 second
-
                 var status = await _taskService.PollTaskUntilCompletedAsync(
                     taskId,
                     TimeSpan.FromSeconds(interval),
@@ -100,16 +113,27 @@ namespace ConduitLLM.Gateway.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto(ex.Message, "not_found")));
+                return NotFound(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = ex.Message,
+                        Type = "not_found_error",
+                        Code = "not_found"
+                    }
+                });
             }
             catch (OperationCanceledException)
             {
-                return StatusCode(408, new ErrorResponseDto(new ErrorDetailsDto("Task polling timed out", "timeout")));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error polling task {TaskId}", taskId);
-                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while polling the task", "server_error")));
+                return StatusCode(408, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Task polling timed out",
+                        Type = "timeout",
+                        Code = "timeout"
+                    }
+                });
             }
         }
 

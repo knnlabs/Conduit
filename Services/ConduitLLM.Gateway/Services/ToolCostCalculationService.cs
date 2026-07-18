@@ -1,10 +1,40 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Middleware;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Gateway.Services
 {
+    /// <summary>
+    /// Result of a tool cost calculation, including cost and diagnostic information.
+    /// </summary>
+    public class ToolCostResult
+    {
+        /// <summary>
+        /// Total calculated cost. -1 indicates a calculation failure.
+        /// </summary>
+        public decimal TotalCost { get; init; }
+
+        /// <summary>
+        /// Tool names that were used but had no cost configuration.
+        /// Empty if all tools were configured.
+        /// </summary>
+        public List<string> UnconfiguredToolNames { get; init; } = new();
+
+        /// <summary>
+        /// True if the cost calculation encountered an error.
+        /// </summary>
+        public bool Failed => TotalCost < 0;
+
+        /// <summary>
+        /// True if some tools were used but had no cost configuration.
+        /// </summary>
+        public bool HasUnconfiguredTools => UnconfiguredToolNames.Count > 0;
+    }
+
     /// <summary>
     /// Service for calculating costs of tool usage across different providers.
     /// </summary>
@@ -12,11 +42,12 @@ namespace ConduitLLM.Gateway.Services
     {
         /// <summary>
         /// Calculates the total cost for tool usage based on provider configuration.
+        /// Returns a result containing the cost and any unconfigured tool names.
         /// </summary>
         /// <param name="toolUsage">Tool usage data extracted from provider response</param>
         /// <param name="providerType">The provider type to look up tool costs</param>
-        /// <returns>Total cost for all tool usage</returns>
-        Task<decimal> CalculateToolCostsAsync(ToolUsageData toolUsage, ProviderType providerType);
+        /// <returns>Tool cost result with cost and diagnostic info</returns>
+        Task<ToolCostResult> CalculateToolCostsAsync(ToolUsageData toolUsage, ProviderType providerType);
 
         /// <summary>
         /// Serializes tool usage data to JSON for storage in BillingAuditEvent.
@@ -28,46 +59,52 @@ namespace ConduitLLM.Gateway.Services
 
     /// <summary>
     /// Implementation of tool cost calculation service.
+    /// Uses IProviderToolCache for high-performance lookups when available,
+    /// falls back to direct database queries otherwise.
     /// </summary>
     public class ToolCostCalculationService : IToolCostCalculationService
     {
-        private readonly ConduitDbContext _context;
+        private readonly IDbContextFactory<ConduitDbContext> _contextFactory;
+        private readonly IProviderToolCache? _cache;
         private readonly ILogger<ToolCostCalculationService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ToolCostCalculationService.
         /// </summary>
-        /// <param name="context">Database context for accessing tool configurations</param>
-        /// <param name="logger">Logger for error reporting</param>
-        public ToolCostCalculationService(ConduitDbContext context, ILogger<ToolCostCalculationService> logger)
+        public ToolCostCalculationService(
+            IDbContextFactory<ConduitDbContext> contextFactory,
+            ILogger<ToolCostCalculationService> logger,
+            IProviderToolCache? cache = null)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _logger = logger;
+            _cache = cache;
         }
 
         /// <inheritdoc/>
-        public async Task<decimal> CalculateToolCostsAsync(ToolUsageData toolUsage, ProviderType providerType)
+        public async Task<ToolCostResult> CalculateToolCostsAsync(ToolUsageData toolUsage, ProviderType providerType)
         {
-            if (toolUsage?.Tools == null || !toolUsage.Tools.Any())
-                return 0;
+            if (toolUsage?.Tools == null || toolUsage.Tools.Count == 0)
+                return new ToolCostResult { TotalCost = 0 };
 
             try
             {
+                // Batch-load all active tools for this provider (eliminates N+1)
+                var providerTools = await GetActiveToolsForProviderAsync(providerType);
+
                 var totalCost = 0m;
+                var unconfiguredTools = new List<string>();
 
                 foreach (var toolUsageItem in toolUsage.Tools)
                 {
-                    var providerTool = await _context.ProviderTools
-                        .FirstOrDefaultAsync(pt => 
-                            pt.Provider == providerType && 
-                            pt.ToolName == toolUsageItem.ToolName && 
-                            pt.IsActive);
+                    var providerTool = providerTools
+                        .Find(pt => pt.ToolName == toolUsageItem.ToolName);
 
                     if (providerTool?.CostPerUnit.HasValue == true)
                     {
                         var usage = CalculateUsageAmount(toolUsageItem, providerTool.BillingUnit);
                         var cost = providerTool.CostPerUnit.Value * usage;
-                        
+
                         totalCost += cost;
 
                         _logger.LogDebug("Tool cost calculated: {ToolName} = {Usage} {BillingUnit} × ${CostPerUnit} = ${Cost}",
@@ -75,17 +112,23 @@ namespace ConduitLLM.Gateway.Services
                     }
                     else
                     {
+                        unconfiguredTools.Add(toolUsageItem.ToolName);
                         _logger.LogWarning("No cost configuration found for tool {ToolName} on provider {ProviderType}",
                             toolUsageItem.ToolName, providerType);
                     }
                 }
 
-                return totalCost;
+                return new ToolCostResult
+                {
+                    TotalCost = totalCost,
+                    UnconfiguredToolNames = unconfiguredTools
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to calculate tool costs for provider {ProviderType}", providerType);
-                return 0;
+                _logger.LogError(ex, "Failed to calculate tool costs for provider {ProviderType}. " +
+                    "Tool usage will be recorded but cost may be inaccurate.", providerType);
+                return new ToolCostResult { TotalCost = -1 };
             }
         }
 
@@ -98,7 +141,7 @@ namespace ConduitLLM.Gateway.Services
                 {
                     return "{}";
                 }
-                
+
                 var options = new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -115,20 +158,74 @@ namespace ConduitLLM.Gateway.Services
         }
 
         /// <summary>
-        /// Calculates the usage amount based on the tool's billing unit.
+        /// Gets all active tools for a provider, using cache when available.
         /// </summary>
-        /// <param name="toolUsageItem">The tool usage item</param>
-        /// <param name="billingUnit">The billing unit for this tool (requests, hours, etc.)</param>
-        /// <returns>The usage amount for cost calculation</returns>
+        private async Task<List<ProviderTool>> GetActiveToolsForProviderAsync(ProviderType providerType)
+        {
+            if (_cache != null)
+            {
+                return await _cache.GetActiveToolsForProviderAsync(
+                    providerType,
+                    LoadToolsFromDatabaseAsync);
+            }
+
+            return await LoadToolsFromDatabaseAsync(providerType);
+        }
+
+        /// <summary>
+        /// Loads active tools from the database for a given provider.
+        /// Used as the cache fallback function.
+        /// </summary>
+        private async Task<List<ProviderTool>> LoadToolsFromDatabaseAsync(ProviderType providerType)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.ProviderTools
+                .Where(pt => pt.Provider == providerType && pt.IsActive)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Calculates the usage amount based on the tool's billing unit.
+        /// Supports DurationSeconds from provider responses with automatic unit conversion.
+        /// </summary>
         private static decimal CalculateUsageAmount(ToolUsageItem toolUsageItem, string? billingUnit)
         {
-            return billingUnit?.ToLowerInvariant() switch
+            var unit = billingUnit?.ToLowerInvariant();
+            return unit switch
             {
-                "hours" => toolUsageItem.Duration ?? toolUsageItem.Count,
-                "requests" => toolUsageItem.Count,
-                "minutes" => toolUsageItem.Duration ?? toolUsageItem.Count,
-                _ => toolUsageItem.Count // Default to count-based billing
+                ProviderToolBillingUnits.Hours => GetDurationInHours(toolUsageItem),
+                ProviderToolBillingUnits.Minutes => GetDurationInMinutes(toolUsageItem),
+                ProviderToolBillingUnits.Requests => toolUsageItem.Count,
+                ProviderToolBillingUnits.Searches => toolUsageItem.Count,
+                ProviderToolBillingUnits.Executions => toolUsageItem.Count,
+                ProviderToolBillingUnits.Characters => toolUsageItem.Count,
+                ProviderToolBillingUnits.Tokens => toolUsageItem.Count,
+                null or "" => toolUsageItem.Count,
+                _ => toolUsageItem.Count // Validated at save time, but defensive fallback
             };
+        }
+
+        /// <summary>
+        /// Gets duration in hours, converting from DurationSeconds if available.
+        /// Falls back to Duration (already in hours), then to Count.
+        /// </summary>
+        private static decimal GetDurationInHours(ToolUsageItem item)
+        {
+            if (item.DurationSeconds.HasValue)
+                return item.DurationSeconds.Value / 3600m;
+            return item.Duration ?? item.Count;
+        }
+
+        /// <summary>
+        /// Gets duration in minutes, converting from DurationSeconds if available.
+        /// Falls back to Duration (already in minutes), then to Count.
+        /// </summary>
+        private static decimal GetDurationInMinutes(ToolUsageItem item)
+        {
+            if (item.DurationSeconds.HasValue)
+                return item.DurationSeconds.Value / 60m;
+            return item.Duration ?? item.Count;
         }
     }
 }

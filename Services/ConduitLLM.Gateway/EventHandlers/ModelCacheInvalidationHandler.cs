@@ -1,6 +1,8 @@
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Gateway.EventHandlers
 {
@@ -8,7 +10,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles ModelUpdated events to invalidate discovery cache
     /// Critical for ensuring updated model parameters are reflected in the discovery API
     /// </summary>
-    public class ModelCacheInvalidationHandler : IConsumer<ModelUpdated>
+    public class ModelCacheInvalidationHandler : IEventHandler<ModelUpdated>
     {
         private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly ILogger<ModelCacheInvalidationHandler> _logger;
@@ -24,45 +26,40 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles ModelUpdated events by invalidating discovery cache
         /// </summary>
-        public async Task Consume(ConsumeContext<ModelUpdated> context)
+        public async Task HandleAsync(ModelUpdated message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            _logger.LogInformation(
+                "Processing ModelUpdated event: {ModelName} (ID: {ModelId}, ChangeType: {ChangeType}, ParametersChanged: {ParametersChanged})",
+                message.ModelName,
+                message.ModelId,
+                message.ChangeType,
+                message.ParametersChanged);
+
             try
             {
-                _logger.LogInformation(
-                    "Processing ModelUpdated event: {ModelName} (ID: {ModelId}, ChangeType: {ChangeType}, ParametersChanged: {ParametersChanged})",
-                    @event.ModelName,
-                    @event.ModelId,
-                    @event.ChangeType,
-                    @event.ParametersChanged);
-
-                // Invalidate all discovery cache entries
-                // This ensures that any capability-filtered queries get fresh data
                 await _discoveryCacheService.InvalidateAllDiscoveryAsync();
-                
+
                 _logger.LogInformation(
                     "Invalidated all discovery cache entries after {ChangeType} of model {ModelName} (ID: {ModelId})",
-                    @event.ChangeType,
-                    @event.ModelName,
-                    @event.ModelId);
-                
-                // Log specific parameter changes for debugging
-                if (@event.ParametersChanged)
+                    message.ChangeType,
+                    message.ModelName,
+                    message.ModelId);
+
+                if (message.ParametersChanged)
                 {
                     _logger.LogInformation(
                         "Model parameters were updated for {ModelName} - UI components will reflect new parameter definitions",
-                        @event.ModelName);
+                        message.ModelName);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
-                    "Failed to invalidate discovery cache after {ChangeType} of model {ModelName} (ID: {ModelId})", 
-                    @event.ChangeType,
-                    @event.ModelName,
-                    @event.ModelId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                _logger.LogError(ex,
+                    "Failed to invalidate discovery cache after {ChangeType} of model {ModelName} (ID: {ModelId})",
+                    message.ChangeType,
+                    message.ModelName,
+                    message.ModelId);
+                throw; // Re-throw to trigger transport retry logic
             }
         }
     }

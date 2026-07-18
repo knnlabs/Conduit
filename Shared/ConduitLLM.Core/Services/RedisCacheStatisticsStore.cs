@@ -1,7 +1,8 @@
 using System.Text.Json;
+using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Services
 {
@@ -12,9 +13,6 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IDistributedCache _cache;
         private readonly ILogger<RedisCacheStatisticsStore> _logger;
-        private const string STATS_KEY_PREFIX = "cache:stats:";
-        private const string TIMESERIES_KEY_PREFIX = "cache:stats:ts:";
-        private const string SNAPSHOT_KEY_PREFIX = "cache:stats:snapshot:";
 
         public RedisCacheStatisticsStore(
             IDistributedCache cache,
@@ -34,7 +32,7 @@ namespace ConduitLLM.Core.Services
             foreach (var (region, stats) in statistics)
             {
                 // Save current statistics
-                var currentKey = $"{STATS_KEY_PREFIX}{region}:current";
+                var currentKey = RedisKeys.CacheStats.Current(region.ToString());
                 var json = JsonSerializer.Serialize(stats);
                 
                 tasks.Add(_cache.SetStringAsync(
@@ -47,7 +45,7 @@ namespace ConduitLLM.Core.Services
                     cancellationToken));
 
                 // Save time-series data point
-                var tsKey = $"{TIMESERIES_KEY_PREFIX}{region}:{timestamp:yyyyMMddHHmm}";
+                var tsKey = RedisKeys.CacheStats.TimeSeries(region.ToString(), timestamp);
                 tasks.Add(_cache.SetStringAsync(
                     tsKey,
                     json,
@@ -60,7 +58,7 @@ namespace ConduitLLM.Core.Services
                 // Save hourly snapshot
                 if (timestamp.Minute == 0)
                 {
-                    var snapshotKey = $"{SNAPSHOT_KEY_PREFIX}{region}:{timestamp:yyyyMMddHH}";
+                    var snapshotKey = RedisKeys.CacheStats.Snapshot(region.ToString(), timestamp);
                     tasks.Add(_cache.SetStringAsync(
                         snapshotKey,
                         json,
@@ -93,7 +91,7 @@ namespace ConduitLLM.Core.Services
             {
                 try
                 {
-                    var key = $"{STATS_KEY_PREFIX}{region}:current";
+                    var key = RedisKeys.CacheStats.Current(region.ToString());
                     var json = await _cache.GetStringAsync(key, cancellationToken);
 
                     if (!string.IsNullOrEmpty(json))
@@ -134,7 +132,7 @@ namespace ConduitLLM.Core.Services
 
             while (current <= endTime)
             {
-                var tsKey = $"{TIMESERIES_KEY_PREFIX}{region}:{current:yyyyMMddHHmm}";
+                var tsKey = RedisKeys.CacheStats.TimeSeries(region.ToString(), current);
                 tasks.Add(_cache.GetStringAsync(tsKey, cancellationToken));
                 current = current.AddMinutes(1);
             }
@@ -149,7 +147,7 @@ namespace ConduitLLM.Core.Services
                     .Cast<CacheStatistics>()
                     .ToList();
 
-                if (validStats.Count() > 0)
+                if (validStats.Any())
                 {
                     // Aggregate statistics
                     aggregated.HitCount = validStats.Sum(s => s.HitCount);
@@ -165,7 +163,7 @@ namespace ConduitLLM.Core.Services
                         .Select(s => s.AverageGetTime.TotalMilliseconds)
                         .ToList();
 
-                    if (avgGetTimes.Count() > 0)
+                    if (avgGetTimes.Any())
                     {
                         aggregated.AverageGetTime = TimeSpan.FromMilliseconds(avgGetTimes.Average());
                     }
@@ -177,7 +175,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 _logger.LogDebug("Aggregated {DataPoints} data points for region {Region} window {StartTime} to {EndTime}",
-                    validStats.Count() == 0, region, startTime, endTime);
+                    !validStats.Any(), region, startTime, endTime);
             }
             catch (Exception ex)
             {
@@ -226,7 +224,7 @@ namespace ConduitLLM.Core.Services
             
             while (current <= endTime)
             {
-                var snapshotKey = $"{SNAPSHOT_KEY_PREFIX}{region}:{current:yyyyMMddHH}";
+                var snapshotKey = RedisKeys.CacheStats.Snapshot(region.ToString(), current);
                 
                 try
                 {

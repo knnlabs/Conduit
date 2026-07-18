@@ -17,9 +17,11 @@ This unified approach consolidates the previously separate provider-specific scr
 
 - **provider-config.json** - Provider metadata (ProviderType enum, URLs, capabilities)
 - **generate-provider-sql.cs** - Unified C# script that generates PostgreSQL SQL
+- **fetch-openrouter-models.cs** - Fetches OpenRouter models from API → generates openrouter-models.json
 - **cerebras-models.json** - Hand-maintained list of Cerebras models
 - **groq-models.json** - Hand-maintained list of Groq models
 - **sambanova-models.json** - Hand-maintained list of SambaNova models
+- **openrouter-models.json** - Auto-generated from OpenRouter API (do not hand-edit)
 - **UPDATING-MODELS.md** - Comprehensive guide for updating model JSON files
 - **README.md** - This file
 
@@ -37,11 +39,34 @@ This unified approach consolidates the previously separate provider-specific scr
 # Generate SQL for SambaNova (outputs to sambanova-models.sql)
 ./generate-provider-sql.cs sambanova
 
+# Generate SQL for OpenRouter (requires fetch step first — see below)
+./generate-provider-sql.cs openrouter
+
 # Generate SQL with custom output filename
 ./generate-provider-sql.cs cerebras my-cerebras-models.sql
-./generate-provider-sql.cs groq my-groq-models.sql
-./generate-provider-sql.cs sambanova my-sambanova-models.sql
 ```
+
+### OpenRouter (API-Fetched)
+
+OpenRouter has 300+ models from 50+ upstream providers — too many to hand-maintain.
+Use the fetch script to pull the latest model catalog from OpenRouter's API:
+
+```bash
+# Step 1: Fetch models from OpenRouter API → generates openrouter-models.json
+dotnet run fetch-openrouter-models.cs
+
+# Step 2: Generate SQL from the fetched JSON (same as other providers)
+dotnet run generate-provider-sql.cs -- openrouter
+```
+
+The fetch script:
+- Calls `GET https://openrouter.ai/api/v1/models` (no auth required)
+- Converts per-token pricing to per-million-tokens
+- Infers capabilities from `supported_parameters` and `input_modalities`
+- Maps OpenRouter tokenizer names to Conduit's tokenizer enum
+- Derives model family/series from naming patterns
+- Skips free-tier models (limited availability)
+- Outputs standard `openrouter-models.json` format
 
 ### Executing Generated SQL
 
@@ -50,11 +75,13 @@ This unified approach consolidates the previously separate provider-specific scr
 psql -h localhost -U conduit -d conduit_db < cerebras-models.sql
 psql -h localhost -U conduit -d conduit_db < groq-models.sql
 psql -h localhost -U conduit -d conduit_db < sambanova-models.sql
+psql -h localhost -U conduit -d conduit_db < openrouter-models.sql
 
 # Execute via Docker
 docker exec -i conduit-postgres psql -U conduit -d conduit_db < cerebras-models.sql
 docker exec -i conduit-postgres psql -U conduit -d conduit_db < groq-models.sql
 docker exec -i conduit-postgres psql -U conduit -d conduit_db < sambanova-models.sql
+docker exec -i conduit-postgres psql -U conduit -d conduit_db < openrouter-models.sql
 ```
 
 ## Provider Configuration
@@ -210,6 +237,22 @@ The script generates SQL that creates/updates:
 - Pricing: https://cloud.sambanova.ai/plans/pricing
 - Performance Analysis: https://artificialanalysis.ai/providers/sambanova
 
+### OpenRouter (ProviderType = 13)
+
+**Auto-fetched from API (~316 paid models from 50+ upstream providers)**
+
+Unlike other providers, OpenRouter models are **not hand-maintained**. The `fetch-openrouter-models.cs` script pulls the latest catalog from OpenRouter's API. Run it periodically to pick up new models.
+
+**Key Features:**
+- Meta-provider routing to 300+ models from OpenAI, Anthropic, Google, Meta, Mistral, and more
+- Models use `provider/model-name` format (e.g., `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`)
+- Pricing varies by upstream provider
+- Capabilities (vision, tools, etc.) detected from API metadata
+
+**Data Source:**
+- API: https://openrouter.ai/api/v1/models (public, no auth required)
+- Docs: https://openrouter.ai/docs
+
 ## Updating Models
 
 When a provider releases new models or updates specifications:
@@ -304,18 +347,17 @@ Both Cerebras and SambaNova are known for **ultra-fast inference**:
 
 Both providers are 10-30x faster than traditional GPU-based inference.
 
-## Comparison with Other Approaches
+## Comparison of Approaches
 
-| Aspect | This Unified Approach | Replicate Approach |
-|--------|----------------------|-------------------|
-| Data Source | Static JSON files | Web scraping |
-| Provider Count | Multiple (unified) | Single (specialized) |
-| Model Count | 4-15 per provider | 20-50+ models |
-| Parameters | Standard (OpenAI) | Unique per model |
-| Update Frequency | Quarterly | Monthly |
-| Maintenance | Edit JSON + config | Update scraping logic |
-| Complexity | Low (~380 lines) | High (~1400 lines) |
-| Extensibility | Add JSON config | Duplicate scraper |
+| Aspect | Hand-Maintained JSON | OpenRouter API Fetch | Replicate Scraper |
+|--------|---------------------|---------------------|-------------------|
+| Data Source | Static JSON files | Live API | Web scraping |
+| Providers | Cerebras, Groq, SambaNova | OpenRouter | Replicate |
+| Model Count | 4-15 per provider | 300+ models | 20-50+ models |
+| Parameters | Standard (OpenAI) | Standard (OpenAI) | Unique per model |
+| Update Process | Edit JSON manually | Run fetch script | Update scraping logic |
+| Complexity | Low | Low (~200 lines) | High (~1400 lines) |
+| Extensibility | Add JSON config | N/A (OpenRouter-specific) | Duplicate scraper |
 
 ## Future Enhancements
 

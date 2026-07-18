@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
 using ConduitLLM.Configuration.Enums;
 
 namespace ConduitLLM.Configuration.Entities
@@ -8,7 +9,7 @@ namespace ConduitLLM.Configuration.Entities
     /// <summary>
     /// Represents a transaction that modifies a virtual key group's balance
     /// </summary>
-    public class VirtualKeyGroupTransaction
+    public class VirtualKeyGroupTransaction : IEntity<long>, ISoftDeletable
     {
         /// <summary>
         /// Primary key
@@ -72,6 +73,15 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [MaxLength(100)]
         public string? InitiatedByUserId { get; set; }
+
+        /// <summary>
+        /// Idempotency key for at-least-once message processing (e.g. the
+        /// SpendUpdateRequested RequestId, prefixed with the flow name). Unique when
+        /// present: a redelivered message is detected by this key and the balance
+        /// adjustment is not applied twice.
+        /// </summary>
+        [MaxLength(100)]
+        public string? IdempotencyKey { get; set; }
 
         /// <summary>
         /// When this transaction was created

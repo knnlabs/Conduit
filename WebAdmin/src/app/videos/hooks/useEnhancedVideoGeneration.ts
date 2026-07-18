@@ -14,7 +14,8 @@ import {
   shouldShowBalanceWarning,
   type VideoProgressCallbacks
 } from '@knn_labs/conduit-gateway-client';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
+import { notifications } from '@mantine/notifications'; // Required by createToastErrorHandler SDK callback
 
 interface GenerateVideoParams {
   prompt: string;
@@ -129,29 +130,20 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
           });
           
           // Show success notification
-          notifications.show({
-            title: 'Video Generated',
-            message: 'Your video has been generated successfully!',
-            color: 'green',
-          });
+          notify.success('Your video has been generated successfully!', 'Video Generated');
         },
         onFailed: (error) => {
           console.error('Video generation failed:', error);
-          
-          const errorMessage = typeof error === 'string' ? error : 'Video generation failed';
+
+          // Use SDK error handler for consistent error extraction and toast display
+          const errorMessage = handleError(error, 'video generation');
           setError(errorMessage);
-          
+
           // Update task status
           updateTask(currentTaskId, {
             status: MediaGenerationStatus.Failed,
             error: errorMessage,
             updatedAt: new Date().toISOString(),
-          });
-          
-          notifications.show({
-            title: 'Video Generation Failed',
-            message: errorMessage,
-            color: 'red',
           });
         },
       };

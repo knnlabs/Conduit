@@ -1,3 +1,5 @@
+using ConduitLLM.Core.Models.SignalR;
+
 namespace ConduitLLM.Gateway.Models
 {
     /// <summary>

@@ -1,9 +1,11 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Gateway.Hubs;
-
-using MassTransit;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Interfaces;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
@@ -14,51 +16,73 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles VideoGenerationCompleted events to update task status and track completion metrics.
     /// Also updates the RequestLog with the actual cost after video generation completes.
     /// </summary>
-    public class VideoGenerationCompletedHandler : IConsumer<VideoGenerationCompleted>
+    public class VideoGenerationCompletedHandler : IEventHandler<VideoGenerationCompleted>
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IRequestLogRepository _requestLogRepository;
         private readonly IMemoryCache _progressCache;
-        private readonly IHubContext<VideoGenerationHub> _hubContext;
+        private readonly IVideoGenerationNotificationService _notificationService;
         private readonly ILogger<VideoGenerationCompletedHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "video_generation_progress_";
         private const string CompletedTasksCacheKey = "completed_video_tasks";
 
         public VideoGenerationCompletedHandler(
             IAsyncTaskService asyncTaskService,
             IRequestLogRepository requestLogRepository,
             IMemoryCache progressCache,
-            IHubContext<VideoGenerationHub> hubContext,
+            IVideoGenerationNotificationService notificationService,
             ILogger<VideoGenerationCompletedHandler> logger)
         {
             _asyncTaskService = asyncTaskService;
             _requestLogRepository = requestLogRepository;
             _progressCache = progressCache;
-            _hubContext = hubContext;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<VideoGenerationCompleted> context)
+        public async Task HandleAsync(VideoGenerationCompleted message, IEventContext context)
         {
-            var message = context.Message;
-            
-            _logger.LogInformation("Processing video generation completion for request {RequestId}: Video generated in {Duration}s (cost: ${Cost})", 
+            _logger.LogInformation("Processing video generation completion for request {RequestId}: Video generated in {Duration}s (cost: ${Cost})",
                 message.RequestId, message.GenerationDuration.TotalSeconds, message.Cost);
 
             try
             {
-                // Update task status to completed
-                var result = new
+                // Parse resolution to width/height if available
+                int width = 0, height = 0;
+                if (!string.IsNullOrEmpty(message.Resolution))
                 {
-                    VideoUrl = message.VideoUrl,
-                    PreviewUrl = message.PreviewUrl,
-                    Duration = message.Duration,
-                    Resolution = message.Resolution,
-                    FileSize = message.FileSize,
-                    Cost = message.Cost,
-                    Provider = message.Provider,
+                    var parts = message.Resolution.Split('x', 'X');
+                    if (parts.Length == 2)
+                    {
+                        int.TryParse(parts[0], out width);
+                        int.TryParse(parts[1], out height);
+                    }
+                }
+
+                // Update task status to completed with VideoGenerationResponse format
+                // This matches what the SDK expects: { created, data: [{ url, metadata }], model }
+                var result = new VideoGenerationResponse
+                {
+                    Created = new DateTimeOffset(message.CompletedAt).ToUnixTimeSeconds(),
+                    Data = new List<VideoData>
+                    {
+                        new VideoData
+                        {
+                            Url = message.VideoUrl,
+                            Metadata = new VideoMetadata
+                            {
+                                Width = width,
+                                Height = height,
+                                Duration = message.Duration,
+                                FileSizeBytes = message.FileSize
+                            }
+                        }
+                    },
                     Model = message.Model,
-                    CompletedAt = message.CompletedAt
+                    Usage = new VideoGenerationUsage
+                    {
+                        VideosGenerated = 1,
+                        TotalDurationSeconds = message.Duration
+                    }
                 };
 
                 await _asyncTaskService.UpdateTaskStatusAsync(
@@ -103,9 +127,9 @@ namespace ConduitLLM.Gateway.EventHandlers
                 }
 
                 // Clear progress cache for this task
-                var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";
+                var progressCacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
                 _progressCache.Remove(progressCacheKey);
-                
+
                 // Store completion info for analytics and audit
                 var completionData = new
                 {
@@ -121,59 +145,38 @@ namespace ConduitLLM.Gateway.EventHandlers
                     Cost = message.Cost,
                     CompletedAt = message.CompletedAt
                 };
-                
+
                 // Cache completion data for recent tasks (24 hours)
-                UpdateCompletedTasksCache(completionData);
-                
+                MediaGenerationHandlerHelper.UpdateCompletedTasksCache(_progressCache, CompletedTasksCacheKey, completionData);
+
                 // Log performance metrics
                 _logger.LogInformation("Video generation performance - Provider: {Provider}, Model: {Model}, Generation time: {GenerationTime}s, Video duration: {VideoDuration}s, Cost: ${Cost}",
-                    message.Provider, message.Model, message.GenerationDuration.TotalSeconds, message.Duration, message.Cost);
-                
+                    LoggingSanitizer.S(message.Provider), LoggingSanitizer.S(message.Model), message.GenerationDuration.TotalSeconds, message.Duration, message.Cost);
+
                 // Track provider-specific metrics
                 LogProviderMetrics(message.Provider, message.Model, message.GenerationDuration, message.Duration, message.Cost);
-                
-                // Send completion notification via SignalR
-                await _hubContext.Clients.Group($"video-{message.RequestId}").SendAsync("VideoGenerationCompleted", new
-                {
-                    taskId = message.RequestId,
-                    status = "completed",
-                    videoUrl = message.VideoUrl,
-                    previewUrl = message.PreviewUrl,
-                    duration = message.Duration,
-                    resolution = message.Resolution,
-                    fileSize = message.FileSize,
-                    cost = message.Cost,
-                    provider = message.Provider,
-                    model = message.Model,
-                    completedAt = message.CompletedAt,
-                    generationDuration = message.GenerationDuration.TotalSeconds
-                });
-                
+
+                // Send completion notification via notification service
+                await _notificationService.NotifyVideoGenerationCompletedAsync(
+                    message.RequestId,
+                    message.VideoUrl,
+                    message.GenerationDuration,
+                    message.Cost,
+                    previewUrl: message.PreviewUrl,
+                    resolution: message.Resolution,
+                    fileSize: message.FileSize,
+                    provider: message.Provider,
+                    model: message.Model,
+                    completedAt: message.CompletedAt,
+                    generationDurationSeconds: message.GenerationDuration.TotalSeconds);
+
                 _logger.LogInformation("Video generation completed for request {RequestId}", message.RequestId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling video generation completion for request {RequestId}", message.RequestId);
-                throw; // Let MassTransit handle retry
+                throw; // Let the endpoint retry policy handle it
             }
-        }
-
-        private void UpdateCompletedTasksCache(object completionData)
-        {
-            // Maintain a rolling list of recently completed tasks
-            var completedTasks = _progressCache.Get<List<object>>(CompletedTasksCacheKey) ?? new List<object>();
-            
-            // Add new completion
-            completedTasks.Add(completionData);
-            
-            // Keep only last 100 completed tasks
-            if (completedTasks.Count() > 100)
-            {
-                completedTasks = completedTasks.Skip(completedTasks.Count() - 100).ToList();
-            }
-            
-            // Cache for 24 hours
-            _progressCache.Set(CompletedTasksCacheKey, completedTasks, TimeSpan.FromHours(24));
         }
 
         private void LogProviderMetrics(string provider, string model, TimeSpan generationDuration, double videoDuration, decimal cost)
@@ -189,7 +192,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 ["cost_per_second"] = videoDuration > 0 ? cost / (decimal)videoDuration : 0,
                 ["generation_speed_ratio"] = generationDuration.TotalSeconds > 0 ? videoDuration / generationDuration.TotalSeconds : 0
             };
-            
+
             _logger.LogInformation("Video generation metrics: {Metrics}", metrics);
         }
     }

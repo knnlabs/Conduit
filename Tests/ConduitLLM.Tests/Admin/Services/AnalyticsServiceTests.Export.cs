@@ -32,7 +32,8 @@ namespace ConduitLLM.Tests.Admin.Services
             };
             
             _mockRequestLogRepository
-                .Setup(x => x.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .Setup(x => x.GetByDateRangeFilteredAsync(
+                    It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(testLogs);
 
             // Act
@@ -61,7 +62,8 @@ namespace ConduitLLM.Tests.Admin.Services
             };
             
             _mockRequestLogRepository
-                .Setup(x => x.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .Setup(x => x.GetByDateRangeFilteredAsync(
+                    It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(testLogs);
 
             // Act

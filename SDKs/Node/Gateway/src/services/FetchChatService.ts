@@ -2,9 +2,9 @@ import { FetchBasedClient } from '../client/FetchBasedClient';
 import { HttpMethod } from '../client/HttpMethod';
 import type { ClientConfig, RequestOptions } from '../client/types';
 import type { StreamingResponse } from '../models/streaming';
-import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
+import type { ChatStreamEvent, EnhancedStreamEvent } from '../models/enhanced-streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
-import type { ChatCompletionRequest, ChatCompletionResponse, ChatCompletionChunk } from '../models/chat';
+import type { ChatCompletionRequest, ChatCompletionResponse } from '../models/chat';
 import { API_ENDPOINTS } from '../constants';
 import { createWebStream } from '../utils/web-streaming';
 import { createEnhancedWebStream } from '../utils/enhanced-web-streaming';
@@ -28,11 +28,11 @@ export class FetchChatService extends FetchBasedClient {
   async create(
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
-  ): Promise<StreamingResponse<ChatCompletionChunk>>;
+  ): Promise<StreamingResponse<ChatStreamEvent>>;
   async create(
     request: ChatCompletionRequest,
     options?: RequestOptions
-  ): Promise<ChatCompletionResponse | StreamingResponse<ChatCompletionChunk>> {
+  ): Promise<ChatCompletionResponse | StreamingResponse<ChatStreamEvent>> {
     
     // Skip validation for now due to type mismatches with generated types
     // validateChatCompletionRequest(request);
@@ -60,15 +60,15 @@ export class FetchChatService extends FetchBasedClient {
   private async createStream(
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
-  ): Promise<StreamingResponse<ChatCompletionChunk>> {
+  ): Promise<StreamingResponse<ChatStreamEvent>> {
     const response = await this.createStreamingRequest(request, options);
     const stream = response.body;
-    
+
     if (!stream) {
       throw new Error('Response body is not a stream');
     }
 
-    return createWebStream<ChatCompletionChunk>(
+    return createWebStream<ChatStreamEvent>(
       stream,
       {
         signal: options?.signal,

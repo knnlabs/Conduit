@@ -24,12 +24,12 @@ namespace ConduitLLM.Tests.Providers
             _mockLoggerFactory = new Mock<ILoggerFactory>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockLogger = new Mock<ILogger<DatabaseAwareLLMClientFactory>>();
-            
+
             _mockLoggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
                 .Returns(Mock.Of<ILogger>());
-            
+
             var mockServiceProvider = new Mock<IServiceProvider>();
-            
+
             _factory = new DatabaseAwareLLMClientFactory(
                 _mockCredentialService.Object,
                 _mockMappingService.Object,
@@ -40,24 +40,24 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
-        public void GetClient_WithNonExistentModel_ThrowsModelNotFoundException()
+        public async Task GetClientAsync_WithNonExistentModel_ThrowsModelNotFoundException()
         {
             // Arrange
             var modelName = "non-existent-model";
             _mockMappingService.Setup(x => x.GetMappingByModelAliasAsync(modelName))
                 .ReturnsAsync((ModelProviderMapping?)null);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<ModelNotFoundException>(
-                () => _factory.GetClient(modelName)
+            var exception = await Assert.ThrowsAsync<ModelNotFoundException>(
+                async () => await _factory.GetClientAsync(modelName)
             );
-            
+
             Assert.Equal($"Model '{modelName}' not found. Please check your model configuration.", exception.Message);
             Assert.Equal(modelName, exception.ModelName);
         }
 
         [Fact]
-        public void GetClient_WithDisabledProvider_ThrowsServiceUnavailableException()
+        public async Task GetClientAsync_WithDisabledProvider_ThrowsServiceUnavailableException()
         {
             // Arrange
             var modelName = "test-model";
@@ -69,7 +69,7 @@ namespace ConduitLLM.Tests.Providers
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };
-            
+
             var provider = new Provider
             {
                 Id = 1,
@@ -77,24 +77,24 @@ namespace ConduitLLM.Tests.Providers
                 ProviderType = ProviderType.OpenAI,
                 IsEnabled = false // Disabled provider
             };
-            
+
             _mockMappingService.Setup(x => x.GetMappingByModelAliasAsync(modelName))
                 .ReturnsAsync(mapping);
-            
+
             _mockCredentialService.Setup(x => x.GetProviderByIdAsync(1))
                 .ReturnsAsync(provider);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<ServiceUnavailableException>(
-                () => _factory.GetClient(modelName)
+            var exception = await Assert.ThrowsAsync<ServiceUnavailableException>(
+                async () => await _factory.GetClientAsync(modelName)
             );
-            
+
             Assert.Equal($"Provider 'TestProvider' is currently disabled.", exception.Message);
             Assert.Equal("TestProvider", exception.ServiceName);
         }
 
         [Fact]
-        public void GetClient_WithNoApiKey_ThrowsConfigurationException()
+        public async Task GetClientAsync_WithNoApiKey_ThrowsConfigurationException()
         {
             // Arrange
             var modelName = "test-model";
@@ -106,7 +106,7 @@ namespace ConduitLLM.Tests.Providers
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };
-            
+
             var provider = new Provider
             {
                 Id = 1,
@@ -114,56 +114,101 @@ namespace ConduitLLM.Tests.Providers
                 ProviderType = ProviderType.OpenAI,
                 IsEnabled = true
             };
-            
+
             _mockMappingService.Setup(x => x.GetMappingByModelAliasAsync(modelName))
                 .ReturnsAsync(mapping);
-            
+
             _mockCredentialService.Setup(x => x.GetProviderByIdAsync(1))
                 .ReturnsAsync(provider);
-            
+
             // Return empty list of key credentials
             _mockCredentialService.Setup(x => x.GetKeyCredentialsByProviderIdAsync(1))
                 .ReturnsAsync(new List<ProviderKeyCredential>());
-            
+
             // Act & Assert
-            var exception = Assert.Throws<ConfigurationException>(
-                () => _factory.GetClient(modelName)
+            var exception = await Assert.ThrowsAsync<ConfigurationException>(
+                async () => await _factory.GetClientAsync(modelName)
             );
-            
+
             Assert.Contains("No API key configured", exception.Message);
         }
 
         [Fact]
-        public void GetClientByProviderId_WithNonExistentProvider_ThrowsInvalidRequestException()
+        public async Task GetClientByProviderIdAsync_WithNonExistentProvider_ThrowsInvalidRequestException()
         {
             // Arrange
             var providerId = 999;
             _mockCredentialService.Setup(x => x.GetProviderByIdAsync(providerId))
                 .ReturnsAsync((Provider?)null);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<InvalidRequestException>(
-                () => _factory.GetClientByProviderId(providerId)
+            var exception = await Assert.ThrowsAsync<InvalidRequestException>(
+                async () => await _factory.GetClientByProviderIdAsync(providerId)
             );
-            
+
             Assert.Equal($"Provider with ID '{providerId}' not found.", exception.Message);
             Assert.Equal("provider_not_found", exception.ErrorCode);
             Assert.Equal("providerId", exception.Param);
         }
 
         [Fact]
-        public void GetClientByProviderType_WithNoProvider_ThrowsInvalidRequestException()
+        public async Task GetClientByProviderIdAsync_WithProviderModelId_DoesNotResolveModelAlias()
+        {
+            // Arrange - provider exists but has no key, so client creation stops after the
+            // provider lookup; the mapping service must never be consulted on this path
+            var providerId = 1;
+            var provider = new Provider
+            {
+                Id = providerId,
+                ProviderName = "TestProvider",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+
+            _mockCredentialService.Setup(x => x.GetProviderByIdAsync(providerId))
+                .ReturnsAsync(provider);
+            _mockCredentialService.Setup(x => x.GetKeyCredentialsByProviderIdAsync(providerId))
+                .ReturnsAsync(new List<ProviderKeyCredential>());
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ConfigurationException>(
+                async () => await _factory.GetClientByProviderIdAsync(providerId, "gpt-image-1")
+            );
+
+            _mockMappingService.Verify(x => x.GetMappingByModelAliasAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetClientByProviderIdAsync_WithProviderModelIdAndNonExistentProvider_ThrowsInvalidRequestException()
+        {
+            // Arrange
+            var providerId = 999;
+            _mockCredentialService.Setup(x => x.GetProviderByIdAsync(providerId))
+                .ReturnsAsync((Provider?)null);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidRequestException>(
+                async () => await _factory.GetClientByProviderIdAsync(providerId, "gpt-image-1")
+            );
+
+            Assert.Equal($"Provider with ID '{providerId}' not found.", exception.Message);
+            Assert.Equal("provider_not_found", exception.ErrorCode);
+            Assert.Equal("providerId", exception.Param);
+        }
+
+        [Fact]
+        public async Task GetClientByProviderTypeAsync_WithNoProvider_ThrowsInvalidRequestException()
         {
             // Arrange
             var providerType = ProviderType.OpenAI;
             _mockCredentialService.Setup(x => x.GetAllProvidersAsync())
                 .ReturnsAsync(new List<Provider>());
-            
+
             // Act & Assert
-            var exception = Assert.Throws<InvalidRequestException>(
-                () => _factory.GetClientByProviderType(providerType)
+            var exception = await Assert.ThrowsAsync<InvalidRequestException>(
+                async () => await _factory.GetClientByProviderTypeAsync(providerType)
             );
-            
+
             Assert.Equal($"No provider configured for type '{providerType}'.", exception.Message);
             Assert.Equal("provider_type_not_found", exception.ErrorCode);
             Assert.Equal("providerType", exception.Param);

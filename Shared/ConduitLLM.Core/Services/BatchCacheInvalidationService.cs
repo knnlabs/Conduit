@@ -165,12 +165,12 @@ namespace ConduitLLM.Core.Services
             lock (_errorLock)
             {
                 var cutoff = DateTime.UtcNow - window;
-                while (_errorTimestamps.Count() > 0 && _errorTimestamps.Peek() < cutoff)
+                while (_errorTimestamps.Any() && _errorTimestamps.Peek() < cutoff)
                 {
                     _errorTimestamps.Dequeue();
                 }
 
-                var errorCount = _errorTimestamps.Count();
+                var errorCount = _errorTimestamps.Count;
                 var totalProcessed = _totalProcessed;
                 
                 return Task.FromResult(totalProcessed > 0 ? errorCount / (double)totalProcessed : 0);
@@ -235,7 +235,7 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
-                if (tasks.Count() > 0)
+                if (tasks.Any())
                 {
                     await Task.WhenAll(tasks);
                     _lastProcessedTime = DateTime.UtcNow;
@@ -259,7 +259,7 @@ namespace ConduitLLM.Core.Services
                 itemsToProcess.Add(item);
             }
 
-            if (itemsToProcess.Count() == 0)
+            if (!itemsToProcess.Any())
             {
                 return;
             }
@@ -465,7 +465,7 @@ namespace ConduitLLM.Core.Services
                 
                 // Keep only last hour of errors
                 var cutoff = DateTime.UtcNow.AddHours(-1);
-                while (_errorTimestamps.Count() > 0 && _errorTimestamps.Peek() < cutoff)
+                while (_errorTimestamps.Any() && _errorTimestamps.Peek() < cutoff)
                 {
                     _errorTimestamps.Dequeue();
                 }

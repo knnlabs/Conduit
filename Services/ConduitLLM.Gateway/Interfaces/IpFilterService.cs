@@ -45,41 +45,38 @@ namespace ConduitLLM.Gateway.Interfaces
         {
             try
             {
-                // Get enabled filters from cache or database
+                // Get enabled filters from cache or database, partitioned once at
+                // population time so the per-request path is a single pass.
                 var filters = await _cache.GetOrCreateAsync(CACHE_KEY, async entry =>
                 {
                     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CACHE_DURATION_MINUTES);
-                    return await _repository.GetEnabledAsync();
+                    var enabled = await _repository.GetEnabledAsync();
+                    return new PartitionedFilters(
+                        enabled.Where(f => f.FilterType == IpFilterConstants.WHITELIST).ToList(),
+                        enabled.Where(f => f.FilterType == IpFilterConstants.BLACKLIST).ToList());
                 });
 
-                if (filters == null || !filters.Any())
+                if (filters == null || (filters.Whitelist.Count == 0 && filters.Blacklist.Count == 0))
                 {
                     // No filters defined, allow all
                     return true;
                 }
 
-                var filtersList = filters.ToList();
-                var hasWhitelist = filtersList.Any(f => f.FilterType == IpFilterConstants.WHITELIST);
-                var hasBlacklist = filtersList.Any(f => f.FilterType == IpFilterConstants.BLACKLIST);
-
                 // Check blacklist first - if IP is blacklisted, deny immediately
-                if (hasBlacklist)
+                foreach (var filter in filters.Blacklist)
                 {
-                    foreach (var filter in filtersList.Where(f => f.FilterType == IpFilterConstants.BLACKLIST))
+                    if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
                     {
-                        if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
-                        {
-                            _logger.LogWarning("IP {IpAddress} is blacklisted by rule {Rule}",
-                                ipAddress, filter.IpAddressOrCidr);
-                            return false;
-                        }
+                        _logger.LogWarning("IP {IpAddress} is blacklisted by rule {Rule}",
+                            ipAddress, filter.IpAddressOrCidr);
+                        return false;
                     }
                 }
 
                 // If there's a whitelist, IP must be in it
-                if (hasWhitelist)
+                if (filters.Whitelist.Count > 0)
                 {
-                    foreach (var filter in filtersList.Where(f => f.FilterType == IpFilterConstants.WHITELIST))
+                    foreach (var filter in filters.Whitelist)
                     {
                         if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
                         {
@@ -104,5 +101,9 @@ namespace ConduitLLM.Gateway.Interfaces
                 return true;
             }
         }
+
+        private sealed record PartitionedFilters(
+            List<ConduitLLM.Configuration.Entities.IpFilterEntity> Whitelist,
+            List<ConduitLLM.Configuration.Entities.IpFilterEntity> Blacklist);
     }
 }

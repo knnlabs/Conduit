@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -9,7 +10,7 @@ namespace ConduitLLM.Gateway.Consumers
     /// Handles ModelCostChanged events for cache invalidation.
     /// Invalidates both the model cost cache and pricing rules cache.
     /// </summary>
-    public class ModelCostCacheInvalidationHandler : IConsumer<ModelCostChanged>
+    public class ModelCostCacheInvalidationHandler : IEventHandler<ModelCostChanged>
     {
         private readonly IModelCostCache? _modelCostCache;
         private readonly ICachedPricingRulesService? _pricingRulesCache;
@@ -34,10 +35,11 @@ namespace ConduitLLM.Gateway.Consumers
         /// <summary>
         /// Consumes ModelCostChanged events and logs them for monitoring
         /// </summary>
+        /// <param name="message">The model cost change event</param>
         /// <param name="context">The consume context containing the event</param>
-        public async Task Consume(ConsumeContext<ModelCostChanged> context)
+        public async Task HandleAsync(ModelCostChanged message, IEventContext context)
         {
-            var @event = context.Message;
+            var @event = message;
 
             _logger.LogInformation(
                 "ModelCostChanged event received - ModelCostId: {ModelCostId}, CostName: {CostName}, ChangeType: {ChangeType}",
@@ -63,14 +65,22 @@ namespace ConduitLLM.Gateway.Consumers
                     @event.CostName);
             }
 
-            // Invalidate model cost cache if available
+            // Invalidate model cost cache if available — use targeted invalidation to avoid cache miss avalanche
             if (_modelCostCache != null)
             {
                 try
                 {
-                    // Clear all model costs to ensure cache consistency
-                    await _modelCostCache.ClearAllModelCostsAsync();
-                    _logger.LogInformation("Model cost cache cleared due to cost change event");
+                    if (@event.ModelCostId > 0)
+                    {
+                        await _modelCostCache.InvalidateModelCostAsync(@event.ModelCostId);
+                        _logger.LogInformation("Model cost cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
+                    }
+                    else
+                    {
+                        // Fallback to full clear only when we don't have a specific ID
+                        await _modelCostCache.ClearAllModelCostsAsync();
+                        _logger.LogInformation("Model cost cache fully cleared (no specific ModelCostId in event)");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -83,7 +93,7 @@ namespace ConduitLLM.Gateway.Consumers
             {
                 try
                 {
-                    _pricingRulesCache.InvalidateCache(@event.ModelCostId);
+                    await _pricingRulesCache.InvalidateCacheAsync(@event.ModelCostId);
                     _logger.LogInformation(
                         "Pricing rules cache invalidated for ModelCostId: {ModelCostId}",
                         @event.ModelCostId);

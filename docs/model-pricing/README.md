@@ -1,49 +1,19 @@
-# Model Pricing Documentation
+# Model Pricing
 
-This directory contains pricing information for various LLM providers integrated with Conduit.
+Conduit tracks costs for every LLM request using a flexible pricing system that supports per-token, per-image, per-video, tiered, and other billing models.
 
-## Available Providers
+## Managing Model Data & Pricing
 
-- [OpenAI](./openai-pricing.md) - GPT-4, GPT-4o, DALL-E, Whisper, and embedding models
-- [Anthropic](./anthropic-pricing.md) - Claude Opus, Sonnet, and Haiku models
-- [MiniMax](./minimax-pricing.md) - Chat, text-to-speech, video generation, and image models
+Model definitions and pricing are managed via SQL scripts generated from JSON configuration files:
 
-## Import Process
+- **[Provider Models SQL Generator](../../scripts/db/providers/README.md)** — Canonical tool for adding/updating models and costs
+- **[Updating Models Guide](../../scripts/db/providers/UPDATING-MODELS.md)** — Step-by-step guide for updating provider model JSON files
 
-1. Navigate to the Conduit WebAdmin at `/model-costs/`
-2. Click "Import from CSV"
-3. Upload the CSV file generated from the pricing documentation
-4. Review the preview to ensure accuracy
-5. Click "Import" to add the pricing data
+Supported providers: Cerebras, Groq, SambaNova, OpenRouter (300+ models via API fetch), and Replicate.
 
-## CSV Format
+## Understanding the Pricing System
 
-The standard CSV format for model cost imports includes:
-
-```csv
-Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Video Cost (per second),Priority,Active,Description
-```
-
-### Important Notes
-
-- **Cost Units**: Input/Output costs are per 1K tokens in the CSV, but stored as per 1M tokens in the database
-- **Model Pattern**: Should match the exact model ID used by the provider
-- **Provider**: Must match the provider name in Conduit (e.g., "OpenAI", "Anthropic", "MiniMax")
-- **Model Type**: One of: chat, embedding, image, audio, video
-- **Priority**: Higher numbers take precedence when multiple patterns match
-- **Active**: Set to "Yes" or "No" to enable/disable the pricing rule
-
-## Updating Pricing
-
-When provider pricing changes:
-
-1. Update the markdown documentation in this directory
-2. Regenerate the CSV file based on the updated markdown
-3. Import the new CSV through the WebAdmin
-4. The system will update existing entries based on the model pattern
-
-## Decimal Precision
-
-- The system stores costs with high precision
-- Display formatting is handled by the UI
-- No manual conversion needed between per-1K and per-1M tokens
+- **[Model Cost Configuration](./model-costs.md)** — How ModelCost, ModelCostMapping, and cost storage work
+- **[Polymorphic Pricing](./polymorphic-pricing.md)** — Architecture for the 8 pricing models (standard, per-video, tiered, per-image, etc.)
+- **[Pricing Quick Reference](./pricing-quick-reference.md)** — Enum values and configuration templates
+- **[WebAdmin Pricing Guide](./webui-pricing-guide.md)** — Configuring pricing through the WebAdmin UI

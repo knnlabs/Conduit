@@ -72,7 +72,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Assertions
             decimal expectedCost)
         {
             batchService.Verify(
-                x => x.QueueSpendUpdate(expectedVirtualKeyId, expectedCost),
+                x => x.QueueSpendUpdateAsync(expectedVirtualKeyId, expectedCost),
                 Times.Once);
         }
 
@@ -86,7 +86,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Assertions
             int expectedVirtualKeyId)
         {
             batchService.Verify(
-                x => x.QueueSpendUpdate(expectedVirtualKeyId, It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(expectedVirtualKeyId, It.IsAny<decimal>()),
                 Times.Once);
         }
 
@@ -100,7 +100,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Assertions
             Mock<IVirtualKeyService> virtualKeyService)
         {
             batchService.Verify(
-                x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
                 Times.Never);
             virtualKeyService.Verify(
                 x => x.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()),

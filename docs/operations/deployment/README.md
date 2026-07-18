@@ -5,6 +5,7 @@ This directory contains guides for deploying and operating Conduit in production
 ## Contents
 
 - **[Deployment Configuration](./DEPLOYMENT-CONFIGURATION.md)** - Comprehensive production deployment guide
+- **[Migration Deployment Strategy](./migration-deployment-strategy.md)** - How EF Core/Wolverine schema changes deploy (CONDUIT_MIGRATION_MODE, the `migrate` verb, readiness gating)
 - **[Media Cleanup Configuration](./media-cleanup-configuration.md)** - **⚠️ CRITICAL** - S3/R2 configuration to prevent unbounded storage costs
 - **[Docker Optimization](./docker-optimization.md)** - Container performance and security best practices
 - **[CI/CD Maintenance Guide](./ci-cd-maintenance-guide.md)** - GitHub Actions workflow maintenance and troubleshooting
@@ -17,11 +18,12 @@ This directory contains guides for deploying and operating Conduit in production
 docker-compose up -d
 
 # Using standalone Docker
-docker run -p 5000:5000 ghcr.io/knnlabs/conduit:latest
+docker run -p 5000:5000 ghcr.io/nickna/conduit:latest
 ```
 
 ### Production Checklist
 - [ ] Configure PostgreSQL connection string
+- [ ] Choose a migration strategy: release hook runs `migrate`, services run `CONDUIT_MIGRATION_MODE=Wait` (see [Migration Deployment Strategy](./migration-deployment-strategy.md))
 - [ ] Set up Redis for caching (optional but recommended)
 - [ ] Configure RabbitMQ for event processing (optional)
 - [ ] **⚠️ Configure S3/R2 storage for media cleanup** (see [Media Cleanup Configuration](./media-cleanup-configuration.md))

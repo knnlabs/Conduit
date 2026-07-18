@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
 /// Represents a group of virtual keys that share a common balance
 /// </summary>
-public class VirtualKeyGroup
+public class VirtualKeyGroup : IEntity<int>, IAuditableEntity
 {
     /// <summary>
     /// Unique identifier for the virtual key group

@@ -117,23 +117,65 @@ public static class ImageUrlExtensions
     }
 
     /// <summary>
-    /// Creates an ImageUrl by downloading an image from an external URL and converting it to a base64 data URL
+    /// Creates an ImageUrl by downloading an image from an external URL and converting it to a base64 data URL.
     /// </summary>
     /// <param name="url">The HTTP URL of the image</param>
+    /// <param name="httpClient">The HttpClient instance to use for downloading (should be from IHttpClientFactory)</param>
     /// <param name="detail">Optional detail level for vision models</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
     /// <returns>An ImageUrl object with the image as a base64 data URL</returns>
-    public static async Task<ImageUrl> FromExternalUrlAsync(string url, string? detail = null)
+    public static async Task<ImageUrl> FromExternalUrlAsync(string url, HttpClient httpClient, string? detail = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(url))
             throw new ArgumentException("URL cannot be null or empty", nameof(url));
 
+        if (httpClient == null)
+            throw new ArgumentNullException(nameof(httpClient));
+
         if (url.StartsWith("data:"))
             return new ImageUrl { Url = url, Detail = detail };
 
-        using var httpClient = new HttpClient();
-        byte[] imageBytes = await httpClient.GetByteArrayAsync(url);
+        byte[] imageBytes = await httpClient.GetByteArrayAsync(url, cancellationToken);
 
         // Try to determine MIME type from content or fall back to a default
+        string mimeType = DetectMimeTypeFromBytes(imageBytes);
+
+        string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
+
+        return new ImageUrl
+        {
+            Url = dataUrl,
+            Detail = detail
+        };
+    }
+
+    /// <summary>
+    /// Creates an ImageUrl by downloading an image from an external URL and converting it to a base64 data URL.
+    /// </summary>
+    /// <param name="url">The HTTP URL of the image</param>
+    /// <param name="detail">Optional detail level for vision models</param>
+    /// <returns>An ImageUrl object with the image as a base64 data URL</returns>
+    /// <remarks>
+    /// This method is no longer supported. Use the overload that accepts an HttpClient from IHttpClientFactory,
+    /// or use IImageDownloadService to properly manage HTTP connections and avoid socket exhaustion.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Always thrown. Use the overload that accepts an HttpClient parameter.</exception>
+    [Obsolete("Use the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService. This method is no longer supported.", error: true)]
+    public static Task<ImageUrl> FromExternalUrlAsync(string url, string? detail = null)
+    {
+        throw new NotSupportedException(
+            "This method is no longer supported due to socket exhaustion risks. " +
+            "Use FromExternalUrlAsync(url, httpClient, detail, cancellationToken) with an HttpClient from IHttpClientFactory, " +
+            "or use IImageDownloadService.");
+    }
+
+    /// <summary>
+    /// Detects the MIME type from image bytes by examining magic numbers.
+    /// </summary>
+    /// <param name="imageBytes">The image data bytes.</param>
+    /// <returns>The detected MIME type, or "image/jpeg" as fallback.</returns>
+    private static string DetectMimeTypeFromBytes(byte[] imageBytes)
+    {
         string mimeType = "image/jpeg"; // Default fallback
 
         // Check magic numbers for common image formats
@@ -154,13 +196,7 @@ public static class ImageUrlExtensions
                 mimeType = "image/bmp";
         }
 
-        string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
-
-        return new ImageUrl
-        {
-            Url = dataUrl,
-            Detail = detail
-        };
+        return mimeType;
     }
 
     /// <summary>

@@ -46,19 +46,6 @@ namespace ConduitLLM.Admin.Extensions
             // Uses distributed locking to ensure only one instance runs across a cluster
             services.AddHostedService<MediaCleanupService>();
 
-            // Log configuration
-            Console.WriteLine("[ConduitLLM.Admin] Media lifecycle services configured:");
-            Console.WriteLine($"  - Cleanup Enabled: {options.IsSchedulerEnabled}");
-            Console.WriteLine($"  - Dry Run Mode: {options.DryRunMode}");
-            Console.WriteLine($"  - Schedule Interval: {options.ScheduleIntervalMinutes} minutes");
-            Console.WriteLine($"  - Max Batch Size: {options.MaxBatchSize} items");
-            Console.WriteLine($"  - Monthly Delete Budget: {options.MonthlyDeleteBudget:N0} operations");
-
-            if (options.TestVirtualKeyGroups.Any())
-            {
-                Console.WriteLine($"  - Test Groups: {string.Join(", ", options.TestVirtualKeyGroups)}");
-            }
-
             return services;
         }
 
@@ -68,34 +55,19 @@ namespace ConduitLLM.Admin.Extensions
             MediaLifecycleOptions options)
         {
             // Check if Redis is configured
-            var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-            var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-            if (!string.IsNullOrEmpty(redisUrl))
-            {
-                try
-                {
-                    redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-                }
-                catch
-                {
-                    // Failed to parse REDIS_URL
-                }
-            }
+            var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
             if (!string.IsNullOrEmpty(redisConnectionString))
             {
                 // Redis is available - use Redis-based budget tracking
                 // Note: IConnectionMultiplexer should already be registered by Admin API
                 services.AddSingleton<IMediaDeletionBudgetService, RedisMediaDeletionBudgetService>();
-                Console.WriteLine($"[ConduitLLM.Admin] Media deletion budget tracking: Redis-backed (budget: {options.MonthlyDeleteBudget:N0}/month)");
             }
             else
             {
                 // No Redis - use in-memory tracking (development mode)
                 services.AddSingleton<IMediaDeletionBudgetService, InMemoryMediaDeletionBudgetService>();
-                Console.WriteLine($"[ConduitLLM.Admin] Media deletion budget tracking: In-memory (budget: {options.MonthlyDeleteBudget:N0}/month)");
-                Console.WriteLine("[ConduitLLM.Admin] WARNING: Budget tracking will not persist across restarts or be shared across instances");
+                Console.Error.WriteLine("[ConduitLLM.Admin] WARNING: Budget tracking will not persist across restarts or be shared across instances");
             }
         }
 
@@ -152,13 +124,11 @@ namespace ConduitLLM.Admin.Extensions
                 });
 
                 services.AddSingleton<IMediaStorageService, S3MediaStorageService>();
-                Console.WriteLine($"[ConduitLLM.Admin] Media storage configured with S3-compatible service: {serviceUrl}");
             }
             else
             {
                 // Use in-memory storage for development/testing
                 services.AddSingleton<IMediaStorageService, InMemoryMediaStorageService>();
-                Console.WriteLine("[ConduitLLM.Admin] Media storage configured with in-memory service (development mode)");
             }
         }
     }

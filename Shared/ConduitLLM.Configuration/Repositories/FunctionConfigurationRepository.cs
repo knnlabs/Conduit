@@ -1,4 +1,3 @@
-using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
@@ -9,38 +8,23 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Configuration.Repositories;
 
 /// <summary>
-/// Repository implementation for function configurations using Entity Framework Core.
+/// Repository implementation for function configurations using RepositoryBase.
 /// </summary>
-public class FunctionConfigurationRepository : IFunctionConfigurationRepository
+public class FunctionConfigurationRepository : RepositoryBase<FunctionConfiguration, int>, IFunctionConfigurationRepository
 {
-    private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-    private readonly ILogger<FunctionConfigurationRepository> _logger;
-
     public FunctionConfigurationRepository(
         IDbContextFactory<ConduitDbContext> dbContextFactory,
         ILogger<FunctionConfigurationRepository> logger)
-    {
-        _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+        : base(dbContextFactory, logger) { }
 
-    public async Task<FunctionConfiguration?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
-                .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function configuration with ID {ConfigId}", LogSanitizer.SanitizeObject(id));
-            throw;
-        }
-    }
+    protected override DbSet<FunctionConfiguration> GetDbSet(ConduitDbContext context)
+        => context.FunctionConfigurations;
+
+    protected override IQueryable<FunctionConfiguration> ApplyDefaultIncludes(IQueryable<FunctionConfiguration> query)
+        => query.Include(f => f.CostMappings).ThenInclude(cm => cm.FunctionCost);
+
+    protected override IQueryable<FunctionConfiguration> ApplyDefaultOrdering(IQueryable<FunctionConfiguration> query)
+        => query.OrderBy(f => f.ConfigurationName);
 
     public async Task<List<FunctionConfiguration>> GetByIdsAsync(List<int> ids, CancellationToken cancellationToken = default)
     {
@@ -49,21 +33,12 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             return new List<FunctionConfiguration>();
         }
 
-        try
+        return await ExecuteAsync(async db =>
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(GetDbSet(db).AsNoTracking())
                 .Where(f => ids.Contains(f.Id))
                 .ToListAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function configurations with IDs {ConfigIds}", LogSanitizer.SanitizeObject(ids));
-            throw;
-        }
+        }, cancellationToken, "GetByIds");
     }
 
     public async Task<FunctionConfiguration?> GetByNameAsync(string configurationName, CancellationToken cancellationToken = default)
@@ -73,251 +48,77 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             throw new ArgumentException("Configuration name cannot be null or empty", nameof(configurationName));
         }
 
-        try
+        return await ExecuteAsync(async db =>
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(GetDbSet(db).AsNoTracking())
                 .FirstOrDefaultAsync(f => f.ConfigurationName == configurationName, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function configuration with name {ConfigName}",
-                LogSanitizer.SanitizeObject(configurationName));
-            throw;
-        }
-    }
-
-    public async Task<List<FunctionConfiguration>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
-                .OrderBy(f => f.ConfigurationName)
-                .ToListAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all function configurations");
-            throw;
-        }
+        }, cancellationToken, "GetByName");
     }
 
     public async Task<List<FunctionConfiguration>> GetAllEnabledAsync(CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async db =>
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(GetDbSet(db).AsNoTracking())
                 .Where(f => f.IsEnabled)
                 .OrderBy(f => f.ConfigurationName)
                 .ToListAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all enabled function configurations");
-            throw;
-        }
+        }, cancellationToken, "GetAllEnabled");
     }
 
     public async Task<List<FunctionConfiguration>> GetByProviderTypeAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async db =>
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(GetDbSet(db).AsNoTracking())
                 .Where(f => f.ProviderType == providerType)
                 .OrderBy(f => f.ConfigurationName)
                 .ToListAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function configurations for provider type {ProviderType}",
-                LogSanitizer.SanitizeObject(providerType));
-            throw;
-        }
+        }, cancellationToken, "GetByProviderType");
     }
 
     public async Task<List<FunctionConfiguration>> GetByPurposeAsync(FunctionPurpose purpose, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async db =>
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await dbContext.FunctionConfigurations
-                .AsNoTracking()
-                .Include(f => f.CostMappings)
-                    .ThenInclude(cm => cm.FunctionCost)
+            return await ApplyDefaultIncludes(GetDbSet(db).AsNoTracking())
                 .Where(f => f.Purpose == purpose)
                 .OrderBy(f => f.ConfigurationName)
                 .ToListAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting function configurations for purpose {Purpose}",
-                LogSanitizer.SanitizeObject(purpose));
-            throw;
-        }
+        }, cancellationToken, "GetByPurpose");
     }
 
-    public async Task<int> CreateAsync(FunctionConfiguration functionConfiguration, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Overrides base UpdateAsync to add concurrency retry logic.
+    /// </summary>
+    public override async Task<bool> UpdateAsync(FunctionConfiguration entity, CancellationToken cancellationToken = default)
     {
-        if (functionConfiguration == null)
-        {
-            throw new ArgumentNullException(nameof(functionConfiguration));
-        }
+        ArgumentNullException.ThrowIfNull(entity);
 
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-            try
-            {
-                functionConfiguration.CreatedAt = DateTime.UtcNow;
-                functionConfiguration.UpdatedAt = DateTime.UtcNow;
-
-                dbContext.FunctionConfigurations.Add(functionConfiguration);
-                await dbContext.SaveChangesAsync(cancellationToken);
-
-                await transaction.CommitAsync(cancellationToken);
-
-                return functionConfiguration.Id;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                _logger.LogError(ex, "Transaction rolled back while creating function configuration '{ConfigName}'",
-                    LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionConfiguration.ConfigurationName)));
-                throw;
-            }
+            return await base.UpdateAsync(entity, cancellationToken);
         }
-        catch (DbUpdateException ex)
+        catch (DbUpdateConcurrencyException ex)
         {
-            _logger.LogError(ex, "Database error creating function configuration '{ConfigName}'",
-                LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionConfiguration.ConfigurationName)));
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating function configuration '{ConfigName}'",
-                LogSanitizer.SanitizeObject(LoggingSanitizer.S(functionConfiguration.ConfigurationName)));
-            throw;
-        }
-    }
+            Logger.LogError(ex, "Concurrency error updating function configuration with ID {ConfigId}",
+                LoggingSanitizer.S(entity.Id));
 
-    public async Task UpdateAsync(FunctionConfiguration functionConfiguration, CancellationToken cancellationToken = default)
-    {
-        if (functionConfiguration == null)
-        {
-            throw new ArgumentNullException(nameof(functionConfiguration));
-        }
-
-        try
-        {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-            try
+            // Retry with fresh context
+            return await ExecuteAsync(async db =>
             {
-                functionConfiguration.UpdatedAt = DateTime.UtcNow;
+                var existingEntity = await GetDbSet(db)
+                    .FindAsync(new object[] { entity.Id }, cancellationToken);
 
-                dbContext.FunctionConfigurations.Update(functionConfiguration);
-                await dbContext.SaveChangesAsync(cancellationToken);
-
-                await transaction.CommitAsync(cancellationToken);
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                _logger.LogError(ex, "Concurrency error updating function configuration with ID {ConfigId}",
-                    LogSanitizer.SanitizeObject(functionConfiguration.Id));
-
-                // Retry logic
-                try
+                if (existingEntity != null)
                 {
-                    using var retryDbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                    await using var retryTransaction = await retryDbContext.Database.BeginTransactionAsync(cancellationToken);
-
-                    var existingEntity = await retryDbContext.FunctionConfigurations
-                        .FindAsync(new object[] { functionConfiguration.Id }, cancellationToken);
-
-                    if (existingEntity != null)
-                    {
-                        retryDbContext.Entry(existingEntity).CurrentValues.SetValues(functionConfiguration);
-                        existingEntity.UpdatedAt = DateTime.UtcNow;
-
-                        await retryDbContext.SaveChangesAsync(cancellationToken);
-                        await retryTransaction.CommitAsync(cancellationToken);
-                    }
-                }
-                catch (Exception retryEx)
-                {
-                    _logger.LogError(retryEx, "Error during retry of function configuration update with ID {ConfigId}",
-                        LogSanitizer.SanitizeObject(functionConfiguration.Id));
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                _logger.LogError(ex, "Transaction rolled back while updating function configuration with ID {ConfigId}",
-                    LogSanitizer.SanitizeObject(functionConfiguration.Id));
-                throw;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating function configuration with ID {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfiguration.Id));
-            throw;
-        }
-    }
-
-    public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-            try
-            {
-                var functionConfiguration = await dbContext.FunctionConfigurations
-                    .FindAsync(new object[] { id }, cancellationToken);
-
-                if (functionConfiguration != null)
-                {
-                    dbContext.FunctionConfigurations.Remove(functionConfiguration);
-                    await dbContext.SaveChangesAsync(cancellationToken);
+                    db.Entry(existingEntity).CurrentValues.SetValues(entity);
+                    existingEntity.UpdatedAt = DateTime.UtcNow;
+                    return await db.SaveChangesAsync(cancellationToken) > 0;
                 }
 
-                await transaction.CommitAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                _logger.LogError(ex, "Transaction rolled back while deleting function configuration with ID {ConfigId}",
-                    LogSanitizer.SanitizeObject(id));
-                throw;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting function configuration with ID {ConfigId}",
-                LogSanitizer.SanitizeObject(id));
-            throw;
+                return false;
+            }, cancellationToken, "UpdateAsync-Retry");
         }
     }
 
@@ -328,12 +129,9 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             throw new ArgumentException("Configuration name cannot be null or empty", nameof(configurationName));
         }
 
-        try
+        return await ExecuteAsync(async db =>
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-            var query = dbContext.FunctionConfigurations
-                .AsNoTracking()
+            var query = GetDbSet(db).AsNoTracking()
                 .Where(f => f.ConfigurationName == configurationName);
 
             if (excludeId.HasValue)
@@ -342,12 +140,6 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             }
 
             return await query.AnyAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking if function configuration name exists: {ConfigName}",
-                LogSanitizer.SanitizeObject(configurationName));
-            throw;
-        }
+        }, cancellationToken, "NameExists");
     }
 }

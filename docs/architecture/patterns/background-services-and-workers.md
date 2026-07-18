@@ -811,4 +811,4 @@ While the current approach is sufficient, these patterns could be considered:
 
 - [Async Media Generation](../media-generation/async-media-generation.md) - Media generation using background workers
 - [Repository Pattern](./repository-and-data-access.md) - Data access patterns
-- [Event-Driven Architecture](../../claude/event-driven-architecture.md) - MassTransit events
+- [MassTransit Events](../events/masstransit-event-inventory.md) - Event-driven architecture

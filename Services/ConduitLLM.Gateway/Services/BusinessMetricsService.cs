@@ -142,7 +142,8 @@ namespace ConduitLLM.Gateway.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Business metrics service starting...");
+            _logger.LogInformation("Business metrics service starting with {IntervalSeconds}s collection interval",
+                _collectionInterval.TotalSeconds);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -163,6 +164,8 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task CollectMetricsAsync()
         {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             using var scope = _serviceScopeFactory.CreateScope();
 
             var tasks = new[]
@@ -174,21 +177,21 @@ namespace ConduitLLM.Gateway.Services
             };
 
             await Task.WhenAll(tasks);
+
+            stopwatch.Stop();
+            _logger.LogDebug("Business metrics collection cycle completed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
         }
 
         private async Task CollectVirtualKeyMetrics(IServiceScope scope)
         {
             try
             {
-                var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var spendHistoryRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
-
-                // Get all virtual keys and filter for active ones
-                var allKeys = await virtualKeyRepo.GetAllAsync();
-                var activeKeys = allKeys.Where(k => k.IsEnabled && (k.ExpiresAt == null || k.ExpiresAt > DateTime.UtcNow)).ToList();
-
                 // Note: Budget tracking is now at the group level
                 // Individual key metrics are no longer tracked for budget/spend
+                // No need to load all virtual keys - just count active ones if needed
+                var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
+                var activeKeyCount = await virtualKeyRepo.CountActiveAsync();
+                // activeKeyCount is available for metrics if needed in the future
             }
             catch (Exception ex)
             {
@@ -303,9 +306,8 @@ namespace ConduitLLM.Gateway.Services
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
                 var modelMappingService = scope.ServiceProvider.GetRequiredService<IModelProviderMappingService>();
 
-                // Count active virtual keys
-                var allKeys = await virtualKeyRepo.GetAllAsync();
-                var activeKeyCount = allKeys.Count(k => k.IsEnabled && (k.ExpiresAt == null || k.ExpiresAt > DateTime.UtcNow));
+                // Count active virtual keys using database-level count
+                var activeKeyCount = await virtualKeyRepo.CountActiveAsync();
                 ActiveVirtualKeys.Set(activeKeyCount);
 
                 // Count active model mappings by provider
@@ -355,7 +357,8 @@ namespace ConduitLLM.Gateway.Services
             CostPerRequest.WithLabels(model, provider).Observe(costDollars);
         }
 
-        public static void RecordTokens(string model, string provider, int promptTokens, int completionTokens)
+        public static void RecordTokens(string model, string provider, int promptTokens, int completionTokens,
+            int? cachedInputTokens = null, int? cachedWriteTokens = null)
         {
             if (promptTokens > 0)
             {
@@ -364,6 +367,14 @@ namespace ConduitLLM.Gateway.Services
             if (completionTokens > 0)
             {
                 ModelTokensProcessed.WithLabels(model, provider, "completion").Inc(completionTokens);
+            }
+            if (cachedInputTokens.HasValue && cachedInputTokens.Value > 0)
+            {
+                ModelTokensProcessed.WithLabels(model, provider, "cached_input").Inc(cachedInputTokens.Value);
+            }
+            if (cachedWriteTokens.HasValue && cachedWriteTokens.Value > 0)
+            {
+                ModelTokensProcessed.WithLabels(model, provider, "cached_write").Inc(cachedWriteTokens.Value);
             }
         }
 

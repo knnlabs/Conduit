@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Switch, Button, Stack, Group, NumberInput, Divider } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { notify } from '@/lib/notifications';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
 import type { CreateModelDto, ModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
@@ -19,7 +19,6 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
   const [loading, setLoading] = useState(false);
   const [series, setSeries] = useState<ModelSeriesDto[]>([]);
   // Capabilities are now embedded in the Model, no need for separate capabilities
-  const { executeWithAdmin } = useAdminClient();
 
   const form = useForm({
     initialValues: {
@@ -55,21 +54,16 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
     if (isOpen) {
       void loadData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const loadData = async () => {
     try {
-      const seriesData = await executeWithAdmin(client => client.modelSeries.list());
+      const seriesData = await withAdminClient(client => client.modelSeries.list());
       setSeries(seriesData);
       // Capabilities are now embedded in the Model, no need to load separately
     } catch (error) {
       console.error('Failed to load data:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load series data',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load series data');
     }
   };
 
@@ -96,21 +90,13 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         maxInputTokens: values.maxInputTokens ?? undefined,
         maxOutputTokens: values.maxOutputTokens ?? undefined
       } as CreateModelDto;
-      await executeWithAdmin(client => client.models.create(dto));
-      notifications.show({
-        title: 'Success',
-        message: 'Model created successfully',
-        color: 'green',
-      });
+      await withAdminClient(client => client.models.create(dto));
+      notify.success('Model created successfully');
       form.reset();
       onSuccess();
     } catch (error) {
       console.error('Failed to create model:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to create model',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to create model');
     } finally {
       setLoading(false);
     }

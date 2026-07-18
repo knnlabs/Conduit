@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Extensions;
+using ConduitLLM.Gateway.Filters;
 
 public partial class Program
 {
@@ -8,6 +9,12 @@ public partial class Program
     {
         // Add Controller support
         builder.Services.AddControllers();
+
+        // Operation-logging action filter — replaces the per-action success logging that used to
+        // live in GatewayControllerBase.ExecuteAsync. Applied per controller via [ServiceFilter]
+        // during the incremental Tier 1a migration (#902); promote to a global filter once all
+        // Gateway controllers are converted.
+        builder.Services.AddScoped<OperationLoggingFilter>();
 
         // Add OpenAPI support with Scalar
         builder.Services.AddEndpointsApiExplorer();
@@ -18,23 +25,10 @@ public partial class Program
         });
 
         // Get Redis and RabbitMQ configuration for health checks
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-        if (!string.IsNullOrEmpty(redisUrl))
-        {
-            try
-            {
-                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-            }
-            catch
-            {
-                // Failed to parse REDIS_URL, will use legacy connection string if available
-            }
-        }
+        var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
         var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
-        var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI", msg => Console.WriteLine(msg));
+        var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI");
 
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
             ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
@@ -48,13 +42,44 @@ public partial class Program
             // Add basic health checks
             var healthChecksBuilder = builder.Services.AddHealthChecks();
 
-            // Add comprehensive RabbitMQ health check if RabbitMQ is configured
-            if (useRabbitMq)
+            // Gate /health/ready on the schema being current. Tag must be "ready" —
+            // that's what the readiness endpoint filters on. Only Wait mode can fail
+            // this check; Apply/Skip set the state before the server binds.
+            healthChecksBuilder.AddCheck<ConduitLLM.Configuration.HealthChecks.PendingMigrationsReadinessCheck>(
+                "pending_migrations",
+                failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                tags: new[] { "ready", "database", "migrations" });
+
+            var messagingBackend =
+                ConduitLLM.Configuration.Messaging.MessagingBackendResolver.Resolve(builder.Configuration);
+
+            // Add comprehensive RabbitMQ health check if RabbitMQ is configured AND the
+            // MassTransit backend is active — the check injects MassTransit's IBus, which
+            // is not registered on the Wolverine backend (#925).
+            if (useRabbitMq
+                && messagingBackend == ConduitLLM.Configuration.Messaging.MessagingBackend.MassTransit)
             {
                 healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.RabbitMQHealthCheck>(
                     "rabbitmq_comprehensive",
                     failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                     tags: new[] { "messaging", "rabbitmq", "performance", "monitoring" });
+            }
+
+            // Wolverine bus health check (#931): probes the Postgres message store
+            // (inbox/outbox/scheduled/dead-letter counts). Only on the Postgresql
+            // transport — the in-memory dev/CI mode has no store to probe.
+            if (messagingBackend == ConduitLLM.Configuration.Messaging.MessagingBackend.Wolverine
+                && !ConduitLLM.Configuration.Messaging.Wolverine.WolverineMessagingExtensions
+                    .UsesInMemoryTransport(builder.Configuration))
+            {
+                var deadLetterThreshold = builder.Configuration.GetValue(
+                    ConduitLLM.Configuration.Messaging.Wolverine.WolverineBusHealthCheck.DeadLetterThresholdKey, 1);
+
+                healthChecksBuilder.AddTypeActivatedCheck<ConduitLLM.Configuration.Messaging.Wolverine.WolverineBusHealthCheck>(
+                    "wolverine_bus",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                    tags: new[] { "messaging", "wolverine", "ready" },
+                    args: new object[] { deadLetterThreshold });
             }
 
             // Add Redis health check if Redis is configured
@@ -80,10 +105,6 @@ public partial class Program
                     tags: new[] { "leader_election", "background_services", "distributed" });
             }
 
-            // Audio health checks removed per YAGNI principle
-            
-            // Add advanced health monitoring checks (includes SignalR and HTTP connection pool checks)
-            healthChecksBuilder.AddAdvancedHealthMonitoring(builder.Configuration);
         }
 
         // Add health monitoring services
@@ -109,5 +130,15 @@ public partial class Program
                 return new ConduitLLM.Gateway.Services.BusinessMetricsService(scopeFactory, logger);
             },
             "BusinessMetricsService");
+
+        // Add gateway operations metrics service for operation-level metrics
+        // Tracks LLM operations, batch operations, media operations, function executions, and routing decisions
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.GatewayOperationsMetricsService>(
+            serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.GatewayOperationsMetricsService>>();
+                return new ConduitLLM.Gateway.Services.GatewayOperationsMetricsService(serviceProvider, logger);
+            },
+            "GatewayOperationsMetricsService");
     }
 }

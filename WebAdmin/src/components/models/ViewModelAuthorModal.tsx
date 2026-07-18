@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, Stack, Group, Text, Badge, Title, Divider, Anchor, ScrollArea } from '@mantine/core';
-import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { notify } from '@/lib/notifications';
 import type { ModelAuthorDto, SimpleModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -16,7 +16,6 @@ interface ViewModelAuthorModalProps {
 export function ViewModelAuthorModal({ isOpen, author, onClose }: ViewModelAuthorModalProps) {
   const [series, setSeries] = useState<SimpleModelSeriesDto[]>([]);
   const [loading, setLoading] = useState(false);
-  const { executeWithAdmin } = useAdminClient();
 
   useEffect(() => {
     if (isOpen && author?.id) {
@@ -29,15 +28,11 @@ export function ViewModelAuthorModal({ isOpen, author, onClose }: ViewModelAutho
     try {
       setLoading(true);
       if (!author.id) throw new Error('Author ID is required');
-      const data = await executeWithAdmin(client => client.modelAuthors.getSeries(author.id as number));
+      const data = await withAdminClient(client => client.modelAuthors.getSeries(author.id as number));
       setSeries(data);
     } catch (error) {
       console.error('Failed to load author series:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load author series',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load author series');
     } finally {
       setLoading(false);
     }

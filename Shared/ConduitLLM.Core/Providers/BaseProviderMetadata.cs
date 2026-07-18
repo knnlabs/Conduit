@@ -90,7 +90,7 @@ namespace ConduitLLM.Core.Providers
                 }
             }
 
-            return errors.Count() > 0
+            return errors.Any()
                 ? new ValidationResult { IsValid = false, Errors = errors }
                 : ValidationResult.Success();
         }

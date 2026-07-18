@@ -88,14 +88,13 @@ When adding features to Admin/Core SDKs:
 
 ### Key Architecture Guides
 
-- **[Clean Architecture Guide](../clean-architecture-guide.md)** - Development principles and layering
-- **[Provider Multi-Instance](../architecture/provider-multi-instance.md)** - Provider architecture patterns
-- **[Repository Pattern](../architecture/Repository-Pattern.md)** - Data access patterns
-- **[DTO Guidelines](../architecture/dto-guidelines.md)** - Data transfer patterns
+- **[Provider Architecture](../architecture/provider-system/provider-architecture.md)** - Multi-instance provider design
+- **[Repository & Data Access](../architecture/patterns/repository-and-data-access.md)** - Data access patterns
+- **[DTO Guidelines](../architecture/data-transfer/dto-guidelines.md)** - Data transfer patterns
 
 ### Important Design Decisions
 
-1. **Provider ID is canonical** - Not ProviderType or ProviderName (see [Provider Multi-Instance](../architecture/provider-multi-instance.md))
+1. **Provider ID is canonical** - Not ProviderType or ProviderName (see [Provider Architecture](../architecture/provider-system/provider-architecture.md))
 2. **Use DatabaseAwareLLMClientFactory** for production code (see [LLM Client Factory Guide](./llm-client-factory-guide.md))
 3. **Admin SDK server-side only** - Never expose master keys client-side
 4. **Virtual keys for Gateway API** - Use virtual keys, not master keys
@@ -151,8 +150,8 @@ dotnet build WebAdmin          # WebAdmin backend
 
 ### SDK Builds
 ```bash
-cd SDKs/Node/Admin && npm run build   # Admin SDK
-cd SDKs/Node/Core && npm run build    # Core SDK
+cd SDKs/Node/Admin && npm run build     # Admin SDK
+cd SDKs/Node/Gateway && npm run build  # Gateway SDK
 cd SDKs/Node/Common && npm run build  # Common SDK
 ```
 
@@ -205,7 +204,7 @@ const keys: any = await client.virtualKeys.list();
 
 ## Database Migrations
 
-**⚠️ CRITICAL**: Always read [Database Migration Guide](../claude/database-migration-guide.md) before creating migrations.
+**⚠️ CRITICAL**: Always follow the migration guidelines in [CLAUDE.md](../../CLAUDE.md#database-migrations) and [Repository & Data Access](../architecture/patterns/repository-and-data-access.md) before creating migrations.
 
 Quick reference:
 ```bash
@@ -223,14 +222,11 @@ dotnet ef database update PreviousMigration --project ConduitLLM.Infrastructure
 
 ### Development Guides
 - **[CLAUDE.md](../../CLAUDE.md)** - **PRIMARY** development workflow, Docker setup, build verification
-- **[Architecture Overview](../architecture-overview.md)** - System design and components
-- **[Database Migration Guide](../claude/database-migration-guide.md)** - PostgreSQL migration procedures
-- **[XML Documentation Standards](../claude/xml-documentation-standards.md)** - Documentation requirements
-
+- **[Architecture Overview](../architecture/README.md)** - System design and components
 ### API Documentation
-- **[Gateway API Guide](../api-guides/core-api-guide.md)** - Gateway API reference
-- **[Admin API Guide](../api-guides/admin-api-guide.md)** - Admin API overview
-- **[API Reference](../api-reference/)** - Complete endpoint specifications
+- **[Gateway API Guide](../api-guides/gateway/README.md)** - Gateway API reference
+- **[Admin API Guide](../api-guides/admin/README.md)** - Admin API overview
+- **[Admin API Reference](../api-guides/admin/api-reference.md)** - Complete endpoint specifications
 
 ### SDK Usage (Not Development)
 - **[SDK Documentation](../api-guides/sdk/)** - For using SDKs in applications

@@ -113,7 +113,10 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
         public IToolCostCalculationService GetRealToolCostService()
         {
             var loggerMock = new Mock<ILogger<ToolCostCalculationService>>();
-            return new ToolCostCalculationService(GetDbContext(), loggerMock.Object);
+            var factoryMock = new Mock<IDbContextFactory<ConduitDbContext>>();
+            factoryMock.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(GetDbContext());
+            return new ToolCostCalculationService(factoryMock.Object, loggerMock.Object);
         }
 
         /// <summary>
@@ -262,7 +265,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
             mock.Setup(x => x.CalculateToolCostsAsync(
                 It.IsAny<ToolUsageData>(),
                 It.IsAny<ProviderType>()))
-                .ReturnsAsync(0m);
+                .ReturnsAsync(new ToolCostResult { TotalCost = 0m });
             mock.Setup(x => x.SerializeToolUsage(It.IsAny<ToolUsageData>()))
                 .Returns<ToolUsageData>(data => System.Text.Json.JsonSerializer.Serialize(data));
             return mock;

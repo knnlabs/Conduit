@@ -5,124 +5,147 @@ using ConduitLLM.Configuration.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using Npgsql;
+
 namespace ConduitLLM.Configuration.Repositories;
 
 /// <summary>
-/// Repository for managing virtual key groups
+/// Repository implementation for managing virtual key groups.
+/// Extends RepositoryBase for standard CRUD operations and implements domain-specific methods.
 /// </summary>
-public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
+public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, IVirtualKeyGroupRepository
 {
-    private readonly ConduitDbContext _context;
-    private readonly ILogger<VirtualKeyGroupRepository> _logger;
-
     /// <summary>
-    /// Initializes a new instance of the VirtualKeyGroupRepository
+    /// Creates a new instance of the VirtualKeyGroupRepository.
     /// </summary>
-    public VirtualKeyGroupRepository(ConduitDbContext context, ILogger<VirtualKeyGroupRepository> logger)
+    /// <param name="dbContextFactory">The database context factory</param>
+    /// <param name="logger">The logger</param>
+    public VirtualKeyGroupRepository(
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
+        ILogger<VirtualKeyGroupRepository> logger)
+        : base(dbContextFactory, logger)
     {
-        _context = context;
-        _logger = logger;
     }
 
-    /// <inheritdoc />
-    public async Task<VirtualKeyGroup?> GetByIdAsync(int id)
+    /// <inheritdoc/>
+    protected override DbSet<VirtualKeyGroup> GetDbSet(ConduitDbContext context)
+        => context.VirtualKeyGroups;
+
+    /// <inheritdoc/>
+    protected override IQueryable<VirtualKeyGroup> ApplyDefaultIncludes(IQueryable<VirtualKeyGroup> query)
     {
-        return await _context.VirtualKeyGroups
-            .FirstOrDefaultAsync(g => g.Id == id);
+        return query.Include(g => g.VirtualKeys);
+    }
+
+    /// <inheritdoc/>
+    protected override IQueryable<VirtualKeyGroup> ApplyDefaultOrdering(IQueryable<VirtualKeyGroup> query)
+    {
+        return query.OrderBy(g => g.GroupName);
+    }
+
+    /// <summary>
+    /// Overrides CreateAsync to handle initial balance transaction creation.
+    /// </summary>
+    public override async Task<int> CreateAsync(VirtualKeyGroup entity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+
+        try
+        {
+            return await ExecuteAsync(async context =>
+            {
+                OnBeforeCreate(entity);
+
+                GetDbSet(context).Add(entity);
+                await context.SaveChangesAsync(cancellationToken);
+
+                // If group was created with initial balance, create a transaction record
+                if (entity.Balance > 0)
+                {
+                    var transaction = CreateTransaction(
+                        entity.Id,
+                        entity.Balance,
+                        entity.Balance,
+                        TransactionType.Credit,
+                        ReferenceType.Initial,
+                        "Initial balance"
+                    );
+
+                    context.VirtualKeyGroupTransactions.Add(transaction);
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+
+                Logger.LogInformation("Created virtual key group {GroupId} with name {GroupName}",
+                    entity.Id, entity.GroupName);
+
+                return entity.Id;
+            }, cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            Logger.LogError(ex, "Database error creating virtual key group");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating virtual key group");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Overrides UpdateAsync to provide logging.
+    /// </summary>
+    public override async Task<bool> UpdateAsync(VirtualKeyGroup entity, CancellationToken cancellationToken = default)
+    {
+        var result = await base.UpdateAsync(entity, cancellationToken);
+
+        if (result)
+        {
+            Logger.LogInformation("Updated virtual key group {GroupId}", entity.Id);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Overrides DeleteAsync to provide logging.
+    /// </summary>
+    public override async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var result = await base.DeleteAsync(id, cancellationToken);
+
+        if (result)
+        {
+            Logger.LogInformation("Deleted virtual key group {GroupId}", id);
+        }
+
+        return result;
     }
 
     /// <inheritdoc />
     public async Task<VirtualKeyGroup?> GetByIdWithKeysAsync(int id)
     {
-        return await _context.VirtualKeyGroups
-            .Include(g => g.VirtualKeys)
-            .FirstOrDefaultAsync(g => g.Id == id);
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .Include(g => g.VirtualKeys)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(g => g.Id == id),
+            operationName: $"getting by ID {id} with keys");
     }
 
     /// <inheritdoc />
     public async Task<VirtualKeyGroup?> GetByKeyIdAsync(int virtualKeyId)
     {
-        var key = await _context.VirtualKeys
-            .Include(k => k.VirtualKeyGroup)
-            .FirstOrDefaultAsync(k => k.Id == virtualKeyId);
-        
-        return key?.VirtualKeyGroup;
-    }
-
-    /// <inheritdoc />
-    public async Task<List<VirtualKeyGroup>> GetAllAsync()
-    {
-        return await _context.VirtualKeyGroups
-            .Include(g => g.VirtualKeys)
-            .OrderBy(g => g.GroupName)
-            .ToListAsync();
-    }
-
-    /// <inheritdoc />
-    public async Task<int> CreateAsync(VirtualKeyGroup group)
-    {
-        group.CreatedAt = DateTime.UtcNow;
-        group.UpdatedAt = DateTime.UtcNow;
-        
-        _context.VirtualKeyGroups.Add(group);
-        await _context.SaveChangesAsync();
-
-        // If group was created with initial balance, create a transaction record
-        if (group.Balance > 0)
+        return await ExecuteAsync(async context =>
         {
-            var transaction = CreateTransaction(
-                group.Id,
-                group.Balance,
-                group.Balance,
-                TransactionType.Credit,
-                ReferenceType.Initial,
-                "Initial balance"
-            );
+            var key = await context.VirtualKeys
+                .Include(k => k.VirtualKeyGroup)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(k => k.Id == virtualKeyId);
 
-            _context.VirtualKeyGroupTransactions.Add(transaction);
-            await _context.SaveChangesAsync();
-        }
-        
-        _logger.LogInformation("Created virtual key group {GroupId} with name {GroupName}", 
-            group.Id, group.GroupName);
-        
-        return group.Id;
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> UpdateAsync(VirtualKeyGroup group)
-    {
-        group.UpdatedAt = DateTime.UtcNow;
-        
-        _context.VirtualKeyGroups.Update(group);
-        var result = await _context.SaveChangesAsync();
-        
-        if (result > 0)
-        {
-            _logger.LogInformation("Updated virtual key group {GroupId}", group.Id);
-        }
-        
-        return result > 0;
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var group = await GetByIdAsync(id);
-        if (group == null)
-        {
-            return false;
-        }
-        
-        _context.VirtualKeyGroups.Remove(group);
-        var result = await _context.SaveChangesAsync();
-        
-        if (result > 0)
-        {
-            _logger.LogInformation("Deleted virtual key group {GroupId}", id);
-        }
-        
-        return result > 0;
+            return key?.VirtualKeyGroup;
+        }, operationName: $"getting by key ID {virtualKeyId}");
     }
 
     /// <inheritdoc />
@@ -140,7 +163,98 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     /// <inheritdoc />
     public async Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId = null)
     {
-        var group = await GetByIdAsync(groupId);
+        try
+        {
+            return await ExecuteAsync(async context =>
+            {
+                var group = await ApplyBalanceAdjustmentAsync(
+                    context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey: null);
+                return group.Balance;
+            });
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error adjusting balance for virtual key group {GroupId}", groupId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<BalanceAdjustmentResult> AdjustBalanceIdempotentAsync(
+        int groupId,
+        decimal amount,
+        string idempotencyKey,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
+
+        try
+        {
+            return await ExecuteAsync(async context =>
+            {
+                // Includes soft-deleted rows: a deleted ledger entry still proves the
+                // adjustment was applied once.
+                var duplicate = await context.VirtualKeyGroupTransactions
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .AnyAsync(t => t.IdempotencyKey == idempotencyKey);
+
+                if (duplicate)
+                {
+                    Logger.LogWarning(
+                        "Duplicate balance adjustment for group {GroupId} with idempotency key {IdempotencyKey} - skipping",
+                        groupId, idempotencyKey);
+                    return await GetCurrentStateAsync(context, groupId, applied: false);
+                }
+
+                var group = await ApplyBalanceAdjustmentAsync(
+                    context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey);
+                return new BalanceAdjustmentResult(group.Balance, group.LifetimeSpent, Applied: true);
+            });
+        }
+        catch (DbUpdateException ex) when (IsIdempotencyKeyViolation(ex))
+        {
+            // Race backstop: a concurrent delivery inserted the key between the check
+            // and the save. The unique index guarantees single application.
+            Logger.LogWarning(
+                "Concurrent duplicate balance adjustment for group {GroupId} with idempotency key {IdempotencyKey} - skipping",
+                groupId, idempotencyKey);
+            return await ExecuteAsync(context => GetCurrentStateAsync(context, groupId, applied: false));
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error adjusting balance idempotently for virtual key group {GroupId}", groupId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Applies a balance adjustment and its ledger row in one atomic save on the
+    /// supplied context. The optional idempotency key is stored on the ledger row,
+    /// whose unique index enforces exactly-once application (#927).
+    /// </summary>
+    private async Task<VirtualKeyGroup> ApplyBalanceAdjustmentAsync(
+        ConduitDbContext context,
+        int groupId,
+        decimal amount,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId,
+        string? idempotencyKey)
+    {
+        var group = await GetDbSet(context).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
         {
             throw new InvalidOperationException($"Virtual key group {groupId} not found");
@@ -171,30 +285,64 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
             referenceId,
             initiatedBy ?? "System"
         );
+        transaction.IdempotencyKey = idempotencyKey;
 
-        _context.VirtualKeyGroupTransactions.Add(transaction);
+        context.VirtualKeyGroupTransactions.Add(transaction);
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
-        _logger.LogInformation("Adjusted balance for group {GroupId} by {Amount}. Previous: {PreviousBalance}, New: {Balance}, ReferenceType: {ReferenceType}",
+        Logger.LogInformation("Adjusted balance for group {GroupId} by {Amount}. Previous: {PreviousBalance}, New: {Balance}, ReferenceType: {ReferenceType}",
             groupId, amount, previousBalance, group.Balance, referenceType);
 
-        return group.Balance;
+        return group;
+    }
+
+    private async Task<BalanceAdjustmentResult> GetCurrentStateAsync(ConduitDbContext context, int groupId, bool applied)
+    {
+        var group = await GetDbSet(context).AsNoTracking().FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group == null)
+        {
+            throw new InvalidOperationException($"Virtual key group {groupId} not found");
+        }
+
+        return new BalanceAdjustmentResult(group.Balance, group.LifetimeSpent, applied);
+    }
+
+    private static bool IsIdempotencyKeyViolation(DbUpdateException ex)
+    {
+        for (Exception? inner = ex.InnerException; inner != null; inner = inner.InnerException)
+        {
+            if (inner is PostgresException pg &&
+                pg.SqlState == PostgresErrorCodes.UniqueViolation &&
+                pg.ConstraintName?.Contains("IdempotencyKey", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <inheritdoc />
-    public async Task<List<VirtualKeyGroup>> GetLowBalanceGroupsAsync(decimal threshold)
+    public async Task<(List<VirtualKeyGroup> Items, int TotalCount)> GetLowBalanceGroupsPaginatedAsync(
+        decimal threshold,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
-        return await _context.VirtualKeyGroups
-            .Where(g => g.Balance < threshold)
-            .OrderBy(g => g.Balance)
-            .ToListAsync();
+        return await GetFilteredPaginatedAsync(
+            g => g.Balance < threshold,
+            pageNumber,
+            pageSize,
+            q => q.OrderBy(g => g.Balance),
+            cancellationToken,
+            $"getting low balance groups (threshold: {threshold})");
     }
 
     /// <summary>
     /// Creates a transaction record for a virtual key group
     /// </summary>
-    private VirtualKeyGroupTransaction CreateTransaction(
+    private static VirtualKeyGroupTransaction CreateTransaction(
         int groupId,
         decimal amount,
         decimal balanceAfter,

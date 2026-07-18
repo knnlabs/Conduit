@@ -1,653 +1,932 @@
 # Admin API Reference
 
-Complete endpoint documentation for the Conduit Admin API.
+Complete endpoint documentation for the Conduit Admin API. The Admin API provides a centralized interface for managing providers, virtual keys, model mappings, analytics, and system configuration.
 
-## Table of Contents
+## Authentication
 
-1. [Virtual Keys Management](#virtual-keys-management)
-2. [Provider Configuration](#provider-configuration)
-3. [Model Mappings](#model-mappings)
-4. [Usage and Monitoring](#usage-and-monitoring)
-5. [System Configuration](#system-configuration)
-6. [IP Filtering](#ip-filtering)
+All Admin API endpoints require authentication using the master key. The authentication scheme uses the `X-API-Key` header with the `MasterKeyPolicy` authorization policy.
 
----
+**Example:**
+```
+X-API-Key: your-master-key
+```
 
 ## Virtual Keys Management
 
-### List All Virtual Keys
+### Get All Virtual Keys
+**GET** `/api/virtualkeys`
 
-```
-GET /api/virtualkeys
-```
-
-Returns a list of all virtual keys.
-
-**Response:**
+**Response:** Array of VirtualKeyDto objects
 ```json
 [
   {
     "id": 1,
-    "keyName": "Production Key",
-    "virtualKey": "condt_sk_abc123...",
+    "keyName": "Test Key",
     "allowedModels": "gpt-4*,claude-*",
-    "maxBudget": 1000.00,
-    "currentSpend": 245.67,
-    "budgetDuration": "Monthly",
+    "virtualKeyGroupId": 1,
     "isEnabled": true,
-    "createdAt": "2025-01-01T00:00:00Z",
+    "expiresAt": "2025-05-01T00:00:00Z",
+    "createdAt": "2024-04-15T14:30:00Z",
+    "updatedAt": "2024-05-08T09:15:00Z",
+    "metadata": "Project: Research",
     "rateLimitRpm": 60,
-    "rateLimitRpd": 10000
+    "rateLimitRpd": 1000,
+    "description": "Key for research project"
   }
 ]
 ```
 
 ### Get Virtual Key by ID
+**GET** `/api/virtualkeys/{id}`
 
-```
-GET /api/virtualkeys/{id}
-```
-
-Returns details for a specific virtual key.
+**Response:** VirtualKeyDto object
 
 ### Create Virtual Key
+**POST** `/api/virtualkeys`
 
-```
-POST /api/virtualkeys
-```
-
-Creates a new virtual key.
-
-**Request Body:**
-```json
-{
-  "keyName": "New Application Key",
-  "allowedModels": "gpt-4*,claude-*",
-  "maxBudget": 500.00,
-  "budgetDuration": "Monthly",
-  "rateLimitRpm": 60,
-  "rateLimitRpd": 10000,
-  "expiresAt": "2025-12-31T23:59:59Z",
-  "metadata": "{\"team\":\"engineering\",\"env\":\"production\"}"
-}
-```
-
-**Response:**
-```json
-{
-  "virtualKey": "condt_sk_xyz789...",
-  "keyInfo": {
-    "id": 2,
-    "keyName": "New Application Key",
-    "allowedModels": "gpt-4*,claude-*",
-    "maxBudget": 500.00,
-    "currentSpend": 0.00,
-    "budgetDuration": "Monthly",
-    "isEnabled": true,
-    "createdAt": "2025-01-07T10:30:00Z"
-  }
-}
-```
+**Request Body:** CreateVirtualKeyRequestDto
+**Response:** CreateVirtualKeyResponseDto (201 Created)
 
 ### Update Virtual Key
+**PUT** `/api/virtualkeys/{id}`
 
-```
-PUT /api/virtualkeys/{id}
-```
-
-Updates an existing virtual key.
-
-**Request Body:**
-```json
-{
-  "keyName": "Updated Key Name",
-  "maxBudget": 1500.00,
-  "allowedModels": "gpt-4*,claude-*,gemini-*",
-  "isEnabled": true,
-  "rateLimitRpm": 120
-}
-```
+**Request Body:** UpdateVirtualKeyRequestDto
+**Response:** 204 No Content
 
 ### Delete Virtual Key
-
-```
-DELETE /api/virtualkeys/{id}
-```
-
-Deletes a virtual key.
+**DELETE** `/api/virtualkeys/{id}`
 
 **Response:** 204 No Content
 
 ### Validate Virtual Key
+**POST** `/api/virtualkeys/validate`
 
-```
-POST /api/virtualkeys/validate
-```
+**Request Body:** VirtualKeyValidationRequest
+**Response:** VirtualKeyValidationResult
 
-Validates a virtual key and returns its configuration.
+### Get Validation Info
+**GET** `/api/virtualkeys/{id}/validation-info`
 
-**Request Body:**
-```json
-{
-  "virtualKey": "condt_sk_abc123..."
-}
-```
+**Response:** VirtualKeyValidationInfo
 
-**Response:**
-```json
-{
-  "isValid": true,
-  "keyName": "Production Key",
-  "allowedModels": ["gpt-4", "gpt-4-turbo", "claude-3-opus"],
-  "maxBudget": 1000.00,
-  "currentSpend": 245.67,
-  "isEnabled": true,
-  "rateLimitRpm": 60,
-  "rateLimitRpd": 10000
-}
-```
+### Perform Maintenance
+**POST** `/api/virtualkeys/maintenance`
 
----
+**Response:** 204 No Content
 
-## Provider Configuration
+Performs maintenance tasks including disabling expired keys.
 
-### List All Providers
+### Preview Discovery
+**GET** `/api/virtualkeys/{id}/discovery-preview`
 
-```
-GET /api/providers
-```
+**Query Parameters:**
+- `capability`: Optional capability filter (e.g., "chat", "vision", "audio_transcription")
 
-Returns a list of all configured providers.
+**Response:** VirtualKeyDiscoveryPreviewDto
 
-**Response:**
+### Get Key Group
+**GET** `/api/virtualkeys/{id}/group`
+
+**Response:** VirtualKeyGroupDto
+
+## Virtual Key Groups Management
+
+### Get All Groups
+**GET** `/api/virtualkeygroups`
+
+**Response:** Array of VirtualKeyGroupDto objects
 ```json
 [
   {
     "id": 1,
-    "name": "Production OpenAI",
-    "providerType": "OpenAI",
-    "isEnabled": true,
-    "priority": 100,
-    "createdAt": "2025-01-01T00:00:00Z"
+    "externalGroupId": "ext-group-123",
+    "groupName": "Research Team",
+    "balance": 500.00,
+    "lifetimeCreditsAdded": 1000.00,
+    "lifetimeSpent": 500.00,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-05-01T00:00:00Z",
+    "virtualKeyCount": 5
   }
 ]
 ```
 
-### Get Provider by ID
+### Get Group by ID
+**GET** `/api/virtualkeygroups/{id}`
 
-```
-GET /api/providers/{id}
-```
+**Response:** VirtualKeyGroupDto object
 
-Returns details for a specific provider.
+### Create Group
+**POST** `/api/virtualkeygroups`
 
-### Create Provider
+**Request Body:** CreateVirtualKeyGroupDto
+**Response:** VirtualKeyGroupDto (201 Created)
 
-```
-POST /api/providers
-```
+### Update Group
+**PUT** `/api/virtualkeygroups/{id}`
 
-Creates a new provider configuration.
+**Request Body:** UpdateVirtualKeyGroupDto
+**Response:** 204 No Content
 
-**Request Body:**
-```json
-{
-  "name": "Production OpenAI",
-  "providerType": "OpenAI",
-  "isEnabled": true,
-  "priority": 100
-}
-```
+### Adjust Balance
+**POST** `/api/virtualkeygroups/{id}/adjust-balance`
 
-### Update Provider
+**Request Body:** AdjustBalanceDto
+**Response:** 204 No Content
 
-```
-PUT /api/providers/{id}
-```
-
-Updates an existing provider.
-
-**Request Body:**
-```json
-{
-  "name": "Updated Provider Name",
-  "isEnabled": true,
-  "priority": 90
-}
-```
-
-### Delete Provider
-
-```
-DELETE /api/providers/{id}
-```
-
-Deletes a provider configuration.
+### Delete Group
+**DELETE** `/api/virtualkeygroups/{id}`
 
 **Response:** 204 No Content
 
-### Add Provider Credential
+### Get Transaction History
+**GET** `/api/virtualkeygroups/{id}/transactions`
 
-```
-POST /api/providers/{id}/credentials
-```
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `pageSize`: Page size (default: 50, max: 100)
 
-Adds API credentials to a provider.
+**Response:** PagedResult<VirtualKeyGroupTransactionDto>
 
-**Request Body:**
-```json
-{
-  "apiKey": "sk-...",
-  "apiEndpoint": "https://api.openai.com/v1",
-  "organizationId": "org-...",
-  "isEnabled": true
-}
-```
+### Get Keys in Group
+**GET** `/api/virtualkeygroups/{id}/keys`
 
-### Test Provider Connection
+**Response:** Array of VirtualKeyDto objects
 
-```
-POST /api/providers/{id}/test
-```
+## Model Provider Mappings
 
-Tests connectivity to a provider.
+### Get All Mappings
+**GET** `/api/modelprovider`
 
-**Response:**
-```json
-{
-  "success": true,
-  "providerName": "Production OpenAI",
-  "message": "Connection successful",
-  "modelsAvailable": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
-  "responseTimeMs": 234
-}
-```
-
-### Get Provider Health Status
-
-```
-GET /api/providerhealth/{id}
-```
-
-Returns health status for a provider.
-
-**Response:**
-```json
-{
-  "providerId": 1,
-  "providerName": "Production OpenAI",
-  "isHealthy": true,
-  "lastCheckAt": "2025-01-07T10:35:00Z",
-  "successRate": 99.8,
-  "averageResponseTimeMs": 450,
-  "errorRate": 0.2
-}
-```
-
-### Get Provider Health Summary
-
-```
-GET /api/providerhealth/summary
-```
-
-Returns health summary for all providers.
-
----
-
-## Model Mappings
-
-### List All Model Mappings
-
-```
-GET /api/mappings
-```
-
-Returns all model-to-provider mappings.
-
-**Response:**
+**Response:** Array of ModelProviderMappingDto objects
 ```json
 [
   {
     "id": 1,
     "modelAlias": "gpt-4",
-    "providerId": 1,
-    "providerModelId": "gpt-4-0613",
-    "isEnabled": true,
-    "priority": 100
+    "providerName": "OpenAI",
+    "providerModel": "gpt-4-turbo-preview",
+    "priority": 1,
+    "isEnabled": true
   }
 ]
 ```
 
-### Create Model Mapping
+### Get Mapping by ID
+**GET** `/api/modelprovider/{id}`
 
-```
-POST /api/mappings
-```
+**Response:** ModelProviderMappingDto object
 
-Creates a new model mapping.
+### Create Mapping
+**POST** `/api/modelprovider`
 
-**Request Body:**
-```json
-{
-  "modelAlias": "gpt-4",
-  "providerId": 1,
-  "providerModelId": "gpt-4-0613",
-  "isEnabled": true,
-  "priority": 100
-}
-```
+**Request Body:** ModelProviderMappingDto object
+**Response:** 201 Created with the created mapping
 
-### Update Model Mapping
+### Update Mapping
+**PUT** `/api/modelprovider/{id}`
 
-```
-PUT /api/mappings/{id}
-```
+**Request Body:** ModelProviderMappingDto object
+**Response:** 204 No Content
 
-Updates an existing model mapping.
-
-**Request Body:**
-```json
-{
-  "isEnabled": true,
-  "priority": 90
-}
-```
-
-### Delete Model Mapping
-
-```
-DELETE /api/mappings/{id}
-```
-
-Deletes a model mapping.
+### Delete Mapping
+**DELETE** `/api/modelprovider/{id}`
 
 **Response:** 204 No Content
 
----
+### Get Providers
+**GET** `/api/modelprovider/providers`
 
-## Usage and Monitoring
+**Response:** List of provider names and IDs
 
-### Get Request Logs
+### Create Bulk Mappings
+**POST** `/api/modelprovider/bulk`
 
-```
-GET /api/logs
-```
-
-Returns request logs with optional filtering.
-
-**Query Parameters:**
-- `startDate` - Filter by start date (ISO 8601)
-- `endDate` - Filter by end date (ISO 8601)
-- `virtualKeyId` - Filter by virtual key ID
-- `modelId` - Filter by model name
-- `pageSize` - Number of results per page (default: 100)
-- `page` - Page number (default: 1)
-
-**Response:**
+**Request Body:** Array of ModelProviderMappingDto objects
+**Response:** BulkMappingResult object
 ```json
 {
-  "items": [
-    {
-      "id": 12345,
-      "virtualKeyId": 1,
-      "modelId": "gpt-4",
-      "providerId": 1,
-      "promptTokens": 150,
-      "completionTokens": 75,
-      "totalTokens": 225,
-      "cost": 0.0135,
-      "responseTimeMs": 1250,
-      "statusCode": 200,
-      "createdAt": "2025-01-07T10:30:00Z"
-    }
-  ],
-  "totalCount": 5000,
-  "page": 1,
-  "pageSize": 100
+  "created": [...],
+  "errors": [...],
+  "totalProcessed": 10,
+  "successCount": 8,
+  "failureCount": 2
 }
 ```
 
-### Get Cost Dashboard
+### Discover Models
+**GET** `/api/modelprovider/discover/{providerId}`
 
-```
-GET /api/cost-dashboard
-```
+**Response:** Array of DiscoveredModel objects
 
-Returns cost analytics and usage statistics.
+## Router Configuration
+
+### Get Router Config
+**GET** `/api/router/config`
+
+**Response:** RouterConfig object
+
+### Update Router Config
+**PUT** `/api/router/config`
+
+**Request Body:** RouterConfig object
+**Response:** 200 OK
+
+### Get Model Deployments
+**GET** `/api/router/deployments`
+
+**Response:** Array of ModelDeployment objects
+
+### Get Model Deployment
+**GET** `/api/router/deployments/{deploymentName}`
+
+**Response:** ModelDeployment object
+
+### Create or Update Model Deployment
+**POST** `/api/router/deployments`
+
+**Request Body:** ModelDeployment object
+**Response:** 200 OK
+
+### Delete Model Deployment
+**DELETE** `/api/router/deployments/{deploymentName}`
+
+**Response:** 200 OK
+
+### Get Fallback Configurations
+**GET** `/api/router/fallbacks`
+
+**Response:** Dictionary<string, List<string>> mapping primary models to their fallback models
+
+### Set Fallback Configuration
+**POST** `/api/router/fallbacks/{primaryModel}`
+
+**Request Body:** Array of fallback model strings
+**Response:** 200 OK
+
+### Remove Fallback Configuration
+**DELETE** `/api/router/fallbacks/{primaryModel}`
+
+**Response:** 200 OK
+
+## Global Settings Management
+
+### Get All Settings
+**GET** `/api/globalsettings`
+
+**Response:** Array of GlobalSettingDto objects
+
+### Get Setting by ID
+**GET** `/api/globalsettings/{id}`
+
+**Response:** GlobalSettingDto object
+
+### Get Setting by Key
+**GET** `/api/globalsettings/by-key/{key}`
+
+**Response:** GlobalSettingDto object
+
+### Create Setting
+**POST** `/api/globalsettings`
+
+**Request Body:** CreateGlobalSettingDto object
+**Response:** GlobalSettingDto (201 Created)
+
+### Update Setting
+**PUT** `/api/globalsettings/{id}`
+
+**Request Body:** UpdateGlobalSettingDto object
+**Response:** 204 No Content
+
+### Update Setting by Key
+**PUT** `/api/globalsettings/by-key`
+
+**Request Body:** UpdateGlobalSettingByKeyDto object
+**Response:** 204 No Content
+
+### Delete Setting
+**DELETE** `/api/globalsettings/{id}`
+
+**Response:** 204 No Content
+
+### Delete Setting by Key
+**DELETE** `/api/globalsettings/by-key/{key}`
+
+**Response:** 204 No Content
+
+## Audio Configuration Management
+
+### Provider Configuration
+
+#### Get All Audio Providers
+**GET** `/api/admin/audio/providers`
+
+**Response:** Array of AudioProviderConfigDto objects
+
+#### Get Audio Provider by ID
+**GET** `/api/admin/audio/providers/{id}`
+
+**Response:** AudioProviderConfigDto object
+
+#### Get Providers by Provider ID
+**GET** `/api/admin/audio/providers/by-id/{providerId}`
+
+**Response:** Array of AudioProviderConfigDto objects
+
+#### Get Enabled Providers
+**GET** `/api/admin/audio/providers/enabled/{operationType}`
+
+**Parameters:**
+- `operationType`: The operation type (transcription, tts, realtime)
+
+**Response:** Array of AudioProviderConfigDto objects
+
+#### Create Audio Provider
+**POST** `/api/admin/audio/providers`
+
+**Request Body:** AudioProviderConfigDto object
+**Response:** AudioProviderConfigDto (201 Created)
+
+#### Update Audio Provider
+**PUT** `/api/admin/audio/providers/{id}`
+
+**Request Body:** AudioProviderConfigDto object
+**Response:** AudioProviderConfigDto (200 OK)
+
+#### Delete Audio Provider
+**DELETE** `/api/admin/audio/providers/{id}`
+
+**Response:** 204 No Content
+
+#### Test Audio Provider
+**POST** `/api/admin/audio/providers/{id}/test`
 
 **Query Parameters:**
-- `startDate` - Start date for analytics period
-- `endDate` - End date for analytics period
+- `operationType`: The operation type to test
 
-**Response:**
+**Response:** Test results object
+
+### Audio Cost Configuration
+
+#### Get All Audio Costs
+**GET** `/api/admin/audio/costs`
+
+**Response:** Array of AudioCostConfigDto objects
+
+#### Get Audio Cost by ID
+**GET** `/api/admin/audio/costs/{id}`
+
+**Response:** AudioCostConfigDto object
+
+#### Get Costs by Provider
+**GET** `/api/admin/audio/costs/by-provider/{providerId}`
+
+**Response:** Array of AudioCostConfigDto objects
+
+#### Create Audio Cost
+**POST** `/api/admin/audio/costs`
+
+**Request Body:** AudioCostConfigDto object
+**Response:** AudioCostConfigDto (201 Created)
+
+#### Update Audio Cost
+**PUT** `/api/admin/audio/costs/{id}`
+
+**Request Body:** AudioCostConfigDto object
+**Response:** AudioCostConfigDto (200 OK)
+
+#### Delete Audio Cost
+**DELETE** `/api/admin/audio/costs/{id}`
+
+**Response:** 204 No Content
+
+### Audio Usage Analytics
+
+#### Get Usage Summary
+**GET** `/api/admin/audio/usage/summary`
+
+**Query Parameters:**
+- `startDate`: Start date (optional)
+- `endDate`: End date (optional)
+
+**Response:** AudioUsageSummaryDto object
+
+#### Get Usage by Key
+**GET** `/api/admin/audio/usage/by-key/{virtualKey}`
+
+**Query Parameters:**
+- `startDate`: Start date (optional)
+- `endDate`: End date (optional)
+
+**Response:** AudioKeyUsageDto object
+
+#### Get Usage by Provider
+**GET** `/api/admin/audio/usage/by-provider/{providerId}`
+
+**Query Parameters:**
+- `startDate`: Start date (optional)
+- `endDate`: End date (optional)
+
+**Response:** AudioProviderUsageDto object
+
+### Real-time Session Management
+
+#### Get Session Metrics
+**GET** `/api/admin/audio/sessions/metrics`
+
+**Response:** RealtimeSessionMetricsDto object
+
+#### Get Active Sessions
+**GET** `/api/admin/audio/sessions`
+
+**Response:** Array of RealtimeSessionDto objects
+
+#### Get Session Details
+**GET** `/api/admin/audio/sessions/{sessionId}`
+
+**Response:** RealtimeSessionDto object
+
+#### Terminate Session
+**DELETE** `/api/admin/audio/sessions/{sessionId}`
+
+**Response:** 204 No Content
+
+## Media Management
+
+### Storage Statistics
+
+#### Get Overall Stats
+**GET** `/api/admin/media/stats`
+
+**Response:** Overall storage statistics object
+
+#### Get Stats by Virtual Key
+**GET** `/api/admin/media/stats/virtual-key/{virtualKeyId}`
+
+**Response:** Storage statistics for virtual key
+
+#### Get Stats by Provider
+**GET** `/api/admin/media/stats/by-provider`
+
+**Response:** Dictionary of provider names to storage size
+
+#### Get Stats by Media Type
+**GET** `/api/admin/media/stats/by-type`
+
+**Response:** Dictionary of media types to storage size
+
+### Media Operations
+
+#### Get Media by Virtual Key
+**GET** `/api/admin/media/virtual-key/{virtualKeyId}`
+
+**Response:** Array of media records
+
+#### Search Media
+**GET** `/api/admin/media/search`
+
+**Query Parameters:**
+- `pattern`: Pattern to search for in storage keys
+
+**Response:** Array of matching media records
+
+#### Delete Media
+**DELETE** `/api/admin/media/{mediaId}`
+
+**Response:** Success status object
+
+### Media Cleanup
+
+#### Cleanup Expired Media
+**POST** `/api/admin/media/cleanup/expired`
+
+**Response:** Cleanup result with count
+
+#### Cleanup Orphaned Media
+**POST** `/api/admin/media/cleanup/orphaned`
+
+**Response:** Cleanup result with count
+
+#### Prune Old Media
+**POST** `/api/admin/media/cleanup/prune`
+
+**Request Body:** PruneMediaRequest object
 ```json
 {
-  "totalCost": 1234.56,
-  "totalRequests": 50000,
-  "averageCostPerRequest": 0.0247,
-  "costsByModel": [
-    {
-      "model": "gpt-4",
-      "cost": 890.12,
-      "requests": 12000
-    },
-    {
-      "model": "claude-3-opus",
-      "cost": 344.44,
-      "requests": 38000
+  "daysToKeep": 30
+}
+```
+
+**Response:** Prune result with count
+
+## Health Monitoring
+
+### Get Service Health
+**GET** `/api/health/services`
+
+**Response:** Array of service health objects
+```json
+[
+  {
+    "id": "core-api",
+    "name": "Gateway API",
+    "status": "healthy",
+    "uptime": "P1DT2H30M",
+    "lastCheck": "2024-05-08T10:30:00Z",
+    "responseTime": 15,
+    "details": {
+      "version": "1.0.0",
+      "environment": "Production",
+      "requestsHandled": 1250
     }
-  ],
-  "costsByKey": [
+  }
+]
+```
+
+### Get Incidents
+**GET** `/api/health/incidents`
+
+**Query Parameters:**
+- `days`: Number of days to look back (default: 7)
+
+**Response:** Incident history data
+
+### Get Health History
+**GET** `/api/health/history`
+
+**Query Parameters:**
+- `hours`: Number of hours to look back (default: 24)
+
+**Response:** Health history time series data
+
+## IP Filtering
+
+### Get All Filters
+**GET** `/api/ipfilter`
+
+**Response:** List of IpFilterDto objects
+
+### Get Enabled Filters
+**GET** `/api/ipfilter/enabled`
+
+**Response:** List of enabled IpFilterDto objects
+
+### Get Filter by ID
+**GET** `/api/ipfilter/{id}`
+
+**Response:** IpFilterDto object
+
+### Create Filter
+**POST** `/api/ipfilter`
+
+**Request Body:** CreateIpFilterDto object
+
+**Response:** 201 Created with the created filter
+
+### Update Filter
+**PUT** `/api/ipfilter/{id}`
+
+**Request Body:** UpdateIpFilterDto object
+
+**Response:** 204 No Content
+
+### Delete Filter
+**DELETE** `/api/ipfilter/{id}`
+
+**Response:** 204 No Content
+
+### Get IP Filter Settings
+**GET** `/api/ipfilter/settings`
+
+**Response:** IpFilterSettings object
+
+### Update IP Filter Settings
+**PUT** `/api/ipfilter/settings`
+
+**Request Body:** IpFilterSettings object
+
+**Response:** 204 No Content
+
+## Logs Management
+
+### Get Logs
+**GET** `/api/logs`
+
+**Query Parameters:** 
+- `page`: Page number (default: 1)
+- `pageSize`: Page size (default: 50)
+- `startDate`: Filter by start date
+- `endDate`: Filter by end date
+- `model`: Filter by model
+- `virtualKeyId`: Filter by virtual key ID
+- `status`: Filter by status code
+
+**Response:** Paged result of RequestLogDto objects
+
+### Get Log by ID
+**GET** `/api/logs/{id}`
+
+**Response:** Detailed RequestLogDto object
+
+### Get Logs Summary
+**GET** `/api/logs/summary`
+
+**Query Parameters:** 
+- `timeframe`: Summary timeframe (daily, weekly, monthly)
+- `startDate`: Start date
+- `endDate`: End date
+
+**Response:** LogsSummaryDto object
+
+## Cost Dashboard
+
+### Get Cost Summary
+**GET** `/api/costs/summary`
+
+**Query Parameters:**
+- `timeframe`: Summary timeframe (daily, weekly, monthly)
+- `startDate`: Start date
+- `endDate`: End date
+
+**Response:** CostDashboardDto object
+
+### Get Cost Trends
+**GET** `/api/costs/trends`
+
+**Query Parameters:**
+- `period`: Trend period (daily, weekly, monthly)
+- `startDate`: Start date
+- `endDate`: End date
+
+**Response:** CostTrendDto object
+
+### Get Model Costs
+**GET** `/api/costs/models`
+
+**Query Parameters:**
+- `startDate`: Start date
+- `endDate`: End date
+
+**Response:** List of ModelCostDataDto objects
+
+### Get Virtual Key Costs
+**GET** `/api/costs/virtualkeys`
+
+**Query Parameters:**
+- `startDate`: Start date
+- `endDate`: End date
+
+**Response:** List of VirtualKeyCostDataDto objects
+
+## Database Backup
+
+### Create Backup
+**POST** `/api/databasebackup`
+
+**Response:** Backup file information object
+
+### Get Backups
+**GET** `/api/databasebackup`
+
+**Response:** Array of available backup objects
+
+### Restore Backup
+**POST** `/api/databasebackup/restore`
+
+**Request Body:** Backup identifier object
+**Response:** 200 OK
+
+## System Information
+
+### Get System Info
+**GET** `/api/systeminfo`
+
+**Response:** System information object with environment, database, and runtime details
+
+## Analytics
+
+### Get Request Logs
+**GET** `/api/analytics/logs`
+
+**Query Parameters:**
+- `page` (int, default: 1): Page number (1-based)
+- `pageSize` (int, default: 50, max: 100): Number of items per page
+- `startDate` (DateTime, optional): Filter by start date
+- `endDate` (DateTime, optional): Filter by end date
+- `model` (string, optional): Filter by model name
+- `virtualKeyId` (int, optional): Filter by virtual key ID
+- `status` (int, optional): Filter by HTTP status code
+
+**Response:** PagedResult<LogRequestDto>
+```json
+{
+  "page": 1,
+  "pageSize": 50,
+  "totalItems": 150,
+  "totalPages": 3,
+  "items": [
     {
-      "keyName": "Production Key",
-      "cost": 789.00,
-      "requests": 25000
-    }
-  ],
-  "costsByProvider": [
-    {
-      "providerName": "Production OpenAI",
-      "cost": 1100.00,
-      "requests": 40000
+      "id": 1234,
+      "virtualKeyId": 5,
+      "modelName": "gpt-4",
+      "requestType": "chat",
+      "inputTokens": 500,
+      "outputTokens": 250,
+      "cost": 0.0125,
+      "responseTimeMs": 1250.5,
+      "statusCode": 200,
+      "timestamp": "2024-05-15T14:30:00Z"
     }
   ]
 }
 ```
 
----
+### Get Log by ID
+**GET** `/api/analytics/logs/{id}`
 
-## System Configuration
+**Response:** LogRequestDto object
 
-### Get Global Settings
+### Get Distinct Models
+**GET** `/api/analytics/models`
 
+**Response:** Array of model names
+```json
+["gpt-4", "gpt-3.5-turbo", "claude-3-opus", "llama-3"]
 ```
-GET /api/settings
-```
 
-Returns global system settings.
+### Get Cost Summary
+**GET** `/api/analytics/costs/summary`
 
-**Response:**
+**Query Parameters:**
+- `timeframe` (string, default: "daily"): One of "daily", "weekly", "monthly"
+- `startDate` (DateTime, optional): Start date for analysis
+- `endDate` (DateTime, optional): End date for analysis
+
+**Response:** CostDashboardDto
 ```json
 {
-  "systemName": "Conduit LLM",
-  "defaultMaxBudget": 100.00,
-  "defaultBudgetDuration": "Monthly",
-  "enableUsageTracking": true,
-  "enableCostTracking": true,
-  "enableHealthMonitoring": true,
-  "healthCheckIntervalSeconds": 300
-}
-```
-
-### Update Global Settings
-
-```
-PUT /api/settings
-```
-
-Updates global system settings.
-
-**Request Body:**
-```json
-{
-  "defaultMaxBudget": 150.00,
-  "defaultBudgetDuration": "Monthly",
-  "healthCheckIntervalSeconds": 600
-}
-```
-
-### Get System Information
-
-```
-GET /api/system-info
-```
-
-Returns system version and status information.
-
-**Response:**
-```json
-{
-  "version": "1.0.0",
-  "environment": "production",
-  "databaseStatus": "healthy",
-  "uptime": "10d 5h 23m",
-  "activeVirtualKeys": 125,
-  "activeProviders": 5,
-  "totalRequests24h": 150000
-}
-```
-
-### Create Database Backup
-
-```
-POST /api/database/backup
-```
-
-Creates a database backup.
-
-**Response:**
-```json
-{
-  "backupId": "backup_20250107_103000",
-  "fileName": "conduit_backup_20250107_103000.sql",
-  "sizeBytes": 52428800,
-  "createdAt": "2025-01-07T10:30:00Z"
-}
-```
-
----
-
-## IP Filtering
-
-### List IP Filters
-
-```
-GET /api/ipfilter
-```
-
-Returns all configured IP filters.
-
-**Response:**
-```json
-[
-  {
-    "id": 1,
-    "name": "Office Network",
-    "cidrRange": "203.0.113.0/24",
-    "filterType": "Allow",
-    "isEnabled": true,
-    "description": "Main office IP range",
-    "createdAt": "2025-01-01T00:00:00Z"
-  }
-]
-```
-
-### Create IP Filter
-
-```
-POST /api/ipfilter
-```
-
-Creates a new IP filter rule.
-
-**Request Body:**
-```json
-{
-  "name": "Office Network",
-  "cidrRange": "203.0.113.0/24",
-  "filterType": "Allow",
-  "isEnabled": true,
-  "description": "Main office IP range"
-}
-```
-
-### Update IP Filter
-
-```
-PUT /api/ipfilter/{id}
-```
-
-Updates an existing IP filter.
-
-### Delete IP Filter
-
-```
-DELETE /api/ipfilter/{id}
-```
-
-Deletes an IP filter rule.
-
-### Check IP Address
-
-```
-GET /api/ipfilter/check/{ipAddress}
-```
-
-Checks if an IP address is allowed (anonymous access for performance).
-
-**Response:**
-```json
-{
-  "ipAddress": "203.0.113.50",
-  "isAllowed": true,
-  "matchedRule": "Office Network"
-}
-```
-
----
-
-## Error Responses
-
-All endpoints may return the following error responses:
-
-| HTTP Status | Error Type | Description |
-|-------------|------------|-------------|
-| 400 | Bad Request | Invalid request format or parameters |
-| 401 | Unauthorized | Missing or invalid authentication |
-| 403 | Forbidden | Insufficient permissions |
-| 404 | Not Found | Resource not found |
-| 409 | Conflict | Resource conflict (duplicate, etc.) |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Internal Server Error | Server-side error |
-
-**Error Response Format:**
-```json
-{
-  "error": {
-    "code": "error_code",
-    "message": "Error message description",
-    "details": {
-      "field": "Additional error details"
+  "timeFrame": "daily",
+  "startDate": "2024-05-01T00:00:00Z",
+  "endDate": "2024-05-15T23:59:59Z",
+  "totalCost": 125.50,
+  "last24HoursCost": 8.75,
+  "last7DaysCost": 45.20,
+  "last30DaysCost": 125.50,
+  "topModelsBySpend": [
+    {
+      "name": "gpt-4",
+      "cost": 75.25,
+      "percentage": 60,
+      "requestCount": 500
     }
-  }
+  ],
+  "topProvidersBySpend": [...],
+  "topVirtualKeysBySpend": [...]
 }
 ```
 
----
+### Get Cost Trends
+**GET** `/api/analytics/costs/trends`
 
-## Related Documentation
+**Query Parameters:**
+- `period` (string, default: "daily"): One of "daily", "weekly", "monthly"
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
 
-- **[Getting Started](./getting-started.md)** - Authentication and setup
-- **[TypeScript SDK](./typescript-sdk.md)** - Complete SDK guide with examples
-- **[Gateway API](../core/)** - User-facing LLM API documentation
-- **[Architecture Docs](../../architecture/)** - System design and patterns
+**Response:** CostTrendDto
+```json
+{
+  "period": "daily",
+  "startDate": "2024-05-01T00:00:00Z",
+  "endDate": "2024-05-15T23:59:59Z",
+  "data": [
+    {
+      "date": "2024-05-01T00:00:00Z",
+      "cost": 8.50,
+      "requestCount": 125
+    }
+  ]
+}
+```
+
+### Get Model Costs
+**GET** `/api/analytics/costs/models`
+
+**Query Parameters:**
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+- `topN` (int, default: 10): Number of top models to return
+
+**Response:** ModelCostBreakdownDto
+
+### Get Virtual Key Costs
+**GET** `/api/analytics/costs/virtualkeys`
+
+**Query Parameters:**
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+- `topN` (int, default: 10): Number of top virtual keys to return
+
+**Response:** VirtualKeyCostBreakdownDto
+
+### Get Analytics Summary
+**GET** `/api/analytics/summary`
+
+**Query Parameters:**
+- `timeframe` (string, default: "daily"): One of "daily", "weekly", "monthly"
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+
+**Response:** AnalyticsSummaryDto with comprehensive analytics data including:
+- Total requests, cost, tokens
+- Success rate and response times
+- Top models and virtual keys
+- Daily statistics
+- Period-over-period comparison
+
+### Get Virtual Key Usage
+**GET** `/api/analytics/virtualkeys/{virtualKeyId}/usage`
+
+**Query Parameters:**
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+
+**Response:** UsageStatisticsDto
+
+### Export Analytics Data
+**GET** `/api/analytics/export`
+
+**Query Parameters:**
+- `format` (string, default: "csv"): Export format ("csv" or "json")
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+- `model` (string, optional): Filter by model
+- `virtualKeyId` (int, optional): Filter by virtual key
+
+**Response:** File download (CSV or JSON)
+
+### Get Cache Metrics
+**GET** `/api/analytics/metrics/cache`
+
+**Response:** Cache performance metrics
+```json
+{
+  "TotalHits": 5000,
+  "TotalMisses": 1200,
+  "HitRate": 80.65,
+  "CacheMemoryMB": 45.2,
+  "TotalInvalidations": 15,
+  "UptimeMinutes": 1440,
+  "TopHitKeys": [...],
+  "TopMissKeys": [...]
+}
+```
+
+### Get Operation Metrics
+**GET** `/api/analytics/metrics/operations`
+
+**Response:** Operation performance metrics
+```json
+{
+  "GetLogsAsync_avg_ms": 125.5,
+  "GetLogsAsync_p95_ms": 250.0,
+  "GetLogsAsync_max_ms": 500.0,
+  "fetch_RequestLogRepository.GetAllAsync_avg_ms": 75.2,
+  "fetch_RequestLogRepository.GetAllAsync_p95_ms": 150.0
+}
+```
+
+### Invalidate Analytics Cache
+**POST** `/api/analytics/cache/invalidate`
+
+**Query Parameters:**
+- `reason` (string, optional): Reason for invalidation
+
+**Response:** Success message
+```json
+{
+  "message": "Cache invalidation initiated",
+  "reason": "Manual invalidation"
+}
+```
+
+## Additional Controllers
+
+The following controllers provide additional administrative functionality:
+
+- **CacheMonitoringController** (`/api/cachemonitoring`): Cache performance monitoring
+- **ConfigurationController** (`/api/configuration`): System configuration management  
+- **ErrorQueueController** (`/api/errorqueue`): Error queue management
+- **MetricsController** (`/api/metrics`): System metrics and analytics
+- **NotificationsController** (`/api/notifications`): Admin notification management
+- **ProviderCredentialsController** (`/api/providercredentials`): Provider credential management
+- **SecurityMonitoringController** (`/api/securitymonitoring`): Security event monitoring
+- **TasksController** (`/api/tasks`): Background task management
+
+## Notes
+
+- All endpoints require the `MasterKeyPolicy` authorization policy unless otherwise specified
+- Response formats use standard HTTP status codes (200, 201, 204, 400, 404, 500)
+- Date/time values are in ISO 8601 format (UTC)
+- Pagination is supported on list endpoints where applicable
+- The API uses standard REST conventions for CRUD operations

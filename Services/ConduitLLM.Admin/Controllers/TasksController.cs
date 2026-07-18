@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 
@@ -10,10 +11,10 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("v1/admin/tasks")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class TasksController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class TasksController : AdminControllerBase
     {
         private readonly IAsyncTaskService _taskService;
-        private readonly ILogger<TasksController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TasksController"/> class.
@@ -21,9 +22,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="taskService">The async task service.</param>
         /// <param name="logger">The logger.</param>
         public TasksController(IAsyncTaskService taskService, ILogger<TasksController> logger)
+            : base(logger)
         {
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -39,21 +40,13 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("cleanup")]
         public async Task<IActionResult> CleanupOldTasks([FromQuery] int olderThanHours = 24)
         {
-            try
-            {
-                olderThanHours = Math.Max(olderThanHours, 1); // Min 1 hour
-                var count = await _taskService.CleanupOldTasksAsync(TimeSpan.FromHours(olderThanHours));
-                
-                _logger.LogInformation("Admin cleaned up {Count} old tasks (older than {Hours} hours)", 
-                    count, olderThanHours);
-                
-                return Ok(new { cleaned_up = count, older_than_hours = olderThanHours });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error cleaning up old tasks");
-                return StatusCode(500, new { error = new { message = "An error occurred while cleaning up tasks", type = "server_error" } });
-            }
+            olderThanHours = Math.Max(olderThanHours, 1); // Min 1 hour
+            var count = await _taskService.CleanupOldTasksAsync(TimeSpan.FromHours(olderThanHours));
+
+            LogAdminAudit("CleanedUp", "Tasks", null,
+                $"Removed {count} tasks older than {olderThanHours} hours");
+
+            return Ok(new { cleaned_up = count, older_than_hours = olderThanHours });
         }
     }
 }

@@ -19,7 +19,7 @@ Providers that inherit from `OpenAICompatibleClient` and use OpenAI's API format
 
 ### 2. Custom Implementation Providers
 Providers with unique APIs requiring custom implementations:
-- **Replicate** (`CustomProviderClient`) - Prediction-based API with polling
+- **Replicate** (`BaseLLMClient`) - Prediction-based API with polling
 - **MiniMax** (`BaseLLMClient`) - Chinese provider with unique features
 
 ### 3. Specialized Providers
@@ -215,7 +215,7 @@ Providers with unique APIs requiring custom implementations:
 
 ### 🎨 Replicate
 **API Base**: `https://api.replicate.com/v1/`  
-**Implementation**: `ReplicateClient : CustomProviderClient`
+**Implementation**: `ReplicateClient : BaseLLMClient`
 
 #### Unique Architecture
 - **Prediction-Based API**: Async predictions with polling

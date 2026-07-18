@@ -388,3 +388,23 @@ export type AdditionalProviderInfo = {
   limits?: Record<string, number>;
   [key: string]: unknown;
 };
+
+/**
+ * Paged result for paginated queries
+ */
+export interface PagedResult<T> {
+  /** Array of items in the current page */
+  items: T[];
+
+  /** Total number of items across all pages */
+  totalCount: number;
+
+  /** Current page number */
+  page: number;
+
+  /** Number of items per page */
+  pageSize: number;
+
+  /** Total number of pages */
+  totalPages: number;
+}

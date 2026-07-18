@@ -368,3 +368,124 @@ The system exposes metrics in Prometheus format:
    - All alert actions are logged
    - User actions are tracked
    - Alert history is retained per policy
+
+## External Health Monitoring Access
+
+Health endpoints are protected from unauthorized external access while remaining accessible to:
+- Internal/private network requests (Kubernetes probes, internal monitoring)
+- External requests with a valid health monitoring key
+
+### Configuration
+
+For external monitoring services (BetterStack, Pingdom, UptimeRobot, etc.), configure the health monitoring key:
+
+```bash
+CONDUIT_HEALTH_MONITORING_KEY=<secure-random-key-32-chars-minimum>
+```
+
+Generate a secure key:
+```bash
+# Linux/macOS
+openssl rand -base64 32
+
+# PowerShell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
+```
+
+### Authentication
+
+External requests must include the key in the `X-Conduit-Health-Key` header:
+
+```bash
+curl -H "X-Conduit-Health-Key: your-key-here" https://api.conduit.im/health
+```
+
+### Access Control Matrix
+
+| Source | Authentication Required | Behavior |
+|--------|------------------------|----------|
+| Private network (10.x, 172.16-31.x, 192.168.x, 127.x) | None | Full access |
+| External with valid key | `X-Conduit-Health-Key` header | Full access |
+| External without key | N/A | `404 Not Found` |
+
+> **Security Note:** Unauthorized external requests receive `404 Not Found` (not `401` or `403`) to hide the existence of health endpoints from potential attackers.
+
+### BetterStack Configuration
+
+1. Log in to BetterStack and create a new uptime monitor
+2. Configure the monitor:
+   - **URL**: `https://api.conduit.im/health`
+   - **Check interval**: 30 seconds (recommended)
+   - **Request method**: GET
+3. Add custom header:
+   - **Header name**: `X-Conduit-Health-Key`
+   - **Header value**: Your configured key
+4. Set expected response:
+   - **Status code**: 200
+   - **Response time warning**: 500ms
+   - **Response time critical**: 2000ms
+
+### Endpoints to Monitor
+
+| Service | Endpoint | Purpose |
+|---------|----------|---------|
+| Gateway API | `https://api.conduit.im/health` | Basic Gateway liveness |
+| Gateway API | `https://api.conduit.im/health/ready` | Gateway readiness (includes dependencies) |
+| Admin API | `https://admin.conduit.im/health` | Basic Admin API liveness |
+| Admin API | `https://admin.conduit.im/health/ready` | Admin API readiness |
+| WebAdmin | `https://webadmin.conduit.im/api/health` | WebAdmin liveness |
+
+### Detailed Health Endpoints
+
+For internal monitoring dashboards, additional detailed endpoints are available:
+
+- `/health/signalr` - SignalR connection statistics
+- `/health/signalr/connections` - Active connection details
+- `/health/signalr/queue` - Message queue statistics
+- `/api/health/services` - Service health overview (Admin API)
+- `/api/health/incidents` - Incident history (Admin API)
+- `/api/health/history` - Health metrics history (Admin API)
+
+These endpoints return the same `404 Not Found` for unauthorized external requests.
+
+## Message Bus Health & Metrics
+
+The event bus health check depends on the active messaging backend
+(`ConduitLLM:Messaging:Backend`, epic #909):
+
+| Backend | Check name | What it verifies |
+|---------|------------|------------------|
+| MassTransit (default) | `rabbitmq_comprehensive` (Gateway only) | MassTransit `IBus` resolves (RabbitMQ connectivity at startup) |
+| Wolverine | `wolverine_bus` (Gateway + Admin) | Postgres message store reachable; reports inbox/outbox/scheduled/dead-letter counts in the health entry data |
+
+`wolverine_bus` surfaces on `/health` and `/health/ready` (tags `messaging`,
+`wolverine`, `ready`) and reports:
+
+- **Unhealthy** — the message store is unreachable (the bus cannot persist or
+  deliver messages).
+- **Degraded** — dead-lettered messages at or above
+  `ConduitLLM:Messaging:Wolverine:HealthCheck:DeadLetterDegradedThreshold`
+  (default `1`) — messages are exhausting their retries; for the spend/webhook
+  queues this warrants investigation.
+- It is only registered on the Postgresql transport
+  (`ConduitLLM:Messaging:Wolverine:Transport` = `Postgresql`); the in-memory
+  dev/CI mode has no message store to probe.
+
+### Bus metrics (`/metrics`, Prometheus)
+
+Both hosts export bus metrics through OpenTelemetry:
+
+- **Wolverine** (meter `Wolverine:{service}`): `wolverine-messages-sent`,
+  `wolverine-messages-succeeded`, `wolverine-execution-failure` (tagged by
+  exception type), `wolverine-dead-letter-queue`, execution/effective-time
+  histograms, and queue-depth gauges `wolverine-inbox-count`,
+  `wolverine-outbox-count`, `wolverine-scheduled-count` (Postgres transport).
+- **MassTransit** (meter `MassTransit`): built-in consume/publish counters and
+  durations — exported so the #929 parity gate can compare backends.
+
+Wolverine message-processing traces are exported under the `Wolverine`
+activity source when `Telemetry:TracingEnabled` is on.
+
+Suggested alerts: `wolverine-dead-letter-queue` rate > 0 (financial queues),
+`wolverine-inbox-count` sustained growth (consumer lag), health endpoint
+Degraded/Unhealthy transitions.

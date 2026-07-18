@@ -31,18 +31,24 @@ namespace ConduitLLM.Tests.Integration
         private readonly Mock<ICostCalculationService> _mockCostCalculationService;
         private readonly Mock<ILogger<VirtualKeyGroupRepository>> _mockGroupLogger;
         private readonly Mock<ILogger<RefundService>> _mockRefundLogger;
+        private readonly DbContextOptions<ConduitDbContext> _dbOptions;
 
         public RefundServiceIntegrationTests()
         {
             // Setup in-memory database for integration testing
-            var options = new DbContextOptionsBuilder<ConduitDbContext>()
+            _dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
-            _concreteDbContext = new ConduitDbContext(options);
+            _concreteDbContext = new ConduitDbContext(_dbOptions);
             _dbContext = _concreteDbContext;
 
+            // Create a mock factory that returns contexts with the same database
+            var mockFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
+            mockFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => new ConduitDbContext(_dbOptions));
+
             _mockGroupLogger = new Mock<ILogger<VirtualKeyGroupRepository>>();
-            _groupRepository = new VirtualKeyGroupRepository(_concreteDbContext, _mockGroupLogger.Object);
+            _groupRepository = new VirtualKeyGroupRepository(mockFactory.Object, _mockGroupLogger.Object);
 
             _mockCostCalculationService = new Mock<ICostCalculationService>();
             _mockRefundLogger = new Mock<ILogger<RefundService>>();

@@ -10,10 +10,10 @@ using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Services.Strategies;
 using ConduitLLM.Core.Validation;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -26,8 +26,7 @@ namespace ConduitLLM.Core.Services
         ConduitLLM.Core.Models.ImageGenerationRequest,
         ConduitLLM.Core.Models.ImageGenerationResponse,
         ImageGenerationRequested>,
-        IConsumer<ImageGenerationRequested>,
-        IConsumer<ImageGenerationCancelled>
+        IEventHandler<ImageGenerationCancelled>
     {
         private readonly IMediaProcessingStrategy<ConduitLLM.Core.Models.ImageData> _base64Processor;
         private readonly IMediaProcessingStrategy<ConduitLLM.Core.Models.ImageData> _urlProcessor;
@@ -45,7 +44,7 @@ namespace ConduitLLM.Core.Services
             ILLMClientFactory clientFactory,
             IAsyncTaskService taskService,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IModelProviderMappingService modelMappingService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
@@ -54,16 +53,18 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
+            IProviderErrorTrackingService errorTrackingService,
             ILogger<ImageGenerationOrchestrator> logger)
-            : base(clientFactory, taskService, storageService, publishEndpoint,
+            : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics,
+                   errorTrackingService, logger)
         {
-            
+
             // Initialize processing strategies
-            _base64Processor = new Base64MediaProcessor(storageService, publishEndpoint, 
+            _base64Processor = new Base64MediaProcessor(storageService, eventBus,
                 logger as ILogger<Base64MediaProcessor> ?? new NullLogger<Base64MediaProcessor>());
-            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, publishEndpoint,
+            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, eventBus,
                 logger as ILogger<UrlMediaProcessor> ?? new NullLogger<UrlMediaProcessor>());
         }
 
@@ -80,8 +81,9 @@ namespace ConduitLLM.Core.Services
             VirtualKey virtualKey,
             CancellationToken cancellationToken)
         {
-            // Get the client for the model
-            var client = _clientFactory.GetClient(modelInfo.ModelId);
+            // Get the client via the already-resolved provider — modelInfo.ModelId is the
+            // provider's model id, not a model alias, so it must not be re-resolved by name
+            var client = await _clientFactory.GetClientByProviderIdAsync(modelInfo.ProviderId, modelInfo.ModelId, cancellationToken);
             
             // Generate images
             return await client.CreateImageAsync(request, cancellationToken: cancellationToken);
@@ -229,7 +231,7 @@ namespace ConduitLLM.Core.Services
 
         protected override async Task PublishStartedEventAsync(ImageGenerationRequested request)
         {
-            await _publishEndpoint.Publish(new ImageGenerationProgress
+            await _eventBus.PublishAsync(new ImageGenerationProgress
             {
                 TaskId = request.TaskId,
                 Status = "processing",
@@ -251,7 +253,7 @@ namespace ConduitLLM.Core.Services
                 Url = item.Url
             }).ToList();
 
-            await _publishEndpoint.Publish(new ImageGenerationCompleted
+            await _eventBus.PublishAsync(new ImageGenerationCompleted
             {
                 TaskId = request.TaskId,
                 VirtualKeyId = request.VirtualKeyId,
@@ -275,7 +277,7 @@ namespace ConduitLLM.Core.Services
             int retryCount,
             int maxRetries)
         {
-            await _publishEndpoint.Publish(new ImageGenerationFailed
+            await _eventBus.PublishAsync(new ImageGenerationFailed
             {
                 TaskId = request.TaskId,
                 VirtualKeyId = request.VirtualKeyId,
@@ -294,7 +296,7 @@ namespace ConduitLLM.Core.Services
             int total,
             string status)
         {
-            await _publishEndpoint.Publish(new ImageGenerationProgress
+            await _eventBus.PublishAsync(new ImageGenerationProgress
             {
                 TaskId = request.TaskId,
                 Status = status,
@@ -356,10 +358,9 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Handles image generation cancellation events.
         /// </summary>
-        public async Task Consume(ConsumeContext<ImageGenerationCancelled> context)
+        public async Task HandleAsync(ImageGenerationCancelled cancellationEvent, IEventContext context)
         {
-            var cancellationEvent = context.Message;
-            _logger.LogInformation("Received cancellation request for image generation task {TaskId}", 
+            _logger.LogInformation("Received cancellation request for image generation task {TaskId}",
                 cancellationEvent.TaskId);
 
             // Cancel the task using the task registry
@@ -377,7 +378,7 @@ namespace ConduitLLM.Core.Services
                     error: "Task cancelled by user request");
                 
                 // Publish cancellation completed event
-                await _publishEndpoint.Publish(new ImageGenerationProgress
+                await _eventBus.PublishAsync(new ImageGenerationProgress
                 {
                     TaskId = cancellationEvent.TaskId,
                     Status = "cancelled",

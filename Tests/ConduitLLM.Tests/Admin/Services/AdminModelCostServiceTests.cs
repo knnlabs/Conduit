@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 
 using MassTransit;
 
@@ -16,7 +17,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IModelCostRepository> _mockModelCostRepository;
         private readonly Mock<IRequestLogRepository> _mockRequestLogRepository;
         private readonly Mock<IDbContextFactory<ConduitDbContext>> _mockDbContextFactory;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<AdminModelCostService>> _mockLogger;
         private readonly AdminModelCostService _service;
         private readonly DbContextOptions<ConduitDbContext> _dbContextOptions;
@@ -26,7 +27,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockModelCostRepository = new Mock<IModelCostRepository>();
             _mockRequestLogRepository = new Mock<IRequestLogRepository>();
             _mockDbContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<AdminModelCostService>>();
 
             // Setup in-memory database options for testing
@@ -42,8 +43,8 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockModelCostRepository.Object,
                 _mockRequestLogRepository.Object,
                 _mockDbContextFactory.Object,
-                _mockPublishEndpoint.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockPublishEndpoint.Object);
         }
 
         public void Dispose()

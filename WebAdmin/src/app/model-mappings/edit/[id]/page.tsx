@@ -22,7 +22,7 @@ import {
   Divider
 } from '@mantine/core';
 import { IconAlertCircle, IconRobot, IconBolt, IconStar } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { 
   ModelProviderMappingDto, 
@@ -191,11 +191,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
     if (!validateModelAlias(modelAlias)) return;
     
     if (!providerId) {
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Please select a provider',
-        color: 'red',
-      });
+      notify.error('Please select a provider');
       return;
     }
     
@@ -206,11 +202,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       );
       
       if (!validProvider) {
-        notifications.show({
-          title: 'Invalid Provider',
-          message: 'The selected provider is not valid for this model association',
-          color: 'red',
-        });
+        notify.error('The selected provider is not valid for this model association');
         return;
       }
     }
@@ -232,20 +224,12 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
         client.modelMappings.update(mappingId, updateData)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Model mapping updated successfully',
-        color: 'green',
-      });
+      notify.success('Model mapping updated successfully');
 
       router.push('/model-mappings');
     } catch (err) {
       console.error('Error updating mapping:', err);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update model mapping',
-        color: 'red',
-      });
+      notify.error('Failed to update model mapping');
     } finally {
       setIsSaving(false);
     }

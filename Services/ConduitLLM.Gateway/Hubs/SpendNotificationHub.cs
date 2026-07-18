@@ -55,6 +55,7 @@ namespace ConduitLLM.Gateway.Hubs
                 // Initialize alert cooldown tracking for this virtual key
                 var cooldownKey = $"vkey-{virtualKeyId.Value}";
                 _alertCooldowns.TryAdd(cooldownKey, new AlertCooldown());
+                PruneStaleCooldowns();
                 
                 _logger.LogInformation(
                     "Client connected to SpendNotificationHub: {ConnectionId} for VirtualKey: {VirtualKeyId}",
@@ -326,6 +327,27 @@ namespace ConduitLLM.Gateway.Hubs
         }
 
         /// <summary>
+        /// Evicts cooldown entries whose alerts have all aged past the cooldown window.
+        /// The dictionary is keyed by virtual key and never otherwise cleaned up, so
+        /// without pruning it grows for the lifetime of the process.
+        /// </summary>
+        private static void PruneStaleCooldowns()
+        {
+            if (_alertCooldowns.Count <= 1000)
+            {
+                return;
+            }
+
+            foreach (var entry in _alertCooldowns)
+            {
+                if (entry.Value.IsStale)
+                {
+                    _alertCooldowns.TryRemove(entry.Key, out _);
+                }
+            }
+        }
+
+        /// <summary>
         /// Tracks alert cooldowns to prevent spam.
         /// </summary>
         private class AlertCooldown
@@ -341,6 +363,14 @@ namespace ConduitLLM.Gateway.Hubs
                 }
                 return false;
             }
+
+            /// <summary>
+            /// True when every recorded alert has aged past the cooldown window,
+            /// making this entry behaviorally identical to an absent one.
+            /// </summary>
+            public bool IsStale =>
+                _lastAlertTimes.IsEmpty ||
+                _lastAlertTimes.Values.All(t => DateTime.UtcNow - t >= _cooldownPeriod);
 
             public void MarkAlertSent(decimal threshold)
             {

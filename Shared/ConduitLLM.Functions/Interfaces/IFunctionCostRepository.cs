@@ -59,12 +59,14 @@ public interface IFunctionCostRepository
     /// </summary>
     /// <param name="functionCost">The cost to update</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task UpdateAsync(FunctionCost functionCost, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was updated</returns>
+    Task<bool> UpdateAsync(FunctionCost functionCost, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a function cost by ID
     /// </summary>
     /// <param name="id">The cost ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task DeleteAsync(int id, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was deleted</returns>
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 }

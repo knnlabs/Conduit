@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
+
 using ConduitLLM.Gateway.Authentication;
+using ConduitLLM.Security.Authorization;
 
 public partial class Program
 {
@@ -70,6 +73,15 @@ public partial class Program
                 policy.AuthenticationSchemes.Add("Backend");
                 policy.RequireAuthenticatedUser();
             });
+
+            // Add policy for health endpoint access - allows private network OR valid health key
+            options.AddPolicy("HealthMonitoring", policy =>
+            {
+                policy.Requirements.Add(new HealthKeyRequirement());
+            });
         });
+
+        // Register the health key authorization handler
+        builder.Services.AddSingleton<IAuthorizationHandler, HealthKeyAuthorizationHandler>();
     }
 }

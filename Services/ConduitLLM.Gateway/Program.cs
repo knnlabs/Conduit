@@ -1,3 +1,10 @@
+// "migrate" verb: run the standalone migrator (release-hook entry point) instead of
+// the web host — e.g. `dotnet ConduitLLM.Gateway.dll migrate`.
+if (ConduitLLM.Configuration.Data.MigrationCommand.Matches(args))
+{
+    return await ConduitLLM.Configuration.Data.MigrationCommand.RunAsync();
+}
+
 // DatabaseAwareLLMClientFactory now in Providers namespace
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -25,8 +32,9 @@ await Program.ConfigureMiddleware(app);
 // Configure endpoints
 Program.ConfigureEndpoints(app);
 
-Console.WriteLine("[Conduit] All endpoints configured, starting application...");
 app.Run();
+
+return 0;
 
 // Make Program class accessible for testing
 public partial class Program { }

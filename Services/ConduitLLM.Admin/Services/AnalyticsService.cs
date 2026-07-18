@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Extensions;
@@ -17,11 +18,6 @@ public partial class AnalyticsService : IAnalyticsService
     private readonly IMemoryCache _cache;
     private readonly ILogger<AnalyticsService> _logger;
     private readonly IAnalyticsMetrics? _metrics;
-
-    // Cache keys
-    private const string CachePrefixSummary = "analytics:summary:";
-    private const string CachePrefixModels = "analytics:models";
-    private const string CachePrefixCostTrend = "analytics:cost:trend:";
     
     // Cache durations
     private static readonly TimeSpan ShortCacheDuration = TimeSpan.FromMinutes(1);
@@ -66,7 +62,7 @@ public partial class AnalyticsService : IAnalyticsService
         
         try
         {
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Getting logs - Page: {Page}, PageSize: {PageSize}, Filters: Model={Model}, VirtualKeyId={VirtualKeyId}, Status={Status}",
                 page, pageSize, model ?? "all", virtualKeyId?.ToString() ?? "all", status?.ToString() ?? "all");
 
@@ -140,7 +136,7 @@ public partial class AnalyticsService : IAnalyticsService
     {
         try
         {
-            _logger.LogInformationSecure("Getting log with ID: {LogId}", id);
+            _logger.LogDebugSecure("Getting log with ID: {LogId}", id);
             var log = await _requestLogRepository.GetByIdAsync(id);
             return log != null ? MapToLogRequestDto(log) : null;
         }
@@ -156,34 +152,30 @@ public partial class AnalyticsService : IAnalyticsService
     {
         var stopwatch = Stopwatch.StartNew();
         var cacheHit = false;
-        
-        var result = await _cache.GetOrCreateAsync(CachePrefixModels, async entry =>
+
+        var result = await _cache.GetOrCreateAsync(CacheKeys.Analytics.Models, async entry =>
         {
-            _metrics?.RecordCacheMiss(CachePrefixModels);
+            _metrics?.RecordCacheMiss(CacheKeys.Analytics.Models);
             entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
-            
-            _logger.LogInformationSecure("Getting distinct models from request logs");
-            
+
+            _logger.LogDebugSecure("Getting distinct models from request logs");
+
             var fetchStopwatch = Stopwatch.StartNew();
-            var logs = await _requestLogRepository.GetAllAsync();
-            _metrics?.RecordFetchDuration("RequestLogRepository.GetAllAsync", fetchStopwatch.ElapsedMilliseconds);
-            
-            return logs
-                .Where(l => !string.IsNullOrEmpty(l.ModelName))
-                .Select(l => l.ModelName)
-                .Distinct()
-                .OrderBy(m => m)
-                .ToList();
+            // Use repository-level DISTINCT query instead of loading all logs into memory
+            var models = await _requestLogRepository.GetDistinctModelsAsync();
+            _metrics?.RecordFetchDuration("RequestLogRepository.GetDistinctModelsAsync", fetchStopwatch.ElapsedMilliseconds);
+
+            return models;
         });
-        
+
         if (!cacheHit && result != null)
         {
             cacheHit = true;
-            _metrics?.RecordCacheHit(CachePrefixModels);
+            _metrics?.RecordCacheHit(CacheKeys.Analytics.Models);
         }
-        
+
         _metrics?.RecordOperationDuration("GetDistinctModelsAsync", stopwatch.ElapsedMilliseconds);
-        
+
         return result ?? Enumerable.Empty<string>();
     }
 

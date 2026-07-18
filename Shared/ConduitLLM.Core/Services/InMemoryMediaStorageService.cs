@@ -349,7 +349,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public Task<MediaStorageResult> CompleteMultipartUploadAsync(string sessionId, List<PartUploadResult> parts)
+        public async Task<MediaStorageResult> CompleteMultipartUploadAsync(string sessionId, List<PartUploadResult> parts)
         {
             if (!_multipartSessions.TryRemove(sessionId, out var session))
             {
@@ -364,7 +364,7 @@ namespace ConduitLLM.Core.Services
             // Combine all parts
             var sortedParts = parts.OrderBy(p => p.PartNumber).ToList();
             using var finalStream = new MemoryStream();
-            
+
             foreach (var part in sortedParts)
             {
                 if (partData.TryGetValue(part.PartNumber, out var data))
@@ -394,16 +394,16 @@ namespace ConduitLLM.Core.Services
 
             _logger.LogInformation("Completed in-memory multipart upload for key {StorageKey}", session.StorageKey);
 
-            var url = GenerateUrlAsync(session.StorageKey).Result;
+            var url = await GenerateUrlAsync(session.StorageKey);
 
-            return Task.FromResult(new MediaStorageResult
+            return new MediaStorageResult
             {
                 StorageKey = session.StorageKey,
                 Url = url,
                 SizeBytes = finalData.Length,
                 ContentHash = contentHash,
                 CreatedAt = DateTime.UtcNow
-            });
+            };
         }
 
         /// <inheritdoc/>

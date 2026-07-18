@@ -63,12 +63,17 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         public required FileMetadata Metadata { get; set; }
 
+        // Held alongside ContentStream when the stream's lifetime is tied to a parent
+        // resource (e.g. HttpResponseMessage). Disposed together with the stream.
+        internal IDisposable? Owner { get; set; }
+
         /// <summary>
-        /// Disposes the content stream.
+        /// Disposes the content stream and any owning resource.
         /// </summary>
         public void Dispose()
         {
             ContentStream?.Dispose();
+            Owner?.Dispose();
         }
     }
 

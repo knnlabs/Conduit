@@ -13,7 +13,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   # Quick validation that everything builds
@@ -59,7 +59,7 @@ jobs:
           cache-dependency-path: |
             SDKs/Node/package-lock.json
             SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Core/package-lock.json
+            SDKs/Node/Gateway/package-lock.json
             SDKs/Node/Common/package-lock.json
             WebAdmin/package-lock.json
       
@@ -117,11 +117,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/knnlabs/conduit-${{ matrix.service }}
+          images: ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,enable=${{ github.event_name != 'pull_request' }}
+            type=sha,prefix=pr-${{ github.event.pull_request.number }}-,enable=${{ github.event_name == 'pull_request' }}
             type=raw,value=latest,enable={{is_default_branch}}
       
       - name: Set up Docker Buildx
@@ -165,9 +166,9 @@ jobs:
           cache-dependency-path: |
             SDKs/Node/package-lock.json
             SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Core/package-lock.json
+            SDKs/Node/Gateway/package-lock.json
             SDKs/Node/Common/package-lock.json
-      
+
       - name: Build and Publish
         run: |
           cd SDKs/Node
@@ -189,8 +190,8 @@ jobs:
           npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
           npm publish --tag next --access public
           
-          # Update version and publish Core
-          cd ../Core
+          # Update version and publish Gateway
+          cd ../Gateway
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
           npm publish --tag next --access public

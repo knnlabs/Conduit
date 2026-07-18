@@ -196,11 +196,16 @@ namespace ConduitLLM.Core.Utilities
         /// Downloads an image from a URL asynchronously.
         /// </summary>
         /// <param name="url">The URL of the image to download</param>
+        /// <param name="httpClient">The HttpClient instance to use for downloading (should be from IHttpClientFactory)</param>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
         /// <returns>The image data as a byte array</returns>
-        public static async Task<byte[]> DownloadImageAsync(string url)
+        public static async Task<byte[]> DownloadImageAsync(string url, HttpClient httpClient, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(url))
                 throw new ArgumentException("URL cannot be null or empty", nameof(url));
+
+            if (httpClient == null)
+                throw new ArgumentNullException(nameof(httpClient));
 
             if (url.StartsWith("data:"))
             {
@@ -211,17 +216,33 @@ namespace ConduitLLM.Core.Utilities
                 return imageData;
             }
 
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(30); // Set a reasonable timeout
-
             try
             {
-                return await httpClient.GetByteArrayAsync(url);
+                return await httpClient.GetByteArrayAsync(url, cancellationToken);
             }
             catch (HttpRequestException ex)
             {
                 throw new IOException($"Failed to download image from URL: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Downloads an image from a URL asynchronously.
+        /// </summary>
+        /// <param name="url">The URL of the image to download</param>
+        /// <returns>The image data as a byte array</returns>
+        /// <remarks>
+        /// This method is no longer supported. Use the overload that accepts an HttpClient from IHttpClientFactory,
+        /// or use IImageDownloadService to properly manage HTTP connections and avoid socket exhaustion.
+        /// </remarks>
+        /// <exception cref="NotSupportedException">Always thrown. Use the overload that accepts an HttpClient parameter.</exception>
+        [Obsolete("Use the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService. This method is no longer supported.", error: true)]
+        public static Task<byte[]> DownloadImageAsync(string url)
+        {
+            throw new NotSupportedException(
+                "This method is no longer supported due to socket exhaustion risks. " +
+                "Use DownloadImageAsync(url, httpClient, cancellationToken) with an HttpClient from IHttpClientFactory, " +
+                "or use IImageDownloadService.");
         }
 
         /// <summary>

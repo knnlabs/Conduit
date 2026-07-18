@@ -1,6 +1,8 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Core.Interfaces;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -53,9 +55,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CleanupOldTasks();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.NotNull(okResult.Value);
-            
+
             var response = okResult.Value.GetType().GetProperty("cleaned_up")?.GetValue(okResult.Value);
             var hours = okResult.Value.GetType().GetProperty("older_than_hours")?.GetValue(okResult.Value);
             
@@ -77,7 +79,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CleanupOldTasks(olderThanHours);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
+            result.Should().BeOfType<OkObjectResult>();
             _mockTaskService.Verify(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(48), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -93,34 +95,22 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CleanupOldTasks(olderThanHours);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
+            result.Should().BeOfType<OkObjectResult>();
             _mockTaskService.Verify(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(1), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task CleanupOldTasks_WithServiceException_ShouldReturn500()
+        public async Task CleanupOldTasks_WithServiceException_ShouldPropagateException()
         {
             // Arrange
             _mockTaskService.Setup(x => x.CleanupOldTasksAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
             // Act
-            var result = await _controller.CleanupOldTasks();
+            var act = async () => await _controller.CleanupOldTasks();
 
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, objectResult.StatusCode);
-            Assert.NotNull(objectResult.Value);
-            
-            // Verify the error response structure
-            var errorProp = objectResult.Value.GetType().GetProperty("error")?.GetValue(objectResult.Value);
-            Assert.NotNull(errorProp);
-            
-            var messageProp = errorProp.GetType().GetProperty("message")?.GetValue(errorProp);
-            var typeProp = errorProp.GetType().GetProperty("type")?.GetValue(errorProp);
-            
-            Assert.Equal("An error occurred while cleaning up tasks", messageProp);
-            Assert.Equal("server_error", typeProp);
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping
+            await act.Should().ThrowAsync<Exception>();
         }
 
         [Fact]

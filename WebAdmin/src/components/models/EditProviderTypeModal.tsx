@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Switch, Button, Group, Stack, NumberInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { getProviderSelectOptions } from '@/lib/utils/providerTypeUtils';
 import type { ProviderTypeAssociationInput } from '@knn_labs/conduit-admin-client';
@@ -95,11 +95,7 @@ export function EditProviderTypeModal({
           await client.models.updateIdentifier(modelId, associationId, data);
         });
         
-        notifications.show({
-          title: 'Success',
-          message: 'Provider type association updated',
-          color: 'green',
-        });
+        notify.success('Provider type association updated');
       } else {
         // Create new
         await executeWithAdmin(async (client) => {
@@ -107,11 +103,7 @@ export function EditProviderTypeModal({
           await client.models.createIdentifier(modelId, data);
         });
         
-        notifications.show({
-          title: 'Success',
-          message: 'Provider type association created',
-          color: 'green',
-        });
+        notify.success('Provider type association created');
       }
       
       // Important: Close modal first to prevent UI state issues
@@ -136,12 +128,7 @@ export function EditProviderTypeModal({
           });
         }
       } else {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to save provider type association';
-        notifications.show({
-          title: 'Error',
-          message: errorMessage,
-          color: 'red',
-        });
+        notify.error(error, 'Failed to save provider type association');
       }
     } finally {
       setLoading(false);

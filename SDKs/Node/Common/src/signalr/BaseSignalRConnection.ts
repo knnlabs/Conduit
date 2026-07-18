@@ -10,12 +10,13 @@ import {
 } from './types';
 
 // Lazy import for MessagePack protocol
-let MessagePackHubProtocol: any;
+type MessagePackHubProtocolCtor = typeof import('@microsoft/signalr-protocol-msgpack').MessagePackHubProtocol;
+let MessagePackHubProtocol: MessagePackHubProtocolCtor | undefined;
 
 /**
  * Lazy loads the MessagePack protocol module
  */
-async function loadMessagePackProtocol(): Promise<any> {
+async function loadMessagePackProtocol(): Promise<MessagePackHubProtocolCtor | null> {
   if (!MessagePackHubProtocol) {
     try {
       const msgpack = await import('@microsoft/signalr-protocol-msgpack');

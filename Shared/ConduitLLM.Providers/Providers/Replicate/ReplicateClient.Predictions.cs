@@ -1,7 +1,10 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Metrics;
+using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
 
@@ -17,7 +20,7 @@ namespace ConduitLLM.Providers.Replicate
             try
             {
                 using var client = CreateHttpClient(apiKey);
-                var response = await client.PostAsync($"predictions/{predictionId}/cancel", null);
+                using var response = await client.PostAsync($"predictions/{predictionId}/cancel", null);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -64,15 +67,16 @@ namespace ConduitLLM.Providers.Replicate
                 }
                 
                 Logger.LogInformation("Sending request to Replicate: {BaseUrl}{Endpoint}", client.BaseAddress, endpoint);
-                var response = await client.PostAsJsonAsync(endpoint, request, cancellationToken);
+                using var response = await client.PostAsJsonAsync(endpoint, request, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     string errorContent = await ReadErrorContentAsync(response, cancellationToken);
-                    Logger.LogError("Replicate API prediction creation failed with status code {StatusCode}. Response: {ErrorContent}",
+                    Logger.LogError("Replicate API prediction creation failed with status {StatusCode}. Response: {ErrorContent}",
                         response.StatusCode, errorContent);
                     throw new LLMCommunicationException(
-                        $"Replicate API prediction creation failed with status code {response.StatusCode}. Response: {errorContent}");
+                        $"Replicate prediction creation failed: {errorContent}",
+                        response.StatusCode, errorContent);
                 }
 
                 var predictionResponse = await response.Content.ReadFromJsonAsync<ReplicatePredictionResponse>(
@@ -95,7 +99,11 @@ namespace ConduitLLM.Providers.Replicate
                 Logger.LogError(ex, "JSON error processing Replicate response");
                 throw new LLMCommunicationException("Error deserializing Replicate response", ex);
             }
-            catch (LLMCommunicationException)
+            catch (ConduitException)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
             {
                 throw;
             }
@@ -106,109 +114,150 @@ namespace ConduitLLM.Providers.Replicate
             }
         }
 
-        private async Task<ReplicatePredictionResponse> PollPredictionUntilCompletedAsync(
+        private Task<ReplicatePredictionResponse> PollPredictionUntilCompletedAsync(
             string predictionId,
             string? apiKey,
             CancellationToken cancellationToken,
-            bool yieldProgress = false)
+            ProviderInstrumentation.PollingScope? instrumentation = null)
         {
-            var startTime = DateTime.UtcNow;
-            var attemptCount = 0;
-            ReplicatePredictionResponse? prediction = null;
+            var options = new PollingOptions(
+                InitialDelay: DefaultPollingInterval,
+                MaxDelay: DefaultPollingInterval,
+                Timeout: MaxPollingDuration,
+                Backoff: BackoffStrategy.Fixed,
+                MaxConsecutiveTransientErrors: null);
 
-            while (true)
+            Logger.LogInformation("Starting to poll prediction {PredictionId}, max duration: {MaxDuration}",
+                predictionId, MaxPollingDuration);
+
+            return AsyncJobPoller.PollAsync(
+                fetchStatus: ct => FetchPredictionStatusAsync(predictionId, apiKey, ct),
+                classify: ClassifyPredictionStatus,
+                extractSuccess: prediction => prediction,
+                extractFailure: prediction => ExtractPredictionFailure(prediction, predictionId),
+                options: options,
+                logger: Logger,
+                cancellationToken: cancellationToken,
+                onAbort: () => CancelPredictionAsync(predictionId, apiKey),
+                operationName: $"Replicate prediction {predictionId}",
+                instrumentation: instrumentation);
+        }
+
+        private async Task<ReplicatePredictionResponse> FetchPredictionStatusAsync(
+            string predictionId,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            using var client = CreateHttpClient(apiKey);
+            using var response = await client.GetAsync($"predictions/{predictionId}", cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    Logger.LogInformation("Prediction polling was canceled");
-                    throw new OperationCanceledException("Prediction polling was canceled", cancellationToken);
-                }
-
-                // Check if we've exceeded the maximum polling duration
-                if (DateTime.UtcNow - startTime > MaxPollingDuration)
-                {
-                    Logger.LogError("Exceeded maximum polling duration for prediction {PredictionId}", predictionId);
-                    throw new LLMCommunicationException($"Exceeded maximum polling duration for prediction {predictionId}");
-                }
-
-                attemptCount++;
-                Logger.LogDebug("Polling prediction {PredictionId}, attempt {AttemptCount}", predictionId, attemptCount);
-
-                try
-                {
-                    using var client = CreateHttpClient(apiKey);
-                    var response = await client.GetAsync($"predictions/{predictionId}", cancellationToken);
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        string errorContent = await ReadErrorContentAsync(response, cancellationToken);
-                        Logger.LogError("Replicate API prediction polling failed with status code {StatusCode}. Response: {ErrorContent}",
-                            response.StatusCode, errorContent);
-                        throw new LLMCommunicationException(
-                            $"Replicate API prediction polling failed with status code {response.StatusCode}. Response: {errorContent}");
-                    }
-
-                    prediction = await response.Content.ReadFromJsonAsync<ReplicatePredictionResponse>(
-                        cancellationToken: cancellationToken);
-
-                    if (prediction == null)
-                    {
-                        throw new LLMCommunicationException("Failed to deserialize Replicate prediction response");
-                    }
-
-                    // Check prediction status
-                    switch (prediction.Status.ToLowerInvariant())
-                    {
-                        case "succeeded":
-                            Logger.LogInformation("Prediction {PredictionId} completed successfully", predictionId);
-                            return prediction;
-
-                        case "failed":
-                            Logger.LogError("Prediction {PredictionId} failed: {Error}", predictionId, prediction.Error);
-                            throw new LLMCommunicationException($"Replicate prediction failed: {prediction.Error}");
-
-                        case "canceled":
-                            Logger.LogWarning("Prediction {PredictionId} was canceled", predictionId);
-                            throw new LLMCommunicationException("Replicate prediction was canceled");
-
-                        case "starting":
-                        case "processing":
-                            // Still in progress, continue polling
-                            Logger.LogDebug("Prediction {PredictionId} is {Status}", predictionId, prediction.Status);
-                            break;
-
-                        default:
-                            Logger.LogWarning("Prediction {PredictionId} has unknown status: {Status}", predictionId, prediction.Status);
-                            break;
-                    }
-                }
-                catch (HttpRequestException ex)
-                {
-                    Logger.LogError(ex, "HTTP request error during prediction polling");
-                    throw new LLMCommunicationException($"HTTP request error during prediction polling: {ex.Message}", ex);
-                }
-                catch (JsonException ex)
-                {
-                    Logger.LogError(ex, "JSON error processing prediction polling response");
-                    throw new LLMCommunicationException("Error deserializing prediction polling response", ex);
-                }
-                catch (LLMCommunicationException)
-                {
-                    throw;
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "An unexpected error occurred during prediction polling");
-                    throw new LLMCommunicationException($"An unexpected error occurred during prediction polling: {ex.Message}", ex);
-                }
-
-                // Add a delay before the next poll
-                await Task.Delay(DefaultPollingInterval, cancellationToken);
+                string errorContent = await ReadErrorContentAsync(response, cancellationToken);
+                Logger.LogError("Replicate API prediction polling failed with status {StatusCode}. Response: {ErrorContent}",
+                    response.StatusCode, errorContent);
+                throw new LLMCommunicationException(
+                    $"Replicate prediction polling failed: {errorContent}",
+                    response.StatusCode, errorContent);
             }
+
+            var prediction = await response.Content.ReadFromJsonAsync<ReplicatePredictionResponse>(
+                cancellationToken: cancellationToken);
+            if (prediction == null)
+            {
+                throw new LLMCommunicationException("Failed to deserialize Replicate prediction response");
+            }
+            return prediction;
+        }
+
+        private static JobState ClassifyPredictionStatus(ReplicatePredictionResponse prediction) =>
+            prediction.Status.ToLowerInvariant() switch
+            {
+                "succeeded" => JobState.Succeeded,
+                "failed" or "canceled" => JobState.Failed,
+                _ => JobState.InProgress,
+            };
+
+        private Exception ExtractPredictionFailure(ReplicatePredictionResponse prediction, string predictionId)
+        {
+            if (string.Equals(prediction.Status, "canceled", StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.LogWarning("Prediction {PredictionId} was canceled by Replicate", predictionId);
+                return new LLMCommunicationException("Replicate prediction was canceled");
+            }
+            Logger.LogError("Prediction {PredictionId} failed: {Error}", predictionId, prediction.Error);
+            return ClassifyReplicatePredictionError(prediction.Error, predictionId);
+        }
+
+        /// <summary>
+        /// Classifies a Replicate prediction error into the appropriate exception type
+        /// based on the error message content.
+        /// </summary>
+        private Exception ClassifyReplicatePredictionError(string? error, string predictionId)
+        {
+            if (string.IsNullOrEmpty(error))
+            {
+                return new LLMCommunicationException($"Replicate prediction {predictionId} failed with no error details");
+            }
+
+            var errorLower = error.ToLowerInvariant();
+
+            // Authentication / authorization errors
+            if (errorLower.Contains("invalid api token") || errorLower.Contains("unauthorized") ||
+                errorLower.Contains("authentication") || errorLower.Contains("invalid token"))
+            {
+                return new LLMCommunicationException(
+                    $"Replicate authentication error: {error}",
+                    HttpStatusCode.Unauthorized, error);
+            }
+
+            // Billing / quota errors
+            if (errorLower.Contains("insufficient") || errorLower.Contains("billing") ||
+                errorLower.Contains("payment") || errorLower.Contains("quota") ||
+                errorLower.Contains("credit"))
+            {
+                return new LLMCommunicationException(
+                    $"Replicate billing error: {error}",
+                    HttpStatusCode.PaymentRequired, error);
+            }
+
+            // Rate limiting
+            if (errorLower.Contains("rate limit") || errorLower.Contains("too many requests") ||
+                errorLower.Contains("throttl"))
+            {
+                return new RateLimitExceededException($"Replicate rate limit: {error}");
+            }
+
+            // Content policy
+            if (errorLower.Contains("nsfw") || errorLower.Contains("content policy") ||
+                errorLower.Contains("safety") || errorLower.Contains("moderation") ||
+                errorLower.Contains("not allowed"))
+            {
+                return new InvalidRequestException($"Content policy violation: {error}", "content_policy_violation", "prompt");
+            }
+
+            // Model errors
+            if (errorLower.Contains("model") && (errorLower.Contains("not found") || errorLower.Contains("does not exist")))
+            {
+                return new ModelNotFoundException(ProviderModelId, $"Replicate model error: {error}");
+            }
+
+            // Input validation
+            if (errorLower.Contains("invalid input") || errorLower.Contains("validation") ||
+                errorLower.Contains("invalid value") || errorLower.Contains("must be"))
+            {
+                return new InvalidRequestException($"Replicate input validation error: {error}");
+            }
+
+            // Service errors
+            if (errorLower.Contains("service unavailable") || errorLower.Contains("internal error") ||
+                errorLower.Contains("server error"))
+            {
+                return new ServiceUnavailableException($"Replicate service error: {error}");
+            }
+
+            // Default: unclassified provider error with the original message preserved
+            return new LLMCommunicationException($"Replicate prediction failed: {error}");
         }
     }
 }

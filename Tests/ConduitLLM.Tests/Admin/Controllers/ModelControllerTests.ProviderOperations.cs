@@ -2,12 +2,14 @@ using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
 using FluentAssertions;
 
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +29,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         private readonly Mock<IModelRepository> _mockRepository;
         private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
         private readonly Mock<IProviderRepository> _mockProviderRepository;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
         private readonly ModelController _controller;
 
@@ -36,7 +38,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository = new Mock<IModelRepository>();
             _mockMappingService = new Mock<IAdminModelProviderMappingService>();
             _mockProviderRepository = new Mock<IProviderRepository>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<ModelController>>();
             _controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockProviderRepository.Object, _mockPublishEndpoint.Object, _mockLogger.Object);
         }
@@ -110,9 +112,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
-            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>().Subject;
             dtos.Should().HaveCount(2);
 
             var firstDto = dtos.First();
@@ -139,7 +140,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
@@ -155,7 +156,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
@@ -171,7 +172,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
@@ -235,9 +236,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
-            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>().Subject;
             var dto = dtos.First();
 
             // Should use the groq-specific identifier
@@ -282,9 +282,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
-            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>().Subject;
             var dto = dtos.First();
 
             // Should match case-insensitively
@@ -292,32 +291,18 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task GetModelsByProvider_WhenRepositoryThrows_ShouldReturn500()
+        public async Task GetModelsByProvider_WhenRepositoryThrows_ShouldPropagateException()
         {
             // Arrange
             var provider = "groq";
             var exception = new Exception("Database connection failed");
-            
+
             _mockRepository.Setup(r => r.GetByProviderAsync(ProviderType.Groq))
                 .ThrowsAsync(exception);
 
-            // Act
-            var result = await _controller.GetModelsByProvider(provider);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            objectResult.Value.Should().Be("An error occurred while retrieving models");
-
-            // Verify logging occurred
-            _mockLogger.Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error getting models for provider")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.GetModelsByProvider(provider);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         [Fact]
@@ -359,9 +344,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
-            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>().Subject;
             var dto = dtos.First();
 
             // After consolidation, capability fields have default values

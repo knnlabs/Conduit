@@ -1,7 +1,8 @@
 using System.Security.Claims;
+using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Entities;
 using Xunit.Abstractions;
 using Moq;
@@ -29,9 +30,10 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorDto = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
-            Assert.Equal("Virtual key not found", errorDto.error.ToString());
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Virtual key not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -51,9 +53,10 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorDto = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
-            Assert.Equal("Invalid virtual key", errorDto.error.ToString());
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid virtual key", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -73,9 +76,10 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             var result = await Controller.GetModels();
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var errorDto = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
-            Assert.Equal("Invalid virtual key", errorDto.error.ToString());
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid virtual key", errorResponse.Error.Message);
         }
     }
 }

@@ -46,6 +46,16 @@ namespace ConduitLLM.Configuration.DTOs
         public int OutputTokens { get; set; }
 
         /// <summary>
+        /// Number of input tokens read from cache. Null if caching was not used.
+        /// </summary>
+        public int? CachedInputTokens { get; set; }
+
+        /// <summary>
+        /// Number of tokens written to cache. Null if caching was not used.
+        /// </summary>
+        public int? CachedWriteTokens { get; set; }
+
+        /// <summary>
         /// Cost of the request
         /// </summary>
         public decimal Cost { get; set; }

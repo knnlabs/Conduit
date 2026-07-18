@@ -76,48 +76,6 @@ namespace ConduitLLM.Admin.Controllers
     }
 
     /// <summary>
-    /// Event published when a provider is updated
-    /// </summary>
-    public class ProviderUpdated
-    {
-        /// <summary>
-        /// The ID of the updated provider
-        /// </summary>
-        public int ProviderId { get; set; }
-        
-        /// <summary>
-        /// Whether the provider is enabled after the update
-        /// </summary>
-        public bool IsEnabled { get; set; }
-        
-        /// <summary>
-        /// List of properties that were changed
-        /// </summary>
-        public string[] ChangedProperties { get; set; } = Array.Empty<string>();
-        
-        /// <summary>
-        /// Correlation ID for tracking the event
-        /// </summary>
-        public string CorrelationId { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Event published when a provider is deleted
-    /// </summary>
-    public class ProviderDeleted
-    {
-        /// <summary>
-        /// The ID of the deleted provider
-        /// </summary>
-        public int ProviderId { get; set; }
-        
-        /// <summary>
-        /// Correlation ID for tracking the event
-        /// </summary>
-        public string CorrelationId { get; set; } = string.Empty;
-    }
-
-    /// <summary>
     /// Request model for creating a key credential
     /// </summary>
     public class CreateKeyRequest

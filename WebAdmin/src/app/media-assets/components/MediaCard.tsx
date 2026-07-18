@@ -3,7 +3,8 @@
 import { Card, Image, Text, Group, Badge, Checkbox, ActionIcon, Stack } from '@mantine/core';
 import { IconDownload, IconEye, IconTrash } from '@tabler/icons-react';
 import { MediaRecord } from '../types';
-import { formatBytes, formatDate, getProviderColor } from '../utils/formatters';
+import { getProviderColor } from '../utils/formatters';
+import { formatters } from '@/lib/utils/formatters';
 
 interface MediaCardProps {
   media: MediaRecord;
@@ -20,23 +21,72 @@ export default function MediaCard({
   onView, 
   onDelete 
 }: MediaCardProps) {
-  const getThumbnail = () => {
-    if (media.mediaType === 'image' && media.publicUrl) {
-      return media.publicUrl;
-    }
-    // For videos, we'd need a thumbnail service or use a placeholder
-    return '/api/placeholder/400/300';
-  };
+  const mediaUrl = media.publicUrl ?? media.storageUrl;
+  const isVideo = media.mediaType.toLowerCase() === 'video';
+  const isImage = media.mediaType.toLowerCase() === 'image';
 
   const handleDownload = () => {
-    if (media.publicUrl) {
+    if (mediaUrl) {
       const link = document.createElement('a');
-      link.href = media.publicUrl;
+      link.href = mediaUrl;
       link.download = `${media.mediaType}-${media.id}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
+  };
+
+  const renderPreview = () => {
+    if (isImage) {
+      return (
+        <Image
+          src={mediaUrl}
+          alt={media.prompt ?? 'Generated media'}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
+      );
+    }
+    if (mediaUrl) {
+      return (
+        <video
+          src={mediaUrl}
+          preload="metadata"
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            backgroundColor: '#f0f0f0'
+          }}
+        />
+      );
+    }
+    return (
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f0f0f0'
+      }}>
+        <Text size="xl">🎬</Text>
+      </div>
+    );
   };
 
   return (
@@ -49,39 +99,12 @@ export default function MediaCard({
         />
       </div>
 
-      <Card.Section 
+      <Card.Section
         style={{ cursor: 'pointer', position: 'relative', paddingTop: '75%' }}
         onClick={() => onView(media)}
       >
-        {media.mediaType === 'image' ? (
-          <Image
-            src={getThumbnail()}
-            alt={media.prompt ?? 'Generated media'}
-            style={{ 
-              position: 'absolute', 
-              top: 0, 
-              left: 0, 
-              width: '100%', 
-              height: '100%',
-              objectFit: 'cover'
-            }}
-          />
-        ) : (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f0f0f0'
-          }}>
-            <Text size="xl">🎬</Text>
-          </div>
-        )}
-        {media.mediaType === 'video' && (
+        {renderPreview()}
+        {isVideo && (
           <Badge
             variant="filled"
             color="dark"
@@ -98,7 +121,7 @@ export default function MediaCard({
             {media.provider ?? 'Unknown'}
           </Badge>
           <Text size="xs" c="dimmed">
-            {formatBytes(media.sizeBytes ?? 0)}
+            {formatters.fileSize(media.sizeBytes ?? 0)}
           </Text>
         </Group>
 
@@ -110,7 +133,7 @@ export default function MediaCard({
 
         <Group justify="space-between" align="center">
           <Text size="xs" c="dimmed">
-            {formatDate(media.createdAt)}
+            {formatters.date(media.createdAt)}
           </Text>
           <Group gap="xs">
             <ActionIcon

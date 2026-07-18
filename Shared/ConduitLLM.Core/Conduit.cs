@@ -87,7 +87,7 @@ namespace ConduitLLM.Core
             }
 
             // Get the appropriate client from the factory based on the model alias in the request
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
 
             // Call the client's method, passing the optional apiKey
             // Exceptions specific to providers (like communication errors) are expected to bubble up from the client.
@@ -113,7 +113,7 @@ namespace ConduitLLM.Core
             ChatCompletionRequest request,
             string? apiKey = null,
             int? virtualKeyId = null,
-            Func<object, CancellationToken, Task>? onToolExecutingEvent = null,
+            Func<ToolExecutionEvent, CancellationToken, Task>? onToolExecutingEvent = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -139,7 +139,7 @@ namespace ConduitLLM.Core
             else
             {
                 // Standard streaming without function calling
-                ILLMClient client = _clientFactory.GetClient(request.Model);
+                ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
                 await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                 {
                     yield return chunk;
@@ -193,7 +193,7 @@ namespace ConduitLLM.Core
             var maxIterations = request.MaxAgenticIterations ?? 20;
             var agenticModeEnabled = request.EnableAgenticMode ?? true;
 
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
             ChatCompletionResponse? response = null;
 
             while (iteration < maxIterations)
@@ -319,7 +319,7 @@ namespace ConduitLLM.Core
             ChatCompletionRequest request,
             string? apiKey,
             int virtualKeyId,
-            Func<object, CancellationToken, Task>? onToolExecutingEvent,
+            Func<ToolExecutionEvent, CancellationToken, Task>? onToolExecutingEvent,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             if (_functionDiscoveryService == null || _agenticOrchestrationService == null)
@@ -348,7 +348,7 @@ namespace ConduitLLM.Core
             var agenticModeEnabled = request.EnableAgenticMode ?? true;
             var maxIterations = request.MaxAgenticIterations ?? 5;
 
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
             var iteration = 0;
 
             // Track tool calls outside the loop for iteration limit check
@@ -468,11 +468,11 @@ namespace ConduitLLM.Core
                     {
                         try
                         {
-                            await onToolExecutingEvent(new
+                            await onToolExecutingEvent(new ToolExecutionEvent
                             {
-                                tool_call_id = toolCall.Id,
-                                function_name = toolCall.Function.Name,
-                                status = "started"
+                                ToolCallId = toolCall.Id,
+                                FunctionName = toolCall.Function.Name,
+                                Status = "started"
                             }, cancellationToken);
                         }
                         catch (Exception ex)
@@ -500,14 +500,14 @@ namespace ConduitLLM.Core
                     {
                         try
                         {
-                            await onToolExecutingEvent(new
+                            await onToolExecutingEvent(new ToolExecutionEvent
                             {
-                                tool_call_id = summary.ToolCallId,
-                                function_name = summary.FunctionName,
-                                status = summary.Success ? "completed" : "failed",
-                                cost = summary.Cost,
-                                error_message = summary.ErrorMessage,
-                                function_execution_id = summary.FunctionExecutionId
+                                ToolCallId = summary.ToolCallId,
+                                FunctionName = summary.FunctionName,
+                                Status = summary.Success ? "completed" : "failed",
+                                Cost = summary.Cost,
+                                ErrorMessage = summary.ErrorMessage,
+                                FunctionExecutionId = summary.FunctionExecutionId
                             }, cancellationToken);
                         }
                         catch (Exception ex)
@@ -667,7 +667,7 @@ namespace ConduitLLM.Core
                 throw new ArgumentException("The request must specify a target Model alias.", "request.Model");
 
             // No router for embeddings (OpenAI spec does not support routing for embeddings)
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
             return await client.CreateEmbeddingAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
         }
 
@@ -693,18 +693,19 @@ namespace ConduitLLM.Core
                 throw new ArgumentException("The request must specify a target Model alias.", "request.Model");
 
             // No router for image generation (OpenAI spec does not support routing for images)
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
             return await client.CreateImageAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Gets an LLM client for the specified model.
+        /// Asynchronously gets an LLM client for the specified model.
         /// </summary>
         /// <param name="modelAlias">The model alias to get a client for.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>The LLM client for the specified model.</returns>
-        public ILLMClient GetClient(string modelAlias)
+        public async Task<ILLMClient> GetClientAsync(string modelAlias, CancellationToken cancellationToken = default)
         {
-            return _clientFactory.GetClient(modelAlias);
+            return await _clientFactory.GetClientAsync(modelAlias, cancellationToken);
         }
 
         // Add other high-level methods as needed.

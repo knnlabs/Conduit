@@ -6,51 +6,68 @@ using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
-    /// Repository for batch operation history
+    /// Repository for batch operation history.
+    /// Inherits common CRUD operations from RepositoryBase.
     /// </summary>
-    public class BatchOperationHistoryRepository : IBatchOperationHistoryRepository
+    public class BatchOperationHistoryRepository : RepositoryBase<BatchOperationHistory, string>, IBatchOperationHistoryRepository
     {
-        private readonly ConduitDbContext _context;
-        private readonly ILogger<BatchOperationHistoryRepository> _logger;
-
         public BatchOperationHistoryRepository(
-            ConduitDbContext context,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<BatchOperationHistoryRepository> logger)
+            : base(dbContextFactory, logger)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <inheritdoc/>
+        protected override DbSet<BatchOperationHistory> GetDbSet(ConduitDbContext context) => context.BatchOperationHistory;
+
+        /// <inheritdoc/>
+        protected override IQueryable<BatchOperationHistory> ApplyDefaultIncludes(IQueryable<BatchOperationHistory> query)
+        {
+            return query.Include(h => h.VirtualKey);
+        }
+
+        /// <inheritdoc/>
+        protected override IQueryable<BatchOperationHistory> ApplyDefaultOrdering(IQueryable<BatchOperationHistory> query)
+        {
+            return query.OrderByDescending(h => h.StartedAt);
+        }
+
+        /// <inheritdoc/>
         public async Task<BatchOperationHistory> SaveAsync(BatchOperationHistory history)
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                _context.BatchOperationHistory.Add(history);
-                await _context.SaveChangesAsync();
-                
-                _logger.LogInformation(
+                GetDbSet(context).Add(history);
+                await context.SaveChangesAsync();
+
+                Logger.LogInformation(
                     "Saved batch operation history for {OperationId} - Type: {OperationType}, Status: {Status}",
                     history.OperationId, history.OperationType, history.Status);
-                
+
                 return history;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error saving batch operation history for {OperationId}", history.OperationId);
-                throw;
-            }
+            }, operationName: "saving");
         }
 
-        public async Task<BatchOperationHistory?> UpdateAsync(BatchOperationHistory history)
+        /// <summary>
+        /// Updates an existing batch operation history record by looking up the existing record
+        /// via OperationId, applying field-level changes, and saving.
+        /// </summary>
+        /// <remarks>
+        /// This is an explicit interface implementation because it differs from the base
+        /// <see cref="RepositoryBase{TEntity,TKey}.UpdateAsync"/> — it applies selective
+        /// field updates and returns the updated entity (or null if not found).
+        /// </remarks>
+        async Task<BatchOperationHistory?> IBatchOperationHistoryRepository.UpdateAsync(BatchOperationHistory history)
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                var existing = await _context.BatchOperationHistory
+                var existing = await GetDbSet(context)
                     .FirstOrDefaultAsync(h => h.OperationId == history.OperationId);
-                
+
                 if (existing == null)
                 {
-                    _logger.LogWarning("Batch operation history not found for update: {OperationId}", history.OperationId);
+                    Logger.LogWarning("Batch operation history not found for update: {OperationId}", history.OperationId);
                     return null;
                 }
 
@@ -68,118 +85,177 @@ namespace ConduitLLM.Configuration.Repositories
                 existing.CheckpointData = history.CheckpointData;
                 existing.LastProcessedIndex = history.LastProcessedIndex;
 
-                await _context.SaveChangesAsync();
-                
-                _logger.LogInformation(
+                await context.SaveChangesAsync();
+
+                Logger.LogInformation(
                     "Updated batch operation history for {OperationId} - Status: {Status}",
                     history.OperationId, history.Status);
-                
+
                 return existing;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating batch operation history for {OperationId}", history.OperationId);
-                throw;
-            }
+            }, operationName: "updating");
         }
 
-        public async Task<BatchOperationHistory?> GetByIdAsync(string operationId)
+        /// <summary>
+        /// Gets a batch operation history by its operation ID.
+        /// Overrides the base implementation because the primary key property (OperationId)
+        /// differs from the IEntity.Id alias, which is [NotMapped] and cannot be used in LINQ-to-SQL.
+        /// </summary>
+        public override async Task<BatchOperationHistory?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
         {
-            return await _context.BatchOperationHistory
-                .Include(h => h.VirtualKey)
-                .FirstOrDefaultAsync(h => h.OperationId == operationId);
+            return await ExecuteAsync(async context =>
+            {
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query.FirstOrDefaultAsync(e => e.OperationId == id, cancellationToken);
+            }, cancellationToken, $"getting by ID {id}");
         }
 
+        /// <summary>
+        /// Explicit interface implementation for <see cref="IBatchOperationHistoryRepository.GetByIdAsync(string)"/>
+        /// which lacks a CancellationToken parameter.
+        /// </summary>
+        async Task<BatchOperationHistory?> IBatchOperationHistoryRepository.GetByIdAsync(string operationId)
+        {
+            return await GetByIdAsync(operationId);
+        }
+
+        /// <summary>
+        /// Overrides base implementation to use OperationId (the mapped PK property)
+        /// instead of Id (the [NotMapped] alias) in LINQ queries.
+        /// </summary>
+        public override async Task<bool> ExistsAsync(string id, CancellationToken cancellationToken = default)
+        {
+            return await ExecuteAsync(async context =>
+                await GetDbSet(context)
+                    .AsNoTracking()
+                    .AnyAsync(e => e.OperationId == id, cancellationToken),
+                cancellationToken, $"checking existence of ID {id}");
+        }
+
+        /// <inheritdoc/>
         public async Task<List<BatchOperationHistory>> GetByVirtualKeyIdAsync(int virtualKeyId, int skip = 0, int take = 20)
         {
-            return await _context.BatchOperationHistory
-                .Where(h => h.VirtualKeyId == virtualKeyId)
-                .OrderByDescending(h => h.StartedAt)
-                .Skip(skip)
-                .Take(take)
-                .ToListAsync();
+            return await ExecuteAsync(async context =>
+            {
+                return await GetDbSet(context)
+                    .AsNoTracking()
+                    .Where(h => h.VirtualKeyId == virtualKeyId)
+                    .OrderByDescending(h => h.StartedAt)
+                    .Skip(skip)
+                    .Take(take)
+                    .ToListAsync();
+            }, operationName: "getting by virtual key ID");
         }
 
+        /// <inheritdoc/>
         public async Task<List<BatchOperationHistory>> GetRecentOperationsAsync(int take = 20)
         {
-            return await _context.BatchOperationHistory
-                .OrderByDescending(h => h.StartedAt)
-                .Take(take)
-                .Include(h => h.VirtualKey)
-                .ToListAsync();
+            return await ExecuteAsync(async context =>
+            {
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query
+                    .OrderByDescending(h => h.StartedAt)
+                    .Take(take)
+                    .ToListAsync();
+            }, operationName: "getting recent operations");
         }
 
+        /// <inheritdoc/>
         public async Task<List<BatchOperationHistory>> GetResumableOperationsAsync(int virtualKeyId)
         {
-            return await _context.BatchOperationHistory
-                .Where(h => h.VirtualKeyId == virtualKeyId && 
-                           h.CanResume && 
-                           (h.Status == "Cancelled" || h.Status == "Failed" || h.Status == "PartiallyCompleted"))
-                .OrderByDescending(h => h.StartedAt)
-                .ToListAsync();
+            return await ExecuteAsync(async context =>
+            {
+                return await GetDbSet(context)
+                    .AsNoTracking()
+                    .Where(h => h.VirtualKeyId == virtualKeyId &&
+                               h.CanResume &&
+                               (h.Status == "Cancelled" || h.Status == "Failed" || h.Status == "PartiallyCompleted"))
+                    .OrderByDescending(h => h.StartedAt)
+                    .ToListAsync();
+            }, operationName: "getting resumable operations");
         }
 
+        /// <inheritdoc/>
         public async Task<int> DeleteOldHistoryAsync(DateTime olderThan)
         {
-            var toDelete = await _context.BatchOperationHistory
-                .Where(h => h.StartedAt < olderThan)
-                .ToListAsync();
-            
-            if (toDelete.Count() > 0)
+            return await ExecuteAsync(async context =>
             {
-                _context.BatchOperationHistory.RemoveRange(toDelete);
-                await _context.SaveChangesAsync();
-                
-                _logger.LogInformation(
-                    "Deleted {Count} batch operation history records older than {Date}",
-                    toDelete.Count(), olderThan);
-            }
-            
-            return toDelete.Count();
+                var toDelete = await GetDbSet(context)
+                    .Where(h => h.StartedAt < olderThan)
+                    .ToListAsync();
+
+                if (toDelete.Any())
+                {
+                    GetDbSet(context).RemoveRange(toDelete);
+                    await context.SaveChangesAsync();
+
+                    Logger.LogInformation(
+                        "Deleted {Count} batch operation history records older than {Date}",
+                        toDelete.Count, olderThan);
+                }
+
+                return toDelete.Count;
+            }, operationName: "deleting old history");
         }
 
+        /// <inheritdoc/>
         public async Task<BatchOperationStatistics> GetStatisticsAsync(int virtualKeyId, DateTime? since = null)
         {
-            var query = _context.BatchOperationHistory
-                .Where(h => h.VirtualKeyId == virtualKeyId);
-            
-            if (since.HasValue)
+            return await ExecuteAsync(async context =>
             {
-                query = query.Where(h => h.StartedAt >= since.Value);
-            }
+                var query = GetDbSet(context)
+                    .Where(h => h.VirtualKeyId == virtualKeyId);
 
-            var operations = await query.ToListAsync();
-            
-            if (operations.Count() == 0)
-            {
-                return new BatchOperationStatistics();
-            }
+                if (since.HasValue)
+                {
+                    query = query.Where(h => h.StartedAt >= since.Value);
+                }
 
-            var stats = new BatchOperationStatistics
-            {
-                TotalOperations = operations.Count(),
-                SuccessfulOperations = operations.Count(h => h.Status == "Completed"),
-                FailedOperations = operations.Count(h => h.Status == "Failed"),
-                CancelledOperations = operations.Count(h => h.Status == "Cancelled"),
-                TotalItemsProcessed = operations.Sum(h => h.SuccessCount + h.FailedCount),
-                TotalItemsSucceeded = operations.Sum(h => h.SuccessCount),
-                TotalItemsFailed = operations.Sum(h => h.FailedCount)
-            };
+                // Aggregate in the database rather than loading every row into memory
+                var summary = await query
+                    .GroupBy(h => 1)
+                    .Select(g => new
+                    {
+                        TotalOperations = g.Count(),
+                        SuccessfulOperations = g.Count(h => h.Status == "Completed"),
+                        FailedOperations = g.Count(h => h.Status == "Failed"),
+                        CancelledOperations = g.Count(h => h.Status == "Cancelled"),
+                        TotalItemsSucceeded = g.Sum(h => (long)h.SuccessCount),
+                        TotalItemsFailed = g.Sum(h => (long)h.FailedCount),
+                        // AVG ignores NULLs, so gate both columns on the same completeness
+                        // condition the original in-memory filter used
+                        AverageDurationSeconds = g.Average(h =>
+                            h.DurationSeconds.HasValue && h.ItemsPerSecond.HasValue ? h.DurationSeconds : null),
+                        AverageItemsPerSecond = g.Average(h =>
+                            h.DurationSeconds.HasValue && h.ItemsPerSecond.HasValue ? h.ItemsPerSecond : null)
+                    })
+                    .FirstOrDefaultAsync();
 
-            // Calculate averages only for completed operations
-            var completedOps = operations.Where(h => h.DurationSeconds.HasValue && h.ItemsPerSecond.HasValue).ToList();
-            if (completedOps.Count() > 0)
-            {
-                stats.AverageDurationSeconds = completedOps.Average(h => h.DurationSeconds!.Value);
-                stats.AverageItemsPerSecond = completedOps.Average(h => h.ItemsPerSecond!.Value);
-            }
+                if (summary == null)
+                {
+                    return new BatchOperationStatistics();
+                }
 
-            // Count by operation type
-            stats.OperationTypeCounts = operations
-                .GroupBy(h => h.OperationType)
-                .ToDictionary(g => g.Key, g => g.Count());
+                var operationTypeCounts = await query
+                    .GroupBy(h => h.OperationType)
+                    .Select(g => new { g.Key, Count = g.Count() })
+                    .ToListAsync();
 
-            return stats;
+                return new BatchOperationStatistics
+                {
+                    TotalOperations = summary.TotalOperations,
+                    SuccessfulOperations = summary.SuccessfulOperations,
+                    FailedOperations = summary.FailedOperations,
+                    CancelledOperations = summary.CancelledOperations,
+                    TotalItemsProcessed = summary.TotalItemsSucceeded + summary.TotalItemsFailed,
+                    TotalItemsSucceeded = summary.TotalItemsSucceeded,
+                    TotalItemsFailed = summary.TotalItemsFailed,
+                    AverageDurationSeconds = summary.AverageDurationSeconds ?? 0,
+                    AverageItemsPerSecond = summary.AverageItemsPerSecond ?? 0,
+                    OperationTypeCounts = operationTypeCounts.ToDictionary(g => g.Key, g => g.Count)
+                };
+            }, operationName: "getting statistics");
         }
     }
 }

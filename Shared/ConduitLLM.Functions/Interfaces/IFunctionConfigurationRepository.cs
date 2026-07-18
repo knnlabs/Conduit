@@ -37,7 +37,32 @@ public interface IFunctionConfigurationRepository
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>A list of all function configurations</returns>
+    /// <remarks>
+    /// DEPRECATED: Use GetAllUnboundedAsync() for unbounded queries,
+    /// or GetPaginatedAsync() for bounded pagination.
+    /// </remarks>
+    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries. This method will be removed in a future version.")]
     Task<List<FunctionConfiguration>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all function configurations WITHOUT pagination. Use ONLY for legitimate batch operations
+    /// like cache warming, exports, or migrations.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A list of all function configurations</returns>
+    Task<List<FunctionConfiguration>> GetAllUnboundedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a paginated list of function configurations.
+    /// </summary>
+    /// <param name="page">Page number (1-based)</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A tuple containing the items and total count</returns>
+    Task<(List<FunctionConfiguration> Items, int TotalCount)> GetPaginatedAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all enabled function configurations
@@ -75,14 +100,16 @@ public interface IFunctionConfigurationRepository
     /// </summary>
     /// <param name="functionConfiguration">The function configuration to update</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task UpdateAsync(FunctionConfiguration functionConfiguration, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was updated</returns>
+    Task<bool> UpdateAsync(FunctionConfiguration functionConfiguration, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a function configuration by ID
     /// </summary>
     /// <param name="id">The function configuration ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task DeleteAsync(int id, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was deleted</returns>
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a function configuration name already exists

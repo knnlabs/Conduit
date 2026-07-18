@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
     /// Represents the spending history for a virtual key
     /// </summary>
-    public class VirtualKeySpendHistory
+    public class VirtualKeySpendHistory : IEntity<int>
     {
         /// <summary>
         /// Unique identifier for the spend history record

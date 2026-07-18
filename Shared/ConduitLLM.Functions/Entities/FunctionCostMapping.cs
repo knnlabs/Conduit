@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ConduitLLM.Functions.Entities.Interfaces;
 
 namespace ConduitLLM.Functions.Entities;
 
@@ -8,7 +9,7 @@ namespace ConduitLLM.Functions.Entities;
 /// Allows different functions to share cost configs or have function-specific pricing.
 /// </summary>
 [Table("FunctionCostMappings")]
-public class FunctionCostMapping
+public class FunctionCostMapping : IIdentifiableEntity<int>
 {
     /// <summary>
     /// Unique identifier for this mapping

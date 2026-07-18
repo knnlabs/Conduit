@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 
 using ConduitLLM.Gateway.Interfaces;
@@ -8,7 +9,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles VideoGenerationStarted events to notify clients via SignalR
     /// Provides real-time status updates when video generation begins
     /// </summary>
-    public class VideoGenerationStartedHandler : IConsumer<VideoGenerationStarted>
+    public class VideoGenerationStartedHandler : IEventHandler<VideoGenerationStarted>
     {
         private readonly IVideoGenerationNotificationService _notificationService;
         private readonly ILogger<VideoGenerationStartedHandler> _logger;
@@ -24,10 +25,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles VideoGenerationStarted events by pushing real-time notifications
         /// </summary>
-        public async Task Consume(ConsumeContext<VideoGenerationStarted> context)
+        public async Task HandleAsync(VideoGenerationStarted message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 _logger.LogInformation(

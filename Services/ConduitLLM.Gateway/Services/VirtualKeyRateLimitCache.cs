@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
-using Microsoft.Extensions.Caching.Memory;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using StackExchange.Redis;
 
 namespace ConduitLLM.Gateway.Services
@@ -16,7 +17,6 @@ namespace ConduitLLM.Gateway.Services
         private readonly IConnectionMultiplexer? _redis;
         private Timer? _refreshTimer;
         
-        private const string REDIS_KEY_PREFIX = "rate:config:";
 
         /// <summary>
         /// Represents rate limit configuration for a virtual key
@@ -68,7 +68,7 @@ namespace ConduitLLM.Gateway.Services
                 if (_redis != null && _redis.IsConnected)
                 {
                     var db = _redis.GetDatabase();
-                    var key = $"{REDIS_KEY_PREFIX}{virtualKeyHash}";
+                    var key = RedisKeys.RateLimit.Config(virtualKeyHash);
                     
                     var hashEntries = db.HashGetAll(key);
                     if (hashEntries.Length > 0)
@@ -125,7 +125,7 @@ namespace ConduitLLM.Gateway.Services
                 if (_redis != null && _redis.IsConnected)
                 {
                     var db = _redis.GetDatabase();
-                    var key = $"{REDIS_KEY_PREFIX}{virtualKeyHash}";
+                    var key = RedisKeys.RateLimit.Config(virtualKeyHash);
                     
                     var transaction = db.CreateTransaction();
                     
@@ -169,7 +169,7 @@ namespace ConduitLLM.Gateway.Services
                 if (_redis != null && _redis.IsConnected)
                 {
                     var db = _redis.GetDatabase();
-                    var key = $"{REDIS_KEY_PREFIX}{virtualKeyHash}";
+                    var key = RedisKeys.RateLimit.Config(virtualKeyHash);
                     
                     // Fire and forget deletion
                     _ = db.KeyDeleteAsync(key);

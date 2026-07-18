@@ -210,6 +210,11 @@ export const ENDPOINTS = {
     DOWNLOAD: (backupId: string) => `/api/database/download/${backupId}`,
   },
 
+  // Prompt Caching
+  PROMPT_CACHING: {
+    CONFIG: '/api/prompt-caching/config',
+  },
+
   // Configuration endpoints
   CONFIG: {
     ROUTING: '/api/config/routing',
@@ -243,13 +248,6 @@ export const ENDPOINTS = {
     DEPLOYMENT_BY_NAME: (deploymentName: string) => `/api/Router/deployments/${deploymentName}`,
     FALLBACKS: '/api/Router/fallbacks',
     FALLBACK_BY_MODEL: (primaryModel: string) => `/api/Router/fallbacks/${primaryModel}`,
-  },
-
-  // Security endpoints
-  SECURITY: {
-    EVENTS: '/api/security/events',
-    THREATS: '/api/security/threats',
-    COMPLIANCE: '/api/security/compliance',
   },
 
   // System

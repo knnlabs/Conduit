@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Table,
   ScrollArea,
@@ -34,7 +34,7 @@ import {
   IconLetterT,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { useModelCostsApi } from '../hooks/useModelCostsApi';
+import { fetchModelCosts, useDeleteModelCost } from '../hooks/useModelCostsApi';
 import { ModelCost } from '../types/modelCost';
 import { PricingModel, ModelType } from '@knn_labs/conduit-admin-client';
 import { EditModelCostModalV2 } from './EditModelCostModalV2';
@@ -50,18 +50,17 @@ interface ModelCostsTableProps {
 }
 
 export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: ModelCostsTableProps) {
-  const queryClient = useQueryClient();
-  const { fetchModelCosts, deleteModelCost } = useModelCostsApi();
-  
+  const deleteMutation = useDeleteModelCost();
+
   // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
-  
+
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<string | null>('true');
   const [modelTypeFilter, setModelTypeFilter] = useState<ModelType | null>(null);
-  
+
   // Modal state
   const [editingCost, setEditingCost] = useState<ModelCost | null>(null);
   const [viewingCost, setViewingCost] = useState<ModelCost | null>(null);
@@ -77,19 +76,6 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
       })(),
       modelType: modelTypeFilter ?? undefined,
     }),
-  });
-
-  // Delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: deleteModelCost,
-    onSuccess: () => {
-      // Invalidate all model-costs queries regardless of their parameters
-      void queryClient.invalidateQueries({ 
-        queryKey: ['model-costs'],
-        exact: false 
-      });
-      onRefresh?.();
-    },
   });
 
   // Enrich model costs with provider information

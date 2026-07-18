@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
-    public class ModelAuthor
+    public class ModelAuthor : IEntity<int>
     {
         [Key]
         public int Id { get; set; }

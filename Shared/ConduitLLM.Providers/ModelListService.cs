@@ -76,7 +76,7 @@ namespace ConduitLLM.Providers
                     provider.ProviderName, provider.Id);
 
                 // Create a client using the provider ID
-                var client = _clientFactory.GetClientByProviderId(provider.Id);
+                var client = await _clientFactory.GetClientByProviderIdAsync(provider.Id, cancellationToken);
 
                 // Get models from the provider API
                 var models = await client.ListModelsAsync(

@@ -1,7 +1,5 @@
 using ConduitLLM.Configuration.Entities;
 
-using Moq;
-
 namespace ConduitLLM.Tests.Admin.Services
 {
     public partial class AdminVirtualKeyServiceTests
@@ -12,43 +10,48 @@ namespace ConduitLLM.Tests.Admin.Services
         public async Task PerformMaintenanceAsync_ProcessesExpiredKeys()
         {
             // Arrange
-            var keys = new List<VirtualKey>
+            var now = DateTime.UtcNow;
+            await using (var seed = await _dbContextFactory.CreateDbContextAsync())
             {
-                // Expired key that should be disabled
-                new VirtualKey
+                seed.VirtualKeyGroups.Add(new VirtualKeyGroup
                 {
                     Id = 1,
-                    KeyName = "Expired Key",
-                    IsEnabled = true,
-                    ExpiresAt = DateTime.UtcNow.AddDays(-1),
-                    VirtualKeyGroupId = 1
-                },
-                // Valid key that shouldn't change
-                new VirtualKey
-                {
-                    Id = 2,
-                    KeyName = "Valid Key",
-                    IsEnabled = true,
-                    ExpiresAt = DateTime.UtcNow.AddDays(30),
-                    VirtualKeyGroupId = 1
-                }
-            };
-
-            _mockVirtualKeyRepository.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(keys);
-
-            _mockVirtualKeyRepository.Setup(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+                    GroupName = "Test Group"
+                });
+                seed.VirtualKeys.AddRange(
+                    new VirtualKey
+                    {
+                        Id = 1,
+                        KeyName = "Expired Key",
+                        KeyHash = "hash-expired",
+                        IsEnabled = true,
+                        ExpiresAt = now.AddDays(-1),
+                        VirtualKeyGroupId = 1
+                    },
+                    new VirtualKey
+                    {
+                        Id = 2,
+                        KeyName = "Valid Key",
+                        KeyHash = "hash-valid",
+                        IsEnabled = true,
+                        ExpiresAt = now.AddDays(30),
+                        VirtualKeyGroupId = 1
+                    });
+                await seed.SaveChangesAsync();
+            }
 
             // Act
             await _service.PerformMaintenanceAsync();
 
-            // Assert
-            // Verify expired key was disabled
-            Assert.False(keys[0].IsEnabled);
-            
-            // Only the expired key should be updated
-            _mockVirtualKeyRepository.Verify(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Once);
+            // Assert — bulk update disables the expired key in the DB; the valid key is untouched.
+            await using var verify = await _dbContextFactory.CreateDbContextAsync();
+            var expired = await verify.VirtualKeys.FindAsync(1);
+            var valid = await verify.VirtualKeys.FindAsync(2);
+
+            Assert.NotNull(expired);
+            Assert.NotNull(valid);
+            Assert.False(expired!.IsEnabled);
+            Assert.True(valid!.IsEnabled);
         }
 
         #endregion

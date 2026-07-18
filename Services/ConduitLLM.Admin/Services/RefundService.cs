@@ -45,10 +45,15 @@ public class RefundService : IRefundService
         string? initiatedByUserId,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation(
+            "Processing refund for group {GroupId}, model {ModelId}, initiated by {InitiatedBy}",
+            virtualKeyGroupId, modelId, initiatedBy);
+
         // Validate group exists
         var group = await _groupRepository.GetByIdAsync(virtualKeyGroupId);
         if (group == null)
         {
+            _logger.LogWarning("Refund rejected: virtual key group {GroupId} not found", virtualKeyGroupId);
             throw new InvalidOperationException($"Virtual key group {virtualKeyGroupId} not found");
         }
 
@@ -65,6 +70,9 @@ public class RefundService : IRefundService
         if (refundResult.ValidationMessages.Count > 0 && refundResult.RefundAmount == 0)
         {
             var errorMessage = string.Join("; ", refundResult.ValidationMessages);
+            _logger.LogWarning(
+                "Refund validation failed for group {GroupId}, model {ModelId}: {ValidationErrors}",
+                virtualKeyGroupId, modelId, errorMessage);
             throw new ArgumentException($"Refund validation failed: {errorMessage}");
         }
 
@@ -88,6 +96,8 @@ public class RefundService : IRefundService
             CreatedAt = DateTime.UtcNow
         };
 
+        // Attach and update the group entity (it was fetched with AsNoTracking)
+        _context.VirtualKeyGroups.Update(group);
         _context.VirtualKeyGroupTransactions.Add(transaction);
         await _context.SaveChangesAsync(cancellationToken);
 

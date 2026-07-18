@@ -164,9 +164,9 @@ namespace ConduitLLM.Gateway.Services
 
                 stopwatch.Stop();
                 
-                if (failedKeys.Count() > 0)
+                if (failedKeys.Any())
                 {
-                    _logger.LogWarning("Failed to delete {Count} keys during batch delete", failedKeys.Count());
+                    _logger.LogWarning("Failed to delete {Count} keys during batch delete", failedKeys.Count);
                 }
 
                 return new BatchDeleteResult
@@ -197,7 +197,7 @@ namespace ConduitLLM.Gateway.Services
 
         public async Task<BatchSetResult> BatchSetAsync<T>(Dictionary<string, T> keyValuePairs, TimeSpan? expiry = null)
         {
-            if (keyValuePairs == null || keyValuePairs.Count() == 0)
+            if (keyValuePairs == null || !keyValuePairs.Any())
             {
                 return new BatchSetResult
                 {
@@ -245,9 +245,9 @@ namespace ConduitLLM.Gateway.Services
 
                 stopwatch.Stop();
                 
-                if (failedKeys.Count() > 0)
+                if (failedKeys.Any())
                 {
-                    _logger.LogWarning("Failed to set {Count} keys during batch set", failedKeys.Count());
+                    _logger.LogWarning("Failed to set {Count} keys during batch set", failedKeys.Count);
                 }
 
                 return new BatchSetResult
@@ -278,7 +278,7 @@ namespace ConduitLLM.Gateway.Services
 
         public async Task<BatchPublishResult> BatchPublishAsync(Dictionary<string, string> channelMessages)
         {
-            if (channelMessages == null || channelMessages.Count() == 0)
+            if (channelMessages == null || !channelMessages.Any())
             {
                 return new BatchPublishResult
                 {

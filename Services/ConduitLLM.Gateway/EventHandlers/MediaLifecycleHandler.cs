@@ -1,4 +1,5 @@
 using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -8,7 +9,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles MediaGenerationCompleted events to track generated media for lifecycle management.
     /// CRITICAL: This handler writes to MediaRecords table via IMediaLifecycleService.
     /// </summary>
-    public class MediaLifecycleHandler : IConsumer<MediaGenerationCompleted>
+    public class MediaLifecycleHandler : IEventHandler<MediaGenerationCompleted>
     {
         private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly ILogger<MediaLifecycleHandler> _logger;
@@ -24,10 +25,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles MediaGenerationCompleted events by recording media metadata for lifecycle tracking
         /// </summary>
-        public async Task Consume(ConsumeContext<MediaGenerationCompleted> context)
+        public async Task HandleAsync(MediaGenerationCompleted message, IEventContext context)
         {
-            var @event = context.Message;
-            
+            var @event = message;
+
             try
             {
                 _logger.LogInformation(

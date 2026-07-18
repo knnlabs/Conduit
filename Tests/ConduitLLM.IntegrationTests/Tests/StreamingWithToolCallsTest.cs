@@ -109,7 +109,7 @@ public class StreamingWithToolCallsTest : ProviderIntegrationTestBase
             reportGenerated = true;
 
             // Check if there were errors
-            if (_context.Errors.Count() > 0)
+            if (_context.Errors.Any())
             {
                 var errorMessage = string.Join("; ", _context.Errors);
                 _specificLogger.LogError("Test completed with errors: {Errors}", errorMessage);

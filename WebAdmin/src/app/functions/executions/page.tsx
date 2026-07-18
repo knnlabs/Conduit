@@ -24,7 +24,7 @@ import {
   IconEye,
   IconTrash
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
 import { useAdminClient } from '@/lib/client/adminClient';
 import {
@@ -99,11 +99,7 @@ export default function FunctionExecutionsPage() {
       setExecutions(response);
     } catch (err) {
       console.warn('Error loading executions:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to load executions',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to load executions');
     } finally {
       setLoading(false);
     }
@@ -148,19 +144,11 @@ export default function FunctionExecutionsPage() {
             const result = await executeWithAdmin(client =>
               client.functionExecutions.cleanup(30)
             );
-            notifications.show({
-              title: 'Success',
-              message: `Deleted ${(result as { deletedCount?: number }).deletedCount ?? 0} executions`,
-              color: 'green',
-            });
+            notify.success(`Deleted ${(result as { deletedCount?: number }).deletedCount ?? 0} executions`);
             await loadExecutions();
           } catch (err) {
             console.warn('Error cleaning up executions:', err);
-            notifications.show({
-              title: 'Error',
-              message: err instanceof Error ? err.message : 'Failed to cleanup executions',
-              color: 'red',
-            });
+            notify.error(err, 'Failed to cleanup executions');
           }
         })();
       },

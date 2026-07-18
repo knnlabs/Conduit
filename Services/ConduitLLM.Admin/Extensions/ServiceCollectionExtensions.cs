@@ -1,21 +1,14 @@
 using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Admin.Options;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
-using ConduitLLM.Configuration; // For ConduitDbContext
-using ConduitLLM.Core.Extensions; // For AddMediaServices extension method
-using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
-using ConduitLLM.Configuration.Interfaces; // For repository interfaces  
-using ConduitLLM.Configuration.Repositories; // For repository interfaces
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Security.Authorization;
+using ConduitLLM.Security.Options;
 
-using MassTransit; // For IPublishEndpoint
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore; // For IDbContextFactory
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Options;
-using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Extensions;
 
@@ -35,18 +28,10 @@ public static class ServiceCollectionExtensions
         // Configure security options from environment variables
         services.ConfigureAdminSecurityOptions(configuration);
 
-        // Register security service as singleton with factory to handle scoped dependencies
-        services.AddSingleton<ISecurityService>(serviceProvider =>
-        {
-            var options = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>();
-            var config = serviceProvider.GetRequiredService<IConfiguration>();
-            var logger = serviceProvider.GetRequiredService<ILogger<SecurityService>>();
-            var memoryCache = serviceProvider.GetRequiredService<IMemoryCache>();
-            var distributedCache = serviceProvider.GetService<IDistributedCache>(); // Optional
-            var serviceScopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
-            
-            return new SecurityService(options, config, logger, memoryCache, distributedCache, serviceScopeFactory);
-        });
+        // Register security service as singleton for both shared and admin-specific interfaces
+        services.AddSingleton<Admin.Services.SecurityService>();
+        services.AddSingleton<ConduitLLM.Security.Interfaces.ISecurityService>(sp => sp.GetRequiredService<Admin.Services.SecurityService>());
+        services.AddSingleton<IAdminSecurityService>(sp => sp.GetRequiredService<Admin.Services.SecurityService>());
 
         // Add memory cache if not already registered
         services.AddMemoryCache();
@@ -60,126 +45,87 @@ public static class ServiceCollectionExtensions
 
         // Register authorization policy for master key
         services.AddSingleton<IAuthorizationHandler, MasterKeyAuthorizationHandler>();
+
+        // Register health key authorization handler (shared from ConduitLLM.Security)
+        services.AddSingleton<IAuthorizationHandler, HealthKeyAuthorizationHandler>();
+
         services.AddAuthorization(options =>
         {
             // Define the MasterKeyPolicy
             options.AddPolicy("MasterKeyPolicy", policy =>
                 policy.Requirements.Add(new MasterKeyRequirement()));
-            
+
             // Set MasterKeyPolicy as the default policy for all controllers
             // This ensures any controller with [Authorize] will use MasterKeyPolicy by default
             options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
                 .AddRequirements(new MasterKeyRequirement())
                 .Build();
+
+            // Add policy for health endpoint access - allows private network OR valid health key
+            options.AddPolicy("HealthMonitoring", policy =>
+            {
+                policy.Requirements.Add(new HealthKeyRequirement());
+            });
         });
 
-        // Register AdminVirtualKeyService with optional cache and event publishing dependencies
-        services.AddScoped<IAdminVirtualKeyService>(serviceProvider =>
-        {
-            var virtualKeyRepository = serviceProvider.GetRequiredService<IVirtualKeyRepository>();
-            var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
-            var groupRepository = serviceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
-            var cache = serviceProvider.GetService<IVirtualKeyCache>(); // Optional - null if not registered
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
-            var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
-            var modelProviderMappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
-            var modelCapabilityService = serviceProvider.GetRequiredService<IModelCapabilityService>();
-            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<ConduitDbContext>>();
-            var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>(); // Optional - null if not configured
-            
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, dbContextFactory, mediaLifecycleService);
-        });
-        // Register AdminModelProviderMappingService with optional event publishing dependency
-        services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
-        {
-            var mappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
-            var credentialRepository = serviceProvider.GetRequiredService<IProviderRepository>();
-            var modelRepository = serviceProvider.GetRequiredService<IModelRepository>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
-            var logger = serviceProvider.GetRequiredService<ILogger<AdminModelProviderMappingService>>();
-            
-            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, modelRepository, publishEndpoint, logger);
-        });
+        // Register AdminVirtualKeyService (optional deps use default parameter values)
+        services.AddScoped<IAdminVirtualKeyService, AdminVirtualKeyService>();
+        // Register AdminModelProviderMappingService (optional deps use default parameter values)
+        services.AddScoped<IAdminModelProviderMappingService, AdminModelProviderMappingService>();
         
         // Register Analytics services
         services.AddSingleton<IAnalyticsMetrics, AnalyticsMetricsService>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
         
-        // Register AdminIpFilterService with optional event publishing dependency
-        services.AddScoped<IAdminIpFilterService>(serviceProvider =>
-        {
-            var ipFilterRepository = serviceProvider.GetRequiredService<IIpFilterRepository>();
-            var globalSettingRepository = serviceProvider.GetRequiredService<IGlobalSettingRepository>();
-            var ipFilterOptions = serviceProvider.GetRequiredService<IOptionsMonitor<IpFilterOptions>>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
-            var logger = serviceProvider.GetRequiredService<ILogger<AdminIpFilterService>>();
-
-            return new AdminIpFilterService(ipFilterRepository, globalSettingRepository, ipFilterOptions, publishEndpoint, logger);
-        });
+        // Register AdminIpFilterService (optional deps use default parameter values)
+        services.AddScoped<IAdminIpFilterService, AdminIpFilterService>();
         services.AddScoped<IAdminSystemInfoService, AdminSystemInfoService>();
         services.AddScoped<IAdminNotificationService, AdminNotificationService>();
-        // Register AdminGlobalSettingService with optional event publishing dependency
-        services.AddScoped<IAdminGlobalSettingService>(serviceProvider =>
-        {
-            var globalSettingRepository = serviceProvider.GetRequiredService<IGlobalSettingRepository>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
-            var logger = serviceProvider.GetRequiredService<ILogger<AdminGlobalSettingService>>();
-            
-            return new AdminGlobalSettingService(globalSettingRepository, publishEndpoint, logger);
-        });
-        // Register AdminModelCostService with optional event publishing dependency
-        services.AddScoped<IAdminModelCostService>(serviceProvider =>
-        {
-            var modelCostRepository = serviceProvider.GetRequiredService<IModelCostRepository>();
-            var requestLogRepository = serviceProvider.GetRequiredService<IRequestLogRepository>();
-            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
-            var logger = serviceProvider.GetRequiredService<ILogger<AdminModelCostService>>();
-            
-            return new AdminModelCostService(modelCostRepository, requestLogRepository, dbContextFactory, publishEndpoint, logger);
-        });
+        // Register AdminGlobalSettingService (optional deps use default parameter values)
+        services.AddScoped<IAdminGlobalSettingService, AdminGlobalSettingService>();
+        // Register AdminModelCostService (optional deps use default parameter values)
+        services.AddScoped<IAdminModelCostService, AdminModelCostService>();
 
-        // Register cost calculation dependencies
-        services.AddScoped<ConduitLLM.Configuration.Interfaces.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
+        // Register cost calculation dependencies with caching decorator pattern
+        services.AddScoped<ConduitLLM.Configuration.Services.ModelCostService>();
+        services.AddScoped<ConduitLLM.Configuration.Interfaces.IModelCostService>(provider =>
+        {
+            var innerService = provider.GetRequiredService<ConduitLLM.Configuration.Services.ModelCostService>();
+            var cacheManager = provider.GetRequiredService<ConduitLLM.Core.Interfaces.ICacheManager>();
+            var logger = provider.GetRequiredService<ILogger<ConduitLLM.Core.Services.CachedModelCostService>>();
+            return new ConduitLLM.Core.Services.CachedModelCostService(innerService, cacheManager, logger);
+        });
         services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 
         // Register refund service
         services.AddScoped<ConduitLLM.Admin.Interfaces.IRefundService, ConduitLLM.Admin.Services.RefundService>();
 
-        // Register media management service (requires IMediaLifecycleService to be registered)
+        // Register media management service (requires IMediaLifecycleService and IMediaStorageService to be registered)
         services.AddScoped<IAdminMediaService>(serviceProvider =>
         {
             var mediaRepository = serviceProvider.GetRequiredService<IMediaRecordRepository>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>();
+            var storageService = serviceProvider.GetRequiredService<IMediaStorageService>();
             var logger = serviceProvider.GetRequiredService<ILogger<AdminMediaService>>();
-            
+
             // Only register if media lifecycle service is available
             if (mediaLifecycleService == null)
             {
                 throw new InvalidOperationException("IMediaLifecycleService must be registered to use AdminMediaService");
             }
-            
-            return new AdminMediaService(mediaRepository, mediaLifecycleService, logger);
+
+            return new AdminMediaService(mediaRepository, mediaLifecycleService, storageService, logger);
         });
 
-        // Register database-aware LLM client factory (must be registered before discovery service)
-        services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
+        // ILLMClientFactory is registered via AddProviderServices() in the shared Providers extension
+        // Do not duplicate here — the shared registration is the single source of truth
 
-        // Configure HttpClient for discovery providers
-        services.AddHttpClient("DiscoveryProviders", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
-        });
-
-        // Model discovery providers have been removed - capabilities now come from ModelProviderMapping
+        // Register shared HTTP clients (DiscoveryProviders, ImageDownload, Exa, Tavily)
+        services.AddSharedHttpClients();
 
         // Register Media Services using shared configuration from Core
         services.AddMediaServices(configuration);
 
-
-        // Register SignalR admin notification service
-        services.AddScoped<ConduitLLM.Admin.Hubs.AdminNotificationService>();
 
         // Register LLM cache management service (simple database + event publishing)
         services.AddScoped<ILLMCacheManagementService, LLMCacheManagementService>();
@@ -189,11 +135,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostCalculationService, ConduitLLM.Functions.Services.FunctionCostCalculationService>();
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionClientFactory, ConduitLLM.Functions.Services.FunctionClientFactory>();
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionExecutionService, ConduitLLM.Functions.Services.FunctionExecutionService>();
-
-        // NOTE: ICacheManagementService registration is commented out because it requires
-        // cache infrastructure services (ICacheRegistry, ICacheStatisticsCollector, ICachePolicyEngine)
-        // that are not currently implemented. General cache management endpoints will return 501.
-        // services.AddScoped<ICacheManagementService, CacheManagementService>();
 
         // Register billing audit service for comprehensive billing event tracking - with leader election
         services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
@@ -206,7 +147,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ConduitLLM.Core.Services.IPricingRulesEvaluator, ConduitLLM.Core.Services.PricingRulesEvaluator>();
         services.AddScoped<ConduitLLM.Core.Services.IPricingRulesValidator, ConduitLLM.Core.Services.PricingRulesValidator>();
 
-        // Register cached pricing rules service for parsed configuration caching
+        // Register cached pricing rules service for parsed configuration caching (uses ICacheManager)
         services.AddSingleton<ConduitLLM.Core.Interfaces.ICachedPricingRulesService, ConduitLLM.Core.Services.CachedPricingRulesService>();
 
         // Register pricing audit service for rules-based pricing event tracking - with leader election
@@ -250,7 +191,7 @@ public static class ServiceCollectionExtensions
             options.AddPolicy("AdminCorsPolicy", policy =>
             {
                 var allowedOrigins = configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>();
-                if (allowedOrigins != null && allowedOrigins.Length == 0)
+                if (allowedOrigins != null && allowedOrigins.Length > 0)
                 {
                     policy.WithOrigins(allowedOrigins)
                         .AllowAnyMethod()

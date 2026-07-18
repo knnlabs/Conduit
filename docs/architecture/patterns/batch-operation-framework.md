@@ -364,9 +364,7 @@ public async Task ExecuteBatch_WithDuplicateRequest_ShouldReturnCachedResult()
 
 ## Related Documentation
 
-- [Issue #215 Analysis](../../../ISSUE_215_ANALYSIS.md)
-- [Batch Cache Invalidation](../../../docs/claude/batch-cache-invalidation.md)
-- [Event-Driven Architecture](../../../docs/claude/event-driven-architecture.md)
+- [MassTransit Events](../events/masstransit-event-inventory.md) - Event-driven architecture
 
 ## Contributors
 

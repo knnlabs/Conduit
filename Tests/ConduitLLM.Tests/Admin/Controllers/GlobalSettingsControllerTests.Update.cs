@@ -1,9 +1,6 @@
-using ConduitLLM.Tests.Admin.TestHelpers;
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Controllers
@@ -23,6 +20,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Description = "Updated description"
             };
 
+            _mockService.Setup(x => x.GetSettingByIdAsync(1))
+                .ReturnsAsync(new GlobalSettingDto { Id = 1, Key = "test_key", Value = "old_value", Description = "Old description" });
             _mockService.Setup(x => x.UpdateSettingAsync(It.IsAny<UpdateGlobalSettingDto>()))
                 .ReturnsAsync(true);
 
@@ -30,7 +29,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateSetting(1, updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
@@ -47,12 +46,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateSetting(1, updateDto);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("ID in route must match ID in body");
         }
 
         [Fact]
-        public async Task UpdateSetting_WithNonExistingId_ShouldReturnNotFound()
+        public async Task UpdateSetting_WithNonExistingId_ShouldPropagateException()
         {
             // Arrange
             var updateDto = new UpdateGlobalSettingDto
@@ -61,16 +60,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Value = "value"
             };
 
-            _mockService.Setup(x => x.UpdateSettingAsync(It.IsAny<UpdateGlobalSettingDto>()))
-                .ReturnsAsync(false);
+            _mockService.Setup(x => x.GetSettingByIdAsync(999))
+                .ReturnsAsync((GlobalSettingDto?)null);
 
-            // Act
-            var result = await _controller.UpdateSetting(999, updateDto);
-
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorObj = notFoundResult.Value as dynamic;
-            ((string)errorObj.error).Should().Be("Global setting not found");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.UpdateSetting(999, updateDto);
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion
@@ -95,11 +90,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateSettingByKey(updateDto);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
         }
 
         [Fact]
-        public async Task UpdateSettingByKey_WithFailure_ShouldReturn500()
+        public async Task UpdateSettingByKey_WithFailure_ShouldPropagateException()
         {
             // Arrange
             var updateDto = new UpdateGlobalSettingByKeyDto
@@ -111,17 +106,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.UpdateSettingByKeyAsync(It.IsAny<UpdateGlobalSettingByKeyDto>()))
                 .ReturnsAsync(false);
 
-            // Act
-            var result = await _controller.UpdateSettingByKey(updateDto);
-
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            statusCodeResult.Value.Should().Be("Failed to update or create global setting");
+            // Act + Assert — controller throws InvalidOperationException when service returns false;
+            // error mapping is now owned by AdminExceptionMiddleware, so the action propagates.
+            var act = async () => await _controller.UpdateSettingByKey(updateDto);
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         [Fact]
-        public async Task UpdateSettingByKey_WithException_ShouldReturn500()
+        public async Task UpdateSettingByKey_WithException_ShouldPropagateException()
         {
             // Arrange
             var updateDto = new UpdateGlobalSettingByKeyDto
@@ -133,14 +125,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.UpdateSettingByKeyAsync(It.IsAny<UpdateGlobalSettingByKeyDto>()))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.UpdateSettingByKey(updateDto);
-
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error updating global setting with key");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.UpdateSettingByKey(updateDto);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

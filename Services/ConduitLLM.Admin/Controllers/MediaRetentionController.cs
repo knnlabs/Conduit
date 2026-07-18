@@ -1,3 +1,7 @@
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
+using ConduitLLM.Core.Extensions;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +16,10 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/admin/media-retention")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class MediaRetentionController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class MediaRetentionController : AdminControllerBase
     {
         private readonly IConfigurationDbContext _context;
-        private readonly ILogger<MediaRetentionController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MediaRetentionController"/> class.
@@ -25,9 +29,9 @@ namespace ConduitLLM.Admin.Controllers
         public MediaRetentionController(
             IConfigurationDbContext context,
             ILogger<MediaRetentionController> logger)
+            : base(logger)
         {
             _context = context;
-            _logger = logger;
         }
 
         /// <summary>
@@ -82,10 +86,10 @@ namespace ConduitLLM.Admin.Controllers
 
             if (policy == null)
             {
-                return NotFound(new { message = $"Policy with ID {id} not found" });
+                return this.NotFoundEntity("Retention policy", id);
             }
 
-            var dto = new MediaRetentionPolicyDetailDto
+            return Ok(new MediaRetentionPolicyDetailDto
             {
                 Id = policy.Id,
                 Name = policy.Name,
@@ -108,9 +112,7 @@ namespace ConduitLLM.Admin.Controllers
                     Balance = vkg.Balance,
                     VirtualKeyCount = vkg.VirtualKeys.Count
                 }).ToList()
-            };
-
-            return Ok(dto);
+            });
         }
 
         /// <summary>
@@ -123,10 +125,9 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(400)]
         public async Task<IActionResult> CreatePolicy([FromBody] CreateMediaRetentionPolicyRequest request)
         {
-            // Validate request
             if (request.PositiveBalanceRetentionDays <= 0)
             {
-                return BadRequest(new { message = "Positive balance retention days must be greater than 0" });
+                return this.BadRequestError("Positive balance retention days must be greater than 0");
             }
 
             if (request.IsDefault)
@@ -161,9 +162,9 @@ namespace ConduitLLM.Admin.Controllers
             _context.MediaRetentionPolicies.Add(policy);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Created media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
+            LogAdminAudit("Created", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
-            return CreatedAtAction(nameof(GetPolicy), new { id = policy.Id }, new MediaRetentionPolicyDto
+            var dto = new MediaRetentionPolicyDto
             {
                 Id = policy.Id,
                 Name = policy.Name,
@@ -181,7 +182,9 @@ namespace ConduitLLM.Admin.Controllers
                 CreatedAt = policy.CreatedAt,
                 UpdatedAt = policy.UpdatedAt,
                 VirtualKeyGroupCount = 0
-            });
+            };
+
+            return CreatedAtAction(nameof(GetPolicy), new { id = dto.Id }, dto);
         }
 
         /// <summary>
@@ -202,7 +205,7 @@ namespace ConduitLLM.Admin.Controllers
 
             if (policy == null)
             {
-                return NotFound(new { message = $"Policy with ID {id} not found" });
+                return this.NotFoundEntity("Retention policy", id);
             }
 
             if (request.IsDefault == true && !policy.IsDefault)
@@ -233,7 +236,7 @@ namespace ConduitLLM.Admin.Controllers
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Updated media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
+            LogAdminAudit("Updated", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
             return Ok(new MediaRetentionPolicyDto
             {
@@ -273,23 +276,24 @@ namespace ConduitLLM.Admin.Controllers
 
             if (policy == null)
             {
-                return NotFound(new { message = $"Policy with ID {id} not found" });
+                return this.NotFoundEntity("Retention policy", id);
             }
 
             if (policy.IsDefault)
             {
-                return BadRequest(new { message = "Cannot delete the default retention policy" });
+                return this.BadRequestError("Cannot delete the default retention policy");
             }
 
             if (policy.VirtualKeyGroups.Any())
             {
-                return BadRequest(new { message = $"Cannot delete policy - it is assigned to {policy.VirtualKeyGroups.Count} virtual key group(s)" });
+                return this.BadRequestError(
+                    $"Cannot delete policy - it is assigned to {policy.VirtualKeyGroups.Count} virtual key group(s)");
             }
 
             _context.MediaRetentionPolicies.Remove(policy);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Deleted media retention policy {PolicyId}: {PolicyName}", policy.Id, policy.Name);
+            LogAdminAudit("Deleted", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
             return NoContent();
         }
@@ -308,19 +312,19 @@ namespace ConduitLLM.Admin.Controllers
             var group = await _context.VirtualKeyGroups.FindAsync(groupId);
             if (group == null)
             {
-                return NotFound(new { message = $"Virtual key group with ID {groupId} not found" });
+                return this.NotFoundEntity("Virtual key group", groupId);
             }
 
             var policy = await _context.MediaRetentionPolicies.FindAsync(policyId);
             if (policy == null)
             {
-                return NotFound(new { message = $"Retention policy with ID {policyId} not found" });
+                return this.NotFoundEntity("Retention policy", policyId);
             }
 
             group.MediaRetentionPolicyId = policyId;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Assigned retention policy {PolicyId} to virtual key group {GroupId}", policyId, groupId);
+            LogAdminAudit("AssignedPolicy", "MediaRetentionPolicy", policyId, $"GroupId: {groupId}");
 
             return Ok(new { message = $"Successfully assigned policy '{policy.Name}' to group {groupId}" });
         }
@@ -337,14 +341,15 @@ namespace ConduitLLM.Admin.Controllers
         public async Task<IActionResult> SetDefaultPolicy(int id)
         {
             var policy = await _context.MediaRetentionPolicies.FindAsync(id);
+
             if (policy == null)
             {
-                return NotFound(new { message = $"Policy with ID {id} not found" });
+                return this.NotFoundEntity("Retention policy", id);
             }
 
             if (!policy.IsActive)
             {
-                return BadRequest(new { message = "Cannot set an inactive policy as default" });
+                return this.BadRequestError("Cannot set an inactive policy as default");
             }
 
             // Clear existing default
@@ -360,7 +365,7 @@ namespace ConduitLLM.Admin.Controllers
             policy.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Set retention policy {PolicyId} '{PolicyName}' as default", policy.Id, policy.Name);
+            LogAdminAudit("SetDefault", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
             return Ok(new { message = $"'{policy.Name}' is now the default retention policy" });
         }
@@ -374,11 +379,11 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("cleanup/{groupId}")]
         [ProducesResponseType(typeof(CleanupResultDto), 200)]
         [ProducesResponseType(404)]
-        public Task<IActionResult> TriggerCleanup(int groupId, [FromQuery] bool dryRun = true)
+        public async Task<IActionResult> TriggerCleanup(int groupId, [FromQuery] bool dryRun = true)
         {
-            // This would trigger the media cleanup process
-            // For now, return a placeholder response
-            return Task.FromResult<IActionResult>(Ok(new CleanupResultDto
+            // Placeholder — manual cleanup not yet implemented
+            await Task.CompletedTask;
+            return Ok(new CleanupResultDto
             {
                 VirtualKeyGroupId = groupId,
                 DryRun = dryRun,
@@ -387,297 +392,8 @@ namespace ConduitLLM.Admin.Controllers
                 MediaRecordsDeleted = 0,
                 StorageBytesFreed = 0,
                 Message = "Manual cleanup trigger not yet implemented. Use the scheduled cleanup system."
-            }));
+            });
         }
     }
 
-    #region DTOs
-    
-    /// <summary>
-    /// Data transfer object for media retention policy information.
-    /// </summary>
-    public class MediaRetentionPolicyDto
-    {
-        /// <summary>
-        /// Gets or sets the unique identifier of the retention policy.
-        /// </summary>
-        public int Id { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the name of the retention policy.
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Gets or sets the description of the retention policy.
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is positive.
-        /// </summary>
-        public int PositiveBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is zero.
-        /// </summary>
-        public int ZeroBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is negative.
-        /// </summary>
-        public int NegativeBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the grace period in days before permanently deleting soft-deleted media.
-        /// </summary>
-        public int SoftDeleteGracePeriodDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether to respect recent access when determining retention.
-        /// </summary>
-        public bool RespectRecentAccess { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the window in days for considering recent access.
-        /// </summary>
-        public int RecentAccessWindowDays { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this is the default policy.
-        /// </summary>
-        public bool IsDefault { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the maximum storage size in bytes allowed for this policy.
-        /// </summary>
-        public long? MaxStorageSizeBytes { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the maximum number of files allowed for this policy.
-        /// </summary>
-        public int? MaxFileCount { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether this policy is active.
-        /// </summary>
-        public bool IsActive { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the date and time when the policy was created.
-        /// </summary>
-        public DateTime CreatedAt { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the date and time when the policy was last updated.
-        /// </summary>
-        public DateTime UpdatedAt { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the count of virtual key groups using this policy.
-        /// </summary>
-        public int VirtualKeyGroupCount { get; set; }
-    }
-
-    /// <summary>
-    /// Extended DTO for media retention policy with additional details.
-    /// </summary>
-    public class MediaRetentionPolicyDetailDto : MediaRetentionPolicyDto
-    {
-        /// <summary>
-        /// Gets or sets the list of virtual key groups associated with this policy.
-        /// </summary>
-        public List<VirtualKeyGroupSummaryDto> VirtualKeyGroups { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Summary information for a virtual key group.
-    /// </summary>
-    public class VirtualKeyGroupSummaryDto
-    {
-        /// <summary>
-        /// Gets or sets the virtual key group identifier.
-        /// </summary>
-        public int Id { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the current balance of the virtual key group.
-        /// </summary>
-        public decimal Balance { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the count of virtual keys in the group.
-        /// </summary>
-        public int VirtualKeyCount { get; set; }
-    }
-
-    /// <summary>
-    /// Request model for creating a new media retention policy.
-    /// </summary>
-    public class CreateMediaRetentionPolicyRequest
-    {
-        /// <summary>
-        /// Gets or sets the name of the retention policy.
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Gets or sets the description of the retention policy.
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is positive.
-        /// </summary>
-        public int PositiveBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is zero.
-        /// </summary>
-        public int ZeroBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is negative.
-        /// </summary>
-        public int NegativeBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the grace period in days before permanently deleting soft-deleted media.
-        /// </summary>
-        public int SoftDeleteGracePeriodDays { get; set; } = 7;
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether to respect recent access when determining retention.
-        /// </summary>
-        public bool RespectRecentAccess { get; set; } = true;
-        
-        /// <summary>
-        /// Gets or sets the window in days for considering recent access.
-        /// </summary>
-        public int RecentAccessWindowDays { get; set; } = 7;
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this is the default policy.
-        /// </summary>
-        public bool IsDefault { get; set; }
-
-        /// <summary>
-        /// Gets or sets the maximum storage size in bytes allowed for this policy.
-        /// </summary>
-        public long? MaxStorageSizeBytes { get; set; }
-
-        /// <summary>
-        /// Gets or sets the maximum number of files allowed for this policy.
-        /// </summary>
-        public int? MaxFileCount { get; set; }
-    }
-
-    /// <summary>
-    /// Request model for updating an existing media retention policy.
-    /// </summary>
-    public class UpdateMediaRetentionPolicyRequest
-    {
-        /// <summary>
-        /// Gets or sets the name of the retention policy.
-        /// </summary>
-        public string? Name { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the description of the retention policy.
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is positive.
-        /// </summary>
-        public int? PositiveBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is zero.
-        /// </summary>
-        public int? ZeroBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the retention period in days for media when balance is negative.
-        /// </summary>
-        public int? NegativeBalanceRetentionDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the grace period in days before permanently deleting soft-deleted media.
-        /// </summary>
-        public int? SoftDeleteGracePeriodDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether to respect recent access when determining retention.
-        /// </summary>
-        public bool? RespectRecentAccess { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the window in days for considering recent access.
-        /// </summary>
-        public int? RecentAccessWindowDays { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this is the default policy.
-        /// </summary>
-        public bool? IsDefault { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the maximum storage size in bytes allowed for this policy.
-        /// </summary>
-        public long? MaxStorageSizeBytes { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the maximum number of files allowed for this policy.
-        /// </summary>
-        public int? MaxFileCount { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether this policy is active.
-        /// </summary>
-        public bool? IsActive { get; set; }
-    }
-
-    /// <summary>
-    /// Represents the result of a media cleanup operation.
-    /// </summary>
-    public class CleanupResultDto
-    {
-        /// <summary>
-        /// Gets or sets the ID of the virtual key group that was cleaned up.
-        /// </summary>
-        public int VirtualKeyGroupId { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether this was a dry run (no actual deletions).
-        /// </summary>
-        public bool DryRun { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the total number of media records evaluated during cleanup.
-        /// </summary>
-        public int MediaRecordsEvaluated { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the number of media records marked for deletion.
-        /// </summary>
-        public int MediaRecordsMarkedForDeletion { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the number of media records actually deleted.
-        /// </summary>
-        public int MediaRecordsDeleted { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the total amount of storage space freed in bytes.
-        /// </summary>
-        public long StorageBytesFreed { get; set; }
-        
-        /// <summary>
-        /// Gets or sets an informational message about the cleanup operation.
-        /// </summary>
-        public string Message { get; set; } = string.Empty;
-    }
-    
-    #endregion
 }

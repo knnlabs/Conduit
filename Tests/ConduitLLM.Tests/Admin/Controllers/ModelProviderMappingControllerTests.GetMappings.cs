@@ -1,12 +1,10 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Tests.Admin.TestHelpers;
 
 using FluentAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 using Moq;
 
@@ -52,27 +50,22 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllMappings();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedMappings = Assert.IsAssignableFrom<IEnumerable<ModelProviderMappingDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedMappings = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelProviderMappingDto>>().Subject;
             returnedMappings.Should().HaveCount(2);
             returnedMappings.First().ModelProviderTypeAssociationId.Should().Be(1);
         }
 
         [Fact]
-        public async Task GetAllMappings_WithException_ShouldReturn500()
+        public async Task GetAllMappings_WithException_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.GetAllMappingsAsync())
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.GetAllMappings();
-
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error getting all model provider mappings");
+            // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
+            var act = async () => await _controller.GetAllMappings();
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion
@@ -99,8 +92,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetMappingById(1);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedMapping = Assert.IsType<ModelProviderMappingDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedMapping = okResult.Value.Should().BeOfType<ModelProviderMappingDto>().Subject;
             returnedMapping.ModelProviderTypeAssociationId.Should().Be(1);
         }
 
@@ -115,9 +108,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetMappingById(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            errorResponse.error.ToString().Should().Be("Model provider mapping not found");
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.Code.Should().Be("not_found");
         }
 
         #endregion

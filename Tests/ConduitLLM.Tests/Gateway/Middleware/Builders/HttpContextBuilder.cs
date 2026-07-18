@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Gateway.UsageTracking;
 
 namespace ConduitLLM.Tests.Http.Middleware.Builders
 {
@@ -26,6 +27,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         private DateTime? _requestStartTime;
         private string? _testResponseBody;
         private readonly Dictionary<string, object> _additionalItems = new();
+        private IUsageContext? _usageContext;
 
         /// <summary>
         /// Initializes a new HttpContext builder with default settings.
@@ -265,10 +267,13 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
             string size = "1024x1024",
             int n = 1)
         {
-            _additionalItems["ImageRequestModel"] = model;
-            _additionalItems["ImageRequestQuality"] = quality;
-            _additionalItems["ImageRequestSize"] = size;
-            _additionalItems["ImageRequestN"] = n;
+            _usageContext = new ImageUsageContext
+            {
+                Model = model,
+                Quality = quality,
+                Size = size,
+                N = n
+            };
             return this;
         }
 
@@ -285,12 +290,13 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
             string? size = null,
             int n = 1)
         {
-            _additionalItems["VideoRequestModel"] = model;
-            if (duration.HasValue)
-                _additionalItems["VideoRequestDuration"] = duration.Value;
-            if (size != null)
-                _additionalItems["VideoRequestSize"] = size;
-            _additionalItems["VideoRequestN"] = n;
+            _usageContext = new VideoUsageContext
+            {
+                Model = model,
+                Duration = duration,
+                Size = size,
+                N = n
+            };
             return this;
         }
 
@@ -357,6 +363,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
 
             foreach (var item in _additionalItems)
                 _context.Items[item.Key] = item.Value;
+
+            if (_usageContext != null)
+                _context.SetUsageContext(_usageContext);
 
             return _context;
         }

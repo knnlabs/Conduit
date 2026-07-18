@@ -1,5 +1,6 @@
 using System.Text.Json;
 using StackExchange.Redis;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
@@ -18,13 +19,12 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 // We need to find and invalidate all keys related to this model cost
-                // This includes the pattern key and any exact match keys
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: KeyPrefix + "*");
-                
+                var server = Database.Multiplexer.GetServer(Database.Multiplexer.GetEndPoints()[0]);
+                var keys = server.Keys(pattern: CacheKeys.ModelCost.Prefix + "*");
+
                 foreach (var key in keys)
                 {
-                    var value = await _database.StringGetAsync(key);
+                    var value = await Database.StringGetAsync(key);
                     if (value.HasValue)
                     {
                         try
@@ -32,13 +32,10 @@ namespace ConduitLLM.Gateway.Services
                             var jsonString = (string?)value;
                             if (jsonString != null)
                             {
-                                var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, _jsonOptions);
+                                var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, JsonOptions);
                                 if (cost?.Id == modelCostId)
                                 {
-                                    await _database.KeyDeleteAsync(key);
-                                    
-                                    // Note: Provider information is not stored in ModelCost entity
-                                    // Provider-specific invalidation would require additional context
+                                    await Database.KeyDeleteAsync(key);
                                 }
                             }
                         }
@@ -48,60 +45,15 @@ namespace ConduitLLM.Gateway.Services
                         }
                     }
                 }
-                
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
-                _logger.LogInformation("Model cost cache invalidated for ID: {ModelCostId}", modelCostId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error invalidating Model Cost cache: {ModelCostId}", modelCostId);
-            }
-        }
 
-        /*
-        /// <summary>
-        /// Invalidate all Model Costs for a provider
-        /// NOTE: This method is disabled as ModelCost entity doesn't contain provider information
-        /// </summary>
-        public async Task InvalidateProviderModelCostsAsync(string providerName)
-        {
-            try
-            {
-                // Invalidate the provider costs list
-                var providerKey = ProviderKeyPrefix + providerName.ToLowerInvariant();
-                await _database.KeyDeleteAsync(providerKey);
-                
-                // Also invalidate individual cost entries for this provider
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: PatternKeyPrefix + "*");
-                
-                foreach (var key in keys)
-                {
-                    var value = await _database.StringGetAsync(key);
-                    if (value.HasValue)
-                    {
-                        try
-                        {
-                            // Note: Provider information is not stored in ModelCost entity
-                            // This method would need to be rethought or removed
-                            // For now, we'll skip individual invalidation since we can't determine provider
-                        }
-                        catch
-                        {
-                            // Skip malformed entries
-                        }
-                    }
-                }
-                
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
-                _logger.LogInformation("Model costs cache invalidated for provider: {Provider}", providerName);
+                await TrackInvalidationAsync(ServiceName);
+                Logger.LogDebug("Model cost cache invalidated for ID: {ModelCostId}", modelCostId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invalidating provider Model Costs cache: {Provider}", providerName);
+                Logger.LogError(ex, "Error invalidating Model Cost cache: {ModelCostId}", modelCostId);
             }
         }
-        */
 
         /// <summary>
         /// Invalidate Model Cost by pattern
@@ -110,28 +62,28 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var patternKey = PatternKeyPrefix + modelIdPattern.ToLowerInvariant();
-                await _database.KeyDeleteAsync(patternKey);
-                
+                var patternKey = CacheKeys.ModelCost.PatternPrefix + modelIdPattern.ToLowerInvariant();
+                await Database.KeyDeleteAsync(patternKey);
+
                 // Also invalidate any exact match keys that might be affected
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: PatternKeyPrefix + "*");
-                
+                var server = Database.Multiplexer.GetServer(Database.Multiplexer.GetEndPoints()[0]);
+                var keys = server.Keys(pattern: CacheKeys.ModelCost.PatternPrefix + "*");
+
                 foreach (var key in keys)
                 {
                     var keyString = key.ToString();
                     if (keyString != null && keyString.Contains(modelIdPattern, StringComparison.OrdinalIgnoreCase))
                     {
-                        await _database.KeyDeleteAsync(key);
+                        await Database.KeyDeleteAsync(key);
                     }
                 }
-                
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
-                _logger.LogInformation("Model cost cache invalidated for pattern: {Pattern}", modelIdPattern);
+
+                await TrackInvalidationAsync(ServiceName);
+                Logger.LogDebug("Model cost cache invalidated for pattern: {Pattern}", modelIdPattern);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invalidating Model Cost cache by pattern: {Pattern}", modelIdPattern);
+                Logger.LogError(ex, "Error invalidating Model Cost cache by pattern: {Pattern}", modelIdPattern);
             }
         }
 
@@ -142,19 +94,12 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                var keys = server.Keys(pattern: KeyPrefix + "*");
-                
-                foreach (var key in keys)
-                {
-                    await _database.KeyDeleteAsync(key);
-                }
-                
-                _logger.LogWarning("All model cost cache entries cleared");
+                await ClearAllByPatternAsync(CacheKeys.ModelCost.Prefix + "*");
+                Logger.LogWarning("All model cost cache entries cleared");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error clearing all model cost cache entries");
+                Logger.LogError(ex, "Error clearing all model cost cache entries");
             }
         }
 
@@ -162,18 +107,18 @@ namespace ConduitLLM.Gateway.Services
         /// Batch invalidate multiple model costs
         /// </summary>
         public async Task<BatchInvalidationResult> InvalidateBatchAsync(
-            IEnumerable<InvalidationRequest> requests, 
+            IEnumerable<InvalidationRequest> requests,
             CancellationToken cancellationToken = default)
         {
             var costIds = requests
                 .Where(r => r.EntityType == CacheType.ModelCost.ToString())
                 .Select(r => r.EntityId)
                 .ToArray();
-            
+
             if (costIds.Length == 0)
             {
-                return new BatchInvalidationResult 
-                { 
+                return new BatchInvalidationResult
+                {
                     Success = true,
                     ProcessedCount = 0,
                     Duration = TimeSpan.Zero
@@ -181,28 +126,26 @@ namespace ConduitLLM.Gateway.Services
             }
 
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
             try
             {
                 // Use Redis pipeline for batch delete
-                var batch = _database.CreateBatch();
+                var batch = Database.CreateBatch();
                 var deleteTasks = new List<Task<bool>>();
                 var keysToDelete = new List<string>();
-                
+
                 // For each cost ID, we need to find all related keys
                 foreach (var costId in costIds)
                 {
-                    // Since we're working with pattern-based cache, we need to scan for keys
-                    // This is less efficient than direct key deletion but necessary for pattern matching
                     if (int.TryParse(costId, out var id))
                     {
                         // Direct invalidation by ID
-                        var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
-                        var keys = server.Keys(pattern: KeyPrefix + "*");
-                        
+                        var server = Database.Multiplexer.GetServer(Database.Multiplexer.GetEndPoints()[0]);
+                        var keys = server.Keys(pattern: CacheKeys.ModelCost.Prefix + "*");
+
                         foreach (var key in keys)
                         {
-                            var value = await _database.StringGetAsync(key);
+                            var value = await Database.StringGetAsync(key);
                             if (value.HasValue)
                             {
                                 try
@@ -210,7 +153,7 @@ namespace ConduitLLM.Gateway.Services
                                     var jsonString = (string?)value;
                                     if (jsonString != null)
                                     {
-                                        var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, _jsonOptions);
+                                        var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, JsonOptions);
                                         if (cost?.Id == id)
                                         {
                                             keysToDelete.Add(key.ToString()!);
@@ -227,41 +170,41 @@ namespace ConduitLLM.Gateway.Services
                     else
                     {
                         // Pattern-based invalidation
-                        keysToDelete.Add(PatternKeyPrefix + costId.ToLowerInvariant());
+                        keysToDelete.Add(CacheKeys.ModelCost.PatternPrefix + costId.ToLowerInvariant());
                     }
                 }
-                
+
                 // Delete all found keys in batch
                 foreach (var key in keysToDelete)
                 {
                     deleteTasks.Add(batch.KeyDeleteAsync(key));
                 }
-                
+
                 // Execute batch
                 batch.Execute();
                 await Task.WhenAll(deleteTasks);
-                
+
                 // Update invalidation statistics
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY, keysToDelete.Count());
-                
+                await TrackInvalidationAsync(ServiceName, keysToDelete.Count);
+
                 // Publish batch invalidation message to other instances
                 var batchMessage = new ModelCostBatchInvalidation
                 {
                     CostIds = costIds,
                     Timestamp = DateTime.UtcNow
                 };
-                
+
                 await _subscriber.PublishAsync(
-                    RedisChannel.Literal(BatchInvalidationChannel), 
+                    RedisChannel.Literal(CacheKeys.ModelCost.BatchInvalidationChannel),
                     JsonSerializer.Serialize(batchMessage));
-                
+
                 stopwatch.Stop();
-                
-                _logger.LogInformation(
+
+                Logger.LogInformation(
                     "Batch invalidated {Count} model costs in {Duration}ms",
-                    costIds.Length, 
+                    costIds.Length,
                     stopwatch.ElapsedMilliseconds);
-                
+
                 return new BatchInvalidationResult
                 {
                     Success = true,
@@ -272,8 +215,8 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                _logger.LogError(ex, "Failed to batch invalidate model costs");
-                
+                Logger.LogError(ex, "Failed to batch invalidate model costs");
+
                 return new BatchInvalidationResult
                 {
                     Success = false,

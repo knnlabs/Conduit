@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Table, TextInput, Group, ActionIcon, Badge, Text, Tooltip, Stack } from '@mantine/core';
 import { IconEdit, IconTrash, IconSearch, IconEye } from '@tabler/icons-react';
-import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { useAdminClient, withAdminClient } from '@/lib/client/adminClient';
+import { notify } from '@/lib/notifications';
 import { EditModelSeriesModal } from './EditModelSeriesModal';
 import { ViewModelSeriesModal } from './ViewModelSeriesModal';
-import { DeleteModelSeriesModal } from './DeleteModelSeriesModal';
+import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
 import type { ModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -31,44 +31,28 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
   const loadSeries = async () => {
     try {
       setLoading(true);
-      const data = await executeWithAdmin(client => client.modelSeries.list());
+      // Fetch series and all models in parallel (2 calls instead of 1 + N)
+      const [data, allModels] = await Promise.all([
+        executeWithAdmin(client => client.modelSeries.list()),
+        executeWithAdmin(client => client.models.list()),
+      ]);
       setSeries(data);
       setFilteredSeries(data);
-      
-      // Load model counts for each series
-      await loadModelCounts(data);
+
+      // Count models per series from the full models list
+      const counts: Record<number, number> = {};
+      for (const model of allModels) {
+        if (model.modelSeriesId) {
+          counts[model.modelSeriesId] = (counts[model.modelSeriesId] ?? 0) + 1;
+        }
+      }
+      setModelCounts(counts);
     } catch (error) {
       console.error('Failed to load model series:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load model series',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load model series');
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadModelCounts = async (seriesList: ModelSeriesDto[]) => {
-    const counts: Record<number, number> = {};
-    
-    await Promise.all(
-      seriesList.map(async (seriesItem) => {
-        if (seriesItem.id) {
-          try {
-            const models = await executeWithAdmin(client => 
-              client.modelSeries.getModels(seriesItem.id as number)
-            );
-            counts[seriesItem.id] = models.length;
-          } catch (error) {
-            console.error(`Failed to load model count for series ${seriesItem.id}:`, error);
-            counts[seriesItem.id] = 0;
-          }
-        }
-      })
-    );
-    
-    setModelCounts(counts);
   };
 
   useEffect(() => {
@@ -230,9 +214,15 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
             }}
           />
 
-          <DeleteModelSeriesModal
+          <DeleteConfirmationModal
             isOpen={deleteModalOpen}
-            series={selectedSeries}
+            title="Delete Model Series"
+            itemLabel="model series"
+            itemName={selectedSeries.name ?? ''}
+            description="This will permanently remove the model series from the system. Models in this series will remain but will no longer be associated with this series."
+            confirmButtonText="Delete Series"
+            successMessage={`Model series "${selectedSeries.name}" deleted successfully`}
+            deleteAction={() => withAdminClient(client => client.modelSeries.delete(selectedSeries.id as number))}
             onClose={() => {
               setDeleteModalOpen(false);
               setSelectedSeries(null);

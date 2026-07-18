@@ -4,17 +4,10 @@ namespace ConduitLLM.Configuration.Interfaces
 {
     /// <summary>
     /// Repository interface for managing async tasks.
+    /// Extends IRepositoryBase for standard CRUD operations.
     /// </summary>
-    public interface IAsyncTaskRepository
+    public interface IAsyncTaskRepository : IRepositoryBase<AsyncTask, string>
     {
-        /// <summary>
-        /// Gets a task by its ID.
-        /// </summary>
-        /// <param name="taskId">The task ID.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The task if found, null otherwise.</returns>
-        Task<AsyncTask?> GetByIdAsync(string taskId, CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Gets all tasks for a virtual key.
         /// </summary>
@@ -30,30 +23,6 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of active tasks for the virtual key.</returns>
         Task<List<AsyncTask>> GetActiveByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Creates a new async task.
-        /// </summary>
-        /// <param name="task">The task to create.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The created task ID.</returns>
-        Task<string> CreateAsync(AsyncTask task, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Updates an existing async task.
-        /// </summary>
-        /// <param name="task">The task to update.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if updated successfully, false otherwise.</returns>
-        Task<bool> UpdateAsync(AsyncTask task, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Deletes a task by its ID.
-        /// </summary>
-        /// <param name="taskId">The task ID.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if deleted successfully, false otherwise.</returns>
-        Task<bool> DeleteAsync(string taskId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Archives completed tasks older than the specified timespan.

@@ -30,9 +30,9 @@ namespace ConduitLLM.Core.Services
             await _repository.DeleteAsync(taskId, cancellationToken);
             
             // Publish event if event bus is available
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
-                await _publishEndpoint.Publish(new AsyncTaskDeleted
+                await _eventBus.PublishAsync(new AsyncTaskDeleted
                 {
                     TaskId = taskId
                 }, cancellationToken);
@@ -53,7 +53,7 @@ namespace ConduitLLM.Core.Services
             var cleanupThreshold = TimeSpan.FromDays(30); // Keep archived tasks for 30 days
             var tasksToDelete = await _repository.GetTasksForCleanupAsync(cleanupThreshold, 100, cancellationToken);
             
-            if (tasksToDelete.Count() > 0)
+            if (tasksToDelete.Any())
             {
                 var taskIds = tasksToDelete.Select(t => t.Id);
                 var deletedCount = await _repository.BulkDeleteAsync(taskIds, cancellationToken);

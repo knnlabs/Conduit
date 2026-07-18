@@ -203,6 +203,17 @@ Gateway API cache implementation analysis and patterns.
 - Cache invalidation patterns
 - Cache statistics and monitoring
 
+### [Metrics Architecture](infrastructure/metrics-architecture.md)
+Complete map of all metrics collection, the three-layer architecture, and intentional overlap documentation.
+
+**Topics Covered**:
+- Three-layer design: Collection → Aggregation → Distributed
+- All 30 metrics services with file locations and purposes
+- Intentional overlap explanations (cache, HTTP, SignalR, cost metrics)
+- Alert threshold reference across systems
+- Decision guide for adding new metrics
+- Data flow diagrams
+
 ---
 
 ## 🔗 API Integration
@@ -246,7 +257,8 @@ architecture/
 │   └── dto-guidelines.md
 ├── infrastructure/
 │   ├── scaling-architecture.md
-│   └── cache-usage.md
+│   ├── cache-usage.md
+│   └── metrics-architecture.md
 └── api/
     └── admin-api-integration.md
 ```
@@ -289,8 +301,7 @@ All architecture documentation follows these standards:
 ## 📚 Related Documentation
 
 - **[API Guides](../api-guides/README.md)** - API endpoint documentation and integration guides
-- **[Claude Guides](../claude/README.md)** - Development guides and patterns for AI assistance
-- **[Database Migration Guide](../claude/database-migration-guide.md)** - PostgreSQL migration requirements
+- **[Repository & Data Access](./patterns/repository-and-data-access.md)** - EF Core patterns and migration best practices
 
 ---
 

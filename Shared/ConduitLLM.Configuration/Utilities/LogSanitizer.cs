@@ -5,6 +5,11 @@ namespace ConduitLLM.Configuration.Utilities
     /// <summary>
     /// Utility class for sanitizing user input before logging to prevent log injection attacks.
     /// </summary>
+    /// <remarks>
+    /// This class is obsolete. Use <see cref="LoggingSanitizer"/> instead, which provides
+    /// the same functionality with a more complete API including support for additional types.
+    /// </remarks>
+    [Obsolete("Use LoggingSanitizer instead. This class will be removed in a future version.")]
     public static class LogSanitizer
     {
         // Regex patterns for dangerous characters

@@ -13,12 +13,11 @@ import {
   Badge,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
 import { IconCash, IconAlertCircle } from '@tabler/icons-react';
-import { useState } from 'react';
 import { formatters } from '@/lib/utils/formatters';
 import type { VirtualKeyGroupDto, AdjustBalanceDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
 
 interface AddCreditsModalProps {
   opened: boolean;
@@ -28,8 +27,6 @@ interface AddCreditsModalProps {
 }
 
 export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCreditsModalProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const form = useForm<AdjustBalanceDto>({
     initialValues: {
       amount: 0,
@@ -44,39 +41,18 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
     },
   });
 
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
-  const handleSubmit = async (values: AdjustBalanceDto) => {
-    if (!group) return;
-
-    try {
-      setIsSubmitting(true);
-
-      await withAdminClient(client => 
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction: (values) => {
+      if (!group) return Promise.resolve();
+      return withAdminClient(client =>
         client.virtualKeyGroups.adjustBalance(group.id, values)
       );
-
-      notifications.show({
-        title: 'Success',
-        message: `Added ${formatters.currency(values.amount)} to ${group.groupName}`,
-        color: 'green',
-      });
-
-      handleClose();
-      onSuccess?.();
-    } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to add credits',
-        color: 'red',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    successMessage: 'Credits added successfully',
+  });
 
   if (!group) return null;
 
@@ -107,11 +83,11 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
                 <Text size="sm" c="dimmed">Group</Text>
                 <Text fw={500}>{group.groupName}</Text>
               </Group>
-              
+
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Current Balance</Text>
-                <Badge 
-                  color={getBalanceColor(group.balance)} 
+                <Badge
+                  color={getBalanceColor(group.balance)}
                   variant={group.balance <= 0 ? 'filled' : 'light'}
                 >
                   {formatters.currency(group.balance)}
@@ -152,12 +128,12 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
           )}
 
           <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={handleClose} disabled={isSubmitting}>
+            <Button variant="subtle" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              loading={isSubmitting}
+            <Button
+              type="submit"
+              loading={loading}
               leftSection={<IconCash size={16} />}
             >
               Add Credits

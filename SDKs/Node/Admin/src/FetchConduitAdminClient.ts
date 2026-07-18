@@ -7,7 +7,6 @@ import { FetchSystemService } from './services/FetchSystemService';
 import { FetchModelMappingsService } from './services/FetchModelMappingsService';
 import { FetchSettingsService } from './services/FetchSettingsService';
 import { FetchAnalyticsService } from './services/FetchAnalyticsService';
-import { FetchSecurityService } from './services/FetchSecurityService';
 import { FetchConfigurationService } from './services/FetchConfigurationService';
 import { FetchMonitoringService } from './services/FetchMonitoringService';
 import { FetchIpFilterService } from './services/FetchIpFilterService';
@@ -64,7 +63,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly modelMappings: FetchModelMappingsService;
   public readonly settings: FetchSettingsService;
   public readonly analytics: FetchAnalyticsService;
-  public readonly security: FetchSecurityService;
   public readonly configuration: FetchConfigurationService;
   public readonly monitoring: FetchMonitoringService;
   public readonly ipFilters: FetchIpFilterService;
@@ -96,7 +94,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.modelMappings = new FetchModelMappingsService(this);
     this.settings = new FetchSettingsService(this);
     this.analytics = new FetchAnalyticsService(this);
-    this.security = new FetchSecurityService(this);
     this.configuration = new FetchConfigurationService(this);
     this.monitoring = new FetchMonitoringService(this);
     this.ipFilters = new FetchIpFilterService(this);

@@ -87,7 +87,7 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.True(result);
             _mockVirtualKeyRepository.Verify(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Once);
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.IsAny<VirtualKeyUpdated>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -137,7 +137,7 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.True(result);
             _mockVirtualKeyRepository.Verify(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
             _mockMediaLifecycleService.Verify(x => x.DeleteMediaForVirtualKeyAsync(1), Times.Once);
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.IsAny<VirtualKeyDeleted>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }

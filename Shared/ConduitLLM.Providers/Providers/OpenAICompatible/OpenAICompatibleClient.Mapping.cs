@@ -24,7 +24,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
         {
             // Map tools if present
             List<object>? openAiTools = null;
-            if (request.Tools != null && request.Tools.Count() > 0)
+            if (request.Tools != null && request.Tools.Any())
             {
                 openAiTools = request.Tools.Select(t => new
                 {
@@ -52,9 +52,11 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 return new OpenAIMessage
                 {
                     Role = m.Role,
-                    Content = ProviderHelpers.ContentHelper.IsTextOnly(m.Content)
-                        ? ProviderHelpers.ContentHelper.GetContentAsString(m.Content)
-                        : MapMultimodalContent(m.Content),
+                    Content = ProviderHelpers.ContentHelper.ShouldPreserveAsArray(m.Content)
+                        ? PassThroughContentArray(m.Content)
+                        : ProviderHelpers.ContentHelper.IsTextOnly(m.Content)
+                            ? ProviderHelpers.ContentHelper.GetContentAsString(m.Content)
+                            : MapMultimodalContent(m.Content),
                     Name = m.Name,
                     ToolCalls = m.ToolCalls?.Select(tc => new
                     {
@@ -114,26 +116,16 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Pass through any extension data (model-specific parameters)
             if (request.ExtensionData != null)
             {
-                Logger.LogWarning("ExtensionData has {Count} items", request.ExtensionData.Count);
+                Logger.LogDebug("Forwarding {Count} extension data parameters", request.ExtensionData.Count);
                 foreach (var kvp in request.ExtensionData)
                 {
-                    Logger.LogWarning("ExtensionData contains: {Key} = {Value} (Type: {Type})", 
-                        kvp.Key, kvp.Value.ToString(), kvp.Value.ValueKind);
-                    
                     // Don't override standard parameters
                     if (!openAiRequest.ContainsKey(kvp.Key))
                     {
                         // Convert JsonElement to actual value for proper serialization
-                        var converted = ConvertJsonElement(kvp.Value);
-                        openAiRequest[kvp.Key] = converted;
-                        Logger.LogWarning("Added to request: {Key} = {Value} (Type: {Type})", 
-                            kvp.Key, converted, converted?.GetType().Name ?? "null");
+                        openAiRequest[kvp.Key] = ConvertJsonElement(kvp.Value);
                     }
                 }
-            }
-            else
-            {
-                Logger.LogWarning("ExtensionData is NULL");
             }
             
             return openAiRequest;
@@ -189,6 +181,74 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 return "";
 
             return contentParts;
+        }
+
+        /// <summary>
+        /// Passes through content array elements preserving all properties (including cache_control).
+        /// </summary>
+        /// <param name="content">The content object which should be a JSON array</param>
+        /// <returns>A list of dictionaries preserving all properties on each content block</returns>
+        protected virtual object PassThroughContentArray(object? content)
+        {
+            if (content == null)
+                return "";
+
+            if (content is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                // Convert each array element to a dictionary preserving all properties
+                var contentParts = new List<object>();
+                foreach (var element in jsonElement.EnumerateArray())
+                {
+                    if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    {
+                        var dict = new Dictionary<string, object?>();
+                        foreach (var prop in element.EnumerateObject())
+                        {
+                            dict[prop.Name] = ConvertJsonElement(prop.Value);
+                        }
+                        contentParts.Add(dict);
+                    }
+                }
+                return contentParts.Count > 0 ? contentParts : (object)"";
+            }
+
+            // Handle IEnumerable<object> of dictionaries (from PromptCacheInjectionService)
+            if (content is IEnumerable<object> contentList)
+            {
+                var parts = new List<object>();
+                foreach (var item in contentList)
+                {
+                    if (item is IDictionary<string, object?> dictNullable)
+                    {
+                        parts.Add(dictNullable);
+                    }
+                    else if (item is IDictionary<string, object> dictNonNull)
+                    {
+                        parts.Add(dictNonNull);
+                    }
+                    else
+                    {
+                        parts.Add(item);
+                    }
+                }
+                if (parts.Count > 0)
+                    return parts;
+            }
+
+            // Fallback: try serialize/deserialize to preserve structure
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(content);
+                var list = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(json);
+                if (list != null && list.Count > 0)
+                    return list;
+            }
+            catch
+            {
+                // Fall through to MapMultimodalContent
+            }
+
+            return MapMultimodalContent(content);
         }
 
         /// <summary>
@@ -249,13 +309,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                             Content = null
                         }
                     }).ToList() ?? new List<CoreModels.Choice>(),
-                    Usage = response.Usage != null ? new CoreModels.Usage
-                    {
-                        PromptTokens = response.Usage.PromptTokens,
-                        CompletionTokens = response.Usage.CompletionTokens,
-                        TotalTokens = response.Usage.TotalTokens,
-                        ReasoningTokens = response.Usage.ReasoningTokens
-                    } : null,
+                    Usage = response.Usage != null ? MapUsageFromOpenAI(response.Usage) : null,
                     SystemFingerprint = response.SystemFingerprint,
                     Seed = response.Seed,
                     OriginalModelAlias = originalModelAlias
@@ -266,6 +320,59 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 Logger.LogError(ex, "Error mapping OpenAI response: {Message}", ex.Message);
                 return CreateEmptyResponse(originalModelAlias);
             }
+        }
+
+        /// <summary>
+        /// Maps an OpenAIUsage record to the provider-agnostic Usage model,
+        /// extracting cached token counts from provider-specific extension data.
+        /// </summary>
+        /// <param name="openAiUsage">The OpenAI usage data.</param>
+        /// <returns>A provider-agnostic Usage object with cached token fields populated.</returns>
+        private static CoreModels.Usage MapUsageFromOpenAI(OpenAIUsage openAiUsage)
+        {
+            var usage = new CoreModels.Usage
+            {
+                PromptTokens = openAiUsage.PromptTokens,
+                CompletionTokens = openAiUsage.CompletionTokens,
+                TotalTokens = openAiUsage.TotalTokens,
+                ReasoningTokens = openAiUsage.ReasoningTokens
+            };
+
+            if (openAiUsage.ExtensionData == null)
+                return usage;
+
+            // OpenAI format: usage.prompt_tokens_details.cached_tokens
+            if (openAiUsage.ExtensionData.TryGetValue("prompt_tokens_details", out var promptDetails) &&
+                promptDetails.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                if (promptDetails.TryGetProperty("cached_tokens", out var cachedTokens) &&
+                    cachedTokens.TryGetInt32(out var cached))
+                {
+                    usage.CachedInputTokens = cached;
+                }
+            }
+
+            // Anthropic format: usage.cache_read_input_tokens / usage.cache_creation_input_tokens
+            if (openAiUsage.ExtensionData.TryGetValue("cache_read_input_tokens", out var cacheRead) &&
+                cacheRead.TryGetInt32(out var cacheReadCount))
+            {
+                usage.CachedInputTokens = cacheReadCount;
+            }
+
+            if (openAiUsage.ExtensionData.TryGetValue("cache_creation_input_tokens", out var cacheWrite) &&
+                cacheWrite.TryGetInt32(out var cacheWriteCount))
+            {
+                usage.CachedWriteTokens = cacheWriteCount;
+            }
+
+            // Deepseek format: usage.prompt_cache_hit_tokens / usage.prompt_cache_miss_tokens
+            if (openAiUsage.ExtensionData.TryGetValue("prompt_cache_hit_tokens", out var cacheHit) &&
+                cacheHit.TryGetInt32(out var cacheHitCount))
+            {
+                usage.CachedInputTokens = cacheHitCount;
+            }
+
+            return usage;
         }
 
         /// <summary>
@@ -287,43 +394,50 @@ namespace ConduitLLM.Providers.OpenAICompatible
         }
 
         /// <summary>
-        /// Converts a JsonElement to its actual .NET value for proper serialization.
+        /// Post-processes a deserialized Usage object to extract cached token counts
+        /// from provider-specific extension data fields.
+        /// Call this after deserializing a Usage object from provider JSON.
         /// </summary>
-        /// <param name="element">The JsonElement to convert.</param>
-        /// <returns>The converted value as a proper .NET type.</returns>
-        private static object? ConvertJsonElement(System.Text.Json.JsonElement element)
+        /// <param name="usage">The deserialized Usage object to post-process.</param>
+        internal static void ExtractCachedTokensFromExtensionData(CoreModels.Usage? usage)
         {
-            switch (element.ValueKind)
+            if (usage?.ExtensionData == null)
+                return;
+
+            // OpenAI format: prompt_tokens_details.cached_tokens
+            if (usage.ExtensionData.TryGetValue("prompt_tokens_details", out var promptDetails) &&
+                promptDetails.ValueKind == System.Text.Json.JsonValueKind.Object)
             {
-                case System.Text.Json.JsonValueKind.String:
-                    return element.GetString();
-                case System.Text.Json.JsonValueKind.Number:
-                    if (element.TryGetInt32(out var intValue))
-                        return intValue;
-                    if (element.TryGetInt64(out var longValue))
-                        return longValue;
-                    return element.GetDouble();
-                case System.Text.Json.JsonValueKind.True:
-                    return true;
-                case System.Text.Json.JsonValueKind.False:
-                    return false;
-                case System.Text.Json.JsonValueKind.Null:
-                    return null;
-                case System.Text.Json.JsonValueKind.Array:
-                    return element.EnumerateArray()
-                        .Select(e => ConvertJsonElement(e))
-                        .ToList();
-                case System.Text.Json.JsonValueKind.Object:
-                    var dict = new Dictionary<string, object?>();
-                    foreach (var property in element.EnumerateObject())
-                    {
-                        dict[property.Name] = ConvertJsonElement(property.Value);
-                    }
-                    return dict;
-                default:
-                    return element.ToString();
+                if (promptDetails.TryGetProperty("cached_tokens", out var cachedTokens) &&
+                    cachedTokens.TryGetInt32(out var cached))
+                {
+                    usage.CachedInputTokens ??= cached;
+                }
+            }
+
+            // Anthropic format: cache_read_input_tokens / cache_creation_input_tokens
+            if (usage.ExtensionData.TryGetValue("cache_read_input_tokens", out var cacheRead) &&
+                cacheRead.TryGetInt32(out var cacheReadCount))
+            {
+                usage.CachedInputTokens ??= cacheReadCount;
+            }
+
+            if (usage.ExtensionData.TryGetValue("cache_creation_input_tokens", out var cacheWrite) &&
+                cacheWrite.TryGetInt32(out var cacheWriteCount))
+            {
+                usage.CachedWriteTokens ??= cacheWriteCount;
+            }
+
+            // Deepseek format: prompt_cache_hit_tokens
+            if (usage.ExtensionData.TryGetValue("prompt_cache_hit_tokens", out var cacheHit) &&
+                cacheHit.TryGetInt32(out var cacheHitCount))
+            {
+                usage.CachedInputTokens ??= cacheHitCount;
             }
         }
+
+        private static object? ConvertJsonElement(System.Text.Json.JsonElement element) =>
+            ProviderHelpers.JsonElementConverter.ConvertJsonElement(element);
 
     }
 }

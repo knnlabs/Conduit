@@ -61,9 +61,6 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IFunctionCredentialRepository, FunctionCredentialRepository>();
             services.AddScoped<IFunctionExecutionRepository, FunctionExecutionRepository>();
 
-            // Register cache configuration service
-            services.AddScoped<ICacheConfigurationService, CacheConfigurationService>();
-
             return services;
         }
 
@@ -119,19 +116,6 @@ namespace ConduitLLM.Configuration.Extensions
                 // Use memory cache if Redis is not specified
                 services.AddDistributedMemoryCache();
             }
-
-            return services;
-        }
-
-        /// <summary>
-        /// Adds database initialization services to the service collection
-        /// </summary>
-        /// <param name="services">The service collection</param>
-        /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddDatabaseInitialization(this IServiceCollection services)
-        {
-            // Register the simple migration service
-            services.AddScoped<SimpleMigrationService>();
 
             return services;
         }

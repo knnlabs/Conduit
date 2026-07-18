@@ -1,12 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+using ConduitLLM.Functions.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
 /// Represents a log of API requests made using a virtual key
 /// </summary>
-public class RequestLog
+public class RequestLog : IEntity<int>, IAuditEvent
 {
     /// <summary>
     /// Unique identifier for the request log
@@ -61,6 +64,16 @@ public class RequestLog
     /// Number of output tokens in the response
     /// </summary>
     public int OutputTokens { get; set; }
+
+    /// <summary>
+    /// Number of input tokens read from cache. Null if caching was not used.
+    /// </summary>
+    public int? CachedInputTokens { get; set; }
+
+    /// <summary>
+    /// Number of tokens written to cache. Null if caching was not used.
+    /// </summary>
+    public int? CachedWriteTokens { get; set; }
 
     /// <summary>
     /// Cost of the request

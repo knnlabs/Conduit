@@ -26,6 +26,8 @@ namespace ConduitLLM.Core.Services
         private readonly string _bucketName;
         private readonly TransferUtility _transferUtility;
         private readonly ConcurrentDictionary<string, InitiateMultipartUploadResponse> _multipartUploads = new();
+        private readonly SemaphoreSlim _initLock = new(1, 1);
+        private bool _bucketInitialized;
 
         public S3MediaStorageService(
             IOptions<S3StorageOptions> options,
@@ -90,27 +92,54 @@ namespace ConduitLLM.Core.Services
             _s3Client = new AmazonS3Client(_options.AccessKey, _options.SecretKey, config);
             _transferUtility = new TransferUtility(_s3Client);
 
-            // Initialize bucket synchronously to ensure it's ready before first use
+            // Bucket initialization is now deferred to first use to avoid blocking startup
+            _logger.LogInformation("S3MediaStorageService initialized (bucket check deferred to first use)");
+        }
+
+        /// <summary>
+        /// Ensures the bucket is initialized before use. Thread-safe and only runs once.
+        /// </summary>
+        private async Task EnsureBucketInitializedAsync()
+        {
+            if (_bucketInitialized)
+            {
+                return;
+            }
+
+            await _initLock.WaitAsync();
             try
             {
-                // Use GetAwaiter().GetResult() to run synchronously during startup
-                EnsureBucketExistsAsync().GetAwaiter().GetResult();
+                if (_bucketInitialized)
+                {
+                    return;
+                }
+
+                await EnsureBucketExistsAsync();
+                _bucketInitialized = true;
                 _logger.LogInformation("S3 bucket initialization completed successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to initialize S3 bucket. Service will continue but may fail on first upload.");
+                _logger.LogError(ex, "Failed to initialize S3 bucket");
+                throw;
+            }
+            finally
+            {
+                _initLock.Release();
             }
         }
 
         /// <inheritdoc/>
         public async Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata, IProgress<long>? progress = null)
         {
+            // Ensure bucket exists on first use
+            await EnsureBucketInitializedAsync();
+
             _logger.LogInformation("StoreAsync called - IsR2: {IsR2}", _options.IsR2);
-            
+
             // Track if we created a memory stream that needs disposal
             MemoryStream? memoryStream = null;
-            
+
             try
             {
                 // For streaming, we can't compute hash beforehand, so generate a unique key
