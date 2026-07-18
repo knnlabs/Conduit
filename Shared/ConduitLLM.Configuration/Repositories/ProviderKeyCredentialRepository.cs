@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 
@@ -278,8 +279,9 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
         {
             return await ExecuteAsync(async context =>
             {
-                using var transaction = await context.Database.BeginTransactionAsync();
-                try
+                // Runs through the execution strategy (EnableRetryOnFailure): the whole
+                // delegate re-runs on transient failure, so it re-reads before writing.
+                return await context.ExecuteInTransactionAsync(async _ =>
                 {
                     // First, unset any existing primary keys
                     var existingPrimaryKeys = await GetDbSet(context)
@@ -309,18 +311,12 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
                     newPrimaryKey.UpdatedAt = DateTime.UtcNow;
 
                     await context.SaveChangesAsync();
-                    await transaction.CommitAsync();
 
                     Logger.LogInformation("Set key {KeyId} as primary for provider {ProviderId}",
                         keyId, providerId);
 
                     return true;
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+                });
             });
         }
         catch (Exception ex)

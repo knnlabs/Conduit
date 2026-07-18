@@ -30,7 +30,14 @@ public static class DatabaseServicesExtensions
         services.AddDbContextFactory<ConduitDbContext>((sp, options) =>
         {
             var interceptor = sp.GetRequiredService<QueryMonitoringInterceptor>();
-            options.UseNpgsql(dbConnectionString)
+            options.UseNpgsql(dbConnectionString, npgsql =>
+                       // Transient-failure resilience. Explicit BeginTransaction calls are
+                       // incompatible with a retrying strategy — use
+                       // ExecuteInTransactionAsync (ExecutionStrategyExtensions) instead.
+                       npgsql.EnableRetryOnFailure(
+                           maxRetryCount: 5,
+                           maxRetryDelay: TimeSpan.FromSeconds(10),
+                           errorCodesToAdd: null))
                    .AddInterceptors(interceptor);
         });
 
