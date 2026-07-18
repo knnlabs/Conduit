@@ -130,15 +130,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockFileRetrievalService.Setup(x => x.GetFileMetadataAsync(fileId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Metadata service error"));
 
-            // Act
-            var result = await _controller.GetFileMetadata(fileId);
-
-            // Assert — GatewayControllerBase returns OpenAIErrorResponse for unhandled exceptions
-            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusCodeResult.StatusCode.Should().Be(500);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            errorResponse.Error.Should().NotBeNull();
-            errorResponse.Error!.Type.Should().Be("server_error");
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GetFileMetadata(fileId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Metadata service error");
         }
 
         #endregion
@@ -380,15 +374,9 @@ namespace ConduitLLM.Tests.Http.Controllers
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("URL generation error"));
 
-            // Act
-            var result = await _controller.GenerateDownloadUrl(request);
-
-            // Assert — GatewayControllerBase returns OpenAIErrorResponse for unhandled exceptions
-            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusCodeResult.StatusCode.Should().Be(500);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            errorResponse.Error.Should().NotBeNull();
-            errorResponse.Error!.Type.Should().Be("server_error");
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GenerateDownloadUrl(request);
+            await act.Should().ThrowAsync<Exception>().WithMessage("URL generation error");
         }
 
         #endregion

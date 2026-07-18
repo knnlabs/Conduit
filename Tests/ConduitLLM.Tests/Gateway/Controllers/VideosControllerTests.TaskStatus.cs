@@ -128,14 +128,9 @@ namespace ConduitLLM.Tests.Http.Controllers
                     new System.Security.Claims.Claim("VirtualKeyId", "123")
                 }, "Test"));
 
-            // Act
-            var result = await _controller.GetTaskStatus(taskId);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GetTaskStatus(taskId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Database error");
         }
 
         #endregion

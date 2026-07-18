@@ -114,14 +114,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockFileRetrievalService.Setup(x => x.FileExistsAsync(fileId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Existence check error"));
 
-            // Act
-            var result = await _controller.CheckFileExists(fileId);
-
-            // Assert — GatewayControllerBase returns ObjectResult with OpenAIErrorResponse for unhandled exceptions
-            var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
-            statusCodeResult.StatusCode.Should().Be(500);
-            var errorResponse = statusCodeResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            errorResponse.Error.Should().NotBeNull();
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.CheckFileExists(fileId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Existence check error");
         }
 
         #endregion

@@ -156,14 +156,9 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             MockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await Controller.GetModelParameters("gpt-4");
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
-            Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await Controller.GetModelParameters("gpt-4");
+            await act.Should().ThrowAsync<Exception>().WithMessage("Database error");
         }
     }
 }

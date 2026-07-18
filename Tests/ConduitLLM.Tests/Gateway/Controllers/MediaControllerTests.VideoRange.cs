@@ -192,12 +192,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
             _controller.Request.Headers["Range"] = "bytes=0-999";
 
-            // Act
-            var result = await _controller.GetMedia(storageKey);
-
-            // Assert
-            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-            Assert.Equal(500, objectResult.StatusCode);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GetMedia(storageKey);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Storage error");
         }
 
         #endregion
