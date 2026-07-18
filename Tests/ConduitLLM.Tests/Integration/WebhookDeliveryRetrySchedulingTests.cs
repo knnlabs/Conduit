@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.Messaging.MassTransit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
@@ -43,9 +44,11 @@ namespace ConduitLLM.Tests.Integration
             circuitBreaker.Setup(x => x.IsOpen(It.IsAny<string>())).Returns(false);
 
             var services = new ServiceCollection();
+            // WebhookDeliveryConsumer implements IEventHandler<T> (epic #909), so register
+            // the generic bridge consumer on the bus and the handler + event bus in DI.
             services.AddMassTransitTestHarness(cfg =>
             {
-                cfg.AddConsumer<WebhookDeliveryConsumer>();
+                cfg.AddEventBridge<WebhookDeliveryRequested>();
 
                 cfg.UsingInMemory((context, busCfg) =>
                 {
@@ -55,6 +58,9 @@ namespace ConduitLLM.Tests.Integration
                     busCfg.ConfigureEndpoints(context);
                 });
             });
+
+            services.AddMassTransitEventBus();
+            services.AddEventHandler<WebhookDeliveryRequested, WebhookDeliveryConsumer>();
 
             services.AddSingleton(_webhookService.Object);
             services.AddSingleton(deliveryTracker.Object);
