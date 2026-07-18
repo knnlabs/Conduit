@@ -83,9 +83,11 @@ namespace ConduitLLM.Gateway.Controllers
                     });
                 }
 
-                // Get virtual key ID from authenticated user claims
+                // Get virtual key ID from authenticated user claims and the raw key from
+                // HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
-                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
+                var virtualKeyValue = HttpContext.Items["VirtualKey"]?.ToString();
+                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out var virtualKeyId) || string.IsNullOrEmpty(virtualKeyValue))
                 {
                     return Unauthorized(new OpenAIErrorResponse
                     {
@@ -149,7 +151,12 @@ namespace ConduitLLM.Gateway.Controllers
                     Model = modelName,
                     Prompt = request.Prompt,
                     CorrelationId = correlationId,
-                    Payload = System.Text.Json.JsonSerializer.Serialize(generationRequest)
+                    Payload = System.Text.Json.JsonSerializer.Serialize(generationRequest),
+                    ExtensionData = new Dictionary<string, object>
+                    {
+                        // MediaGenerationOrchestrator re-validates the raw key from task metadata
+                        ["VirtualKey"] = virtualKeyValue
+                    }
                 };
 
                 // Create the task using the correct method signature
