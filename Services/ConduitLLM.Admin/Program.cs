@@ -8,6 +8,8 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Security.Middleware;
 
+using JasperFx;
+
 using Scalar.AspNetCore;
 
 namespace ConduitLLM.Admin;
@@ -147,9 +149,13 @@ public partial class Program
             app.Environment.EnvironmentName,
             string.Join(", ", app.Urls));
 
-        app.Run();
-
-        return 0;
+        // JasperFx command-line integration (#961): with no arguments this runs the web
+        // host exactly like app.Run(); with a command verb (e.g. `dotnet run -- codegen
+        // preview`) it executes the JasperFx command instead — CI uses `codegen preview`
+        // to compile every Wolverine handler chain build-ahead, so codegen/service-
+        // location defects (the class that hid W2, #929) fail at build time rather than
+        // first delivery.
+        return await app.RunJasperFxCommands(args);
     }
 }
 

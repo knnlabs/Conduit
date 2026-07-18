@@ -35,6 +35,28 @@ issues:
       generation with webhook URLs, admin config edits. A webhook sink that records
       receipt timestamps (e.g. requestbin-style with logging) is required for S3.
 
+## Standing CI guards (#961)
+
+Two CI checks close the gap that let S1's W1/W2 hide from the in-memory dual-backend
+tests (#928); both run on every push/PR in `.github/workflows/ci.yml`:
+
+- **Build-ahead codegen check** (`validate` job): `dotnet run -- codegen preview` for
+  Gateway and Admin with `Backend=Wolverine` compiles the handler chain for every
+  registered event type up front, so codegen/service-location incompatibilities (W2's
+  class) fail the build instead of first message delivery. This is also the checking
+  half of the #930 static-codegen (`codegen write` + `TypeLoadMode.Static`) cutover
+  optimization — the JasperFx command line is wired into both hosts' `Program`.
+- **Two-host listener assertion** (`wolverine-two-host` job): boots the real Admin
+  host first (recreating W1's leadership scenario), then the real Gateway, against
+  real Postgres, and asserts per-service node clusters, the exclusive
+  `spend-update-events` / `image-generation-events` listener agents assigned and
+  started, all five Gateway queues listening, and logs free of
+  `InvalidAgentException` / `InvalidServiceLocationException`. Runbook:
+  `scripts/test/wolverine-two-host-smoke.ps1` (header documents a local-run recipe).
+
+These guards are necessary but not sufficient for cutover — they prove topology and
+codegen, not load behavior. S2–S6 below remain mandatory.
+
 ## Execution order
 
 Run the **full scenario set twice**: first on `Backend=MassTransit` (baseline capture),
