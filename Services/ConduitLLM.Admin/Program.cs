@@ -95,13 +95,9 @@ public partial class Program
             }
         }
 
-        // Run database migrations
+        // Run database migration startup handling (CONDUIT_MIGRATION_MODE); Apply mode
+        // also seeds default data under the migration lock.
         await app.RunDatabaseMigrationAsync();
-        app.Logger.LogInformation("Database migrations completed successfully");
-
-        // Seed default data (e.g., default retention policy)
-        await app.SeedDefaultDataAsync();
-        app.Logger.LogInformation("Default data seeding completed");
 
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())

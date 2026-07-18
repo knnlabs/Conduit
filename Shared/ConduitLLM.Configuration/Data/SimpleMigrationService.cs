@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -6,231 +8,211 @@ using Npgsql;
 namespace ConduitLLM.Configuration.Data
 {
     /// <summary>
-    /// Dead simple migration service that just works.
-    /// No EnsureCreated. No complex detection. Just migrations.
+    /// Applies EF Core migrations under a blocking Postgres advisory lock.
+    ///
+    /// The lock, the migration, and the default-data seed all share one dedicated
+    /// NpgsqlConnection (session): if the process dies mid-migration the connection
+    /// drops and Postgres releases the lock automatically, so there are no stale
+    /// locks and no need to probe __EFMigrationsHistory. Contending instances block
+    /// server-side on pg_advisory_lock, wake when the winner finishes, re-check
+    /// pending migrations, and find nothing to do.
     /// </summary>
     public class SimpleMigrationService
     {
         private readonly IDbContextFactory<ConduitDbContext> _contextFactory;
+        private readonly MigrationStartupOptions _options;
         private readonly ILogger<SimpleMigrationService> _logger;
-        
-        // PostgreSQL advisory lock ID for migrations
-        // This ensures only one instance runs migrations at a time
+
+        // PostgreSQL advisory lock ID for migrations — ensures only one instance
+        // migrates at a time.
         private const long MIGRATION_LOCK_ID = 7891011;
 
         public SimpleMigrationService(
             IDbContextFactory<ConduitDbContext> contextFactory,
+            MigrationStartupOptions options,
             ILogger<SimpleMigrationService> logger)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
-        /// Apply migrations. That's it. That's all it does.
+        /// Acquire the migration lock, apply pending migrations, seed default data, release.
+        /// Throws on failure — callers treat any exception as "do not start".
         /// </summary>
-        public async Task<bool> MigrateAsync(CancellationToken cancellationToken = default)
+        public async Task MigrateAsync(CancellationToken cancellationToken = default)
         {
             var instanceId = Guid.NewGuid().ToString("N")[..8];
             _logger.LogInformation("[{InstanceId}] Starting database migration", instanceId);
 
+            string? connectionString;
+            await using (var refContext = await _contextFactory.CreateDbContextAsync(cancellationToken))
+            {
+                connectionString = refContext.Database.GetConnectionString();
+            }
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("No database connection string is configured.");
+            }
+
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            await AcquireMigrationLockAsync(connection, instanceId, cancellationToken);
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-                
-                // Step 1: Try to acquire the migration lock
-                var lockAcquired = await TryAcquireMigrationLockAsync(context, instanceId, cancellationToken);
-                
-                if (!lockAcquired)
-                {
-                    // Another instance is running migrations
-                    _logger.LogInformation("[{InstanceId}] Another instance is running migrations. Waiting...", instanceId);
-                    await WaitForMigrationsToCompleteAsync(context, instanceId, cancellationToken);
-                    return true;
-                }
+                // The migration context runs over the lock-holding connection so the
+                // lock and the schema changes share one session. Deliberately no retry
+                // strategy here: a retry hopping to a fresh pooled connection would not
+                // hold the lock.
+                var contextOptions = new DbContextOptionsBuilder<ConduitDbContext>()
+                    .UseNpgsql(connection)
+                    .Options;
+                await using var context = new ConduitDbContext(contextOptions);
 
-                try
+                var pending = (await context.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+                if (pending.Count == 0)
                 {
-                    // Step 2: We have the lock, run migrations
-                    _logger.LogInformation("[{InstanceId}] Acquired migration lock. Running migrations...", instanceId);
-                    
-                    await context.Database.MigrateAsync(cancellationToken);
-                    
-                    _logger.LogInformation("[{InstanceId}] Migrations completed successfully", instanceId);
-                    return true;
-                }
-                finally
-                {
-                    // Always release the lock
-                    await ReleaseMigrationLockAsync(context, instanceId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[{InstanceId}] Migration failed", instanceId);
-                
-                // Check if this is a development environment and forced reset is enabled
-                if (ShouldForceReset())
-                {
-                    _logger.LogWarning("[{InstanceId}] FORCE_RECREATE_DB_ON_FAILURE is enabled. Recreating database...", instanceId);
-                    return await ForceRecreateDatabaseAsync(instanceId, cancellationToken);
-                }
-                
-                throw;
-            }
-        }
-
-        private async Task<bool> TryAcquireMigrationLockAsync(
-            ConduitDbContext context, 
-            string instanceId,
-            CancellationToken cancellationToken)
-        {
-            try
-            {
-                var connection = context.Database.GetDbConnection() as NpgsqlConnection;
-                if (connection == null)
-                {
-                    throw new InvalidOperationException("Database connection is not PostgreSQL");
-                }
-
-                if (connection.State != System.Data.ConnectionState.Open)
-                {
-                    await connection.OpenAsync(cancellationToken);
-                }
-
-                using var cmd = connection.CreateCommand();
-                // pg_try_advisory_lock returns true if lock was acquired, false if already held
-                cmd.CommandText = "SELECT pg_try_advisory_lock(@lockId)";
-                cmd.Parameters.Add(new NpgsqlParameter("lockId", MIGRATION_LOCK_ID));
-
-                var result = await cmd.ExecuteScalarAsync(cancellationToken);
-                var acquired = result is bool success && success;
-                
-                if (acquired)
-                {
-                    _logger.LogDebug("[{InstanceId}] Successfully acquired migration lock", instanceId);
+                    _logger.LogInformation(
+                        "[{InstanceId}] No pending migrations (another instance may have applied them)", instanceId);
                 }
                 else
                 {
-                    _logger.LogDebug("[{InstanceId}] Migration lock is held by another instance", instanceId);
+                    _logger.LogInformation(
+                        "[{InstanceId}] Applying {PendingCount} pending migration(s), starting with {FirstMigration}",
+                        instanceId, pending.Count, pending[0]);
+                    await context.Database.MigrateAsync(cancellationToken);
+                    _logger.LogInformation("[{InstanceId}] Migrations completed successfully", instanceId);
                 }
-                
-                return acquired;
+
+                await SeedDefaultDataAsync(context, instanceId, cancellationToken);
             }
-            catch (Exception ex)
+            finally
             {
-                _logger.LogError(ex, "[{InstanceId}] Failed to acquire migration lock", instanceId);
-                return false;
+                await ReleaseMigrationLockAsync(connection, instanceId);
             }
         }
 
-        private async Task ReleaseMigrationLockAsync(ConduitDbContext context, string instanceId)
+        private async Task AcquireMigrationLockAsync(
+            NpgsqlConnection connection,
+            string instanceId,
+            CancellationToken cancellationToken)
+        {
+            _logger.LogInformation(
+                "[{InstanceId}] Acquiring migration advisory lock (blocks if another instance is migrating; timeout {TimeoutSeconds}s)",
+                instanceId, _options.LockTimeoutSeconds);
+
+            await using var cmd = new NpgsqlCommand("SELECT pg_advisory_lock(@lockId)", connection);
+            cmd.Parameters.AddWithValue("lockId", MIGRATION_LOCK_ID);
+            // Blocks server-side until the lock is granted; CommandTimeout aborts
+            // waiters that never get it (0 = wait indefinitely). The winner acquires
+            // instantly, so only contended waiters can time out.
+            cmd.CommandTimeout = _options.LockTimeoutSeconds;
+
+            try
+            {
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+            catch (NpgsqlException ex)
+            {
+                throw new TimeoutException(
+                    $"[{instanceId}] Timed out after {_options.LockTimeoutSeconds}s waiting for the migration advisory lock. " +
+                    $"Another instance is running a long migration; raise {MigrationStartupOptions.LockTimeoutVariable} if it needs more time.",
+                    ex);
+            }
+
+            _logger.LogInformation("[{InstanceId}] Acquired migration lock", instanceId);
+        }
+
+        private async Task ReleaseMigrationLockAsync(NpgsqlConnection connection, string instanceId)
         {
             try
             {
-                var connection = context.Database.GetDbConnection() as NpgsqlConnection;
-                if (connection?.State == System.Data.ConnectionState.Open)
-                {
-                    using var cmd = connection.CreateCommand();
-                    cmd.CommandText = "SELECT pg_advisory_unlock(@lockId)";
-                    cmd.Parameters.Add(new NpgsqlParameter("lockId", MIGRATION_LOCK_ID));
-                    
-                    await cmd.ExecuteScalarAsync();
-                    _logger.LogDebug("[{InstanceId}] Released migration lock", instanceId);
-                }
+                await using var cmd = new NpgsqlCommand("SELECT pg_advisory_unlock(@lockId)", connection);
+                cmd.Parameters.AddWithValue("lockId", MIGRATION_LOCK_ID);
+                await cmd.ExecuteScalarAsync();
+                _logger.LogDebug("[{InstanceId}] Released migration lock", instanceId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[{InstanceId}] Failed to release migration lock", instanceId);
-                // Lock will be released when connection closes anyway
+                // The session lock is released when the connection closes anyway.
+                _logger.LogWarning(ex, "[{InstanceId}] Failed to release migration lock explicitly", instanceId);
             }
         }
 
-        private async Task WaitForMigrationsToCompleteAsync(
+        /// <summary>
+        /// Seed essential default data. Runs under the migration lock, so concurrent
+        /// instances cannot double-seed. Non-fatal: a seed failure logs an error but
+        /// does not block startup.
+        /// </summary>
+        private async Task SeedDefaultDataAsync(
             ConduitDbContext context,
             string instanceId,
             CancellationToken cancellationToken)
         {
-            const int maxAttempts = 30; // Max 5 minutes with exponential backoff
-            var random = new Random();
-            
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                // Check if we can now acquire the lock (meaning other instance finished)
-                var lockAcquired = await TryAcquireMigrationLockAsync(context, instanceId, cancellationToken);
-                if (lockAcquired)
-                {
-                    // We got the lock, but migrations should already be done
-                    // Release it immediately
-                    await ReleaseMigrationLockAsync(context, instanceId);
-                    _logger.LogInformation("[{InstanceId}] Migrations completed by another instance", instanceId);
-                    return;
-                }
-                
-                // Also check if database is accessible (migrations might be complete)
-                try
-                {
-                    await context.Database.CanConnectAsync(cancellationToken);
-                    
-                    // Try to query a simple table to ensure schema exists
-                    var connection = context.Database.GetDbConnection();
-                    if (connection.State != System.Data.ConnectionState.Open)
-                        await connection.OpenAsync(cancellationToken);
-                    
-                    using var cmd = connection.CreateCommand();
-                    cmd.CommandText = "SELECT 1 FROM \"__EFMigrationsHistory\" LIMIT 1";
-                    await cmd.ExecuteScalarAsync(cancellationToken);
-                    
-                    _logger.LogInformation("[{InstanceId}] Migrations completed by another instance", instanceId);
-                    return; // Schema exists, migrations are complete
-                }
-                catch
-                {
-                    // Database not ready yet
-                    _logger.LogDebug("[{InstanceId}] Waiting for migrations... Attempt {Attempt}/{MaxAttempts}", 
-                        instanceId, attempt, maxAttempts);
-                }
-                
-                if (attempt < maxAttempts)
-                {
-                    // Exponential backoff with jitter
-                    var jitter = random.Next(0, 3000); // 0-3 seconds jitter
-                    var delay = Math.Min(attempt * 2000, 10000) + jitter; // 2-10 seconds + jitter
-                    await Task.Delay(delay, cancellationToken);
-                }
-            }
-            
-            throw new TimeoutException($"[{instanceId}] Timed out waiting for migrations to complete after {maxAttempts} attempts");
-        }
-
-        private bool ShouldForceReset()
-        {
-            var forceReset = Environment.GetEnvironmentVariable("FORCE_RECREATE_DB_ON_FAILURE")?.ToUpperInvariant() == "TRUE";
-            var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")?.ToUpperInvariant() == "DEVELOPMENT";
-            
-            return forceReset && isDevelopment;
-        }
-
-        private async Task<bool> ForceRecreateDatabaseAsync(string instanceId, CancellationToken cancellationToken)
-        {
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-                
-                _logger.LogWarning("[{InstanceId}] Dropping database...", instanceId);
-                await context.Database.EnsureDeletedAsync(cancellationToken);
-                
-                _logger.LogWarning("[{InstanceId}] Applying migrations to fresh database...", instanceId);
-                await context.Database.MigrateAsync(cancellationToken);
-                
-                _logger.LogWarning("[{InstanceId}] Database recreated successfully", instanceId);
-                return true;
+                await SeedDefaultRetentionPolicyAsync(context, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[{InstanceId}] Failed to recreate database", instanceId);
-                return false;
+                _logger.LogError(ex, "[{InstanceId}] Error seeding default data - application will continue", instanceId);
             }
+        }
+
+        private async Task SeedDefaultRetentionPolicyAsync(ConduitDbContext context, CancellationToken cancellationToken)
+        {
+            // Check if any default policy exists
+            var hasDefault = await context.MediaRetentionPolicies
+                .AnyAsync(p => p.IsDefault, cancellationToken);
+
+            if (hasDefault)
+            {
+                _logger.LogDebug("Default media retention policy already exists");
+                return;
+            }
+
+            // Check if any policies exist at all
+            var hasAnyPolicy = await context.MediaRetentionPolicies.AnyAsync(cancellationToken);
+
+            if (hasAnyPolicy)
+            {
+                _logger.LogInformation(
+                    "Media retention policies exist but none is marked as default. " +
+                    "Consider setting a default policy via the Admin API.");
+                return;
+            }
+
+            // Create default policy with reasonable settings
+            var defaultPolicy = new MediaRetentionPolicy
+            {
+                Name = "Default",
+                Description = "System default retention policy. Media retention varies by account balance: " +
+                             "60 days for positive balance, 14 days for zero balance, 3 days for negative balance.",
+                PositiveBalanceRetentionDays = 60,
+                ZeroBalanceRetentionDays = 14,
+                NegativeBalanceRetentionDays = 3,
+                SoftDeleteGracePeriodDays = 7,
+                RespectRecentAccess = true,
+                RecentAccessWindowDays = 7,
+                IsDefault = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            context.MediaRetentionPolicies.Add(defaultPolicy);
+            await context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Created default media retention policy: {PolicyName} " +
+                "(Positive: {PositiveDays}d, Zero: {ZeroDays}d, Negative: {NegativeDays}d)",
+                defaultPolicy.Name,
+                defaultPolicy.PositiveBalanceRetentionDays,
+                defaultPolicy.ZeroBalanceRetentionDays,
+                defaultPolicy.NegativeBalanceRetentionDays);
         }
     }
 }

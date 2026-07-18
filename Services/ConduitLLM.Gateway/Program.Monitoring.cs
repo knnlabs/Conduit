@@ -42,6 +42,14 @@ public partial class Program
             // Add basic health checks
             var healthChecksBuilder = builder.Services.AddHealthChecks();
 
+            // Gate /health/ready on the schema being current. Tag must be "ready" —
+            // that's what the readiness endpoint filters on. Only Wait mode can fail
+            // this check; Apply/Skip set the state before the server binds.
+            healthChecksBuilder.AddCheck<ConduitLLM.Configuration.HealthChecks.PendingMigrationsReadinessCheck>(
+                "pending_migrations",
+                failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                tags: new[] { "ready", "database", "migrations" });
+
             var messagingBackend =
                 ConduitLLM.Configuration.Messaging.MessagingBackendResolver.Resolve(builder.Configuration);
 
