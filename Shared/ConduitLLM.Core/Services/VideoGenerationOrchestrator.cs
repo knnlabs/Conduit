@@ -87,8 +87,8 @@ namespace ConduitLLM.Core.Services
             VirtualKey virtualKey,
             CancellationToken cancellationToken)
         {
-            // Get the client for the model
-            var client = await _clientFactory.GetClientAsync(modelInfo.ModelAlias, cancellationToken);
+            // Get the client via the already-resolved provider instead of re-resolving the alias
+            var client = await _clientFactory.GetClientByProviderIdAsync(modelInfo.ProviderId, modelInfo.ModelId, cancellationToken);
             if (client == null)
             {
                 throw new NotSupportedException($"No provider available for model {modelInfo.ModelAlias}");

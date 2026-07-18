@@ -138,7 +138,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             // Use test client that has CreateVideoAsync method for reflection
             var testClient = new TestVideoClient(response);
             
-            ClientFactoryMock.Setup(x => x.GetClientAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            ClientFactoryMock.Setup(x => x.GetClientByProviderIdAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(testClient);
             
             StorageServiceMock.Setup(x => x.StoreAsync(
@@ -156,7 +156,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected override void SetupFailedGeneration(Exception exception)
         {
             // Setup to simulate failure during orchestration
-            ClientFactoryMock.Setup(x => x.GetClientAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            ClientFactoryMock.Setup(x => x.GetClientByProviderIdAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(exception);
         }
 

@@ -224,6 +224,28 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
+        public async Task HandleAsync_ShouldGetClientByResolvedProviderId_NotByReResolvingModelName()
+        {
+            // Arrange - the default mapping mock has ModelAlias "test-model" and
+            // ProviderModelId "provider-model-id" (deliberately different), so re-resolving
+            // the provider model id as an alias would fail (issue #958)
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert
+            ClientFactoryMock.Verify(x => x.GetClientByProviderIdAsync(
+                1, "provider-model-id", It.IsAny<CancellationToken>()), Times.Once);
+            ClientFactoryMock.Verify(x => x.GetClientAsync(
+                It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task HandleAsync_WhenGenerationFails_ShouldUpdateTaskAsFailed()
         {
             // Arrange
