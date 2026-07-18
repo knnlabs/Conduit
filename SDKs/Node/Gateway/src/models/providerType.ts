@@ -40,5 +40,8 @@ export enum ProviderType {
   Cloudflare = 12,
 
   /** OpenRouter (multi-provider routing via OpenAI-compatible API) */
-  OpenRouter = 13
+  OpenRouter = 13,
+
+  /** Meta AI (Meta Model API, Muse Spark models) */
+  Meta = 14
 }

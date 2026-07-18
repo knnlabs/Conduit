@@ -108,6 +108,17 @@ export const PROVIDER_REGISTRY: Record<number, ProviderMetadata> = {
     supportsVariation: true,
     description: 'DeepInfra model hosting'
   },
+  [ProviderType.Meta]: {
+    value: ProviderType.Meta,
+    name: 'Meta',
+    label: 'Meta AI',
+    supportsSpeedScore: true,
+    supportsQualityScore: true,
+    supportsVariation: false,
+    defaultMaxInputTokens: 1048576,
+    defaultMaxOutputTokens: 131072,
+    description: 'Meta Model API (Muse Spark models)'
+  },
   [ProviderType.Ultravox]: {
     value: ProviderType.Ultravox,
     name: 'Ultravox',
@@ -220,7 +231,10 @@ export function normalizeProviderType(provider: string | number): ProviderType |
     'workers-ai': ProviderType.Cloudflare,
     'workersai': ProviderType.Cloudflare,
     'openrouter': ProviderType.OpenRouter,
-    'open-router': ProviderType.OpenRouter
+    'open-router': ProviderType.OpenRouter,
+    'meta': ProviderType.Meta,
+    'metaai': ProviderType.Meta,
+    'meta-ai': ProviderType.Meta
   };
   
   const lowerProvider = provider.toLowerCase().replace(/[\s_]/g, '');

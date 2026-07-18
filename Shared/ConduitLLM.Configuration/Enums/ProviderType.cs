@@ -71,6 +71,11 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// OpenRouter (multi-provider routing via OpenAI-compatible API)
         /// </summary>
-        OpenRouter = 13
+        OpenRouter = 13,
+
+        /// <summary>
+        /// Meta AI (Meta Model API, Muse Spark models)
+        /// </summary>
+        Meta = 14
     }
 }

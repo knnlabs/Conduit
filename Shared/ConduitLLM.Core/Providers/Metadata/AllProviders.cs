@@ -254,4 +254,39 @@ namespace ConduitLLM.Core.Providers.Metadata
             });
         }
     }
+
+    /// <summary>
+    /// Provider metadata for Meta AI (Meta Model API).
+    /// </summary>
+    public class MetaProviderMetadata : BaseProviderMetadata
+    {
+        public override ProviderType ProviderType => ProviderType.Meta;
+        public override string DisplayName => "Meta AI";
+        public override string DefaultBaseUrl => "https://api.meta.ai/v1";
+
+        public MetaProviderMetadata()
+        {
+            // Meta Model API is OpenAI-compatible with multimodal input support
+            Capabilities.Features.Streaming = true;
+            Capabilities.Features.VisionInput = true;
+
+            // Chat parameters support
+            Capabilities.ChatParameters.Tools = true;
+            Capabilities.ChatParameters.ResponseFormat = true;
+
+            ConfigurationHints.DocumentationUrl = "https://ai.developer.meta.com/docs";
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Massive Context Window",
+                Description = "Muse Spark models support a 1M-token context window with image, video, and PDF input",
+                Severity = TipSeverity.Info
+            });
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Public Preview",
+                Description = "The Meta Model API is in public preview and currently US-only",
+                Severity = TipSeverity.Info
+            });
+        }
+    }
 }
