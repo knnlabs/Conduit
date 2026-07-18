@@ -18,12 +18,14 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// <remarks>
     /// Mapping notes:
     /// <list type="bullet">
-    /// <item><c>SingleActiveConsumer</c> → <c>ListenWithStrictOrdering</c>: exactly one
-    /// node listens at a time with sequential handling — the cluster-wide equivalent of
-    /// RabbitMQ's <c>x-single-active-consumer</c> + <c>ConcurrentMessageLimit = 1</c>.</item>
+    /// <item><c>ConcurrentMessageLimit = 1</c> → <c>ListenWithStrictOrdering</c>: exactly
+    /// one node listens with sequential handling (spend-update-events).
+    /// <c>SingleActiveConsumer</c> alone → <c>ExclusiveNodeWithParallelism</c>: one node
+    /// listens (failover semantics of RabbitMQ's <c>x-single-active-consumer</c>) but
+    /// handles messages in parallel, matching MassTransit's concurrent processing.</item>
     /// <item><c>ConcurrentMessageLimit</c> → <c>MaximumParallelMessages</c>; null inherits
-    /// Wolverine's default. <c>PrefetchCount</c> has no Postgres-transport analogue (the
-    /// listener batches its own polling).</item>
+    /// Wolverine's default. <c>PrefetchCount</c> → <c>MaximumMessagesToReceive</c> (the
+    /// per-poll receive batch), polled every 250ms instead of the 5s default.</item>
     /// <item><c>Retry</c> → failure rules scoped to the endpoint's message types (see
     /// <see cref="ComputeRetryCooldowns"/>); <c>DelayedRedeliveryIntervals</c> →
     /// scheduled retries after the inline attempts. Exhausted messages land in
@@ -37,6 +39,21 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     public static class WolverineEndpointPolicy
     {
         /// <summary>
+        /// Parallelism for single-active-consumer endpoints whose descriptor leaves
+        /// <c>ConcurrentMessageLimit</c> null ("inherit the bus/config default") —
+        /// mirrors the <c>ConduitLLM:RabbitMQ</c> ConcurrentMessageLimit default (50)
+        /// that MassTransit applies to those same endpoints.
+        /// </summary>
+        private const int DefaultSingleActiveParallelism = 50;
+
+        /// <summary>
+        /// Per-poll receive batch for endpoints whose descriptor leaves
+        /// <c>PrefetchCount</c> null — mirrors the RabbitMQ prefetch the same endpoints
+        /// get from the <c>ConduitLLM:RabbitMQ</c> defaults.
+        /// </summary>
+        private const int DefaultReceiveBatchSize = 50;
+
+        /// <summary>
         /// Configures a listener for the policy's queue on this host and registers the
         /// policy's retry rules for the given event types. Call only on the host that
         /// consumes the queue; publishers need only the routing rules
@@ -49,11 +66,29 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         {
             var listener = options.ListenToPostgresqlQueue(policy.Name);
 
-            if (policy.SingleActiveConsumer || policy.ConcurrentMessageLimit == 1)
+            // The Postgres queue listener defaults to 20 messages per poll on the 5s
+            // ScheduledJobPollingTime cadence — a ~4 msg/s ceiling per queue (#929 parity
+            // gate finding W4). Poll aggressively and map PrefetchCount to the per-poll
+            // batch size, which IS its Postgres-transport analogue.
+            listener.PollingInterval(TimeSpan.FromMilliseconds(250));
+            listener.MaximumMessagesToReceive(policy.PrefetchCount ?? DefaultReceiveBatchSize);
+
+            if (policy.ConcurrentMessageLimit == 1)
             {
                 // Cluster-wide single active listener + sequential handling: strict
-                // ordering across all nodes (spend-update-events / image-generation-events).
+                // ordering across all nodes (spend-update-events).
                 listener.ListenWithStrictOrdering();
+            }
+            else if (policy.SingleActiveConsumer)
+            {
+                // RabbitMQ x-single-active-consumer without ConcurrentMessageLimit=1 is
+                // one consumer *instance* with parallel handling (image-generation-events
+                // runs 50-concurrent on MassTransit via the ConduitLLM:RabbitMQ default) —
+                // exclusive node for failover semantics, but NOT sequential. Mapping SAC
+                // to ListenWithStrictOrdering serialized the queue and cut media
+                // throughput ~10x (#929 parity gate finding W3).
+                listener.ExclusiveNodeWithParallelism(
+                    policy.ConcurrentMessageLimit ?? DefaultSingleActiveParallelism);
             }
             else if (policy.ConcurrentMessageLimit is int limit)
             {

@@ -155,13 +155,19 @@ namespace ConduitLLM.Core.Messaging
             options.ListenWithPolicy(ConduitEndpointPolicies.VideoGeneration, VideoGenerationEvents);
             options.ListenWithPolicy(ConduitEndpointPolicies.ImageGeneration, ImageGenerationEvents);
 
-            options.ListenToPostgresqlQueue(GatewayEventsQueue);
+            // Default queue: same aggressive polling as the tuned endpoints — the
+            // listener's 20-per-5s poll default is a ~4 msg/s ceiling (#929 finding W4).
+            options.ListenToPostgresqlQueue(GatewayEventsQueue)
+                .PollingInterval(TimeSpan.FromMilliseconds(250))
+                .MaximumMessagesToReceive(50);
         }
 
         /// <summary>Admin-side listener: the shared cache events queue.</summary>
         public static void ListenAsConduitAdmin(this WolverineOptions options)
         {
-            options.ListenToPostgresqlQueue(AdminEventsQueue);
+            options.ListenToPostgresqlQueue(AdminEventsQueue)
+                .PollingInterval(TimeSpan.FromMilliseconds(250))
+                .MaximumMessagesToReceive(50);
         }
 
         private static void RouteAll(WolverineOptions options, IReadOnlyList<Type> eventTypes, string queueName)
