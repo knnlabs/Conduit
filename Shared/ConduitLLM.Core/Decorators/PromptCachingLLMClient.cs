@@ -13,7 +13,7 @@ namespace ConduitLLM.Core.Decorators;
 /// Decorator that automatically injects cache_control directives into chat completion
 /// requests when prompt caching auto-injection is enabled via GlobalSettings.
 /// </summary>
-public class PromptCachingLLMClient : ILLMClient
+public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenticationVerifiable
 {
     private readonly ILLMClient _innerClient;
     private readonly IGlobalSettingsCacheService _settingsService;
@@ -33,6 +33,9 @@ public class PromptCachingLLMClient : ILLMClient
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
+
+    /// <inheritdoc />
+    public ILLMClient InnerClient => _innerClient;
 
     /// <inheritdoc />
     public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
@@ -73,6 +76,39 @@ public class PromptCachingLLMClient : ILLMClient
     /// <inheritdoc />
     public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
         => _innerClient.GetCapabilitiesAsync(modelId);
+
+    /// <summary>
+    /// Verifies authentication by delegating to the inner client if it supports
+    /// <see cref="IAuthenticationVerifiable"/>.
+    /// </summary>
+    public Task<AuthenticationResult> VerifyAuthenticationAsync(
+        string? apiKey = null,
+        string? baseUrl = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_innerClient is IAuthenticationVerifiable authVerifiable)
+        {
+            return authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl, cancellationToken);
+        }
+
+        return Task.FromResult(AuthenticationResult.Failure(
+            "Provider does not support authentication verification",
+            $"The {_innerClient.GetType().Name} client has not implemented authentication verification"));
+    }
+
+    /// <summary>
+    /// Gets the health check URL by delegating to the inner client if it supports
+    /// <see cref="IAuthenticationVerifiable"/>.
+    /// </summary>
+    public string GetHealthCheckUrl(string? baseUrl = null)
+    {
+        if (_innerClient is IAuthenticationVerifiable authVerifiable)
+        {
+            return authVerifiable.GetHealthCheckUrl(baseUrl);
+        }
+
+        return baseUrl ?? "https://api.provider.com/health";
+    }
 
     private async Task TryInjectCacheControlAsync(ChatCompletionRequest request)
     {
