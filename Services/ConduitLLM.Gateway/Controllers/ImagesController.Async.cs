@@ -90,7 +90,10 @@ namespace ConduitLLM.Gateway.Controllers
                     });
                 }
 
-                if (CurrentVirtualKeyId == null)
+                // The raw key is required too: MediaGenerationOrchestrator re-validates it
+                // from task metadata, so a task created without it would always fail.
+                var virtualKeyValue = CurrentVirtualKey;
+                if (CurrentVirtualKeyId == null || string.IsNullOrEmpty(virtualKeyValue))
                 {
                     return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
                 }
@@ -145,7 +148,8 @@ namespace ConduitLLM.Gateway.Controllers
                     Payload = System.Text.Json.JsonSerializer.Serialize(generationRequest),
                     ExtensionData = new Dictionary<string, object>
                     {
-                        ["VirtualKey"] = CurrentVirtualKey ?? string.Empty
+                        // MediaGenerationOrchestrator re-validates the raw key from task metadata
+                        ["VirtualKey"] = virtualKeyValue
                     }
                 };
 

@@ -131,7 +131,7 @@ namespace ConduitLLM.Core.Services
                 {
                     LogIncompleteCacheEntry("all-mappings list");
                     var fresh = await _innerService.GetAllMappingsAsync();
-                    await _cacheManager.SetAsync(AllMappingsKey, fresh, Region, CacheTtl);
+                    await _cacheManager.SetAsync(CacheKeys.ModelMapping.AllMappings, fresh, Region, CacheTtl);
                     return fresh;
                 }
 

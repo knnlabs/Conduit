@@ -202,6 +202,102 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
+        [Fact]
+        public async Task CreateImageAsync_WithValidRequest_ShouldStoreRawVirtualKeyInTaskMetadata()
+        {
+            // Arrange
+            var request = new ConduitLLM.Core.Models.ImageGenerationRequest
+            {
+                Prompt = "A beautiful sunset",
+                Model = "dall-e-3"
+            };
+
+            var mapping = new ModelProviderMapping
+            {
+                ModelAlias = "dall-e-3",
+                ModelProviderTypeAssociationId = 1,
+                ProviderModelId = "dall-e-3",
+                Provider = new Provider { ProviderType = ProviderType.OpenAI },
+                ModelProviderTypeAssociation = new ModelProviderTypeAssociation
+                {
+                    Model = ConduitLLM.Tests.Helpers.ModelTestHelper.CreateDallE3Model()
+                }
+            };
+
+            _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
+                .ReturnsAsync(mapping);
+
+            var virtualKeyId = 123;
+            var rawVirtualKey = "condt_test_key_123456";
+
+            _mockVirtualKeyService.Setup(x => x.GetVirtualKeyInfoForValidationAsync(virtualKeyId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VirtualKey { Id = virtualKeyId, KeyHash = "hash" });
+
+            ConduitLLM.Core.Models.TaskMetadata? capturedMetadata = null;
+            _mockTaskService.Setup(x => x.CreateTaskAsync("image_generation", virtualKeyId, It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .Callback<string, int, object, CancellationToken>((_, _, metadata, _) =>
+                    capturedMetadata = metadata as ConduitLLM.Core.Models.TaskMetadata)
+                .ReturnsAsync("task-123");
+
+            _controller.ControllerContext = CreateControllerContext();
+            _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity(new[]
+                {
+                    new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+                }, "Test"));
+            _controller.ControllerContext.HttpContext.Items["VirtualKey"] = rawVirtualKey;
+
+            // Act
+            var result = await _controller.CreateImageAsync(request);
+
+            // Assert
+            Assert.IsType<AcceptedResult>(result);
+            Assert.NotNull(capturedMetadata);
+            Assert.NotNull(capturedMetadata!.ExtensionData);
+            Assert.Equal(rawVirtualKey, capturedMetadata.ExtensionData!["VirtualKey"]);
+        }
+
+        [Fact]
+        public async Task CreateImageAsync_WithoutRawVirtualKeyInContext_ShouldReturnUnauthorized()
+        {
+            // Arrange
+            var request = new ConduitLLM.Core.Models.ImageGenerationRequest
+            {
+                Prompt = "A beautiful sunset",
+                Model = "dall-e-3"
+            };
+
+            var mapping = new ModelProviderMapping
+            {
+                ModelAlias = "dall-e-3",
+                ModelProviderTypeAssociationId = 1,
+                ProviderModelId = "dall-e-3",
+                Provider = new Provider { ProviderType = ProviderType.OpenAI },
+                ModelProviderTypeAssociation = new ModelProviderTypeAssociation
+                {
+                    Model = ConduitLLM.Tests.Helpers.ModelTestHelper.CreateDallE3Model()
+                }
+            };
+
+            _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
+                .ReturnsAsync(mapping);
+
+            _controller.ControllerContext = CreateControllerContext();
+            _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity(new[]
+                {
+                    new System.Security.Claims.Claim("VirtualKeyId", "123")
+                }, "Test"));
+            // HttpContext.Items["VirtualKey"] intentionally not set
+
+            // Act
+            var result = await _controller.CreateImageAsync(request);
+
+            // Assert
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+        }
+
         #endregion
 
         #region GetGenerationStatus Tests
