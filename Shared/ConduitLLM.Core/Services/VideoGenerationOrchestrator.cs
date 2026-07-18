@@ -94,49 +94,55 @@ namespace ConduitLLM.Core.Services
                 throw new NotSupportedException($"No provider available for model {modelInfo.ModelAlias}");
             }
 
-            // Check if client supports video generation using reflection
-            var clientType = client.GetType();
-            
-            // Handle decorators by getting inner client
-            object clientToCheck = client;
-            if (clientType.FullName?.Contains("Decorator") == true || 
-                clientType.FullName?.Contains("PerformanceTracking") == true)
+            // Video generation is not part of ILLMClient — only specific provider clients
+            // implement CreateVideoAsync. Unwrap the decorator chain to the innermost provider
+            // client to check the capability; decorators would otherwise hide it (issue #976).
+            var innermostClient = client.UnwrapInnermost();
+            var innermostType = innermostClient.GetType();
+
+            var supportsVideo = innermostType.GetMethods()
+                .Any(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+
+            if (!supportsVideo)
             {
-                var innerClientField = clientType.GetField("_innerClient",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                if (innerClientField != null)
-                {
-                    var innerClient = innerClientField.GetValue(client);
-                    if (innerClient != null)
-                    {
-                        clientToCheck = innerClient;
-                        clientType = innerClient.GetType();
-                    }
-                }
+                throw new NotSupportedException($"Provider for model {modelInfo.ModelAlias} does not support video generation");
             }
 
-            // Find CreateVideoAsync method
-            var createVideoMethod = clientType.GetMethods()
-                .FirstOrDefault(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+            // Set up progress callback if the provider client is MiniMax
+            if (innermostType.Name == "MiniMaxClient")
+            {
+                SetupMiniMaxProgressCallback(innermostClient, request.Model, cancellationToken);
+            }
+
+            // Invoke through the outermost client in the chain that exposes CreateVideoAsync so
+            // decorators (e.g. ContextAwareLLMClient's key context and error tracking) still run.
+            object invocationTarget = innermostClient;
+            MethodInfo? createVideoMethod = null;
+            for (ILLMClient? current = client; current != null;
+                 current = (current as ILLMClientDecorator)?.InnerClient)
+            {
+                var method = current.GetType().GetMethods()
+                    .FirstOrDefault(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+                if (method != null)
+                {
+                    invocationTarget = current;
+                    createVideoMethod = method;
+                    break;
+                }
+            }
 
             if (createVideoMethod == null)
             {
                 throw new NotSupportedException($"Provider for model {modelInfo.ModelAlias} does not support video generation");
             }
 
-            // Set up progress callback if the client is MiniMax
-            if (clientType.Name == "MiniMaxClient")
-            {
-                SetupMiniMaxProgressCallback(clientToCheck, request.Model, cancellationToken);
-            }
-
             // Invoke video generation
-            var task = createVideoMethod.Invoke(clientToCheck, new object?[] { request, null, cancellationToken }) 
+            var task = createVideoMethod.Invoke(invocationTarget, new object?[] { request, null, cancellationToken })
                 as Task<VideoGenerationResponse>;
-            
+
             if (task == null)
             {
-                throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
+                throw new InvalidOperationException($"CreateVideoAsync method on {invocationTarget.GetType().Name} did not return expected Task<VideoGenerationResponse>");
             }
 
             return await task;

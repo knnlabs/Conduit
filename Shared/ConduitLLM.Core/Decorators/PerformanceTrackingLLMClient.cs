@@ -9,7 +9,7 @@ namespace ConduitLLM.Core.Decorators
     /// <summary>
     /// Decorator that adds performance tracking to LLM client operations.
     /// </summary>
-    public class PerformanceTrackingLLMClient : ILLMClient, IAuthenticationVerifiable
+    public class PerformanceTrackingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenticationVerifiable
     {
         private readonly ILLMClient _innerClient;
         private readonly IPerformanceMetricsService _metricsService;
@@ -30,6 +30,9 @@ namespace ConduitLLM.Core.Decorators
             _providerName = providerName ?? throw new ArgumentNullException(nameof(providerName));
             _isEnabled = isEnabled;
         }
+
+        /// <inheritdoc />
+        public ILLMClient InnerClient => _innerClient;
 
 
         /// <summary>

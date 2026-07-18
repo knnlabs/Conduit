@@ -16,7 +16,7 @@ namespace ConduitLLM.Core.Decorators
     /// <summary>
     /// Decorator that sets provider key context and tracks errors for LLM operations
     /// </summary>
-    public class ContextAwareLLMClient : ILLMClient
+    public class ContextAwareLLMClient : ILLMClient, ILLMClientDecorator, IAuthenticationVerifiable
     {
         private readonly ILLMClient _innerClient;
         private readonly int _keyId;
@@ -36,6 +36,9 @@ namespace ConduitLLM.Core.Decorators
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = serviceProvider.GetService<ILogger<ContextAwareLLMClient>>();
         }
+
+        /// <inheritdoc />
+        public ILLMClient InnerClient => _innerClient;
 
         public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
             ChatCompletionRequest request,
@@ -183,24 +186,27 @@ namespace ConduitLLM.Core.Decorators
                 try
                 {
                     // CreateVideoAsync is not on ILLMClient — only specific providers implement it.
-                    // Use reflection to invoke it on the concrete client type.
-                    var innerClientType = _innerClient.GetType();
-                    var createVideoMethod = innerClientType.GetMethod("CreateVideoAsync",
+                    // The inner client may itself be a decorator (e.g. PromptCachingLLMClient)
+                    // that hides the provider's video capability, so unwrap the chain to the
+                    // innermost provider client before reflecting (issue #976).
+                    var providerClient = _innerClient.UnwrapInnermost();
+                    var providerClientType = providerClient.GetType();
+                    var createVideoMethod = providerClientType.GetMethod("CreateVideoAsync",
                         new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
 
                     if (createVideoMethod == null)
                     {
                         throw new NotSupportedException(
-                            $"The underlying client {innerClientType.Name} does not support video generation");
+                            $"The underlying client {providerClientType.Name} does not support video generation");
                     }
 
                     var task = (Task<VideoGenerationResponse>?)createVideoMethod.Invoke(
-                        _innerClient, new object?[] { request, apiKey, cancellationToken });
+                        providerClient, new object?[] { request, apiKey, cancellationToken });
 
                     if (task == null)
                     {
                         throw new InvalidOperationException(
-                            $"CreateVideoAsync on {innerClientType.Name} returned null");
+                            $"CreateVideoAsync on {providerClientType.Name} returned null");
                     }
 
                     return await task;
@@ -227,6 +233,39 @@ namespace ConduitLLM.Core.Decorators
                     throw;
                 }
             }
+        }
+
+        /// <summary>
+        /// Verifies authentication by delegating to the inner client if it supports
+        /// <see cref="IAuthenticationVerifiable"/>.
+        /// </summary>
+        public Task<AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (_innerClient is IAuthenticationVerifiable authVerifiable)
+            {
+                return authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl, cancellationToken);
+            }
+
+            return Task.FromResult(AuthenticationResult.Failure(
+                "Provider does not support authentication verification",
+                $"The {_innerClient.GetType().Name} client has not implemented authentication verification"));
+        }
+
+        /// <summary>
+        /// Gets the health check URL by delegating to the inner client if it supports
+        /// <see cref="IAuthenticationVerifiable"/>.
+        /// </summary>
+        public string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            if (_innerClient is IAuthenticationVerifiable authVerifiable)
+            {
+                return authVerifiable.GetHealthCheckUrl(baseUrl);
+            }
+
+            return baseUrl ?? "https://api.provider.com/health";
         }
 
         private LLMCommunicationException? ExtractLLMCommunicationException(Exception ex)
