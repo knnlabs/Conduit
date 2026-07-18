@@ -1,0 +1,77 @@
+name: Migration Validation
+
+on:
+  push:
+    branches: [master, dev]
+    paths:
+      - 'Shared/ConduitLLM.Configuration/**'
+      - 'scripts/migrations/**'
+      - '.github/workflows/migration-validation.yml'
+  pull_request:
+    branches: [master, dev]
+    paths:
+      - 'Shared/ConduitLLM.Configuration/**'
+      - 'scripts/migrations/**'
+      - '.github/workflows/migration-validation.yml'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-migrations:
+    name: Validate migrations
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduitpass
+          POSTGRES_DB: conduitdb
+        options: >-
+          --health-cmd "pg_isready -U conduit -d conduitdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef
+
+      # The validation script invokes dotnet-ef with --no-build
+      - name: Build Configuration project
+        run: dotnet build Shared/ConduitLLM.Configuration
+
+      - name: Validate migrations
+        shell: pwsh
+        run: ./scripts/migrations/validate-migrations.ps1 -CheckPending
+
+      - name: Generate idempotent migration script
+        run: |
+          mkdir -p artifacts
+          dotnet ef migrations script --idempotent \
+            --project Shared/ConduitLLM.Configuration \
+            --output artifacts/conduit-migrations-idempotent.sql
+
+      # Reviewable, rerunnable artifact — the escape hatch for DBA review or
+      # manual application when the release-hook migrator is not used.
+      - name: Upload idempotent script artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conduit-migrations-idempotent
+          path: artifacts/conduit-migrations-idempotent.sql
+          retention-days: 90

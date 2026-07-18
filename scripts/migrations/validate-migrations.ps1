@@ -44,7 +44,7 @@ if (Test-Path $devLibPath) {
     $projectRoot = Split-Path $scriptDir -Parent | Split-Path -Parent
 }
 
-$configurationProject = Join-Path $projectRoot 'ConduitLLM.Configuration'
+$configurationProject = Join-Path $projectRoot 'Shared' 'ConduitLLM.Configuration'
 
 Write-Host "==============================================" -ForegroundColor Cyan
 Write-Host "EF Core Migration Validation" -ForegroundColor Cyan
@@ -171,15 +171,20 @@ try {
     $pendingJob = Start-Job -ScriptBlock {
         param($path)
         Set-Location $path
-        dotnet ef migrations has-pending-model-changes --no-build 2>&1
+        $output = dotnet ef migrations has-pending-model-changes --no-build 2>&1
+        # Exit code is authoritative (0 = no pending changes, 1 = pending changes).
+        # Do NOT string-match the output: "No changes have been made..." matches
+        # 'Changes have been made' case-insensitively.
+        [pscustomobject]@{ Output = ($output | Out-String); ExitCode = $LASTEXITCODE }
     } -ArgumentList $configurationProject
 
-    $pendingCompleted = Wait-Job $pendingJob -Timeout 10
+    $pendingCompleted = Wait-Job $pendingJob -Timeout 30
     if ($pendingCompleted) {
-        $pendingOutput = Receive-Job $pendingJob | Out-String
+        $pendingResult = Receive-Job $pendingJob
         Remove-Job $pendingJob -Force
 
-        if ($pendingOutput -match 'Changes have been made to the model') {
+        if ($pendingResult.ExitCode -ne 0) {
+            Write-Host $pendingResult.Output
             Write-Host "WARNING: Model has pending changes not included in migrations" -ForegroundColor Yellow
             if ($CheckPending) {
                 Write-Host "ERROR: Pending model changes detected (--check-pending flag set)" -ForegroundColor Red
