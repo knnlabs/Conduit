@@ -1,6 +1,9 @@
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
@@ -35,6 +38,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="virtualKeyGroupId">Optional filter by virtual key group ID</param>
         /// <returns>Overall storage statistics.</returns>
         [HttpGet("stats")]
+        [ProducesResponseType(typeof(OverallMediaStorageStats), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetOverallStats([FromQuery] int? virtualKeyGroupId = null)
         {
             try
@@ -55,6 +60,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
         /// <returns>Storage statistics for the virtual key.</returns>
         [HttpGet("stats/virtual-key/{virtualKeyId}")]
+        [ProducesResponseType(typeof(MediaStorageStats), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetStatsByVirtualKey(int virtualKeyId)
         {
             try
@@ -74,6 +81,8 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>Dictionary of provider names to storage size.</returns>
         [HttpGet("stats/by-provider")]
+        [ProducesResponseType(typeof(Dictionary<string, long>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetStatsByProvider()
         {
             try
@@ -93,6 +102,8 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>Dictionary of media types to storage size.</returns>
         [HttpGet("stats/by-type")]
+        [ProducesResponseType(typeof(Dictionary<string, long>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetStatsByMediaType()
         {
             try
@@ -113,6 +124,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
         /// <returns>List of media records.</returns>
         [HttpGet("virtual-key/{virtualKeyId}")]
+        [ProducesResponseType(typeof(List<MediaRecord>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetMediaByVirtualKey(int virtualKeyId)
         {
             try
@@ -133,6 +146,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="pattern">The pattern to search for in storage keys.</param>
         /// <returns>List of matching media records.</returns>
         [HttpGet("search")]
+        [ProducesResponseType(typeof(List<MediaRecord>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SearchMedia([FromQuery] string pattern)
         {
             try
@@ -158,6 +174,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="mediaId">The ID of the media record to delete.</param>
         /// <returns>Success status.</returns>
         [HttpDelete("{mediaId}")]
+        [ProducesResponseType(typeof(MediaDeletionResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteMedia(Guid mediaId)
         {
             try
@@ -168,7 +187,7 @@ namespace ConduitLLM.Admin.Controllers
                     return NotFound(new ErrorResponseDto("Media record not found"));
                 }
 
-                return Ok(new { message = "Media deleted successfully" });
+                return Ok(new MediaDeletionResponseDto { Message = "Media deleted successfully" });
             }
             catch (Exception ex)
             {
@@ -182,14 +201,17 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>Number of files cleaned up.</returns>
         [HttpPost("cleanup/expired")]
+        [ProducesResponseType(typeof(MediaCleanupResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CleanupExpiredMedia()
         {
             try
             {
                 var count = await _mediaService.CleanupExpiredMediaAsync();
-                return Ok(new { 
-                    message = $"Cleaned up {count} expired media files",
-                    deletedCount = count 
+                return Ok(new MediaCleanupResponseDto
+                {
+                    Message = $"Cleaned up {count} expired media files",
+                    DeletedCount = count
                 });
             }
             catch (Exception ex)
@@ -204,14 +226,17 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>Number of files cleaned up.</returns>
         [HttpPost("cleanup/orphaned")]
+        [ProducesResponseType(typeof(MediaCleanupResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CleanupOrphanedMedia()
         {
             try
             {
                 var count = await _mediaService.CleanupOrphanedMediaAsync();
-                return Ok(new { 
-                    message = $"Cleaned up {count} orphaned media files",
-                    deletedCount = count 
+                return Ok(new MediaCleanupResponseDto
+                {
+                    Message = $"Cleaned up {count} orphaned media files",
+                    DeletedCount = count
                 });
             }
             catch (Exception ex)
@@ -227,6 +252,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="request">The pruning request with days to keep.</param>
         /// <returns>Number of files pruned.</returns>
         [HttpPost("cleanup/prune")]
+        [ProducesResponseType(typeof(MediaCleanupResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> PruneOldMedia([FromBody] PruneMediaRequest request)
         {
             try
@@ -237,9 +265,10 @@ namespace ConduitLLM.Admin.Controllers
                 }
 
                 var count = await _mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
-                return Ok(new { 
-                    message = $"Pruned {count} media files older than {request.DaysToKeep} days",
-                    deletedCount = count 
+                return Ok(new MediaCleanupResponseDto
+                {
+                    Message = $"Pruned {count} media files older than {request.DaysToKeep} days",
+                    DeletedCount = count
                 });
             }
             catch (Exception ex)

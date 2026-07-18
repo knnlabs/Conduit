@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs.Cache;
 
@@ -55,6 +56,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Routing configuration data.</returns>
         [HttpGet("routing")]
+        [ProducesResponseType(typeof(RoutingConfigurationDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetRoutingConfig(CancellationToken cancellationToken = default)
         {
             try
@@ -64,13 +67,13 @@ namespace ConduitLLM.Admin.Controllers
                 // Get model-to-provider mappings
                 var modelMappings = await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
-                    .Select(m => new
+                    .Select(m => new RoutingRuleDto
                     {
                         Id = m.Id,
                         ModelAlias = m.ModelAlias,
                         ProviderModelId = m.ProviderModelId,
                         IsEnabled = m.IsEnabled,
-                        Provider = new
+                        Provider = new RoutingRuleProviderDto
                         {
                             Id = m.Provider.Id,
                             Name = m.Provider.ProviderName,
@@ -81,9 +84,9 @@ namespace ConduitLLM.Admin.Controllers
                     .ToListAsync(cancellationToken);
 
                 // Get load balancing configuration
-                var loadBalancers = new List<object>
+                var loadBalancers = new List<LoadBalancerDto>
                 {
-                    new
+                    new LoadBalancerDto
                     {
                         Id = "primary",
                         Name = "Primary Load Balancer",
@@ -98,13 +101,13 @@ namespace ConduitLLM.Admin.Controllers
                 // Get routing statistics
                 var routingStats = await GetRoutingStatistics(dbContext, cancellationToken);
 
-                return Ok(new
+                return Ok(new RoutingConfigurationDto
                 {
                     Timestamp = DateTime.UtcNow,
                     RoutingRules = modelMappings,
                     LoadBalancers = loadBalancers,
                     Statistics = routingStats,
-                    Configuration = new
+                    Configuration = new RoutingSettingsDto
                     {
                         EnableFailover = _configuration.GetValue<bool>("Routing:EnableFailover", true),
                         EnableLoadBalancing = _configuration.GetValue<bool>("Routing:EnableLoadBalancing", true),
@@ -126,6 +129,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Caching configuration data.</returns>
         [HttpGet("caching")]
+        [ProducesResponseType(typeof(CacheConfigurationDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
         public async Task<IActionResult> GetCachingConfig(CancellationToken cancellationToken = default)
         {
             try
@@ -152,6 +158,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPut("caching")]
+        [ProducesResponseType(typeof(MessageResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
         public async Task<IActionResult> UpdateCachingConfig([FromBody] UpdateCacheConfigDto config, CancellationToken cancellationToken = default)
         {
             try
@@ -161,7 +170,7 @@ namespace ConduitLLM.Admin.Controllers
                     return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
                 }
                 await _cacheManagementService.UpdateConfigurationAsync(config, cancellationToken);
-                return Ok(new { message = "Caching configuration updated successfully" });
+                return Ok(new MessageResponseDto { Message = "Caching configuration updated successfully" });
             }
             catch (Exception ex)
             {
@@ -177,6 +186,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPost("caching/{cacheId}/clear")]
+        [ProducesResponseType(typeof(MessageResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
         public async Task<IActionResult> ClearCache(string cacheId, CancellationToken cancellationToken = default)
         {
             try
@@ -186,7 +199,7 @@ namespace ConduitLLM.Admin.Controllers
                     return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
                 }
                 await _cacheManagementService.ClearCacheAsync(cacheId, cancellationToken);
-                return Ok(new { message = $"Cache '{cacheId}' cleared successfully" });
+                return Ok(new MessageResponseDto { Message = $"Cache '{cacheId}' cleared successfully" });
             }
             catch (ArgumentException ex)
             {
@@ -206,6 +219,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Cache statistics.</returns>
         [HttpGet("caching/statistics")]
+        [ProducesResponseType(typeof(CacheStatisticsDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
         public async Task<IActionResult> GetCacheStatistics([FromQuery] string? regionId = null, CancellationToken cancellationToken = default)
         {
             try
@@ -234,6 +251,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of cache regions.</returns>
         [HttpGet("caching/regions")]
+        [ProducesResponseType(typeof(CacheRegionsResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
         public async Task<IActionResult> GetCacheRegions(CancellationToken cancellationToken = default)
         {
             try
@@ -243,7 +263,7 @@ namespace ConduitLLM.Admin.Controllers
                     return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
                 }
                 var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
-                return Ok(new
+                return Ok(new CacheRegionsResponseDto
                 {
                     Regions = configuration.CacheRegions,
                     Timestamp = DateTime.UtcNow
@@ -265,6 +285,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Cache entries.</returns>
         [HttpGet("caching/{regionId}/entries")]
+        [ProducesResponseType(typeof(CacheEntriesDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
         public async Task<IActionResult> GetCacheEntries(string regionId, [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken cancellationToken = default)
         {
             try
@@ -300,6 +324,11 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPost("caching/{regionId}/refresh")]
+        [ProducesResponseType(typeof(MessageResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
         public async Task<IActionResult> RefreshCache(string regionId, [FromQuery] string? key = null, CancellationToken cancellationToken = default)
         {
             try
@@ -312,7 +341,7 @@ namespace ConduitLLM.Admin.Controllers
                 var message = string.IsNullOrEmpty(key)
                     ? $"Cache region '{regionId}' refreshed successfully"
                     : $"Cache key '{key}' in region '{regionId}' refreshed successfully";
-                return Ok(new { message });
+                return Ok(new MessageResponseDto { Message = message });
             }
             catch (ArgumentException ex)
             {
@@ -337,6 +366,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPut("caching/{regionId}/policy")]
+        [ProducesResponseType(typeof(MessageResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
         public async Task<IActionResult> UpdateCachePolicy(string regionId, [FromBody] UpdateCachePolicyDto policyUpdate, CancellationToken cancellationToken = default)
         {
             try
@@ -346,7 +379,7 @@ namespace ConduitLLM.Admin.Controllers
                     return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
                 }
                 await _cacheManagementService.UpdatePolicyAsync(regionId, policyUpdate, cancellationToken);
-                return Ok(new { message = $"Cache policy for region '{regionId}' updated successfully" });
+                return Ok(new MessageResponseDto { Message = $"Cache policy for region '{regionId}' updated successfully" });
             }
             catch (ArgumentException ex)
             {
@@ -359,7 +392,7 @@ namespace ConduitLLM.Admin.Controllers
             }
         }
 
-        private async Task<List<object>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<List<LoadBalancerEndpointDto>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             var providers = await dbContext.Providers
                 .Where(p => p.IsEnabled)
@@ -372,7 +405,7 @@ namespace ConduitLLM.Admin.Controllers
                 })
                 .ToListAsync(cancellationToken);
 
-            return providers.Select(p => (object)new
+            return providers.Select(p => new LoadBalancerEndpointDto
             {
                 Id = p.Id,
                 Name = p.ProviderName,
@@ -382,14 +415,14 @@ namespace ConduitLLM.Admin.Controllers
             }).ToList();
         }
 
-        private async Task<object> GetRoutingStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<RoutingStatisticsDto> GetRoutingStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             var oneDayAgo = DateTime.UtcNow.AddDays(-1);
 
             var stats = await dbContext.RequestLogs
                 .Where(r => r.Timestamp >= oneDayAgo)
                 .GroupBy(r => r.ModelName)
-                .Select(g => new
+                .Select(g => new ProviderDistributionDto
                 {
                     Provider = g.Key,
                     RequestCount = g.Count(),
@@ -398,7 +431,7 @@ namespace ConduitLLM.Admin.Controllers
                 })
                 .ToListAsync(cancellationToken);
 
-            return new
+            return new RoutingStatisticsDto
             {
                 TotalRequests = stats.Sum(s => s.RequestCount),
                 ProviderDistribution = stats

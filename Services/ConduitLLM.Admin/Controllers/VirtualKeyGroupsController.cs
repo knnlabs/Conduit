@@ -45,6 +45,8 @@ namespace ConduitLLM.Admin.Controllers
         /// Get all virtual key groups
         /// </summary>
         [HttpGet]
+        [ProducesResponseType(typeof(List<VirtualKeyGroupDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<List<VirtualKeyGroupDto>>> GetAllGroups()
         {
             try
@@ -84,6 +86,9 @@ namespace ConduitLLM.Admin.Controllers
         /// Get a specific virtual key group by ID
         /// </summary>
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<VirtualKeyGroupDto>> GetGroup(int id)
         {
             try
@@ -120,6 +125,8 @@ namespace ConduitLLM.Admin.Controllers
         /// Create a new virtual key group
         /// </summary>
         [HttpPost]
+        [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<VirtualKeyGroupDto>> CreateGroup([FromBody] CreateVirtualKeyGroupRequestDto request)
         {
             try
@@ -162,6 +169,9 @@ namespace ConduitLLM.Admin.Controllers
         /// Update a virtual key group
         /// </summary>
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> UpdateGroup(int id, [FromBody] UpdateVirtualKeyGroupRequestDto request)
         {
             try
@@ -196,6 +206,10 @@ namespace ConduitLLM.Admin.Controllers
         /// Adjust the balance of a virtual key group
         /// </summary>
         [HttpPost("{id}/adjust-balance")]
+        [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<VirtualKeyGroupDto>> AdjustBalance(int id, [FromBody] AdjustBalanceDto request)
         {
             try
@@ -246,6 +260,10 @@ namespace ConduitLLM.Admin.Controllers
         /// Delete a virtual key group
         /// </summary>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> DeleteGroup(int id)
         {
             try
@@ -350,6 +368,9 @@ namespace ConduitLLM.Admin.Controllers
         /// Get virtual keys in a group
         /// </summary>
         [HttpGet("{id}/keys")]
+        [ProducesResponseType(typeof(List<VirtualKeyDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<List<VirtualKeyDto>>> GetKeysInGroup(int id)
         {
             try

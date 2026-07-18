@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration;
 
 using Microsoft.AspNetCore.Authorization;
@@ -42,6 +43,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Security events data.</returns>
         [HttpGet("events")]
+        [ProducesResponseType(typeof(SecurityEventsResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetSecurityEvents(
             [FromQuery] int hours = 24,
             CancellationToken cancellationToken = default)
@@ -55,7 +58,7 @@ namespace ConduitLLM.Admin.Controllers
                 // Get authentication failures (401 status codes)
                 var authFailures = await dbContext.RequestLogs
                     .Where(r => r.Timestamp >= startTime && r.StatusCode == 401)
-                    .Select(r => new
+                    .Select(r => new SecurityMonitoringEventDto
                     {
                         Timestamp = r.Timestamp,
                         Type = "auth_failure",
@@ -70,7 +73,7 @@ namespace ConduitLLM.Admin.Controllers
                 // Get rate limit violations (429 status codes)
                 var rateLimitViolations = await dbContext.RequestLogs
                     .Where(r => r.Timestamp >= startTime && r.StatusCode == 429)
-                    .Select(r => new
+                    .Select(r => new SecurityMonitoringEventDto
                     {
                         Timestamp = r.Timestamp,
                         Type = "rate_limit",
@@ -88,7 +91,7 @@ namespace ConduitLLM.Admin.Controllers
                     .Join(dbContext.RequestLogs.Where(r => r.Timestamp >= startTime),
                         f => f.IpAddressOrCidr,
                         r => r.ClientIp,
-                        (f, r) => new
+                        (f, r) => new SecurityMonitoringEventDto
                         {
                             Timestamp = r.Timestamp,
                             Type = "blocked_ip",
@@ -105,42 +108,42 @@ namespace ConduitLLM.Admin.Controllers
                     .Where(r => r.Timestamp >= startTime && r.StatusCode >= 400 && r.ClientIp != null)
                     .GroupBy(r => r.ClientIp)
                     .Where(g => g.Count() >= 5)
-                    .Select(g => new
+                    .Select(g => new SecurityMonitoringEventDto
                     {
                         Timestamp = g.Max(r => r.Timestamp),
                         Type = "suspicious_activity",
                         Severity = "high",
                         Source = g.Key ?? "Unknown",
-                        VirtualKeyId = (string?)null!, // null-forgiving operator added to suppress CS8600
+                        VirtualKeyId = null,
                         Details = $"Multiple failed requests: {g.Count()} attempts",
                         StatusCode = 0
                     })
                     .ToListAsync(cancellationToken);
 
-                // Combine all events - cast to common base type
-                var allEvents = authFailures.Cast<dynamic>()
-                    .Concat(rateLimitViolations.Cast<dynamic>())
-                    .Concat(blockedIps.Cast<dynamic>())
-                    .Concat(suspiciousActivity.Cast<dynamic>())
+                // Combine all events
+                var allEvents = authFailures
+                    .Concat(rateLimitViolations)
+                    .Concat(blockedIps)
+                    .Concat(suspiciousActivity)
                     .OrderByDescending(e => e.Timestamp)
                     .Take(1000)
                     .ToList();
 
-                return Ok(new
+                return Ok(new SecurityEventsResponse
                 {
                     Timestamp = DateTime.UtcNow,
-                    TimeRange = new { Start = startTime, End = DateTime.UtcNow },
+                    TimeRange = new TimeRangeDto { Start = startTime, End = DateTime.UtcNow },
                     TotalEvents = allEvents.Count,
-                    EventsByType = allEvents.GroupBy(e => (string)e.Type).Select(g => new
+                    EventsByType = allEvents.GroupBy(e => e.Type).Select(g => new SecurityEventTypeCountDto
                     {
                         Type = g.Key,
                         Count = g.Count()
-                    }),
-                    EventsBySeverity = allEvents.GroupBy(e => (string)e.Severity).Select(g => new
+                    }).ToList(),
+                    EventsBySeverity = allEvents.GroupBy(e => e.Severity).Select(g => new SecurityEventSeverityCountDto
                     {
                         Severity = g.Key,
                         Count = g.Count()
-                    }),
+                    }).ToList(),
                     Events = allEvents
                 });
             }
@@ -157,6 +160,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Threat analytics information.</returns>
         [HttpGet("threats")]
+        [ProducesResponseType(typeof(ThreatAnalyticsResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetThreatAnalytics(CancellationToken cancellationToken = default)
         {
             try
@@ -189,7 +194,7 @@ namespace ConduitLLM.Admin.Controllers
                 // Get top threat sources
                 var topThreats = threatPatterns
                     .GroupBy(t => t.ClientIp)
-                    .Select(g => new
+                    .Select(g => new TopThreatSourceDto
                     {
                         IpAddress = g.Key,
                         TotalFailures = g.Sum(t => t.FailedAttempts),
@@ -205,7 +210,7 @@ namespace ConduitLLM.Admin.Controllers
                 var threatDistribution = await dbContext.RequestLogs
                     .Where(r => r.Timestamp >= oneDayAgo && r.StatusCode >= 400)
                     .GroupBy(r => GetThreatTypeByStatusCode(r.StatusCode ?? 0))
-                    .Select(g => new
+                    .Select(g => new ThreatDistributionDto
                     {
                         Type = g.Key,
                         Count = g.Count(),
@@ -214,7 +219,7 @@ namespace ConduitLLM.Admin.Controllers
                     .ToListAsync(cancellationToken);
 
                 // Calculate security metrics
-                var securityMetrics = new
+                var securityMetrics = new ThreatAnalyticsMetricsDto
                 {
                     TotalThreatsToday = await dbContext.RequestLogs
                         .CountAsync(r => r.Timestamp >= DateTime.UtcNow.Date && r.StatusCode >= 400, cancellationToken),
@@ -230,7 +235,7 @@ namespace ConduitLLM.Admin.Controllers
                 // Get threat trend
                 var threatTrend = threatPatterns
                     .GroupBy(t => t.Date)
-                    .Select(g => new
+                    .Select(g => new ThreatTrendPointDto
                     {
                         Date = g.Key,
                         Threats = g.Sum(t => t.FailedAttempts)
@@ -238,7 +243,7 @@ namespace ConduitLLM.Admin.Controllers
                     .OrderBy(t => t.Date)
                     .ToList();
 
-                var result = new
+                var result = new ThreatAnalyticsResponse
                 {
                     Timestamp = now,
                     Metrics = securityMetrics,
@@ -265,30 +270,32 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Compliance information.</returns>
         [HttpGet("compliance")]
+        [ProducesResponseType(typeof(ComplianceMetricsResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetComplianceMetrics(CancellationToken cancellationToken = default)
         {
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-                var complianceData = new
+                var complianceData = new ComplianceMetricsResponse
                 {
                     Timestamp = DateTime.UtcNow,
-                    DataProtection = new
+                    DataProtection = new DataProtectionDto
                     {
                         EncryptedKeys = await dbContext.VirtualKeys.CountAsync(k => k.IsEnabled, cancellationToken),
                         SecureEndpoints = true, // Assuming HTTPS is enforced
                         DataRetentionDays = 90,
                         LastAudit = DateTime.UtcNow.AddDays(-7)
                     },
-                    AccessControl = new
+                    AccessControl = new AccessControlDto
                     {
                         ActiveKeys = await dbContext.VirtualKeys.CountAsync(k => k.IsEnabled, cancellationToken),
                         KeysWithBudgets = await dbContext.VirtualKeyGroups.CountAsync(g => g.Balance > 0, cancellationToken),
                         IpWhitelistEnabled = await dbContext.IpFilters.AnyAsync(f => f.FilterType == "whitelist", cancellationToken),
                         RateLimitingEnabled = true
                     },
-                    Monitoring = new
+                    Monitoring = new ComplianceMonitoringDto
                     {
                         LogRetentionDays = 90,
                         RequestLoggingEnabled = true,

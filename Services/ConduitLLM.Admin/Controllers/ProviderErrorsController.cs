@@ -52,6 +52,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="limit">Maximum number of errors to return (default: 100)</param>
         /// <returns>List of recent provider errors</returns>
         [HttpGet("recent")]
+        [ProducesResponseType(typeof(List<ProviderErrorDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<List<ProviderErrorDto>>> GetRecentErrors(
             [FromQuery] int? providerId = null,
             [FromQuery] int? keyId = null,
@@ -95,6 +97,8 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>List of provider error summaries</returns>
         [HttpGet("summary")]
+        [ProducesResponseType(typeof(List<ProviderErrorSummaryDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<List<ProviderErrorSummaryDto>>> GetErrorSummary()
         {
             try
@@ -135,6 +139,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="keyId">ID of the key</param>
         /// <returns>Detailed error information for the key</returns>
         [HttpGet("keys/{keyId}")]
+        [ProducesResponseType(typeof(KeyErrorDetailsDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<KeyErrorDetailsDto>> GetKeyErrors(int keyId)
         {
             try
@@ -189,6 +196,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="request">Clear errors request</param>
         /// <returns>Operation result</returns>
         [HttpPost("keys/{keyId}/clear")]
+        [ProducesResponseType(typeof(ClearKeyErrorsResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ClearKeyErrors(
             int keyId,
             [FromBody] ClearErrorsRequest request)
@@ -234,13 +245,13 @@ namespace ConduitLLM.Admin.Controllers
                     }
                 }
 
-                return Ok(new 
-                { 
-                    message = request.ReenableKey 
-                        ? "Errors cleared and key re-enabled successfully" 
+                return Ok(new ClearKeyErrorsResponseDto
+                {
+                    Message = request.ReenableKey
+                        ? "Errors cleared and key re-enabled successfully"
                         : "Errors cleared successfully",
-                    keyId = keyId,
-                    reenabled = request.ReenableKey
+                    KeyId = keyId,
+                    Reenabled = request.ReenableKey
                 });
             }
             catch (Exception ex)
@@ -256,6 +267,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="hours">Time window in hours (default: 24)</param>
         /// <returns>Error statistics</returns>
         [HttpGet("stats")]
+        [ProducesResponseType(typeof(ErrorStatisticsDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ErrorStatisticsDto>> GetErrorStatistics(
             [FromQuery] int hours = 24)
         {
@@ -299,6 +312,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="hours">Time window in hours (default: 1)</param>
         /// <returns>Dictionary of key ID to error count</returns>
         [HttpGet("providers/{providerId}/key-errors")]
+        [ProducesResponseType(typeof(Dictionary<int, int>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<Dictionary<int, int>>> GetErrorCountsByKey(
             int providerId,
             [FromQuery] int hours = 1)
@@ -327,6 +342,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="reason">Reason for disabling</param>
         /// <returns>Operation result</returns>
         [HttpPost("keys/{keyId}/disable")]
+        [ProducesResponseType(typeof(DisableKeyResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DisableKey(
             int keyId,
             [FromBody] string reason)
@@ -344,10 +362,10 @@ namespace ConduitLLM.Admin.Controllers
                     "Manually disabled key {KeyId} by {User}: {Reason}",
                     keyId, User.Identity?.Name, reason);
 
-                return Ok(new 
-                { 
-                    message = "Key disabled successfully",
-                    keyId = keyId
+                return Ok(new DisableKeyResponseDto
+                {
+                    Message = "Key disabled successfully",
+                    KeyId = keyId
                 });
             }
             catch (Exception ex)

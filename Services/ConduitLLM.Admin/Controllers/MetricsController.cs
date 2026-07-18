@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration;
 
 using Microsoft.AspNetCore.Authorization;
@@ -40,19 +41,21 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Connection pool metrics.</returns>
         [HttpGet("database/pool")]
+        [ProducesResponseType(typeof(DatabasePoolMetricsDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetDatabasePoolMetrics(CancellationToken cancellationToken = default)
         {
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var connection = dbContext.Database.GetDbConnection() as NpgsqlConnection;
-                
+
                 if (connection == null)
                 {
-                    return Ok(new
+                    return Ok(new DatabasePoolMetricsUnavailableDto
                     {
-                        provider = "non-postgresql",
-                        message = "Connection pool metrics only available for PostgreSQL"
+                        Provider = "non-postgresql",
+                        Message = "Connection pool metrics only available for PostgreSQL"
                     });
                 }
 
@@ -70,32 +73,32 @@ namespace ConduitLLM.Admin.Controllers
                 // We can only infer pool health from connection acquisition time
                 // For detailed monitoring, use PostgreSQL's pg_stat_activity or external monitoring tools
                 
-                var metrics = new
+                var metrics = new DatabasePoolMetricsDto
                 {
-                    timestamp = DateTime.UtcNow,
-                    provider = "postgresql",
-                    connectionString = new
+                    Timestamp = DateTime.UtcNow,
+                    Provider = "postgresql",
+                    ConnectionString = new DatabasePoolConnectionInfoDto
                     {
-                        host = builder.Host,
-                        port = builder.Port,
-                        database = builder.Database,
-                        applicationName = builder.ApplicationName ?? "Conduit Gateway API"
+                        Host = builder.Host,
+                        Port = builder.Port,
+                        Database = builder.Database,
+                        ApplicationName = builder.ApplicationName ?? "Conduit Gateway API"
                     },
-                    poolConfiguration = new
+                    PoolConfiguration = new DatabasePoolConfigurationDto
                     {
-                        minPoolSize = builder.MinPoolSize,
-                        maxPoolSize = builder.MaxPoolSize,
-                        connectionLifetime = builder.ConnectionLifetime,
-                        connectionIdleLifetime = builder.ConnectionIdleLifetime,
-                        pooling = builder.Pooling
+                        MinPoolSize = builder.MinPoolSize,
+                        MaxPoolSize = builder.MaxPoolSize,
+                        ConnectionLifetime = builder.ConnectionLifetime,
+                        ConnectionIdleLifetime = builder.ConnectionIdleLifetime,
+                        Pooling = builder.Pooling
                     },
-                    currentMetrics = new
+                    CurrentMetrics = new DatabasePoolCurrentMetricsDto
                     {
-                        connectionAcquisitionTimeMs = stopwatch.ElapsedMilliseconds,
-                        healthStatus = GetHealthStatus(stopwatch.ElapsedMilliseconds),
+                        ConnectionAcquisitionTimeMs = stopwatch.ElapsedMilliseconds,
+                        HealthStatus = GetHealthStatus(stopwatch.ElapsedMilliseconds),
                         // Additional metrics can be obtained from pg_stat_activity if needed
                         // but we avoid that here to prevent performance impact
-                        note = "For detailed pool statistics, query pg_stat_activity directly or use monitoring tools"
+                        Note = "For detailed pool statistics, query pg_stat_activity directly or use monitoring tools"
                     }
                 };
 
@@ -114,6 +117,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Comprehensive application metrics.</returns>
         [HttpGet]
+        [ProducesResponseType(typeof(AllMetricsDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllMetrics(CancellationToken cancellationToken = default)
         {
             try
@@ -122,23 +127,23 @@ namespace ConduitLLM.Admin.Controllers
                 var poolMetricsResult = await GetDatabasePoolMetrics(cancellationToken);
                 var poolMetrics = (poolMetricsResult as OkObjectResult)?.Value;
 
-                var allMetrics = new
+                var allMetrics = new AllMetricsDto
                 {
-                    timestamp = DateTime.UtcNow,
-                    application = new
+                    Timestamp = DateTime.UtcNow,
+                    Application = new ApplicationInfoDto
                     {
-                        name = "Conduit Gateway API",
-                        version = typeof(MetricsController).Assembly.GetName().Version?.ToString() ?? "unknown",
-                        environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
+                        Name = "Conduit Gateway API",
+                        Version = typeof(MetricsController).Assembly.GetName().Version?.ToString() ?? "unknown",
+                        Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
                     },
-                    database = poolMetrics,
-                    system = new
+                    Database = poolMetrics,
+                    System = new SystemMetricsDto
                     {
-                        cpuCount = Environment.ProcessorCount,
-                        workingSetMb = Environment.WorkingSet / 1024 / 1024,
-                        gcMemoryMb = GC.GetTotalMemory(false) / 1024 / 1024,
-                        threadCount = Process.GetCurrentProcess().Threads.Count,
-                        uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime()
+                        CpuCount = Environment.ProcessorCount,
+                        WorkingSetMb = Environment.WorkingSet / 1024 / 1024,
+                        GcMemoryMb = GC.GetTotalMemory(false) / 1024 / 1024,
+                        ThreadCount = Process.GetCurrentProcess().Threads.Count,
+                        Uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime()
                     }
                 };
 
