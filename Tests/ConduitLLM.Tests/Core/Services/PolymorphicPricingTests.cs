@@ -338,6 +338,96 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task CalculateCost_PerImage_CamelCaseJson_ReturnsNonZeroCost()
+        {
+            // Regression test: documented/WebAdmin-produced PricingConfiguration is camelCase
+            // (e.g. {"baseRate":0.05}). Case-sensitive parsing silently yielded BaseRate=0
+            // and billed $0.00 for media generation.
+            // Arrange
+            var modelId = "minimax/image-01";
+            var usage = new Usage
+            {
+                ImageCount = 2
+            };
+
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerImage,
+                PricingConfiguration = "{\"baseRate\":0.05}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            Assert.Equal(0.10m, cost); // 2 images * 0.05 base rate
+        }
+
+        [Fact]
+        public async Task CalculateCost_PerImage_CamelCaseJsonWithMultipliers_AppliesMultipliers()
+        {
+            // Arrange
+            var modelId = "replicate/flux-pro";
+            var usage = new Usage
+            {
+                ImageCount = 1,
+                ImageQuality = "hd",
+                ImageResolution = "1792x1024"
+            };
+
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerImage,
+                PricingConfiguration =
+                    "{\"baseRate\":0.04,\"qualityMultipliers\":{\"hd\":2.0},\"resolutionMultipliers\":{\"1792x1024\":1.5}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            Assert.Equal(0.12m, cost); // 1 image * 0.04 base * 2.0 quality * 1.5 resolution
+        }
+
+        [Fact]
+        public async Task CalculateCost_PerSecondVideo_CamelCaseJson_ReturnsNonZeroCost()
+        {
+            // Regression test: camelCase config must not deserialize BaseRate=0 (silent $0 billing).
+            // Arrange
+            var modelId = "replicate/minimax-video";
+            var usage = new Usage
+            {
+                VideoDurationSeconds = 10,
+                VideoResolution = "1080p"
+            };
+
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerSecondVideo,
+                PricingConfiguration =
+                    "{\"baseRate\":0.09,\"resolutionMultipliers\":{\"720p\":1.0,\"1080p\":1.5}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            Assert.Equal(1.35m, cost); // 10 seconds * 0.09 * 1.5
+        }
+
+        [Fact]
         public async Task CalculateCost_Standard_WithBatchProcessing()
         {
             // Arrange
