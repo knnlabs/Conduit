@@ -45,7 +45,8 @@ services:
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Database=Host=postgres;Database=conduit;Username=conduit;Password=conduit123
       - ConnectionStrings__RedisSignalR=redis-signalr:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000
-      - CONDUIT_SKIP_DATABASE_INIT=true
+      # All instances may run in the default Apply migration mode - the Postgres
+      # advisory lock serializes them (docs/operations/deployment/migration-deployment-strategy.md)
     ports:
       - "5000:5000"
     depends_on:
@@ -60,7 +61,8 @@ services:
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Database=Host=postgres;Database=conduit;Username=conduit;Password=conduit123
       - ConnectionStrings__RedisSignalR=redis-signalr:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000
-      - CONDUIT_SKIP_DATABASE_INIT=true
+      # All instances may run in the default Apply migration mode - the Postgres
+      # advisory lock serializes them (docs/operations/deployment/migration-deployment-strategy.md)
     ports:
       - "5001:5000"
     depends_on:
@@ -75,7 +77,8 @@ services:
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Database=Host=postgres;Database=conduit;Username=conduit;Password=conduit123
       - ConnectionStrings__RedisSignalR=redis-signalr:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000
-      - CONDUIT_SKIP_DATABASE_INIT=true
+      # All instances may run in the default Apply migration mode - the Postgres
+      # advisory lock serializes them (docs/operations/deployment/migration-deployment-strategy.md)
     ports:
       - "5002:5000"
     depends_on:
@@ -148,21 +151,20 @@ sleep 5
 export ASPNETCORE_URLS=http://localhost:5000
 export ConnectionStrings__Database="Host=localhost;Database=conduit;Username=conduit;Password=conduit123"
 export ConnectionStrings__RedisSignalR="localhost:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000"
-export CONDUIT_SKIP_DATABASE_INIT=false  # Only for first instance
+# No migration flags needed: all instances default to Apply mode and the
+# Postgres advisory lock serializes them.
 dotnet run --project ConduitLLM.Gateway
 
 # Terminal 4: Second API instance
 export ASPNETCORE_URLS=http://localhost:5001
 export ConnectionStrings__Database="Host=localhost;Database=conduit;Username=conduit;Password=conduit123"
 export ConnectionStrings__RedisSignalR="localhost:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000"
-export CONDUIT_SKIP_DATABASE_INIT=true
 dotnet run --project ConduitLLM.Gateway
 
 # Terminal 5: Third API instance
 export ASPNETCORE_URLS=http://localhost:5002
 export ConnectionStrings__Database="Host=localhost;Database=conduit;Username=conduit;Password=conduit123"
 export ConnectionStrings__RedisSignalR="localhost:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000"
-export CONDUIT_SKIP_DATABASE_INIT=true
 dotnet run --project ConduitLLM.Gateway
 ```
 

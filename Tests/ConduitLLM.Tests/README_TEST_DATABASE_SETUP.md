@@ -8,7 +8,7 @@ Integration tests that use `WebApplicationFactory` need special configuration to
 
 We've implemented a custom `TestWebApplicationFactory` that:
 
-1. Sets `CONDUIT_SKIP_DATABASE_INIT=true` environment variable before the application starts
+1. Sets `CONDUIT_MIGRATION_MODE=Skip` environment variable before the application starts
 2. Configures default in-memory SQLite connection strings for tests
 3. Sets the environment to "Test"
 
@@ -62,7 +62,7 @@ For tests that specifically test health endpoints, you may need to:
 ## Environment Variables
 
 The following environment variables are set automatically by `TestWebApplicationFactory`:
-- `CONDUIT_SKIP_DATABASE_INIT=true` - Skips database migration/initialization
+- `CONDUIT_MIGRATION_MODE=Skip` - Skips database migration/initialization
 - `ASPNETCORE_ENVIRONMENT=Test` - Sets the environment to Test
 
 ## Connection Strings
