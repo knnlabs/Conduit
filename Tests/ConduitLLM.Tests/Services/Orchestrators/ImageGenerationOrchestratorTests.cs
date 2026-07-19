@@ -310,6 +310,55 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
+        public async Task HandleAsync_WhenAllImageStorageFails_ShouldBillProviderGeneratedImages()
+        {
+            // Arrange
+            var request = CreateTestEventRequest();
+            var response = new ConduitLLM.Core.Models.ImageGenerationResponse
+            {
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Data = Enumerable.Range(0, 2)
+                    .Select(_ => new ConduitLLM.Core.Models.ImageData
+                    {
+                        B64Json = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+                    })
+                    .ToList()
+            };
+            SetupSuccessfulGeneration(response);
+
+            StorageServiceMock.Setup(x => x.StoreAsync(
+                    It.IsAny<Stream>(),
+                    It.IsAny<MediaMetadata>(),
+                    It.IsAny<IProgress<long>>()))
+                .ThrowsAsync(new InvalidOperationException("Storage unavailable"));
+
+            // Act
+            await Orchestrator.HandleAsync(request, CreateEventContext());
+
+            // Assert: storage failures do not change the provider-generated usage or spend.
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                "provider-model-id",
+                It.Is<Usage>(usage => usage.ImageCount == 2),
+                It.IsAny<CancellationToken>()), Times.Once);
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<SpendUpdateRequested>(spend => spend.KeyId == 1 && spend.Amount == 0.01m),
+                It.IsAny<CancellationToken>()), Times.Once);
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<ImageGenerationCompleted>(completed =>
+                    completed.TaskId == request.TaskId &&
+                    completed.Images.Count == 0 &&
+                    completed.Cost == 0.01m),
+                It.IsAny<CancellationToken>()), Times.Once);
+            TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                request.TaskId,
+                TaskState.Completed,
+                It.IsAny<int?>(),
+                It.IsAny<object?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task HandleAsync_WhenEstimatedCostCannotBeReserved_ShouldNotCallProvider()
         {
             // Arrange
