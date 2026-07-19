@@ -29,13 +29,18 @@ namespace ConduitLLM.Configuration.Services
         private readonly TimeSpan _flushInterval;
         private readonly TimeSpan _reservationTtl;
         private readonly string _redisKeyPrefix = "pending_spend:group:";
+        private readonly string _redisUnitsKeyPrefix = "pending_spend_units:group:";
         private readonly string _processingKeyPrefix = "processing_spend:group:";
+        private readonly string _processingUnitsKeyPrefix = "processing_spend_units:group:";
         private readonly string _keyUsagePrefix = "key_usage:group:";
+        private readonly string _keyUsageUnitsPrefix = "key_usage_units:group:";
         private readonly string _processingKeyUsagePrefix = "processing_key_usage:group:";
+        private readonly string _processingKeyUsageUnitsPrefix = "processing_key_usage_units:group:";
         private readonly string _reservedSpendPrefix = "reserved_spend:group:";
         private readonly string _reservationPrefix = "spend_reservations:group:";
         private readonly string _reservationExpiryPrefix = "spend_reservation_expiry:group:";
         private readonly ConcurrentQueue<(int VirtualKeyId, decimal Cost)> _fallbackQueue = new();
+        private const decimal SpendUnitScale = 100_000_000m;
 
         /// <summary>
         /// Event raised after successful batch spend updates with the key hashes that were updated
@@ -157,12 +162,13 @@ namespace ConduitLLM.Configuration.Services
             var db = redis.GetDatabase();
             
             // Use group ID for accumulation
-            var key = $"{_redisKeyPrefix}{groupId}";
-            await db.StringIncrementAsync(key, (double)cost);
+            var costUnits = ToSpendUnits(cost);
+            var key = $"{_redisUnitsKeyPrefix}{groupId}";
+            await db.StringIncrementAsync(key, costUnits);
             
             // Also track which key was used (for transaction history)
-            var keyUsageKey = $"key_usage:group:{groupId}:key:{virtualKeyId}";
-            await db.StringIncrementAsync(keyUsageKey, (double)cost);
+            var keyUsageKey = $"{_keyUsageUnitsPrefix}{groupId}:key:{virtualKeyId}";
+            await db.StringIncrementAsync(keyUsageKey, costUnits);
             
             // Billing data must never have a TTL. It is acknowledged only after the
             // corresponding database debit commits; expiry would silently lose revenue
@@ -191,10 +197,11 @@ namespace ConduitLLM.Configuration.Services
                 var values = await db.StringGetAsync(new RedisKey[]
                 {
                     $"{_redisKeyPrefix}{groupId.Value}",
+                    $"{_redisUnitsKeyPrefix}{groupId.Value}",
                     $"{_reservedSpendPrefix}{groupId.Value}"
                 });
 
-                return ParseRedisDecimal(values[0]) + ParseRedisDecimal(values[1]);
+                return ParseRedisDecimal(values[0]) + ParseRedisUnits(values[1]) + ParseRedisDecimal(values[2]);
             }
             catch (Exception ex)
             {
@@ -238,6 +245,7 @@ namespace ConduitLLM.Configuration.Services
             var reservationExpiryKey = $"{_reservationExpiryPrefix}{keyAndBalance.GroupId}";
             var reservedTotalKey = $"{_reservedSpendPrefix}{keyAndBalance.GroupId}";
             var pendingKey = $"{_redisKeyPrefix}{keyAndBalance.GroupId}";
+            var pendingUnitsKey = $"{_redisUnitsKeyPrefix}{keyAndBalance.GroupId}";
 
             const string script = """
                 local expired = redis.call('ZRANGEBYSCORE', KEYS[4], '-inf', ARGV[4])
@@ -253,6 +261,7 @@ namespace ConduitLLM.Configuration.Services
                     return 1
                 end
                 local pending = tonumber(redis.call('GET', KEYS[1]) or '0')
+                    + (tonumber(redis.call('GET', KEYS[5]) or '0') / tonumber(ARGV[7]))
                 local reserved = tonumber(redis.call('GET', KEYS[2]) or '0')
                 if reserved < 0 then
                     redis.call('DEL', KEYS[2])
@@ -277,7 +286,7 @@ namespace ConduitLLM.Configuration.Services
 
             var result = await db.ScriptEvaluateAsync(
                 script,
-                new RedisKey[] { pendingKey, reservedTotalKey, reservationsKey, reservationExpiryKey },
+                new RedisKey[] { pendingKey, reservedTotalKey, reservationsKey, reservationExpiryKey, pendingUnitsKey },
                 new RedisValue[]
                 {
                     keyAndBalance.Balance.ToString(CultureInfo.InvariantCulture),
@@ -285,7 +294,8 @@ namespace ConduitLLM.Configuration.Services
                     reservationId,
                     now,
                     now + ttlMilliseconds,
-                    ttlMilliseconds
+                    ttlMilliseconds,
+                    SpendUnitScale.ToString(CultureInfo.InvariantCulture)
                 });
 
             return (long)result == 1;
@@ -349,6 +359,18 @@ namespace ConduitLLM.Configuration.Services
                 CultureInfo.InvariantCulture,
                 out var amount)
                 ? amount
+                : 0m;
+        }
+
+        private static long ToSpendUnits(decimal amount)
+        {
+            return checked((long)decimal.Round(amount * SpendUnitScale, 0, MidpointRounding.AwayFromZero));
+        }
+
+        private static decimal ParseRedisUnits(RedisValue value)
+        {
+            return value.HasValue && long.TryParse(value.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var units)
+                ? units / SpendUnitScale
                 : 0m;
         }
 
@@ -504,26 +526,33 @@ namespace ConduitLLM.Configuration.Services
             }
         }
 
-        /// <summary>
-        /// Parses a group ID from a Redis key string by stripping the key prefix.
-        /// </summary>
-        /// <param name="keyString">The full Redis key string (e.g., "pending_spend:group:42")</param>
-        /// <returns>The parsed group ID</returns>
-        private int ParseGroupIdFromKey(string keyString)
-        {
-            return int.Parse(keyString.Substring(_redisKeyPrefix.Length));
-        }
-
         private async Task<List<SpendClaim>> ClaimPendingSpendAsync(IServer server, IDatabase db)
         {
             var claims = new List<SpendClaim>();
-            var pendingKeys = server.Keys(pattern: $"{_redisKeyPrefix}*").ToList();
+            claims.AddRange(await ClaimPendingSpendAsync(
+                server, db, _redisKeyPrefix, _processingKeyPrefix, _keyUsagePrefix, _processingKeyUsagePrefix, false));
+            claims.AddRange(await ClaimPendingSpendAsync(
+                server, db, _redisUnitsKeyPrefix, _processingUnitsKeyPrefix, _keyUsageUnitsPrefix, _processingKeyUsageUnitsPrefix, true));
+            return claims;
+        }
+
+        private async Task<List<SpendClaim>> ClaimPendingSpendAsync(
+            IServer server,
+            IDatabase db,
+            string pendingPrefix,
+            string processingPrefix,
+            string usagePrefix,
+            string processingUsagePrefix,
+            bool storedAsUnits)
+        {
+            var claims = new List<SpendClaim>();
+            var pendingKeys = server.Keys(pattern: $"{pendingPrefix}*").ToList();
 
             foreach (var pendingKey in pendingKeys)
             {
-                var groupId = ParseGroupIdFromKey(pendingKey.ToString());
+                var groupId = int.Parse(pendingKey.ToString().Substring(pendingPrefix.Length), CultureInfo.InvariantCulture);
                 var claimId = Guid.NewGuid().ToString("N");
-                var processingKey = ProcessingSpendKey(groupId, claimId);
+                var processingKey = $"{processingPrefix}{groupId}:claim:{claimId}";
 
                 bool claimed;
                 try
@@ -543,8 +572,9 @@ namespace ConduitLLM.Configuration.Services
                     continue;
                 }
 
-                var usageKeys = await ClaimKeyUsageAsync(server, db, groupId, claimId);
-                var claim = await ReadClaimAsync(db, processingKey, groupId, claimId, usageKeys);
+                var usageKeys = await ClaimKeyUsageAsync(
+                    server, db, groupId, claimId, usagePrefix, processingUsagePrefix);
+                var claim = await ReadClaimAsync(db, processingKey, groupId, claimId, usageKeys, storedAsUnits);
                 if (claim != null)
                 {
                     claims.Add(claim);
@@ -557,19 +587,34 @@ namespace ConduitLLM.Configuration.Services
         private async Task<List<SpendClaim>> GetProcessingClaimsAsync(IServer server, IDatabase db)
         {
             var claims = new List<SpendClaim>();
-            var processingKeys = server.Keys(pattern: $"{_processingKeyPrefix}*").ToList();
+            claims.AddRange(await GetProcessingClaimsAsync(
+                server, db, _processingKeyPrefix, _processingKeyUsagePrefix, false));
+            claims.AddRange(await GetProcessingClaimsAsync(
+                server, db, _processingUnitsKeyPrefix, _processingKeyUsageUnitsPrefix, true));
+            return claims;
+        }
+
+        private async Task<List<SpendClaim>> GetProcessingClaimsAsync(
+            IServer server,
+            IDatabase db,
+            string processingPrefix,
+            string processingUsagePrefix,
+            bool storedAsUnits)
+        {
+            var claims = new List<SpendClaim>();
+            var processingKeys = server.Keys(pattern: $"{processingPrefix}*").ToList();
 
             foreach (var processingKey in processingKeys)
             {
-                if (!TryParseProcessingSpendKey(processingKey.ToString(), out var groupId, out var claimId))
+                if (!TryParseProcessingSpendKey(processingKey.ToString(), processingPrefix, out var groupId, out var claimId))
                 {
                     _logger.LogWarning("Ignoring malformed batch spend claim key {ClaimKey}", processingKey);
                     continue;
                 }
 
                 var usageKeys = server.Keys(
-                    pattern: $"{_processingKeyUsagePrefix}{groupId}:key:*:claim:{claimId}").ToList();
-                var claim = await ReadClaimAsync(db, processingKey, groupId, claimId, usageKeys);
+                    pattern: $"{processingUsagePrefix}{groupId}:key:*:claim:{claimId}").ToList();
+                var claim = await ReadClaimAsync(db, processingKey, groupId, claimId, usageKeys, storedAsUnits);
                 if (claim != null)
                 {
                     claims.Add(claim);
@@ -583,10 +628,12 @@ namespace ConduitLLM.Configuration.Services
             IServer server,
             IDatabase db,
             int groupId,
-            string claimId)
+            string claimId,
+            string usagePrefix,
+            string processingUsagePrefix)
         {
             var claimedKeys = new List<RedisKey>();
-            var pendingUsageKeys = server.Keys(pattern: $"{_keyUsagePrefix}{groupId}:key:*").ToList();
+            var pendingUsageKeys = server.Keys(pattern: $"{usagePrefix}{groupId}:key:*").ToList();
 
             foreach (var pendingUsageKey in pendingUsageKeys)
             {
@@ -595,7 +642,7 @@ namespace ConduitLLM.Configuration.Services
                     continue;
                 }
 
-                var processingUsageKey = ProcessingKeyUsageKey(groupId, keyId, claimId);
+                var processingUsageKey = $"{processingUsagePrefix}{groupId}:key:{keyId}:claim:{claimId}";
                 bool claimed;
                 try
                 {
@@ -620,10 +667,11 @@ namespace ConduitLLM.Configuration.Services
             RedisKey processingKey,
             int groupId,
             string claimId,
-            List<RedisKey> usageKeys)
+            List<RedisKey> usageKeys,
+            bool storedAsUnits)
         {
             var value = await db.StringGetAsync(processingKey);
-            if (!TryParseRedisAmount(value, out var totalCost))
+            if (!TryParseRedisAmount(value, storedAsUnits, out var totalCost))
             {
                 _logger.LogError("Batch spend claim {ClaimId} for group {GroupId} has an invalid amount", claimId, groupId);
                 return null;
@@ -633,7 +681,7 @@ namespace ConduitLLM.Configuration.Services
             foreach (var usageKey in usageKeys)
             {
                 if (!TryParseProcessingKeyUsageKey(usageKey.ToString(), out var keyId) ||
-                    !TryParseRedisAmount(await db.StringGetAsync(usageKey), out var cost))
+                    !TryParseRedisAmount(await db.StringGetAsync(usageKey), storedAsUnits, out var cost))
                 {
                     continue;
                 }
@@ -652,22 +700,20 @@ namespace ConduitLLM.Configuration.Services
             await db.KeyDeleteAsync(keys);
         }
 
-        private RedisKey ProcessingSpendKey(int groupId, string claimId)
-            => $"{_processingKeyPrefix}{groupId}:claim:{claimId}";
-
-        private RedisKey ProcessingKeyUsageKey(int groupId, int keyId, string claimId)
-            => $"{_processingKeyUsagePrefix}{groupId}:key:{keyId}:claim:{claimId}";
-
-        private bool TryParseProcessingSpendKey(string key, out int groupId, out string claimId)
+        private static bool TryParseProcessingSpendKey(
+            string key,
+            string processingPrefix,
+            out int groupId,
+            out string claimId)
         {
             groupId = default;
             claimId = string.Empty;
-            if (!key.StartsWith(_processingKeyPrefix, StringComparison.Ordinal))
+            if (!key.StartsWith(processingPrefix, StringComparison.Ordinal))
             {
                 return false;
             }
 
-            var parts = key[_processingKeyPrefix.Length..].Split(":claim:", 2, StringSplitOptions.None);
+            var parts = key[processingPrefix.Length..].Split(":claim:", 2, StringSplitOptions.None);
             return parts.Length == 2 &&
                    int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out groupId) &&
                    !string.IsNullOrWhiteSpace(claimId = parts[1]);
@@ -689,12 +735,22 @@ namespace ConduitLLM.Configuration.Services
                    int.TryParse(parts[4], NumberStyles.None, CultureInfo.InvariantCulture, out keyId);
         }
 
-        private static bool TryParseRedisAmount(RedisValue value, out decimal amount)
+        private static bool TryParseRedisAmount(RedisValue value, bool storedAsUnits, out decimal amount)
         {
             amount = default;
-            return value.HasValue &&
-                   double.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) &&
-                   (amount = (decimal)parsed) >= 0;
+            if (!value.HasValue)
+            {
+                return false;
+            }
+
+            if (storedAsUnits)
+            {
+                return long.TryParse(value.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var units) &&
+                       (amount = units / SpendUnitScale) >= 0;
+            }
+
+            return decimal.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out amount) &&
+                   amount >= 0;
         }
 
         private sealed record SpendClaim(

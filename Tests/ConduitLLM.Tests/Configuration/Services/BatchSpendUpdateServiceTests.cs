@@ -278,7 +278,8 @@ namespace ConduitLLM.Tests.Configuration.Services
             // Arrange
             var virtualKeyId = 1;
             var groupId = 1;
-            var cost = 0.05m;
+            var cost = 0.12345678m;
+            const long expectedUnits = 12_345_678;
             
             // Setup virtual key in database
             var virtualKey = new VirtualKey
@@ -292,24 +293,24 @@ namespace ConduitLLM.Tests.Configuration.Services
             
             // Setup Redis mocks
             _mockRedisDb.Setup(x => x.StringIncrementAsync(
-                It.Is<RedisKey>(k => k == $"pending_spend:group:{groupId}"), 
-                It.Is<double>(d => Math.Abs(d - (double)cost) < 0.0001),
+                It.Is<RedisKey>(k => k == $"pending_spend_units:group:{groupId}"),
+                expectedUnits,
                 It.IsAny<CommandFlags>()))
-                .ReturnsAsync((double)cost);
+                .ReturnsAsync(expectedUnits);
             
             _mockRedisDb.Setup(x => x.StringIncrementAsync(
-                It.Is<RedisKey>(k => k == $"key_usage:group:{groupId}:key:{virtualKeyId}"), 
-                It.Is<double>(d => Math.Abs(d - (double)cost) < 0.0001),
+                It.Is<RedisKey>(k => k == $"key_usage_units:group:{groupId}:key:{virtualKeyId}"),
+                expectedUnits,
                 It.IsAny<CommandFlags>()))
-                .ReturnsAsync((double)cost);
+                .ReturnsAsync(expectedUnits);
             
             // Act
             await _service.QueueSpendUpdateAsync(virtualKeyId, cost);
             
             // Assert
             _mockRedisDb.Verify(x => x.StringIncrementAsync(
-                It.Is<RedisKey>(k => k == $"pending_spend:group:{groupId}"), 
-                It.IsAny<double>(),
+                It.Is<RedisKey>(k => k == $"pending_spend_units:group:{groupId}"),
+                expectedUnits,
                 It.IsAny<CommandFlags>()), 
                 Times.Once);
 
@@ -320,8 +321,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                 It.IsAny<CommandFlags>()), Times.Never);
             
             _mockRedisDb.Verify(x => x.StringIncrementAsync(
-                It.Is<RedisKey>(k => k == $"key_usage:group:{groupId}:key:{virtualKeyId}"), 
-                It.IsAny<double>(),
+                It.Is<RedisKey>(k => k == $"key_usage_units:group:{groupId}:key:{virtualKeyId}"),
+                expectedUnits,
                 It.IsAny<CommandFlags>()), 
                 Times.Once);
         }
@@ -366,17 +367,18 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             _mockRedisDb.Setup(x => x.StringGetAsync(
                     It.Is<RedisKey[]>(keys =>
-                        keys.Length == 2 &&
+                        keys.Length == 3 &&
                         keys[0] == $"pending_spend:group:{groupId}" &&
-                        keys[1] == $"reserved_spend:group:{groupId}"),
+                        keys[1] == $"pending_spend_units:group:{groupId}" &&
+                        keys[2] == $"reserved_spend:group:{groupId}"),
                     It.IsAny<CommandFlags>()))
-                .ReturnsAsync(new RedisValue[] { "3.25", "1.75" });
+                .ReturnsAsync(new RedisValue[] { "3.25", "125000000", "1.75" });
 
             // Act
             var pendingSpend = await _service.GetPendingSpendAsync(virtualKeyId);
 
             // Assert
-            Assert.Equal(5.00m, pendingSpend);
+            Assert.Equal(6.25m, pendingSpend);
         }
 
         [Fact]
@@ -406,7 +408,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                         keys[0] == $"pending_spend:group:{groupId}" &&
                         keys[1] == $"reserved_spend:group:{groupId}" &&
                         keys[2] == $"spend_reservations:group:{groupId}" &&
-                        keys[3] == $"spend_reservation_expiry:group:{groupId}"),
+                        keys[3] == $"spend_reservation_expiry:group:{groupId}" &&
+                        keys[4] == $"pending_spend_units:group:{groupId}"),
                     It.Is<RedisValue[]>(values =>
                         values[0] == "10" && values[1] == "4.5" && values[2] == "request-123"),
                     It.IsAny<CommandFlags>()))
