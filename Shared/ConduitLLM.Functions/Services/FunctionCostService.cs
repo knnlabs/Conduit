@@ -221,8 +221,7 @@ public class FunctionCostService : IFunctionCostService
 
             var costId = await _functionCostRepository.CreateAsync(cost, cancellationToken);
 
-            // Clear cache
-            await ClearCacheAsync();
+            await InvalidateCacheAsync(costId, []);
 
             _logger.LogInformation("Created function cost: {CostName} (ID={CostId})", cost.CostName, costId);
             return costId;
@@ -244,12 +243,12 @@ public class FunctionCostService : IFunctionCostService
 
         try
         {
+            var affectedConfigurationIds = await GetMappedConfigurationIdsAsync(cost.Id, cancellationToken);
             cost.UpdatedAt = DateTime.UtcNow;
 
             await _functionCostRepository.UpdateAsync(cost, cancellationToken);
 
-            // Clear cache
-            await ClearCacheAsync();
+            await InvalidateCacheAsync(cost.Id, affectedConfigurationIds);
 
             _logger.LogInformation("Updated function cost: {CostName} (ID={CostId})", cost.CostName, cost.Id);
         }
@@ -270,10 +269,10 @@ public class FunctionCostService : IFunctionCostService
 
         try
         {
+            var affectedConfigurationIds = await GetMappedConfigurationIdsAsync(costId, cancellationToken);
             await _functionCostRepository.DeleteAsync(costId, cancellationToken);
 
-            // Clear cache
-            await ClearCacheAsync();
+            await InvalidateCacheAsync(costId, affectedConfigurationIds);
 
             _logger.LogInformation("Deleted function cost: ID={CostId}", costId);
         }
@@ -287,11 +286,40 @@ public class FunctionCostService : IFunctionCostService
     /// <inheritdoc />
     public async Task ClearCacheAsync()
     {
+        await InvalidateCacheAsync(null, []);
+    }
+
+    private async Task<List<int>> GetMappedConfigurationIdsAsync(
+        int costId,
+        CancellationToken cancellationToken)
+    {
+        var existingCost = await _functionCostRepository.GetByIdAsync(costId, cancellationToken);
+        return existingCost?.FunctionMappings
+            .Select(mapping => mapping.FunctionConfigurationId)
+            .Distinct()
+            .ToList() ?? [];
+    }
+
+    private async Task InvalidateCacheAsync(int? costId, IEnumerable<int> functionConfigurationIds)
+    {
         try
         {
-            // Clear all function cost related keys from memory cache
-            // Note: IMemoryCache doesn't provide a way to enumerate keys, so we track them
-            var keysToRemove = new[] { AllCostsCacheKey, $"{AllCostsCacheKey}_Active" };
+            var keysToRemove = new HashSet<string>
+            {
+                AllCostsCacheKey,
+                $"{AllCostsCacheKey}_Active"
+            };
+
+            if (costId.HasValue)
+            {
+                keysToRemove.Add($"{CacheKeyPrefix}Id_{costId.Value}");
+            }
+
+            foreach (var functionConfigurationId in functionConfigurationIds)
+            {
+                keysToRemove.Add($"{CacheKeyPrefix}Config_{functionConfigurationId}");
+            }
+
             foreach (var key in keysToRemove)
             {
                 _memoryCache.Remove(key);
@@ -306,7 +334,10 @@ public class FunctionCostService : IFunctionCostService
                 }
             }
 
-            _logger.LogInformation("Cleared function cost caches");
+            _logger.LogInformation(
+                "Cleared {CacheKeyCount} function cost cache entries for CostId={CostId}",
+                keysToRemove.Count,
+                costId);
         }
         catch (Exception ex)
         {
