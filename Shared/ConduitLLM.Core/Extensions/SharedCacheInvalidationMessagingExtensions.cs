@@ -1,9 +1,7 @@
-using ConduitLLM.Configuration.Messaging.MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Consumers;
 using ConduitLLM.Core.Events;
-
-using MassTransit;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -38,15 +36,6 @@ namespace ConduitLLM.Core.Extensions
             typeof(FunctionConfigurationChanged),
             typeof(FunctionDiscoveryCacheInvalidationRequested),
         };
-
-        /// <summary>Registers the MassTransit bridge consumers for the shared Core cache events.</summary>
-        public static void AddSharedCacheInvalidationBridges(this IRegistrationConfigurator x)
-        {
-            foreach (var eventType in BridgedEventTypes)
-            {
-                x.AddEventBridge(eventType);
-            }
-        }
 
         /// <summary>Registers the Wolverine bridge handlers for the shared Core cache events (#925).</summary>
         public static void AddSharedCacheInvalidationBridges(this WolverineOptions options)

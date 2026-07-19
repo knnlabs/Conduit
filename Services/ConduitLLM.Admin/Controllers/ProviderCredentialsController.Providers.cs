@@ -5,7 +5,6 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;

@@ -1,4 +1,3 @@
-using MassTransit;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
@@ -78,7 +77,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex, 
                     "Failed to queue cache invalidation for newly created key {KeyId} (hash: {KeyHash})", 
                     @event.KeyId, @event.KeyHash);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the event bus retry policy
             }
         }
 
@@ -111,7 +110,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex, 
                     "Failed to queue cache invalidation for deleted key {KeyId} (hash: {KeyHash})", 
                     @event.KeyId, @event.KeyHash);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the event bus retry policy
             }
         }
 
@@ -142,7 +141,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex, 
                     "Failed to queue cache invalidation after spend update for key {KeyId} (hash: {KeyHash})", 
                     @event.KeyId, @event.KeyHash);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the event bus retry policy
             }
         }
     }

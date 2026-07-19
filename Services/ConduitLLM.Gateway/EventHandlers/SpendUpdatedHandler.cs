@@ -1,4 +1,3 @@
-using MassTransit;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using CoreInterfaces = ConduitLLM.Core.Interfaces;

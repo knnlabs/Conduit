@@ -7,8 +7,8 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// <summary>
     /// Generic Wolverine handler that bridges a delivered <typeparamref name="TEvent"/>
     /// to every registered <see cref="IEventHandler{TEvent}"/> — the consume half of the
-    /// Wolverine backend (epic #909, I2.2/#925) and the exact mirror of
-    /// <c>MassTransitConsumerBridge&lt;TEvent&gt;</c>.
+    /// Wolverine backend (epic #909, I2.2/#925) and the exact mirror of the
+    /// previous backend's consumer bridge.
     /// </summary>
     /// <remarks>
     /// Conventional discovery is disabled (see <c>WolverineMessagingExtensions</c>);
@@ -20,7 +20,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// <para>
     /// Handlers are invoked sequentially. An exception from any handler propagates to
     /// Wolverine, triggering the endpoint's retry / redelivery policy — identical to the
-    /// MassTransit bridge's behavior. Event types delivered to more than one handler are
+    /// previous backend's bridge behavior. Event types delivered to more than one handler are
     /// all idempotent cache/notification handlers; the ordered/financial/deferred
     /// endpoints each have exactly one handler.
     /// </para>
@@ -52,7 +52,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
             foreach (var handler in _handlers)
             {
                 // Let exceptions propagate so Wolverine applies the endpoint retry /
-                // redelivery policy, exactly as the MassTransit bridge does.
+                // redelivery policy, exactly as the previous backend's bridge did.
                 await handler.HandleAsync(message, eventContext);
             }
         }

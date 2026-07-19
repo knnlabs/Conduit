@@ -40,7 +40,6 @@
 
 
   <ItemGroup>
-    <PackageReference Include="MassTransit" Version="8.5.7" />
     <!-- Wolverine backend of the messaging abstraction (epic #909 Phase 2, #924).
          Spike-verified on this toolchain: docs/architecture/messaging-migration/spike-wolverine-postgres.md -->
     <PackageReference Include="WolverineFx" Version="6.14.0" />

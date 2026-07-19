@@ -162,7 +162,7 @@ namespace ConduitLLM.Gateway.Controllers
                 // Update the request with the actual task ID
                 generationRequest = generationRequest with { TaskId = taskId };
 
-                // Publish the event directly to MassTransit for immediate processing
+                // Publish the event directly to the event bus for immediate processing
                 PublishEventFireAndForget(generationRequest, "create async image generation", new { TaskId = taskId, Model = modelName });
                 
                 _logger.LogInformation("Created async image generation task {TaskId} for model {Model} and published event",

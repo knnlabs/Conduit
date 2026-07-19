@@ -1,4 +1,3 @@
-using MassTransit;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
@@ -77,7 +76,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                     "Failed to record media lifecycle for {MediaType} at {StorageKey}", 
                     @event.MediaType,
                     @event.StorageKey);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the event bus retry policy
             }
         }
     }

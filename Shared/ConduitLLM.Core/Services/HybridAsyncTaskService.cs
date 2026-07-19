@@ -1,6 +1,5 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 

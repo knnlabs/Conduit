@@ -3,7 +3,7 @@ namespace ConduitLLM.Configuration.Messaging
     /// <summary>
     /// The four hand-tuned receive endpoints expressed declaratively as
     /// <see cref="EndpointPolicy"/> data. Each value is a faithful transcription of the
-    /// imperative MassTransit configuration in the Gateway's <c>Program.Messaging.cs</c>,
+    /// imperative endpoint configuration in the Gateway's <c>Program.Messaging.cs</c>,
     /// so a backend can translate the descriptor back into identical behavior and the
     /// Wolverine backend can consume the same data (epic #909, issues #917 / #926).
     /// </summary>

@@ -3,7 +3,6 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Gateway.Services;
 using StackExchange.Redis;
-using MassTransit;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Services;
 

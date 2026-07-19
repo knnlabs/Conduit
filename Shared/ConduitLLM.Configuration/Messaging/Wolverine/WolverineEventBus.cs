@@ -6,10 +6,10 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// <see cref="IEventBus"/> implementation that delegates to Wolverine's
     /// <see cref="IMessageBus"/>. This is the Phase 2 backend of the messaging
     /// abstraction (epic #909, I2.2/#925): call sites are identical to the
-    /// MassTransit backend — routing is by the closed generic event type.
+    /// previous backend — routing is by the closed generic event type.
     /// </summary>
     /// <remarks>
-    /// Registered scoped, like <c>MassTransitEventBus</c>: Wolverine's
+    /// Registered scoped, like the previous backend's event bus: Wolverine's
     /// <see cref="IMessageBus"/> is itself scoped, and inside a handler scope it is the
     /// active <see cref="IMessageContext"/>, so follow-on publishes from handlers flow
     /// through the current envelope (correlation-aware) and flush atomically with

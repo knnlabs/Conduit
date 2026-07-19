@@ -2,7 +2,6 @@ using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
-using MassTransit;
 
 namespace ConduitLLM.Gateway.Consumers
 {

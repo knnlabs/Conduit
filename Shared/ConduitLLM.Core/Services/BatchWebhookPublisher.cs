@@ -226,7 +226,7 @@ namespace ConduitLLM.Core.Services
                     
                     try
                     {
-                        // Use the batch publish path for efficiency (MassTransit PublishBatch underneath)
+                        // Use the batch publish path for efficiency (IEventBus.PublishBatchAsync)
                         using var scope = _serviceProvider.CreateScope();
                         var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
                         await eventBus.PublishBatchAsync(webhooks);
