@@ -12,6 +12,7 @@ public class DirectApiVirtualKeyServiceTests
     private readonly Mock<IVirtualKeyRepository> _virtualKeyRepository = new();
     private readonly Mock<IVirtualKeyGroupRepository> _groupRepository = new();
     private readonly Mock<IVirtualKeySpendHistoryRepository> _spendHistoryRepository = new();
+    private readonly Mock<IBatchSpendUpdateService> _batchSpendService = new();
     private readonly DirectApiVirtualKeyService _service;
 
     public DirectApiVirtualKeyServiceTests()
@@ -21,7 +22,41 @@ public class DirectApiVirtualKeyServiceTests
             _groupRepository.Object,
             _spendHistoryRepository.Object,
             null,
-            Mock.Of<ILogger<DirectApiVirtualKeyService>>());
+            Mock.Of<ILogger<DirectApiVirtualKeyService>>(),
+            _batchSpendService.Object);
+    }
+
+    [Fact]
+    public async Task ValidateVirtualKeyAsync_WhenGroupPendingSpendConsumesBalance_ReturnsNull()
+    {
+        const string keyValue = "condt_pending_spend";
+        var virtualKey = new VirtualKey
+        {
+            Id = 17,
+            VirtualKeyGroupId = 42,
+            IsEnabled = true
+        };
+        var group = new VirtualKeyGroup
+        {
+            Id = virtualKey.VirtualKeyGroupId,
+            Balance = 5m
+        };
+
+        _virtualKeyRepository
+            .Setup(repository => repository.GetByKeyHashAsync(
+                ConduitLLM.Configuration.Utilities.VirtualKeyUtilities.HashKey(keyValue)))
+            .ReturnsAsync(virtualKey);
+        _groupRepository.Setup(repository => repository.GetByIdAsync(group.Id))
+            .ReturnsAsync(group);
+        _batchSpendService.Setup(service => service.GetPendingSpendAsync(virtualKey.Id))
+            .ReturnsAsync(group.Balance);
+
+        var result = await _service.ValidateVirtualKeyAsync(keyValue);
+
+        Assert.Null(result);
+        _batchSpendService.Verify(
+            service => service.GetPendingSpendAsync(virtualKey.Id),
+            Times.Once);
     }
 
     [Fact]
