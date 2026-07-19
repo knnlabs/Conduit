@@ -66,6 +66,8 @@ public class FunctionExecutionService : IFunctionExecutionService
 
         var stopwatch = Stopwatch.StartNew();
         FunctionExecution? execution = null;
+        var providerExecutionCompleted = false;
+        decimal? incurredCost = null;
 
         try
         {
@@ -146,11 +148,21 @@ public class FunctionExecutionService : IFunctionExecutionService
             var result = await client.ExecuteAsync(parameters, credential.ApiKey, cancellationToken);
 
             stopwatch.Stop();
+            providerExecutionCompleted = true;
+
+            // Preserve the provider result before cost calculation/persistence. Any failure after
+            // this point is internal bookkeeping; the external call has already been incurred.
+            execution.State = result.IsSuccess ? ExecutionState.Completed : ExecutionState.Failed;
+            execution.CompletedAt = DateTime.UtcNow;
+            execution.Duration = stopwatch.Elapsed;
+            execution.ResponseJson = result.ResponseJson;
+            execution.ErrorMessage = result.ErrorMessage;
 
             // 6. Calculate actual usage and cost
             var usage = client.CalculateUsageFromResponse(parameters, result);
             var actualCost = await _costCalculationService.CalculateCostAsync(
                 functionConfigurationId, usage, cancellationToken);
+            incurredCost = actualCost;
 
             _logger.LogInformation("Function execution completed. Estimated: ${Estimated:F4}, Actual: ${Actual:F4}, Duration: {Duration}ms",
                 estimatedCost, actualCost, stopwatch.ElapsedMilliseconds);
@@ -164,11 +176,6 @@ public class FunctionExecutionService : IFunctionExecutionService
                 httpStatusCode = result.HttpStatusCode
             };
 
-            execution.State = result.IsSuccess ? ExecutionState.Completed : ExecutionState.Failed;
-            execution.CompletedAt = DateTime.UtcNow;
-            execution.Duration = stopwatch.Elapsed;
-            execution.ResponseJson = result.ResponseJson;
-            execution.ErrorMessage = result.ErrorMessage;
             execution.CostCalculationDetails = JsonSerializer.Serialize(costDetails, _jsonOptions);
             execution.ActualCost = actualCost;
 
@@ -223,7 +230,9 @@ public class FunctionExecutionService : IFunctionExecutionService
                     execution.CompletedAt = DateTime.UtcNow;
                     execution.Duration = stopwatch.Elapsed;
                     execution.ErrorMessage = ex.Message;
-                    execution.ActualCost = 0m;
+                    execution.ActualCost = providerExecutionCompleted
+                        ? incurredCost ?? execution.ActualCost ?? execution.EstimatedCost ?? 0m
+                        : 0m;
 
                     await _executionRepository.UpdateAsync(execution, cancellationToken);
                 }
@@ -232,6 +241,13 @@ public class FunctionExecutionService : IFunctionExecutionService
             {
                 _logger.LogError(recordEx, "Failed to record execution error for function {ConfigId}",
                     functionConfigurationId);
+            }
+
+            if (providerExecutionCompleted && execution != null)
+            {
+                // Return a failed, billable execution so callers can charge the incurred provider
+                // cost even when usage calculation or persistence failed after provider success.
+                return execution;
             }
 
             throw;

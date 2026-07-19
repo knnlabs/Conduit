@@ -208,12 +208,15 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
 
             stopwatch.Stop();
 
+            // Failed provider executions and post-execution bookkeeping failures can still incur
+            // a provider charge. Always propagate the recorded cost into the aggregate result.
+            singleResult.Cost = execution.ActualCost ?? execution.EstimatedCost ?? 0m;
+
             // Check execution state
             if (execution.State == Functions.Enums.ExecutionState.Completed)
             {
                 singleResult.Success = true;
                 singleResult.FunctionExecution = execution;
-                singleResult.Cost = execution.ActualCost ?? execution.EstimatedCost ?? 0m;
                 singleResult.Result = execution.ResponseJson;
 
                 _logger.LogInformation("Function {FunctionName} completed successfully. Cost: ${Cost}, Duration: {Duration}ms",
