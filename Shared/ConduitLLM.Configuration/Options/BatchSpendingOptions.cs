@@ -32,7 +32,8 @@ namespace ConduitLLM.Configuration.Options
         public int MaximumIntervalSeconds { get; set; } = 21600; // 6 hours
 
         /// <summary>
-        /// Redis TTL in hours for pending spend keys
+        /// TTL in hours for temporary spend-reservation keys. Pending and processing spend
+        /// keys do not expire because they contain unbilled financial data.
         /// </summary>
         [Range(1, 168)] // 1 hour to 1 week
         public int RedisTtlHours { get; set; } = 24;
@@ -46,15 +47,16 @@ namespace ConduitLLM.Configuration.Options
             var clampedInterval = Math.Max(MinimumIntervalSeconds, 
                 Math.Min(FlushIntervalSeconds, MaximumIntervalSeconds));
 
-            // Additional safety check: ensure interval is well below Redis TTL
-            var maxSafeInterval = (int)TimeSpan.FromHours(RedisTtlHours - 1).TotalSeconds; // 1 hour buffer
+            // Keep the historical bound for configuration compatibility. RedisTtlHours
+            // now governs reservations rather than durable pending-spend keys.
+            var maxSafeInterval = (int)TimeSpan.FromHours(RedisTtlHours - 1).TotalSeconds;
             clampedInterval = Math.Min(clampedInterval, maxSafeInterval);
 
             return TimeSpan.FromSeconds(clampedInterval);
         }
 
         /// <summary>
-        /// Gets the Redis TTL as TimeSpan
+        /// Gets the temporary spend-reservation TTL as a TimeSpan.
         /// </summary>
         public TimeSpan GetRedisTtl()
         {

@@ -181,6 +181,12 @@ namespace ConduitLLM.Tests.Configuration.Services
             var updatedGroup = await _dbContext.VirtualKeyGroups.FindAsync(groupId);
             Assert.Equal(expectedBalance, updatedGroup.Balance);
             Assert.Equal(usageCost, updatedGroup.LifetimeSpent);
+
+            _mockRedisDb.Verify(x => x.KeyExpireAsync(
+                It.IsAny<RedisKey>(),
+                It.IsAny<TimeSpan?>(),
+                It.IsAny<ExpireWhen>(),
+                It.IsAny<CommandFlags>()), Times.Never);
         }
 
         [Fact]
@@ -267,7 +273,7 @@ namespace ConduitLLM.Tests.Configuration.Services
         }
 
         [Fact]
-        public async Task QueueSpendUpdateAsync_ShouldAccumulateSpendInRedis()
+        public async Task QueueSpendUpdateAsync_ShouldAccumulateSpendWithoutExpiration()
         {
             // Arrange
             var virtualKeyId = 1;
@@ -297,12 +303,6 @@ namespace ConduitLLM.Tests.Configuration.Services
                 It.IsAny<CommandFlags>()))
                 .ReturnsAsync((double)cost);
             
-            _mockRedisDb.Setup(x => x.KeyExpireAsync(
-                It.IsAny<RedisKey>(), 
-                It.IsAny<TimeSpan>(), 
-                It.IsAny<CommandFlags>()))
-                .ReturnsAsync(true);
-            
             // Act
             await _service.QueueSpendUpdateAsync(virtualKeyId, cost);
             
@@ -312,6 +312,12 @@ namespace ConduitLLM.Tests.Configuration.Services
                 It.IsAny<double>(),
                 It.IsAny<CommandFlags>()), 
                 Times.Once);
+
+            _mockRedisDb.Verify(x => x.KeyExpireAsync(
+                It.IsAny<RedisKey>(),
+                It.IsAny<TimeSpan?>(),
+                It.IsAny<ExpireWhen>(),
+                It.IsAny<CommandFlags>()), Times.Never);
             
             _mockRedisDb.Verify(x => x.StringIncrementAsync(
                 It.Is<RedisKey>(k => k == $"key_usage:group:{groupId}:key:{virtualKeyId}"), 

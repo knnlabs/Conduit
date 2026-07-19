@@ -27,7 +27,7 @@ namespace ConduitLLM.Configuration.Services
         private readonly BatchSpendingOptions _options;
         private readonly Timer _flushTimer;
         private readonly TimeSpan _flushInterval;
-        private readonly TimeSpan _redisTtl;
+        private readonly TimeSpan _reservationTtl;
         private readonly string _redisKeyPrefix = "pending_spend:group:";
         private readonly string _processingKeyPrefix = "processing_spend:group:";
         private readonly string _keyUsagePrefix = "key_usage:group:";
@@ -74,10 +74,10 @@ namespace ConduitLLM.Configuration.Services
             }
             
             _flushInterval = _options.GetValidatedFlushInterval();
-            _redisTtl = _options.GetRedisTtl();
-            
-            _logger.LogInformation("BatchSpendUpdateService configured with flush interval: {FlushInterval}, Redis TTL: {RedisTtl}", 
-                _flushInterval, _redisTtl);
+            _reservationTtl = _options.GetRedisTtl();
+            _logger.LogInformation(
+                "BatchSpendUpdateService configured with flush interval: {FlushInterval}; pending billing keys do not expire",
+                _flushInterval);
             
             // Create timer for periodic flushing (in addition to background service)
             _flushTimer = new Timer(FlushPendingUpdatesCallback, null, _flushInterval, _flushInterval);
@@ -164,9 +164,9 @@ namespace ConduitLLM.Configuration.Services
             var keyUsageKey = $"key_usage:group:{groupId}:key:{virtualKeyId}";
             await db.StringIncrementAsync(keyUsageKey, (double)cost);
             
-            // Set TTL for safety
-            await db.KeyExpireAsync(key, _redisTtl);
-            await db.KeyExpireAsync(keyUsageKey, _redisTtl);
+            // Billing data must never have a TTL. It is acknowledged only after the
+            // corresponding database debit commits; expiry would silently lose revenue
+            // during a prolonged database outage or an extended service shutdown.
         }
 
         /// <summary>
@@ -273,7 +273,7 @@ namespace ConduitLLM.Configuration.Services
                 """;
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var ttlMilliseconds = (long)_redisTtl.TotalMilliseconds;
+            var ttlMilliseconds = (long)_reservationTtl.TotalMilliseconds;
 
             var result = await db.ScriptEvaluateAsync(
                 script,
@@ -543,7 +543,6 @@ namespace ConduitLLM.Configuration.Services
                     continue;
                 }
 
-                await db.KeyExpireAsync(processingKey, _redisTtl);
                 var usageKeys = await ClaimKeyUsageAsync(server, db, groupId, claimId);
                 var claim = await ReadClaimAsync(db, processingKey, groupId, claimId, usageKeys);
                 if (claim != null)
@@ -609,7 +608,6 @@ namespace ConduitLLM.Configuration.Services
 
                 if (claimed)
                 {
-                    await db.KeyExpireAsync(processingUsageKey, _redisTtl);
                     claimedKeys.Add(processingUsageKey);
                 }
             }
@@ -871,7 +869,8 @@ namespace ConduitLLM.Configuration.Services
                     ["PendingUpdates"] = keys.Count(),
                     ["TotalPendingCost"] = totalPending,
                     ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds,
-                    ["RedisTtlHours"] = _redisTtl.TotalHours,
+                    ["PendingSpendKeysExpire"] = false,
+                    ["RedisTtlHours"] = _reservationTtl.TotalHours,
                     ["ConfiguredFlushInterval"] = _options.FlushIntervalSeconds,
                     ["MinimumInterval"] = _options.MinimumIntervalSeconds,
                     ["MaximumInterval"] = _options.MaximumIntervalSeconds
