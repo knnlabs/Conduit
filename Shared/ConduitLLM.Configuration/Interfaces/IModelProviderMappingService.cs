@@ -13,6 +13,12 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<Entities.ModelProviderMapping?> GetMappingByModelAliasAsync(string modelAlias);
 
         /// <summary>
+        /// Gets all ENABLED mappings for a model alias in failover order (ascending Priority,
+        /// then Id). Empty list when the alias is unknown.
+        /// </summary>
+        Task<List<Entities.ModelProviderMapping>> GetMappingsByModelAliasAsync(string modelAlias);
+
+        /// <summary>
         /// Validates and creates a new model provider mapping
         /// </summary>
         /// <param name="mapping">The mapping to create</param>

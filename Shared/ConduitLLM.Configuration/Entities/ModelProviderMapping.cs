@@ -56,6 +56,13 @@ namespace ConduitLLM.Configuration.Entities
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
+        /// Routing priority among mappings sharing the same ModelAlias — lower values are
+        /// preferred (0 = primary). Provider-level failover walks enabled mappings in
+        /// ascending priority order.
+        /// </summary>
+        public int Priority { get; set; } = 0;
+
+        /// <summary>
         /// The UTC timestamp when this mapping was created.
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

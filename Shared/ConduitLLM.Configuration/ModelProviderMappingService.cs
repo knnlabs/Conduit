@@ -131,6 +131,25 @@ namespace ConduitLLM.Configuration
             }
         }
 
+        public async Task<List<Entities.ModelProviderMapping>> GetMappingsByModelAliasAsync(string modelAlias)
+        {
+            if (string.IsNullOrEmpty(modelAlias))
+            {
+                throw new ArgumentException("Model alias cannot be null or empty", nameof(modelAlias));
+            }
+
+            try
+            {
+                _logger.LogDebug("Getting all mappings by model alias: {ModelAlias}", LoggingSanitizer.S(modelAlias));
+                return await _repository.GetAllByModelAliasAsync(modelAlias);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting mappings for model alias {ModelAlias}", LoggingSanitizer.S(modelAlias));
+                throw;
+            }
+        }
+
         public async Task UpdateMappingAsync(Entities.ModelProviderMapping mapping)
         {
             if (mapping == null)
@@ -142,8 +161,11 @@ namespace ConduitLLM.Configuration
             {
                 _logger.LogInformation("Updating mapping: {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
 
-                // Get the existing entity
-                var existingEntity = await _repository.GetByModelNameAsync(mapping.ModelAlias);
+                // Look up by Id when available — an alias can map to multiple providers now,
+                // so an alias lookup could grab a sibling mapping
+                var existingEntity = mapping.Id > 0
+                    ? await _repository.GetByIdAsync(mapping.Id)
+                    : await _repository.GetByModelNameAsync(mapping.ModelAlias);
                 if (existingEntity == null)
                 {
                     _logger.LogWarning("Mapping not found for model alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
@@ -175,6 +197,7 @@ namespace ConduitLLM.Configuration
                 existingEntity.ProviderModelId = mapping.ProviderModelId;
                 existingEntity.ProviderId = credential.Id;
                 existingEntity.IsEnabled = mapping.IsEnabled;
+                existingEntity.Priority = mapping.Priority;
                 existingEntity.ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId;
 
                 await _repository.UpdateAsync(existingEntity);
@@ -215,25 +238,68 @@ namespace ConduitLLM.Configuration
                     return (false, "ProviderId is required for model provider mapping", null);
                 }
 
-                // Check if a mapping with the same alias already exists
-                var existingMapping = await GetMappingByModelAliasAsync(mapping.ModelAlias);
-                if (existingMapping != null)
+                // Duplicate check matches the DB unique constraint: an alias may map to
+                // multiple providers (failover chain), but only once per provider
+                var siblingMappings = await GetMappingsByModelAliasAsync(mapping.ModelAlias);
+                if (siblingMappings.Any(m => m.ProviderId == mapping.ProviderId))
                 {
-                    _logger.LogWarning("Mapping already exists for model alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
-                    return (false, $"A mapping for this model alias already exists: {mapping.ModelAlias}", null);
+                    _logger.LogWarning(
+                        "Mapping already exists for model alias {ModelAlias} and provider {ProviderId}",
+                        LoggingSanitizer.S(mapping.ModelAlias), mapping.ProviderId);
+                    return (false, $"A mapping for model alias '{mapping.ModelAlias}' and this provider already exists.", null);
                 }
+
+                // Cross-model visibility: an alias whose mappings resolve to different canonical
+                // models is a legitimate resilience strategy, but silent model substitution
+                // deserves an operator warning (surfaced by the Admin API).
+                WarnIfCrossModelAlias(mapping, siblingMappings);
 
                 // Create the mapping
                 await AddMappingAsync(mapping);
 
-                // Return the created mapping
-                var createdMapping = await GetMappingByModelAliasAsync(mapping.ModelAlias);
+                // Return the created mapping (this provider's row, not an arbitrary sibling)
+                var createdMapping = (await GetMappingsByModelAliasAsync(mapping.ModelAlias))
+                    .FirstOrDefault(m => m.ProviderId == mapping.ProviderId)
+                    ?? await GetMappingByModelAliasAsync(mapping.ModelAlias);
                 return (true, null, createdMapping);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating model provider mapping for alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
                 return (false, $"An error occurred while creating the model provider mapping: {ex.Message}", null);
+            }
+        }
+
+        /// <summary>
+        /// Logs a warning when a new mapping's canonical model differs from existing sibling
+        /// mappings of the same alias (silent model substitution during failover).
+        /// </summary>
+        private void WarnIfCrossModelAlias(
+            Entities.ModelProviderMapping mapping,
+            List<Entities.ModelProviderMapping> siblingMappings)
+        {
+            try
+            {
+                var siblingModelIds = siblingMappings
+                    .Select(m => m.ModelProviderTypeAssociation?.ModelId)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .Distinct()
+                    .ToList();
+
+                if (siblingModelIds.Count > 0 && mapping.ModelProviderTypeAssociation?.ModelId is { } newModelId
+                    && !siblingModelIds.Contains(newModelId))
+                {
+                    _logger.LogWarning(
+                        "Alias {ModelAlias} now maps to DIFFERENT canonical models across providers " +
+                        "(new mapping model {NewModelId}, existing: {ExistingModelIds}). Failover will " +
+                        "silently substitute models — verify this is intended.",
+                        LoggingSanitizer.S(mapping.ModelAlias), newModelId, string.Join(",", siblingModelIds));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Cross-model alias check failed (non-fatal)");
             }
         }
 

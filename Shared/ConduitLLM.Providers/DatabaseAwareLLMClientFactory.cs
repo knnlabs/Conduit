@@ -88,12 +88,12 @@ namespace ConduitLLM.Providers
                 throw new ServiceUnavailableException($"Provider for model '{modelName}' is not available.", "Provider");
             }
 
-            // In-request key failover: wrap an ordered candidate list when enabled and more
-            // than one key is available. Flag off or a single key → today's chain, unchanged.
+            // In-request failover: wrap an ordered candidate list when enabled and more than
+            // one candidate is available. Flag off or a single candidate → today's chain.
             var failoverOptions = _serviceProvider.GetService<IOptions<FailoverOptions>>()?.Value;
             if (failoverOptions?.Enabled == true)
             {
-                var failoverClient = await TryCreateFailoverClientAsync(provider, mapping, failoverOptions);
+                var failoverClient = await TryCreateFailoverClientAsync(modelName, provider, mapping, failoverOptions);
                 if (failoverClient != null)
                 {
                     return failoverClient;
@@ -105,56 +105,107 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
-        /// Builds a <see cref="FailoverLLMClient"/> over the provider's enabled keys, or null
-        /// when only one key exists (single-key requests keep the plain chain).
+        /// Builds a <see cref="FailoverLLMClient"/> over the failover candidates for a model
+        /// alias — keys of the primary provider, plus (when provider-level failover is on)
+        /// keys of fallback providers mapped to the same alias in priority order. Returns null
+        /// when only a single candidate exists (the plain chain is used instead).
         /// </summary>
         private async Task<ILLMClient?> TryCreateFailoverClientAsync(
-            Provider provider,
-            ModelProviderMapping mapping,
+            string modelAlias,
+            Provider primaryProvider,
+            ModelProviderMapping primaryMapping,
             FailoverOptions failoverOptions)
         {
-            if (!provider.IsEnabled)
+            if (!primaryProvider.IsEnabled)
             {
                 throw new ServiceUnavailableException(
-                    $"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
+                    $"Provider '{primaryProvider.ProviderName}' is currently disabled.", primaryProvider.ProviderName);
             }
 
-            var keys = OrderKeysForFailover(
-                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id),
-                failoverOptions.MaxKeyAttemptsPerProvider);
+            var candidates = new List<FailoverCandidate>();
 
-            if (keys.Count == 0)
+            await AddProviderCandidatesAsync(candidates, primaryProvider, primaryMapping, failoverOptions);
+
+            if (candidates.Count == 0)
             {
-                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
+                throw new ConfigurationException($"No API key configured for provider '{primaryProvider.ProviderName}'.");
             }
 
-            if (keys.Count == 1)
+            if (failoverOptions.ProviderFailoverEnabled)
+            {
+                var fallbackMappings = (await _mappingService.GetMappingsByModelAliasAsync(modelAlias))
+                    .Where(m => m.ProviderId != primaryProvider.Id);
+
+                foreach (var fallbackMapping in fallbackMappings)
+                {
+                    if (candidates.Count >= failoverOptions.MaxTotalAttempts)
+                    {
+                        break;
+                    }
+
+                    var fallbackProvider = fallbackMapping.Provider
+                        ?? await _credentialService.GetProviderByIdAsync(fallbackMapping.ProviderId);
+                    if (fallbackProvider is not { IsEnabled: true })
+                    {
+                        continue;
+                    }
+
+                    await AddProviderCandidatesAsync(candidates, fallbackProvider, fallbackMapping, failoverOptions);
+                }
+            }
+
+            if (candidates.Count > failoverOptions.MaxTotalAttempts)
+            {
+                candidates = candidates.Take(failoverOptions.MaxTotalAttempts).ToList();
+            }
+
+            if (candidates.Count <= 1)
             {
                 return null; // nothing to fail over to — use the plain chain
             }
 
-            var candidates = keys.Select(key => new FailoverCandidate
-            {
-                ProviderId = provider.Id,
-                ProviderType = provider.ProviderType,
-                KeyCredentialId = key.Id,
-                ProviderAccountGroup = key.ProviderAccountGroup,
-                ProviderModelId = mapping.ProviderModelId,
-                BaseUrl = key.BaseUrl ?? provider.BaseUrl,
-                MappingId = mapping.Id,
-                ModelCostId = mapping.ModelProviderTypeAssociation?.ModelCostId,
-                ClientFactory = () => CreateClientForProvider(provider, key, mapping.ProviderModelId),
-            }).ToList();
-
             _logger.LogDebug(
-                "Failover enabled for provider {ProviderId}: {CandidateCount} key candidates (keys: {KeyIds})",
-                provider.Id, candidates.Count, string.Join(",", candidates.Select(c => c.KeyCredentialId)));
+                "Failover enabled for alias {ModelAlias}: {CandidateCount} candidates ({Candidates})",
+                modelAlias,
+                candidates.Count,
+                string.Join(",", candidates.Select(c => $"p{c.ProviderId}/k{c.KeyCredentialId}")));
 
             return new FailoverLLMClient(
                 candidates,
                 failoverOptions,
                 _serviceProvider.GetService<IFailoverAttributionAccessor>(),
                 _loggerFactory.CreateLogger<FailoverLLMClient>());
+        }
+
+        /// <summary>
+        /// Appends one provider's key candidates (ordered per <see cref="OrderKeysForFailover"/>)
+        /// carrying that provider's mapping attribution (ProviderModelId, MappingId, ModelCostId).
+        /// </summary>
+        private async Task AddProviderCandidatesAsync(
+            List<FailoverCandidate> candidates,
+            Provider provider,
+            ModelProviderMapping mapping,
+            FailoverOptions failoverOptions)
+        {
+            var keys = OrderKeysForFailover(
+                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id),
+                failoverOptions.MaxKeyAttemptsPerProvider);
+
+            foreach (var key in keys)
+            {
+                candidates.Add(new FailoverCandidate
+                {
+                    ProviderId = provider.Id,
+                    ProviderType = provider.ProviderType,
+                    KeyCredentialId = key.Id,
+                    ProviderAccountGroup = key.ProviderAccountGroup,
+                    ProviderModelId = mapping.ProviderModelId,
+                    BaseUrl = key.BaseUrl ?? provider.BaseUrl,
+                    MappingId = mapping.Id,
+                    ModelCostId = mapping.ModelProviderTypeAssociation?.ModelCostId,
+                    ClientFactory = () => CreateClientForProvider(provider, key, mapping.ProviderModelId),
+                });
+            }
         }
 
         /// <summary>

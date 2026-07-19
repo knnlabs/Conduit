@@ -115,6 +115,43 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
+        /// Gets all enabled mappings for an alias (failover order) with caching.
+        /// </summary>
+        public async Task<List<ModelProviderMapping>> GetMappingsByModelAliasAsync(string modelAlias)
+        {
+            if (string.IsNullOrEmpty(modelAlias))
+            {
+                throw new ArgumentException("Model alias cannot be null or empty", nameof(modelAlias));
+            }
+
+            var cacheKey = CacheKeys.ModelMapping.AllByAlias(modelAlias);
+
+            try
+            {
+                var cached = await _cacheManager.GetOrCreateAsync(
+                    cacheKey,
+                    async () => await _innerService.GetMappingsByModelAliasAsync(modelAlias),
+                    Region,
+                    CacheTtl);
+
+                if (cached == null || cached.Any(IsMissingNavigationGraph))
+                {
+                    LogIncompleteCacheEntry($"alias list '{modelAlias}'");
+                    var fresh = await _innerService.GetMappingsByModelAliasAsync(modelAlias);
+                    await _cacheManager.SetAsync(cacheKey, fresh, Region, CacheTtl);
+                    return fresh;
+                }
+
+                return cached;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache operation failed for alias list '{ModelAlias}', falling back to database", modelAlias);
+                return await _innerService.GetMappingsByModelAliasAsync(modelAlias);
+            }
+        }
+
+        /// <summary>
         /// Gets all mappings with caching.
         /// </summary>
         public async Task<List<ModelProviderMapping>> GetAllMappingsAsync()
@@ -320,10 +357,11 @@ namespace ConduitLLM.Core.Services
                 // Always invalidate the ID-based key
                 keysToRemove.Add(CacheKeys.ModelMapping.ById(id));
 
-                // Invalidate alias-based key if we know the alias
+                // Invalidate alias-based keys if we know the alias
                 if (!string.IsNullOrEmpty(modelAlias))
                 {
                     keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(modelAlias));
+                    keysToRemove.Add(CacheKeys.ModelMapping.AllByAlias(modelAlias));
                 }
 
                 // Invalidate the "all mappings" cache

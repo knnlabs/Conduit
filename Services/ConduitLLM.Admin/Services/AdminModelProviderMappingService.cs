@@ -91,11 +91,14 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                 return false;
             }
 
-            // Check if a mapping with the same model ID already exists
-            var existingMapping = await _mappingRepository.GetByModelNameAsync(mapping.ModelAlias);
-            if (existingMapping != null)
+            // An alias may map to multiple providers (failover chain) but only once per
+            // provider — matches the DB unique constraint on (ModelAlias, ProviderId)
+            var siblingMappings = await _mappingRepository.GetAllByModelAliasAsync(mapping.ModelAlias);
+            if (siblingMappings.Any(m => m.ProviderId == mapping.ProviderId))
             {
-                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", LoggingSanitizer.S(mapping.ModelAlias));
+                _logger.LogWarning(
+                    "A mapping already exists for alias {ModelAlias} and provider {ProviderId}",
+                    LoggingSanitizer.S(mapping.ModelAlias), mapping.ProviderId);
                 return false;
             }
 
@@ -161,7 +164,8 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             existingMapping.ProviderId = mapping.ProviderId;
             existingMapping.ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId;
             existingMapping.IsEnabled = mapping.IsEnabled;
-            
+            existingMapping.Priority = mapping.Priority;
+
             existingMapping.UpdatedAt = DateTime.UtcNow;
 
             // Update the mapping

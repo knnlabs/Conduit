@@ -340,6 +340,58 @@ namespace ConduitLLM.Tests.Core.Decorators
         }
 
         [Fact]
+        public async Task ProviderScopedError_SkipsRemainingSameProviderKeys_JumpsToNextProvider()
+        {
+            var failingPrimary = ClientThrowing(Error(HttpStatusCode.ServiceUnavailable));
+            var siblingKeySameProvider = new Mock<ILLMClient>(); // must never be called (same endpoint)
+            var fallbackProvider = ClientReturning(Response("from-provider-2"));
+
+            var sut = new FailoverLLMClient(
+                new[]
+                {
+                    Candidate(1, failingPrimary.Object, providerId: 1, baseUrl: "http://p1"),
+                    Candidate(2, siblingKeySameProvider.Object, providerId: 1, baseUrl: "http://p1"),
+                    Candidate(3, fallbackProvider.Object, providerId: 2, baseUrl: "http://p2"),
+                },
+                _options, _attribution, null);
+
+            var response = await sut.CreateChatCompletionAsync(Request());
+
+            Assert.Equal("from-provider-2", response.Id);
+            Assert.Equal(2, _attribution.Current!.ProviderId);
+            siblingKeySameProvider.Verify(
+                c => c.CreateChatCompletionAsync(It.IsAny<ChatCompletionRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task CrossProviderFailover_AttributionCarriesFallbackMappingCost()
+        {
+            var failing = ClientThrowing(Error(HttpStatusCode.NotFound)); // model gone at primary
+            var fallback = ClientReturning(Response("served"));
+
+            var primary = Candidate(1, failing.Object, providerId: 1, baseUrl: "http://p1") with
+            {
+                MappingId = 10,
+                ModelCostId = 100,
+            };
+            var secondary = Candidate(9, fallback.Object, providerId: 2, baseUrl: "http://p2") with
+            {
+                MappingId = 20,
+                ModelCostId = 200,
+            };
+
+            var sut = new FailoverLLMClient(new[] { primary, secondary }, _options, _attribution, null);
+
+            await sut.CreateChatCompletionAsync(Request());
+
+            // Billing attribution must follow the SERVING candidate's mapping, not the primary's.
+            Assert.Equal(20, _attribution.Current!.MappingId);
+            Assert.Equal(200, _attribution.Current.ModelCostId);
+            Assert.Equal(2, _attribution.Current.ProviderId);
+        }
+
+        [Fact]
         public void PromptCacheInjection_Idempotent_AcrossFailoverRedispatch()
         {
             // Failover re-dispatches the SAME request object through a second candidate chain,

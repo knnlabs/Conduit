@@ -81,12 +81,15 @@ public class ModelProviderMappingController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateMapping([FromBody] ModelProviderMappingDto mappingDto)
     {
-        // Check if a mapping with the same model alias already exists
+        // An alias may map to multiple providers (failover chain), but only once per provider
         var existingMappings = await _mappingService.GetAllMappingsAsync();
-        var existingMapping = existingMappings.FirstOrDefault(m => m.ModelAlias.Equals(mappingDto.ModelAlias, StringComparison.OrdinalIgnoreCase));
+        var existingMapping = existingMappings.FirstOrDefault(m =>
+            m.ModelAlias.Equals(mappingDto.ModelAlias, StringComparison.OrdinalIgnoreCase) &&
+            m.ProviderId == mappingDto.ProviderId);
         if (existingMapping != null)
         {
-            return Conflict(new ErrorResponseDto($"A mapping for model alias '{mappingDto.ModelAlias}' already exists"));
+            return Conflict(new ErrorResponseDto(
+                $"A mapping for model alias '{mappingDto.ModelAlias}' and this provider already exists"));
         }
 
         var mapping = mappingDto.ToEntity();

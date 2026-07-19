@@ -250,9 +250,9 @@ namespace ConduitLLM.Tests.Configuration.Services
             // Assert
             _mockInnerService.Verify(x => x.UpdateMappingAsync(mapping), Times.Once);
 
-            // Verify cache invalidation
+            // Verify cache invalidation: by-id, by-alias, all-by-alias (failover list), all-mappings
             _mockCacheManager.Verify(x => x.RemoveManyAsync(
-                It.Is<IEnumerable<string>>(keys => keys.Count() == 3),
+                It.Is<IEnumerable<string>>(keys => keys.Count() == 4),
                 CacheRegion.ModelMetadata,
                 default), Times.Once);
         }
