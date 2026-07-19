@@ -35,6 +35,22 @@ namespace ConduitLLM.Gateway.Middleware
             if (!context.Items.TryGetValue("StreamingUsage", out var usageObj) ||
                 usageObj is not Usage usage)
             {
+                // Function execution cost is known independently of provider token usage. A provider
+                // may omit its final usage chunk (or the client may disconnect after functions ran),
+                // so preserve that charge before returning from the token-usage path.
+                if (endpointType == "chat" &&
+                    context.Items.TryGetValue(HttpContextKeys.ChatFunctionCost, out var functionCostObj) &&
+                    functionCostObj is decimal functionCost && functionCost > 0m)
+                {
+                    var functionVirtualKeyId = (int)context.Items[HttpContextKeys.VirtualKeyId]!;
+                    await SpendUpdateHelper.UpdateSpendAsync(
+                        functionVirtualKeyId, functionCost, batchSpendService, virtualKeyService, _logger);
+
+                    _logger.LogInformation(
+                        "Billed known streaming function cost for VirtualKey {VirtualKeyId} despite missing token usage: {Cost:C}",
+                        functionVirtualKeyId, functionCost);
+                }
+
                 _logger.LogDebug("No streaming usage data found for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                 UsageMetrics.UsageTrackingFailures.WithLabels("no_streaming_usage", endpointType).Inc();
                 LogMissingStreamingUsage(context, billingAuditService);

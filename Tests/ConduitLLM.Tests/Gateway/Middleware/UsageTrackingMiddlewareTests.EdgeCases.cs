@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
@@ -45,6 +46,27 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert
             UsageTrackingAssertions.VerifyCostCalculated(Fixture.CostService, "gpt-4", 50, 150);
             UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 654, 0.006m);
+        }
+
+        [Fact]
+        public async Task Streaming_Response_Without_Usage_Bills_Known_Function_Cost()
+        {
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(656)
+                .AsOpenAI()
+                .AsStreaming()
+                .WithItem(HttpContextKeys.ChatFunctionCost, 0.05m)
+                .Build();
+
+            await Invoker
+                .AsStreamingResponse()
+                .InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 656, 0.05m);
+            UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
+            Assert.Contains(Fixture.CapturedBillingEvents,
+                e => e.EventType == BillingAuditEventType.StreamingUsageMissing);
         }
 
         [Fact]
