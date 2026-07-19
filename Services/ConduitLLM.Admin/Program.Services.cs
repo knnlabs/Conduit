@@ -26,6 +26,10 @@ public partial class Program
         // Add Provider services (needed for ILLMClientFactory)
         builder.Services.AddProviderServices();
 
+        // Register named provider HttpClients so resilience policies attach to provider
+        // traffic (key verification, model discovery) in the Admin API as well
+        builder.Services.AddLLMProviderHttpClients();
+
         // Add Admin services
         builder.Services.AddAdminServices(builder.Configuration);
 
