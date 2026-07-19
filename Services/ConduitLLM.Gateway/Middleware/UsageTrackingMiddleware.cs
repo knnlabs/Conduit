@@ -192,6 +192,16 @@ namespace ConduitLLM.Gateway.Middleware
 
             try
             {
+                // The response status is normally still 200 when InvokeAsync first decides whether
+                // to intercept the request. Enforce the no-charge-on-errors policy again after the
+                // downstream pipeline has produced the actual response. This is especially
+                // important for media endpoints, whose usage is synthesized from request metadata.
+                if (context.Response.StatusCode >= StatusCodes.Status400BadRequest)
+                {
+                    await LogBillingDecisionAsync(context, billingAuditService);
+                    return;
+                }
+
                 responseBody.Seek(0, SeekOrigin.Begin);
 
                 // Handle function execution requests specially (they don't have standard usage data)
