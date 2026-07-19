@@ -60,8 +60,36 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 var query = GetDbSet(context).AsNoTracking();
                 query = ApplyDefaultIncludes(query);
-                return await query.FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
+                // Deterministic: the highest-priority mapping wins (was an arbitrary
+                // FirstOrDefault before multiple mappings per alias were allowed)
+                return await query
+                    .Where(m => m.ModelAlias == modelName)
+                    .OrderBy(m => m.Priority)
+                    .ThenBy(m => m.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
             }, cancellationToken, $"getting by model name {LoggingSanitizer.S(modelName)}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ModelProviderMapping>> GetAllByModelAliasAsync(
+            string modelAlias,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(modelAlias))
+            {
+                throw new ArgumentException("Model alias cannot be null or empty", nameof(modelAlias));
+            }
+
+            return await ExecuteAsync(async context =>
+            {
+                var query = GetDbSet(context).AsNoTracking();
+                query = ApplyDefaultIncludes(query);
+                return await query
+                    .Where(m => m.ModelAlias == modelAlias && m.IsEnabled)
+                    .OrderBy(m => m.Priority)
+                    .ThenBy(m => m.Id)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting all by model alias {LoggingSanitizer.S(modelAlias)}");
         }
 
         /// <inheritdoc/>

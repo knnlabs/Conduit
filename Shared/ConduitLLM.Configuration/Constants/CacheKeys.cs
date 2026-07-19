@@ -315,6 +315,11 @@ public static class CacheKeys
         /// <returns>Full cache key like "model:mapping:gpt-4"</returns>
         public static string ByAlias(string modelAlias) => $"model:mapping:{modelAlias}";
 
+        /// <summary>Builds a cache key for ALL enabled mappings of an alias (failover order)</summary>
+        /// <param name="modelAlias">The model alias</param>
+        /// <returns>Full cache key like "model:mapping:all-by-alias:gpt-4"</returns>
+        public static string AllByAlias(string modelAlias) => $"model:mapping:all-by-alias:{modelAlias}";
+
         /// <summary>Builds a cache key for mapping by ID</summary>
         /// <param name="id">The mapping ID</param>
         /// <returns>Full cache key like "model:mapping:id:123"</returns>

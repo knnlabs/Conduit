@@ -19,7 +19,10 @@ namespace ConduitLLM.Configuration.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => new { e.ModelAlias, e.ProviderId }).IsUnique();
-                    
+
+                // Provider-level failover walks enabled mappings per alias in priority order
+                entity.HasIndex(e => new { e.ModelAlias, e.IsEnabled, e.Priority });
+
                 // Configure relationship with Provider
                 entity.HasOne(e => e.Provider)
                     .WithMany()

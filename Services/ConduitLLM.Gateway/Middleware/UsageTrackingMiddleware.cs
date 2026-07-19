@@ -76,6 +76,14 @@ namespace ConduitLLM.Gateway.Middleware
 
                 await _next(context);
 
+                // If in-request failover served this request from a non-primary candidate, the
+                // provider attribution pinned pre-request by the controller (ProviderId,
+                // ProviderType, ModelCostId in HttpContext.Items) points at the PRIMARY
+                // mapping. Overwrite it from the failover accessor BEFORE any cost calculation
+                // or request logging reads it — otherwise fallback traffic is billed at the
+                // wrong provider's cost and logged against the wrong provider.
+                ApplyFailoverAttributionOverride(context);
+
                 // After the controller has run, check if this is a streaming response
                 // by checking the Content-Type that was set by the controller
                 if (context.Response.ContentType?.Contains("text/event-stream") == true)
@@ -107,6 +115,54 @@ namespace ConduitLLM.Gateway.Middleware
             finally
             {
                 context.Response.Body = originalBodyStream;
+            }
+        }
+
+        /// <summary>
+        /// Rewrites the provider attribution in HttpContext.Items with the candidate that
+        /// actually served the request when in-request failover advanced past the primary.
+        /// Runs once, before every cost/logging consumer of these keys. Emits a billing audit
+        /// trail via the failover metadata appended to the request log.
+        /// </summary>
+        private void ApplyFailoverAttributionOverride(HttpContext context)
+        {
+            try
+            {
+                var attribution = context.RequestServices
+                    .GetService<ConduitLLM.Core.Services.IFailoverAttributionAccessor>();
+                if (attribution is not { FailoverOccurred: true } || attribution.Current == null)
+                {
+                    return;
+                }
+
+                var serving = attribution.Current;
+
+                var previousProviderId = context.Items.TryGetValue("ProviderId", out var prev) ? prev : null;
+                context.Items["ProviderId"] = serving.ProviderId;
+                context.Items["ProviderType"] = serving.ProviderType;
+
+                if (serving.ModelCostId.HasValue)
+                {
+                    context.Items[HttpContextKeys.ModelCostId] = serving.ModelCostId.Value;
+                }
+                else
+                {
+                    // The serving mapping has no cost config: remove the primary's ModelCostId
+                    // so cost falls back to the model-name path (which resolves against the
+                    // serving provider's echoed model id) instead of the wrong provider's rate.
+                    context.Items.Remove(HttpContextKeys.ModelCostId);
+                }
+
+                _logger.LogInformation(
+                    "Failover attribution override: request served by provider {ServingProviderId} " +
+                    "(key {KeyId}, mapping {MappingId}, modelCost {ModelCostId}) after {Attempts} attempts " +
+                    "(primary provider was {PrimaryProviderId})",
+                    serving.ProviderId, serving.KeyCredentialId, serving.MappingId, serving.ModelCostId,
+                    attribution.AttemptCount, previousProviderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to apply failover attribution override");
             }
         }
 

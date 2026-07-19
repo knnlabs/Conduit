@@ -33,6 +33,15 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<Entities.ModelProviderMapping?> GetByModelNameAsync(string modelName, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Gets all ENABLED mappings for a model alias, ordered by ascending Priority then Id
+        /// (the provider-level failover candidate order).
+        /// </summary>
+        /// <param name="modelAlias">The model alias</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Enabled mappings in failover order (may be empty)</returns>
+        Task<List<Entities.ModelProviderMapping>> GetAllByModelAliasAsync(string modelAlias, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets all model provider mappings for a specific provider
         /// </summary>
         /// <param name="providerType">The provider type</param>
