@@ -92,8 +92,14 @@ namespace ConduitLLM.Core.Services.BatchOperations
             SpendUpdateItem item,
             CancellationToken cancellationToken)
         {
-            // Apply spend update (exceptions will propagate to base class retry logic)
-            await _virtualKeyService.UpdateSpendAsync(item.VirtualKeyId, item.Amount);
+            // Apply spend update (exceptions will propagate to base class retry logic).
+            // A false result is also a persistence failure; do not report the item as
+            // successful or notify clients when no durable charge was recorded (#1002).
+            if (!await _virtualKeyService.UpdateSpendAsync(item.VirtualKeyId, item.Amount))
+            {
+                throw new InvalidOperationException(
+                    $"Spend update was not persisted for virtual key {item.VirtualKeyId}");
+            }
 
             // Send real-time notification
             await _spendNotificationService.NotifySpendUpdatedAsync(

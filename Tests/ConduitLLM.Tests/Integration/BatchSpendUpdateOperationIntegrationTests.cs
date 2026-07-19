@@ -285,6 +285,32 @@ namespace ConduitLLM.Tests.Integration
         }
 
         [Fact]
+        public async Task ExecuteAsync_WhenSpendUpdateReturnsFalse_ShouldFailItemWithoutNotification()
+        {
+            // Arrange
+            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
+            var items = new List<SpendUpdateItem>
+            {
+                new() { VirtualKeyId = 1, Amount = 10.50m, Model = "gpt-4", Provider = "OpenAI" }
+            };
+
+            _mockVirtualKeyService.Setup(s => s.GetVirtualKeyInfoForValidationAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ConduitLLM.Configuration.Entities.VirtualKey { Id = 1, KeyName = "Test" });
+            _mockVirtualKeyService.Setup(s => s.UpdateSpendAsync(1, 10.50m))
+                .ReturnsAsync(false);
+
+            // Act
+            var result = await operation.ExecuteAsync(items, virtualKeyId: 1);
+
+            // Assert
+            Assert.Equal(BatchOperationStatusEnum.Completed, result.Status);
+            Assert.Equal(0, result.SuccessCount);
+            Assert.Equal(1, result.FailedCount);
+            _mockSpendNotificationService.Verify(s => s.NotifySpendUpdatedAsync(
+                It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
         public async Task ExecuteAsync_WithLargeBatch_ShouldProcessEfficiently()
         {
             // Arrange
