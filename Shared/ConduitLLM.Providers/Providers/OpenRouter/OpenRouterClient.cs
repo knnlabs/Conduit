@@ -38,10 +38,19 @@ namespace ConduitLLM.Providers.OpenRouter
     /// - "models": string[] with "route": "fallback" for multi-model fallback
     /// </para>
     /// </remarks>
-    public class OpenRouterClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
+    public partial class OpenRouterClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         private static ProviderErrorMessages OpenRouterErrorMessages =>
             ProviderConfigurationRegistry.GetErrorMessages(ProviderType.OpenRouter);
+
+        // OpenRouter's recommended app-attribution headers. Configurable via env vars because the
+        // static client-creator delegates have no access to IConfiguration.
+        private static readonly string AttributionReferer =
+            Environment.GetEnvironmentVariable("CONDUIT_OPENROUTER_HTTP_REFERER")
+                ?? "https://github.com/nickna/Conduit";
+
+        private static readonly string AttributionTitle =
+            Environment.GetEnvironmentVariable("CONDUIT_OPENROUTER_X_TITLE") ?? "Conduit";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OpenRouterClient"/> class.
@@ -69,6 +78,18 @@ namespace ConduitLLM.Providers.OpenRouter
                 baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenRouter),
                 defaultModels: defaultModels)
         {
+        }
+
+        /// <summary>
+        /// Adds OpenRouter's recommended app-attribution headers (HTTP-Referer + X-Title) to every
+        /// outgoing request so Conduit is identified in OpenRouter analytics/leaderboards.
+        /// </summary>
+        protected override Dictionary<string, string> CreateStandardHeaders(string? apiKey = null)
+        {
+            var headers = base.CreateStandardHeaders(apiKey);
+            headers["HTTP-Referer"] = AttributionReferer;
+            headers["X-Title"] = AttributionTitle;
+            return headers;
         }
 
         /// <summary>
@@ -114,7 +135,7 @@ namespace ConduitLLM.Providers.OpenRouter
                         cancellationToken);
 
                     return response.Data
-                        .Select(m => InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id))
+                        .Select(MapModelInfo)
                         .ToList();
                 }, "GetModels", cancellationToken);
             }
@@ -123,6 +144,51 @@ namespace ConduitLLM.Providers.OpenRouter
                 Logger.LogError(ex, "Failed to retrieve models from {Provider} API.", ProviderName);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Projects an OpenRouter /models entry into an <see cref="InternalModels.ExtendedModelInfo"/>,
+        /// deriving capabilities from <c>supported_parameters</c> + <c>architecture</c> modalities and
+        /// token limits from <c>context_length</c> + <c>top_provider.max_completion_tokens</c>. All
+        /// fields are nullable-tolerant so schema drift cannot break model listing.
+        /// </summary>
+        private InternalModels.ExtendedModelInfo MapModelInfo(OpenRouterModelData m)
+        {
+            var info = InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id);
+
+            if (!string.IsNullOrEmpty(m.Name))
+            {
+                info.WithName(m.Name);
+            }
+
+            var supported = m.SupportedParameters ?? new List<string>();
+            var inputModalities = m.Architecture?.InputModalities ?? new List<string>();
+            var outputModalities = m.Architecture?.OutputModalities ?? new List<string>();
+
+            var toolsSupported = supported.Contains("tools", StringComparer.OrdinalIgnoreCase);
+
+            info.WithCapabilities(new InternalModels.ModelCapabilities
+            {
+                Chat = true,
+                TextGeneration = true,
+                FunctionCalling = toolsSupported,
+                ToolUsage = toolsSupported,
+                JsonMode = supported.Contains("response_format", StringComparer.OrdinalIgnoreCase)
+                    || supported.Contains("structured_outputs", StringComparer.OrdinalIgnoreCase),
+                Vision = inputModalities.Contains("image", StringComparer.OrdinalIgnoreCase),
+                ImageGeneration = outputModalities.Contains("image", StringComparer.OrdinalIgnoreCase)
+            });
+
+            if (m.ContextLength.HasValue || m.TopProvider?.MaxCompletionTokens != null)
+            {
+                info.WithTokenLimits(new InternalModels.ModelTokenLimits
+                {
+                    Context = m.ContextLength ?? m.TopProvider?.ContextLength,
+                    Output = m.TopProvider?.MaxCompletionTokens
+                });
+            }
+
+            return info;
         }
 
         /// <summary>
@@ -288,5 +354,77 @@ namespace ConduitLLM.Providers.OpenRouter
 
         [JsonPropertyName("name")]
         public string? Name { get; init; }
+
+        [JsonPropertyName("description")]
+        public string? Description { get; init; }
+
+        [JsonPropertyName("context_length")]
+        public int? ContextLength { get; init; }
+
+        [JsonPropertyName("architecture")]
+        public OpenRouterArchitecture? Architecture { get; init; }
+
+        [JsonPropertyName("pricing")]
+        public OpenRouterPricing? Pricing { get; init; }
+
+        [JsonPropertyName("top_provider")]
+        public OpenRouterTopProvider? TopProvider { get; init; }
+
+        [JsonPropertyName("supported_parameters")]
+        public List<string>? SupportedParameters { get; init; }
+    }
+
+    /// <summary>Architecture block from OpenRouter's /models: modalities + tokenizer.</summary>
+    internal record OpenRouterArchitecture
+    {
+        [JsonPropertyName("input_modalities")]
+        public List<string>? InputModalities { get; init; }
+
+        [JsonPropertyName("output_modalities")]
+        public List<string>? OutputModalities { get; init; }
+
+        [JsonPropertyName("tokenizer")]
+        public string? Tokenizer { get; init; }
+    }
+
+    /// <summary>
+    /// Per-model pricing from OpenRouter's /models. Values are USD-per-unit strings (per docs) and are
+    /// carried through for the admin-reviewed pricing sync; not consumed at request time.
+    /// </summary>
+    internal record OpenRouterPricing
+    {
+        [JsonPropertyName("prompt")]
+        public string? Prompt { get; init; }
+
+        [JsonPropertyName("completion")]
+        public string? Completion { get; init; }
+
+        [JsonPropertyName("request")]
+        public string? Request { get; init; }
+
+        [JsonPropertyName("image")]
+        public string? Image { get; init; }
+
+        [JsonPropertyName("web_search")]
+        public string? WebSearch { get; init; }
+
+        [JsonPropertyName("internal_reasoning")]
+        public string? InternalReasoning { get; init; }
+
+        [JsonPropertyName("input_cache_read")]
+        public string? InputCacheRead { get; init; }
+
+        [JsonPropertyName("input_cache_write")]
+        public string? InputCacheWrite { get; init; }
+    }
+
+    /// <summary>Top-provider metadata from OpenRouter's /models (max completion + context length).</summary>
+    internal record OpenRouterTopProvider
+    {
+        [JsonPropertyName("max_completion_tokens")]
+        public int? MaxCompletionTokens { get; init; }
+
+        [JsonPropertyName("context_length")]
+        public int? ContextLength { get; init; }
     }
 }
