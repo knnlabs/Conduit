@@ -1,7 +1,6 @@
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
@@ -302,14 +301,6 @@ namespace ConduitLLM.Core.Services
                     Date = DateTime.UtcNow
                 };
                 await SpendHistoryRepository.CreateAsync(spendHistory);
-
-                await GroupRepository.AdjustBalanceAsync(
-                    group.Id,
-                    group.LifetimeSpent,
-                    $"Spend reset for virtual key #{virtualKey.Id}",
-                    "System",
-                    ReferenceType.System,
-                    virtualKey.Id.ToString());
 
                 group.LifetimeSpent = 0;
                 group.UpdatedAt = DateTime.UtcNow;
