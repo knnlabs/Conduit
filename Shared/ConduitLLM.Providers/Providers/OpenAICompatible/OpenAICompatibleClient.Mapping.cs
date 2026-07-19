@@ -108,6 +108,10 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Some providers like SambaNova don't support response_format with type "text"
             if (request.ResponseFormat != null && request.ResponseFormat.Type != "text")
                 openAiRequest["response_format"] = new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
+            // Unified reasoning config — only forwarded when the caller set it (providers that don't
+            // support it simply ignore/return an error, same as any explicit unsupported parameter).
+            if (request.Reasoning != null)
+                openAiRequest["reasoning"] = request.Reasoning;
             if (request.Stream != null)
                 openAiRequest["stream"] = request.Stream;
             if (request.StreamOptions != null)

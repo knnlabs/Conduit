@@ -141,6 +141,14 @@ public class ChatCompletionRequest
     public ResponseFormat? ResponseFormat { get; set; }
 
     /// <summary>
+    /// Unified reasoning configuration (effort / max tokens / enabled / exclude). Forwarded to
+    /// providers that support reasoning (e.g. OpenRouter). Only serialized when set.
+    /// </summary>
+    [JsonPropertyName("reasoning")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReasoningConfig? Reasoning { get; set; }
+
+    /// <summary>
     /// A random number seed for deterministic outputs.
     /// </summary>
     [JsonPropertyName("seed")]
