@@ -332,6 +332,18 @@ export const ENDPOINTS = {
   ADMIN_TASKS: {
     CLEANUP: '/v1/admin/tasks/cleanup',
   },
+
+  // Provider metadata sync (OpenRouter drift review)
+  PROVIDER_SYNC: {
+    DRIFT: '/api/providersync/drift',
+    DRIFT_BY_ID: (id: number) => `/api/providersync/drift/${id}`,
+    DRIFT_APPLY: (id: number) => `/api/providersync/drift/${id}/apply`,
+    DRIFT_DISMISS: (id: number) => `/api/providersync/drift/${id}/dismiss`,
+    DRIFT_BULK_APPLY: '/api/providersync/drift/bulk/apply',
+    DRIFT_BULK_DISMISS: '/api/providersync/drift/bulk/dismiss',
+    RUN: '/api/providersync/run',
+    RUNS: '/api/providersync/runs',
+  },
 } as const;
 
 export const DEFAULT_PAGE_SIZE = 20;
