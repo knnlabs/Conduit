@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ConduitLLM.Functions.Models;
 using ConduitLLM.Functions.Providers.Tavily.Models;
+using ConduitLLM.Functions.Utilities;
 
 namespace ConduitLLM.Functions.Providers.Tavily;
 
@@ -81,12 +82,10 @@ public partial class TavilyClient
             }
 
             // Track auto-parameters usage
-            if (parameters.TryGetValue("auto_parameters", out var autoParamsObj))
+            if (parameters.TryGetValue("auto_parameters", out var autoParamsObj)
+                && JsonElementConverter.ConvertToBoolean(autoParamsObj) == true)
             {
-                if (autoParamsObj is bool autoParams && autoParams)
-                {
-                    usage.Metadata["autoParametersEnabled"] = true;
-                }
+                usage.Metadata["autoParametersEnabled"] = true;
             }
 
             // Track topic

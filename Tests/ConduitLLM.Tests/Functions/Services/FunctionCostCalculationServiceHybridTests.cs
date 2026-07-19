@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
@@ -152,6 +153,35 @@ public class FunctionCostCalculationServiceHybridTests
     }
 
     [Fact]
+    public async Task EstimateCostAsync_JsonElementParameters_AreConvertedForHybridProviders()
+    {
+        var perplexityService = CreateService(CreatePerplexityCost());
+        var perplexityParameters = DeserializeParameters("""{"messages":[],"max_tokens":4096}""");
+
+        var perplexityCost = await perplexityService.EstimateCostAsync(42, perplexityParameters);
+
+        Assert.Equal(0.01044768m, perplexityCost);
+
+        var exaService = CreateService(CreateExaCost());
+        var exaParameters = DeserializeParameters("""{"numResults":30,"text":true}""");
+
+        var exaCost = await exaService.EstimateCostAsync(42, exaParameters);
+
+        Assert.Equal(0.055m, exaCost);
+    }
+
+    [Fact]
+    public async Task EstimateCostAsync_TavilySnakeCaseJsonElements_IncludeAutoParametersSurcharge()
+    {
+        var service = CreateService(CreateTavilyCost());
+        var parameters = DeserializeParameters("""{"query":"test","search_depth":"advanced","auto_parameters":true}""");
+
+        var cost = await service.EstimateCostAsync(42, parameters);
+
+        Assert.Equal(0.032m, cost);
+    }
+
+    [Fact]
     public async Task CalculateCostAsync_MalformedTavilyConfig_FailsClosed()
     {
         var malformedCost = new FunctionCost
@@ -234,4 +264,22 @@ public class FunctionCostCalculationServiceHybridTests
             }
             """
     };
+
+    private static FunctionCost CreateTavilyCost() => new()
+    {
+        CostName = "Tavily Hybrid",
+        ProviderType = FunctionProviderType.Tavily,
+        PricingModel = FunctionPricingModel.Hybrid,
+        PricingConfiguration = """
+            {
+              "costPerCredit": 0.008,
+              "basicSearchCredits": 1,
+              "advancedSearchCredits": 2,
+              "autoParametersCredits": 2
+            }
+            """
+    };
+
+    private static Dictionary<string, object> DeserializeParameters(string json) =>
+        JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
 }
