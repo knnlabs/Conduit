@@ -83,15 +83,17 @@ public partial class CostCalculationService
             return result;
         }
 
-        // Provider-cost-billed requests have no per-unit rates to recompute from. Refund proportionally
-        // from the amount actually charged, by the fraction of billable tokens being refunded.
+        // The original debit is the authoritative historical charge. Recomputing from ModelCost would
+        // use today's rates and the Standard token fields, which is incorrect after price changes and
+        // for non-Standard pricing models. Prorate the recorded charge by the applicable usage unit.
         if (providerCostContext != null)
         {
-            var ratio = ComputeRefundTokenRatio(originalUsage, refundUsage);
+            var ratio = ComputeRefundRatio(originalUsage, refundUsage);
             result.RefundAmount = decimal.Round(providerCostContext.OriginalChargedCost * ratio, 8);
+            result.IsPartialRefund = ratio < 1m;
             result.Breakdown = new RefundBreakdown();
             _logger.LogInformation(
-                "Calculated proportional provider-cost refund for model {ModelId}: charged {Charged} * ratio {Ratio} = {RefundAmount}. Reason: {RefundReason}. Original Transaction: {OriginalTransactionId}",
+                "Calculated refund from original charge for model {ModelId}: charged {Charged} * ratio {Ratio} = {RefundAmount}. Reason: {RefundReason}. Original Transaction: {OriginalTransactionId}",
                 modelId, providerCostContext.OriginalChargedCost, ratio, result.RefundAmount, refundReason, originalTransactionId ?? "N/A");
             return result;
         }
@@ -330,27 +332,46 @@ public partial class CostCalculationService
     }
 
     /// <summary>
-    /// Computes the fraction of the original charge to refund for a provider-cost-billed request,
-    /// based on the share of billable (prompt + completion + reasoning) tokens being refunded.
-    /// Clamped to [0, 1]. When the original request has no token basis (e.g. image/video only), any
-    /// refund request is treated as a full refund.
+    /// Computes the fraction of the recorded charge to refund using the request's billable usage
+    /// dimension. The ordering distinguishes request types without consulting mutable pricing data.
+    /// When there is no numeric usage basis (for example, a flat rules-based request), the refund is
+    /// treated as a full refund because the original charge cannot be divided further.
     /// </summary>
-    private static decimal ComputeRefundTokenRatio(Usage originalUsage, Usage refundUsage)
+    private static decimal ComputeRefundRatio(Usage originalUsage, Usage refundUsage)
     {
         var originalTokens = (originalUsage.PromptTokens ?? 0)
             + (originalUsage.CompletionTokens ?? 0)
             + (originalUsage.ReasoningTokens ?? 0);
 
-        if (originalTokens <= 0)
+        if (originalTokens > 0)
         {
-            return 1.0m;
+            var refundTokens = (refundUsage.PromptTokens ?? 0)
+                + (refundUsage.CompletionTokens ?? 0)
+                + (refundUsage.ReasoningTokens ?? 0);
+            return ClampRatio(refundTokens, originalTokens);
         }
 
-        var refundTokens = (refundUsage.PromptTokens ?? 0)
-            + (refundUsage.CompletionTokens ?? 0)
-            + (refundUsage.ReasoningTokens ?? 0);
+        if (originalUsage.VideoDurationSeconds is > 0)
+            return ClampRatio((decimal)(refundUsage.VideoDurationSeconds ?? 0), (decimal)originalUsage.VideoDurationSeconds.Value);
 
-        var ratio = (decimal)refundTokens / originalTokens;
-        return Math.Clamp(ratio, 0m, 1.0m);
+        if (originalUsage.InferenceSteps is > 0)
+            return ClampRatio(refundUsage.InferenceSteps ?? 0, originalUsage.InferenceSteps.Value);
+
+        if (originalUsage.ImageCount is > 0)
+            return ClampRatio(refundUsage.ImageCount ?? 0, originalUsage.ImageCount.Value);
+
+        if (originalUsage.SearchUnits is > 0)
+            return ClampRatio(refundUsage.SearchUnits ?? 0, originalUsage.SearchUnits.Value);
+
+        if (originalUsage.AudioDurationSeconds is > 0)
+            return ClampRatio((decimal)(refundUsage.AudioDurationSeconds ?? 0), (decimal)originalUsage.AudioDurationSeconds.Value);
+
+        if (originalUsage.TtsCharacters is > 0)
+            return ClampRatio(refundUsage.TtsCharacters ?? 0, originalUsage.TtsCharacters.Value);
+
+        return 1m;
     }
+
+    private static decimal ClampRatio(decimal refundQuantity, decimal originalQuantity) =>
+        Math.Clamp(refundQuantity / originalQuantity, 0m, 1m);
 }

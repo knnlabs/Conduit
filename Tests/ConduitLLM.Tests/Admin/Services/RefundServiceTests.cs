@@ -60,7 +60,8 @@ public class RefundServiceTests : IDisposable
         var originalTransactionId = await AddDebitAsync(groupId, 1m);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
                 modelId, originalUsage, refundUsage, "Incorrect response", originalTransactionId,
-                It.IsAny<ProviderCostRefundContext?>(), It.IsAny<CancellationToken>()))
+                It.Is<ProviderCostRefundContext?>(c => c != null && c.OriginalChargedCost == 1m),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(refundResult);
         _context.VirtualKeyGroups.Add(group);
         await _context.SaveChangesAsync();

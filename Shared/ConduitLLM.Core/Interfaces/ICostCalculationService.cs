@@ -55,9 +55,8 @@ public interface ICostCalculationService
     /// <param name="refundReason">The reason for the refund.</param>
     /// <param name="originalTransactionId">Optional original transaction ID for audit trail.</param>
     /// <param name="providerCostContext">
-    /// Optional context for refunding a request that was billed from a trusted provider-reported cost.
-    /// When supplied, the refund is prorated from the amount actually charged rather than recomputed
-    /// from ModelCost rates (which do not describe how a provider-cost request was billed).
+    /// Optional historical billing context. When supplied, the refund is prorated from the amount
+    /// recorded on the original debit rather than recomputed from current ModelCost rates.
     /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A RefundResult containing the refund details and any validation messages.</returns>

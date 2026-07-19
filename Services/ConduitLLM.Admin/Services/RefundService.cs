@@ -96,22 +96,12 @@ public class RefundService : IRefundService
                 nameof(originalTransactionId));
         }
 
-        // If the original request was billed from a trusted provider-reported cost, it has no per-unit
-        // rates to recompute a refund from. Look up the original request log and, when it was billed
-        // that way, prorate the refund from the amount actually charged.
-        ProviderCostRefundContext? providerCostContext = null;
-        if (requestLogId.HasValue && _requestLogRepository != null)
+        // Always calculate against the durable debit amount. Model prices and even the pricing model
+        // may have changed since the request, while this ledger value is the amount actually charged.
+        var originalChargeContext = new ProviderCostRefundContext
         {
-            var requestLog = await _requestLogRepository.GetByIdAsync(requestLogId.Value, cancellationToken);
-            if (requestLog?.BillingMethod == RequestBillingMethod.ProviderReportedCost)
-            {
-                providerCostContext = new ProviderCostRefundContext { OriginalChargedCost = requestLog.Cost };
-                _logger.LogInformation(
-                    "Refund for group {GroupId} references provider-cost-billed request log {RequestLogId} " +
-                    "(charged {Charged}); refund will be prorated from the charged amount.",
-                    virtualKeyGroupId, requestLogId.Value, requestLog.Cost);
-            }
-        }
+            OriginalChargedCost = originalTransaction.Amount
+        };
 
         // Calculate refund using the cost calculation service
         var refundResult = await _costCalculationService.CalculateRefundAsync(
@@ -120,7 +110,7 @@ public class RefundService : IRefundService
             refundUsage,
             refundReason,
             originalTransactionId,
-            providerCostContext,
+            originalChargeContext,
             cancellationToken);
 
         // Validation failures must never be treated as warnings. Reject before mutating the balance
