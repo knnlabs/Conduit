@@ -1,12 +1,15 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace ConduitLLM.Configuration.Services
 {
@@ -26,6 +29,9 @@ namespace ConduitLLM.Configuration.Services
         private readonly TimeSpan _flushInterval;
         private readonly TimeSpan _redisTtl;
         private readonly string _redisKeyPrefix = "pending_spend:group:";
+        private readonly string _processingKeyPrefix = "processing_spend:group:";
+        private readonly string _keyUsagePrefix = "key_usage:group:";
+        private readonly string _processingKeyUsagePrefix = "processing_key_usage:group:";
         private readonly ConcurrentQueue<(int VirtualKeyId, decimal Cost)> _fallbackQueue = new();
 
         /// <summary>
@@ -196,45 +202,21 @@ namespace ConduitLLM.Configuration.Services
                 var redis = await _redisConnectionFactory.GetConnectionAsync();
                 var db = redis.GetDatabase();
                 var server = redis.GetServer(redis.GetEndPoints()[0]);
-                
-                // Get all pending spend keys for groups
-                var pattern = $"{_redisKeyPrefix}*";
-                var keys = server.Keys(pattern: pattern).ToList();
-                
-                if (!keys.Any())
+
+                // Recover durable claims left by a database failure or process crash first,
+                // then atomically move current pending amounts into new claims. New usage
+                // can continue accumulating under the original pending keys while a claim
+                // is written to PostgreSQL.
+                var claims = await GetProcessingClaimsAsync(server, db);
+                claims.AddRange(await ClaimPendingSpendAsync(server, db));
+
+                if (claims.Count == 0)
                 {
                     _logger.LogDebug("No pending spend updates to flush");
                     return 0;
                 }
 
-                _logger.LogDebug("Flushing {PendingCount} pending spend update keys from Redis", keys.Count);
-
-                // Get and delete all values atomically
-                var groupUpdates = new Dictionary<int, decimal>();
-                var keyUsagePattern = "key_usage:group:*";
-                var keyUsageKeys = server.Keys(pattern: keyUsagePattern).ToList();
-                var keyUsageByGroup = new Dictionary<int, Dictionary<int, decimal>>();
-                
-                // Process group spend updates
-                foreach (var key in keys)
-                {
-                    var groupId = ParseGroupIdFromKey(key.ToString());
-
-                    // Get and delete atomically
-                    var value = await db.StringGetDeleteAsync(key);
-                    if (value.HasValue && double.TryParse(value.ToString(), out var cost))
-                    {
-                        groupUpdates[groupId] = (decimal)cost;
-                    }
-                }
-                
-                // Process key usage data
-                await ParseKeyUsageData(keyUsageKeys, db, keyUsageByGroup);
-                
-                if (!groupUpdates.Any())
-                {
-                    return 0;
-                }
+                _logger.LogDebug("Flushing {PendingCount} durable spend claims from Redis", claims.Count);
 
                 using var scope = _serviceScopeFactory.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
@@ -244,34 +226,45 @@ namespace ConduitLLM.Configuration.Services
                 var updatedKeyHashes = new List<string>();
                 var flushStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var processedCount = 0;
+                decimal totalSpend = 0;
 
-                foreach (var (groupId, totalCost) in groupUpdates)
+                foreach (var claim in claims)
                 {
                     // Create a description that includes which keys were used
-                    var description = BuildUsageDescription(groupId, keyUsageByGroup);
+                    var description = BuildUsageDescription(claim.KeyUsageByKeyId);
 
-                    // Update group balance with transaction details
-                    // This already creates a transaction record with the correct BalanceAfter
-                    var newBalance = await groupRepository.AdjustBalanceAsync(
-                        groupId,
-                        -totalCost,
+                    // The claim ID is persisted on the ledger row in the same transaction as
+                    // the debit. If the process dies after the DB commit but before deleting
+                    // the Redis claim, recovery observes Applied=false and only acknowledges
+                    // the already-recorded claim.
+                    var result = await groupRepository.AdjustBalanceIdempotentAsync(
+                        claim.GroupId,
+                        -claim.TotalCost,
+                        $"batch-spend:{claim.ClaimId}",
                         description,
-                        "System"  // Initiated by system batch process
-                    );
+                        "System",
+                        ReferenceType.System,
+                        claim.ClaimId);
+
+                    // Acknowledge only after the database commit (or idempotent duplicate
+                    // confirmation). Until this delete succeeds, the claim remains durable
+                    // and retryable in Redis.
+                    await DeleteClaimAsync(db, claim);
 
                     processedCount++;
+                    totalSpend += result.Applied ? claim.TotalCost : 0;
                     _logger.LogDebug(
-                        "Batch flush: updated group {GroupId} — deducted {Cost:C}, new balance: {NewBalance:C} ({Processed}/{Total})",
-                        groupId, totalCost, newBalance, processedCount, groupUpdates.Count);
+                        "Batch flush: finalized claim {ClaimId} for group {GroupId} — amount {Cost:C}, new balance: {NewBalance:C}, applied: {Applied} ({Processed}/{Total})",
+                        claim.ClaimId, claim.GroupId, claim.TotalCost, result.NewBalance, result.Applied, processedCount, claims.Count);
 
                     // Note: We don't need to create additional transaction records here
-                    // because AdjustBalanceAsync already creates one with the correct balance.
+                    // because AdjustBalanceIdempotentAsync already creates one with the correct balance.
                     // The individual key usage tracking is already handled in the description.
 
                     // Get keys in this group for cache invalidation
                     var groupKeys = await context.VirtualKeys
                         .AsNoTracking()
-                        .Where(vk => vk.VirtualKeyGroupId == groupId)
+                        .Where(vk => vk.VirtualKeyGroupId == claim.GroupId)
                         .Select(vk => new { vk.Id, vk.KeyHash })
                         .ToListAsync();
 
@@ -279,10 +272,9 @@ namespace ConduitLLM.Configuration.Services
                 }
 
                 flushStopwatch.Stop();
-                var totalSpend = groupUpdates.Values.Sum();
                 _logger.LogInformation(
-                    "Batch flush completed: {GroupCount} groups, total deducted: {TotalSpend:C}, affected keys: {KeyCount}, elapsed: {ElapsedMs}ms",
-                    groupUpdates.Count, totalSpend, updatedKeyHashes.Count, flushStopwatch.ElapsedMilliseconds);
+                    "Batch flush completed: {ClaimCount} claims, total newly deducted: {TotalSpend:C}, affected keys: {KeyCount}, elapsed: {ElapsedMs}ms",
+                    processedCount, totalSpend, updatedKeyHashes.Count, flushStopwatch.ElapsedMilliseconds);
 
                 // Drain in-memory fallback queue
                 var fallbackCount = 0;
@@ -342,7 +334,7 @@ namespace ConduitLLM.Configuration.Services
                     }
                 }
 
-                return groupUpdates.Count();
+                return processedCount;
             }
             catch (Exception ex)
             {
@@ -361,50 +353,213 @@ namespace ConduitLLM.Configuration.Services
             return int.Parse(keyString.Substring(_redisKeyPrefix.Length));
         }
 
-        /// <summary>
-        /// Parses key usage data from Redis, reading and deleting each key atomically,
-        /// and populates the keyUsageByGroup dictionary.
-        /// </summary>
-        /// <param name="keyUsageKeys">List of Redis keys matching the key_usage pattern</param>
-        /// <param name="db">The Redis database instance</param>
-        /// <param name="keyUsageByGroup">Dictionary to populate with group ID -> (key ID -> cost) mappings</param>
-        private async Task ParseKeyUsageData(
-            List<StackExchange.Redis.RedisKey> keyUsageKeys,
-            StackExchange.Redis.IDatabase db,
-            Dictionary<int, Dictionary<int, decimal>> keyUsageByGroup)
+        private async Task<List<SpendClaim>> ClaimPendingSpendAsync(IServer server, IDatabase db)
         {
-            foreach (var key in keyUsageKeys)
+            var claims = new List<SpendClaim>();
+            var pendingKeys = server.Keys(pattern: $"{_redisKeyPrefix}*").ToList();
+
+            foreach (var pendingKey in pendingKeys)
             {
-                var keyString = key.ToString();
-                var parts = keyString.Split(':');
-                if (parts.Length == 5 && int.TryParse(parts[2], out var groupId) && int.TryParse(parts[4], out var keyId))
+                var groupId = ParseGroupIdFromKey(pendingKey.ToString());
+                var claimId = Guid.NewGuid().ToString("N");
+                var processingKey = ProcessingSpendKey(groupId, claimId);
+
+                bool claimed;
+                try
                 {
-                    var value = await db.StringGetDeleteAsync(key);
-                    if (value.HasValue && double.TryParse(value.ToString(), out var cost))
-                    {
-                        if (!keyUsageByGroup.ContainsKey(groupId))
-                            keyUsageByGroup[groupId] = new Dictionary<int, decimal>();
-                        keyUsageByGroup[groupId][keyId] = (decimal)cost;
-                    }
+                    // RENAME is atomic in Redis. Once it completes, concurrent writers create
+                    // a fresh pending key and cannot be erased when this claim is acknowledged.
+                    claimed = await db.KeyRenameAsync(pendingKey, processingKey, When.NotExists);
+                }
+                catch (RedisServerException ex) when (ex.Message.Contains("no such key", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Another flusher claimed the key after the server scan.
+                    continue;
+                }
+
+                if (!claimed)
+                {
+                    continue;
+                }
+
+                await db.KeyExpireAsync(processingKey, _redisTtl);
+                var usageKeys = await ClaimKeyUsageAsync(server, db, groupId, claimId);
+                var claim = await ReadClaimAsync(db, processingKey, groupId, claimId, usageKeys);
+                if (claim != null)
+                {
+                    claims.Add(claim);
                 }
             }
+
+            return claims;
         }
+
+        private async Task<List<SpendClaim>> GetProcessingClaimsAsync(IServer server, IDatabase db)
+        {
+            var claims = new List<SpendClaim>();
+            var processingKeys = server.Keys(pattern: $"{_processingKeyPrefix}*").ToList();
+
+            foreach (var processingKey in processingKeys)
+            {
+                if (!TryParseProcessingSpendKey(processingKey.ToString(), out var groupId, out var claimId))
+                {
+                    _logger.LogWarning("Ignoring malformed batch spend claim key {ClaimKey}", processingKey);
+                    continue;
+                }
+
+                var usageKeys = server.Keys(
+                    pattern: $"{_processingKeyUsagePrefix}{groupId}:key:*:claim:{claimId}").ToList();
+                var claim = await ReadClaimAsync(db, processingKey, groupId, claimId, usageKeys);
+                if (claim != null)
+                {
+                    claims.Add(claim);
+                }
+            }
+
+            return claims;
+        }
+
+        private async Task<List<RedisKey>> ClaimKeyUsageAsync(
+            IServer server,
+            IDatabase db,
+            int groupId,
+            string claimId)
+        {
+            var claimedKeys = new List<RedisKey>();
+            var pendingUsageKeys = server.Keys(pattern: $"{_keyUsagePrefix}{groupId}:key:*").ToList();
+
+            foreach (var pendingUsageKey in pendingUsageKeys)
+            {
+                if (!TryParsePendingKeyUsageKey(pendingUsageKey.ToString(), out var keyId))
+                {
+                    continue;
+                }
+
+                var processingUsageKey = ProcessingKeyUsageKey(groupId, keyId, claimId);
+                bool claimed;
+                try
+                {
+                    claimed = await db.KeyRenameAsync(pendingUsageKey, processingUsageKey, When.NotExists);
+                }
+                catch (RedisServerException ex) when (ex.Message.Contains("no such key", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (claimed)
+                {
+                    await db.KeyExpireAsync(processingUsageKey, _redisTtl);
+                    claimedKeys.Add(processingUsageKey);
+                }
+            }
+
+            return claimedKeys;
+        }
+
+        private async Task<SpendClaim?> ReadClaimAsync(
+            IDatabase db,
+            RedisKey processingKey,
+            int groupId,
+            string claimId,
+            List<RedisKey> usageKeys)
+        {
+            var value = await db.StringGetAsync(processingKey);
+            if (!TryParseRedisAmount(value, out var totalCost))
+            {
+                _logger.LogError("Batch spend claim {ClaimId} for group {GroupId} has an invalid amount", claimId, groupId);
+                return null;
+            }
+
+            var keyUsageByKeyId = new Dictionary<int, decimal>();
+            foreach (var usageKey in usageKeys)
+            {
+                if (!TryParseProcessingKeyUsageKey(usageKey.ToString(), out var keyId) ||
+                    !TryParseRedisAmount(await db.StringGetAsync(usageKey), out var cost))
+                {
+                    continue;
+                }
+
+                keyUsageByKeyId[keyId] = cost;
+            }
+
+            return new SpendClaim(groupId, claimId, processingKey, totalCost, keyUsageByKeyId, usageKeys);
+        }
+
+        private static async Task DeleteClaimAsync(IDatabase db, SpendClaim claim)
+        {
+            var keys = claim.ProcessingKeyUsageKeys
+                .Append(claim.ProcessingSpendKey)
+                .ToArray();
+            await db.KeyDeleteAsync(keys);
+        }
+
+        private RedisKey ProcessingSpendKey(int groupId, string claimId)
+            => $"{_processingKeyPrefix}{groupId}:claim:{claimId}";
+
+        private RedisKey ProcessingKeyUsageKey(int groupId, int keyId, string claimId)
+            => $"{_processingKeyUsagePrefix}{groupId}:key:{keyId}:claim:{claimId}";
+
+        private bool TryParseProcessingSpendKey(string key, out int groupId, out string claimId)
+        {
+            groupId = default;
+            claimId = string.Empty;
+            if (!key.StartsWith(_processingKeyPrefix, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var parts = key[_processingKeyPrefix.Length..].Split(":claim:", 2, StringSplitOptions.None);
+            return parts.Length == 2 &&
+                   int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out groupId) &&
+                   !string.IsNullOrWhiteSpace(claimId = parts[1]);
+        }
+
+        private bool TryParsePendingKeyUsageKey(string key, out int keyId)
+        {
+            keyId = default;
+            var parts = key.Split(':');
+            return parts.Length == 5 &&
+                   int.TryParse(parts[4], NumberStyles.None, CultureInfo.InvariantCulture, out keyId);
+        }
+
+        private bool TryParseProcessingKeyUsageKey(string key, out int keyId)
+        {
+            keyId = default;
+            var parts = key.Split(':');
+            return parts.Length == 7 &&
+                   int.TryParse(parts[4], NumberStyles.None, CultureInfo.InvariantCulture, out keyId);
+        }
+
+        private static bool TryParseRedisAmount(RedisValue value, out decimal amount)
+        {
+            amount = default;
+            return value.HasValue &&
+                   double.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) &&
+                   (amount = (decimal)parsed) >= 0;
+        }
+
+        private sealed record SpendClaim(
+            int GroupId,
+            string ClaimId,
+            RedisKey ProcessingSpendKey,
+            decimal TotalCost,
+            Dictionary<int, decimal> KeyUsageByKeyId,
+            List<RedisKey> ProcessingKeyUsageKeys);
 
         /// <summary>
         /// Builds a human-readable description of API usage for a given group,
         /// including which virtual keys contributed to the spend.
         /// </summary>
-        /// <param name="groupId">The group ID to build the description for</param>
-        /// <param name="keyUsageByGroup">Dictionary of group ID -> (key ID -> cost) mappings</param>
+        /// <param name="keyUsageByKeyId">Dictionary of virtual key ID to cost for this claim.</param>
         /// <returns>A description string such as "API usage by virtual key #5"</returns>
-        private static string BuildUsageDescription(int groupId, Dictionary<int, Dictionary<int, decimal>> keyUsageByGroup)
+        private static string BuildUsageDescription(Dictionary<int, decimal> keyUsageByKeyId)
         {
-            if (!keyUsageByGroup.ContainsKey(groupId))
+            if (keyUsageByKeyId.Count == 0)
             {
                 return "API usage";
             }
 
-            var keyIds = keyUsageByGroup[groupId].Keys.ToList();
+            var keyIds = keyUsageByKeyId.Keys.ToList();
             if (keyIds.Count == 1)
             {
                 return $"API usage by virtual key #{keyIds[0]}";

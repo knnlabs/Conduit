@@ -124,46 +124,19 @@ namespace ConduitLLM.Tests.Configuration.Services
             _dbContext.VirtualKeys.Add(virtualKey);
             await _dbContext.SaveChangesAsync();
             
-            // Setup Redis to return pending spend data
-            var redisKeys = new RedisKey[] { $"pending_spend:group:{groupId}" };
-            _mockRedisServer.Setup(x => x.Keys(
-                It.IsAny<int>(), 
-                It.IsAny<RedisValue>(), 
-                It.IsAny<int>(), 
-                It.IsAny<long>(), 
-                It.IsAny<int>(), 
-                It.IsAny<CommandFlags>()))
-                .Returns(redisKeys);
-            
-            _mockRedisDb.Setup(x => x.StringGetDeleteAsync(
-                It.Is<RedisKey>(k => k == $"pending_spend:group:{groupId}"), 
-                It.IsAny<CommandFlags>()))
-                .ReturnsAsync(new RedisValue(usageCost.ToString()));
-            
-            // Setup key usage data
-            var keyUsageKeys = new RedisKey[] { $"key_usage:group:{groupId}:key:1" };
-            _mockRedisServer.Setup(x => x.Keys(
-                It.IsAny<int>(), 
-                It.Is<RedisValue>(v => v == "key_usage:group:*"), 
-                It.IsAny<int>(), 
-                It.IsAny<long>(), 
-                It.IsAny<int>(), 
-                It.IsAny<CommandFlags>()))
-                .Returns(keyUsageKeys);
-            
-            _mockRedisDb.Setup(x => x.StringGetDeleteAsync(
-                It.Is<RedisKey>(k => k == $"key_usage:group:{groupId}:key:1"), 
-                It.IsAny<CommandFlags>()))
-                .ReturnsAsync(new RedisValue(usageCost.ToString()));
+            SetupPendingSpendClaim(groupId, usageCost, new Dictionary<int, decimal> { [1] = usageCost });
             
             // Setup the repository mock to adjust balance correctly
-            _mockGroupRepository.Setup(x => x.AdjustBalanceAsync(
+            _mockGroupRepository.Setup(x => x.AdjustBalanceIdempotentAsync(
                 groupId, 
                 -usageCost, 
+                It.Is<string>(key => key.StartsWith("batch-spend:")),
                 It.IsAny<string>(), 
-                "System"))
-                .ReturnsAsync(expectedBalance)
-                .Callback<int, decimal, string, string>((gId, amount, desc, initiatedBy) =>
+                "System",
+                ReferenceType.System,
+                It.IsAny<string>()))
+                .ReturnsAsync(new BalanceAdjustmentResult(expectedBalance, usageCost, Applied: true))
+                .Callback<int, decimal, string, string, string, ReferenceType, string>((gId, amount, _, desc, initiatedBy, _, _) =>
                 {
                     // Simulate what the real repository does
                     group.Balance += amount;
@@ -239,54 +212,23 @@ namespace ConduitLLM.Tests.Configuration.Services
             );
             await _dbContext.SaveChangesAsync();
             
-            // Setup Redis for group total
-            _mockRedisServer.Setup(x => x.Keys(
-                It.IsAny<int>(), 
-                It.Is<RedisValue>(v => v == "pending_spend:group:*"), 
-                It.IsAny<int>(), 
-                It.IsAny<long>(), 
-                It.IsAny<int>(), 
-                It.IsAny<CommandFlags>()))
-                .Returns(new RedisKey[] { $"pending_spend:group:{groupId}" });
-            
-            _mockRedisDb.Setup(x => x.StringGetDeleteAsync(
-                It.Is<RedisKey>(k => k == $"pending_spend:group:{groupId}"), 
-                It.IsAny<CommandFlags>()))
-                .ReturnsAsync(new RedisValue(totalUsage.ToString()));
-            
-            // Setup key usage data
-            var keyUsageKeys = new RedisKey[] 
-            { 
-                $"key_usage:group:{groupId}:key:1",
-                $"key_usage:group:{groupId}:key:2"
-            };
-            _mockRedisServer.Setup(x => x.Keys(
-                It.IsAny<int>(), 
-                It.Is<RedisValue>(v => v == "key_usage:group:*"), 
-                It.IsAny<int>(), 
-                It.IsAny<long>(), 
-                It.IsAny<int>(), 
-                It.IsAny<CommandFlags>()))
-                .Returns(keyUsageKeys);
-            
-            _mockRedisDb.Setup(x => x.StringGetDeleteAsync(
-                It.Is<RedisKey>(k => k == $"key_usage:group:{groupId}:key:1"), 
-                It.IsAny<CommandFlags>()))
-                .ReturnsAsync(new RedisValue(key1Usage.ToString()));
-            
-            _mockRedisDb.Setup(x => x.StringGetDeleteAsync(
-                It.Is<RedisKey>(k => k == $"key_usage:group:{groupId}:key:2"), 
-                It.IsAny<CommandFlags>()))
-                .ReturnsAsync(new RedisValue(key2Usage.ToString()));
+            SetupPendingSpendClaim(groupId, totalUsage, new Dictionary<int, decimal>
+            {
+                [1] = key1Usage,
+                [2] = key2Usage
+            });
             
             // Setup repository mock
-            _mockGroupRepository.Setup(x => x.AdjustBalanceAsync(
+            _mockGroupRepository.Setup(x => x.AdjustBalanceIdempotentAsync(
                 groupId, 
                 -totalUsage, 
+                It.Is<string>(key => key.StartsWith("batch-spend:")),
                 It.Is<string>(s => s.Contains("2 virtual keys")), 
-                "System"))
-                .ReturnsAsync(expectedBalance)
-                .Callback<int, decimal, string, string>((gId, amount, desc, initiatedBy) =>
+                "System",
+                ReferenceType.System,
+                It.IsAny<string>()))
+                .ReturnsAsync(new BalanceAdjustmentResult(expectedBalance, totalUsage, Applied: true))
+                .Callback<int, decimal, string, string, string, ReferenceType, string>((gId, amount, _, desc, initiatedBy, _, _) =>
                 {
                     group.Balance += amount;
                     group.LifetimeSpent += Math.Abs(amount);
@@ -400,6 +342,134 @@ namespace ConduitLLM.Tests.Configuration.Services
             // Verify no transactions were created
             var transactions = await _dbContext.VirtualKeyGroupTransactions.ToListAsync();
             Assert.Empty(transactions);
+        }
+
+        [Fact]
+        public async Task FlushPendingUpdates_WhenDatabaseWriteFails_LeavesDurableClaimForRetry()
+        {
+            // Arrange
+            const int groupId = 7;
+            const decimal usageCost = 12.50m;
+            SetupPendingSpendClaim(groupId, usageCost, new Dictionary<int, decimal>());
+
+            _mockGroupRepository.Setup(x => x.AdjustBalanceIdempotentAsync(
+                    groupId,
+                    -usageCost,
+                    It.Is<string>(key => key.StartsWith("batch-spend:")),
+                    It.IsAny<string>(),
+                    "System",
+                    ReferenceType.System,
+                    It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("database unavailable"));
+
+            // Act
+            var act = () => _service.FlushPendingUpdatesAsync();
+
+            // Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(act);
+            Assert.Equal("database unavailable", exception.Message);
+            _mockRedisDb.Verify(x => x.KeyDeleteAsync(
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<CommandFlags>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task FlushPendingUpdates_WithClaimFromPreviousAttempt_RetriesIdempotentlyThenDeletesClaim()
+        {
+            // Arrange - this models a process crash after the DB commit but before
+            // Redis acknowledgement. The repository reports the ledger key as a duplicate.
+            const int groupId = 9;
+            const decimal usageCost = 4.75m;
+            const string claimId = "recovered-claim";
+            RedisKey processingKey = $"processing_spend:group:{groupId}:claim:{claimId}";
+
+            SetupServerKeys("processing_spend:group:*", new[] { processingKey });
+            SetupServerKeys("pending_spend:group:*", Array.Empty<RedisKey>());
+            SetupServerKeys(
+                $"processing_key_usage:group:{groupId}:key:*:claim:{claimId}",
+                Array.Empty<RedisKey>());
+            _mockRedisDb.Setup(x => x.StringGetAsync(processingKey, It.IsAny<CommandFlags>()))
+                .ReturnsAsync(new RedisValue(usageCost.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            _mockRedisDb.Setup(x => x.KeyDeleteAsync(
+                    It.Is<RedisKey[]>(keys => keys.Length == 1 && keys[0] == processingKey),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(1L);
+
+            _mockGroupRepository.Setup(x => x.AdjustBalanceIdempotentAsync(
+                    groupId,
+                    -usageCost,
+                    $"batch-spend:{claimId}",
+                    "API usage",
+                    "System",
+                    ReferenceType.System,
+                    claimId))
+                .ReturnsAsync(new BalanceAdjustmentResult(95.25m, usageCost, Applied: false));
+
+            // Act
+            var result = await _service.FlushPendingUpdatesAsync();
+
+            // Assert
+            Assert.Equal(1, result);
+            _mockGroupRepository.VerifyAll();
+            _mockRedisDb.Verify(x => x.KeyDeleteAsync(
+                It.Is<RedisKey[]>(keys => keys.Length == 1 && keys[0] == processingKey),
+                It.IsAny<CommandFlags>()), Times.Once);
+        }
+
+        private void SetupPendingSpendClaim(
+            int groupId,
+            decimal totalCost,
+            IReadOnlyDictionary<int, decimal> keyUsage)
+        {
+            RedisKey pendingKey = $"pending_spend:group:{groupId}";
+            SetupServerKeys("processing_spend:group:*", Array.Empty<RedisKey>());
+            SetupServerKeys("pending_spend:group:*", new[] { pendingKey });
+            SetupServerKeys(
+                $"key_usage:group:{groupId}:key:*",
+                keyUsage.Keys.Select(keyId => (RedisKey)$"key_usage:group:{groupId}:key:{keyId}").ToArray());
+
+            _mockRedisDb.Setup(x => x.KeyRenameAsync(
+                    pendingKey,
+                    It.Is<RedisKey>(key => key.ToString().StartsWith($"processing_spend:group:{groupId}:claim:")),
+                    When.NotExists,
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
+            _mockRedisDb.Setup(x => x.StringGetAsync(
+                    It.Is<RedisKey>(key => key.ToString().StartsWith($"processing_spend:group:{groupId}:claim:")),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(new RedisValue(totalCost.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
+            foreach (var (keyId, cost) in keyUsage)
+            {
+                RedisKey pendingUsageKey = $"key_usage:group:{groupId}:key:{keyId}";
+                _mockRedisDb.Setup(x => x.KeyRenameAsync(
+                        pendingUsageKey,
+                        It.Is<RedisKey>(key => key.ToString().StartsWith($"processing_key_usage:group:{groupId}:key:{keyId}:claim:")),
+                        When.NotExists,
+                        It.IsAny<CommandFlags>()))
+                    .ReturnsAsync(true);
+                _mockRedisDb.Setup(x => x.StringGetAsync(
+                        It.Is<RedisKey>(key => key.ToString().StartsWith($"processing_key_usage:group:{groupId}:key:{keyId}:claim:")),
+                        It.IsAny<CommandFlags>()))
+                    .ReturnsAsync(new RedisValue(cost.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            }
+
+            _mockRedisDb.Setup(x => x.KeyDeleteAsync(
+                    It.IsAny<RedisKey[]>(),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync((RedisKey[] keys, CommandFlags _) => keys.LongLength);
+        }
+
+        private void SetupServerKeys(string pattern, RedisKey[] keys)
+        {
+            _mockRedisServer.Setup(x => x.Keys(
+                    It.IsAny<int>(),
+                    It.Is<RedisValue>(value => value == pattern),
+                    It.IsAny<int>(),
+                    It.IsAny<long>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CommandFlags>()))
+                .Returns(keys);
         }
 
         public void Dispose()
