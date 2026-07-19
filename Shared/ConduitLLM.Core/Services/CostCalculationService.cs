@@ -75,7 +75,8 @@ public partial class CostCalculationService : ICostCalculationService
     ///   <item><description>For image generation: imageCount * imageGenerationCost</description></item>
     /// </list>
     /// <para>
-    /// If cost information is not found for the specified model, the method returns 0.
+    /// If cost information is not found for the specified model, the method throws so the
+    /// calling billing pipeline can preserve the usage for reconciliation.
     /// </para>
     /// </remarks>
     public async Task<decimal> CalculateCostAsync(string modelId, Usage usage, CancellationToken cancellationToken = default)
@@ -103,12 +104,13 @@ public partial class CostCalculationService : ICostCalculationService
 
         if (modelCost == null)
         {
-            _logger.LogWarning(
-                "Cost information not found for model {ModelId}. Returning 0 cost. " +
-                "This may indicate a missing cost configuration or cache lookup failure. " +
+            _logger.LogError(
+                "BILLING ALERT: Cost information not found for model {ModelId}. " +
+                "The usage must be reconciled before it can be billed. " +
                 "Usage details: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, ImageCount={ImageCount}",
                 modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount);
-            return 0m;
+            throw new InvalidOperationException(
+                $"No active model cost configuration was found for model '{modelId}'.");
         }
 
         decimal calculatedCost = 0m;
@@ -194,12 +196,13 @@ public partial class CostCalculationService : ICostCalculationService
 
         if (modelCost == null)
         {
-            _logger.LogWarning(
-                "Cost information not found for ModelCostId {ModelCostId}. Returning 0 cost. " +
-                "This may indicate the cost record was deleted or a cache lookup failure. " +
+            _logger.LogError(
+                "BILLING ALERT: Cost information not found for ModelCostId {ModelCostId}. " +
+                "The cost record may be missing, inactive, not yet effective, or expired. " +
                 "Usage details: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, ImageCount={ImageCount}",
                 modelCostId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount);
-            return 0m;
+            throw new InvalidOperationException(
+                $"No active model cost configuration was found for ModelCostId {modelCostId}.");
         }
 
         // Use the cost name as the model identifier for logging purposes

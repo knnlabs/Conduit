@@ -51,7 +51,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task CalculateCostAsync_WithModelCostNotFound_ReturnsZero()
+        public async Task CalculateCostAsync_WithModelCostNotFound_ThrowsForReconciliation()
         {
             // Arrange
             var modelId = "unknown/model";
@@ -62,10 +62,11 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync((ModelCost?)null);
 
             // Act
-            var result = await _service.CalculateCostAsync(modelId, usage);
+            var act = () => _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            result.Should().Be(0m);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*No active model cost configuration*unknown/model*");
         }
 
         [Fact]

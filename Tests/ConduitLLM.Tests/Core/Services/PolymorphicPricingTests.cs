@@ -490,7 +490,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task CalculateCost_NoModelCost_ReturnsZero()
+        public async Task CalculateCost_NoModelCost_ThrowsForReconciliation()
         {
             // Arrange
             var modelId = "unknown/model";
@@ -504,10 +504,10 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync((ModelCost?)null);
 
             // Act
-            var cost = await _service.CalculateCostAsync(modelId, usage);
+            var act = () => _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            Assert.Equal(0m, cost);
+            await Assert.ThrowsAsync<InvalidOperationException>(act);
         }
 
         [Fact]

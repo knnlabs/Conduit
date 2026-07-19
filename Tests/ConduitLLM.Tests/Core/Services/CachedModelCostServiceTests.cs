@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
@@ -192,6 +193,64 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.NotNull(result);
             _mockInnerService.Verify(x => x.GetCostByIdAsync(
                 TestModelCostId, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetCostByIdAsync_CostExpiresAfterCaching_RefreshesAndNegativeCachesMiss()
+        {
+            // Arrange: the request resolved this cost while it was active, but it expired
+            // before post-response billing performed the ID-based lookup.
+            var expiredCachedCost = new ModelCost
+            {
+                Id = TestModelCostId,
+                CostName = "Expired during request",
+                IsActive = true,
+                EffectiveDate = DateTime.UtcNow.AddDays(-1),
+                ExpiryDate = DateTime.UtcNow.AddSeconds(-1)
+            };
+            var cacheKey = CacheKeys.ModelCost.ById(TestModelCostId);
+
+            _mockCacheManager
+                .Setup(x => x.GetAsync<ModelCost>(
+                    cacheKey, CacheRegion.ModelCosts, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expiredCachedCost);
+            _mockInnerService
+                .Setup(x => x.GetCostByIdAsync(TestModelCostId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((ModelCost?)null);
+
+            // Act
+            var result = await _cachedService.GetCostByIdAsync(TestModelCostId);
+
+            // Assert
+            Assert.Null(result);
+            _mockCacheManager.Verify(x => x.RemoveAsync(
+                cacheKey, CacheRegion.ModelCosts, It.IsAny<CancellationToken>()), Times.Once);
+            _mockInnerService.Verify(x => x.GetCostByIdAsync(
+                TestModelCostId, It.IsAny<CancellationToken>()), Times.Once);
+            _mockCacheManager.Verify(x => x.SetAsync(
+                $"{cacheKey}:negative", "missing", CacheRegion.ModelCosts,
+                TimeSpan.FromMinutes(1), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetCostByIdAsync_NegativeCacheHit_DoesNotQueryDatabase()
+        {
+            // Arrange
+            var cacheKey = CacheKeys.ModelCost.ById(TestModelCostId);
+            _mockCacheManager
+                .Setup(x => x.GetAsync<string>(
+                    $"{cacheKey}:negative", CacheRegion.ModelCosts, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("missing");
+
+            // Act
+            var result = await _cachedService.GetCostByIdAsync(TestModelCostId);
+
+            // Assert
+            Assert.Null(result);
+            _mockInnerService.Verify(x => x.GetCostByIdAsync(
+                It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            _mockCacheManager.Verify(x => x.GetAsync<ModelCost>(
+                It.IsAny<string>(), It.IsAny<CacheRegion>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         #endregion

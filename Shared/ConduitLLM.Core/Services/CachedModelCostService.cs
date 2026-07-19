@@ -25,6 +25,9 @@ namespace ConduitLLM.Core.Services
     /// </remarks>
     public class CachedModelCostService : IModelCostService
     {
+        private static readonly TimeSpan NegativeCacheTtl = TimeSpan.FromMinutes(1);
+        private const string MissingMarker = "missing";
+
         private readonly IModelCostService _innerService;
         private readonly ICacheManager _cacheManager;
         private readonly ILogger<CachedModelCostService> _logger;
@@ -51,13 +54,27 @@ namespace ConduitLLM.Core.Services
 
             var cacheKey = CacheKeys.ModelCost.ByModelId(modelId);
 
+            if (await IsNegativeCacheHitAsync(cacheKey, cancellationToken))
+            {
+                _logger.LogWarning("Negative cache hit for missing model cost: {ModelId}", modelId);
+                return null;
+            }
+
             try
             {
                 var cached = await _cacheManager.GetAsync<ModelCost>(cacheKey, Region, cancellationToken);
-                if (cached != null)
+                if (cached != null && IsCurrentlyActive(cached))
                 {
                     _logger.LogDebug("Cache hit for model cost: {ModelId}", modelId);
                     return cached;
+                }
+
+                if (cached != null)
+                {
+                    _logger.LogWarning(
+                        "Cached model cost {ModelCostId} for {ModelId} became inactive or expired; refreshing from database",
+                        cached.Id, modelId);
+                    await _cacheManager.RemoveAsync(cacheKey, Region, cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -78,6 +95,10 @@ namespace ConduitLLM.Core.Services
                     _logger.LogWarning(ex, "Cache write failed for model cost {ModelId}", modelId);
                 }
             }
+            else
+            {
+                await SetNegativeCacheAsync(cacheKey, cancellationToken);
+            }
 
             return result;
         }
@@ -87,13 +108,27 @@ namespace ConduitLLM.Core.Services
         {
             var cacheKey = CacheKeys.ModelCost.ById(modelCostId);
 
+            if (await IsNegativeCacheHitAsync(cacheKey, cancellationToken))
+            {
+                _logger.LogWarning("Negative cache hit for missing model cost ID: {ModelCostId}", modelCostId);
+                return null;
+            }
+
             try
             {
                 var cached = await _cacheManager.GetAsync<ModelCost>(cacheKey, Region, cancellationToken);
-                if (cached != null)
+                if (cached != null && IsCurrentlyActive(cached))
                 {
                     _logger.LogDebug("Cache hit for model cost ID: {ModelCostId}", modelCostId);
                     return cached;
+                }
+
+                if (cached != null)
+                {
+                    _logger.LogWarning(
+                        "Cached model cost ID {ModelCostId} became inactive or expired; refreshing from database",
+                        modelCostId);
+                    await _cacheManager.RemoveAsync(cacheKey, Region, cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -113,6 +148,10 @@ namespace ConduitLLM.Core.Services
                 {
                     _logger.LogWarning(ex, "Cache write failed for model cost ID {ModelCostId}", modelCostId);
                 }
+            }
+            else
+            {
+                await SetNegativeCacheAsync(cacheKey, cancellationToken);
             }
 
             return result;
@@ -194,6 +233,42 @@ namespace ConduitLLM.Core.Services
             {
                 _logger.LogWarning(ex, "Error clearing model cost cache region");
             }
+        }
+
+        private async Task<bool> IsNegativeCacheHitAsync(string cacheKey, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var marker = await _cacheManager.GetAsync<string>(
+                    $"{cacheKey}:negative", Region, cancellationToken);
+                return marker == MissingMarker;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Negative cache read failed for model cost key {CacheKey}", cacheKey);
+                return false;
+            }
+        }
+
+        private async Task SetNegativeCacheAsync(string cacheKey, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _cacheManager.SetAsync(
+                    $"{cacheKey}:negative", MissingMarker, Region, NegativeCacheTtl, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Negative cache write failed for model cost key {CacheKey}", cacheKey);
+            }
+        }
+
+        private static bool IsCurrentlyActive(ModelCost modelCost)
+        {
+            var now = DateTime.UtcNow;
+            return modelCost.IsActive &&
+                modelCost.EffectiveDate <= now &&
+                (!modelCost.ExpiryDate.HasValue || modelCost.ExpiryDate.Value > now);
         }
     }
 }
