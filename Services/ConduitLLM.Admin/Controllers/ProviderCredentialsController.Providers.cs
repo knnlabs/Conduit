@@ -71,6 +71,8 @@ namespace ConduitLLM.Admin.Controllers
                 p.ProviderName,
                 p.BaseUrl,
                 p.IsEnabled,
+                p.TrustProviderReportedCosts,
+                p.ProviderCostMarkupMultiplier,
                 p.CreatedAt,
                 p.UpdatedAt,
                 KeyCount = p.ProviderKeyCredentials?.Count ?? 0
@@ -111,6 +113,8 @@ namespace ConduitLLM.Admin.Controllers
                 provider.ProviderName,
                 provider.BaseUrl,
                 provider.IsEnabled,
+                provider.TrustProviderReportedCosts,
+                provider.ProviderCostMarkupMultiplier,
                 provider.CreatedAt,
                 provider.UpdatedAt,
                 KeyCount = provider.ProviderKeyCredentials?.Count ?? 0
@@ -132,6 +136,8 @@ namespace ConduitLLM.Admin.Controllers
                 ProviderName = request.ProviderName,
                 BaseUrl = request.BaseUrl,
                 IsEnabled = request.IsEnabled,
+                TrustProviderReportedCosts = request.TrustProviderReportedCosts,
+                ProviderCostMarkupMultiplier = request.ProviderCostMarkupMultiplier,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -162,6 +168,8 @@ namespace ConduitLLM.Admin.Controllers
                 provider.ProviderName,
                 provider.BaseUrl,
                 provider.IsEnabled,
+                provider.TrustProviderReportedCosts,
+                provider.ProviderCostMarkupMultiplier,
                 provider.CreatedAt,
                 provider.UpdatedAt,
                 KeyCount = 0
@@ -204,6 +212,18 @@ namespace ConduitLLM.Admin.Controllers
             {
                 changes.Add(("IsEnabled", provider.IsEnabled.ToString(), request.IsEnabled.ToString()));
                 provider.IsEnabled = request.IsEnabled;
+            }
+
+            if (provider.TrustProviderReportedCosts != request.TrustProviderReportedCosts)
+            {
+                changes.Add(("TrustProviderReportedCosts", provider.TrustProviderReportedCosts.ToString(), request.TrustProviderReportedCosts.ToString()));
+                provider.TrustProviderReportedCosts = request.TrustProviderReportedCosts;
+            }
+
+            if (provider.ProviderCostMarkupMultiplier != request.ProviderCostMarkupMultiplier)
+            {
+                changes.Add(("ProviderCostMarkupMultiplier", provider.ProviderCostMarkupMultiplier.ToString(), request.ProviderCostMarkupMultiplier.ToString()));
+                provider.ProviderCostMarkupMultiplier = request.ProviderCostMarkupMultiplier;
             }
 
             provider.UpdatedAt = DateTime.UtcNow;

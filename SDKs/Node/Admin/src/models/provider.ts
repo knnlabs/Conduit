@@ -9,6 +9,10 @@ export interface ProviderDto {
   providerName: string; // User-friendly display name, can be changed
   baseUrl?: string | null;
   isEnabled: boolean;
+  /** When true, the provider-reported per-request cost is authoritative for billing (falls back to ModelCost). */
+  trustProviderReportedCosts: boolean;
+  /** Multiplier applied to the provider-reported cost when billing (1.0 = pass-through). */
+  providerCostMarkupMultiplier: number;
   createdAt: string;
   updatedAt: string;
   // Note: apiKey and organization moved to ProviderKeyCredential
@@ -19,12 +23,16 @@ export interface CreateProviderDto {
   providerName: string;
   baseUrl?: string | null;
   isEnabled?: boolean;
+  trustProviderReportedCosts?: boolean;
+  providerCostMarkupMultiplier?: number;
 }
 
 export interface UpdateProviderDto {
   providerName?: string;
   baseUrl?: string | null;
   isEnabled?: boolean;
+  trustProviderReportedCosts?: boolean;
+  providerCostMarkupMultiplier?: number;
 }
 
 

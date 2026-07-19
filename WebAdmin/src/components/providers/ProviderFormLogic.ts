@@ -16,6 +16,8 @@ export interface ProviderFormData {
   apiEndpoint?: string;
   organizationId?: string;
   isEnabled: boolean;
+  trustProviderReportedCosts: boolean;
+  providerCostMarkupMultiplier: number;
 }
 
 export interface ProviderOption {
@@ -64,6 +66,8 @@ export function useProviderFormLogic(
     apiEndpoint: '',
     organizationId: '',
     isEnabled: true,
+    trustProviderReportedCosts: false,
+    providerCostMarkupMultiplier: 1,
   }));
 
   const form = useForm<ProviderFormData>({
@@ -138,9 +142,11 @@ export function useProviderFormLogic(
             providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
             apiKey: '', // Don't show existing key for security
             apiEndpoint: apiProvider.baseUrl ?? '',
-            organizationId: (provider as { organization?: string; organizationId?: string }).organization ?? 
+            organizationId: (provider as { organization?: string; organizationId?: string }).organization ??
                           (provider as { organization?: string; organizationId?: string }).organizationId ?? '',
             isEnabled: provider.isEnabled === true,
+            trustProviderReportedCosts: provider.trustProviderReportedCosts === true,
+            providerCostMarkupMultiplier: provider.providerCostMarkupMultiplier ?? 1,
           };
           
           // Update initial values - form will reinitialize via key prop

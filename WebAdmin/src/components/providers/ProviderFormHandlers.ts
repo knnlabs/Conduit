@@ -36,6 +36,8 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           providerName: providerName,
           baseUrl: values.apiEndpoint ?? undefined,
           isEnabled: values.isEnabled,
+          trustProviderReportedCosts: values.trustProviderReportedCosts,
+          providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
         };
 
         const createdProvider = await withAdminClient(client => 
@@ -71,6 +73,8 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           baseUrl: values.apiEndpoint ?? undefined,
           organization: values.organizationId ?? undefined,
           isEnabled: values.isEnabled,
+          trustProviderReportedCosts: values.trustProviderReportedCosts,
+          providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
         };
 
         await withAdminClient(client => 

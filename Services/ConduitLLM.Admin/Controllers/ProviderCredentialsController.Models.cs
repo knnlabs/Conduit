@@ -26,6 +26,18 @@ namespace ConduitLLM.Admin.Controllers
         /// Whether the provider is enabled
         /// </summary>
         public bool IsEnabled { get; set; } = true;
+
+        /// <summary>
+        /// When true, the cost the provider reports per request is authoritative for billing
+        /// (falls back to ModelCost when no cost is reported). Defaults to false.
+        /// </summary>
+        public bool TrustProviderReportedCosts { get; set; } = false;
+
+        /// <summary>
+        /// Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).
+        /// Only consulted when <see cref="TrustProviderReportedCosts"/> is true.
+        /// </summary>
+        public decimal ProviderCostMarkupMultiplier { get; set; } = 1.0m;
     }
 
     /// <summary>
@@ -37,16 +49,28 @@ namespace ConduitLLM.Admin.Controllers
         /// The new name for the provider (optional)
         /// </summary>
         public string? ProviderName { get; set; }
-        
+
         /// <summary>
         /// The new base URL for the provider (optional)
         /// </summary>
         public string? BaseUrl { get; set; }
-        
+
         /// <summary>
         /// Whether the provider is enabled
         /// </summary>
         public bool IsEnabled { get; set; }
+
+        /// <summary>
+        /// When true, the cost the provider reports per request is authoritative for billing
+        /// (falls back to ModelCost when no cost is reported). Defaults to false when omitted.
+        /// </summary>
+        public bool TrustProviderReportedCosts { get; set; } = false;
+
+        /// <summary>
+        /// Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).
+        /// Defaults to 1.0 when omitted, so a partial update never silently zeroes the markup.
+        /// </summary>
+        public decimal ProviderCostMarkupMultiplier { get; set; } = 1.0m;
     }
 
     /// <summary>
