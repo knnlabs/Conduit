@@ -122,8 +122,9 @@ public class RefundService : IRefundService
             providerCostContext,
             cancellationToken);
 
-        // Check for validation errors
-        if (refundResult.ValidationMessages.Count > 0 && refundResult.RefundAmount == 0)
+        // Validation failures must never be treated as warnings. Reject before mutating the balance
+        // even if a calculator bug returns a positive amount alongside validation messages.
+        if (refundResult.ValidationMessages.Count > 0)
         {
             var errorMessage = string.Join("; ", refundResult.ValidationMessages);
             _logger.LogWarning(
@@ -172,14 +173,6 @@ public class RefundService : IRefundService
             previousBalance,
             group.Balance,
             transaction.Id);
-
-        if (refundResult.ValidationMessages.Count > 0)
-        {
-            _logger.LogWarning(
-                "Refund for group {GroupId} had validation warnings: {ValidationMessages}",
-                virtualKeyGroupId,
-                string.Join("; ", refundResult.ValidationMessages));
-        }
 
         return refundResult;
     }

@@ -121,7 +121,7 @@ public class RefundServiceTests
     }
 
     [Fact]
-    public async Task ProcessRefundAsync_WithValidationWarningsButNonZeroRefund_ShouldSucceed()
+    public async Task ProcessRefundAsync_WithValidationErrorsAndNonZeroRefund_ShouldRejectWithoutCreditingBalance()
     {
         // Arrange
         var group = new VirtualKeyGroup { Id = 1, Balance = 10.00m, UpdatedAt = DateTime.UtcNow };
@@ -130,7 +130,7 @@ public class RefundServiceTests
             ModelId = "gpt-4",
             RefundAmount = 0.05m,
             RefundReason = "partial",
-            ValidationMessages = new List<string> { "Partial refund: output tokens capped" }
+            ValidationMessages = new List<string> { "Refund prompt tokens cannot exceed original" }
         };
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
@@ -140,20 +140,17 @@ public class RefundServiceTests
                 It.IsAny<string>(), It.IsAny<string?>(),
                 It.IsAny<ProviderCostRefundContext?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(refundResult);
-        _mockContext.Setup(x => x.VirtualKeyGroups).Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<VirtualKeyGroup>>());
-        _mockContext.Setup(x => x.VirtualKeyGroupTransactions).Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<VirtualKeyGroupTransaction>>());
-        _mockContext.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
-
         // Act
-        var result = await _service.ProcessRefundAsync(
+        var act = () => _service.ProcessRefundAsync(
             1, "gpt-4",
             new Usage { PromptTokens = 1000, TotalTokens = 1000 },
-            new Usage { PromptTokens = 500, TotalTokens = 500 },
+            new Usage { PromptTokens = 1500, TotalTokens = 1500 },
             "partial", null, "admin", null);
 
         // Assert
-        result.Should().NotBeNull();
-        result.RefundAmount.Should().Be(0.05m);
-        group.Balance.Should().Be(10.05m);
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Refund prompt tokens cannot exceed original*");
+        group.Balance.Should().Be(10.00m);
+        _mockContext.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
