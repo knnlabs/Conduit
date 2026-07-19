@@ -57,21 +57,25 @@ public partial class CostCalculationService
             }
         }
         
-        // Always add completion token cost (cost is per million tokens)
-        if (usage.CompletionTokens.HasValue)
+        // Reasoning tokens are a subset of completion tokens (the OpenAI convention).
+        // Price only the non-reasoning completion tokens here so the subset is not billed twice.
+        var reasoningTokens = usage.ReasoningTokens.GetValueOrDefault();
+        var regularCompletionTokens = Math.Max(0, usage.CompletionTokens.GetValueOrDefault() - reasoningTokens);
+        if (regularCompletionTokens > 0)
         {
-            calculatedCost += (usage.CompletionTokens.Value * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
+            calculatedCost += (regularCompletionTokens * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
         }
 
-        // Add reasoning token cost if applicable (cost is per million tokens)
-        if (usage.ReasoningTokens.HasValue && usage.ReasoningTokens.Value > 0)
+        // Add reasoning token cost if applicable (cost is per million tokens).
+        // This also handles providers that report reasoning tokens without a completion total.
+        if (reasoningTokens > 0)
         {
             // Use specific reasoning rate if available, otherwise fall back to output rate
             var reasoningRate = modelCost.ReasoningCostPerMillionTokens ?? modelCost.OutputCostPerMillionTokens;
-            calculatedCost += (usage.ReasoningTokens.Value * reasoningRate) / 1_000_000m;
+            calculatedCost += (reasoningTokens * reasoningRate) / 1_000_000m;
             
             _logger.LogDebug("Applied reasoning token pricing for {ReasoningTokens} tokens at rate {ReasoningRate}",
-                usage.ReasoningTokens.Value, reasoningRate);
+                reasoningTokens, reasoningRate);
         }
 
         // Image and video generation costs are now handled via RulesBased pricing configuration

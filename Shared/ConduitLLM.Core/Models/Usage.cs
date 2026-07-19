@@ -156,7 +156,8 @@ public class Usage
     /// Number of reasoning tokens used (o1 models and other reasoning models).
     /// </summary>
     /// <remarks>
-    /// These represent the model's internal reasoning process tokens.
+    /// These represent the model's internal reasoning process tokens and are a subset of
+    /// <see cref="CompletionTokens"/>, following the OpenAI usage convention.
     /// Used by models like OpenAI o1, DeepSeek-R1, Claude with thinking mode, 
     /// Gemini 2.5 with thinking, and Qwen QwQ.
     /// These tokens are typically billed at output token rates.

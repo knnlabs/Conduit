@@ -182,5 +182,27 @@ namespace ConduitLLM.Tests.Core.Services
             result.RefundAmount.Should().Be(0.0045m);
             result.Breakdown!.InputTokenRefund.Should().Be(0.0045m);
         }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithReasoningTokens_DoesNotDoubleRefundCompletionSubset()
+        {
+            var modelId = "reasoning/model";
+            var originalUsage = new Usage { CompletionTokens = 500, ReasoningTokens = 200 };
+            var refundUsage = new Usage { CompletionTokens = 500, ReasoningTokens = 200 };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                InputCostPerMillionTokens = 10m,
+                OutputCostPerMillionTokens = 30m,
+                ReasoningCostPerMillionTokens = 60m
+            };
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            var result = await _service.CalculateRefundAsync(modelId, originalUsage, refundUsage, "Full refund");
+
+            result.RefundAmount.Should().Be(0.021m);
+            result.Breakdown!.OutputTokenRefund.Should().Be(0.009m);
+        }
     }
 }

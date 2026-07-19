@@ -162,23 +162,26 @@ public partial class CostCalculationService
             }
         }
 
-        // Always add completion token refund (cost is per million tokens)
-        if (refundUsage.CompletionTokens.HasValue && refundUsage.CompletionTokens.Value > 0)
+        // Reasoning tokens are included in completion tokens. Refund the non-reasoning portion at
+        // the output rate, then refund the reasoning subset at its configured rate.
+        var reasoningTokens = refundUsage.ReasoningTokens.GetValueOrDefault();
+        var regularCompletionTokens = Math.Max(0, refundUsage.CompletionTokens.GetValueOrDefault() - reasoningTokens);
+        if (regularCompletionTokens > 0)
         {
-            breakdown.OutputTokenRefund = (refundUsage.CompletionTokens.Value * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
+            breakdown.OutputTokenRefund = (regularCompletionTokens * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
             totalRefund += breakdown.OutputTokenRefund;
         }
 
         // Handle reasoning token refunds (cost is per million tokens)
-        if (refundUsage.ReasoningTokens.HasValue && refundUsage.ReasoningTokens.Value > 0)
+        if (reasoningTokens > 0)
         {
             // Use specific reasoning rate if available, otherwise fall back to output rate
             var reasoningRate = modelCost.ReasoningCostPerMillionTokens ?? modelCost.OutputCostPerMillionTokens;
-            var reasoningRefund = (refundUsage.ReasoningTokens.Value * reasoningRate) / 1_000_000m;
+            var reasoningRefund = (reasoningTokens * reasoningRate) / 1_000_000m;
             totalRefund += reasoningRefund;
             
             _logger.LogDebug("Applied reasoning token refund for {ReasoningTokens} tokens at rate {ReasoningRate}",
-                refundUsage.ReasoningTokens.Value, reasoningRate);
+                reasoningTokens, reasoningRate);
         }
 
         // Image and video refunds are now handled via RulesBased pricing configuration
@@ -340,15 +343,11 @@ public partial class CostCalculationService
     /// </summary>
     private static decimal ComputeRefundRatio(Usage originalUsage, Usage refundUsage)
     {
-        var originalTokens = (originalUsage.PromptTokens ?? 0)
-            + (originalUsage.CompletionTokens ?? 0)
-            + (originalUsage.ReasoningTokens ?? 0);
+        var originalTokens = GetTotalTokensWithoutDoubleCountingReasoning(originalUsage);
 
         if (originalTokens > 0)
         {
-            var refundTokens = (refundUsage.PromptTokens ?? 0)
-                + (refundUsage.CompletionTokens ?? 0)
-                + (refundUsage.ReasoningTokens ?? 0);
+            var refundTokens = GetTotalTokensWithoutDoubleCountingReasoning(refundUsage);
             return ClampRatio(refundTokens, originalTokens);
         }
 
@@ -375,4 +374,7 @@ public partial class CostCalculationService
 
     private static decimal ClampRatio(decimal refundQuantity, decimal originalQuantity) =>
         Math.Clamp(refundQuantity / originalQuantity, 0m, 1m);
+
+    private static int GetTotalTokensWithoutDoubleCountingReasoning(Usage usage) =>
+        (usage.PromptTokens ?? 0) + Math.Max(usage.CompletionTokens ?? 0, usage.ReasoningTokens ?? 0);
 }
