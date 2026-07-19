@@ -3,6 +3,7 @@ using System.Text;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.OpenRouter;
 
 using FluentAssertions;
@@ -25,7 +26,9 @@ namespace ConduitLLM.Tests.Providers
         private readonly Mock<HttpMessageHandler> _handlerMock;
         private readonly HttpClient _httpClient;
         private readonly List<Dictionary<string, string>> _capturedHeaders = new();
+        private readonly List<(string Method, string Path, string Body)> _capturedRequests = new();
         private string _modelsJson = "{\"data\":[]}";
+        private string _imagesJson = "{\"created\":0,\"data\":[]}";
 
         public OpenRouterClientTests(ITestOutputHelper output) : base(output)
         {
@@ -46,11 +49,18 @@ namespace ConduitLLM.Tests.Providers
                 .Returns<HttpRequestMessage, CancellationToken>((req, _) =>
                 {
                     _capturedHeaders.Add(req.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value)));
+                    var reqBody = req.Content?.ReadAsStringAsync().GetAwaiter().GetResult() ?? string.Empty;
                     var path = req.RequestUri!.AbsolutePath;
-                    var body = path.EndsWith("/key") ? "{\"data\":{}}" : _modelsJson;
+                    _capturedRequests.Add((req.Method.Method, path, reqBody));
+
+                    string responseBody;
+                    if (path.EndsWith("/key")) responseBody = "{\"data\":{}}";
+                    else if (path.EndsWith("/images")) responseBody = _imagesJson;
+                    else responseBody = _modelsJson;
+
                     return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                     {
-                        Content = new StringContent(body, Encoding.UTF8, "application/json")
+                        Content = new StringContent(responseBody, Encoding.UTF8, "application/json")
                     });
                 });
         }
@@ -140,6 +150,64 @@ namespace ConduitLLM.Tests.Providers
             model.Capabilities.Should().NotBeNull();      // chat defaults still applied
             model.Capabilities!.Chat.Should().BeTrue();
             model.TokenLimits.Should().BeNull();          // no context/limits reported
+        }
+
+        [Fact]
+        public async Task CreateImageAsync_PostsToNativeImagesEndpoint_NotImagesGenerations()
+        {
+            // Arrange
+            _imagesJson = "{\"created\":1,\"data\":[{\"b64_json\":\"aGVsbG8=\"}]}";
+            var client = CreateClient();
+            var request = new ImageGenerationRequest { Prompt = "a cat", Model = "black-forest-labs/flux-1.1-pro", N = 1 };
+
+            // Act
+            await client.CreateImageAsync(request);
+
+            // Assert — hits /api/v1/images, not the OpenAI /images/generations path
+            var imageCall = _capturedRequests.Single(r => r.Method == "POST");
+            imageCall.Path.Should().EndWith("/images");
+            imageCall.Path.Should().NotContain("/images/generations");
+        }
+
+        [Fact]
+        public async Task CreateImageAsync_MapsQualityHdToHigh_AndDefaultsOutputFormatPng()
+        {
+            // Arrange
+            _imagesJson = "{\"created\":1,\"data\":[{\"b64_json\":\"aGVsbG8=\"}]}";
+            var client = CreateClient();
+            var request = new ImageGenerationRequest
+            {
+                Prompt = "a cat", Model = "openai/gpt-image-1", N = 1, Quality = "hd", Size = "1024x1024"
+            };
+
+            // Act
+            await client.CreateImageAsync(request);
+
+            // Assert
+            var body = _capturedRequests.Single(r => r.Method == "POST").Body;
+            body.Should().Contain("\"quality\":\"high\"");
+            body.Should().Contain("\"output_format\":\"png\"");
+            body.Should().NotContain("response_format");
+        }
+
+        [Fact]
+        public async Task CreateImageAsync_CapturesProviderCost_AndImageCount()
+        {
+            // Arrange — response carries b64 image + usage with cost
+            _imagesJson = "{\"created\":1,\"data\":[{\"b64_json\":\"aGVsbG8=\"}],\"usage\":{\"prompt_tokens\":10,\"cost\":0.003}}";
+            var client = CreateClient();
+            var request = new ImageGenerationRequest { Prompt = "a cat", Model = "openai/gpt-image-1", N = 1, Quality = "standard", Size = "1024x1024" };
+
+            // Act
+            var result = await client.CreateImageAsync(request);
+
+            // Assert
+            result.Data.Should().ContainSingle();
+            result.Data[0].B64Json.Should().Be("aGVsbG8=");
+            result.Usage.Should().NotBeNull();
+            result.Usage!.ProviderReportedCostUsd.Should().Be(0.003m);
+            result.Usage.ImageCount.Should().Be(1);
+            result.Usage.ImageResolution.Should().Be("1024x1024");
         }
     }
 }
