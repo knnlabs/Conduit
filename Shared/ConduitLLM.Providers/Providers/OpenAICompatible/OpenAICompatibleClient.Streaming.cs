@@ -140,8 +140,9 @@ namespace ConduitLLM.Providers.OpenAICompatible
                                 mappedChunk.OriginalModelAlias = request.Model;
                             }
 
-                            // Extract cached token counts from provider-specific extension data
-                            ExtractCachedTokensFromExtensionData(mappedChunk.Usage);
+                            // Extract cached token counts + provider-reported cost from provider-specific
+                            // extension data (and strip the raw cost so it is not leaked to clients).
+                            ExtractProviderUsageFromExtensionData(mappedChunk.Usage);
 
                             instrumentation.RecordChunk();
 

@@ -185,6 +185,30 @@ public class Usage
     public Dictionary<string, object>? PricingParameters { get; set; }
 
     /// <summary>
+    /// Cost in USD reported by the provider for this request (e.g. OpenRouter's usage.cost — the
+    /// actual credits the operator was charged).
+    /// </summary>
+    /// <remarks>
+    /// Server-only: captured for billing but never serialized to API clients (exposing it would
+    /// leak the operator's upstream cost). It is set programmatically by the provider client's usage
+    /// mapping, not by JSON binding. When present and the provider is configured as trusted,
+    /// <see cref="ProviderCostPolicy"/> makes it authoritative for spend calculation.
+    /// </remarks>
+    [JsonIgnore]
+    public decimal? ProviderReportedCostUsd { get; set; }
+
+    /// <summary>
+    /// Billing policy stamped by the Gateway before cost calculation. Never serialized.
+    /// </summary>
+    /// <remarks>
+    /// When <see cref="ProviderCostBillingPolicy.TrustProviderReportedCost"/> is true and
+    /// <see cref="ProviderReportedCostUsd"/> is present, the cost calculator bills
+    /// <c>ProviderReportedCostUsd * MarkupMultiplier</c> instead of computing from ModelCost.
+    /// </remarks>
+    [JsonIgnore]
+    public ProviderCostBillingPolicy? ProviderCostPolicy { get; set; }
+
+    /// <summary>
     /// Extension data to capture additional provider-specific fields not defined in the model.
     /// </summary>
     /// <remarks>
