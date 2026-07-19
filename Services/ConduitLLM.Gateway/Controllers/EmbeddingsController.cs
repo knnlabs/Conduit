@@ -11,6 +11,7 @@ using ConduitLLM.Configuration.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Gateway.Authorization;
+using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Filters;
 
 namespace ConduitLLM.Gateway.Controllers
@@ -79,6 +80,12 @@ namespace ConduitLLM.Gateway.Controllers
                 {
                     HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
                     HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+
+                    if (modelMapping.ModelProviderTypeAssociation?.ModelCostId != null)
+                    {
+                        HttpContext.Items[HttpContextKeys.ModelCostId] =
+                            modelMapping.ModelProviderTypeAssociation.ModelCostId;
+                    }
                 }
             }
             catch (Exception ex)
