@@ -417,6 +417,46 @@ namespace ConduitLLM.Tests.Configuration.Services
         }
 
         [Fact]
+        public async Task FlushEventsAsync_ShouldRequeueEventsAfterTransientDatabaseFailure()
+        {
+            var auditEvent = new BillingAuditEvent
+            {
+                EventType = BillingAuditEventType.SpendUpdateFailed,
+                VirtualKeyId = 1016,
+                Model = "transient-failure-model",
+                CalculatedCost = 0.25m
+            };
+
+            await _service.LogBillingEventAsync(auditEvent);
+
+            _connection.Close();
+            await _service.FlushEventsAsync();
+
+            _connection.Open();
+            using (var command = _connection.CreateCommand())
+            {
+                command.CommandText = "PRAGMA foreign_keys = OFF";
+                command.ExecuteNonQuery();
+            }
+            using (var recoveryScope = _serviceProvider.CreateScope())
+            {
+                var recoveryContext = recoveryScope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+                await recoveryContext.Database.EnsureCreatedAsync();
+            }
+            await _service.FlushEventsAsync();
+
+            using var scope = _serviceProvider.CreateScope();
+            var scopedContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var savedEvents = await scopedContext.BillingAuditEvents
+                .Where(e => e.VirtualKeyId == 1016)
+                .ToListAsync();
+
+            var savedEvent = Assert.Single(savedEvents);
+            Assert.Equal(BillingAuditEventType.SpendUpdateFailed, savedEvent.EventType);
+            Assert.Equal(0.25m, savedEvent.CalculatedCost);
+        }
+
+        [Fact]
         public void LogBillingEvent_WithNullEvent_ShouldNotThrow()
         {
             // Act & Assert

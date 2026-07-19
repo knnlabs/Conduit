@@ -291,10 +291,9 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
 
         // Final flush - drain all remaining events
         await _flushSemaphore.WaitAsync(cancellationToken);
+        var events = new List<TEvent>();
         try
         {
-            var events = new List<TEvent>();
-
             while (_eventQueue.TryDequeue(out var auditEvent))
             {
                 events.Add(auditEvent);
@@ -313,7 +312,9 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
         }
         catch (Exception ex)
         {
+            RequeueEvents(events);
             _logger.LogError(ex, "Failed to flush remaining {EntityName} audit events to database", EntityName);
+            throw;
         }
         finally
         {
@@ -503,10 +504,9 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
         if (!await _flushSemaphore.WaitAsync(timeout))
             return; // Already flushing and not waiting
 
+        var events = new List<TEvent>();
         try
         {
-            var events = new List<TEvent>();
-
             // Dequeue up to BatchSize events
             while (events.Count < BatchSize && _eventQueue.TryDequeue(out var auditEvent))
             {
@@ -528,12 +528,33 @@ public abstract class BatchAuditServiceBase<TEvent> : IHostedService, IDisposabl
         }
         catch (Exception ex)
         {
+            RequeueEvents(events);
             _logger.LogError(ex, "Failed to flush {EntityName} audit events to database", EntityName);
             AuditEventsFlushed.WithLabels(EntityName, "failure").Inc();
         }
         finally
         {
             _flushSemaphore.Release();
+        }
+    }
+
+    private void RequeueEvents(IEnumerable<TEvent> events)
+    {
+        var requeuedCount = 0;
+        foreach (var auditEvent in events)
+        {
+            _eventQueue.Enqueue(auditEvent);
+            requeuedCount++;
+        }
+
+        AuditQueueDepth.WithLabels(EntityName).Set(_eventQueue.Count);
+
+        if (requeuedCount > 0)
+        {
+            _logger.LogWarning(
+                "Re-queued {Count} {EntityName} audit events after a database flush failure",
+                requeuedCount,
+                EntityName);
         }
     }
 
