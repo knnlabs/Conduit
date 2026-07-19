@@ -173,13 +173,12 @@ namespace ConduitLLM.Core.Services.Abstractions
                 // 8. Execute the actual generation
                 var response = await ExecuteGenerationAsync(generationRequest, modelInfo, virtualKey, taskCts.Token);
 
-                // 9. Process and store the generated media
-                var processedMedia = await ProcessMediaAsync(response, request, modelInfo, virtualKey, taskCts.Token);
+                // 9. Calculate cost as soon as the provider has completed generation. Media
+                // download/storage remains cancellable, but the provider work is no longer
+                // refundable at this point and must be billed even if that later work is cancelled.
+                var cost = await CalculateCostAsync(request, modelInfo, response);
 
-                // 10. Calculate cost
-                var cost = await CalculateCostAsync(request, modelInfo, processedMedia);
-
-                // 11. Update spend
+                // 10. Update spend before entering the user-cancellable media processing phase.
                 if (cost > 0)
                 {
                     if (int.TryParse(GetVirtualKeyId(request), out var vkId))
@@ -187,6 +186,9 @@ namespace ConduitLLM.Core.Services.Abstractions
                         await UpdateSpendAsync(vkId, cost, GetRequestId(request), GetCorrelationId(request));
                     }
                 }
+
+                // 11. Process and store the generated media
+                var processedMedia = await ProcessMediaAsync(response, request, modelInfo, virtualKey, taskCts.Token);
 
                 // 12. Complete the task
                 await CompleteTaskAsync(request, processedMedia, cost, modelInfo, stopwatch);
@@ -230,7 +232,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected abstract void ValidateParameters(TRequest request);
         protected abstract Task<TRequest> BuildGenerationRequestAsync(TEventRequest request, GenerationModelInfo modelInfo);
         protected abstract void ValidateModelSupport(GenerationModelInfo modelInfo, TEventRequest request);
-        protected abstract Usage CreateUsageObject(TEventRequest request, ProcessedMedia media);
+        protected abstract Usage CreateUsageObject(TEventRequest request, TResponse response);
         protected abstract Task PublishStartedEventAsync(TEventRequest request);
         protected abstract Task PublishCompletedEventAsync(TEventRequest request, ProcessedMedia media, decimal cost, GenerationModelInfo modelInfo, TimeSpan duration);
         protected abstract Task PublishFailedEventAsync(TEventRequest request, Exception ex, bool isRetryable, int retryCount, int maxRetries);
@@ -323,9 +325,9 @@ namespace ConduitLLM.Core.Services.Abstractions
             return virtualKeyInfo;
         }
 
-        protected virtual async Task<decimal> CalculateCostAsync(TEventRequest request, GenerationModelInfo modelInfo, ProcessedMedia media)
+        protected virtual async Task<decimal> CalculateCostAsync(TEventRequest request, GenerationModelInfo modelInfo, TResponse response)
         {
-            var usage = CreateUsageObject(request, media);
+            var usage = CreateUsageObject(request, response);
             try
             {
                 // Prefer the ModelCost link resolved from the model association — string matching can
@@ -345,10 +347,10 @@ namespace ConduitLLM.Core.Services.Abstractions
             }
             catch (Exception ex)
             {
-                // The provider has already delivered and stored the media. A billing configuration
-                // failure must not turn that successful generation into a failed task. Completion at
-                // zero cost preserves the existing request log for reconciliation, while this alert
-                // makes the revenue-impacting configuration error visible to operators.
+                // The provider has already completed generation. A billing configuration failure
+                // must not turn that successful generation into a failed task. Completion at zero
+                // cost preserves the existing request log for reconciliation, while this alert makes
+                // the revenue-impacting configuration error visible to operators.
                 _logger.LogError(ex,
                     "BILLING ALERT: Failed to calculate {MediaType} cost for request {RequestId}. " +
                     "Completing delivered media at zero cost for reconciliation",

@@ -143,6 +143,10 @@ namespace ConduitLLM.Core.Services
                     }
                     return null;
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to process image at index {Index}", index);
@@ -192,12 +196,14 @@ namespace ConduitLLM.Core.Services
             // For now, we'll assume all models in image requests support images
         }
 
-        protected override Usage CreateUsageObject(ImageGenerationRequested request, ProcessedMedia media)
+        protected override Usage CreateUsageObject(ImageGenerationRequested request, ImageGenerationResponse response)
         {
+            var imageCount = response.Data?.Count ?? 0;
+
             // Build pricing parameters for rules-based pricing
             var pricingParameters = new Dictionary<string, object>
             {
-                ["count"] = media.Count
+                ["count"] = imageCount
             };
 
             // Add resolution/size if provided
@@ -222,7 +228,7 @@ namespace ConduitLLM.Core.Services
 
             return new Usage
             {
-                ImageCount = media.Count,
+                ImageCount = imageCount,
                 ImageResolution = request.Request.Size,
                 ImageQuality = request.Request.Quality,
                 PricingParameters = pricingParameters

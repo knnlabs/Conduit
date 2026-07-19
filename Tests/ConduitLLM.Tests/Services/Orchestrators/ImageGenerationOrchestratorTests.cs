@@ -308,12 +308,54 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
+        [Fact]
+        public async Task HandleAsync_WhenCancelledAfterProviderCompletes_ShouldStillPublishSpend()
+        {
+            // Arrange: cancel as soon as billing is published, before media download/storage starts.
+            using var cancellationSource = new CancellationTokenSource();
+            var request = CreateTestEventRequest();
+            var response = CreateTestResponse();
+            SetupSuccessfulGeneration(response);
+
+            HttpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>()))
+                .Returns(new System.Net.Http.HttpClient(new MockHttpMessageHandler()));
+            EventBusMock.Setup(x => x.PublishAsync(
+                    It.IsAny<SpendUpdateRequested>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback(() => cancellationSource.Cancel())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            await Orchestrator.HandleAsync(request, CreateEventContext(cancellationSource.Token));
+
+            // Assert: provider output is billed even though subsequent processing is cancelled.
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                "provider-model-id",
+                It.Is<Usage>(usage => usage.ImageCount == 2),
+                It.IsAny<CancellationToken>()), Times.Once);
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<SpendUpdateRequested>(spend => spend.KeyId == 1 && spend.Amount == 0.01m),
+                It.IsAny<CancellationToken>()), Times.Once);
+            TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                request.TaskId,
+                TaskState.Cancelled,
+                It.IsAny<int?>(),
+                It.IsAny<object?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         private class MockHttpMessageHandler : System.Net.Http.HttpMessageHandler
         {
             protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(
                 System.Net.Http.HttpRequestMessage request,
                 CancellationToken cancellationToken)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return Task.FromCanceled<System.Net.Http.HttpResponseMessage>(cancellationToken);
+                }
+
                 var response = new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new System.Net.Http.ByteArrayContent(new byte[] { 0x89, 0x50, 0x4E, 0x47 })

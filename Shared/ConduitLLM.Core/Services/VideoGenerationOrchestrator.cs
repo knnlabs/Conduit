@@ -236,6 +236,10 @@ namespace ConduitLLM.Core.Services
                     }
                     return null;
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to process video");
@@ -307,7 +311,7 @@ namespace ConduitLLM.Core.Services
             // For now, we'll pass through
         }
 
-        protected override Usage CreateUsageObject(VideoGenerationRequested request, ProcessedMedia media)
+        protected override Usage CreateUsageObject(VideoGenerationRequested request, VideoGenerationResponse response)
         {
             var resolution = request.Parameters?.Size ?? "1280x720";
             var duration = request.Parameters?.Duration ?? 5;
