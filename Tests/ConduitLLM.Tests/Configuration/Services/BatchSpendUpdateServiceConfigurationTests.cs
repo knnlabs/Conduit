@@ -83,6 +83,34 @@ namespace ConduitLLM.Tests.Configuration.Services
         }
 
         [Fact]
+        public async Task IsHealthy_WhenRedisCircuitOpens_ShouldBecomeFalse()
+        {
+            // Arrange
+            var circuitOpen = false;
+            var circuitBreaker = new Mock<IRedisCircuitBreaker>();
+            circuitBreaker.SetupGet(x => x.IsOpen).Returns(() => circuitOpen);
+            var options = Microsoft.Extensions.Options.Options.Create(new BatchSpendingOptions());
+
+            await using var service = new BatchSpendUpdateService(
+                _mockScopeFactory.Object,
+                _testRedisFactory,
+                options,
+                _mockLogger.Object,
+                _mockAlertingService.Object,
+                circuitBreaker.Object);
+            await service.StartAsync(CancellationToken.None);
+
+            // Act & Assert
+            await Task.Delay(50);
+            Assert.True(service.IsHealthy);
+
+            circuitOpen = true;
+            Assert.False(service.IsHealthy);
+
+            await service.StopAsync(CancellationToken.None);
+        }
+
+        [Fact]
         public void Constructor_WithInvalidConfiguration_ShouldThrowException()
         {
             // Arrange

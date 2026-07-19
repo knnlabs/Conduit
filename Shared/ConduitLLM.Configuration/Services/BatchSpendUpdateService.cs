@@ -83,7 +83,9 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Gets whether the service is healthy and able to accept updates
         /// </summary>
-        public bool IsHealthy => !_cancellationTokenSource?.Token.IsCancellationRequested ?? false;
+        public bool IsHealthy =>
+            (!_cancellationTokenSource?.Token.IsCancellationRequested ?? false) &&
+            _circuitBreaker?.IsOpen != true;
 
         private CancellationTokenSource? _cancellationTokenSource;
 
@@ -114,8 +116,10 @@ namespace ConduitLLM.Configuration.Services
 
             if (virtualKey == null)
             {
-                _logger.LogWarning("Virtual Key {VirtualKeyId} not found for spend update", virtualKeyId);
-                return;
+                throw new BillingSystemException(
+                    $"Virtual Key {virtualKeyId} was not found while queueing spend",
+                    virtualKeyId,
+                    BillingSystemException.ErrorCodes.DatabaseUpdateFailed);
             }
 
             // Execute Redis operations through circuit breaker if available

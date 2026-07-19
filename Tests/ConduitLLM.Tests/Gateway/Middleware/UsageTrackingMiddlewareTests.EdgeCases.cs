@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
@@ -73,6 +74,42 @@ namespace ConduitLLM.Tests.Http.Middleware
                 Fixture.VirtualKeyService,
                 987,
                 0.0001m);
+        }
+
+        [Fact]
+        public async Task SpendPersistenceFailure_DoesNotLogSuccessfulBilling()
+        {
+            // Arrange
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(988)
+                .Build();
+
+            Fixture.SetupCostForModel("gpt-3.5-turbo", 0.0001m);
+            Fixture.BatchSpendService
+                .Setup(x => x.QueueSpendUpdateAsync(988, 0.0001m))
+                .ThrowsAsync(new InvalidOperationException("Redis unavailable"));
+            Fixture.VirtualKeyService
+                .Setup(x => x.UpdateSpendAsync(988, 0.0001m))
+                .ReturnsAsync(false);
+
+            // Act
+            await Invoker
+                .WithResponse(ResponseBuilders.OpenAI()
+                    .WithModel("gpt-3.5-turbo")
+                    .WithUsage(10, 20)
+                    .Build())
+                .InvokeAsync(context);
+
+            // Assert
+            Assert.DoesNotContain(Fixture.CapturedBillingEvents, e =>
+                e.EventType == BillingAuditEventType.UsageTracked ||
+                e.EventType == BillingAuditEventType.ToolUsageTracked);
+            Assert.Contains(Fixture.CapturedBillingEvents,
+                e => e.EventType == BillingAuditEventType.UnexpectedError);
+            Fixture.BatchSpendService.Verify(
+                x => x.QueueFallbackUpdate(988, 0.0001m),
+                Times.Once);
         }
 
         [Fact]

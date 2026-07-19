@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Gateway.Metrics;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
@@ -44,14 +45,25 @@ namespace ConduitLLM.Gateway.Middleware
                 logger.LogWarning("BatchSpendUpdateService unhealthy, using direct update for VirtualKey {VirtualKeyId}", virtualKeyId);
             }
 
-            // Tier 2: Try direct database write
+            // Tier 2: Try direct database write. UpdateSpendAsync reports expected
+            // persistence failures with false, so do not treat task completion alone
+            // as a successful charge.
+            Exception? databaseFailure = null;
             try
             {
-                await virtualKeyService.UpdateSpendAsync(virtualKeyId, cost);
-                return;
+                if (await virtualKeyService.UpdateSpendAsync(virtualKeyId, cost))
+                {
+                    return;
+                }
+
+                logger.LogError(
+                    "Direct DB spend update returned false for VirtualKey {VirtualKeyId} ({Cost:C})",
+                    virtualKeyId, cost);
+                BillingMetrics.RecordSpendUpdateFailure(virtualKeyId, "direct_db_failed");
             }
             catch (Exception ex)
             {
+                databaseFailure = ex;
                 logger.LogError(ex,
                     "Direct DB spend update also failed for VirtualKey {VirtualKeyId} ({Cost:C}), queuing to in-memory fallback",
                     virtualKeyId, cost);
@@ -61,6 +73,15 @@ namespace ConduitLLM.Gateway.Middleware
             // Tier 3: In-memory fallback queue (drained on next successful flush cycle)
             batchSpendService.QueueFallbackUpdate(virtualKeyId, cost);
             BillingMetrics.RecordPotentialRevenueLoss(cost, "fallback_queue");
+
+            // The in-memory queue is recoverable during this process lifetime, but it is
+            // not durable. Propagate the failure so callers cannot record successful
+            // billing until Redis or the database has actually accepted the spend.
+            throw new BillingSystemException(
+                $"Spend update for Virtual Key {virtualKeyId} was not durably persisted",
+                virtualKeyId,
+                BillingSystemException.ErrorCodes.DatabaseUpdateFailed,
+                databaseFailure);
         }
     }
 }
