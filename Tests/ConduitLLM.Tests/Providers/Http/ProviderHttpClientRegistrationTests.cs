@@ -97,10 +97,17 @@ namespace ConduitLLM.Tests.Providers.Http
 
             foreach (var providerType in ProviderHttpClientNames.RegisteredTypes)
             {
-                var name = ProviderHttpClientNames.Chat(providerType);
-                Assert.True(
-                    optionsMonitor.Get(name).HttpMessageHandlerBuilderActions.Count > 0,
-                    $"'{name}' ({providerType}) is not registered with policies.");
+                foreach (var name in new[]
+                {
+                    ProviderHttpClientNames.Chat(providerType),
+                    ProviderHttpClientNames.Auth(providerType),
+                    ProviderHttpClientNames.Video(providerType),
+                })
+                {
+                    Assert.True(
+                        optionsMonitor.Get(name).HttpMessageHandlerBuilderActions.Count > 0,
+                        $"'{name}' ({providerType}) is not registered with policies.");
+                }
             }
         }
 
@@ -116,8 +123,7 @@ namespace ConduitLLM.Tests.Providers.Http
         [InlineData(ProviderType.Cerebras)]
         [InlineData(ProviderType.SambaNova)]
         [InlineData(ProviderType.DeepInfra)]
-        // ProviderType.OpenAICompatible excluded: its runtime name derives from the user-supplied
-        // provider name until the naming convergence lands (PR 2 of the resilience overhaul).
+        [InlineData(ProviderType.OpenAICompatible)]
         public async Task ClientCreatedViaRegistry_RequestsTheRegisteredClientName(ProviderType providerType)
         {
             var requestedNames = new List<string>();

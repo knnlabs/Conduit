@@ -2,87 +2,85 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers.Configuration;
 using ConduitLLM.Providers.Http;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Providers.Extensions;
 
 /// <summary>
-/// Extension methods for registering LLM provider HttpClient instances with resilience policies.
+/// Extension methods for registering LLM provider HttpClient instances with the resilience
+/// pipeline (total timeout → retry → circuit breaker → per-attempt timeout).
 /// </summary>
 public static class HttpClientExtensions
 {
     /// <summary>
-    /// Adds HttpClient registration with retry policies for all LLM provider clients.
+    /// Registers the named HttpClients that provider clients request at runtime (via
+    /// <see cref="ProviderHttpClientNames"/>) with the provider resilience pipeline.
     /// </summary>
     /// <remarks>
-    /// Registers the exact named clients that <c>BaseLLMClient.CreateHttpClient</c> requests at
-    /// runtime (via <see cref="ProviderHttpClientNames"/>). Only the retry policy is attached:
-    /// every provider client already enforces <c>HttpClient.Timeout</c> (120s), and a Polly
-    /// timeout here would tighten that to 100s for long operations like image generation.
-    /// Auth-verification and video named clients are deliberately not registered — auth checks
-    /// should fail fast without retries, and video generation must never inherit an interactive
-    /// timeout/retry budget.
+    /// Three named clients are registered per provider type — chat (<c>*LLMClient</c>), auth
+    /// verification (<c>*AuthVerification</c>) and video (<c>*VideoClient</c>) — each with the
+    /// operation-class budget matching its role (see <see cref="ProviderResilienceOptions"/>).
+    /// Circuit breaker state is partitioned per named client × request URI authority, so
+    /// multiple Provider rows sharing an upstream host share failure signal, while
+    /// OpenAI-compatible providers pointing at different hosts get independent breakers.
     /// </remarks>
     /// <param name="services">The IServiceCollection to add services to</param>
     /// <returns>The service collection for chaining</returns>
     public static IServiceCollection AddLLMProviderHttpClients(this IServiceCollection services)
     {
-        // Configure retry options from configuration
-        services.AddOptions<RetryOptions>()
-            .BindConfiguration(RetryOptions.SectionName);
+        // Idempotency guard: AddProviderServices calls this, but hosts historically called it
+        // directly too. Registering the resilience handlers twice would stack pipelines.
+        if (services.Any(d => d.ServiceType == typeof(ProviderHttpClientsMarker)))
+        {
+            return services;
+        }
+        services.AddSingleton<ProviderHttpClientsMarker>();
 
-        // Configure timeout options from configuration
-        services.AddOptions<TimeoutOptions>()
-            .BindConfiguration(TimeoutOptions.SectionName);
+        services.AddOptions<ProviderResilienceOptions>()
+            .BindConfiguration(ProviderResilienceOptions.SectionName)
+            .ValidateDataAnnotations();
 
         foreach (var providerType in ProviderHttpClientNames.RegisteredTypes)
         {
-            services.AddHttpClient(ProviderHttpClientNames.Chat(providerType))
-                .AddProviderRetryPolicy();
+            AddResilientNamedClient(services, ProviderHttpClientNames.Chat(providerType), ConduitHttpOptions.Chat);
+            AddResilientNamedClient(services, ProviderHttpClientNames.Auth(providerType), ConduitHttpOptions.Auth);
+            AddResilientNamedClient(services, ProviderHttpClientNames.Video(providerType), ConduitHttpOptions.Video);
         }
 
         return services;
     }
 
-    /// <summary>
-    /// Adds the retry resilience policy (with error tracking when available) to an HttpClient.
-    /// Uses configuration from RetryOptions.
-    /// </summary>
-    /// <remarks>
-    /// Deliberately does not attach a Polly timeout policy: provider clients set
-    /// <c>HttpClient.Timeout</c> themselves (<c>BaseLLMClient.ConfigureHttpClient</c>), and that
-    /// timeout spans the whole handler chain including retries.
-    /// </remarks>
-    /// <param name="builder">The HttpClient builder</param>
-    /// <returns>The HttpClient builder for chaining</returns>
-    public static IHttpClientBuilder AddProviderRetryPolicy(this IHttpClientBuilder builder)
+    private static void AddResilientNamedClient(
+        IServiceCollection services, string clientName, string defaultOperationClass)
     {
-        return builder
-            .AddPolicyHandler((provider, _) =>
+        services.AddHttpClient(clientName)
+            .AddResilienceHandler("conduit-provider", (builder, context) =>
             {
-                var logger = provider.GetService<ILogger<ILLMClient>>();
-                var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value
-                    ?? new RetryOptions();
+                var options = context.ServiceProvider
+                    .GetRequiredService<IOptionsMonitor<ProviderResilienceOptions>>().CurrentValue;
 
-                // Use error tracking retry policy if error tracking service is available
-                var errorTracker = provider.GetService<IProviderErrorTrackingService>();
-                if (errorTracker != null)
-                {
-                    return ResiliencePolicies.GetRetryPolicyWithErrorTracking(
-                        provider,
-                        retryOptions.MaxRetries,
-                        TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
-                        TimeSpan.FromSeconds(retryOptions.MaxDelaySeconds));
-                }
+                var errorTracker = context.ServiceProvider.GetService<IProviderErrorTrackingService>();
+                var hook = errorTracker == null
+                    ? null
+                    : new ProviderErrorTrackingRetryHook(
+                        errorTracker,
+                        context.ServiceProvider.GetService<IHttpContextAccessor>(),
+                        context.ServiceProvider.GetService<ILoggerFactory>()
+                            ?.CreateLogger("ConduitLLM.Providers.Http.ErrorTracking"));
 
-                // Fall back to standard retry policy if error tracking is not available
-                return ResiliencePolicies.GetRetryPolicy(
-                    retryOptions.MaxRetries,
-                    TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
-                    TimeSpan.FromSeconds(retryOptions.MaxDelaySeconds),
-                    retryOptions.EnableRetryLogging ? logger : null);
-            });
+                var logger = context.ServiceProvider.GetService<ILoggerFactory>()
+                    ?.CreateLogger($"ConduitLLM.Providers.Http.Resilience.{clientName}");
+
+                ProviderResiliencePipeline.Configure(builder, defaultOperationClass, options, hook, logger);
+            })
+            .SelectPipelineByAuthority();
+    }
+
+    private sealed class ProviderHttpClientsMarker
+    {
     }
 }

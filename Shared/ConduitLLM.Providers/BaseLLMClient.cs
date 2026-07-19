@@ -144,7 +144,7 @@ namespace ConduitLLM.Providers
                     "Creating HttpClient instances directly can cause socket exhaustion under load.");
             }
 
-            var client = HttpClientFactory.CreateClient($"{ProviderName}LLMClient");
+            var client = HttpClientFactory.CreateClient(Http.ProviderHttpClientNames.Chat(Provider.ProviderType));
 
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
@@ -204,7 +204,7 @@ namespace ConduitLLM.Providers
                     "Creating HttpClient instances directly can cause socket exhaustion under load.");
             }
 
-            var client = HttpClientFactory.CreateClient($"{ProviderName}AuthVerification");
+            var client = HttpClientFactory.CreateClient(Http.ProviderHttpClientNames.Auth(Provider.ProviderType));
 
             // Configure basic headers
             client.DefaultRequestHeaders.Accept.Clear();

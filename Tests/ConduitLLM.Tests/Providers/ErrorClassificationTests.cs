@@ -1,5 +1,6 @@
 using System.Net;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Http;
 using FluentAssertions;
 using Xunit;
 
@@ -14,10 +15,11 @@ namespace ConduitLLM.Tests.Providers
         [InlineData(HttpStatusCode.TooManyRequests, ProviderErrorType.RateLimitExceeded)]
         [InlineData(HttpStatusCode.NotFound, ProviderErrorType.ModelNotFound)]
         [InlineData(HttpStatusCode.ServiceUnavailable, ProviderErrorType.ServiceUnavailable)]
+        [InlineData(HttpStatusCode.BadGateway, ProviderErrorType.ServiceUnavailable)]
+        [InlineData(HttpStatusCode.GatewayTimeout, ProviderErrorType.Timeout)]
         public void ClassifyHttpError_ReturnsCorrectType(HttpStatusCode status, ProviderErrorType expected)
         {
-            // This test verifies the mapping logic used in ResiliencePolicies.ErrorTracking.cs
-            // and BaseLLMClient.cs
+            // Exercises the real mapping in ProviderErrorTrackingRetryHook (via InternalsVisibleTo)
             var errorType = ClassifyHttpStatusCode(status);
             errorType.Should().Be(expected);
         }
@@ -117,32 +119,23 @@ namespace ConduitLLM.Tests.Providers
         [Theory]
         [InlineData(HttpStatusCode.BadRequest, ProviderErrorType.Unknown)]
         [InlineData(HttpStatusCode.InternalServerError, ProviderErrorType.Unknown)]
-        [InlineData(HttpStatusCode.BadGateway, ProviderErrorType.Unknown)]
-        [InlineData(HttpStatusCode.GatewayTimeout, ProviderErrorType.Unknown)]
         public void ClassifyHttpError_UnmappedCodes_ReturnUnknown(HttpStatusCode status, ProviderErrorType expected)
         {
             var errorType = ClassifyHttpStatusCode(status);
             errorType.Should().Be(expected);
         }
 
-        // Helper methods that mirror the actual implementation
+        // Calls the real implementation (internal, via InternalsVisibleTo) rather than mirroring
+        // it — a mirrored copy previously drifted from the production mapping.
         private static ProviderErrorType ClassifyHttpStatusCode(HttpStatusCode statusCode)
         {
-            return statusCode switch
-            {
-                HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
-                HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
-                HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
-                HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
-                HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
-                HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
-                _ => ProviderErrorType.Unknown
-            };
+            using var response = new HttpResponseMessage(statusCode);
+            return ProviderErrorTrackingRetryHook.ClassifyResponseError(response);
         }
 
         private static bool IsFatalError(ProviderErrorType errorType)
         {
-            return (int)errorType <= 9;
+            return ProviderErrorTrackingRetryHook.IsFatalError(errorType);
         }
     }
 }
