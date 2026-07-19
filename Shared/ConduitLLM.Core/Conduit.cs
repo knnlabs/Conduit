@@ -195,6 +195,7 @@ namespace ConduitLLM.Core
 
             ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
             ChatCompletionResponse? response = null;
+            Usage? accumulatedUsage = null;
 
             while (iteration < maxIterations)
             {
@@ -205,12 +206,7 @@ namespace ConduitLLM.Core
 
                 // Call LLM
                 response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
-
-                // Track LLM cost
-                if (response.Usage != null)
-                {
-                    // Cost calculation would happen in middleware, we just track iterations here
-                }
+                accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
 
                 // Check if LLM wants to call functions
                 var choice = response.Choices.FirstOrDefault();
@@ -240,6 +236,7 @@ namespace ConduitLLM.Core
 
                     // Make one more call to get a proper response
                     response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+                    accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
                     break;
                 }
 
@@ -294,6 +291,12 @@ namespace ConduitLLM.Core
 
                 // Make one final call to get a response
                 response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+                accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
+            }
+
+            if (response != null)
+            {
+                response.Usage = accumulatedUsage;
             }
 
             // Attach agentic metrics to response
@@ -350,6 +353,7 @@ namespace ConduitLLM.Core
 
             ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
             var iteration = 0;
+            Usage? accumulatedUsage = null;
 
             // Track tool calls outside the loop for iteration limit check
             var accumulatedToolCalls = new Dictionary<int, ToolCall>();
@@ -362,10 +366,19 @@ namespace ConduitLLM.Core
                 accumulatedToolCalls.Clear();
                 string? finishReason = null;
                 var assistantMessageContent = "";
+                Usage? iterationUsage = null;
 
                 // Stream the LLM response
                 await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                 {
+                    if (chunk.Usage != null)
+                    {
+                        // Providers may repeat usage in multiple chunks. Keep the latest usage for
+                        // this provider call, while exposing the running total across prior calls.
+                        iterationUsage = chunk.Usage;
+                        chunk.Usage = AggregateUsage(accumulatedUsage, iterationUsage);
+                    }
+
                     // Forward the chunk to the client
                     yield return chunk;
 
@@ -414,6 +427,8 @@ namespace ConduitLLM.Core
                     }
                 }
 
+                accumulatedUsage = AggregateUsage(accumulatedUsage, iterationUsage);
+
                 // Check if we have tool calls to execute
                 if (finishReason != FinishReason.ToolCalls || accumulatedToolCalls.Count == 0)
                 {
@@ -445,8 +460,15 @@ namespace ConduitLLM.Core
                     });
 
                     // Stream one more response
+                    Usage? finalCallUsage = null;
                     await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                     {
+                        if (chunk.Usage != null)
+                        {
+                            finalCallUsage = chunk.Usage;
+                            chunk.Usage = AggregateUsage(accumulatedUsage, finalCallUsage);
+                        }
+
                         yield return chunk;
                     }
                     break;
@@ -575,10 +597,62 @@ namespace ConduitLLM.Core
 
                 await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                 {
+                    if (chunk.Usage != null)
+                    {
+                        chunk.Usage = AggregateUsage(accumulatedUsage, chunk.Usage);
+                    }
+
                     yield return chunk;
                 }
             }
         }
+
+        /// <summary>
+        /// Adds billable usage from one provider call to the usage accumulated for the request.
+        /// Non-additive descriptors are taken from the latest call.
+        /// </summary>
+        private static Usage? AggregateUsage(Usage? accumulated, Usage? current)
+        {
+            if (current == null)
+            {
+                return accumulated;
+            }
+
+            return new Usage
+            {
+                PromptTokens = Sum(accumulated?.PromptTokens, current.PromptTokens),
+                CompletionTokens = Sum(accumulated?.CompletionTokens, current.CompletionTokens),
+                TotalTokens = Sum(accumulated?.TotalTokens, current.TotalTokens),
+                ImageCount = Sum(accumulated?.ImageCount, current.ImageCount),
+                VideoDurationSeconds = Sum(accumulated?.VideoDurationSeconds, current.VideoDurationSeconds),
+                VideoResolution = current.VideoResolution ?? accumulated?.VideoResolution,
+                IsBatch = current.IsBatch ?? accumulated?.IsBatch,
+                ImageQuality = current.ImageQuality ?? accumulated?.ImageQuality,
+                ImageResolution = current.ImageResolution ?? accumulated?.ImageResolution,
+                CachedInputTokens = Sum(accumulated?.CachedInputTokens, current.CachedInputTokens),
+                CachedWriteTokens = Sum(accumulated?.CachedWriteTokens, current.CachedWriteTokens),
+                SearchUnits = Sum(accumulated?.SearchUnits, current.SearchUnits),
+                SearchMetadata = current.SearchMetadata ?? accumulated?.SearchMetadata,
+                InferenceSteps = Sum(accumulated?.InferenceSteps, current.InferenceSteps),
+                ReasoningTokens = Sum(accumulated?.ReasoningTokens, current.ReasoningTokens),
+                AudioDurationSeconds = Sum(accumulated?.AudioDurationSeconds, current.AudioDurationSeconds),
+                TtsCharacters = Sum(accumulated?.TtsCharacters, current.TtsCharacters),
+                Metadata = current.Metadata ?? accumulated?.Metadata,
+                PricingParameters = current.PricingParameters ?? accumulated?.PricingParameters,
+                ProviderReportedCostUsd = Sum(accumulated?.ProviderReportedCostUsd, current.ProviderReportedCostUsd),
+                ProviderCostPolicy = current.ProviderCostPolicy ?? accumulated?.ProviderCostPolicy,
+                ExtensionData = current.ExtensionData ?? accumulated?.ExtensionData
+            };
+        }
+
+        private static int? Sum(int? left, int? right) =>
+            left.HasValue || right.HasValue ? checked(left.GetValueOrDefault() + right.GetValueOrDefault()) : null;
+
+        private static double? Sum(double? left, double? right) =>
+            left.HasValue || right.HasValue ? left.GetValueOrDefault() + right.GetValueOrDefault() : null;
+
+        private static decimal? Sum(decimal? left, decimal? right) =>
+            left.HasValue || right.HasValue ? left.GetValueOrDefault() + right.GetValueOrDefault() : null;
 
         /// <summary>
         /// Applies context window management to trim message history if needed.
