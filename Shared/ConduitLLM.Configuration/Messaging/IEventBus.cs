@@ -5,7 +5,7 @@ namespace ConduitLLM.Configuration.Messaging
     /// specific messaging library. This is the publish half of the anti-corruption
     /// layer introduced by epic #909: domain code depends on <see cref="IEventBus"/>
     /// rather than on a third-party bus type, so the underlying transport
-    /// (MassTransit today, Wolverine next) is a swappable implementation detail.
+    /// (Wolverine) is a swappable implementation detail.
     /// </summary>
     /// <remarks>
     /// Publishing is type-routed: an event is delivered to every registered
@@ -27,7 +27,7 @@ namespace ConduitLLM.Configuration.Messaging
 
         /// <summary>
         /// Publishes a batch of domain events of the same type in one transport operation
-        /// where the backend supports it (MassTransit <c>PublishBatch</c>), falling back to
+        /// where the backend supports it, falling back to
         /// sequential publishes otherwise. Used by the high-throughput webhook batch path
         /// (<c>BatchWebhookPublisher</c>).
         /// </summary>

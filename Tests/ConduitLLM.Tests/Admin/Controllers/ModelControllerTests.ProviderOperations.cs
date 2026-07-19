@@ -10,7 +10,6 @@ using ConduitLLM.Configuration.Repositories;
 using FluentAssertions;
 
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

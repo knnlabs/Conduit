@@ -6,8 +6,7 @@ using Wolverine.Persistence.Durability;
 namespace ConduitLLM.Configuration.Messaging.Wolverine
 {
     /// <summary>
-    /// Health check for the Wolverine messaging backend (I2.8/#931) — the replacement
-    /// for <c>RabbitMQHealthCheck</c> once the flag is flipped. Probes the Postgres
+    /// Health check for the Wolverine messaging backend (I2.8/#931). Probes the Postgres
     /// message store (inbox/outbox/scheduled/dead-letter counts), so it verifies the
     /// durability layer end-to-end rather than just DI resolution.
     /// </summary>

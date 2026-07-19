@@ -41,7 +41,7 @@ if (Test-Path $commonModule) {
 Write-Host "Waiting for services to be healthy..." -ForegroundColor Yellow
 
 # Service configuration
-$services = @('postgres', 'redis', 'rabbitmq', 'api', 'admin', 'webadmin')
+$services = @('postgres', 'redis', 'api', 'admin', 'webadmin')
 
 function Test-ServiceHealthy {
     param(

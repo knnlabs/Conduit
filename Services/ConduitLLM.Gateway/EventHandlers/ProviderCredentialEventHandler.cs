@@ -1,4 +1,3 @@
-using MassTransit;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
@@ -66,7 +65,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex, 
                     "Error handling provider credential update for provider ID {ProviderId}", 
                     @event.ProviderId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the event bus retry policy
             }
         }
 
@@ -108,7 +107,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex, 
                     "Error handling provider credential deletion for provider ID {ProviderId}", 
                     @event.ProviderId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                throw; // Re-throw to trigger the event bus retry policy
             }
         }
     }

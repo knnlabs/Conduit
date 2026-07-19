@@ -3,7 +3,7 @@ namespace ConduitLLM.Configuration.Messaging
     /// <summary>
     /// Transport-agnostic description of a tuned receive endpoint's reliability and
     /// concurrency policy. Captures — as data — everything the four hand-tuned
-    /// MassTransit endpoints (webhook-delivery, video-generation-events,
+    /// endpoints (webhook-delivery, video-generation-events,
     /// image-generation-events, spend-update-events) configure imperatively today, so
     /// each backend can translate the same descriptor into its own primitives without
     /// the domain knowing which library is underneath.
@@ -17,7 +17,7 @@ namespace ConduitLLM.Configuration.Messaging
     /// </param>
     /// <param name="QuorumQueue">Whether the queue is declared as a quorum queue.</param>
     /// <param name="ConfigureConsumeTopology">
-    /// MassTransit-specific: bind the consumed message types to this endpoint's queue.
+    /// Previous backend only: bind the consumed message types to this endpoint's queue.
     /// </param>
     /// <param name="Retry">Immediate-retry policy for transient handler failures.</param>
     /// <param name="CircuitBreaker">Circuit-breaker policy, or null if none.</param>
@@ -81,7 +81,7 @@ namespace ConduitLLM.Configuration.Messaging
     }
 
     /// <summary>
-    /// Circuit-breaker policy mirroring MassTransit's <c>UseCircuitBreaker</c> knobs.
+    /// Circuit-breaker policy mirroring the previous backend's circuit-breaker knobs.
     /// </summary>
     /// <param name="TrackingPeriod">Window over which failures are measured.</param>
     /// <param name="TripThreshold">Failure percentage that trips the breaker.</param>

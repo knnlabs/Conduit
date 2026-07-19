@@ -1,8 +1,6 @@
-using ConduitLLM.Configuration.Messaging.MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Events;
-
-using MassTransit;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,7 +11,7 @@ namespace ConduitLLM.Gateway.Extensions
     /// <summary>
     /// Registration for the low-risk cache-invalidation / notification handlers migrated to
     /// <c>IEventHandler&lt;T&gt;</c> in epic #909 (issue #919). Centralizes the handler DI
-    /// registrations and the matching MassTransit bridge consumers so the Gateway and Admin
+    /// registrations and the matching bridge handlers so the Gateway and Admin
     /// hosts stay in sync. These handlers are idempotent and dispatched on the default
     /// (auto-configured) endpoints, exactly as their <c>IConsumer&lt;T&gt;</c> predecessors were.
     /// </summary>
@@ -76,17 +74,6 @@ namespace ConduitLLM.Gateway.Extensions
         /// </summary>
         public static IReadOnlyList<Type> BridgedEventTypes =>
             ConduitLLM.Core.Messaging.ConduitMessagingTopology.GatewayCacheInvalidationEvents;
-
-        /// <summary>
-        /// Registers the MassTransit bridge consumers for the Gateway-hosted cache events.
-        /// </summary>
-        public static void AddGatewayCacheInvalidationBridges(this IRegistrationConfigurator x)
-        {
-            foreach (var eventType in BridgedEventTypes)
-            {
-                x.AddEventBridge(eventType);
-            }
-        }
 
         /// <summary>
         /// Registers the Wolverine bridge handlers for the Gateway-hosted cache events (#925).

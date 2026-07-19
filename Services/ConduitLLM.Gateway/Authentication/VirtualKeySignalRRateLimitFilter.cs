@@ -5,7 +5,6 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
 using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Gateway.Authentication

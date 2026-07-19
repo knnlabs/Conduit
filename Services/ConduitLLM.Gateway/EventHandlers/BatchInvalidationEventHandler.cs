@@ -1,4 +1,3 @@
-using MassTransit;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
@@ -66,7 +65,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _logger.LogError(ex,
                     "Failed to process cache invalidation for {EventType}",
                     nameof(TEvent));
-                throw; // Let MassTransit handle retry
+                throw; // Let the event bus handle retry
             }
         }
 

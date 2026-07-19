@@ -16,8 +16,7 @@ using Xunit;
 namespace ConduitLLM.Tests.Messaging
 {
     /// <summary>
-    /// Unit tests for the Wolverine <c>IEventBus</c> adapter (#925) — the mirror of
-    /// <see cref="MassTransitEventBusTests"/>.
+    /// Unit tests for the Wolverine <c>IEventBus</c> adapter (#925).
     /// </summary>
     public class WolverineEventBusTests
     {

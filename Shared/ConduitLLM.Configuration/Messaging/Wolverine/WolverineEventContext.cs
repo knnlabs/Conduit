@@ -5,7 +5,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// <summary>
     /// Adapts a Wolverine <see cref="IMessageContext"/> to the transport-agnostic
     /// <see cref="IEventContext"/> handed to <see cref="IEventHandler{TEvent}"/> —
-    /// the mirror of <c>MassTransitEventContext</c>.
+    /// the mirror of the previous backend's event context.
     /// </summary>
     internal sealed class WolverineEventContext : IEventContext
     {
@@ -48,7 +48,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         /// <inheritdoc />
         // Routed through the message context so Wolverine treats it as a cascading
         // publish from the current envelope (correlation propagated, outbox-aware) —
-        // the equivalent of MassTransit's ConsumeContext.Publish.
+        // the equivalent of the previous backend's consume-context publish.
         public Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
             where TEvent : class
         {
@@ -59,7 +59,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
 
         /// <inheritdoc />
         // Wolverine-native durable scheduling (survives restarts, unlike the
-        // unconfigured MassTransit scheduler this replaces). The scheduled event is
+        // unconfigured scheduler in the previous backend this replaces). The scheduled event is
         // routed by type, which lands it back on the same subscription the current
         // delivery came from — the ScheduleSend semantics WebhookDeliveryConsumer needs.
         public Task SchedulePublishAsync<TEvent>(DateTime deliveryTime, TEvent @event, CancellationToken cancellationToken = default)

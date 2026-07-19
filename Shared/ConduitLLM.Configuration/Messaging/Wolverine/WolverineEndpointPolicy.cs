@@ -12,8 +12,8 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// <summary>
     /// Translates the transport-agnostic <see cref="EndpointPolicy"/> descriptors
     /// (<see cref="ConduitEndpointPolicies"/>) into Wolverine primitives — the Wolverine
-    /// analogue of the Gateway's <c>ApplyRabbitMqEndpointPolicy</c> /
-    /// <c>MassTransitEndpointPolicy.ApplyResiliencePolicies</c> (epic #909, I2.3/#926).
+    /// analogue of the Gateway's <c>ApplyRabbitMqEndpointPolicy</c> resilience
+    /// configuration in the previous backend (epic #909, I2.3/#926).
     /// </summary>
     /// <remarks>
     /// Mapping notes:
@@ -22,7 +22,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// one node listens with sequential handling (spend-update-events).
     /// <c>SingleActiveConsumer</c> alone → <c>ExclusiveNodeWithParallelism</c>: one node
     /// listens (failover semantics of RabbitMQ's <c>x-single-active-consumer</c>) but
-    /// handles messages in parallel, matching MassTransit's concurrent processing.</item>
+    /// handles messages in parallel, matching the previous backend's concurrent processing.</item>
     /// <item><c>ConcurrentMessageLimit</c> → <c>MaximumParallelMessages</c>; null inherits
     /// Wolverine's default. <c>PrefetchCount</c> → <c>MaximumMessagesToReceive</c> (the
     /// per-poll receive batch), polled every 250ms instead of the 5s default.</item>
@@ -42,7 +42,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         /// Parallelism for single-active-consumer endpoints whose descriptor leaves
         /// <c>ConcurrentMessageLimit</c> null ("inherit the bus/config default") —
         /// mirrors the <c>ConduitLLM:RabbitMQ</c> ConcurrentMessageLimit default (50)
-        /// that MassTransit applies to those same endpoints.
+        /// that the previous backend applies to those same endpoints.
         /// </summary>
         private const int DefaultSingleActiveParallelism = 50;
 
@@ -83,7 +83,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
             {
                 // RabbitMQ x-single-active-consumer without ConcurrentMessageLimit=1 is
                 // one consumer *instance* with parallel handling (image-generation-events
-                // runs 50-concurrent on MassTransit via the ConduitLLM:RabbitMQ default) —
+                // runs 50-concurrent on the previous backend via the ConduitLLM:RabbitMQ default) —
                 // exclusive node for failover semantics, but NOT sequential. Mapping SAC
                 // to ListenWithStrictOrdering serialized the queue and cut media
                 // throughput ~10x (#929 parity gate finding W3).
@@ -119,7 +119,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         /// Expands a <see cref="RetryPolicy"/> descriptor into the per-attempt cooldowns
         /// Wolverine's <c>RetryWithCooldown</c> expects. Immediate → zero delays;
         /// Incremental → min + step·attempt; Exponential → min + step·(2ⁿ−1) capped at max
-        /// (the same shape MassTransit's <c>Exponential</c> produces).
+        /// (the same shape the previous backend's <c>Exponential</c> produces).
         /// </summary>
         public static TimeSpan[] ComputeRetryCooldowns(RetryPolicy retry)
         {

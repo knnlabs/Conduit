@@ -10,7 +10,7 @@ namespace ConduitLLM.Configuration.Messaging
     /// event types (the existing handlers frequently do). The hosting transport adapter
     /// resolves all registered handlers for a delivered event's type and invokes each.
     /// <para>
-    /// Error semantics mirror the existing MassTransit consumers: throwing from
+    /// Error semantics mirror the existing consumers: throwing from
     /// <see cref="HandleAsync"/> signals the transport to retry / redeliver according to
     /// the endpoint's <see cref="EndpointPolicy"/>. Handlers that should not be retried
     /// must catch and swallow internally.

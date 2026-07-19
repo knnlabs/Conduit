@@ -16,10 +16,10 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
     /// Npgsql database — no new broker.
     /// </summary>
     /// <remarks>
-    /// This registers the Wolverine host only. The <see cref="IEventBus"/> adapter and
-    /// the <see cref="IEventHandler{TEvent}"/> handler host land in I2.2/#925; until
-    /// then MassTransit remains the active backend and Wolverine boots idle behind the
-    /// <c>ConduitLLM:Messaging:Backend</c> flag.
+    /// This registers the Wolverine host, the active messaging backend on the
+    /// PostgreSQL transport. The <see cref="IEventBus"/> adapter and the
+    /// <see cref="IEventHandler{TEvent}"/> handler host are wired up alongside it
+    /// (I2.2/#925).
     /// </remarks>
     public static class WolverineMessagingExtensions
     {
@@ -54,7 +54,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         /// Configuration key selecting the Wolverine transport (I2.5/#928):
         /// <c>Postgresql</c> (default — durable persistence + cross-service queues) or
         /// <c>InMemory</c> (local queues only, no Postgres required — dev/CI parity with
-        /// MassTransit's in-memory mode). Unrecognized values throw at boot.
+        /// the previous backend's in-memory mode). Unrecognized values throw at boot.
         /// </summary>
         public const string TransportKey = "ConduitLLM:Messaging:Wolverine:Transport";
 
@@ -136,7 +136,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 {
                     // In-memory transport (I2.5/#928): local queues only, no persistence —
                     // dev/CI can run the Wolverine backend without Postgres, matching the
-                    // durability level of MassTransit's in-memory mode. Solo skips the
+                    // durability level of the previous backend's in-memory mode. Solo skips the
                     // multi-node leader-election agents a single test host never needs.
                     opts.Durability.Mode = DurabilityMode.Solo;
                 }
@@ -152,7 +152,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
 
                     // Local queues (where in-process bridge handlers receive publishes) are
                     // backed by the Postgres durability tables, so buffered messages survive
-                    // a crash — already an improvement on MassTransit's in-memory transport.
+                    // a crash — already an improvement on the previous backend's in-memory transport.
                     opts.Policies.UseDurableLocalQueues();
 
                     // Transactional outbox (I2.4/#927): every sending endpoint persists the
@@ -188,8 +188,8 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
 
         /// <summary>
         /// Registers the <see cref="IEventBus"/> adapter over Wolverine's
-        /// <see cref="IMessageBus"/>. Scoped for the same reason as
-        /// <c>AddMassTransitEventBus</c>: inside a handler scope the bus is the active
+        /// <see cref="IMessageBus"/>. Scoped for the same reason as the previous
+        /// backend's event-bus registration: inside a handler scope the bus is the active
         /// message context, so follow-on publishes stay correlation-aware.
         /// </summary>
         public static IServiceCollection AddWolverineEventBus(this IServiceCollection services)
@@ -200,7 +200,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
 
         /// <summary>
         /// Registers the generic Wolverine bridge handler for an event type — the
-        /// Wolverine analogue of the MassTransit <c>AddEventBridge</c>. Causes the event
+        /// Wolverine analogue of the previous backend's <c>AddEventBridge</c>. Causes the event
         /// type to be consumed and dispatched to every registered
         /// <see cref="IEventHandler{TEvent}"/>. Required because conventional discovery
         /// is disabled.
@@ -228,8 +228,8 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
             // that Wolverine's inline construction cannot build. Without this opt-in,
             // ServiceLocationPolicy.NotAllowed (the Wolverine 6 default) throws
             // InvalidServiceLocationException at first delivery of the event type.
-            // Container resolution per message is the same semantics the MassTransit
-            // bridge has always had.
+            // Container resolution per message is the same semantics the previous
+            // backend's bridge has always had.
             options.CodeGeneration.AlwaysUseServiceLocationFor(bridgeType);
             options.Services.AddScoped(bridgeType);
         }

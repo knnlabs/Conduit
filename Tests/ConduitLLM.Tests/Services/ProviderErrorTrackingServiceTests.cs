@@ -11,7 +11,6 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.Builders;
 using ConduitLLM.Configuration.Messaging;
 using FluentAssertions;
-using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;

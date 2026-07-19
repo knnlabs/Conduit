@@ -10,9 +10,8 @@ namespace ConduitLLM.Core.Messaging
 {
     /// <summary>
     /// The canonical event→queue topology for the Wolverine backend (epic #909,
-    /// I2.3/#926). On MassTransit/RabbitMQ, topology is exchange-based and derived from
-    /// consumer registrations; Postgres queues are point-to-point, so the routing must be
-    /// declared. This class is the single source of truth: publish routing is applied
+    /// I2.3/#926). Postgres queues are point-to-point, so the routing must be
+    /// declared explicitly. This class is the single source of truth: publish routing is applied
     /// identically on every host (rules for types a host never publishes are inert), and
     /// each host listens only to its own queues.
     /// </summary>

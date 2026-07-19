@@ -5,7 +5,6 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Tests.TestInfrastructure;
 
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

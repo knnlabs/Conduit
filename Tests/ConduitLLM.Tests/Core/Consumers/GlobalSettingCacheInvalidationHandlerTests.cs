@@ -219,7 +219,7 @@ namespace ConduitLLM.Tests.Core.Consumers
         }
 
         [Fact]
-        public async Task Consume_WhenInvalidationFails_RethrowsExceptionForMassTransitRetry()
+        public async Task Consume_WhenInvalidationFails_RethrowsExceptionForBusRetry()
         {
             // Arrange
             var @event = new GlobalSettingChanged

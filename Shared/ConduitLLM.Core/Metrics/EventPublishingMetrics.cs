@@ -3,7 +3,7 @@ using Prometheus;
 namespace ConduitLLM.Core.Metrics
 {
     /// <summary>
-    /// Prometheus metrics for MassTransit event publishing operations.
+    /// Prometheus metrics for event publishing operations.
     /// Tracks publish success/failure rates and latency.
     /// </summary>
     public static class EventPublishingMetrics

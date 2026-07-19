@@ -7,7 +7,6 @@ using ConduitLLM.Gateway.Metrics;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

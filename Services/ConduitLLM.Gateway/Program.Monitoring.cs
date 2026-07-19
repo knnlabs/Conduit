@@ -24,17 +24,11 @@ public partial class Program
             options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.VirtualKeySecurityOperationTransformer>();
         });
 
-        // Get Redis and RabbitMQ configuration for health checks
+        // Get Redis configuration for health checks
         var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
         var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
         var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI");
-
-        var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
-            ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
-
-        // Check if RabbitMQ is configured
-        var useRabbitMq = !string.IsNullOrEmpty(rabbitMqConfig.Host) && rabbitMqConfig.Host != "localhost";
 
         // Add standardized health checks (skip in test environment to avoid conflicts)
         if (builder.Environment.EnvironmentName != "Test")
@@ -50,26 +44,15 @@ public partial class Program
                 failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                 tags: new[] { "ready", "database", "migrations" });
 
-            var messagingBackend =
-                ConduitLLM.Configuration.Messaging.MessagingBackendResolver.Resolve(builder.Configuration);
-
-            // Add comprehensive RabbitMQ health check if RabbitMQ is configured AND the
-            // MassTransit backend is active — the check injects MassTransit's IBus, which
-            // is not registered on the Wolverine backend (#925).
-            if (useRabbitMq
-                && messagingBackend == ConduitLLM.Configuration.Messaging.MessagingBackend.MassTransit)
-            {
-                healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.RabbitMQHealthCheck>(
-                    "rabbitmq_comprehensive",
-                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                    tags: new[] { "messaging", "rabbitmq", "performance", "monitoring" });
-            }
+            // Wolverine is the only messaging backend as of #932 (epic #909). Resolve still
+            // runs so a stale rollback backend value fails the boot with a clear pointer to
+            // Wolverine (see MessagingBackendResolver) instead of being silently ignored.
+            _ = ConduitLLM.Configuration.Messaging.MessagingBackendResolver.Resolve(builder.Configuration);
 
             // Wolverine bus health check (#931): probes the Postgres message store
             // (inbox/outbox/scheduled/dead-letter counts). Only on the Postgresql
             // transport — the in-memory dev/CI mode has no store to probe.
-            if (messagingBackend == ConduitLLM.Configuration.Messaging.MessagingBackend.Wolverine
-                && !ConduitLLM.Configuration.Messaging.Wolverine.WolverineMessagingExtensions
+            if (!ConduitLLM.Configuration.Messaging.Wolverine.WolverineMessagingExtensions
                     .UsesInMemoryTransport(builder.Configuration))
             {
                 var deadLetterThreshold = builder.Configuration.GetValue(

@@ -6,7 +6,6 @@ using ConduitLLM.Gateway.Controllers;
 using ConduitLLM.Configuration.Messaging;
 using FluentAssertions;
 
-using MassTransit;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

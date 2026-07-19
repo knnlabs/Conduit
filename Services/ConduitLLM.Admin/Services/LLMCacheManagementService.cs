@@ -2,7 +2,6 @@ using ConduitLLM.Configuration.DTOs.Cache;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
 using System.Text.Json;
 
 namespace ConduitLLM.Admin.Services

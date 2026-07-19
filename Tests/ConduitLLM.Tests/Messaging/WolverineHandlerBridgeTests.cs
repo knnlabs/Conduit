@@ -20,8 +20,8 @@ namespace ConduitLLM.Tests.Messaging
 {
     /// <summary>
     /// Unit tests for <see cref="WolverineHandlerBridge{TEvent}"/> and the Wolverine-backed
-    /// <c>IEventContext</c> it hands to handlers (#925) — the mirror of the MassTransit
-    /// bridge's behavior: sequential dispatch to every handler, exception propagation, and
+    /// <c>IEventContext</c> it hands to handlers (#925): sequential dispatch to every handler,
+    /// exception propagation, and
     /// a context that surfaces envelope metadata and cascading/scheduled publishes.
     /// </summary>
     public class WolverineHandlerBridgeTests

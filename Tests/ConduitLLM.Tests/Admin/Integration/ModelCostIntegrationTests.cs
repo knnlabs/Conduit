@@ -7,7 +7,6 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Services;
 
-using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;

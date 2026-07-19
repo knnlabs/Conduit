@@ -1,8 +1,6 @@
-using ConduitLLM.Configuration.Messaging.MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Events;
-
-using MassTransit;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,17 +57,6 @@ namespace ConduitLLM.Gateway.Extensions
                 .Concat(ConduitLLM.Core.Messaging.ConduitMessagingTopology.VideoGenerationEvents)
                 .Concat(ConduitLLM.Core.Messaging.ConduitMessagingTopology.MediaGenerationDefaultEvents)
                 .ToArray();
-
-        /// <summary>
-        /// Registers the MassTransit bridge consumers for the media-generation events.
-        /// </summary>
-        public static void AddMediaGenerationBridges(this IRegistrationConfigurator x)
-        {
-            foreach (var eventType in BridgedEventTypes)
-            {
-                x.AddEventBridge(eventType);
-            }
-        }
 
         /// <summary>
         /// Registers the Wolverine bridge handlers for the media-generation events (#925).

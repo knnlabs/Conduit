@@ -146,7 +146,7 @@ namespace ConduitLLM.Admin.Controllers
                 },
                 architecture = new
                 {
-                    pattern = "Event-driven with MassTransit",
+                    pattern = "Event-driven with Wolverine",
                     adminRole = "Publishes BatchSpendFlushRequestedEvent",
                     coreRole = "Consumes events and performs actual flush operations",
                     decoupling = "Admin and Gateway APIs communicate via events only"
@@ -206,7 +206,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 architecture = new
                 {
-                    pattern = "Event-driven architecture with MassTransit",
+                    pattern = "Event-driven architecture with Wolverine",
                     security = "Master key authentication required",
                     reliability = "Asynchronous processing with error handling and retry policies",
                     monitoring = "Full audit trail via structured logging"

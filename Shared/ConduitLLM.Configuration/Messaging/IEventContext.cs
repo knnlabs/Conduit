@@ -3,7 +3,7 @@ namespace ConduitLLM.Configuration.Messaging
     /// <summary>
     /// Transport-agnostic context supplied to an <see cref="IEventHandler{TEvent}"/>
     /// during delivery. It exposes exactly the consume-time capabilities the existing
-    /// MassTransit consumers rely on, so they can be ported 1:1:
+    /// consumers rely on, so they can be ported 1:1:
     /// cancellation, the message id (used for de-duplication keys), correlation id,
     /// header lookup, follow-on publishing, and deferred/scheduled publishing
     /// (the webhook retry path).
@@ -24,8 +24,8 @@ namespace ConduitLLM.Configuration.Messaging
 
         /// <summary>
         /// Attempts to read a transport header by key. Returns <c>false</c> if the
-        /// transport does not carry the header (matching MassTransit
-        /// <c>Headers.TryGetHeader</c> semantics).
+        /// transport does not carry the header (header lookups return false rather
+        /// than throwing when a key is absent).
         /// </summary>
         bool TryGetHeader(string key, out object? value);
 
@@ -38,9 +38,9 @@ namespace ConduitLLM.Configuration.Messaging
             where TEvent : class;
 
         /// <summary>
-        /// Schedules an event for delivery at a future time. Mirrors MassTransit's
-        /// <c>ConsumeContext.ScheduleSend</c> (used by the webhook retry path) and maps
-        /// to Wolverine's native scheduling on the Wolverine backend.
+        /// Schedules an event for delivery at a future time (used by the webhook
+        /// retry path) and maps to Wolverine's native scheduling on the Wolverine
+        /// backend.
         /// </summary>
         /// <param name="deliveryTime">Absolute time at which the event should be delivered.</param>
         /// <param name="event">The event to schedule.</param>

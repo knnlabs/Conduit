@@ -4,13 +4,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Messaging;
-using ConduitLLM.Configuration.Messaging.MassTransit;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 
 using FluentAssertions;
-
-using MassTransit;
-using MassTransit.Testing;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,11 +18,12 @@ using Xunit;
 namespace ConduitLLM.Tests.Messaging
 {
     /// <summary>
-    /// Backend-agnostic contract for the messaging abstraction (I2.5/#928): the same
-    /// assertions run against BOTH the MassTransit backend (in-memory test harness) and
-    /// the Wolverine backend (in-memory local queues), so the two implementations of
-    /// <see cref="IEventBus"/>/<see cref="IEventHandler{TEvent}"/> cannot drift apart.
-    /// Concrete subclasses supply only the host bootstrap.
+    /// Contract for the messaging abstraction (originally the cross-backend contract of
+    /// I2.5/#928; the second backend's half was removed with that backend in I3.1/#932). The
+    /// assertions pin the behavior of the <see cref="IEventBus"/>/<see cref="IEventHandler{TEvent}"/>
+    /// implementation on the Wolverine backend (in-memory local queues). The abstract base is
+    /// kept so a future backend can be validated against the identical contract; concrete
+    /// subclasses supply only the host bootstrap.
     /// </summary>
     public abstract class EventBusBackendContractTests : IAsyncLifetime
     {
@@ -147,9 +144,8 @@ namespace ConduitLLM.Tests.Messaging
             await Sink.PrimarySignal.Task.WaitAsync(Timeout);
             Sink.Primary.Should().ContainSingle().Which.Payload.Should().Be("hello");
             Sink.LastMessageId.Should().NotBeNull();
-            // CorrelationId is deliberately NOT part of the cross-backend contract for a
-            // bare publish: Wolverine auto-generates one, MassTransit leaves it null
-            // unless the publisher sets it (Conduit's DomainEvents carry their own).
+            // CorrelationId is deliberately NOT asserted for a bare publish: Wolverine
+            // auto-generates one, and Conduit's DomainEvents carry their own when it matters.
         }
 
         [Fact]
@@ -216,50 +212,6 @@ namespace ConduitLLM.Tests.Messaging
 
             await Sink.FollowOnSignal.Task.WaitAsync(Timeout);
             Sink.FollowOns.Should().ContainSingle().Which.Payload.Should().Be("origin-cascaded");
-        }
-    }
-
-    /// <summary>MassTransit backend run of the contract (in-memory test harness).</summary>
-    public class MassTransitEventBusContractTests : EventBusBackendContractTests
-    {
-        private ServiceProvider? _provider;
-        private ITestHarness? _harness;
-
-        protected override IServiceProvider Services =>
-            _provider ?? throw new InvalidOperationException("Host not started");
-
-        protected override async Task StartHostAsync(
-            Action<IServiceCollection> registerHandlers,
-            params Type[] bridgedEventTypes)
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton(Sink);
-            registerHandlers(services);
-            services.AddMassTransitEventBus();
-            services.AddMassTransitTestHarness(x =>
-            {
-                foreach (var eventType in bridgedEventTypes)
-                {
-                    x.AddEventBridge(eventType);
-                }
-            });
-
-            _provider = services.BuildServiceProvider(true);
-            _harness = _provider.GetRequiredService<ITestHarness>();
-            await _harness.Start();
-        }
-
-        protected override async Task StopHostAsync()
-        {
-            if (_harness != null)
-            {
-                await _harness.Stop();
-            }
-
-            if (_provider != null)
-            {
-                await _provider.DisposeAsync();
-            }
         }
     }
 

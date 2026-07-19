@@ -24,7 +24,7 @@
     Show container logs.
 
 .PARAMETER LogService
-    Specific service to show logs for (api|core|admin|rabbitmq|webadmin).
+    Specific service to show logs for (api|core|admin|webadmin).
 
 .EXAMPLE
     ./scripts/dev.ps1
@@ -58,7 +58,7 @@ param(
     [switch]$Logs,
 
     [Parameter()]
-    [ValidateSet('api', 'core', 'admin', 'rabbitmq', 'webadmin', '')]
+    [ValidateSet('api', 'core', 'admin', 'webadmin', '')]
     [string]$LogService = ''
 )
 
@@ -110,8 +110,7 @@ function Test-PortConflicts {
         @{ Port = 5432; Name = 'PostgreSQL' },
         @{ Port = 5000; Name = 'Gateway API' },
         @{ Port = 5002; Name = 'Admin API' },
-        @{ Port = 3000; Name = 'WebAdmin' },
-        @{ Port = 15672; Name = 'RabbitMQ' }
+        @{ Port = 3000; Name = 'WebAdmin' }
     )
 
     $conflictsFound = $false
@@ -190,7 +189,7 @@ Options:
   -Rebuild         Full rebuild with --no-cache (slower, use when -Build fails)
   -WebAdmin        Rebuild WebAdmin container (fixes Next.js issues)
   -Logs            Show container logs
-  -LogService      Specific service for logs (api|core|admin|rabbitmq|webadmin)
+  -LogService      Specific service for logs (api|core|admin|webadmin)
   -Help            Show this help
 
 Default behavior:
@@ -204,7 +203,6 @@ Services available after startup:
   - WebAdmin:         http://localhost:3000
   - Gateway API:      http://localhost:5000/scalar/v1
   - Admin API:        http://localhost:5002/scalar/v1
-  - RabbitMQ:         http://localhost:15672 (conduit/conduitpass)
   - Media Storage:    Cloudflare R2 (configured via .env)
 
 Environment Variables:
@@ -307,7 +305,7 @@ function Build-Containers {
             $buildArgs += '--no-cache'
         }
 
-        $buildArgs += @('api', 'admin', 'rabbitmq')
+        $buildArgs += @('api', 'admin')
 
         docker compose @buildArgs
 
@@ -437,9 +435,9 @@ function Show-ContainerLogs {
     }
 
     # Validate service name if provided
-    if ($Service -and $Service -notmatch '^(api|admin|rabbitmq|webadmin)$') {
+    if ($Service -and $Service -notmatch '^(api|admin|webadmin)$') {
         Write-Err "Invalid service: $Service"
-        Write-Info "Valid services: api (or core), admin, rabbitmq, webadmin"
+        Write-Info "Valid services: api (or core), admin, webadmin"
         exit 1
     }
 
@@ -488,7 +486,6 @@ function Start-Development {
         Write-Info "  WebAdmin:         http://localhost:3000"
         Write-Info "  Gateway API:      http://localhost:5000/scalar/v1"
         Write-Info "  Admin API:        http://localhost:5002/scalar/v1"
-        Write-Info "  RabbitMQ:         http://localhost:15672 (conduit/conduitpass)"
         Write-Info "  Media Storage:    Cloudflare R2"
         Write-Host ""
         Write-Info "The WebAdmin directory is mounted for rapid development."
