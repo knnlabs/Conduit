@@ -160,11 +160,25 @@ public class ModelCostService : IModelCostService
 
             // Update properties
             existingCost.CostName = modelCost.CostName;
+            existingCost.PricingModel = modelCost.PricingModel;
+            existingCost.PricingConfiguration = modelCost.PricingConfiguration;
             existingCost.InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens;
             existingCost.OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens;
             existingCost.EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens;
+            existingCost.ModelType = modelCost.ModelType;
+            existingCost.IsActive = modelCost.IsActive;
+            existingCost.EffectiveDate = modelCost.EffectiveDate;
+            existingCost.ExpiryDate = modelCost.ExpiryDate;
+            existingCost.Description = modelCost.Description;
+            existingCost.Priority = modelCost.Priority;
+            existingCost.BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier;
+            existingCost.SupportsBatchProcessing = modelCost.SupportsBatchProcessing;
             existingCost.CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens;
             existingCost.CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens;
+            existingCost.CostPerSearchUnit = modelCost.CostPerSearchUnit;
+            existingCost.AudioCostPerMinute = modelCost.AudioCostPerMinute;
+            existingCost.AudioCostPerThousandCharacters = modelCost.AudioCostPerThousandCharacters;
+            existingCost.ReasoningCostPerMillionTokens = modelCost.ReasoningCostPerMillionTokens;
             existingCost.UpdatedAt = DateTime.UtcNow;
 
             var result = await _modelCostRepository.UpdateAsync(existingCost, cancellationToken);
