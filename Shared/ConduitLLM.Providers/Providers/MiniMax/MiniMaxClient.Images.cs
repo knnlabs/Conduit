@@ -50,6 +50,7 @@ namespace ConduitLLM.Providers.MiniMax
                 // Make direct HTTP call to debug
                 var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
                 httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+                httpRequest.Options.Set(Http.ConduitHttpOptions.OperationClass, Http.ConduitHttpOptions.Images);
                 
                 using var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
                 var rawContent = await httpResponse.Content.ReadAsStringAsync();

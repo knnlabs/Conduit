@@ -103,7 +103,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     CreateStandardHeaders(apiKey),
                     DefaultJsonOptions,
                     Logger,
-                    cancellationToken);
+                    cancellationToken,
+                    operationClass: Core.Http.ConduitOperationClasses.Images);
 
                 return new CoreModels.ImageGenerationResponse
                 {

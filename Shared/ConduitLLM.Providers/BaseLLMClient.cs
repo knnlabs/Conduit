@@ -171,8 +171,11 @@ namespace ConduitLLM.Providers
             // Configure authentication
             ConfigureAuthentication(client, apiKey);
 
-            // Configure default timeout (can be overridden per-request)
-            client.Timeout = DefaultRequestTimeout;
+            // All timeout budgets live in the resilience pipeline (per-attempt + total, per
+            // operation class). HttpClient.Timeout must stay infinite: it would otherwise also
+            // cancel streaming response reads mid-stream (killing SSE streams that outlive it)
+            // and truncate pipeline budgets longer than itself.
+            client.Timeout = Timeout.InfiniteTimeSpan;
         }
         
         /// <summary>
@@ -214,8 +217,8 @@ namespace ConduitLLM.Providers
             // Configure authentication
             ConfigureAuthentication(client, apiKey);
 
-            // Use a shorter timeout for health checks
-            client.Timeout = AuthVerificationTimeout;
+            // Timeout budgets live in the resilience pipeline (auth class: fail fast, no retries)
+            client.Timeout = Timeout.InfiniteTimeSpan;
 
             // Do NOT set BaseAddress - we'll be using absolute URLs
             return client;

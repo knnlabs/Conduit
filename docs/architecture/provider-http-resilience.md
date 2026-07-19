@@ -97,9 +97,18 @@ every retry; fatal-class errors (401/402/403) only on the final retry (avoiding 
 Key/provider attribution flows through `ProviderKeyContext` (AsyncLocal, set by
 `ContextAwareLLMClient`) into `IProviderErrorTrackingService`, which auto-disables failing keys.
 
-## Known limitation (until the streaming timeout fix lands)
+## Streaming lifetime and the idle-read watchdog
 
-`BaseLLMClient` still sets `HttpClient.Timeout = 120s`, which sits outside the pipeline and both
-truncates the images total budget (240s → 120s) and kills SSE streams that run longer than 120s.
-The follow-up PR moves all budgets into the pipeline (`HttpClient.Timeout = Infinite`) and adds
-the streaming idle-read watchdog.
+Provider clients set `HttpClient.Timeout = Timeout.InfiniteTimeSpan` — **all** budgets live in
+the pipeline. This is deliberate: `HttpClient.Timeout` also cancels streaming response reads
+mid-stream, which used to kill SSE streams older than 120 seconds regardless of health.
+
+With no wall-clock limit on stream lifetime, a provider that stalls mid-stream is instead caught
+by the **idle-read watchdog** (`StreamHelper`): if no data arrives for
+`Streaming:IdleReadTimeoutSeconds` (default 90s), the stream is aborted with a distinguishable
+`LLMCommunicationException` ("streaming response idle timeout"). The watchdog re-arms on every
+read — a healthy slow stream of any total length is never cut off; only silence is.
+
+Time-to-first-token remains bounded by the per-attempt timeout (the streaming send completes at
+response headers), and image generation requests are tagged with the `images` operation class at
+their call sites so they get the images budget rather than chat's.
