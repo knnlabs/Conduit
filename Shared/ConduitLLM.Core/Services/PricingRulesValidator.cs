@@ -193,12 +193,12 @@ public class PricingRulesValidator : IPricingRulesValidator
             });
         }
 
-        if (config.DefaultRate < 0)
+        if (config.DefaultRate <= 0)
         {
             result.Errors.Add(new ValidationError
             {
                 Field = "defaultRate",
-                Message = "Default rate cannot be negative"
+                Message = "Default rate must be greater than zero so unmatched usage cannot be free"
             });
         }
     }

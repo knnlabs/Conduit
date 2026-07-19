@@ -122,13 +122,27 @@ public partial class CostCalculationService
 
         var baseCost = (decimal)usage.VideoDurationSeconds.Value * config.BaseRate;
 
-        // Apply resolution multiplier if available
-        if (!string.IsNullOrEmpty(usage.VideoResolution) && 
-            config.ResolutionMultipliers != null &&
-            config.ResolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+        // Apply resolution multiplier if configured. Unknown supplied resolutions use the
+        // highest multiplier so a provider response cannot silently bypass the premium.
+        if (!string.IsNullOrEmpty(usage.VideoResolution) &&
+            config.ResolutionMultipliers is { Count: > 0 })
         {
+            var resolution = NormalizeResolution(usage.VideoResolution);
+            if (!config.ResolutionMultipliers.TryGetValue(resolution, out var multiplier))
+            {
+                var fallback = config.ResolutionMultipliers.MaxBy(entry => entry.Value);
+                multiplier = fallback.Value;
+                usage.PricingFallbackReason =
+                    $"Unknown per-second video resolution '{resolution}'; used conservative multiplier '{fallback.Key}' ({fallback.Value})";
+
+                _logger.LogError(
+                    "BILLING ALERT: Unknown per-second video resolution {Resolution} for model {ModelId}. " +
+                    "Using conservative multiplier {FallbackResolution} ({Multiplier})",
+                    resolution, modelId, fallback.Key, multiplier);
+            }
+
             baseCost *= multiplier;
-            _logger.LogDebug("Applied video resolution multiplier {Multiplier} for {Resolution}", multiplier, usage.VideoResolution);
+            _logger.LogDebug("Applied video resolution multiplier {Multiplier} for {Resolution}", multiplier, resolution);
         }
 
         _logger.LogInformation("Video generation cost calculated (per-second): Model={ModelId}, Duration={Duration}s, BaseRate=${BaseRate:F4}, Resolution={Resolution}, TotalCost=${Cost:F4}",

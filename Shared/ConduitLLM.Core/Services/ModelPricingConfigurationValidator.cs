@@ -75,10 +75,11 @@ public static class ModelPricingConfigurationValidator
                     break;
 
                 case PricingModel.RulesBased:
-                    using (var document = JsonDocument.Parse(pricingConfiguration))
+                    var rules = Deserialize<PricingRulesConfig>(pricingConfiguration);
+                    if (rules.DefaultRate <= 0)
                     {
-                        if (document.RootElement.ValueKind != JsonValueKind.Object)
-                            throw new ArgumentException("Rules-based pricing configuration must be a JSON object.");
+                        throw new ArgumentException(
+                            "Rules-based pricing requires a defaultRate greater than zero to safely price unmatched usage.");
                     }
                     break;
 

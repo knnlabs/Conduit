@@ -112,7 +112,26 @@ public class PricingRulesEvaluator : IPricingRulesEvaluator
 
         var usedDefault = matchingRule == null;
         var rate = matchingRule?.Rate ?? config.DefaultRate;
+
+        if (usedDefault && rate <= 0)
+        {
+            _logger.LogError(
+                "BILLING ALERT: No pricing rule matched and the default rate is not positive (Rate={Rate})",
+                rate);
+            throw new InvalidOperationException(
+                "No pricing rule matched and no positive default rate is configured.");
+        }
+
         var quantity = GetQuantity(config, usage);
+        if (quantity <= 0)
+        {
+            _logger.LogError(
+                "BILLING ALERT: Rules-based pricing resolved a non-positive quantity for PricingType={PricingType}, UnitField={UnitField}, Quantity={Quantity}",
+                config.PricingType, config.UnitField, quantity);
+            throw new InvalidOperationException(
+                $"Rules-based pricing requires a positive quantity for '{config.UnitField ?? config.PricingType}'.");
+        }
+
         var cost = rate * quantity;
 
         return new PricingEvaluationResult

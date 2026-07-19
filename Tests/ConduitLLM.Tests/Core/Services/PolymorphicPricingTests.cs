@@ -165,6 +165,32 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task CalculateCost_PerSecondVideo_UnknownResolution_UsesHighestMultiplierAndMarksFallback()
+        {
+            var modelId = "video/unknown-resolution";
+            var usage = new Usage
+            {
+                VideoDurationSeconds = 10,
+                VideoResolution = "1440p"
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerSecondVideo,
+                PricingConfiguration = "{\"baseRate\":0.10,\"resolutionMultipliers\":{\"720p\":1.0,\"1080p\":1.5}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(1.50m, cost);
+            Assert.Contains("Unknown per-second video resolution '1440p'", usage.PricingFallbackReason);
+            Assert.Contains("1080p", usage.PricingFallbackReason);
+        }
+
+        [Fact]
         public async Task CalculateCost_InferenceSteps_Fireworks_UsesProvidedSteps()
         {
             // Arrange
