@@ -103,6 +103,16 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<ModelProviderTypeAssociation> ModelProviderTypeAssociations { get; set; } = null!;
 
         /// <summary>
+        /// Database set for provider metadata sync runs (OpenRouter drift detection).
+        /// </summary>
+        public virtual DbSet<ProviderMetadataSyncRun> ProviderMetadataSyncRuns { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for provider metadata drift items awaiting admin review.
+        /// </summary>
+        public virtual DbSet<ProviderMetadataDriftItem> ProviderMetadataDriftItems { get; set; } = null!;
+
+        /// <summary>
         /// Database set for media records
         /// </summary>
         public virtual DbSet<MediaRecord> MediaRecords { get; set; } = null!;
@@ -441,6 +451,9 @@ namespace ConduitLLM.Configuration
 
             // Apply PricingAuditEvent configuration (rules-based pricing)
             modelBuilder.ApplyConfiguration(new EntityConfigurations.PricingAuditEventConfiguration());
+
+            // Apply ProviderMetadataDriftItem configuration (string enums + partial unique index)
+            modelBuilder.ApplyConfiguration(new EntityConfigurations.ProviderMetadataDriftItemConfiguration());
 
             // Note: ModelProviderMapping and Provider are now included in test environments
             // as they are required by the application code during tests
