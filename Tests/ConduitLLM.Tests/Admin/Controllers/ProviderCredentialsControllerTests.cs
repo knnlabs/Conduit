@@ -6,7 +6,6 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Messaging;
 using FluentAssertions;
-using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;

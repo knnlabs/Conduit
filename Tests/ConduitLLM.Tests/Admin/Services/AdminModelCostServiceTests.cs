@@ -3,7 +3,6 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Messaging;
 
-using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

@@ -4,7 +4,6 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
 using ConduitLLM.Configuration.Messaging;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 
 using Moq;

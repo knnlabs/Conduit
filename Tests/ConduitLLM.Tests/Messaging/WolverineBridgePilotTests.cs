@@ -18,8 +18,7 @@ using Xunit;
 namespace ConduitLLM.Tests.Messaging
 {
     /// <summary>
-    /// Pilot end-to-end test for the Wolverine backend (#925) — the mirror of
-    /// <see cref="MassTransitConsumerBridgeTests"/>: a handler written purely against
+    /// Pilot end-to-end test for the Wolverine backend (#925): a handler written purely against
     /// <see cref="IEventHandler{TEvent}"/> / <see cref="IEventContext"/> runs when its
     /// event is published through the Wolverine-backed <see cref="IEventBus"/>, dispatched
     /// via <see cref="WolverineHandlerBridge{TEvent}"/> on in-memory local queues (no

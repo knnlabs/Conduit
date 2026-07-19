@@ -8,7 +8,6 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Cache;
 using FluentAssertions;
-using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

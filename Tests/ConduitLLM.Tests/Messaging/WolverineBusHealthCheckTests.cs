@@ -18,9 +18,8 @@ using Xunit;
 namespace ConduitLLM.Tests.Messaging
 {
     /// <summary>
-    /// Tests for the Wolverine bus health check (I2.8/#931) — the RabbitMQHealthCheck
-    /// replacement: message-store counts map to Healthy/Degraded, store failures to
-    /// Unhealthy.
+    /// Tests for the Wolverine bus health check (I2.8/#931): message-store counts map to
+    /// Healthy/Degraded, store failures to Unhealthy.
     /// </summary>
     public class WolverineBusHealthCheckTests
     {

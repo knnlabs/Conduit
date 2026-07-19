@@ -22,21 +22,21 @@ namespace ConduitLLM.Tests.Messaging
         }
 
         [Fact]
-        public void Resolve_KeyAbsent_DefaultsToMassTransit()
+        public void Resolve_KeyAbsent_DefaultsToWolverine()
         {
             var result = MessagingBackendResolver.Resolve(BuildConfiguration(null));
 
-            result.Should().Be(MessagingBackend.MassTransit);
+            result.Should().Be(MessagingBackend.Wolverine);
         }
 
         [Theory]
         [InlineData("")]
         [InlineData("   ")]
-        public void Resolve_KeyEmpty_DefaultsToMassTransit(string value)
+        public void Resolve_KeyEmpty_DefaultsToWolverine(string value)
         {
             var result = MessagingBackendResolver.Resolve(BuildConfiguration(value));
 
-            result.Should().Be(MessagingBackend.MassTransit);
+            result.Should().Be(MessagingBackend.Wolverine);
         }
 
         [Theory]
@@ -54,11 +54,16 @@ namespace ConduitLLM.Tests.Messaging
         [Theory]
         [InlineData("MassTransit")]
         [InlineData("masstransit")]
-        public void Resolve_MassTransitAnyCase_ReturnsMassTransit(string value)
+        [InlineData(" MassTransit ")]
+        public void Resolve_RemovedMassTransitBackend_ThrowsWithRemovalGuidance(string value)
         {
-            var result = MessagingBackendResolver.Resolve(BuildConfiguration(value));
+            var act = () => MessagingBackendResolver.Resolve(BuildConfiguration(value));
 
-            result.Should().Be(MessagingBackend.MassTransit);
+            // The removed rollback backend must fail the boot loudly with a clear pointer to
+            // Wolverine (I3.1/#932) rather than silently defaulting.
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*removed in #932*")
+                .WithMessage("*Wolverine*");
         }
 
         [Fact]
@@ -68,7 +73,7 @@ namespace ConduitLLM.Tests.Messaging
 
             act.Should().Throw<InvalidOperationException>()
                 .WithMessage("*Rebus*")
-                .WithMessage("*MassTransit, Wolverine*");
+                .WithMessage("*Wolverine*");
         }
     }
 }

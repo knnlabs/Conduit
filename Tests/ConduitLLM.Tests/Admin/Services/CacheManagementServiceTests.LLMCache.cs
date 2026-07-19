@@ -5,7 +5,6 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using FluentAssertions;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Text.Json;
