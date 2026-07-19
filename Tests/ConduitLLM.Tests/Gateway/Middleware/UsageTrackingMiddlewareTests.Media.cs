@@ -4,6 +4,7 @@ using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Xunit;
 
@@ -132,6 +133,52 @@ namespace ConduitLLM.Tests.Http.Middleware
             UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
             {
                 Assert.Equal("dall-e-2", dto.ModelName);
+            });
+        }
+
+        [Fact]
+        public async Task AsyncVideoSubmission_Accepted_LogsRequestWithoutBilling()
+        {
+            // Arrange - async video completion is billed by MediaGenerationOrchestrator.
+            var context = new HttpContextBuilder()
+                .WithPath("/v1/videos/generations/async")
+                .WithVirtualKey(983)
+                .WithVideoRequest("test-video-model", duration: 10, size: "1280x720")
+                .Build();
+
+            Fixture.SetupCostForModel("test-video-model", 0.50m);
+
+            var submissionResponse = new
+            {
+                taskId = "task_video_983",
+                status = "pending",
+                checkStatusUrl = "/v1/videos/generations/tasks/task_video_983"
+            };
+
+            // Act
+            await Invoker
+                .WithNextDelegate(async responseContext =>
+                {
+                    responseContext.Response.StatusCode = StatusCodes.Status202Accepted;
+                    await responseContext.Response.WriteAsJsonAsync(submissionResponse);
+                })
+                .InvokeAsync(context);
+
+            // Assert - preserve the zero-cost log for completion reconciliation, but do not debit.
+            Fixture.CostService.Verify(x => x.CalculateCostAsync(
+                It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()), Times.Never);
+            Fixture.CostService.Verify(x => x.CalculateCostByIdAsync(
+                It.IsAny<int>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()), Times.Never);
+            UsageTrackingAssertions.VerifyNoSpendUpdate(Fixture.BatchSpendService, Fixture.VirtualKeyService);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal("video", dto.RequestType);
+                Assert.Equal("test-video-model", dto.ModelName);
+                Assert.Equal(983, dto.VirtualKeyId);
+                Assert.Equal(0m, dto.Cost);
+                Assert.Equal(202, dto.StatusCode);
+                Assert.NotNull(dto.Metadata);
+                Assert.Contains("\"taskId\":\"task_video_983\"", dto.Metadata);
             });
         }
     }

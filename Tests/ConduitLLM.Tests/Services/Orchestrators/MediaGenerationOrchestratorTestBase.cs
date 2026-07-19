@@ -435,6 +435,9 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<SpendUpdateRequested>(e => e.KeyId == 1 && e.Amount == 0.05m),
                 It.IsAny<CancellationToken>()), Times.Once);
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.IsAny<SpendUpdateRequested>(),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

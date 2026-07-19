@@ -94,7 +94,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                     cancellationToken: context.CancellationToken);
 
                 // Update the RequestLog with the actual cost and metadata
-                // The middleware logged the request with $0 cost because duration wasn't known at submission time
+                // The middleware logs async submissions at $0 and defers balance billing to the orchestrator.
                 try
                 {
                     var updated = await _requestLogRepository.UpdateCostByTaskIdAsync(

@@ -28,6 +28,7 @@ namespace ConduitLLM.Gateway.Middleware
             public required string ProviderType { get; init; }
             public required int VirtualKeyId { get; init; }
             public required string LogDetail { get; init; }
+            public bool BillingDeferred { get; init; }
         }
 
         /// <summary>
@@ -57,9 +58,15 @@ namespace ConduitLLM.Gateway.Middleware
             IVirtualKeyService virtualKeyService,
             IBillingAuditService billingAuditService)
         {
-            // Calculate cost - prefer ID-based lookup if ModelCostId is available
+            // Async media acknowledgements are logged at zero cost so the completion handler can
+            // update the RequestLog later. The orchestrator is the single balance biller for those
+            // requests and publishes the actual spend only after generation succeeds.
             decimal cost;
-            if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
+            if (media.BillingDeferred)
+            {
+                cost = 0m;
+            }
+            else if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
                 modelCostIdObj is int modelCostId)
             {
                 cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, media.Usage);
@@ -106,8 +113,8 @@ namespace ConduitLLM.Gateway.Middleware
                 requestLogService, media.MetadataJson);
 
             _logger.LogInformation(
-                "Tracked {MediaType} generation for VirtualKey {VirtualKeyId}: Model={Model}, {Detail}, Cost={Cost:C}",
-                media.MediaType, media.VirtualKeyId, media.Model, media.LogDetail, cost);
+                "Tracked {MediaType} generation for VirtualKey {VirtualKeyId}: Model={Model}, {Detail}, Cost={Cost:C}, BillingDeferred={BillingDeferred}",
+                media.MediaType, media.VirtualKeyId, media.Model, media.LogDetail, cost, media.BillingDeferred);
         }
 
         /// <summary>
@@ -417,7 +424,9 @@ namespace ConduitLLM.Gateway.Middleware
                 if (root.TryGetProperty("model", out var modelElement))
                     responseModel = modelElement.GetString();
 
-                if (root.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+                var hasDataArray = root.TryGetProperty("data", out var dataArray) &&
+                    dataArray.ValueKind == JsonValueKind.Array;
+                if (hasDataArray)
                 {
                     actualVideoCount = dataArray.GetArrayLength();
 
@@ -435,8 +444,21 @@ namespace ConduitLLM.Gateway.Middleware
                     }
                 }
 
-                if (root.TryGetProperty("usage", out var usageElement))
+                var hasUsage = root.TryGetProperty("usage", out var usageElement);
+                if (hasUsage)
                     responseUsage = UsageExtractor.ExtractUsage(usageElement, _logger);
+
+                var billingDeferred = context.Response.StatusCode == StatusCodes.Status202Accepted &&
+                    !string.IsNullOrEmpty(taskId) &&
+                    !hasDataArray &&
+                    !hasUsage;
+
+                if (billingDeferred)
+                {
+                    _logger.LogDebug(
+                        "Deferring billing for async video submission {TaskId}; completion will publish actual spend",
+                        LoggingSanitizer.S(taskId));
+                }
 
                 var model = ResolveModelFromUsage(videoUsage?.Model, responseModel);
 
@@ -469,7 +491,8 @@ namespace ConduitLLM.Gateway.Middleware
                     MetadataJson = metadata,
                     ProviderType = providerType,
                     VirtualKeyId = virtualKeyId,
-                    LogDetail = $"Videos={actualVideoCount}, Duration={usage.VideoDurationSeconds ?? 0}s, Resolution={usage.VideoResolution ?? "unknown"}"
+                    LogDetail = $"Videos={actualVideoCount}, Duration={usage.VideoDurationSeconds ?? 0}s, Resolution={usage.VideoResolution ?? "unknown"}",
+                    BillingDeferred = billingDeferred
                 }, costCalculationService, batchSpendService, requestLogService, virtualKeyService, billingAuditService);
             }
             catch (Exception ex)
