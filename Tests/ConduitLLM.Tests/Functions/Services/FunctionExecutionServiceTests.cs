@@ -11,6 +11,46 @@ namespace ConduitLLM.Tests.Functions.Services;
 public class FunctionExecutionServiceTests
 {
     [Fact]
+    public async Task ExecuteAsync_WhenCostMappingIsMissing_DoesNotCallProvider()
+    {
+        var configurationRepository = new Mock<IFunctionConfigurationRepository>();
+        var costCalculationService = new Mock<IFunctionCostCalculationService>();
+        var clientFactory = new Mock<IFunctionClientFactory>();
+
+        configurationRepository
+            .Setup(repository => repository.GetByIdAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FunctionConfiguration
+            {
+                Id = 7,
+                ConfigurationName = "unpriced search",
+                ProviderType = FunctionProviderType.Exa,
+                Purpose = FunctionPurpose.Search,
+                IsEnabled = true
+            });
+        costCalculationService
+            .Setup(service => service.EstimateCostAsync(
+                7,
+                It.IsAny<Dictionary<string, object>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Cost information is required"));
+
+        var service = new FunctionExecutionService(
+            configurationRepository.Object,
+            Mock.Of<IFunctionCredentialRepository>(),
+            Mock.Of<IFunctionExecutionRepository>(),
+            costCalculationService.Object,
+            clientFactory.Object,
+            Mock.Of<ILogger<FunctionExecutionService>>());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ExecuteAsync(7, 11, new Dictionary<string, object> { ["query"] = "test" }));
+
+        clientFactory.Verify(
+            factory => factory.GetClientAsync(It.IsAny<FunctionProviderType>(), It.IsAny<int>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenCostCalculationFailsAfterProviderCompletes_PreservesEstimatedCost()
     {
         var configurationRepository = new Mock<IFunctionConfigurationRepository>();

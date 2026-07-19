@@ -445,6 +445,12 @@ namespace ConduitLLM.Gateway.Middleware
                 UsageMetrics.UsageTrackingFailures.WithLabels("json_parse_error", endpointType).Inc();
                 LogJsonParseError(context, ex, billingAuditService);
             }
+            catch (ToolCostCalculationException)
+            {
+                // Pricing provider-hosted tools is mandatory. Propagate the failure so the
+                // successful provider response is not delivered as an unbilled request.
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in usage tracking");

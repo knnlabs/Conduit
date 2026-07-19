@@ -61,7 +61,8 @@ public partial class FunctionCostCalculationService : IFunctionCostCalculationSe
     ///   <item><description>Applies the appropriate pricing formula based on the model</description></item>
     /// </list>
     /// <para>
-    /// If cost information is not found for the function, the method returns 0.
+    /// If cost information is not found and the provider did not report an authoritative cost,
+    /// the method fails rather than silently treating a billable execution as free.
     /// </para>
     /// </remarks>
     public async Task<decimal> CalculateCostAsync(
@@ -93,8 +94,8 @@ public partial class FunctionCostCalculationService : IFunctionCostCalculationSe
                 return usage.ProviderReportedCost.Value;
             }
 
-            _logger.LogWarning("Cost information not found for function configuration {ConfigId}. Returning 0 cost.", functionConfigurationId);
-            return 0m;
+            throw new InvalidOperationException(
+                $"Cost information is required for function configuration {functionConfigurationId}.");
         }
 
         decimal calculatedCost = 0m;

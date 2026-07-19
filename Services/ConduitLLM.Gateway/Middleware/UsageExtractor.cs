@@ -317,6 +317,11 @@ namespace ConduitLLM.Gateway.Middleware
                 {
                     var toolName = property.Name;
 
+                    // x_groq.usage also contains token counts, latency metrics, and the
+                    // duration fields consumed below. Only hosted-tool counters belong here.
+                    if (toolName is not ("code_interpreter" or "browser_search" or "python"))
+                        continue;
+
                     // Map Groq's tool names to our billing names if needed
                     // Currently Groq uses "code_interpreter" and "browser_search" directly
                     var billingToolName = toolName switch

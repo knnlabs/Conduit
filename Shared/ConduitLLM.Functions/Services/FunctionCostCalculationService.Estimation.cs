@@ -43,8 +43,8 @@ public partial class FunctionCostCalculationService
 
         if (functionCost == null)
         {
-            _logger.LogWarning("Cost information not found for function configuration {ConfigId}. Returning 0 estimate.", functionConfigurationId);
-            return 0m;
+            throw new InvalidOperationException(
+                $"Cost information is required for function configuration {functionConfigurationId}.");
         }
 
         decimal estimatedCost = 0m;

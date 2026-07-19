@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ConduitLLM.Configuration;
 using ConduitLLM.Gateway.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -8,6 +9,30 @@ namespace ConduitLLM.Tests.Middleware
 {
     public class UsageExtractorTests
     {
+        [Fact]
+        public void ExtractToolUsage_GroqDuration_CapturesSecondsWithoutTreatingMetricsAsTools()
+        {
+            const string response = """
+                {
+                  "x_groq": {
+                    "usage": {
+                      "prompt_tokens": 100,
+                      "completion_tokens": 20,
+                      "code_interpreter": 1,
+                      "code_interpreter_duration_seconds": 90.5
+                    }
+                  }
+                }
+                """;
+
+            var result = UsageExtractor.ExtractToolUsage(response, ProviderType.Groq, _mockLogger.Object);
+
+            var tool = Assert.Single(result!.Tools);
+            Assert.Equal("code_interpreter", tool.ToolName);
+            Assert.Equal(1, tool.Count);
+            Assert.Equal(90.5m, tool.DurationSeconds);
+        }
+
         private readonly Mock<ILogger> _mockLogger;
 
         public UsageExtractorTests()

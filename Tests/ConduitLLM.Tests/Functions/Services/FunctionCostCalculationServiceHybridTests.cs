@@ -12,6 +12,36 @@ namespace ConduitLLM.Tests.Functions.Services;
 public class FunctionCostCalculationServiceHybridTests
 {
     [Fact]
+    public async Task EstimateCostAsync_MissingCostMapping_FailsClosed()
+    {
+        var costService = new Mock<IFunctionCostService>();
+        costService
+            .Setup(service => service.GetCostForConfigurationAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((FunctionCost?)null);
+        var service = new FunctionCostCalculationService(
+            costService.Object,
+            Mock.Of<ILogger<FunctionCostCalculationService>>());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.EstimateCostAsync(42, new Dictionary<string, object> { ["query"] = "test" }));
+    }
+
+    [Fact]
+    public async Task CalculateCostAsync_MissingCostMappingWithoutProviderCost_FailsClosed()
+    {
+        var costService = new Mock<IFunctionCostService>();
+        costService
+            .Setup(service => service.GetCostForConfigurationAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((FunctionCost?)null);
+        var service = new FunctionCostCalculationService(
+            costService.Object,
+            Mock.Of<ILogger<FunctionCostCalculationService>>());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CalculateCostAsync(42, new FunctionExecutionUsage()));
+    }
+
+    [Fact]
     public async Task CalculateCostAsync_ExaContents_BillsRetrievalAndExtractionWithoutSearch()
     {
         var service = CreateService(CreateExaCost());

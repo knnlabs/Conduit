@@ -115,7 +115,7 @@ namespace ConduitLLM.Tests.Http.Services
         }
 
         [Fact]
-        public async Task CalculateToolCostsAsync_WithMissingToolConfig_ReturnsZeroAndReportsUnconfigured()
+        public async Task CalculateToolCostsAsync_WithMissingToolConfig_FailsClosed()
         {
             // Arrange
             var toolUsage = new ToolUsageData
@@ -127,16 +127,13 @@ namespace ConduitLLM.Tests.Http.Services
             };
 
             // Act
-            var result = await _service.CalculateToolCostsAsync(toolUsage, ProviderType.Groq);
-
-            // Assert
-            Assert.Equal(0m, result.TotalCost);
-            Assert.True(result.HasUnconfiguredTools);
-            Assert.Contains("nonexistent_tool", result.UnconfiguredToolNames);
+            var exception = await Assert.ThrowsAsync<ToolCostCalculationException>(() =>
+                _service.CalculateToolCostsAsync(toolUsage, ProviderType.Groq));
+            Assert.Contains("nonexistent_tool", exception.Message);
         }
 
         [Fact]
-        public async Task CalculateToolCostsAsync_WithMixedConfiguredAndUnconfigured_ReportsUnconfigured()
+        public async Task CalculateToolCostsAsync_WithMixedConfiguredAndUnconfigured_FailsClosed()
         {
             // Arrange
             var providerType = ProviderType.Groq;
@@ -161,17 +158,13 @@ namespace ConduitLLM.Tests.Http.Services
             };
 
             // Act
-            var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
-
-            // Assert — cost only from configured tool, but unconfigured tool is reported
-            Assert.Equal(2 * 0.03m, result.TotalCost);
-            Assert.True(result.HasUnconfiguredTools);
-            Assert.Contains("unknown_tool", result.UnconfiguredToolNames);
-            Assert.DoesNotContain("code_interpreter", result.UnconfiguredToolNames);
+            var exception = await Assert.ThrowsAsync<ToolCostCalculationException>(() =>
+                _service.CalculateToolCostsAsync(toolUsage, providerType));
+            Assert.Contains("unknown_tool", exception.Message);
         }
 
         [Fact]
-        public async Task CalculateToolCostsAsync_WithInactiveToolConfig_ReturnsZero()
+        public async Task CalculateToolCostsAsync_WithInactiveToolConfig_FailsClosed()
         {
             // Arrange
             var providerType = ProviderType.Groq;
@@ -196,11 +189,8 @@ namespace ConduitLLM.Tests.Http.Services
             };
 
             // Act
-            var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
-
-            // Assert
-            Assert.Equal(0m, result.TotalCost);
-            Assert.True(result.HasUnconfiguredTools);
+            await Assert.ThrowsAsync<ToolCostCalculationException>(() =>
+                _service.CalculateToolCostsAsync(toolUsage, providerType));
         }
 
         [Fact]
@@ -445,7 +435,7 @@ namespace ConduitLLM.Tests.Http.Services
         }
 
         [Fact]
-        public async Task CalculateToolCostsAsync_OnDbFailure_ReturnsFailed()
+        public async Task CalculateToolCostsAsync_OnDbFailure_PropagatesFailure()
         {
             // Arrange
             var toolUsage = new ToolUsageData
@@ -464,15 +454,12 @@ namespace ConduitLLM.Tests.Http.Services
             var failingService = new ToolCostCalculationService(failingFactory.Object, _loggerMock.Object);
 
             // Act
-            var result = await failingService.CalculateToolCostsAsync(toolUsage, ProviderType.Groq);
-
-            // Assert
-            Assert.True(result.Failed);
-            Assert.Equal(-1m, result.TotalCost);
+            await Assert.ThrowsAsync<ToolCostCalculationException>(() =>
+                failingService.CalculateToolCostsAsync(toolUsage, ProviderType.Groq));
         }
 
         [Fact]
-        public async Task CalculateToolCostsAsync_WithNullCostPerUnit_ReturnsZero()
+        public async Task CalculateToolCostsAsync_WithNullCostPerUnit_FailsClosed()
         {
             // Arrange
             var providerType = ProviderType.Groq;
@@ -497,11 +484,8 @@ namespace ConduitLLM.Tests.Http.Services
             };
 
             // Act
-            var result = await _service.CalculateToolCostsAsync(toolUsage, providerType);
-
-            // Assert
-            Assert.Equal(0m, result.TotalCost);
-            Assert.True(result.HasUnconfiguredTools);
+            await Assert.ThrowsAsync<ToolCostCalculationException>(() =>
+                _service.CalculateToolCostsAsync(toolUsage, providerType));
         }
     }
 }

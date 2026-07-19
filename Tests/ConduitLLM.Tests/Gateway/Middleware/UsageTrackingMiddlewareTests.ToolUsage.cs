@@ -3,6 +3,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Gateway.Services;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
 using Moq;
@@ -78,7 +79,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
-        public async Task ProcessResponseAsync_WithMissingToolConfig_LogsWarningEvent()
+        public async Task ProcessResponseAsync_WithMissingToolConfig_FailsClosed()
         {
             // Arrange - No tool configuration in database
             var context = new HttpContextBuilder()
@@ -91,17 +92,14 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0m); // Zero base cost to trigger zero cost path
 
             // Act
-            await Invoker
+            await Assert.ThrowsAsync<ToolCostCalculationException>(() => Invoker
                 .WithTestResponseBodyDelegate()
-                .InvokeWithRealToolServiceAsync(context);
+                .InvokeWithRealToolServiceAsync(context));
 
             // Assert
-            var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
-            Assert.Equal(BillingAuditEventType.ToolUsageMissingCostConfig, billingEvent.EventType);
-            Assert.NotNull(billingEvent.ToolUsageJson);
-            Assert.Contains("code_interpreter", billingEvent.ToolUsageJson);
-            Assert.Equal(0m, billingEvent.ToolUsageCost);
-            Assert.Contains("Tool usage detected but no cost configuration found", billingEvent.FailureReason);
+            Fixture.BatchSpendService.Verify(
+                service => service.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
+                Times.Never);
         }
 
         [Fact]

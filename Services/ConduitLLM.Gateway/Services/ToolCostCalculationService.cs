@@ -9,6 +9,17 @@ using Microsoft.EntityFrameworkCore;
 namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
+    /// Indicates that provider tool usage cannot be priced reliably.
+    /// </summary>
+    public sealed class ToolCostCalculationException : InvalidOperationException
+    {
+        public ToolCostCalculationException(string message, Exception? innerException = null)
+            : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
     /// Result of a tool cost calculation, including cost and diagnostic information.
     /// </summary>
     public class ToolCostResult
@@ -87,49 +98,55 @@ namespace ConduitLLM.Gateway.Services
             if (toolUsage?.Tools == null || toolUsage.Tools.Count == 0)
                 return new ToolCostResult { TotalCost = 0 };
 
+            // Do not turn configuration-store failures into a zero cost. The caller must fail
+            // billing (and alert) instead of delivering provider-funded tool usage for free.
+            List<ProviderTool> providerTools;
             try
             {
-                // Batch-load all active tools for this provider (eliminates N+1)
-                var providerTools = await GetActiveToolsForProviderAsync(providerType);
-
-                var totalCost = 0m;
-                var unconfiguredTools = new List<string>();
-
-                foreach (var toolUsageItem in toolUsage.Tools)
-                {
-                    var providerTool = providerTools
-                        .Find(pt => pt.ToolName == toolUsageItem.ToolName);
-
-                    if (providerTool?.CostPerUnit.HasValue == true)
-                    {
-                        var usage = CalculateUsageAmount(toolUsageItem, providerTool.BillingUnit);
-                        var cost = providerTool.CostPerUnit.Value * usage;
-
-                        totalCost += cost;
-
-                        _logger.LogDebug("Tool cost calculated: {ToolName} = {Usage} {BillingUnit} × ${CostPerUnit} = ${Cost}",
-                            toolUsageItem.ToolName, usage, providerTool.BillingUnit, providerTool.CostPerUnit, cost);
-                    }
-                    else
-                    {
-                        unconfiguredTools.Add(toolUsageItem.ToolName);
-                        _logger.LogWarning("No cost configuration found for tool {ToolName} on provider {ProviderType}",
-                            toolUsageItem.ToolName, providerType);
-                    }
-                }
-
-                return new ToolCostResult
-                {
-                    TotalCost = totalCost,
-                    UnconfiguredToolNames = unconfiguredTools
-                };
+                providerTools = await GetActiveToolsForProviderAsync(providerType);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to calculate tool costs for provider {ProviderType}. " +
-                    "Tool usage will be recorded but cost may be inaccurate.", providerType);
-                return new ToolCostResult { TotalCost = -1 };
+                _logger.LogCritical(ex, "Unable to load tool pricing for provider {ProviderType}", providerType);
+                throw new ToolCostCalculationException(
+                    $"Unable to load tool pricing for provider {providerType}.", ex);
             }
+
+            var totalCost = 0m;
+            var unconfiguredTools = new List<string>();
+
+            foreach (var toolUsageItem in toolUsage.Tools)
+            {
+                var providerTool = providerTools
+                    .Find(pt => pt.ToolName == toolUsageItem.ToolName);
+
+                if (providerTool?.CostPerUnit.HasValue == true)
+                {
+                    var usage = CalculateUsageAmount(toolUsageItem, providerTool.BillingUnit);
+                    var cost = providerTool.CostPerUnit.Value * usage;
+
+                    totalCost += cost;
+
+                    _logger.LogDebug("Tool cost calculated: {ToolName} = {Usage} {BillingUnit} × ${CostPerUnit} = ${Cost}",
+                        toolUsageItem.ToolName, usage, providerTool.BillingUnit, providerTool.CostPerUnit, cost);
+                }
+                else
+                {
+                    unconfiguredTools.Add(toolUsageItem.ToolName);
+                }
+            }
+
+            if (unconfiguredTools.Count > 0)
+            {
+                var names = string.Join(", ", unconfiguredTools.Distinct(StringComparer.Ordinal));
+                _logger.LogCritical(
+                    "Refusing to calculate a partial tool cost for provider {ProviderType}; missing active cost configuration for: {ToolNames}",
+                    providerType, names);
+                throw new ToolCostCalculationException(
+                    $"Active tool cost configuration is required for provider {providerType}: {names}.");
+            }
+
+            return new ToolCostResult { TotalCost = totalCost };
         }
 
         /// <inheritdoc/>
