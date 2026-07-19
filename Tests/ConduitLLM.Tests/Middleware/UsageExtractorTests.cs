@@ -105,6 +105,20 @@ namespace ConduitLLM.Tests.Middleware
             Assert.Equal(200, usage.ReasoningTokens);
         }
 
+        [Fact]
+        public void ExtractUsage_TotalTokensOnly_EstimatesAllTokensAsInput()
+        {
+            using var document = JsonDocument.Parse("""{ "total_tokens": 321 }""");
+
+            var usage = UsageExtractor.ExtractUsage(document.RootElement, _mockLogger.Object);
+
+            Assert.NotNull(usage);
+            Assert.Equal(321, usage.TotalTokens);
+            Assert.Equal(321, usage.PromptTokens);
+            Assert.Equal(0, usage.CompletionTokens);
+            Assert.Contains("total_tokens", usage.PricingFallbackReason);
+        }
+
         #region DetermineRequestType Tests
 
         [Theory]

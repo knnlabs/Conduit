@@ -65,6 +65,20 @@ namespace ConduitLLM.Gateway.Middleware
                 if (usageElement.TryGetProperty("output_tokens", out var outputTokens))
                     usage.CompletionTokens = outputTokens.GetInt32();
 
+                // Some OpenAI-compatible providers report only the aggregate token count. Keep
+                // those responses billable by treating the aggregate as input tokens, which is
+                // the lower-priced side for supported model configurations. The pricing fallback
+                // reason causes the middleware to emit a UsageEstimated audit event.
+                if (usage.TotalTokens.HasValue &&
+                    usage.PromptTokens == null &&
+                    usage.CompletionTokens == null)
+                {
+                    usage.PromptTokens = usage.TotalTokens.Value;
+                    usage.CompletionTokens = 0;
+                    usage.PricingFallbackReason =
+                        "Provider reported total_tokens without prompt/completion breakdown; billed as input tokens";
+                }
+
                 // Anthropic cached tokens
                 if (usageElement.TryGetProperty("cache_creation_input_tokens", out var cacheWriteTokens))
                     usage.CachedWriteTokens = cacheWriteTokens.GetInt32();

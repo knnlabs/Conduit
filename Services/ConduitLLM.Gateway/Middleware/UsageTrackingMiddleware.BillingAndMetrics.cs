@@ -162,9 +162,10 @@ namespace ConduitLLM.Gateway.Middleware
             BillingPolicyHandler.LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost, _logger);
         }
 
-        private void LogMissingUsageData(HttpContext context, IBillingAuditService billingAuditService)
+        private void LogMissingUsageData(HttpContext context, IBillingAuditService billingAuditService,
+            string? failureReason = null, string metricReason = "no_usage_in_response", string? model = null)
         {
-            BillingPolicyHandler.LogMissingUsageData(context, billingAuditService);
+            BillingPolicyHandler.LogMissingUsageData(context, billingAuditService, failureReason, metricReason, model);
         }
 
         private void LogStreamingBilling(HttpContext context, string model, Usage usage, decimal cost,

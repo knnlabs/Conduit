@@ -253,6 +253,7 @@ namespace ConduitLLM.Gateway.Middleware
                 if (!root.TryGetProperty("model", out var modelElement))
                 {
                     _logger.LogWarning("No model found in response for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
+                    LogMissingUsageData(context, billingAuditService, "Response did not contain a model", "missing_model");
                     return;
                 }
 
@@ -260,6 +261,7 @@ namespace ConduitLLM.Gateway.Middleware
                 if (string.IsNullOrEmpty(model))
                 {
                     _logger.LogWarning("Empty model name in response for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
+                    LogMissingUsageData(context, billingAuditService, "Response contained an empty model", "empty_model");
                     return;
                 }
 
@@ -268,6 +270,7 @@ namespace ConduitLLM.Gateway.Middleware
                 if (usage == null)
                 {
                     _logger.LogWarning("Failed to extract usage data for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
+                    LogMissingUsageData(context, billingAuditService, "Response usage could not be extracted", "unparseable_usage", model);
                     return;
                 }
 

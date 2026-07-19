@@ -19,6 +19,56 @@ namespace ConduitLLM.Tests.Http.Middleware
     public partial class UsageTrackingMiddlewareTests
     {
         [Fact]
+        public async Task NonStreaming_Response_Without_Model_Emits_RevenueLoss_Audit()
+        {
+            var context = new HttpContextBuilder().ForChatCompletions().WithVirtualKey(651).Build();
+
+            await Invoker.WithResponse(new
+                {
+                    usage = new { prompt_tokens = 10, completion_tokens = 2 }
+                })
+                .InvokeAsync(context);
+
+            var audit = Assert.Single(Fixture.CapturedBillingEvents);
+            Assert.Equal(BillingAuditEventType.MissingUsageData, audit.EventType);
+            Assert.Equal("Response did not contain a model", audit.FailureReason);
+            UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
+        }
+
+        [Fact]
+        public async Task NonStreaming_Response_With_Unparseable_Usage_Emits_RevenueLoss_Audit()
+        {
+            var context = new HttpContextBuilder().ForChatCompletions().WithVirtualKey(652).Build();
+
+            await Invoker.WithResponse(new { model = "gpt-test", usage = new { } }).InvokeAsync(context);
+
+            var audit = Assert.Single(Fixture.CapturedBillingEvents);
+            Assert.Equal(BillingAuditEventType.MissingUsageData, audit.EventType);
+            Assert.Equal("gpt-test", audit.Model);
+            Assert.Equal("Response usage could not be extracted", audit.FailureReason);
+            UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
+        }
+
+        [Fact]
+        public async Task NonStreaming_Response_With_TotalTokensOnly_Is_Billed_As_Estimated_Input()
+        {
+            var context = new HttpContextBuilder().ForChatCompletions().WithVirtualKey(653).Build();
+            Fixture.SetupCostForModel("gpt-test", 0.004m);
+
+            await Invoker.WithResponse(new
+                {
+                    model = "gpt-test",
+                    usage = new { total_tokens = 80 }
+                })
+                .InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifyCostCalculated(Fixture.CostService, "gpt-test", 80, 0);
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 653, 0.004m);
+            Assert.Contains(Fixture.CapturedBillingEvents, e =>
+                e.EventType == BillingAuditEventType.UsageEstimated && e.IsEstimated);
+        }
+
+        [Fact]
         public async Task Streaming_Response_Uses_StreamingUsage_From_Context()
         {
             // Arrange

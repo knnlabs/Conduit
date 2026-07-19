@@ -225,7 +225,8 @@ namespace ConduitLLM.Gateway.Middleware
         /// <summary>
         /// Logs billing event for missing usage data.
         /// </summary>
-        public static void LogMissingUsageData(HttpContext context, IBillingAuditService billingAuditService)
+        public static void LogMissingUsageData(HttpContext context, IBillingAuditService billingAuditService,
+            string? failureReason = null, string metricReason = "no_usage_in_response", string? model = null)
         {
             var vkId = context.Items.ContainsKey("VirtualKeyId") ? (int?)context.Items["VirtualKeyId"] : null;
             var providerType = context.Items.TryGetValue("ProviderType", out var pt) ? pt?.ToString() : "unknown";
@@ -234,15 +235,17 @@ namespace ConduitLLM.Gateway.Middleware
             {
                 EventType = BillingAuditEventType.MissingUsageData,
                 VirtualKeyId = vkId,
+                Model = model,
                 RequestId = context.TraceIdentifier,
                 RequestPath = context.Request.Path.ToString(),
                 HttpStatusCode = context.Response.StatusCode,
-                ProviderType = providerType
+                ProviderType = providerType,
+                FailureReason = failureReason
             });
             
             // Increment metrics
             UsageMetrics.BillingAuditEvents.WithLabels("MissingUsageData", providerType ?? "unknown").Inc();
-            UsageMetrics.BillingRevenueLoss.WithLabels("MissingUsageData", "no_usage_in_response").Inc();
+            UsageMetrics.BillingRevenueLoss.WithLabels("MissingUsageData", metricReason).Inc();
         }
 
         /// <summary>
