@@ -154,6 +154,20 @@ public class Usage
     public int? ReasoningTokens { get; set; }
 
     /// <summary>
+    /// Duration of transcribed audio in seconds (speech-to-text). Billed per minute.
+    /// </summary>
+    [JsonPropertyName("audio_duration_seconds")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? AudioDurationSeconds { get; set; }
+
+    /// <summary>
+    /// Number of input characters synthesized (text-to-speech). Billed per thousand characters.
+    /// </summary>
+    [JsonPropertyName("tts_characters")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? TtsCharacters { get; set; }
+
+    /// <summary>
     /// Optional metadata for provider-specific usage information.
     /// </summary>
     /// <remarks>

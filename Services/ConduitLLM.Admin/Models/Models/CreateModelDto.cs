@@ -78,6 +78,12 @@ namespace ConduitLLM.Admin.Models.Models
         /// </summary>
         public bool SupportsVideoGeneration { get; set; }
 
+        /// <summary>Whether the model supports speech-to-text transcription.</summary>
+        public bool SupportsSpeechToText { get; set; }
+
+        /// <summary>Whether the model supports text-to-speech synthesis.</summary>
+        public bool SupportsTextToSpeech { get; set; }
+
         /// <summary>
         /// Gets or sets whether the model supports text embeddings generation.
         /// </summary>

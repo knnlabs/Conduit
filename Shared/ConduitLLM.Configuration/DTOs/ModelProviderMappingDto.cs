@@ -100,6 +100,16 @@ namespace ConduitLLM.Configuration.DTOs
         public bool SupportsEmbeddings { get; set; }
 
         /// <summary>
+        /// Indicates whether the model supports speech-to-text transcription.
+        /// </summary>
+        public bool SupportsSpeechToText { get; set; }
+
+        /// <summary>
+        /// Indicates whether the model supports text-to-speech synthesis.
+        /// </summary>
+        public bool SupportsTextToSpeech { get; set; }
+
+        /// <summary>
         /// Indicates whether this model supports chat completions
         /// </summary>
         public bool SupportsChat { get; set; }

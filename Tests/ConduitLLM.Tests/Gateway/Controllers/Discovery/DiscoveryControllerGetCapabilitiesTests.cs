@@ -45,7 +45,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             var capabilities = (string[])response.capabilities;
-            Assert.Equal(9, capabilities.Length);
+            Assert.Equal(11, capabilities.Length);
         }
 
         // NOTE: GetCapabilities_WhenExceptionOccurs_Returns500Error test was removed

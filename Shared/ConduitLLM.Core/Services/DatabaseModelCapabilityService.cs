@@ -97,6 +97,56 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public async Task<bool> SupportsSpeechToTextAsync(string model)
+        {
+            var cacheKey = $"{CacheKeyPrefix}SpeechToText:{model}";
+
+            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            if (cachedResult.HasValue)
+            {
+                return cachedResult.Value;
+            }
+
+            try
+            {
+                var mapping = await GetMappingByModelNameAsync(model);
+                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsSpeechToText ?? false;
+                await SetInHybridCacheAsync(cacheKey, result);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking speech-to-text capability for model {Model}", model);
+                return false;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> SupportsTextToSpeechAsync(string model)
+        {
+            var cacheKey = $"{CacheKeyPrefix}TextToSpeech:{model}";
+
+            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            if (cachedResult.HasValue)
+            {
+                return cachedResult.Value;
+            }
+
+            try
+            {
+                var mapping = await GetMappingByModelNameAsync(model);
+                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsTextToSpeech ?? false;
+                await SetInHybridCacheAsync(cacheKey, result);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking text-to-speech capability for model {Model}", model);
+                return false;
+            }
+        }
+
+        /// <inheritdoc/>
         public async Task<string?> GetTokenizerTypeAsync(string model)
         {
             var cacheKey = $"{CacheKeyPrefix}Tokenizer:{model}";

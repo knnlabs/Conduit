@@ -43,6 +43,22 @@ public sealed class VideoUsageContext : IUsageContext
     public Dictionary<string, object>? PricingParameters { get; init; }
 }
 
+/// <summary>
+/// Audio (speech-to-text / text-to-speech) request context captured by <c>AudioController</c>.
+/// Carries the billable units (audio duration for STT, character count for TTS) so the middleware
+/// can bill without parsing the response — which for TTS is raw binary audio.
+/// </summary>
+public sealed class AudioUsageContext : IUsageContext
+{
+    public required string Model { get; init; }
+
+    /// <summary>Transcribed audio duration in seconds (speech-to-text).</summary>
+    public double? AudioDurationSeconds { get; init; }
+
+    /// <summary>Number of input characters synthesized (text-to-speech).</summary>
+    public int? TtsCharacters { get; init; }
+}
+
 public static class UsageContextExtensions
 {
     private static readonly object Key = new();

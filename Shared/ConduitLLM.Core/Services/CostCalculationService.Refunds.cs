@@ -198,6 +198,24 @@ public partial class CostCalculationService
                 searchRefund);
         }
 
+        // Handle audio transcription (speech-to-text) refunds, billed per minute.
+        if (refundUsage.AudioDurationSeconds is > 0 && modelCost.AudioCostPerMinute.HasValue)
+        {
+            var audioRefund = ((decimal)refundUsage.AudioDurationSeconds.Value / 60m) * modelCost.AudioCostPerMinute.Value;
+            totalRefund += audioRefund;
+            _logger.LogDebug("Audio transcription refund for model {ModelId}: {Seconds}s = ${Total}",
+                modelId, refundUsage.AudioDurationSeconds.Value, audioRefund);
+        }
+
+        // Handle text-to-speech refunds, billed per thousand characters.
+        if (refundUsage.TtsCharacters is > 0 && modelCost.AudioCostPerThousandCharacters.HasValue)
+        {
+            var ttsRefund = (refundUsage.TtsCharacters.Value / 1000m) * modelCost.AudioCostPerThousandCharacters.Value;
+            totalRefund += ttsRefund;
+            _logger.LogDebug("Text-to-speech refund for model {ModelId}: {Chars} chars = ${Total}",
+                modelId, refundUsage.TtsCharacters.Value, ttsRefund);
+        }
+
         // Inference step refunds are now handled via RulesBased pricing configuration
 
         // Apply batch processing discount if applicable
@@ -271,6 +289,29 @@ public partial class CostCalculationService
         if (refundUsage.SearchUnits.HasValue && refundUsage.SearchUnits.Value < 0)
         {
             messages.Add("Refund search units must be non-negative.");
+        }
+
+        // Validate audio refund amounts
+        if (refundUsage.AudioDurationSeconds.HasValue && originalUsage.AudioDurationSeconds.HasValue &&
+            refundUsage.AudioDurationSeconds.Value > originalUsage.AudioDurationSeconds.Value)
+        {
+            messages.Add($"Refund audio duration ({refundUsage.AudioDurationSeconds.Value}s) cannot exceed original ({originalUsage.AudioDurationSeconds.Value}s).");
+        }
+
+        if (refundUsage.AudioDurationSeconds is < 0)
+        {
+            messages.Add("Refund audio duration must be non-negative.");
+        }
+
+        if (refundUsage.TtsCharacters.HasValue && originalUsage.TtsCharacters.HasValue &&
+            refundUsage.TtsCharacters.Value > originalUsage.TtsCharacters.Value)
+        {
+            messages.Add($"Refund TTS characters ({refundUsage.TtsCharacters.Value}) cannot exceed original ({originalUsage.TtsCharacters.Value}).");
+        }
+
+        if (refundUsage.TtsCharacters is < 0)
+        {
+            messages.Add("Refund TTS characters must be non-negative.");
         }
 
         // Validate inference steps refund amounts

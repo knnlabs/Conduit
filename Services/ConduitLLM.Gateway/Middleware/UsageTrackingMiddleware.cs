@@ -205,6 +205,15 @@ namespace ConduitLLM.Gateway.Middleware
                     return;
                 }
 
+                // Handle audio (STT/TTS) — bill from the typed usage context, never the body. The TTS
+                // response body is raw binary audio and would fail JSON parsing below.
+                if (endpointType == "transcription" || endpointType == "tts")
+                {
+                    await ProcessAudioResponseAsync(context, costCalculationService, batchSpendService,
+                        requestLogService, virtualKeyService, billingAuditService);
+                    return;
+                }
+
                 // Parse the response JSON
                 using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
                 var root = jsonDocument.RootElement;

@@ -55,10 +55,23 @@ namespace ConduitLLM.Gateway.Middleware
                 if (usageElement.TryGetProperty("images", out var imageCount))
                     usage.ImageCount = imageCount.GetInt32();
 
+                // Rerank search units
+                if (usageElement.TryGetProperty("search_units", out var searchUnits) && searchUnits.TryGetInt32(out var su))
+                    usage.SearchUnits = su;
+
+                // Audio (speech-to-text duration / text-to-speech characters)
+                if (usageElement.TryGetProperty("audio_duration_seconds", out var audioSeconds) && audioSeconds.TryGetDouble(out var asec))
+                    usage.AudioDurationSeconds = asec;
+                if (usageElement.TryGetProperty("tts_characters", out var ttsChars) && ttsChars.TryGetInt32(out var tc))
+                    usage.TtsCharacters = tc;
+
                 // Validate we have at least some usage data
-                if (usage.PromptTokens == null && 
-                    usage.CompletionTokens == null && 
-                    usage.ImageCount == null)
+                if (usage.PromptTokens == null &&
+                    usage.CompletionTokens == null &&
+                    usage.ImageCount == null &&
+                    usage.SearchUnits == null &&
+                    usage.AudioDurationSeconds == null &&
+                    usage.TtsCharacters == null)
                 {
                     return null;
                 }

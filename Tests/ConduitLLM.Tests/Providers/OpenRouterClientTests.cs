@@ -4,6 +4,7 @@ using System.Text;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers.OpenRouter;
 
 using FluentAssertions;
@@ -31,6 +32,7 @@ namespace ConduitLLM.Tests.Providers
         private string _imagesJson = "{\"created\":0,\"data\":[]}";
         private string _videoSubmitJson = "{\"id\":\"vid_1\"}";
         private string _videoStatusJson = "{\"status\":\"completed\",\"unsigned_urls\":[\"https://openrouter.ai/videos/vid_1.mp4\"]}";
+        private string _transcriptionJson = "{\"text\":\"hello\"}";
 
         public OpenRouterClientTests(ITestOutputHelper output) : base(output)
         {
@@ -55,9 +57,18 @@ namespace ConduitLLM.Tests.Providers
                     var path = req.RequestUri!.AbsolutePath;
                     _capturedRequests.Add((req.Method.Method, path, reqBody));
 
+                    // TTS returns raw audio bytes, not JSON.
+                    if (path.EndsWith("/audio/speech"))
+                    {
+                        var audio = new ByteArrayContent(new byte[] { 1, 2, 3, 4 });
+                        audio.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/mpeg");
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = audio });
+                    }
+
                     string responseBody;
                     if (path.EndsWith("/key")) responseBody = "{\"data\":{}}";
                     else if (path.EndsWith("/images")) responseBody = _imagesJson;
+                    else if (path.EndsWith("/audio/transcriptions")) responseBody = _transcriptionJson;
                     else if (path.Contains("/videos/")) responseBody = _videoStatusJson;  // GET status
                     else if (path.EndsWith("/videos")) responseBody = _videoSubmitJson;    // POST submit
                     else responseBody = _modelsJson;
@@ -259,6 +270,47 @@ namespace ConduitLLM.Tests.Providers
                 .Any(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
 
             hasContract.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task TranscribeAudioAsync_PostsToTranscriptionsEndpoint_MapsTextAndCost()
+        {
+            // Arrange
+            _transcriptionJson = "{\"text\":\"hello world\",\"duration\":12.5,\"usage\":{\"cost\":0.02}}";
+            var client = CreateClient();
+            var request = new AudioTranscriptionRequest
+            {
+                Model = "openai/whisper-1",
+                AudioData = new byte[] { 1, 2, 3 },
+                FileName = "audio.mp3",
+                ContentType = "audio/mpeg"
+            };
+
+            // Act
+            var result = await client.TranscribeAudioAsync(request);
+
+            // Assert
+            _capturedRequests.Single(r => r.Method == "POST").Path.Should().EndWith("/audio/transcriptions");
+            result.Text.Should().Be("hello world");
+            result.DurationSeconds.Should().Be(12.5);
+            result.Usage!.ProviderReportedCostUsd.Should().Be(0.02m);
+        }
+
+        [Fact]
+        public async Task CreateSpeechAsync_ReturnsAudioBytes_AndCharacterUsage()
+        {
+            // Arrange
+            var client = CreateClient();
+            var request = new TextToSpeechRequest { Model = "openai/tts-1", Input = "hello", Voice = "alloy" };
+
+            // Act
+            var result = await client.CreateSpeechAsync(request);
+
+            // Assert
+            _capturedRequests.Single(r => r.Method == "POST").Path.Should().EndWith("/audio/speech");
+            result.AudioData.Should().NotBeEmpty();
+            result.ContentType.Should().Contain("audio");
+            result.Usage!.TtsCharacters.Should().Be(5); // "hello".Length
         }
     }
 }

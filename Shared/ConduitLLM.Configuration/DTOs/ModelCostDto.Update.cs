@@ -131,5 +131,11 @@ namespace ConduitLLM.Configuration.DTOs
         /// Documents over 500 tokens are split into chunks, each counting as a separate document.
         /// </remarks>
         public decimal? CostPerSearchUnit { get; set; }
+
+        /// <summary>Cost per minute of transcribed audio (speech-to-text).</summary>
+        public decimal? AudioCostPerMinute { get; set; }
+
+        /// <summary>Cost per thousand input characters synthesized (text-to-speech).</summary>
+        public decimal? AudioCostPerThousandCharacters { get; set; }
     }
 }

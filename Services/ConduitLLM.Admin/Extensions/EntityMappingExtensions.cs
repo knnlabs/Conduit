@@ -68,6 +68,8 @@ namespace ConduitLLM.Admin.Extensions
                 SupportsVision = model.SupportsVision,
                 SupportsImageGeneration = model.SupportsImageGeneration,
                 SupportsVideoGeneration = model.SupportsVideoGeneration,
+                SupportsSpeechToText = model.SupportsSpeechToText,
+                SupportsTextToSpeech = model.SupportsTextToSpeech,
                 SupportsEmbeddings = model.SupportsEmbeddings,
                 SupportsFunctionCalling = model.SupportsFunctionCalling,
                 SupportsStreaming = model.SupportsStreaming,

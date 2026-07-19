@@ -234,6 +234,20 @@ public class ModelCost : IEntity<int>, IAuditableEntity
     public decimal? CostPerSearchUnit { get; set; }
 
     /// <summary>
+    /// Gets or sets the cost per minute of transcribed audio (speech-to-text). Nullable when the
+    /// model is not an STT model. Stored with moderate precision (decimal 18,8).
+    /// </summary>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? AudioCostPerMinute { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per thousand input characters synthesized (text-to-speech). Nullable
+    /// when the model is not a TTS model. Stored with moderate precision (decimal 18,8).
+    /// </summary>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? AudioCostPerThousandCharacters { get; set; }
+
+    /// <summary>
     /// Gets or sets the cost per million reasoning tokens for models with reasoning capabilities.
     /// </summary>
     /// <remarks>

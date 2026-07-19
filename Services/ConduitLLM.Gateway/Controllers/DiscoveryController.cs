@@ -122,6 +122,8 @@ namespace ConduitLLM.Gateway.Controllers
                         "image_generation" => caps.SupportsImageGeneration,
                         "embeddings" => caps.SupportsEmbeddings,
                         "function_calling" => caps.SupportsFunctionCalling,
+                        "speech_to_text" or "audio_transcription" => caps.SupportsSpeechToText,
+                        "text_to_speech" => caps.SupportsTextToSpeech,
                         _ => false
                     };
 
@@ -169,6 +171,8 @@ namespace ConduitLLM.Gateway.Controllers
                         vision = caps.SupportsVision,
                         video_generation = caps.SupportsVideoGeneration,
                         video_understanding = false, // Not yet supported
+                        speech_to_text = caps.SupportsSpeechToText,
+                        text_to_speech = caps.SupportsTextToSpeech,
                         function_calling = caps.SupportsFunctionCalling,
                         tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
                         json_mode = false, // Not yet tracked
@@ -216,6 +220,8 @@ namespace ConduitLLM.Gateway.Controllers
                 "video_generation",
                 "image_generation",
                 "embeddings",
+                "speech_to_text",
+                "text_to_speech",
                 "function_calling",
                 "tool_use",
                 "json_mode"

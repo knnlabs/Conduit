@@ -221,6 +221,8 @@ namespace ConduitLLM.Admin.Extensions
                 CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
                 CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
+                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                AudioCostPerThousandCharacters = modelCost.AudioCostPerThousandCharacters,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt,
                 ModelType = modelCost.ModelType,
@@ -257,6 +259,8 @@ namespace ConduitLLM.Admin.Extensions
                 CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens,
                 CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = dto.CostPerSearchUnit,
+                AudioCostPerMinute = dto.AudioCostPerMinute,
+                AudioCostPerThousandCharacters = dto.AudioCostPerThousandCharacters,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -295,6 +299,8 @@ namespace ConduitLLM.Admin.Extensions
             entity.CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens;
             entity.CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens;
             entity.CostPerSearchUnit = dto.CostPerSearchUnit;
+            entity.AudioCostPerMinute = dto.AudioCostPerMinute;
+            entity.AudioCostPerThousandCharacters = dto.AudioCostPerThousandCharacters;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;
