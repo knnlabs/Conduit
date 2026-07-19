@@ -22,6 +22,15 @@ namespace ConduitLLM.Core.Utilities
         };
 
         /// <summary>
+        /// Idle-read watchdog applied when a caller does not pass an explicit timeout: if no
+        /// data arrives on a streaming response for this long, the stream is aborted with a
+        /// distinguishable <see cref="LLMCommunicationException"/> instead of hanging forever.
+        /// Initialized from <c>Conduit:ProviderHttp:Streaming:IdleReadTimeoutSeconds</c> when
+        /// the provider HTTP clients are registered.
+        /// </summary>
+        public static TimeSpan DefaultIdleReadTimeout { get; set; } = TimeSpan.FromSeconds(90);
+
+        /// <summary>
         /// Processes a server-sent event (SSE) stream from an HTTP response and yields deserialized objects.
         /// </summary>
         /// <typeparam name="T">The type to deserialize each data event into.</typeparam>
@@ -34,11 +43,13 @@ namespace ConduitLLM.Core.Utilities
             HttpResponseMessage response,
             ILogger? logger = null,
             JsonSerializerOptions? options = null,
+            TimeSpan? idleReadTimeout = null,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var jsonOptions = options ?? DefaultJsonOptions;
 
-            await foreach (var dataBuffer in ReadSseDataLinesAsync(response, logger, cancellationToken))
+            await foreach (var dataBuffer in ReadSseDataLinesAsync(
+                response, logger, idleReadTimeout ?? DefaultIdleReadTimeout, cancellationToken))
             {
                 T? data = default;
                 try
@@ -71,7 +82,8 @@ namespace ConduitLLM.Core.Utilities
 
             try
             {
-                await foreach (var dataBuffer in ReadSseDataLinesAsync(response, logger, cancellationToken))
+                await foreach (var dataBuffer in ReadSseDataLinesAsync(
+                    response, logger, DefaultIdleReadTimeout, cancellationToken))
                 {
                     try
                     {
@@ -110,6 +122,7 @@ namespace ConduitLLM.Core.Utilities
         private static async IAsyncEnumerable<string> ReadSseDataLinesAsync(
             HttpResponseMessage response,
             ILogger? logger,
+            TimeSpan idleReadTimeout,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             logger?.LogDebug("Beginning to process SSE stream");
@@ -118,6 +131,7 @@ namespace ConduitLLM.Core.Utilities
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream, Encoding.UTF8);
+            using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
             string? line;
             string dataBuffer = string.Empty;
@@ -125,7 +139,7 @@ namespace ConduitLLM.Core.Utilities
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                line = await reader.ReadLineAsync(cancellationToken);
+                line = await ReadLineWithIdleWatchdogAsync(reader, idleCts, idleReadTimeout, cancellationToken, logger);
                 if (line == null) break; // End of stream
                 lineCount++;
 
@@ -172,6 +186,38 @@ namespace ConduitLLM.Core.Utilities
         }
 
         /// <summary>
+        /// Reads one line from a streaming response, aborting with a distinguishable
+        /// <see cref="LLMCommunicationException"/> if no data arrives within the idle timeout.
+        /// Providers that stall mid-stream would otherwise hang the request forever now that
+        /// streaming clients no longer carry an HttpClient.Timeout.
+        /// </summary>
+        private static async Task<string?> ReadLineWithIdleWatchdogAsync(
+            StreamReader reader,
+            CancellationTokenSource idleCts,
+            TimeSpan idleReadTimeout,
+            CancellationToken callerToken,
+            ILogger? logger)
+        {
+            idleCts.CancelAfter(idleReadTimeout);
+            try
+            {
+                var line = await reader.ReadLineAsync(idleCts.Token);
+                // Disarm the watchdog while the caller processes the line
+                idleCts.CancelAfter(Timeout.InfiniteTimeSpan);
+                return line;
+            }
+            catch (OperationCanceledException ex) when (!callerToken.IsCancellationRequested)
+            {
+                logger?.LogWarning(
+                    "Streaming response idle timeout: no data received for {IdleTimeoutSeconds}s",
+                    idleReadTimeout.TotalSeconds);
+                throw new LLMCommunicationException(
+                    $"Streaming response idle timeout: no data received for {idleReadTimeout.TotalSeconds:F0}s",
+                    ex);
+            }
+        }
+
+        /// <summary>
         /// Processes a server-sent event (SSE) stream specially formatted for LLM chat completion responses.
         /// </summary>
         /// <param name="response">The HTTP response containing the SSE stream.</param>
@@ -186,7 +232,7 @@ namespace ConduitLLM.Core.Utilities
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await foreach (var chunk in ProcessSseStreamAsync<ChatCompletionChunk>(
-                response, logger, options, cancellationToken))
+                response, logger, options, cancellationToken: cancellationToken))
             {
                 yield return chunk;
             }
@@ -326,11 +372,13 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogDebug("Beginning to process custom stream with delimiter: {Delimiter}", delimiter);
                 var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 using var reader = new StreamReader(stream, Encoding.UTF8);
+                using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
                 string? line;
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    line = await reader.ReadLineAsync(cancellationToken);
+                    line = await ReadLineWithIdleWatchdogAsync(
+                        reader, idleCts, DefaultIdleReadTimeout, cancellationToken, logger);
                     if (line == null) break; // End of stream
                     if (string.IsNullOrEmpty(line))
                     {

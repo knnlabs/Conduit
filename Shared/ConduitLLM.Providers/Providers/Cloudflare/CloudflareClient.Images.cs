@@ -108,6 +108,7 @@ namespace ConduitLLM.Providers.Cloudflare
             {
                 Content = httpContent
             };
+            httpRequest.Options.Set(Http.ConduitHttpOptions.OperationClass, Http.ConduitHttpOptions.Images);
 
             using var httpResponse = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseContentRead, cancellationToken);
 

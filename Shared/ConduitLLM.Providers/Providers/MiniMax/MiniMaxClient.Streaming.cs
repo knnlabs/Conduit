@@ -82,7 +82,7 @@ namespace ConduitLLM.Providers.MiniMax
                 }
 
                 var streamEnum = Core.Utilities.StreamHelper.ProcessSseStreamAsync<MiniMaxStreamChunk>(
-                    response!, Logger, null, cancellationToken);
+                    response!, Logger, null, cancellationToken: cancellationToken);
 
                 await foreach (var chunk in streamEnum.WithCancellation(cancellationToken))
                 {

@@ -415,11 +415,11 @@ namespace ConduitLLM.Providers.MiniMax
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
 
-            // Use large file download timeout for video files
-            client.Timeout = LargeFileDownloadTimeout;
+            // Timeout budgets live in the resilience pipeline (video class: long attempts, no
+            // retries); HttpClient.Timeout stays infinite so it can't cut long downloads short
+            client.Timeout = Timeout.InfiniteTimeSpan;
 
-            Logger.LogInformation("Created video HTTP client with {Timeout} timeout via IHttpClientFactory",
-                LargeFileDownloadTimeout);
+            Logger.LogInformation("Created video HTTP client via IHttpClientFactory (video-class pipeline budgets)");
 
             return client;
         }

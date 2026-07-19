@@ -33,6 +33,9 @@ namespace ConduitLLM.Core.Utilities
         /// <param name="jsonOptions">Optional JSON serialization options.</param>
         /// <param name="logger">Optional logger for request/response logging.</param>
         /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+        /// <param name="operationClass">Optional operation class (see
+        /// <see cref="Http.ConduitOperationClasses"/>) so the resilience pipeline can select the
+        /// matching timeout budget (e.g. images vs chat).</param>
         /// <returns>The deserialized response object.</returns>
         /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
         public static async Task<TResponse> SendJsonRequestAsync<TRequest, TResponse>(
@@ -43,13 +46,18 @@ namespace ConduitLLM.Core.Utilities
             IDictionary<string, string>? headers = null,
             JsonSerializerOptions? jsonOptions = null,
             ILogger? logger = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            string? operationClass = null)
         {
             var options = jsonOptions ?? DefaultJsonOptions;
 
             try
             {
                 var request = CreateJsonRequest(method, endpoint, requestData, headers, options, logger);
+                if (operationClass != null)
+                {
+                    request.Options.Set(new HttpRequestOptionsKey<string>(Http.ConduitOperationClasses.KeyName), operationClass);
+                }
                 logger?.LogDebug("Sending {Method} request to {Endpoint}", method, endpoint);
 
                 using var response = await client.SendAsync(request, cancellationToken);
@@ -308,7 +316,13 @@ namespace ConduitLLM.Core.Utilities
             try
             {
                 var request = CreateJsonRequest(method, endpoint, requestData, headers, options, logger);
-                
+
+                // Tag as chat streaming so the resilience pipeline's per-attempt timeout acts as
+                // a time-to-first-token bound (the send completes at response headers)
+                request.Options.Set(
+                    new HttpRequestOptionsKey<string>(Http.ConduitOperationClasses.KeyName),
+                    Http.ConduitOperationClasses.ChatStream);
+
                 // Add Accept header for SSE if not already present
                 if (!request.Headers.Accept.Any(h => h.MediaType == "text/event-stream"))
                 {

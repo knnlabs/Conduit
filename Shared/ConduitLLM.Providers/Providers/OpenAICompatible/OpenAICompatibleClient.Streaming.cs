@@ -119,7 +119,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     bool reportedUsage = false;
                     // Stream chunks progressively using StreamHelper - use JsonElement for raw passthrough
                     await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<System.Text.Json.JsonElement>(
-                        response, Logger, DefaultJsonOptions, cancellationToken))
+                        response, Logger, DefaultJsonOptions, cancellationToken: cancellationToken))
                     {
                         if (cancellationToken.IsCancellationRequested)
                         {

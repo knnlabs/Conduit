@@ -63,6 +63,13 @@ public static class HttpClientExtensions
                 var options = context.ServiceProvider
                     .GetRequiredService<IOptionsMonitor<ProviderResilienceOptions>>().CurrentValue;
 
+                // Initialize the streaming idle watchdog from config. Set here (not at
+                // registration time) because options need a built ServiceProvider; every
+                // streaming response first passes through a named-client pipeline, so this runs
+                // before the first watchdog-guarded read.
+                ConduitLLM.Core.Utilities.StreamHelper.DefaultIdleReadTimeout =
+                    TimeSpan.FromSeconds(options.Streaming.IdleReadTimeoutSeconds);
+
                 var errorTracker = context.ServiceProvider.GetService<IProviderErrorTrackingService>();
                 var hook = errorTracker == null
                     ? null

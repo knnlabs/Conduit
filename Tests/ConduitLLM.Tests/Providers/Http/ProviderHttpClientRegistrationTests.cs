@@ -196,6 +196,54 @@ namespace ConduitLLM.Tests.Providers.Http
         }
 
         [Fact]
+        public async Task ProviderClients_UseInfiniteHttpClientTimeout()
+        {
+            // All timeout budgets live in the resilience pipeline; HttpClient.Timeout must be
+            // infinite or it cancels streaming response reads mid-stream (>120s SSE deaths).
+            var createdClients = new List<HttpClient>();
+            var handlerMock = new Mock<HttpMessageHandler>();
+            handlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+
+            var factoryMock = new Mock<IHttpClientFactory>();
+            factoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(() =>
+            {
+                var client = new HttpClient(handlerMock.Object) { BaseAddress = new Uri("http://localhost:59999/") };
+                createdClients.Add(client);
+                return client;
+            });
+
+            var creator = ClientCreatorRegistry.GetCreator(ProviderType.OpenAI);
+            var client = creator!(
+                new Provider { Id = 1, ProviderType = ProviderType.OpenAI, IsEnabled = true, BaseUrl = "http://localhost:59999" },
+                new ProviderKeyCredential { Id = 1, ProviderId = 1, ApiKey = "test-key", IsPrimary = true, IsEnabled = true },
+                "test-model",
+                new ClientCreationContext
+                {
+                    LoggerFactory = LoggerFactory.Create(_ => { }),
+                    HttpClientFactory = factoryMock.Object,
+                });
+
+            try
+            {
+                await client.CreateChatCompletionAsync(new ChatCompletionRequest
+                {
+                    Model = "test-model",
+                    Messages = new List<Message> { new Message { Role = MessageRole.User, Content = "hi" } },
+                });
+            }
+            catch
+            {
+                // canned 500 — irrelevant, the client was configured before the send
+            }
+
+            Assert.NotEmpty(createdClients);
+            Assert.All(createdClients, c => Assert.Equal(Timeout.InfiniteTimeSpan, c.Timeout));
+        }
+
+        [Fact]
         public async Task RegisteredClient_RetriesTransientErrors_AndSucceeds()
         {
             var attempts = 0;
