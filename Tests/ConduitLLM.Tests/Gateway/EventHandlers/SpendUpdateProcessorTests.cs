@@ -54,6 +54,22 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
+        public void GatewayAssembly_HasSingleSpendUpdateRequestedHandler()
+        {
+            // Keep spend processing on one registered, durable path. A second, unregistered
+            // handler can drift from the production implementation and silently lose charges.
+            var handlerType = typeof(IEventHandler<SpendUpdateRequested>);
+
+            var handlers = typeof(SpendUpdateProcessor).Assembly
+                .GetTypes()
+                .Where(type => type is { IsClass: true, IsAbstract: false } &&
+                               handlerType.IsAssignableFrom(type));
+
+            handlers.Should().ContainSingle()
+                .Which.Should().Be<SpendUpdateProcessor>();
+        }
+
+        [Fact]
         public async Task HandleAsync_WithRepositoryAvailable_UpdatesSpendSuccessfully()
         {
             // Arrange
