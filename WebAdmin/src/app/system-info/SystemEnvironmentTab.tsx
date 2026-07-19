@@ -8,7 +8,6 @@ import {
   Code,
   Alert,
   ScrollArea,
-  Stack,
 } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
@@ -41,10 +40,23 @@ export function SystemEnvironmentTab({ systemInfo }: SystemEnvironmentTabProps) 
           <Table.Tbody>
             <Table.Tr>
               <Table.Td>
-                <Code>Environment</Code>
+                <Code>Operating System</Code>
               </Table.Td>
               <Table.Td>
-                <Code>{systemInfo?.environment ?? 'Unknown'}</Code>
+                <Code>{systemInfo?.operatingSystem?.description ?? 'Unknown'}</Code>
+              </Table.Td>
+              <Table.Td>
+                <Badge variant="light" size="sm" color="blue">
+                  System
+                </Badge>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Code>Architecture</Code>
+              </Table.Td>
+              <Table.Td>
+                <Code>{systemInfo?.operatingSystem?.architecture ?? 'Unknown'}</Code>
               </Table.Td>
               <Table.Td>
                 <Badge variant="light" size="sm" color="blue">
@@ -57,7 +69,7 @@ export function SystemEnvironmentTab({ systemInfo }: SystemEnvironmentTabProps) 
                 <Code>Build Date</Code>
               </Table.Td>
               <Table.Td>
-                <Code>{systemInfo?.buildDate ? new Date(systemInfo.buildDate).toLocaleDateString() : 'Unknown'}</Code>
+                <Code>{systemInfo?.version?.buildDate ? new Date(systemInfo.version.buildDate).toLocaleDateString() : 'Unknown'}</Code>
               </Table.Td>
               <Table.Td>
                 <Badge variant="light" size="sm" color="blue">
@@ -67,74 +79,30 @@ export function SystemEnvironmentTab({ systemInfo }: SystemEnvironmentTabProps) 
             </Table.Tr>
             <Table.Tr>
               <Table.Td>
-                <Code>IP Filtering</Code>
+                <Code>Database Version</Code>
               </Table.Td>
               <Table.Td>
-                <Code>{systemInfo?.features?.ipFiltering ? 'Enabled' : 'Disabled'}</Code>
+                <Code>{systemInfo?.database?.version ?? 'Unknown'}</Code>
               </Table.Td>
               <Table.Td>
-                <Badge 
-                  variant="light" 
-                  size="sm" 
-                  color={systemInfo?.features?.ipFiltering ? 'green' : 'gray'}
-                >
-                  Feature
+                <Badge variant="light" size="sm" color="blue">
+                  Database
                 </Badge>
               </Table.Td>
             </Table.Tr>
             <Table.Tr>
               <Table.Td>
-                <Code>Cost Tracking</Code>
+                <Code>Database Tables</Code>
               </Table.Td>
               <Table.Td>
-                <Code>{systemInfo?.features?.costTracking ? 'Enabled' : 'Disabled'}</Code>
+                <Code>{systemInfo?.database?.tableCount ?? 'Unknown'}</Code>
               </Table.Td>
               <Table.Td>
-                <Badge 
-                  variant="light" 
-                  size="sm" 
-                  color={systemInfo?.features?.costTracking ? 'green' : 'gray'}
-                >
-                  Feature
+                <Badge variant="light" size="sm" color="blue">
+                  Database
                 </Badge>
               </Table.Td>
             </Table.Tr>
-            <Table.Tr>
-              <Table.Td>
-                <Code>Audio Support</Code>
-              </Table.Td>
-              <Table.Td>
-                <Code>{systemInfo?.features?.audioSupport ? 'Enabled' : 'Disabled'}</Code>
-              </Table.Td>
-              <Table.Td>
-                <Badge 
-                  variant="light" 
-                  size="sm" 
-                  color={systemInfo?.features?.audioSupport ? 'green' : 'gray'}
-                >
-                  Feature
-                </Badge>
-              </Table.Td>
-            </Table.Tr>
-            {systemInfo?.database?.pendingMigrations && Array.isArray(systemInfo.database.pendingMigrations) && systemInfo.database.pendingMigrations.length > 0 && (
-              <Table.Tr>
-                <Table.Td>
-                  <Code>Pending Migrations</Code>
-                </Table.Td>
-                <Table.Td>
-                  <Stack gap="xs">
-                    {systemInfo.database.pendingMigrations.map((migration) => (
-                      <Code key={migration}>{String(migration)}</Code>
-                    ))}
-                  </Stack>
-                </Table.Td>
-                <Table.Td>
-                  <Badge variant="light" size="sm" color="orange">
-                    Database
-                  </Badge>
-                </Table.Td>
-              </Table.Tr>
-            )}
           </Table.Tbody>
         </Table>
       </ScrollArea>

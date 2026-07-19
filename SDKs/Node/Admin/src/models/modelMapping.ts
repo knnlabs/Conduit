@@ -23,6 +23,10 @@ export interface ModelCapabilitiesDto {
   supportsImageGeneration: boolean;
   supportsVideoGeneration: boolean;
   supportsEmbeddings: boolean;
+  // Audio + rerank capabilities added to the backend after the gate landed (issue #1038).
+  supportsSpeechToText?: boolean;
+  supportsTextToSpeech?: boolean;
+  supportsRerank?: boolean;
   supportsChat: boolean;
   supportsFunctionCalling: boolean;
   supportsStreaming: boolean;

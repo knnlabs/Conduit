@@ -173,27 +173,9 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
         </Stack>
       );
     }
-    if (cost.imageCostPerImage !== undefined) {
-      const hasMultipliers = cost.imageQualityMultipliers && 
-        cost.imageQualityMultipliers !== '{}';
-      
-      return (
-        <Group gap="xs">
-          <Text size="xs">{formatters.currency(cost.imageCostPerImage, { currency: 'USD' })}/image</Text>
-          {hasMultipliers && (
-            <Tooltip label="Has quality multipliers">
-              <IconAdjustments size={14} />
-            </Tooltip>
-          )}
-        </Group>
-      );
-    }
-    if (cost.imageCostPerImage !== undefined) {
-      return <Text size="xs">{formatters.currency(cost.imageCostPerImage, { currency: 'USD' })}/image</Text>;
-    }
-    if (cost.videoCostPerSecond !== undefined) {
-      return <Text size="xs">{formatters.currency(cost.videoCostPerSecond, { currency: 'USD' })}/second</Text>;
-    }
+    // Image, video, and inference-step pricing were removed from ModelCostDto as flat fields in
+    // #1038 (now carried in pricingConfiguration, which this table does not parse). Those summary
+    // branches are dropped; the pricingConfiguration fallback below flags such rows as configured.
     if (cost.costPerSearchUnit !== undefined) {
       return (
         <Stack gap={2}>
@@ -204,17 +186,8 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
         </Stack>
       );
     }
-    if (cost.costPerInferenceStep !== undefined) {
-      return (
-        <Stack gap={2}>
-          <Text size="xs">
-            Steps: {formatters.currency(cost.costPerInferenceStep, { currency: 'USD', precision: 4 })}/step
-          </Text>
-          {cost.defaultInferenceSteps && (
-            <Badge size="xs" variant="light" color="teal">Default: {cost.defaultInferenceSteps} steps</Badge>
-          )}
-        </Stack>
-      );
+    if (cost.pricingConfiguration && cost.pricingConfiguration !== '{}') {
+      return <Badge size="xs" variant="light" color="teal">Configured</Badge>;
     }
     return <Text size="xs" c="dimmed">No pricing set</Text>;
   };
@@ -369,11 +342,8 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
                               <IconSearch size={14} style={{ opacity: 0.7 }} />
                             </Tooltip>
                           )}
-                          {cost.costPerInferenceStep && (
-                            <Tooltip label="Step-based pricing">
-                              <IconStairs size={14} style={{ opacity: 0.7 }} />
-                            </Tooltip>
-                          )}
+                          {/* Step-based pricing indicator removed: costPerInferenceStep is no longer
+                              a flat field on ModelCostDto (#1038); it lives in pricingConfiguration. */}
                         </Group>
                       </Table.Td>
                       <Table.Td>

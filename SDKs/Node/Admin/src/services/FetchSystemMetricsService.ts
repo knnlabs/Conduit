@@ -1,6 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import type { SystemMetricsDto } from '../models/system';
+import type { SystemInfoDto, SystemResourceMetricsDto } from '../models/system';
 import type { 
   MetricsParams, 
   PerformanceMetrics, 
@@ -66,7 +66,7 @@ export class FetchSystemMetricsService {
    * with fallback to constructed metrics from system info.
    * 
    * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<SystemMetricsDto> - System resource metrics including:
+   * @returns Promise<SystemResourceMetricsDto> - System resource metrics including:
    *   - cpuUsage: CPU utilization percentage (0-100)
    *   - memoryUsage: Memory utilization percentage (0-100)
    *   - diskUsage: Disk utilization percentage (0-100)
@@ -75,10 +75,10 @@ export class FetchSystemMetricsService {
    * @throws {Error} When metrics data cannot be retrieved
    * @since Issue #427 - System Health SDK Methods
    */
-  async getSystemMetrics(config?: RequestConfig): Promise<SystemMetricsDto> {
+  async getSystemMetrics(config?: RequestConfig): Promise<SystemResourceMetricsDto> {
     try {
       // Try to get from dedicated metrics endpoint first
-      return await this.client['get']<SystemMetricsDto>(
+      return await this.client['get']<SystemResourceMetricsDto>(
         ENDPOINTS.METRICS.BASE,
         {
           signal: config?.signal,
@@ -97,7 +97,7 @@ export class FetchSystemMetricsService {
         memoryUsage: 0, // Memory usage not available from backend
         diskUsage: 0, // Will be enhanced when disk monitoring is available
         activeConnections,
-        uptime: systemInfo.uptime,
+        uptime: this.computeUptimeSeconds(systemInfo),
       };
     }
   }
@@ -151,6 +151,22 @@ export class FetchSystemMetricsService {
   async getUptime(config?: RequestConfig): Promise<number> {
     const systemService = new FetchSystemService(this.client);
     const systemInfo = await systemService.getSystemInfo(config);
-    return systemInfo.uptime;
+    return this.computeUptimeSeconds(systemInfo);
+  }
+
+  /**
+   * Derives uptime in seconds from the system info's runtime.startTime.
+   * The endpoint no longer returns a numeric uptime (issue #1038); returns 0 when unknown.
+   */
+  private computeUptimeSeconds(systemInfo: SystemInfoDto): number {
+    const startTime = systemInfo.runtime?.startTime;
+    if (!startTime) {
+      return 0;
+    }
+    const started = new Date(startTime).getTime();
+    if (Number.isNaN(started)) {
+      return 0;
+    }
+    return Math.max(0, Math.floor((Date.now() - started) / 1000));
   }
 }

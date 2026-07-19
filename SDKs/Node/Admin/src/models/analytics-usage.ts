@@ -21,16 +21,14 @@ export interface VirtualKeyAnalytics {
   };
 }
 
+// Matches the wire `VirtualKeyUsageSummary` schema. See issue #1038.
 export interface VirtualKeyUsageSummary {
-  keyId: string;
+  virtualKeyId: number;
   keyName: string;
-  totalRequests: number;
-  totalTokens: number;
+  requestCount: number;
   totalCost: number;
-  averageRequestsPerDay: number;
-  budgetUsed: number;
-  budgetRemaining: number;
-  lastUsed: string;
+  lastUsed: string | null;
+  modelsUsed: string[];
 }
 
 export interface VirtualKeyRanking {

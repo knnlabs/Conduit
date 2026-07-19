@@ -76,10 +76,6 @@ export interface VirtualKeyDto {
   rateLimitRpm?: number;
   rateLimitRpd?: number;
   description?: string;
-  // Compatibility properties
-  name?: string;
-  isActive?: boolean;
-  rateLimit?: number;
 }
 
 export interface CreateVirtualKeyRequest {
@@ -113,16 +109,13 @@ export interface VirtualKeyValidationRequest {
   key: string;
 }
 
+// Reconciled to wire shape — issue #1038 (reason -> errorMessage; allowedModels is a string; dropped client-only fields)
 export interface VirtualKeyValidationResult {
-  isValid: boolean;
+  isValid?: boolean;
   virtualKeyId?: number;
   keyName?: string;
-  reason?: string;
-  allowedModels?: string[];
-  expiresAt?: string;
-  rateLimitRpm?: number;
-  rateLimitRpd?: number;
-  virtualKeyGroupId?: number;
+  allowedModels?: string;
+  errorMessage?: string;
 }
 
 // Note: Spend tracking is now handled at the VirtualKeyGroup level

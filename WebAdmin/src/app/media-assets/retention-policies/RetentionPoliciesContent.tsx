@@ -143,7 +143,7 @@ export default function RetentionPoliciesContent() {
           respectRecentAccess: formData.respectRecentAccess,
           recentAccessWindowDays: formData.recentAccessWindowDays,
           isDefault: formData.isDefault,
-          isActive: formData.isActive,
+          // isActive removed from CreateMediaRetentionPolicyRequest in #1038 (create defaults active)
         };
         await withAdminClient(client =>
           client.media.createRetentionPolicy(createData)

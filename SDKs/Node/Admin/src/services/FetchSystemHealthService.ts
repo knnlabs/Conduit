@@ -2,7 +2,7 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import type { 
   SystemHealthDto,
-  ServiceStatusDto,
+  ServiceStatusMapDto,
   HealthEventDto,
   HealthEventsResponseDto,
   HealthEventSubscriptionOptions,
@@ -93,7 +93,7 @@ export class FetchSystemHealthService implements ISystemHealthService {
    * Get detailed system resource metrics.
    * Delegates to FetchSystemMetricsService.
    */
-  async getSystemMetrics(config?: RequestConfig): Promise<import('../models/system').SystemMetricsDto> {
+  async getSystemMetrics(config?: RequestConfig): Promise<import('../models/system').SystemResourceMetricsDto> {
     const metricsService = new FetchSystemMetricsService(this.client);
     return metricsService.getSystemMetrics(config);
   }
@@ -105,7 +105,7 @@ export class FetchSystemHealthService implements ISystemHealthService {
    * Uses dedicated services endpoint with fallback to health checks.
    * 
    * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<ServiceStatusDto> - Individual service health status including:
+   * @returns Promise<ServiceStatusMapDto> - Individual service health status including:
    *   - coreApi: Gateway API service health, latency, and endpoint
    *   - adminApi: Admin API service health, latency, and endpoint
    *   - database: Database health, latency, and connection count
@@ -113,7 +113,7 @@ export class FetchSystemHealthService implements ISystemHealthService {
    * @throws {Error} When service status data cannot be retrieved
    * @since Issue #427 - System Health SDK Methods
    */
-  async getServiceStatus(config?: RequestConfig): Promise<ServiceStatusDto> {
+  async getServiceStatus(config?: RequestConfig): Promise<ServiceStatusMapDto> {
     try {
       // Try to get from dedicated services endpoint
       const response = await this.client['get']<Record<string, unknown>>(
@@ -125,7 +125,7 @@ export class FetchSystemHealthService implements ISystemHealthService {
         }
       );
 
-      // Transform response to match ServiceStatusDto structure
+      // Transform response to match ServiceStatusMapDto structure
       // The /api/health/services endpoint returns a different format, so we'll map it
       const typedResponse = response as {
         coreApi?: { status?: string; responseTime?: number; endpoint?: string };
@@ -242,8 +242,10 @@ export class FetchSystemHealthService implements ISystemHealthService {
       const now = new Date();
       const events: HealthEventDto[] = [];
       
-      // Add system startup event
-      const startupTime = new Date(now.getTime() - systemInfo.uptime * 1000);
+      // Add system startup event (runtime.startTime is the process start timestamp)
+      const startupTime = systemInfo.runtime?.startTime
+        ? new Date(systemInfo.runtime.startTime)
+        : now;
       events.push({
         id: `system-startup-${startupTime.getTime()}`,
         timestamp: startupTime.toISOString(),

@@ -3,8 +3,8 @@ import type {
   SystemInfoDto, 
   HealthStatusDto,
   SystemHealthDto,
-  SystemMetricsDto,
-  ServiceStatusDto,
+  SystemResourceMetricsDto,
+  ServiceStatusMapDto,
   HealthEventsResponseDto,
   HealthEventSubscriptionOptions,
   HealthEventSubscription
@@ -94,8 +94,8 @@ export interface ISystemService {
 // Service interface for health operations
 export interface ISystemHealthService {
   getSystemHealth(config?: RequestConfig): Promise<SystemHealthDto>;
-  getSystemMetrics(config?: RequestConfig): Promise<SystemMetricsDto>;
-  getServiceStatus(config?: RequestConfig): Promise<ServiceStatusDto>;
+  getSystemMetrics(config?: RequestConfig): Promise<SystemResourceMetricsDto>;
+  getServiceStatus(config?: RequestConfig): Promise<ServiceStatusMapDto>;
   getUptime(config?: RequestConfig): Promise<number>;
   getActiveConnections(config?: RequestConfig): Promise<number>;
   getHealthEvents(limit?: number, config?: RequestConfig): Promise<HealthEventsResponseDto>;
@@ -110,6 +110,6 @@ export interface ISystemHelpers {
   isSystemHealthy(health: HealthStatusDto): boolean;
   getUnhealthyServices(health: HealthStatusDto): string[];
   formatUptime(uptimeSeconds: number): string;
-  isFeatureEnabled(systemInfo: SystemInfoDto, feature: keyof SystemInfoDto['features']): boolean;
+  isFeatureEnabled(systemInfo: SystemInfoDto, feature: string): boolean;
   transformSystemInfoResponse(response: BackendSystemInfoResponse): SystemInfoDto;
 }

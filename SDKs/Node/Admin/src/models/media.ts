@@ -1,11 +1,12 @@
 // Media models and types for Admin SDK
 
+// Reconciled to wire shape — issue #1038 (dropped client-only virtualKeyGroupId/Name; added virtualKey)
 export interface MediaRecord {
   id: string;
   storageKey: string;
   virtualKeyId: number;
-  virtualKeyGroupId?: number;
-  virtualKeyGroupName?: string;
+  /** Wire references the VirtualKey schema; typed loosely on the client. */
+  virtualKey?: unknown;
   mediaType: 'image' | 'video';
   contentType?: string;
   sizeBytes?: number;
@@ -131,6 +132,7 @@ export interface UpdateSimpleRetentionRequest {
 }
 
 // Full Media Retention Policy types
+// Reconciled to wire shape — issue #1038 (added virtualKeyGroups)
 export interface MediaRetentionPolicy {
   id: number;
   name: string;
@@ -157,8 +159,11 @@ export interface MediaRetentionPolicy {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Wire references the VirtualKeyGroup schema; typed loosely on the client. */
+  virtualKeyGroups?: unknown[];
 }
 
+// Reconciled to wire shape — issue #1038 (dropped client-only isActive)
 export interface CreateMediaRetentionPolicyRequest {
   name: string;
   description?: string;
@@ -171,7 +176,6 @@ export interface CreateMediaRetentionPolicyRequest {
   isDefault?: boolean;
   maxStorageSizeBytes?: number | null;
   maxFileCount?: number | null;
-  isActive?: boolean;
 }
 
 export interface UpdateMediaRetentionPolicyRequest {

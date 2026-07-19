@@ -102,19 +102,23 @@ export function EditModelCostModalV2({ isOpen, modelCost, onClose, onSuccess }: 
     cachedInputWriteCostPerMillion: modelCost.cachedInputWriteCostPerMillionTokens ?? 0,
     embeddingCostPerMillion: modelCost.embeddingCostPerMillionTokens ?? 0,
     searchUnitCostPer1K: modelCost.costPerSearchUnit ?? 0,
-    inferenceStepCost: modelCost.costPerInferenceStep ?? 0,
-    defaultInferenceSteps: modelCost.defaultInferenceSteps ?? 0,
-    imageCostPerImage: modelCost.imageCostPerImage ?? 0,
+    // Media/inference pricing (inference-step, image/video, resolution & quality multipliers, and the
+    // per-input/output audio splits) now lives only in pricingConfiguration — the flat fields were
+    // removed from ModelCostDto in #1038. The raw JSON is loaded above into pricingConfiguration; the
+    // individual flat inputs below are not derived from it, so they start empty.
+    inferenceStepCost: 0,
+    defaultInferenceSteps: 0,
+    imageCostPerImage: 0,
     audioCostPerMinute: modelCost.audioCostPerMinute ?? 0,
-    audioCostPerKCharacters: modelCost.audioCostPerKCharacters ?? 0,
-    audioInputCostPerMinute: modelCost.audioInputCostPerMinute ?? 0,
-    audioOutputCostPerMinute: modelCost.audioOutputCostPerMinute ?? 0,
-    videoCostPerSecond: modelCost.videoCostPerSecond ?? 0,
-    videoResolutionMultipliers: modelCost.videoResolutionMultipliers ?? '',
-    imageResolutionMultipliers: modelCost.imageResolutionMultipliers ?? '',
+    audioCostPerKCharacters: modelCost.audioCostPerThousandCharacters ?? 0,
+    audioInputCostPerMinute: 0,
+    audioOutputCostPerMinute: 0,
+    videoCostPerSecond: 0,
+    videoResolutionMultipliers: '',
+    imageResolutionMultipliers: '',
     supportsBatchProcessing: modelCost.supportsBatchProcessing ?? false,
     batchProcessingMultiplier: modelCost.batchProcessingMultiplier ?? 0.5,
-    imageQualityMultipliers: modelCost.imageQualityMultipliers ?? '',
+    imageQualityMultipliers: '',
     priority: modelCost.priority,
     description: modelCost.description ?? '',
     isActive: modelCost.isActive,
@@ -152,10 +156,13 @@ export function EditModelCostModalV2({ isOpen, modelCost, onClose, onSuccess }: 
   });
 
   const handleSubmit = (values: FormValues) => {
+    // Media/inference pricing is serialized into pricingConfiguration (below), not sent as flat
+    // fields — those were removed from UpdateModelCostDto in #1038. Only token/search/batch and the
+    // top-level audio (per-minute, per-1K-chars) fields remain flat.
     const updates: UpdateModelCostDto = {
       id: modelCost.id,
       costName: values.costName,
-      modelProviderMappingIds: values.modelProviderMappingIds,
+      modelProviderTypeAssociationIds: values.modelProviderMappingIds,
       pricingModel: values.pricingModel,
       pricingConfiguration: values.pricingConfiguration || undefined,
       modelType: values.modelType,
@@ -168,19 +175,10 @@ export function EditModelCostModalV2({ isOpen, modelCost, onClose, onSuccess }: 
       cachedInputWriteCostPerMillionTokens: values.cachedInputWriteCostPerMillion || undefined,
       embeddingCostPerMillionTokens: values.embeddingCostPerMillion || undefined,
       costPerSearchUnit: values.searchUnitCostPer1K || undefined,
-      costPerInferenceStep: values.inferenceStepCost || undefined,
-      defaultInferenceSteps: values.defaultInferenceSteps || undefined,
-      imageCostPerImage: values.imageCostPerImage || undefined,
       audioCostPerMinute: values.audioCostPerMinute || undefined,
-      audioCostPerKCharacters: values.audioCostPerKCharacters || undefined,
-      audioInputCostPerMinute: values.audioInputCostPerMinute || undefined,
-      audioOutputCostPerMinute: values.audioOutputCostPerMinute || undefined,
-      videoCostPerSecond: values.videoCostPerSecond || undefined,
-      videoResolutionMultipliers: values.videoResolutionMultipliers || undefined,
-      imageResolutionMultipliers: values.imageResolutionMultipliers || undefined,
+      audioCostPerThousandCharacters: values.audioCostPerKCharacters || undefined,
       supportsBatchProcessing: values.supportsBatchProcessing,
       batchProcessingMultiplier: values.supportsBatchProcessing ? values.batchProcessingMultiplier : undefined,
-      imageQualityMultipliers: values.imageQualityMultipliers || undefined,
     };
 
     updateMutation.mutate(updates);

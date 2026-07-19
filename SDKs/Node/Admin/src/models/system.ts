@@ -1,28 +1,48 @@
 import { FilterOptions } from './common';
 import type { MaintenanceTaskConfig, ConfigValue } from './common-types';
 
+// Reconciled to the wire `SystemInfoDto` in issue #1038: the endpoint returns nested
+// version/os/database/runtime/recordCounts objects, not the previous flat shape.
+export interface VersionInfo {
+  appVersion?: string;
+  buildDate?: string | null;
+}
+
+export interface OsInfo {
+  description?: string;
+  architecture?: string;
+}
+
+export interface DatabaseInfo {
+  provider?: string;
+  version?: string;
+  connected?: boolean;
+  connectionString?: string;
+  location?: string;
+  size?: string;
+  tableCount?: number;
+}
+
+export interface RuntimeInfo {
+  runtimeVersion?: string;
+  startTime?: string;
+  uptime?: string;
+}
+
+export interface RecordCountsDto {
+  virtualKeys?: number;
+  requests?: number;
+  settings?: number;
+  providers?: number;
+  modelMappings?: number;
+}
+
 export interface SystemInfoDto {
-  version: string;
-  buildDate: string;
-  environment: string;
-  uptime: number;
-  systemTime: string;
-  features: {
-    ipFiltering: boolean;
-    costTracking: boolean;
-    audioSupport: boolean;
-  };
-  runtime: {
-    dotnetVersion: string;
-    os: string;
-    architecture: string;
-  };
-  database: {
-    provider: string;
-    connectionString?: string;
-    isConnected: boolean;
-    pendingMigrations?: string[];
-  };
+  version?: VersionInfo;
+  operatingSystem?: OsInfo;
+  database?: DatabaseInfo;
+  runtime?: RuntimeInfo;
+  recordCounts?: RecordCountsDto;
 }
 
 export interface HealthCheckData {
@@ -123,7 +143,9 @@ export interface CreateNotificationDto {
   message: string;
 }
 
+// Reconciled to wire shape — issue #1038 (wire adds id)
 export interface UpdateNotificationDto {
+  id?: number;
   message?: string;
   isRead?: boolean;
 }
@@ -267,7 +289,10 @@ export interface SystemHealthDto {
   };
 }
 
-export interface SystemMetricsDto {
+// Client-side normalized resource view (CPU/memory/disk percentages). Distinct from the
+// wire `SystemMetricsDto` (process diagnostics: cpuCount/gcMemoryMb/threadCount/workingSetMb),
+// so it is intentionally named differently to avoid a false type-drift pairing. See issue #1038.
+export interface SystemResourceMetricsDto {
   cpuUsage: number;
   memoryUsage: number;
   diskUsage: number;
@@ -275,7 +300,10 @@ export interface SystemMetricsDto {
   uptime: number;
 }
 
-export interface ServiceStatusDto {
+// Client-side per-service health map produced by transforming the /api/health/services
+// response. Distinct from the wire `ServiceStatusDto` (a single per-service record), so it is
+// intentionally named differently to avoid a false type-drift pairing. See issue #1038.
+export interface ServiceStatusMapDto {
   coreApi: {
     status: 'healthy' | 'degraded' | 'unhealthy';
     latency: number;

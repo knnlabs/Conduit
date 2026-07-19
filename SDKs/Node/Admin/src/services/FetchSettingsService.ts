@@ -49,8 +49,8 @@ export class FetchSettingsService {
       }
     );
 
-    // Extract unique categories
-    const categories = [...new Set(settings.map(s => s.category).filter(Boolean))] as string[];
+    // The API does not return category metadata, so no categories can be derived.
+    const categories: string[] = [];
 
     // Find the most recent update
     const lastModified = settings
@@ -170,7 +170,8 @@ export class FetchSettingsService {
     const categoryMap = new Map<string, GlobalSettingDto[]>();
     
     for (const setting of allSettings.settings) {
-      const category = setting.category ?? 'General';
+      // The API does not return category metadata, so all settings are ungrouped.
+      const category = 'General';
       if (!categoryMap.has(category)) {
         categoryMap.set(category, []);
       }
@@ -213,17 +214,10 @@ export class FetchSettingsService {
    */
   async getTypedSettingValue<T = unknown>(key: string, config?: RequestConfig): Promise<T> {
     const setting = await this.getGlobalSetting(key, config);
-    
-    switch (setting.dataType) {
-      case 'number':
-        return parseFloat(setting.value) as T;
-      case 'boolean':
-        return (setting.value.toLowerCase() === 'true') as T;
-      case 'json':
-        return JSON.parse(setting.value) as T;
-      default:
-        return setting.value as T;
-    }
+
+    // The API stores values as opaque strings with no data-type metadata. Callers that
+    // know the expected shape should parse the returned string themselves.
+    return setting.value as T;
   }
 
   /**
@@ -254,9 +248,9 @@ export class FetchSettingsService {
   /**
    * Helper method to get all secret settings (with values hidden)
    */
-  async getSecretSettings(config?: RequestConfig): Promise<GlobalSettingDto[]> {
-    const allSettings = await this.getGlobalSettings(config);
-    return allSettings.settings.filter(s => s.isSecret);
+  async getSecretSettings(_config?: RequestConfig): Promise<GlobalSettingDto[]> {
+    // The API does not flag settings as secret, so none can be identified as such.
+    return Promise.resolve([]);
   }
 
   /**
@@ -284,20 +278,16 @@ export class FetchSettingsService {
    * Helper method to format setting value for display
    */
   formatSettingValue(setting: GlobalSettingDto): string {
-    if (setting.isSecret) {
-      return '********';
-    }
-
-    switch (setting.dataType) {
-      case 'json':
-        try {
-          return JSON.stringify(JSON.parse(setting.value), null, 2);
-        } catch {
-          return setting.value;
-        }
-      default:
+    // The API provides no data-type metadata; pretty-print values that happen to be JSON.
+    const trimmed = setting.value.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        return JSON.stringify(JSON.parse(setting.value), null, 2);
+      } catch {
         return setting.value;
+      }
     }
+    return setting.value;
   }
 
   /**

@@ -64,14 +64,26 @@ export interface PricingValidationResult {
   parsedConfig?: PricingRulesConfig;
 }
 
-/** Request for simulating pricing calculation */
+/**
+ * Request for simulating pricing calculation.
+ *
+ * Reconciled to wire shape — issue #1038.
+ */
 export interface PricingSimulationRequest {
-  /** The pricing configuration to simulate */
-  config: PricingRulesConfig;
-  /** Test parameters to evaluate */
-  parameters: Record<string, string | number | boolean>;
-  /** Quantity for cost calculation */
-  quantity: number;
+  /** The pricing configuration JSON */
+  pricingConfiguration?: string;
+  /** Parameters for the simulation */
+  parameters?: Record<string, string | number | boolean> | null;
+  /** Video duration in seconds (for per_second pricing) */
+  videoDurationSeconds?: number | null;
+  /** Video resolution (e.g., "1080p") */
+  videoResolution?: string | null;
+  /** Image count (for per_unit pricing) */
+  imageCount?: number | null;
+  /** Image resolution (e.g., "1024x1024") */
+  imageResolution?: string | null;
+  /** Image quality (e.g., "hd", "standard") */
+  imageQuality?: string | null;
 }
 
 /** Result of pricing simulation */
@@ -116,18 +128,23 @@ export interface PricingAuditQueryParams {
   pageSize?: number;
 }
 
-/** Summary statistics for pricing audit */
+/** Summary of a single pricing rule's match activity. Matches the wire `RuleMatchSummary`. */
+export interface RuleMatchSummary {
+  ruleDescription?: string;
+  matchCount: number;
+  totalRevenue: number;
+}
+
+/** Summary statistics for pricing audit. Matches the wire `PricingAuditSummary`. See issue #1038. */
 export interface PricingAuditSummary {
   totalEvaluations: number;
-  defaultRateUsageCount: number;
-  defaultRateUsagePercent: number;
-  averageCost: number;
-  totalCost: number;
-  topMatchedRules: Array<{
-    description?: string;
-    matchCount: number;
-    totalCost: number;
-  }>;
+  defaultRateUsed: number;
+  rulesMatched: number;
+  totalRevenue: number;
+  averageRate: number;
+  pricingTypeBreakdown: Record<string, number>;
+  modelBreakdown: Record<string, number>;
+  topMatchedRules: RuleMatchSummary[];
 }
 
 /** Pricing rules template for different use cases */
