@@ -151,25 +151,23 @@ namespace ConduitLLM.Gateway.Middleware
                 string state = "unknown";
                 string? errorMessage = null;
 
-                if (root.TryGetProperty("actualCost", out var actualCostElement))
+                if (TryGetPropertyIgnoreCase(root, "actualCost", out var actualCostElement) &&
+                    actualCostElement.ValueKind != JsonValueKind.Null)
                 {
-                    cost = actualCostElement.ValueKind == JsonValueKind.Number
-                        ? actualCostElement.GetDecimal()
-                        : 0;
+                    cost = GetValidatedFunctionCost(actualCostElement, "actualCost");
                 }
-                else if (root.TryGetProperty("estimatedCost", out var estimatedCostElement))
+                else if (TryGetPropertyIgnoreCase(root, "estimatedCost", out var estimatedCostElement) &&
+                    estimatedCostElement.ValueKind != JsonValueKind.Null)
                 {
-                    cost = estimatedCostElement.ValueKind == JsonValueKind.Number
-                        ? estimatedCostElement.GetDecimal()
-                        : 0;
+                    cost = GetValidatedFunctionCost(estimatedCostElement, "estimatedCost");
                 }
 
-                if (root.TryGetProperty("state", out var stateElement))
+                if (TryGetPropertyIgnoreCase(root, "state", out var stateElement))
                 {
                     state = stateElement.GetString() ?? "unknown";
                 }
 
-                if (root.TryGetProperty("errorMessage", out var errorElement) && errorElement.ValueKind == JsonValueKind.String)
+                if (TryGetPropertyIgnoreCase(root, "errorMessage", out var errorElement) && errorElement.ValueKind == JsonValueKind.String)
                 {
                     errorMessage = errorElement.GetString();
                 }
@@ -224,11 +222,50 @@ namespace ConduitLLM.Gateway.Middleware
                     "Tracked function execution for VirtualKey {VirtualKeyId}: Function={FunctionName}, ExecutionId={ExecutionId}, Cost={Cost:C}",
                     virtualKeyId, functionName, executionId, cost);
             }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse function response for usage tracking");
+                UsageMetrics.UsageTrackingFailures.WithLabels("function_processing_error", "function").Inc();
+                LogJsonParseError(context, ex, billingAuditService);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process function response for usage tracking");
                 UsageMetrics.UsageTrackingFailures.WithLabels("function_processing_error", "function").Inc();
+                LogUnexpectedError(context, ex, billingAuditService);
             }
+        }
+
+        private static bool TryGetPropertyIgnoreCase(
+            JsonElement element,
+            string propertyName,
+            out JsonElement value)
+        {
+            if (element.TryGetProperty(propertyName, out value))
+                return true;
+
+            foreach (var property in element.EnumerateObject())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+
+            value = default;
+            return false;
+        }
+
+        private static decimal GetValidatedFunctionCost(JsonElement element, string propertyName)
+        {
+            if (element.ValueKind != JsonValueKind.Number || !element.TryGetDecimal(out var cost))
+                throw new JsonException($"Function response property '{propertyName}' must be a decimal number.");
+
+            if (cost < 0)
+                throw new JsonException($"Function response property '{propertyName}' cannot be negative.");
+
+            return cost;
         }
 
         /// <summary>
@@ -369,10 +406,17 @@ namespace ConduitLLM.Gateway.Middleware
                     LogDetail = $"Images={actualImageCount}, Quality={quality ?? "standard"}, Size={size ?? "default"}"
                 }, costCalculationService, batchSpendService, requestLogService, virtualKeyService, billingAuditService);
             }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse image response for usage tracking");
+                UsageMetrics.UsageTrackingFailures.WithLabels("image_processing_error", "image").Inc();
+                LogJsonParseError(context, ex, billingAuditService);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process image response for usage tracking");
                 UsageMetrics.UsageTrackingFailures.WithLabels("image_processing_error", "image").Inc();
+                LogUnexpectedError(context, ex, billingAuditService);
             }
         }
 
@@ -494,10 +538,17 @@ namespace ConduitLLM.Gateway.Middleware
                     BillingDeferred = billingDeferred
                 }, costCalculationService, batchSpendService, requestLogService, virtualKeyService, billingAuditService);
             }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse video response for usage tracking");
+                UsageMetrics.UsageTrackingFailures.WithLabels("video_processing_error", "video").Inc();
+                LogJsonParseError(context, ex, billingAuditService);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process video response for usage tracking");
                 UsageMetrics.UsageTrackingFailures.WithLabels("video_processing_error", "video").Inc();
+                LogUnexpectedError(context, ex, billingAuditService);
             }
         }
     }

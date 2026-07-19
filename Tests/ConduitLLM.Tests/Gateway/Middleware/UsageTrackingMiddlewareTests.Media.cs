@@ -216,5 +216,69 @@ namespace ConduitLLM.Tests.Http.Middleware
                 billingEvent.VirtualKeyId == 994 &&
                 billingEvent.FailureReason!.Contains("Invalid per-image pricing configuration"));
         }
+
+        [Theory]
+        [InlineData("/v1/images/generations", BillingAuditEventType.JsonParseError)]
+        [InlineData("/v1/videos/generations", BillingAuditEventType.JsonParseError)]
+        public async Task MediaResponse_MalformedJson_EmitsRevenueLossAudit(
+            string path,
+            BillingAuditEventType expectedEventType)
+        {
+            var context = new HttpContextBuilder()
+                .WithPath(path)
+                .WithVirtualKey(1026)
+                .AsOpenAI()
+                .Build();
+
+            await Invoker.WithResponseJson("{not-json").InvokeAsync(context);
+
+            Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
+                billingEvent.EventType == expectedEventType &&
+                billingEvent.VirtualKeyId == 1026 &&
+                billingEvent.RequestPath == path);
+        }
+
+        [Fact]
+        public async Task FunctionResponse_PascalCaseCost_IsBilled()
+        {
+            var context = new HttpContextBuilder()
+                .WithPath("/v1/functions/execute")
+                .WithVirtualKey(1026)
+                .WithItem("FunctionConfigurationName", "case-test")
+                .Build();
+
+            await Invoker.WithResponse(new
+            {
+                ActualCost = 0.125m,
+                State = "Completed"
+            }).InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 1026, 0.125m);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal("function", dto.RequestType);
+                Assert.Equal("case-test", dto.ModelName);
+                Assert.Equal(0.125m, dto.Cost);
+            });
+        }
+
+        [Fact]
+        public async Task FunctionResponse_InvalidCost_EmitsRevenueLossAuditWithoutBilling()
+        {
+            var context = new HttpContextBuilder()
+                .WithPath("/v1/functions/execute")
+                .WithVirtualKey(1026)
+                .WithItem("FunctionConfigurationName", "invalid-cost-test")
+                .Build();
+
+            await Invoker.WithResponseJson("{\"actualCost\":\"0.125\",\"state\":\"Completed\"}")
+                .InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifyNoSpendUpdate(Fixture.BatchSpendService, Fixture.VirtualKeyService);
+            Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
+                billingEvent.EventType == BillingAuditEventType.JsonParseError &&
+                billingEvent.VirtualKeyId == 1026 &&
+                billingEvent.FailureReason!.Contains("actualCost"));
+        }
     }
 }
