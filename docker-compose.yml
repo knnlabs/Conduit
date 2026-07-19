@@ -29,26 +29,6 @@ services:
       timeout: 5s
       retries: 5
       
-  rabbitmq:
-    build: 
-      context: ./docker/rabbitmq
-      dockerfile: Dockerfile
-    restart: always
-    environment:
-      RABBITMQ_DEFAULT_USER: conduit
-      RABBITMQ_DEFAULT_PASS: conduitpass
-      RABBITMQ_DEFAULT_VHOST: /
-    ports:
-      - "5672:5672"   # AMQP port
-      - "15672:15672" # Management UI
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
     build:
       context: .
@@ -58,15 +38,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
-      # Messaging backend cutover (#930): Wolverine on the Postgres transport is the
-      # default; set CONDUIT_MESSAGING_BACKEND=MassTransit for instant rollback
-      # (kept switchable for one release cycle — see phase2-parity-report.md S6).
-      ConduitLLM__Messaging__Backend: "${CONDUIT_MESSAGING_BACKEND:-Wolverine}"
+      # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       # Using new REDIS_URL format (old variables still work for backward compatibility)
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
@@ -102,14 +77,6 @@ services:
       CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY}"
       CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
       CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
-      # RabbitMQ configuration
-      CONDUITLLM__RABBITMQ__HOST: rabbitmq
-      CONDUITLLM__RABBITMQ__PORT: 5672
-      CONDUITLLM__RABBITMQ__USERNAME: conduit
-      CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
-      CONDUITLLM__RABBITMQ__VHOST: /
-      CONDUITLLM__RABBITMQ__PREFETCHCOUNT: 10
-      CONDUITLLM__RABBITMQ__PARTITIONCOUNT: 10
       # Batch Cache Invalidation configuration
       CacheInvalidation__BatchingEnabled: "true"
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
@@ -154,26 +121,16 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
-      # Messaging backend cutover (#930): Wolverine default; MassTransit rollback
-      # via CONDUIT_MESSAGING_BACKEND=MassTransit (one release cycle).
-      ConduitLLM__Messaging__Backend: "${CONDUIT_MESSAGING_BACKEND:-Wolverine}"
+      # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       # API-to-API authentication key for backend services
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       AdminApi__AllowedOrigins__0: http://localhost:3000
-      # RabbitMQ configuration
-      CONDUITLLM__RABBITMQ__HOST: rabbitmq
-      CONDUITLLM__RABBITMQ__PORT: 5672
-      CONDUITLLM__RABBITMQ__USERNAME: conduit
-      CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
-      CONDUITLLM__RABBITMQ__VHOST: /
       # Batch Cache Invalidation configuration
       CacheInvalidation__BatchingEnabled: "true"
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
@@ -278,22 +235,6 @@ services:
       redis:
         condition: service_healthy
 
-  # RabbitMQ Exporter for Prometheus metrics
-  rabbitmq-exporter:
-    image: kbudde/rabbitmq-exporter:latest
-    restart: always
-    environment:
-      RABBIT_URL: "http://rabbitmq:15672"
-      RABBIT_USER: conduit
-      RABBIT_PASSWORD: conduitpass
-      PUBLISH_PORT: "9419"
-      OUTPUT_FORMAT: "prometheus"
-    ports:
-      - "9419:9419"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-
   # PostgreSQL Exporter for Prometheus metrics
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
@@ -367,6 +308,5 @@ services:
 volumes:
   pgdata:
   redis-data:
-  rabbitmq-data:
   prometheus-data:
   grafana-data:

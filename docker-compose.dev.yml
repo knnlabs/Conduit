@@ -6,8 +6,7 @@ services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      # Messaging backend switch (epic #909, cutover #930): Wolverine (default) or MassTransit (rollback)
-      ConduitLLM__Messaging__Backend: "${CONDUIT_MESSAGING_BACKEND:-Wolverine}"
+      # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       ConduitLLM__Messaging__Wolverine__AutoProvision: "true"
       # OpenTelemetry tracing configuration
       Telemetry__OtlpEndpoint: "http://jaeger:4317"
@@ -40,8 +39,7 @@ services:
   admin:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      # Messaging backend switch (epic #909, cutover #930): Wolverine (default) or MassTransit (rollback)
-      ConduitLLM__Messaging__Backend: "${CONDUIT_MESSAGING_BACKEND:-Wolverine}"
+      # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       ConduitLLM__Messaging__Wolverine__AutoProvision: "true"
       # OpenTelemetry tracing configuration
       Telemetry__OtlpEndpoint: "http://jaeger:4317"
