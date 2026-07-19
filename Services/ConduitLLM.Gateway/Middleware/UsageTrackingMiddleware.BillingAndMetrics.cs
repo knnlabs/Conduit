@@ -32,6 +32,13 @@ namespace ConduitLLM.Gateway.Middleware
                     ? providerTypeObj?.ToString()
                     : null;
 
+                // Record how the request was billed so refunds can be calculated correctly. A trusted
+                // provider-reported cost is billed via CostCalculationService's short-circuit; mirror
+                // that condition here to tag the log.
+                var billedFromProviderCost =
+                    usage.ProviderCostPolicy is { TrustProviderReportedCost: true } &&
+                    usage.ProviderReportedCostUsd is >= 0m;
+
                 var logRequest = new LogRequestDto
                 {
                     VirtualKeyId = virtualKeyId,
@@ -44,6 +51,10 @@ namespace ConduitLLM.Gateway.Middleware
                     CachedInputTokens = usage.CachedInputTokens,
                     CachedWriteTokens = usage.CachedWriteTokens,
                     Cost = cost,
+                    BillingMethod = billedFromProviderCost
+                        ? ConduitLLM.Configuration.Enums.RequestBillingMethod.ProviderReportedCost
+                        : ConduitLLM.Configuration.Enums.RequestBillingMethod.ModelCost,
+                    ProviderReportedCostUsd = billedFromProviderCost ? usage.ProviderReportedCostUsd : null,
                     ResponseTimeMs = UsageExtractor.GetResponseTime(context),
                     UserId = context.User?.Identity?.Name,
                     ClientIp = context.Connection.RemoteIpAddress?.ToString(),

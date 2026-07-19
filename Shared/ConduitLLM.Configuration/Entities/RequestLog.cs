@@ -82,6 +82,20 @@ public class RequestLog : IEntity<int>, IAuditEvent
     public decimal Cost { get; set; }
 
     /// <summary>
+    /// How <see cref="Cost"/> was determined. Null (or ModelCost) means it was computed from the
+    /// configured ModelCost rates; ProviderReportedCost means it was billed from the provider's
+    /// reported per-request cost (times markup), which changes how refunds are calculated.
+    /// </summary>
+    public Enums.RequestBillingMethod? BillingMethod { get; set; }
+
+    /// <summary>
+    /// The raw provider-reported cost (USD, pre-markup) when the request was billed from provider
+    /// cost. Recorded for reconciliation/margin analysis; null for ModelCost-billed requests.
+    /// </summary>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? ProviderReportedCostUsd { get; set; }
+
+    /// <summary>
     /// Response time in milliseconds
     /// </summary>
     public double ResponseTimeMs { get; set; }

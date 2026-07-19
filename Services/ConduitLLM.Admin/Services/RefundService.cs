@@ -17,6 +17,7 @@ public class RefundService : IRefundService
     private readonly ICostCalculationService _costCalculationService;
     private readonly IVirtualKeyGroupRepository _groupRepository;
     private readonly IConfigurationDbContext _context;
+    private readonly IRequestLogRepository? _requestLogRepository;
     private readonly ILogger<RefundService> _logger;
 
     /// <summary>
@@ -26,12 +27,14 @@ public class RefundService : IRefundService
         ICostCalculationService costCalculationService,
         IVirtualKeyGroupRepository groupRepository,
         IConfigurationDbContext context,
-        ILogger<RefundService> logger)
+        ILogger<RefundService> logger,
+        IRequestLogRepository? requestLogRepository = null)
     {
         _costCalculationService = costCalculationService;
         _groupRepository = groupRepository;
         _context = context;
         _logger = logger;
+        _requestLogRepository = requestLogRepository;
     }
 
     /// <inheritdoc />
@@ -44,6 +47,7 @@ public class RefundService : IRefundService
         string? originalTransactionId,
         string initiatedBy,
         string? initiatedByUserId,
+        int? requestLogId = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
@@ -91,6 +95,23 @@ public class RefundService : IRefundService
                 virtualKeyGroupId);
         }
 
+        // If the original request was billed from a trusted provider-reported cost, it has no per-unit
+        // rates to recompute a refund from. Look up the original request log and, when it was billed
+        // that way, prorate the refund from the amount actually charged.
+        ProviderCostRefundContext? providerCostContext = null;
+        if (requestLogId.HasValue && _requestLogRepository != null)
+        {
+            var requestLog = await _requestLogRepository.GetByIdAsync(requestLogId.Value, cancellationToken);
+            if (requestLog?.BillingMethod == RequestBillingMethod.ProviderReportedCost)
+            {
+                providerCostContext = new ProviderCostRefundContext { OriginalChargedCost = requestLog.Cost };
+                _logger.LogInformation(
+                    "Refund for group {GroupId} references provider-cost-billed request log {RequestLogId} " +
+                    "(charged {Charged}); refund will be prorated from the charged amount.",
+                    virtualKeyGroupId, requestLogId.Value, requestLog.Cost);
+            }
+        }
+
         // Calculate refund using the cost calculation service
         var refundResult = await _costCalculationService.CalculateRefundAsync(
             modelId,
@@ -98,6 +119,7 @@ public class RefundService : IRefundService
             refundUsage,
             refundReason,
             originalTransactionId,
+            providerCostContext,
             cancellationToken);
 
         // Check for validation errors

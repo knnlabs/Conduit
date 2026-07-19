@@ -52,7 +52,8 @@ public class RefundServiceTests
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
-                modelId, originalUsage, refundUsage, "Incorrect response", null, It.IsAny<CancellationToken>()))
+                modelId, originalUsage, refundUsage, "Incorrect response", null,
+                It.IsAny<ProviderCostRefundContext?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(refundResult);
         _mockContext.Setup(x => x.VirtualKeyGroups).Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<VirtualKeyGroup>>());
         _mockContext.Setup(x => x.VirtualKeyGroupTransactions).Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<VirtualKeyGroupTransaction>>());
@@ -103,7 +104,8 @@ public class RefundServiceTests
             .ReturnsAsync(group);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
                 It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<Usage>(),
-                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<ProviderCostRefundContext?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(refundResult);
 
         // Act
@@ -135,7 +137,8 @@ public class RefundServiceTests
             .ReturnsAsync(group);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
                 It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<Usage>(),
-                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<ProviderCostRefundContext?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(refundResult);
         _mockContext.Setup(x => x.VirtualKeyGroups).Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<VirtualKeyGroup>>());
         _mockContext.Setup(x => x.VirtualKeyGroupTransactions).Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<VirtualKeyGroupTransaction>>());

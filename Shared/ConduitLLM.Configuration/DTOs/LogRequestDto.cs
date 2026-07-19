@@ -61,6 +61,17 @@ namespace ConduitLLM.Configuration.DTOs
         public decimal Cost { get; set; }
 
         /// <summary>
+        /// How the cost was determined (ModelCost vs. provider-reported cost). Null for
+        /// ModelCost-billed requests.
+        /// </summary>
+        public Enums.RequestBillingMethod? BillingMethod { get; set; }
+
+        /// <summary>
+        /// The raw provider-reported cost (USD, pre-markup) when billed from provider cost; else null.
+        /// </summary>
+        public decimal? ProviderReportedCostUsd { get; set; }
+
+        /// <summary>
         /// Response time in milliseconds
         /// </summary>
         public double ResponseTimeMs { get; set; }
