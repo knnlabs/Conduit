@@ -319,6 +319,30 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
+        public async Task PricingFailure_AfterMediaDelivery_CompletesTaskForReconciliation()
+        {
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            CostServiceMock.Setup(x => x.CalculateCostAsync(
+                    It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Malformed pricing configuration"));
+            CostServiceMock.Setup(x => x.CalculateCostByIdAsync(
+                    It.IsAny<int>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Malformed pricing configuration"));
+            SetupSuccessfulGeneration(response);
+
+            await Orchestrator.HandleAsync(request, context);
+
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<VideoGenerationCompleted>(e => e.RequestId == request.RequestId && e.Cost == 0m),
+                It.IsAny<CancellationToken>()), Times.Once);
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.IsAny<VideoGenerationFailed>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task PublishFailedEvent_WithRetryableError_ShouldIncludeRetryInfo()
         {
             // Arrange

@@ -146,6 +146,24 @@ namespace ConduitLLM.Tests.Admin.Services
                 async () => await _service.CreateModelCostAsync(null!));
         }
 
+        [Fact]
+        public async Task CreateModelCostAsync_WithMalformedPricingConfiguration_ShouldRejectBeforeSave()
+        {
+            var createDto = new CreateModelCostDto
+            {
+                CostName = "Broken video pricing",
+                PricingModel = ConduitLLM.Configuration.PricingModel.PerVideo,
+                PricingConfiguration = "{not-json"
+            };
+
+            var act = () => _service.CreateModelCostAsync(createDto);
+
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("*Invalid PerVideo pricing configuration JSON*");
+            _mockModelCostRepository.Verify(
+                x => x.CreateAsync(It.IsAny<ModelCost>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
         #endregion
     }
 }

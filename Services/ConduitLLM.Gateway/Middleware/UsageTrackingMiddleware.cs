@@ -267,16 +267,9 @@ namespace ConduitLLM.Gateway.Middleware
                     : ProviderType.OpenAI; // Default fallback
 
                 // Calculate base cost from token usage - prefer ID-based lookup if ModelCostId is available
-                decimal cost;
-                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
-                    modelCostIdObj is int modelCostId)
-                {
-                    cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, usage);
-                }
-                else
-                {
-                    cost = await costCalculationService.CalculateCostAsync(model, usage);
-                }
+                var pricingResult = await CalculateTrackedCostAsync(
+                    context, model, usage, costCalculationService, billingAuditService);
+                var cost = pricingResult.Cost;
 
                 // Read the response body once for all subsequent extractions
                 responseBody.Seek(0, SeekOrigin.Begin);
@@ -404,12 +397,18 @@ namespace ConduitLLM.Gateway.Middleware
                     await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, totalCost, batchSpendService, virtualKeyService, _logger);
                     LogSuccessfulBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
                 }
-                else
+                else if (!pricingResult.Failed)
                 {
                     _logger.LogDebug("Zero total cost calculated for {Model} with usage {Usage}, tool cost: ${ToolCost}",
                         model, JsonSerializer.Serialize(usage), toolCost);
                     UsageMetrics.ZeroCostEvents.WithLabels(model, "zero_cost").Inc();
                     LogZeroCostBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Request {RequestId} retained at zero cost after pricing failure; billing audit requires reconciliation",
+                        context.TraceIdentifier);
                 }
 
                 // Build metadata: prefer chat tool calls, fall back to provider tool usage

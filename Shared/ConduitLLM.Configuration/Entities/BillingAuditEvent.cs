@@ -175,6 +175,11 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Tool usage occurred but no cost config found
         /// </summary>
-        ToolUsageMissingCostConfig = 13
+        ToolUsageMissingCostConfig = 13,
+
+        /// <summary>
+        /// Model cost calculation failed; the request was retained for reconciliation.
+        /// </summary>
+        PricingCalculationFailed = 14
     }
 }

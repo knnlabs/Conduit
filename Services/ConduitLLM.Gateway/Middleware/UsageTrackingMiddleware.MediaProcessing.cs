@@ -62,18 +62,17 @@ namespace ConduitLLM.Gateway.Middleware
             // update the RequestLog later. The orchestrator is the single balance biller for those
             // requests and publishes the actual spend only after generation succeeds.
             decimal cost;
+            var pricingFailed = false;
             if (media.BillingDeferred)
             {
                 cost = 0m;
             }
-            else if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
-                modelCostIdObj is int modelCostId)
-            {
-                cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, media.Usage);
-            }
             else
             {
-                cost = await costCalculationService.CalculateCostAsync(media.Model, media.Usage);
+                var pricingResult = await CalculateTrackedCostAsync(
+                    context, media.Model, media.Usage, costCalculationService, billingAuditService);
+                cost = pricingResult.Cost;
+                pricingFailed = pricingResult.Failed;
             }
 
             // Update Prometheus metrics
@@ -101,7 +100,7 @@ namespace ConduitLLM.Gateway.Middleware
                 LogSuccessfulBilling(context, media.Model, media.Usage, cost,
                     media.ProviderType, billingAuditService);
             }
-            else
+            else if (!pricingFailed)
             {
                 UsageMetrics.ZeroCostEvents.WithLabels(media.Model, $"{media.MediaType}_zero").Inc();
                 LogZeroCostBilling(context, media.Model, media.Usage, cost,

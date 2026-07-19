@@ -11,6 +11,73 @@ namespace ConduitLLM.Gateway.Middleware
 {
     public partial class UsageTrackingMiddleware
     {
+        private async Task<(decimal Cost, bool Failed)> CalculateTrackedCostAsync(
+            HttpContext context,
+            string model,
+            Usage usage,
+            ICostCalculationService costCalculationService,
+            IBillingAuditService billingAuditService)
+        {
+            try
+            {
+                var cost = context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
+                    modelCostIdObj is int modelCostId
+                        ? await costCalculationService.CalculateCostByIdAsync(modelCostId, usage)
+                        : await costCalculationService.CalculateCostAsync(model, usage);
+
+                if (!string.IsNullOrEmpty(usage.PricingFallbackReason))
+                {
+                    LogPricingAuditEvent(context, model, usage, cost, usage.PricingFallbackReason,
+                        Configuration.Entities.BillingAuditEventType.UsageEstimated, billingAuditService);
+                }
+
+                return (cost, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "BILLING ALERT: Cost calculation failed for model {Model}; preserving request for reconciliation",
+                    model);
+                UsageMetrics.UsageTrackingFailures.WithLabels(
+                    "pricing_calculation_error", UsageExtractor.DetermineRequestType(context.Request.Path)).Inc();
+                LogPricingAuditEvent(context, model, usage, null, ex.Message,
+                    Configuration.Entities.BillingAuditEventType.PricingCalculationFailed, billingAuditService);
+                return (0m, true);
+            }
+        }
+
+        private static void LogPricingAuditEvent(
+            HttpContext context,
+            string model,
+            Usage usage,
+            decimal? cost,
+            string reason,
+            Configuration.Entities.BillingAuditEventType eventType,
+            IBillingAuditService billingAuditService)
+        {
+            var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
+                ? providerTypeObj?.ToString() ?? "unknown"
+                : "unknown";
+
+            billingAuditService.LogBillingEvent(new Configuration.Entities.BillingAuditEvent
+            {
+                EventType = eventType,
+                VirtualKeyId = context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId
+                    ? keyId
+                    : null,
+                Model = model,
+                RequestId = context.TraceIdentifier,
+                RequestPath = context.Request.Path.ToString(),
+                HttpStatusCode = context.Response.StatusCode,
+                ProviderType = providerType,
+                UsageJson = System.Text.Json.JsonSerializer.Serialize(usage),
+                CalculatedCost = cost,
+                IsEstimated = eventType == Configuration.Entities.BillingAuditEventType.UsageEstimated,
+                FailureReason = reason.Length <= 500 ? reason : reason[..500]
+            });
+            UsageMetrics.BillingAuditEvents.WithLabels(eventType.ToString(), providerType).Inc();
+        }
+
         private async Task LogRequestAsync(
             HttpContext context,
             int virtualKeyId,

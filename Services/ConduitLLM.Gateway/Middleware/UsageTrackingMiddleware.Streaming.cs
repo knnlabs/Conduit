@@ -152,16 +152,9 @@ namespace ConduitLLM.Gateway.Middleware
 
             // Calculate base cost and add tool cost (both provider tools and function executions)
             // Prefer ID-based lookup if ModelCostId is available
-            decimal baseCost;
-            if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
-                modelCostIdObj is int modelCostId)
-            {
-                baseCost = await costCalculationService.CalculateCostByIdAsync(modelCostId, usage);
-            }
-            else
-            {
-                baseCost = await costCalculationService.CalculateCostAsync(model, usage);
-            }
+            var pricingResult = await CalculateTrackedCostAsync(
+                context, model, usage, costCalculationService, billingAuditService);
+            var baseCost = pricingResult.Cost;
             var cost = baseCost + (toolCost ?? 0m) + functionExecutionCost;
 
             // Update metrics
@@ -201,7 +194,7 @@ namespace ConduitLLM.Gateway.Middleware
                 await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
                 LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, toolUsageJson, toolCost);
             }
-            else
+            else if (!pricingResult.Failed)
             {
                 UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "streaming_zero").Inc();
                 LogZeroCostBilling(context, model ?? "unknown", usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);

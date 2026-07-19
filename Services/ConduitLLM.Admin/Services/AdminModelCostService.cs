@@ -57,6 +57,8 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
+                ModelPricingConfigurationValidator.Validate(modelCost.PricingModel, modelCost.PricingConfiguration);
+
                 // Check if a model cost with the same name already exists
                 var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
                 if (existingModelCost != null)
@@ -283,6 +285,8 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
+                ModelPricingConfigurationValidator.Validate(modelCost.PricingModel, modelCost.PricingConfiguration);
+
                 // Get existing model cost
                 var existingModelCost = await _modelCostRepository.GetByIdAsync(modelCost.Id);
                 if (existingModelCost == null)

@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Constants;
@@ -180,6 +181,40 @@ namespace ConduitLLM.Tests.Http.Middleware
                 Assert.NotNull(dto.Metadata);
                 Assert.Contains("\"taskId\":\"task_video_983\"", dto.Metadata);
             });
+        }
+
+        [Fact]
+        public async Task ImageGeneration_PricingFailure_RetainsRequestAndEmitsReconciliationAudit()
+        {
+            var context = new HttpContextBuilder()
+                .ForImageGenerations()
+                .WithVirtualKey(994)
+                .AsOpenAI()
+                .WithImageRequest("broken-pricing-model", "standard", "1024x1024", 1)
+                .Build();
+
+            Fixture.CostService.Setup(x => x.CalculateCostAsync(
+                    "broken-pricing-model", It.IsAny<Usage>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Invalid per-image pricing configuration"));
+
+            await Invoker
+                .WithResponse(ResponseBuilders.Image()
+                    .WithModel("broken-pricing-model")
+                    .WithImages(1)
+                    .Build())
+                .InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifyNoSpendUpdate(Fixture.BatchSpendService, Fixture.VirtualKeyService);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal(994, dto.VirtualKeyId);
+                Assert.Equal("broken-pricing-model", dto.ModelName);
+                Assert.Equal(0m, dto.Cost);
+            });
+            Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
+                billingEvent.EventType == BillingAuditEventType.PricingCalculationFailed &&
+                billingEvent.VirtualKeyId == 994 &&
+                billingEvent.FailureReason!.Contains("Invalid per-image pricing configuration"));
         }
     }
 }

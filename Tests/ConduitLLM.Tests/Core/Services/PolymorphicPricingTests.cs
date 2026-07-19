@@ -64,7 +64,33 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task CalculateCost_PerVideo_MissingResolutionDuration_ThrowsException()
+        public async Task CalculateCost_PerVideo_MissingExactKey_UsesHighestConfiguredRateAndMarksFallback()
+        {
+            var modelId = "video/measured-duration";
+            var usage = new Usage
+            {
+                VideoDurationSeconds = 6.2,
+                VideoResolution = "1280x720"
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerVideo,
+                PricingConfiguration = "{\"rates\":{\"720p_5\":0.25,\"1080p_10\":0.75}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.25m, cost);
+            Assert.Contains("Missing per-video rate '720p_6'", usage.PricingFallbackReason);
+            Assert.Contains("720p_5", usage.PricingFallbackReason);
+        }
+
+        [Fact]
+        public async Task CalculateCost_PerVideo_MissingResolutionDuration_UsesConservativeFallback()
         {
             // Arrange
             var modelId = "minimax/hailuo-02";
@@ -93,9 +119,10 @@ namespace ConduitLLM.Tests.Core.Services
             _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
                 .ReturnsAsync(modelCost);
 
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await _service.CalculateCostAsync(modelId, usage));
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.56m, cost);
+            Assert.NotNull(usage.PricingFallbackReason);
         }
 
         [Fact]

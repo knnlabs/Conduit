@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -37,6 +38,9 @@ namespace ConduitLLM.Admin.Services
                 {
                     try
                     {
+                        ModelPricingConfigurationValidator.Validate(
+                            modelCost.PricingModel, modelCost.PricingConfiguration);
+
                         // Check if a model cost with the same name already exists
                         var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
 
@@ -170,6 +174,9 @@ namespace ConduitLLM.Admin.Services
                 {
                     try
                     {
+                        ModelPricingConfigurationValidator.Validate(
+                            modelCost.PricingModel, modelCost.PricingConfiguration);
+
                         // Check if model cost with the same name already exists
                         var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
 

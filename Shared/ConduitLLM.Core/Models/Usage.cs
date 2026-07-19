@@ -223,6 +223,13 @@ public class Usage
     public ProviderCostBillingPolicy? ProviderCostPolicy { get; set; }
 
     /// <summary>
+    /// Describes a conservative pricing fallback used when the provider's reported usage did not
+    /// exactly match a configured rate. Server-only; used to emit a billing audit event.
+    /// </summary>
+    [JsonIgnore]
+    public string? PricingFallbackReason { get; set; }
+
+    /// <summary>
     /// Extension data to capture additional provider-specific fields not defined in the model.
     /// </summary>
     /// <remarks>

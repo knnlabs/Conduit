@@ -326,21 +326,35 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected virtual async Task<decimal> CalculateCostAsync(TEventRequest request, GenerationModelInfo modelInfo, ProcessedMedia media)
         {
             var usage = CreateUsageObject(request, media);
-
-            // Prefer the ModelCost link resolved from the model association — string matching can
-            // silently return 0 when the mapping's legacy ProviderModelId doesn't match any cost
-            // record's identifier (see issue #955).
-            if (modelInfo.ModelCostId.HasValue)
+            try
             {
-                return await _costService.CalculateCostByIdAsync(modelInfo.ModelCostId.Value, usage);
-            }
+                // Prefer the ModelCost link resolved from the model association — string matching can
+                // silently return 0 when the mapping's legacy ProviderModelId doesn't match any cost
+                // record's identifier (see issue #955).
+                if (modelInfo.ModelCostId.HasValue)
+                {
+                    return await _costService.CalculateCostByIdAsync(modelInfo.ModelCostId.Value, usage);
+                }
 
-            // Fall back to string matching using the association's canonical identifier, which is
-            // the value cost records are matched against.
-            var costLookupModelId = !string.IsNullOrWhiteSpace(modelInfo.CostIdentifier)
-                ? modelInfo.CostIdentifier
-                : modelInfo.ModelId;
-            return await _costService.CalculateCostAsync(costLookupModelId, usage);
+                // Fall back to string matching using the association's canonical identifier, which is
+                // the value cost records are matched against.
+                var costLookupModelId = !string.IsNullOrWhiteSpace(modelInfo.CostIdentifier)
+                    ? modelInfo.CostIdentifier
+                    : modelInfo.ModelId;
+                return await _costService.CalculateCostAsync(costLookupModelId, usage);
+            }
+            catch (Exception ex)
+            {
+                // The provider has already delivered and stored the media. A billing configuration
+                // failure must not turn that successful generation into a failed task. Completion at
+                // zero cost preserves the existing request log for reconciliation, while this alert
+                // makes the revenue-impacting configuration error visible to operators.
+                _logger.LogError(ex,
+                    "BILLING ALERT: Failed to calculate {MediaType} cost for request {RequestId}. " +
+                    "Completing delivered media at zero cost for reconciliation",
+                    GetMediaType(), GetRequestId(request));
+                return 0m;
+            }
         }
 
         protected virtual bool IsRetryableError(Exception ex)

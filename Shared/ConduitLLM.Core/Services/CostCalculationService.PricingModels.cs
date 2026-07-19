@@ -52,15 +52,37 @@ public partial class CostCalculationService
             throw new InvalidOperationException($"No per-video pricing rates configured for model {modelId}");
         }
 
-        // Build lookup key (e.g., "720p_6" for 720p resolution, 6 seconds)
+        // Build lookup key (e.g., "720p_6" for 720p resolution, 6 seconds).
+        // Providers sometimes return measured durations (for example 6.2s) that do not exactly
+        // match their discrete billable duration. Prefer the exact key, but never make a delivered
+        // generation free merely because the measured value was slightly different.
         var duration = (int)Math.Round(usage.VideoDurationSeconds.Value);
-        var lookupKey = $"{usage.VideoResolution}_{duration}";
+        var resolution = NormalizeResolution(usage.VideoResolution);
+        var lookupKey = $"{resolution}_{duration}";
 
         if (!config.Rates.TryGetValue(lookupKey, out var flatRate))
         {
-            _logger.LogError("No pricing found for video {Resolution} {Duration}s for model {ModelId}", 
-                usage.VideoResolution, duration, modelId);
-            throw new InvalidOperationException($"No pricing available for {usage.VideoResolution} {duration}s video on model {modelId}");
+            // Use the highest rate for the requested resolution so an imprecise duration cannot
+            // undercharge without unexpectedly applying another resolution's premium. If the
+            // resolution itself is unknown, fall back to the highest configured rate overall.
+            // The usage marker is consumed by the Gateway to produce a reconciliation/audit event.
+            var resolutionPrefix = $"{resolution}_";
+            var resolutionRates = config.Rates
+                .Where(rate => rate.Key.StartsWith(resolutionPrefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            IEnumerable<KeyValuePair<string, decimal>> fallbackRates =
+                resolutionRates.Count > 0 ? resolutionRates : config.Rates;
+            var fallback = fallbackRates
+                .OrderByDescending(rate => rate.Value)
+                .First();
+            flatRate = fallback.Value;
+            usage.PricingFallbackReason =
+                $"Missing per-video rate '{lookupKey}'; used conservative rate '{fallback.Key}' (${fallback.Value:F6})";
+
+            _logger.LogError(
+                "BILLING ALERT: No exact pricing found for video {Resolution} {Duration}s for model {ModelId}. " +
+                "Using conservative fallback {FallbackKey} at ${FallbackRate:F6}",
+                resolution, duration, modelId, fallback.Key, fallback.Value);
         }
 
         _logger.LogInformation("Video generation cost calculated: Model={ModelId}, Resolution={Resolution}, Duration={Duration}s, Cost=${Cost:F4}",
