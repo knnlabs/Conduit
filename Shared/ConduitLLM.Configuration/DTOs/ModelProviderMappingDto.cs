@@ -110,6 +110,11 @@ namespace ConduitLLM.Configuration.DTOs
         public bool SupportsTextToSpeech { get; set; }
 
         /// <summary>
+        /// Indicates whether the model supports document reranking.
+        /// </summary>
+        public bool SupportsRerank { get; set; }
+
+        /// <summary>
         /// Indicates whether this model supports chat completions
         /// </summary>
         public bool SupportsChat { get; set; }

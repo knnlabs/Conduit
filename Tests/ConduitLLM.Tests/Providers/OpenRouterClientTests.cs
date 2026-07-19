@@ -5,6 +5,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+using ConduitLLM.Core.Models.Rerank;
 using ConduitLLM.Providers.OpenRouter;
 
 using FluentAssertions;
@@ -33,6 +34,7 @@ namespace ConduitLLM.Tests.Providers
         private string _videoSubmitJson = "{\"id\":\"vid_1\"}";
         private string _videoStatusJson = "{\"status\":\"completed\",\"unsigned_urls\":[\"https://openrouter.ai/videos/vid_1.mp4\"]}";
         private string _transcriptionJson = "{\"text\":\"hello\"}";
+        private string _rerankJson = "{\"results\":[]}";
 
         public OpenRouterClientTests(ITestOutputHelper output) : base(output)
         {
@@ -69,6 +71,7 @@ namespace ConduitLLM.Tests.Providers
                     if (path.EndsWith("/key")) responseBody = "{\"data\":{}}";
                     else if (path.EndsWith("/images")) responseBody = _imagesJson;
                     else if (path.EndsWith("/audio/transcriptions")) responseBody = _transcriptionJson;
+                    else if (path.EndsWith("/rerank")) responseBody = _rerankJson;
                     else if (path.Contains("/videos/")) responseBody = _videoStatusJson;  // GET status
                     else if (path.EndsWith("/videos")) responseBody = _videoSubmitJson;    // POST submit
                     else responseBody = _modelsJson;
@@ -311,6 +314,30 @@ namespace ConduitLLM.Tests.Providers
             result.AudioData.Should().NotBeEmpty();
             result.ContentType.Should().Contain("audio");
             result.Usage!.TtsCharacters.Should().Be(5); // "hello".Length
+        }
+
+        [Fact]
+        public async Task CreateRerankAsync_PostsToRerankEndpoint_MapsResultsAndSynthesizesSearchUnits()
+        {
+            // Arrange — provider returns ranked results but no usage; the client synthesizes search units
+            _rerankJson = "{\"model\":\"cohere/rerank-v3.5\",\"results\":[{\"index\":1,\"relevance_score\":0.9},{\"index\":0,\"relevance_score\":0.4}]}";
+            var client = CreateClient();
+            var request = new RerankRequest
+            {
+                Model = "cohere/rerank-v3.5",
+                Query = "best language model",
+                Documents = new List<string> { "doc a", "doc b" }
+            };
+
+            // Act
+            var result = await client.CreateRerankAsync(request);
+
+            // Assert
+            _capturedRequests.Single(r => r.Method == "POST").Path.Should().EndWith("/rerank");
+            result.Results.Should().HaveCount(2);
+            result.Results[0].Index.Should().Be(1);
+            result.Results[0].RelevanceScore.Should().Be(0.9);
+            result.Usage!.SearchUnits.Should().Be(1); // ceil(2 / 100)
         }
     }
 }

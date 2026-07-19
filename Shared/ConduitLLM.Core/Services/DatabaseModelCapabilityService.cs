@@ -147,6 +147,31 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public async Task<bool> SupportsRerankAsync(string model)
+        {
+            var cacheKey = $"{CacheKeyPrefix}Rerank:{model}";
+
+            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            if (cachedResult.HasValue)
+            {
+                return cachedResult.Value;
+            }
+
+            try
+            {
+                var mapping = await GetMappingByModelNameAsync(model);
+                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsRerank ?? false;
+                await SetInHybridCacheAsync(cacheKey, result);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking rerank capability for model {Model}", model);
+                return false;
+            }
+        }
+
+        /// <inheritdoc/>
         public async Task<string?> GetTokenizerTypeAsync(string model)
         {
             var cacheKey = $"{CacheKeyPrefix}Tokenizer:{model}";

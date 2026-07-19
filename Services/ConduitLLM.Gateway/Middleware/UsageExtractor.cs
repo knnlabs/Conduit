@@ -108,6 +108,8 @@ namespace ConduitLLM.Gateway.Middleware
                 return "tts";
             if (pathValue.Contains("/videos/generations"))
                 return "video";
+            if (pathValue.Contains("/rerank"))
+                return "rerank";
             if (pathValue.Contains("/functions/execute"))
                 return "function";
 

@@ -84,6 +84,11 @@ namespace ConduitLLM.Configuration.Entities
         public bool SupportsTextToSpeech { get; set; } = false;
 
         /// <summary>
+        /// Indicates whether this model supports document reranking.
+        /// </summary>
+        public bool SupportsRerank { get; set; } = false;
+
+        /// <summary>
         /// Indicates whether this model supports chat completions.
         /// </summary>
         public bool SupportsChat { get; set; } = false;

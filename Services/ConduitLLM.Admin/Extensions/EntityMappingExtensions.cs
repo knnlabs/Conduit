@@ -70,6 +70,7 @@ namespace ConduitLLM.Admin.Extensions
                 SupportsVideoGeneration = model.SupportsVideoGeneration,
                 SupportsSpeechToText = model.SupportsSpeechToText,
                 SupportsTextToSpeech = model.SupportsTextToSpeech,
+                SupportsRerank = model.SupportsRerank,
                 SupportsEmbeddings = model.SupportsEmbeddings,
                 SupportsFunctionCalling = model.SupportsFunctionCalling,
                 SupportsStreaming = model.SupportsStreaming,

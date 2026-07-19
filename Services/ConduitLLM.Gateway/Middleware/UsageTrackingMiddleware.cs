@@ -138,6 +138,7 @@ namespace ConduitLLM.Gateway.Middleware
                    path.Contains("/audio/transcriptions") ||
                    path.Contains("/audio/speech") ||
                    path.Contains("/videos/generations") ||
+                   path.Contains("/rerank") ||
                    path.Contains("/functions/execute");
         }
 

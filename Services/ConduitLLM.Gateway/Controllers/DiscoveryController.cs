@@ -124,6 +124,7 @@ namespace ConduitLLM.Gateway.Controllers
                         "function_calling" => caps.SupportsFunctionCalling,
                         "speech_to_text" or "audio_transcription" => caps.SupportsSpeechToText,
                         "text_to_speech" => caps.SupportsTextToSpeech,
+                        "rerank" => caps.SupportsRerank,
                         _ => false
                     };
 
@@ -173,6 +174,7 @@ namespace ConduitLLM.Gateway.Controllers
                         video_understanding = false, // Not yet supported
                         speech_to_text = caps.SupportsSpeechToText,
                         text_to_speech = caps.SupportsTextToSpeech,
+                        rerank = caps.SupportsRerank,
                         function_calling = caps.SupportsFunctionCalling,
                         tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
                         json_mode = false, // Not yet tracked
@@ -222,6 +224,7 @@ namespace ConduitLLM.Gateway.Controllers
                 "embeddings",
                 "speech_to_text",
                 "text_to_speech",
+                "rerank",
                 "function_calling",
                 "tool_use",
                 "json_mode"

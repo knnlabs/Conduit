@@ -36,6 +36,13 @@ namespace ConduitLLM.Core.Interfaces
         Task<bool> SupportsTextToSpeechAsync(string model);
 
         /// <summary>
+        /// Determines if a model supports document reranking.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model supports reranking, false otherwise.</returns>
+        Task<bool> SupportsRerankAsync(string model);
+
+        /// <summary>
         /// Gets the tokenizer type for a model.
         /// </summary>
         /// <param name="model">The model identifier.</param>

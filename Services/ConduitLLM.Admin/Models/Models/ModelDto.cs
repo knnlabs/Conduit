@@ -120,6 +120,9 @@ namespace ConduitLLM.Admin.Models.Models
         /// <summary>Whether the model supports text-to-speech synthesis.</summary>
         public bool SupportsTextToSpeech { get; set; }
 
+        /// <summary>Whether the model supports document reranking.</summary>
+        public bool SupportsRerank { get; set; }
+
         /// <summary>
         /// Gets or sets whether the model supports text embeddings generation.
         /// </summary>
