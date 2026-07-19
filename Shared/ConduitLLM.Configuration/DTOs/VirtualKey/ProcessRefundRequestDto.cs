@@ -67,6 +67,12 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         public int? CachedInputTokens { get; set; }
 
         /// <summary>
+        /// Whether cached input tokens are included in <see cref="PromptTokens"/>.
+        /// Anthropic usage should set this to false.
+        /// </summary>
+        public bool CachedInputTokensIncludedInPrompt { get; set; } = true;
+
+        /// <summary>
         /// Number of tokens written to cache
         /// </summary>
         public int? CachedWriteTokens { get; set; }

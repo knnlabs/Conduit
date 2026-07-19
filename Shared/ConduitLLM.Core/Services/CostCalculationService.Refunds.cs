@@ -128,8 +128,9 @@ public partial class CostCalculationService
             // Handle cached input token refunds (read from cache)
             if (refundUsage.CachedInputTokens.HasValue && refundUsage.CachedInputTokens.Value > 0 && modelCost.CachedInputCostPerMillionTokens.HasValue)
             {
-                // Subtract cached tokens from regular input tokens for refund calculation
-                regularInputTokens -= refundUsage.CachedInputTokens.Value;
+                // OpenAI includes cached tokens in prompt_tokens; Anthropic input_tokens excludes them.
+                if (refundUsage.CachedInputTokensIncludedInPrompt)
+                    regularInputTokens -= refundUsage.CachedInputTokens.Value;
                 
                 // Add refund for cached tokens at the cached rate (cost is per million tokens)
                 var cachedRefund = (refundUsage.CachedInputTokens.Value * modelCost.CachedInputCostPerMillionTokens.Value) / 1_000_000m;

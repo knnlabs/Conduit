@@ -29,8 +29,9 @@ public partial class CostCalculationService
             // Handle cached input tokens (read from cache)
             if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0 && modelCost.CachedInputCostPerMillionTokens.HasValue)
             {
-                // Subtract cached tokens from regular input tokens
-                regularInputTokens -= usage.CachedInputTokens.Value;
+                // OpenAI includes cached tokens in prompt_tokens; Anthropic input_tokens excludes them.
+                if (usage.CachedInputTokensIncludedInPrompt)
+                    regularInputTokens -= usage.CachedInputTokens.Value;
                 
                 // Add cost for cached tokens at the cached rate (cost is per million tokens)
                 calculatedCost += (usage.CachedInputTokens.Value * modelCost.CachedInputCostPerMillionTokens.Value) / 1_000_000m;

@@ -51,6 +51,32 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task CalculateCostAsync_WithAnthropicCachedInputTokens_ChargesFreshInputTokens()
+        {
+            var modelId = "anthropic/claude-sonnet";
+            var usage = new Usage
+            {
+                PromptTokens = 500,
+                CompletionTokens = 0,
+                CachedInputTokens = 10000,
+                CachedInputTokensIncludedInPrompt = false
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                InputCostPerMillionTokens = 3m,
+                OutputCostPerMillionTokens = 15m,
+                CachedInputCostPerMillionTokens = 0.3m
+            };
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            result.Should().Be(0.0045m); // 500 fresh input + 10,000 cache-read tokens
+        }
+
+        [Fact]
         public async Task CalculateCostAsync_WithCacheWriteTokens_CalculatesCorrectCost()
         {
             // Arrange

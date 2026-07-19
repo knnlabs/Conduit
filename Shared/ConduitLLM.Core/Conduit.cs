@@ -630,6 +630,7 @@ namespace ConduitLLM.Core
                 ImageQuality = current.ImageQuality ?? accumulated?.ImageQuality,
                 ImageResolution = current.ImageResolution ?? accumulated?.ImageResolution,
                 CachedInputTokens = Sum(accumulated?.CachedInputTokens, current.CachedInputTokens),
+                CachedInputTokensIncludedInPrompt = current.CachedInputTokensIncludedInPrompt,
                 CachedWriteTokens = Sum(accumulated?.CachedWriteTokens, current.CachedWriteTokens),
                 SearchUnits = Sum(accumulated?.SearchUnits, current.SearchUnits),
                 SearchMetadata = current.SearchMetadata ?? accumulated?.SearchMetadata,

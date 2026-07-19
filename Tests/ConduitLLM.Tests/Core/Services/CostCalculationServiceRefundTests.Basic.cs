@@ -150,5 +150,37 @@ namespace ConduitLLM.Tests.Core.Services
             result.RefundAmount.Should().Be(0m);
             result.ValidationMessages.Should().Contain(m => m.Contains("Refund completion tokens (501) cannot exceed original (500)"));
         }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithAnthropicCachedInputTokens_RefundsFreshInputTokens()
+        {
+            var modelId = "anthropic/claude-sonnet";
+            var originalUsage = new Usage
+            {
+                PromptTokens = 500,
+                CachedInputTokens = 10000,
+                CachedInputTokensIncludedInPrompt = false
+            };
+            var refundUsage = new Usage
+            {
+                PromptTokens = 500,
+                CachedInputTokens = 10000,
+                CachedInputTokensIncludedInPrompt = false
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                InputCostPerMillionTokens = 3m,
+                OutputCostPerMillionTokens = 15m,
+                CachedInputCostPerMillionTokens = 0.3m
+            };
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            var result = await _service.CalculateRefundAsync(modelId, originalUsage, refundUsage, "Full refund");
+
+            result.RefundAmount.Should().Be(0.0045m);
+            result.Breakdown!.InputTokenRefund.Should().Be(0.0045m);
+        }
     }
 }

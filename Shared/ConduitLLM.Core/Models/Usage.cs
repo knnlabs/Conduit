@@ -95,6 +95,18 @@ public class Usage
     public int? CachedInputTokens { get; set; }
 
     /// <summary>
+    /// Indicates whether <see cref="CachedInputTokens"/> is already included in
+    /// <see cref="PromptTokens"/>.
+    /// </summary>
+    /// <remarks>
+    /// OpenAI-style usage includes cached tokens in the prompt total, while Anthropic's
+    /// <c>input_tokens</c> count excludes cache-read tokens. The default preserves the
+    /// OpenAI convention for existing callers.
+    /// </remarks>
+    [JsonIgnore]
+    public bool CachedInputTokensIncludedInPrompt { get; set; } = true;
+
+    /// <summary>
     /// Number of tokens written to the cache.
     /// </summary>
     /// <remarks>

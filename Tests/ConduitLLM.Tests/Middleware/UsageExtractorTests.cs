@@ -15,6 +15,25 @@ namespace ConduitLLM.Tests.Middleware
             _mockLogger = new Mock<ILogger>();
         }
 
+        [Fact]
+        public void ExtractUsage_AnthropicTokens_MarksCachedTokensAsExcludedFromPrompt()
+        {
+            using var document = JsonDocument.Parse("""
+                {
+                    "input_tokens": 500,
+                    "output_tokens": 25,
+                    "cache_read_input_tokens": 10000
+                }
+                """);
+
+            var usage = UsageExtractor.ExtractUsage(document.RootElement, _mockLogger.Object);
+
+            Assert.NotNull(usage);
+            Assert.Equal(500, usage.PromptTokens);
+            Assert.Equal(10000, usage.CachedInputTokens);
+            Assert.False(usage.CachedInputTokensIncludedInPrompt);
+        }
+
         #region DetermineRequestType Tests
 
         [Theory]

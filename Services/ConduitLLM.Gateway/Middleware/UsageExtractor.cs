@@ -35,7 +35,10 @@ namespace ConduitLLM.Gateway.Middleware
                 // Anthropic format (uses input_tokens/output_tokens)
                 // Note: These will override OpenAI fields if both exist
                 if (usageElement.TryGetProperty("input_tokens", out var inputTokens))
+                {
                     usage.PromptTokens = inputTokens.GetInt32();
+                    usage.CachedInputTokensIncludedInPrompt = false;
+                }
 
                 if (usageElement.TryGetProperty("output_tokens", out var outputTokens))
                     usage.CompletionTokens = outputTokens.GetInt32();
