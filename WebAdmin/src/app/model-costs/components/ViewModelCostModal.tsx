@@ -20,8 +20,6 @@ import {
   IconVectorBezier,
   IconCurrencyDollar,
   IconDatabase,
-  IconStairs,
-  IconAdjustments,
 } from '@tabler/icons-react';
 import { ModelCost } from '../types/modelCost';
 import { ModelType } from '@knn_labs/conduit-admin-client';
@@ -162,121 +160,29 @@ function EmbeddingPricingSection({ modelCost }: { modelCost: ModelCost }) {
 }
 
 function ImagePricingSection({ modelCost }: { modelCost: ModelCost }) {
-  const hasPerImageCost = modelCost.imageCostPerImage !== undefined;
-  const hasStepCost = modelCost.costPerInferenceStep !== undefined;
-  const hasMultipliers = modelCost.imageQualityMultipliers ?? modelCost.imageResolutionMultipliers;
-
-  if (!hasPerImageCost && !hasStepCost) {
-    return (
-      <Text size="sm" c="dimmed" ta="center" py="md">
-        No pricing configured
-      </Text>
-    );
-  }
-
-  // Parse multipliers if they exist
-  let qualityMultipliers: Record<string, number> | null = null;
-  let resolutionMultipliers: Record<string, number> | null = null;
-
-  try {
-    if (modelCost.imageQualityMultipliers && modelCost.imageQualityMultipliers !== '{}') {
-      qualityMultipliers = JSON.parse(modelCost.imageQualityMultipliers) as Record<string, number>;
-    }
-    if (modelCost.imageResolutionMultipliers && modelCost.imageResolutionMultipliers !== '{}') {
-      resolutionMultipliers = JSON.parse(modelCost.imageResolutionMultipliers) as Record<string, number>;
-    }
-  } catch (error) {
-    // Multipliers stay null; surface that the stored JSON is corrupt
-    console.warn('Failed to parse image multipliers for model cost:', error);
-  }
+  // Flat image pricing fields (imageCostPerImage, costPerInferenceStep, defaultInferenceSteps,
+  // image quality/resolution multipliers) were removed from ModelCostDto in #1038 — image pricing
+  // now lives in pricingConfiguration, which this read-only view does not decode.
+  const hasConfig = modelCost.pricingConfiguration !== undefined &&
+    modelCost.pricingConfiguration !== '' && modelCost.pricingConfiguration !== '{}';
 
   return (
-    <Stack gap="md">
-      {hasPerImageCost && (
-        <Card withBorder>
-          <Group gap="xs" mb="sm">
-            <IconCurrencyDollar size={16} />
-            <Text size="sm" fw={600}>Per Image Pricing</Text>
-          </Group>
-          <PricingRow label="Base Cost" value={modelCost.imageCostPerImage} unit="per image" />
-        </Card>
-      )}
-
-      {hasStepCost && (
-        <Card withBorder>
-          <Group gap="xs" mb="sm">
-            <IconStairs size={16} />
-            <Text size="sm" fw={600}>Step-Based Pricing</Text>
-          </Group>
-          <Stack gap="xs">
-            <PricingRow label="Per Step" value={modelCost.costPerInferenceStep} unit="per step" />
-            {modelCost.defaultInferenceSteps && (
-              <Group justify="space-between">
-                <Text size="sm">Default Steps</Text>
-                <Text fw={500}>{modelCost.defaultInferenceSteps}</Text>
-              </Group>
-            )}
-            {modelCost.defaultInferenceSteps && modelCost.costPerInferenceStep && (
-              <Group justify="space-between">
-                <Text size="sm">Typical Image Cost</Text>
-                <Text fw={500}>
-                  {formatters.currency(
-                    modelCost.defaultInferenceSteps * modelCost.costPerInferenceStep,
-                    { currency: 'USD', precision: 4 }
-                  )}
-                </Text>
-              </Group>
-            )}
-          </Stack>
-          <Text size="xs" c="dimmed" mt="xs">
-            For diffusion models with configurable inference steps
-          </Text>
-        </Card>
-      )}
-
-      {hasMultipliers && (
-        <Card withBorder>
-          <Group gap="xs" mb="sm">
-            <IconAdjustments size={16} />
-            <Text size="sm" fw={600}>Pricing Multipliers</Text>
-          </Group>
-          <SimpleGrid cols={2} spacing="md">
-            {qualityMultipliers && Object.keys(qualityMultipliers).length > 0 && (
-              <Stack gap="xs">
-                <Text size="xs" c="dimmed">Quality</Text>
-                {Object.entries(qualityMultipliers).map(([quality, multiplier]) => (
-                  <Group key={quality} justify="space-between">
-                    <Text size="sm" tt="capitalize">{quality}</Text>
-                    <Badge size="sm" variant="light">{multiplier}x</Badge>
-                  </Group>
-                ))}
-              </Stack>
-            )}
-            {resolutionMultipliers && Object.keys(resolutionMultipliers).length > 0 && (
-              <Stack gap="xs">
-                <Text size="xs" c="dimmed">Resolution</Text>
-                {Object.entries(resolutionMultipliers).map(([resolution, multiplier]) => (
-                  <Group key={resolution} justify="space-between">
-                    <Text size="sm">{resolution}</Text>
-                    <Badge size="sm" variant="light">{multiplier}x</Badge>
-                  </Group>
-                ))}
-              </Stack>
-            )}
-          </SimpleGrid>
-        </Card>
-      )}
-    </Stack>
+    <Text size="sm" c="dimmed" ta="center" py="md">
+      {hasConfig
+        ? 'Image pricing is defined in the pricing configuration.'
+        : 'No pricing configured'}
+    </Text>
   );
 }
 
 function AudioPricingSection({ modelCost }: { modelCost: ModelCost }) {
   const hasMinuteCost = modelCost.audioCostPerMinute !== undefined;
-  const hasCharacterCost = modelCost.audioCostPerKCharacters !== undefined;
-  const hasInputOutputCosts = modelCost.audioInputCostPerMinute !== undefined ||
-                              modelCost.audioOutputCostPerMinute !== undefined;
+  const hasCharacterCost = modelCost.audioCostPerThousandCharacters !== undefined;
+  // The per-input/output audio splits (audioInputCostPerMinute/audioOutputCostPerMinute) were
+  // removed from ModelCostDto in #1038; only the top-level per-minute and per-1K-character rates
+  // remain flat (any split pricing lives in pricingConfiguration).
 
-  if (!hasMinuteCost && !hasCharacterCost && !hasInputOutputCosts) {
+  if (!hasMinuteCost && !hasCharacterCost) {
     return (
       <Text size="sm" c="dimmed" ta="center" py="md">
         No pricing configured
@@ -296,19 +202,6 @@ function AudioPricingSection({ modelCost }: { modelCost: ModelCost }) {
         </Card>
       )}
 
-      {hasInputOutputCosts && (
-        <Card withBorder>
-          <Group gap="xs" mb="sm">
-            <IconCurrencyDollar size={16} />
-            <Text size="sm" fw={600}>Input/Output Pricing</Text>
-          </Group>
-          <Stack gap="xs">
-            <PricingRow label="Input (STT)" value={modelCost.audioInputCostPerMinute} unit="per minute" />
-            <PricingRow label="Output (TTS)" value={modelCost.audioOutputCostPerMinute} unit="per minute" />
-          </Stack>
-        </Card>
-      )}
-
       {hasCharacterCost && (
         <Card withBorder>
           <Group gap="xs" mb="sm">
@@ -316,7 +209,7 @@ function AudioPricingSection({ modelCost }: { modelCost: ModelCost }) {
             <Text size="sm" fw={600}>Character-Based Pricing</Text>
             <Badge size="xs" variant="light">TTS</Badge>
           </Group>
-          <PricingRow label="Characters" value={modelCost.audioCostPerKCharacters} unit="per 1K chars" />
+          <PricingRow label="Characters" value={modelCost.audioCostPerThousandCharacters} unit="per 1K chars" />
         </Card>
       )}
     </Stack>
@@ -324,54 +217,18 @@ function AudioPricingSection({ modelCost }: { modelCost: ModelCost }) {
 }
 
 function VideoPricingSection({ modelCost }: { modelCost: ModelCost }) {
-  const hasVideoCost = modelCost.videoCostPerSecond !== undefined;
-
-  // Parse resolution multipliers if they exist
-  let resolutionMultipliers: Record<string, number> | null = null;
-  try {
-    if (modelCost.videoResolutionMultipliers && modelCost.videoResolutionMultipliers !== '{}') {
-      resolutionMultipliers = JSON.parse(modelCost.videoResolutionMultipliers) as Record<string, number>;
-    }
-  } catch (error) {
-    // Multipliers stay null; surface that the stored JSON is corrupt
-    console.warn('Failed to parse video resolution multipliers for model cost:', error);
-  }
-
-  if (!hasVideoCost) {
-    return (
-      <Text size="sm" c="dimmed" ta="center" py="md">
-        No pricing configured
-      </Text>
-    );
-  }
+  // Flat video pricing fields (videoCostPerSecond, videoResolutionMultipliers) were removed from
+  // ModelCostDto in #1038 — video pricing now lives in pricingConfiguration, which this read-only
+  // view does not decode.
+  const hasConfig = modelCost.pricingConfiguration !== undefined &&
+    modelCost.pricingConfiguration !== '' && modelCost.pricingConfiguration !== '{}';
 
   return (
-    <Stack gap="md">
-      <Card withBorder>
-        <Group gap="xs" mb="sm">
-          <IconCurrencyDollar size={16} />
-          <Text size="sm" fw={600}>Per Second Pricing</Text>
-        </Group>
-        <PricingRow label="Video" value={modelCost.videoCostPerSecond} unit="per second" />
-      </Card>
-
-      {resolutionMultipliers && Object.keys(resolutionMultipliers).length > 0 && (
-        <Card withBorder>
-          <Group gap="xs" mb="sm">
-            <IconAdjustments size={16} />
-            <Text size="sm" fw={600}>Resolution Multipliers</Text>
-          </Group>
-          <Stack gap="xs">
-            {Object.entries(resolutionMultipliers).map(([resolution, multiplier]) => (
-              <Group key={resolution} justify="space-between">
-                <Text size="sm">{resolution}</Text>
-                <Badge size="sm" variant="light">{multiplier}x</Badge>
-              </Group>
-            ))}
-          </Stack>
-        </Card>
-      )}
-    </Stack>
+    <Text size="sm" c="dimmed" ta="center" py="md">
+      {hasConfig
+        ? 'Video pricing is defined in the pricing configuration.'
+        : 'No pricing configured'}
+    </Text>
   );
 }
 

@@ -205,7 +205,7 @@ export function ModelCostEditorModal({
             pricingConfiguration: values.pricingModel !== PricingModel.Standard ? values.pricingConfiguration : undefined,
             supportsBatchProcessing: values.supportsBatchProcessing,
             batchProcessingMultiplier: values.supportsBatchProcessing && values.batchProcessingMultiplier > 0 ? values.batchProcessingMultiplier : undefined,
-            modelProviderMappingIds: values.modelProviderMappingIds,
+            modelProviderTypeAssociationIds: values.modelProviderMappingIds,
           };
 
           await executeWithAdmin(client =>
@@ -228,7 +228,7 @@ export function ModelCostEditorModal({
             pricingConfiguration: values.pricingModel !== PricingModel.Standard ? values.pricingConfiguration : undefined,
             supportsBatchProcessing: values.supportsBatchProcessing,
             batchProcessingMultiplier: values.supportsBatchProcessing && values.batchProcessingMultiplier > 0 ? values.batchProcessingMultiplier : undefined,
-            modelProviderMappingIds: values.modelProviderMappingIds,
+            modelProviderTypeAssociationIds: values.modelProviderMappingIds,
           };
 
           await executeWithAdmin(client =>

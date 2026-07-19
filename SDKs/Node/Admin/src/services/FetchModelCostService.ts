@@ -36,9 +36,9 @@ interface ModelCostOverviewParams {
  */
 function validateCreateModelCostRequest(data: CreateModelCostDto): void {
   // Validate required fields
-  validateRequired(data, ['costName', 'modelProviderMappingIds', 'inputCostPerMillionTokens', 'outputCostPerMillionTokens']);
+  validateRequired(data, ['costName', 'modelProviderTypeAssociationIds', 'inputCostPerMillionTokens', 'outputCostPerMillionTokens']);
   validateStringLength(data.costName, 1, 255, 'costName');
-  validateNonEmptyArray(data.modelProviderMappingIds, 'modelProviderMappingIds');
+  validateNonEmptyArray(data.modelProviderTypeAssociationIds ?? [], 'modelProviderTypeAssociationIds');
 
   // Validate cost values are non-negative
   if (data.inputCostPerMillionTokens < 0) {
@@ -51,16 +51,11 @@ function validateCreateModelCostRequest(data: CreateModelCostDto): void {
   // Validate optional number fields if provided
   const optionalNumberFields = [
     'embeddingCostPerMillionTokens',
-    'imageCostPerImage',
     'audioCostPerMinute',
-    'audioCostPerKCharacters',
-    'audioInputCostPerMinute',
-    'audioOutputCostPerMinute',
-    'videoCostPerSecond',
+    'audioCostPerThousandCharacters',
     'cachedInputCostPerMillionTokens',
     'cachedInputWriteCostPerMillionTokens',
     'costPerSearchUnit',
-    'costPerInferenceStep',
   ] as const;
 
   for (const field of optionalNumberFields) {
@@ -73,11 +68,6 @@ function validateCreateModelCostRequest(data: CreateModelCostDto): void {
   // Validate batch processing multiplier is between 0 and 1
   if (data.batchProcessingMultiplier !== undefined && data.batchProcessingMultiplier !== null) {
     validateNumberRange(data.batchProcessingMultiplier, 0, 1, 'batchProcessingMultiplier');
-  }
-
-  // Validate default inference steps is at least 1
-  if (data.defaultInferenceSteps !== undefined && data.defaultInferenceSteps !== null && data.defaultInferenceSteps < 1) {
-    throw new ValidationError('defaultInferenceSteps must be at least 1');
   }
 }
 

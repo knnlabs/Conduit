@@ -6,8 +6,8 @@ import type {
   SystemInfoDto, 
   HealthStatusDto,
   SystemHealthDto,
-  SystemMetricsDto,
-  ServiceStatusDto,
+  SystemResourceMetricsDto,
+  ServiceStatusMapDto,
   HealthEventsResponseDto,
   HealthEventSubscriptionOptions,
   HealthEventSubscription
@@ -120,7 +120,7 @@ export class FetchSystemService implements ISystemService {
    * Get detailed system resource metrics.
    * Delegates to FetchSystemMetricsService
    */
-  async getSystemMetrics(config?: RequestConfig): Promise<SystemMetricsDto> {
+  async getSystemMetrics(config?: RequestConfig): Promise<SystemResourceMetricsDto> {
     return this.metricsService.getSystemMetrics(config);
   }
 
@@ -128,7 +128,7 @@ export class FetchSystemService implements ISystemService {
    * Get health status of individual services.
    * Delegates to FetchSystemHealthService
    */
-  async getServiceStatus(config?: RequestConfig): Promise<ServiceStatusDto> {
+  async getServiceStatus(config?: RequestConfig): Promise<ServiceStatusMapDto> {
     return this.healthService.getServiceStatus(config);
   }
 
@@ -195,7 +195,7 @@ export class FetchSystemService implements ISystemService {
    * Helper method to check if a feature is enabled
    * Delegates to FetchSystemHelpers
    */
-  isFeatureEnabled(systemInfo: SystemInfoDto, feature: keyof SystemInfoDto['features']): boolean {
+  isFeatureEnabled(systemInfo: SystemInfoDto, feature: string): boolean {
     return this.helpers.isFeatureEnabled(systemInfo, feature);
   }
 

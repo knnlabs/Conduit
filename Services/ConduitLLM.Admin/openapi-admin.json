@@ -11669,6 +11669,269 @@
         }
       }
     },
+    "/api/ProviderSync/drift": {
+      "get": {
+        "tags": [
+          "ProviderSync"
+        ],
+        "summary": "Lists drift items (defaults to Pending), optionally filtered.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "driftType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "providerId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ProviderSync/drift/{id}": {
+      "get": {
+        "tags": [
+          "ProviderSync"
+        ],
+        "summary": "Gets a single drift item.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ProviderSync/drift/{id}/apply": {
+      "post": {
+        "tags": [
+          "ProviderSync"
+        ],
+        "summary": "Applies a drift item's proposed change.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ProviderSync/drift/{id}/dismiss": {
+      "post": {
+        "tags": [
+          "ProviderSync"
+        ],
+        "summary": "Dismisses a drift item.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ProviderSync/drift/bulk/apply": {
+      "post": {
+        "tags": [
+          "ProviderSync"
+        ],
+        "summary": "Applies multiple drift items.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDriftActionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDriftActionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDriftActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ProviderSync/drift/bulk/dismiss": {
+      "post": {
+        "tags": [
+          "ProviderSync"
+        ],
+        "summary": "Dismisses multiple drift items.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDriftActionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDriftActionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDriftActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ProviderSync/run": {
+      "post": {
+        "tags": [
+          "ProviderSync"
+        ],
+        "summary": "Triggers a sync now. Returns 409 if a sync is already in progress.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ProviderSync/runs": {
+      "get": {
+        "tags": [
+          "ProviderSync"
+        ],
+        "summary": "Lists recent sync runs.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
     "/api/admin/provider-tools": {
       "get": {
         "tags": [
@@ -14625,6 +14888,19 @@
         },
         "description": "Result of a bulk delete operation"
       },
+      "BulkDriftActionRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        },
+        "description": "Request body for bulk apply/dismiss."
+      },
       "BulkMappingResult": {
         "type": "object",
         "properties": {
@@ -15289,6 +15565,20 @@
               "number"
             ],
             "format": "double"
+          },
+          "audioCostPerMinute": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "audioCostPerThousandCharacters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -15328,6 +15618,18 @@
           "supportsVideoGeneration": {
             "type": "boolean",
             "description": "Gets or sets whether the model supports video generation."
+          },
+          "supportsSpeechToText": {
+            "type": "boolean",
+            "description": "Whether the model supports speech-to-text transcription."
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean",
+            "description": "Whether the model supports text-to-speech synthesis."
+          },
+          "supportsRerank": {
+            "type": "boolean",
+            "description": "Whether the model supports document reranking."
           },
           "supportsEmbeddings": {
             "type": "boolean",
@@ -15516,6 +15818,15 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Whether the provider is enabled"
+          },
+          "trustProviderReportedCosts": {
+            "type": "boolean",
+            "description": "When true, the cost the provider reports per request is authoritative for billing\r\n(falls back to ModelCost when no cost is reported). Defaults to false."
+          },
+          "providerCostMarkupMultiplier": {
+            "type": "number",
+            "description": "Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).\r\nOnly consulted when bool CreateProviderRequest.TrustProviderReportedCosts is true.",
+            "format": "double"
           }
         },
         "description": "Request model for creating a provider"
@@ -16915,6 +17226,23 @@
             "type": "number",
             "format": "double"
           },
+          "billingMethod": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RequestBillingMethod"
+              }
+            ]
+          },
+          "providerReportedCostUsd": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
           "responseTimeMs": {
             "type": "number",
             "format": "double"
@@ -17589,6 +17917,15 @@
           "supportsEmbeddings": {
             "type": "boolean"
           },
+          "supportsSpeechToText": {
+            "type": "boolean"
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean"
+          },
+          "supportsRerank": {
+            "type": "boolean"
+          },
           "supportsChat": {
             "type": "boolean"
           },
@@ -17788,6 +18125,20 @@
               "number"
             ],
             "format": "double"
+          },
+          "audioCostPerMinute": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "audioCostPerThousandCharacters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -17855,6 +18206,18 @@
           "supportsVideoGeneration": {
             "type": "boolean",
             "description": "Gets or sets whether the model supports video generation."
+          },
+          "supportsSpeechToText": {
+            "type": "boolean",
+            "description": "Whether the model supports speech-to-text transcription."
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean",
+            "description": "Whether the model supports text-to-speech synthesis."
+          },
+          "supportsRerank": {
+            "type": "boolean",
+            "description": "Whether the model supports document reranking."
           },
           "supportsEmbeddings": {
             "type": "boolean",
@@ -18057,6 +18420,12 @@
               "string"
             ]
           },
+          "providerOptions": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "capabilities": {
             "oneOf": [
               {
@@ -18217,6 +18586,18 @@
           "supportsVideoGeneration": {
             "type": "boolean",
             "description": "Gets or sets whether the model supports video generation."
+          },
+          "supportsSpeechToText": {
+            "type": "boolean",
+            "description": "Whether the model supports speech-to-text transcription."
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean",
+            "description": "Whether the model supports text-to-speech synthesis."
+          },
+          "supportsRerank": {
+            "type": "boolean",
+            "description": "Whether the model supports document reranking."
           },
           "supportsEmbeddings": {
             "type": "boolean",
@@ -19141,6 +19522,13 @@
               "null",
               "string"
             ]
+          },
+          "requestLogId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -19184,6 +19572,13 @@
           },
           "isEnabled": {
             "type": "boolean"
+          },
+          "trustProviderReportedCosts": {
+            "type": "boolean"
+          },
+          "providerCostMarkupMultiplier": {
+            "type": "number",
+            "format": "double"
           },
           "createdAt": {
             "type": "string",
@@ -19649,6 +20044,9 @@
           }
         }
       },
+      "RequestBillingMethod": {
+        "type": "integer"
+      },
       "RequestLog": {
         "required": [
           "modelName",
@@ -19720,6 +20118,23 @@
           },
           "cost": {
             "type": "number",
+            "format": "double"
+          },
+          "billingMethod": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RequestBillingMethod"
+              }
+            ]
+          },
+          "providerReportedCostUsd": {
+            "type": [
+              "null",
+              "number"
+            ],
             "format": "double"
           },
           "responseTimeMs": {
@@ -21017,6 +21432,20 @@
               "number"
             ],
             "format": "double"
+          },
+          "audioCostPerMinute": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "audioCostPerThousandCharacters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -21084,6 +21513,27 @@
               "boolean"
             ],
             "description": "Gets or sets whether the model supports video generation.\nTrue to enable video generation, false to disable, or null to keep existing."
+          },
+          "supportsSpeechToText": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the model supports speech-to-text transcription."
+          },
+          "supportsTextToSpeech": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the model supports text-to-speech synthesis."
+          },
+          "supportsRerank": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the model supports document reranking."
           },
           "supportsEmbeddings": {
             "type": [
@@ -21296,6 +21746,15 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Whether the provider is enabled"
+          },
+          "trustProviderReportedCosts": {
+            "type": "boolean",
+            "description": "When true, the cost the provider reports per request is authoritative for billing\r\n(falls back to ModelCost when no cost is reported). Defaults to false when omitted."
+          },
+          "providerCostMarkupMultiplier": {
+            "type": "number",
+            "description": "Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).\r\nDefaults to 1.0 when omitted, so a partial update never silently zeroes the markup.",
+            "format": "double"
           }
         },
         "description": "Request model for updating a provider"
@@ -22460,6 +22919,9 @@
     },
     {
       "name": "ProviderErrors"
+    },
+    {
+      "name": "ProviderSync"
     },
     {
       "name": "ProviderTools"

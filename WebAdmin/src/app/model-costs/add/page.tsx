@@ -55,9 +55,12 @@ export default function AddModelCostPage() {
   });
 
   const handleSubmit = (values: FormValues) => {
+    // Media/inference pricing (image/video/inference-step/quality multipliers) is no longer sent as
+    // flat fields — those were removed from CreateModelCostDto in #1038 (backend carries them in
+    // pricingConfiguration). This legacy v1 form only submits token/search/batch pricing.
     const data: CreateModelCostDto = {
       costName: values.costName,
-      modelProviderMappingIds: values.modelProviderMappingIds,
+      modelProviderTypeAssociationIds: values.modelProviderMappingIds,
       modelType: values.modelType,
       // Values are already per million tokens
       inputCostPerMillionTokens: values.inputCostPerMillion,
@@ -66,14 +69,8 @@ export default function AddModelCostPage() {
       cachedInputWriteCostPerMillionTokens: values.cachedInputWriteCostPerMillion > 0 ? values.cachedInputWriteCostPerMillion : undefined,
       embeddingCostPerMillionTokens: values.embeddingCostPerMillion > 0 ? values.embeddingCostPerMillion : undefined,
       costPerSearchUnit: values.searchUnitCostPer1K > 0 ? values.searchUnitCostPer1K : undefined,
-      costPerInferenceStep: values.inferenceStepCost > 0 ? values.inferenceStepCost : undefined,
-      defaultInferenceSteps: values.defaultInferenceSteps > 0 ? values.defaultInferenceSteps : undefined,
-      imageCostPerImage: values.imageCostPerImage > 0 ? values.imageCostPerImage : undefined,
-      videoCostPerSecond: values.videoCostPerSecond > 0 ? values.videoCostPerSecond : undefined,
-      videoResolutionMultipliers: values.videoResolutionMultipliers || undefined,
       supportsBatchProcessing: values.supportsBatchProcessing,
       batchProcessingMultiplier: values.supportsBatchProcessing && values.batchProcessingMultiplier > 0 ? values.batchProcessingMultiplier : undefined,
-      imageQualityMultipliers: values.imageQualityMultipliers || undefined,
       priority: values.priority,
       description: values.description || undefined
     };

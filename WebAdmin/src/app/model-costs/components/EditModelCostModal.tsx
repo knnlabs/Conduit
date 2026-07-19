@@ -67,14 +67,16 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     cachedInputWriteCostPerMillion: (modelCost.cachedInputWriteCostPerMillionTokens as number) ?? 0,
     embeddingCostPerMillion: (modelCost.embeddingCostPerMillionTokens as number) ?? 0,
     searchUnitCostPer1K: (modelCost.costPerSearchUnit as number) ?? 0,
-    inferenceStepCost: (modelCost.costPerInferenceStep as number) ?? 0,
-    defaultInferenceSteps: (modelCost.defaultInferenceSteps as number) ?? 0,
-    imageCostPerImage: (modelCost.imageCostPerImage as number) ?? 0,
-    videoCostPerSecond: (modelCost.videoCostPerSecond as number) ?? 0,
-    videoResolutionMultipliers: (modelCost.videoResolutionMultipliers as string) ?? '',
+    // Media/inference pricing lives in pricingConfiguration (not parsed by this legacy v1 modal) —
+    // the flat fields were removed from ModelCostDto in #1038, so these form inputs start empty.
+    inferenceStepCost: 0,
+    defaultInferenceSteps: 0,
+    imageCostPerImage: 0,
+    videoCostPerSecond: 0,
+    videoResolutionMultipliers: '',
     supportsBatchProcessing: (modelCost.supportsBatchProcessing) ?? false,
     batchProcessingMultiplier: (modelCost.batchProcessingMultiplier as number) ?? 0.5,
-    imageQualityMultipliers: (modelCost.imageQualityMultipliers as string) ?? '',
+    imageQualityMultipliers: '',
     priority: modelCost.priority,
     description: (modelCost.description as string) ?? '',
     isActive: modelCost.isActive,
@@ -99,7 +101,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     const updates: UpdateModelCostDto = {
       id: modelCost.id,
       costName: values.costName,
-      modelProviderMappingIds: values.modelProviderMappingIds
+      modelProviderTypeAssociationIds: values.modelProviderMappingIds
     };
     
     // Values are already per million tokens
@@ -123,42 +125,20 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     if (values.searchUnitCostPer1K !== modelCost.costPerSearchUnit) {
       updates.costPerSearchUnit = values.searchUnitCostPer1K || undefined;
     }
-    
-    if (values.inferenceStepCost !== modelCost.costPerInferenceStep) {
-      updates.costPerInferenceStep = values.inferenceStepCost || undefined;
-    }
-    
-    if (values.defaultInferenceSteps !== modelCost.defaultInferenceSteps) {
-      updates.defaultInferenceSteps = values.defaultInferenceSteps || undefined;
-    }
-    
-    if (values.imageCostPerImage !== modelCost.imageCostPerImage) {
-      updates.imageCostPerImage = values.imageCostPerImage || undefined;
-    }
-    
-    
-    if (values.videoCostPerSecond !== modelCost.videoCostPerSecond) {
-      updates.videoCostPerSecond = values.videoCostPerSecond || undefined;
-    }
-    
-    if (values.videoResolutionMultipliers) {
-      updates.videoResolutionMultipliers = values.videoResolutionMultipliers;
-    }
-    
+
+    // Media/inference pricing (inference-step, image/video, resolution & quality multipliers) is no
+    // longer sent as flat fields — removed from UpdateModelCostDto in #1038 (carried in
+    // pricingConfiguration). This legacy v1 modal only updates token/search/batch pricing.
+
     // Batch processing fields
     if (values.supportsBatchProcessing !== modelCost.supportsBatchProcessing) {
       updates.supportsBatchProcessing = values.supportsBatchProcessing;
     }
-    
+
     if (values.supportsBatchProcessing && values.batchProcessingMultiplier !== modelCost.batchProcessingMultiplier) {
       updates.batchProcessingMultiplier = values.batchProcessingMultiplier || undefined;
     }
-    
-    // Image quality multipliers
-    if (values.imageQualityMultipliers !== modelCost.imageQualityMultipliers) {
-      updates.imageQualityMultipliers = values.imageQualityMultipliers || undefined;
-    }
-    
+
     if (values.priority !== modelCost.priority) {
       updates.priority = values.priority;
     }

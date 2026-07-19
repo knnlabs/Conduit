@@ -30,7 +30,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { notify } from '@/lib/notifications';
 import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { formatUptime } from './helpers';
 import { SystemOverviewTab } from './SystemOverviewTab';
 import { SystemServicesTab } from './SystemServicesTab';
 import { SystemEnvironmentTab } from './SystemEnvironmentTab';
@@ -347,10 +346,10 @@ export default function SystemInfoPage() {
                 Platform
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                {systemInfo?.runtime?.os ?? 'Unknown'}
+                {systemInfo?.operatingSystem?.description ?? 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                {systemInfo?.runtime?.architecture ?? 'Unknown Architecture'}
+                {systemInfo?.operatingSystem?.architecture ?? 'Unknown Architecture'}
               </Text>
             </div>
             <ThemeIcon color="blue" variant="light" size={48} radius="md">
@@ -366,10 +365,10 @@ export default function SystemInfoPage() {
                 .NET Runtime
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                {systemInfo?.runtime?.dotnetVersion ?? 'Unknown'}
+                {systemInfo?.runtime?.runtimeVersion ?? 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                Environment: {systemInfo?.environment ?? 'Unknown'}
+                OS: {systemInfo?.operatingSystem?.description ?? 'Unknown'}
               </Text>
             </div>
             <ThemeIcon color="green" variant="light" size={48} radius="md">
@@ -385,10 +384,10 @@ export default function SystemInfoPage() {
                 System Uptime
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                {systemInfo?.uptime ? formatUptime(systemInfo.uptime) : 'Unknown'}
+                {systemInfo?.runtime?.uptime ?? 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                Version: {systemInfo?.version ?? 'Unknown'}
+                Version: {systemInfo?.version?.appVersion ?? 'Unknown'}
               </Text>
             </div>
             <ThemeIcon color="teal" variant="light" size={48} radius="md">
@@ -404,14 +403,14 @@ export default function SystemInfoPage() {
                 Database
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
+                {systemInfo?.database?.connected ? 'Connected' : 'Disconnected'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
                 {systemInfo?.database?.provider ?? 'Unknown Provider'}
               </Text>
             </div>
             <ThemeIcon 
-              color={systemInfo?.database?.isConnected ? 'green' : 'red'} 
+              color={systemInfo?.database?.connected ? 'green' : 'red'} 
               variant="light" 
               size={48} 
               radius="md"
