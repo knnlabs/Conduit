@@ -58,23 +58,16 @@ namespace ConduitLLM.Gateway.EventHandlers
             
             if (virtualKeyRepository == null || groupRepository == null)
             {
-                _logger.LogWarning(
-                    "Virtual key or group repository not available - cannot process spend update for key {KeyId}. " +
-                    "This is expected in Gateway API context where repositories are not registered.",
+                _logger.LogError(
+                    "Virtual key or group repository not available - spend update for key {KeyId} cannot be processed",
                     request.KeyId);
-                
-                // Still publish the event so other services can react
-                // This allows the Admin API or other services to handle the update
-                await _eventBus.PublishAsync(new SpendUpdateDeferred
-                {
-                    KeyId = request.KeyId,
-                    Amount = request.Amount,
-                    RequestId = request.RequestId,
-                    CorrelationId = request.CorrelationId,
-                    Reason = "Repository not available in current context"
-                });
-                
-                return;
+
+                // Do not acknowledge the durable request when its debit cannot be applied.
+                // Throwing lets the endpoint retry policy retain/retry the original,
+                // idempotent SpendUpdateRequested message instead of replacing it with an
+                // unhandled notification and silently losing the charge.
+                throw new InvalidOperationException(
+                    "Spend updates require both IVirtualKeyRepository and IVirtualKeyGroupRepository.");
             }
 
             try

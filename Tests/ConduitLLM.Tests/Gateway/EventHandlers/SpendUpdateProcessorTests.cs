@@ -133,7 +133,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
-        public async Task HandleAsync_WithRepositoryUnavailable_PublishesDeferredEvent()
+        public async Task HandleAsync_WithRepositoryUnavailable_ThrowsForDurableRetry()
         {
             // Arrange
             _serviceProviderMock
@@ -153,17 +153,13 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             };
 
             // Act
-            await _processor.HandleAsync(@event, new TestEventContext());
+            var act = () => _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
-            _eventBusMock.Verify(p => p.PublishAsync(It.Is<SpendUpdateDeferred>(sud =>
-                sud.KeyId == 456 &&
-                sud.Amount == 75m &&
-                sud.RequestId == "req-456" &&
-                sud.CorrelationId == "corr-456" &&
-                sud.Reason == "Repository not available in current context"), 
-                It.IsAny<CancellationToken>()), Times.Once);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Spend updates require both IVirtualKeyRepository and IVirtualKeyGroupRepository.");
 
+            _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
             _virtualKeyRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
