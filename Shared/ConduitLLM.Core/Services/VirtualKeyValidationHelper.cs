@@ -18,13 +18,15 @@ namespace ConduitLLM.Core.Services
         /// <param name="checkBalance">Whether to check the group balance</param>
         /// <param name="groupRepository">Repository for group operations (required if checkBalance is true)</param>
         /// <param name="logger">Logger for diagnostic output</param>
+        /// <param name="batchSpendService">Optional service for pending spend and reservation checks</param>
         /// <returns>Validation result with status and error message if failed</returns>
         public static async Task<ValidationResult> ValidateVirtualKeyAsync(
             VirtualKey virtualKey,
             string? requestedModel,
             bool checkBalance,
             IVirtualKeyGroupRepository? groupRepository,
-            ILogger logger)
+            ILogger logger,
+            IBatchSpendUpdateService? batchSpendService = null)
         {
             // Check if key is enabled
             if (!virtualKey.IsEnabled)
@@ -46,10 +48,14 @@ namespace ConduitLLM.Core.Services
             if (checkBalance && groupRepository != null)
             {
                 var group = await groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
-                if (group != null && group.Balance <= 0)
+                var pendingSpend = group != null && batchSpendService != null
+                    ? await batchSpendService.GetPendingSpendAsync(virtualKey.Id)
+                    : 0m;
+                var availableBalance = group?.Balance - pendingSpend;
+                if (group != null && availableBalance <= 0)
                 {
-                    logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has balance {Balance}",
-                        LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, group.Id, group.Balance);
+                    logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has database balance {Balance} and pending spend {PendingSpend}",
+                        LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, group.Id, group.Balance, pendingSpend);
 
                     return new ValidationResult
                     {

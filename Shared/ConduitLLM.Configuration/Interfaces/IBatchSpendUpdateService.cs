@@ -22,6 +22,22 @@ namespace ConduitLLM.Configuration.Interfaces
         Task QueueSpendUpdateAsync(int virtualKeyId, decimal cost);
 
         /// <summary>
+        /// Gets spend that has not yet been reflected in the group's database balance,
+        /// including active reservations.
+        /// </summary>
+        Task<decimal> GetPendingSpendAsync(int virtualKeyId);
+
+        /// <summary>
+        /// Atomically reserves part of a virtual key group's available balance.
+        /// </summary>
+        Task<bool> TryReserveSpendAsync(int virtualKeyId, decimal amount, string reservationId);
+
+        /// <summary>
+        /// Releases a previously-created spend reservation.
+        /// </summary>
+        Task ReleaseSpendReservationAsync(int virtualKeyId, string reservationId);
+
+        /// <summary>
         /// Queues a spend update to an in-memory fallback queue.
         /// Used as a last resort when both Redis and direct DB writes fail.
         /// Updates are drained on the next successful flush cycle.

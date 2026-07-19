@@ -15,6 +15,7 @@ namespace ConduitLLM.Gateway.EventHandlers
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IEventBus _eventBus;
         private readonly ILogger<SpendUpdateProcessor> _logger;
+        private readonly IBatchSpendUpdateService? _batchSpendService;
 
         /// <summary>
         /// Initializes a new instance of the SpendUpdateProcessor
@@ -22,14 +23,17 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <param name="serviceScopeFactory">Service scope factory for creating scoped services</param>
         /// <param name="eventBus">Event bus for publishing follow-on events</param>
         /// <param name="logger">Logger instance</param>
+        /// <param name="batchSpendService">Optional service used to release completed spend reservations</param>
         public SpendUpdateProcessor(
             IServiceScopeFactory serviceScopeFactory,
             IEventBus eventBus,
-            ILogger<SpendUpdateProcessor> logger)
+            ILogger<SpendUpdateProcessor> logger,
+            IBatchSpendUpdateService? batchSpendService = null)
         {
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _batchSpendService = batchSpendService;
         }
 
         /// <summary>
@@ -126,6 +130,13 @@ namespace ConduitLLM.Gateway.EventHandlers
 
                 var newBalance = result.NewBalance;
                 var newSpend = result.LifetimeSpent;
+
+                // Keep the reservation in place until the durable database debit has
+                // completed. Releasing by RequestId is idempotent for event retries.
+                if (_batchSpendService != null && !string.IsNullOrWhiteSpace(request.RequestId))
+                {
+                    await _batchSpendService.ReleaseSpendReservationAsync(request.KeyId, request.RequestId);
+                }
 
                 if (!result.Applied)
                 {

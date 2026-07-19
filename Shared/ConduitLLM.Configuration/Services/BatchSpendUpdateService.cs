@@ -32,6 +32,9 @@ namespace ConduitLLM.Configuration.Services
         private readonly string _processingKeyPrefix = "processing_spend:group:";
         private readonly string _keyUsagePrefix = "key_usage:group:";
         private readonly string _processingKeyUsagePrefix = "processing_key_usage:group:";
+        private readonly string _reservedSpendPrefix = "reserved_spend:group:";
+        private readonly string _reservationPrefix = "spend_reservations:group:";
+        private readonly string _reservationExpiryPrefix = "spend_reservation_expiry:group:";
         private readonly ConcurrentQueue<(int VirtualKeyId, decimal Cost)> _fallbackQueue = new();
 
         /// <summary>
@@ -167,7 +170,7 @@ namespace ConduitLLM.Configuration.Services
         }
 
         /// <summary>
-        /// Get the current pending spend for a Virtual Key
+        /// Get the current pending spend and active reservations for a Virtual Key
         /// </summary>
         /// <param name="virtualKeyId">Virtual Key ID</param>
         /// <returns>Pending spend amount</returns>
@@ -175,24 +178,178 @@ namespace ConduitLLM.Configuration.Services
         {
             try
             {
+                var groupId = await GetGroupIdAsync(virtualKeyId);
+                if (!groupId.HasValue)
+                {
+                    _logger.LogWarning("Cannot read pending spend because Virtual Key {VirtualKeyId} was not found", virtualKeyId);
+                    return 0;
+                }
+
                 var redis = await _redisConnectionFactory.GetConnectionAsync();
                 var db = redis.GetDatabase();
-                
-                var key = $"{_redisKeyPrefix}{virtualKeyId}";
-                var value = await db.StringGetAsync(key);
-                
-                if (value.HasValue && double.TryParse(value.ToString(), out var pendingSpend))
+
+                var values = await db.StringGetAsync(new RedisKey[]
                 {
-                    return (decimal)pendingSpend;
-                }
-                
-                return 0;
+                    $"{_redisKeyPrefix}{groupId.Value}",
+                    $"{_reservedSpendPrefix}{groupId.Value}"
+                });
+
+                return ParseRedisDecimal(values[0]) + ParseRedisDecimal(values[1]);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get pending spend from Redis for Virtual Key {VirtualKeyId}", virtualKeyId);
                 return 0;
             }
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> TryReserveSpendAsync(int virtualKeyId, decimal amount, string reservationId)
+        {
+            if (amount <= 0)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(reservationId))
+            {
+                throw new ArgumentException("A reservation ID is required", nameof(reservationId));
+            }
+
+            using var scope = _serviceScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
+            var keyAndBalance = await context.VirtualKeys
+                .Where(vk => vk.Id == virtualKeyId)
+                .Select(vk => new
+                {
+                    GroupId = vk.VirtualKeyGroupId,
+                    Balance = vk.VirtualKeyGroup!.Balance
+                })
+                .FirstOrDefaultAsync();
+
+            if (keyAndBalance == null)
+            {
+                return false;
+            }
+
+            var redis = await _redisConnectionFactory.GetConnectionAsync();
+            var db = redis.GetDatabase();
+            var reservationsKey = $"{_reservationPrefix}{keyAndBalance.GroupId}";
+            var reservationExpiryKey = $"{_reservationExpiryPrefix}{keyAndBalance.GroupId}";
+            var reservedTotalKey = $"{_reservedSpendPrefix}{keyAndBalance.GroupId}";
+            var pendingKey = $"{_redisKeyPrefix}{keyAndBalance.GroupId}";
+
+            const string script = """
+                local expired = redis.call('ZRANGEBYSCORE', KEYS[4], '-inf', ARGV[4])
+                for _, id in ipairs(expired) do
+                    local expiredAmount = tonumber(redis.call('HGET', KEYS[3], id) or '0')
+                    if expiredAmount > 0 then
+                        redis.call('INCRBYFLOAT', KEYS[2], -expiredAmount)
+                    end
+                    redis.call('HDEL', KEYS[3], id)
+                    redis.call('ZREM', KEYS[4], id)
+                end
+                if redis.call('HEXISTS', KEYS[3], ARGV[3]) == 1 then
+                    return 1
+                end
+                local pending = tonumber(redis.call('GET', KEYS[1]) or '0')
+                local reserved = tonumber(redis.call('GET', KEYS[2]) or '0')
+                if reserved < 0 then
+                    redis.call('DEL', KEYS[2])
+                    reserved = 0
+                end
+                local balance = tonumber(ARGV[1])
+                local amount = tonumber(ARGV[2])
+                if pending + reserved + amount > balance then
+                    return 0
+                end
+                redis.call('INCRBYFLOAT', KEYS[2], amount)
+                redis.call('HSET', KEYS[3], ARGV[3], amount)
+                redis.call('ZADD', KEYS[4], ARGV[5], ARGV[3])
+                redis.call('PEXPIRE', KEYS[2], ARGV[6])
+                redis.call('PEXPIRE', KEYS[3], ARGV[6])
+                redis.call('PEXPIRE', KEYS[4], ARGV[6])
+                return 1
+                """;
+
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var ttlMilliseconds = (long)_redisTtl.TotalMilliseconds;
+
+            var result = await db.ScriptEvaluateAsync(
+                script,
+                new RedisKey[] { pendingKey, reservedTotalKey, reservationsKey, reservationExpiryKey },
+                new RedisValue[]
+                {
+                    keyAndBalance.Balance.ToString(CultureInfo.InvariantCulture),
+                    amount.ToString(CultureInfo.InvariantCulture),
+                    reservationId,
+                    now,
+                    now + ttlMilliseconds,
+                    ttlMilliseconds
+                });
+
+            return (long)result == 1;
+        }
+
+        /// <inheritdoc />
+        public async Task ReleaseSpendReservationAsync(int virtualKeyId, string reservationId)
+        {
+            if (string.IsNullOrWhiteSpace(reservationId))
+            {
+                return;
+            }
+
+            var groupId = await GetGroupIdAsync(virtualKeyId);
+            if (!groupId.HasValue)
+            {
+                return;
+            }
+
+            var redis = await _redisConnectionFactory.GetConnectionAsync();
+            var db = redis.GetDatabase();
+            var reservationsKey = $"{_reservationPrefix}{groupId.Value}";
+            var reservationExpiryKey = $"{_reservationExpiryPrefix}{groupId.Value}";
+            var reservedTotalKey = $"{_reservedSpendPrefix}{groupId.Value}";
+
+            const string script = """
+                local amount = tonumber(redis.call('HGET', KEYS[1], ARGV[1]) or '0')
+                if amount == 0 then
+                    return 0
+                end
+                redis.call('HDEL', KEYS[1], ARGV[1])
+                redis.call('ZREM', KEYS[2], ARGV[1])
+                local remaining = tonumber(redis.call('INCRBYFLOAT', KEYS[3], -amount))
+                if remaining <= 0 then
+                    redis.call('DEL', KEYS[3])
+                end
+                return amount
+                """;
+
+            await db.ScriptEvaluateAsync(
+                script,
+                new RedisKey[] { reservationsKey, reservationExpiryKey, reservedTotalKey },
+                new RedisValue[] { reservationId });
+        }
+
+        private async Task<int?> GetGroupIdAsync(int virtualKeyId)
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
+            return await context.VirtualKeys
+                .Where(vk => vk.Id == virtualKeyId)
+                .Select(vk => (int?)vk.VirtualKeyGroupId)
+                .FirstOrDefaultAsync();
+        }
+
+        private static decimal ParseRedisDecimal(RedisValue value)
+        {
+            return value.HasValue && decimal.TryParse(
+                value.ToString(),
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out var amount)
+                ? amount
+                : 0m;
         }
 
         /// <summary>

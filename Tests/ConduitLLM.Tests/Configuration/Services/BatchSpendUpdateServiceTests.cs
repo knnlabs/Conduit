@@ -345,6 +345,75 @@ namespace ConduitLLM.Tests.Configuration.Services
         }
 
         [Fact]
+        public async Task GetPendingSpendAsync_ShouldUseGroupNamespaceAndIncludeReservations()
+        {
+            // Arrange
+            const int virtualKeyId = 17;
+            const int groupId = 42;
+            _dbContext.VirtualKeys.Add(new VirtualKey
+            {
+                Id = virtualKeyId,
+                VirtualKeyGroupId = groupId,
+                KeyHash = "pending-spend-test"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            _mockRedisDb.Setup(x => x.StringGetAsync(
+                    It.Is<RedisKey[]>(keys =>
+                        keys.Length == 2 &&
+                        keys[0] == $"pending_spend:group:{groupId}" &&
+                        keys[1] == $"reserved_spend:group:{groupId}"),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(new RedisValue[] { "3.25", "1.75" });
+
+            // Act
+            var pendingSpend = await _service.GetPendingSpendAsync(virtualKeyId);
+
+            // Assert
+            Assert.Equal(5.00m, pendingSpend);
+        }
+
+        [Fact]
+        public async Task TryReserveSpendAsync_ShouldAtomicallyCheckPendingAndReservedSpend()
+        {
+            // Arrange
+            const int virtualKeyId = 7;
+            const int groupId = 8;
+            var group = new VirtualKeyGroup
+            {
+                Id = groupId,
+                GroupName = "Reservation Test",
+                Balance = 10m
+            };
+            _dbContext.VirtualKeyGroups.Add(group);
+            _dbContext.VirtualKeys.Add(new VirtualKey
+            {
+                Id = virtualKeyId,
+                VirtualKeyGroupId = groupId,
+                KeyHash = "reservation-test"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            _mockRedisDb.Setup(x => x.ScriptEvaluateAsync(
+                    It.IsAny<string>(),
+                    It.Is<RedisKey[]>(keys =>
+                        keys[0] == $"pending_spend:group:{groupId}" &&
+                        keys[1] == $"reserved_spend:group:{groupId}" &&
+                        keys[2] == $"spend_reservations:group:{groupId}" &&
+                        keys[3] == $"spend_reservation_expiry:group:{groupId}"),
+                    It.Is<RedisValue[]>(values =>
+                        values[0] == "10" && values[1] == "4.5" && values[2] == "request-123"),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(RedisResult.Create((RedisValue)1));
+
+            // Act
+            var reserved = await _service.TryReserveSpendAsync(virtualKeyId, 4.5m, "request-123");
+
+            // Assert
+            Assert.True(reserved);
+        }
+
+        [Fact]
         public async Task FlushPendingUpdates_WhenDatabaseWriteFails_LeavesDurableClaimForRetry()
         {
             // Arrange

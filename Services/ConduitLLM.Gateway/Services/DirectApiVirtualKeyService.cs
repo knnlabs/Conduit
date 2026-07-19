@@ -22,6 +22,8 @@ namespace ConduitLLM.Gateway.Services
     /// </remarks>
     public class DirectApiVirtualKeyService : VirtualKeyServiceBase, IVirtualKeyService
     {
+        private readonly IBatchSpendUpdateService? _batchSpendService;
+
         /// <summary>
         /// Initializes a new instance of the DirectApiVirtualKeyService
         /// </summary>
@@ -30,9 +32,11 @@ namespace ConduitLLM.Gateway.Services
             IVirtualKeyGroupRepository groupRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IEventBus? eventBus,
-            ILogger<DirectApiVirtualKeyService> logger)
+            ILogger<DirectApiVirtualKeyService> logger,
+            IBatchSpendUpdateService? batchSpendService = null)
             : base(virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger)
         {
+            _batchSpendService = batchSpendService;
         }
 
         /// <inheritdoc />
@@ -86,7 +90,7 @@ namespace ConduitLLM.Gateway.Services
 
             // Delegate to shared validation helper (with balance check)
             var result = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
-                virtualKey, requestedModel, checkBalance: true, GroupRepository, Logger);
+                virtualKey, requestedModel, checkBalance: true, GroupRepository, Logger, _batchSpendService);
 
             if (!result.IsValid)
             {

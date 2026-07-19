@@ -19,6 +19,7 @@ namespace ConduitLLM.Gateway.Services
     {
         private readonly ConduitLLM.Core.Interfaces.IVirtualKeyCache _cache;
         private readonly ILogger<CachedApiVirtualKeyService> _logger;
+        private readonly IBatchSpendUpdateService? _batchSpendService;
 
         public CachedApiVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
@@ -26,11 +27,13 @@ namespace ConduitLLM.Gateway.Services
             IVirtualKeyGroupRepository groupRepository,
             ConduitLLM.Core.Interfaces.IVirtualKeyCache cache,
             IEventBus? eventBus,
-            ILogger<CachedApiVirtualKeyService> logger)
+            ILogger<CachedApiVirtualKeyService> logger,
+            IBatchSpendUpdateService? batchSpendService = null)
             : base(virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _batchSpendService = batchSpendService;
         }
 
         #region Virtual Key Hooks (Cache Invalidation)
@@ -135,7 +138,8 @@ namespace ConduitLLM.Gateway.Services
                     requestedModel,
                     checkBalance: true,
                     GroupRepository,
-                    _logger);
+                    _logger,
+                    _batchSpendService);
 
                 if (!validationResult.IsValid)
                 {

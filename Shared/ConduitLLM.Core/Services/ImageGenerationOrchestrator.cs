@@ -54,11 +54,12 @@ namespace ConduitLLM.Core.Services
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
             IProviderErrorTrackingService errorTrackingService,
-            ILogger<ImageGenerationOrchestrator> logger)
+            ILogger<ImageGenerationOrchestrator> logger,
+            ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService? batchSpendService = null)
             : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
                    webhookService, httpClientFactory, parameterValidator, metrics,
-                   errorTrackingService, logger)
+                   errorTrackingService, logger, batchSpendService)
         {
 
             // Initialize processing strategies
@@ -221,6 +222,38 @@ namespace ConduitLLM.Core.Services
             }
 
             // Add style if provided
+            if (!string.IsNullOrEmpty(request.Request.Style))
+            {
+                pricingParameters["style"] = request.Request.Style.ToLowerInvariant();
+            }
+
+            return new Usage
+            {
+                ImageCount = imageCount,
+                ImageResolution = request.Request.Size,
+                ImageQuality = request.Request.Quality,
+                PricingParameters = pricingParameters
+            };
+        }
+
+        protected override Usage CreateEstimatedUsageObject(ImageGenerationRequested request)
+        {
+            var imageCount = Math.Max(1, request.Request.N);
+            var pricingParameters = new Dictionary<string, object>
+            {
+                ["count"] = imageCount
+            };
+
+            if (!string.IsNullOrEmpty(request.Request.Size))
+            {
+                pricingParameters["resolution"] = request.Request.Size;
+                pricingParameters["image_resolution"] = request.Request.Size;
+            }
+            if (!string.IsNullOrEmpty(request.Request.Quality))
+            {
+                pricingParameters["quality"] = request.Request.Quality.ToLowerInvariant();
+                pricingParameters["image_quality"] = request.Request.Quality.ToLowerInvariant();
+            }
             if (!string.IsNullOrEmpty(request.Request.Style))
             {
                 pricingParameters["style"] = request.Request.Style.ToLowerInvariant();

@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
+using IBatchSpendUpdateService = ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService;
 
 namespace ConduitLLM.Core.Services.Abstractions
 {
@@ -56,6 +57,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected readonly MediaGenerationMetrics _metrics;
         protected readonly IProviderErrorTrackingService _errorTrackingService;
         protected readonly ILogger _logger;
+        private readonly IBatchSpendUpdateService? _batchSpendService;
 
         protected MediaGenerationOrchestrator(
             ILLMClientFactory clientFactory,
@@ -71,7 +73,8 @@ namespace ConduitLLM.Core.Services.Abstractions
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
             IProviderErrorTrackingService errorTrackingService,
-            ILogger logger)
+            ILogger logger,
+            IBatchSpendUpdateService? batchSpendService = null)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
@@ -87,6 +90,7 @@ namespace ConduitLLM.Core.Services.Abstractions
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
             _errorTrackingService = errorTrackingService ?? throw new ArgumentNullException(nameof(errorTrackingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _batchSpendService = batchSpendService;
         }
 
         /// <summary>
@@ -96,6 +100,10 @@ namespace ConduitLLM.Core.Services.Abstractions
         {
             var stopwatch = Stopwatch.StartNew();
             GenerationModelInfo? modelInfo = null;
+            var reservationCreated = false;
+            var reservationHandedOff = false;
+            var reservationId = GetRequestId(request);
+            var reservationVirtualKeyId = 0;
 
             // Check if request should be processed
             if (!ShouldProcessRequest(request))
@@ -167,6 +175,32 @@ namespace ConduitLLM.Core.Services.Abstractions
                 // 6. Validate parameters
                 ValidateParameters(generationRequest);
 
+                // Reserve the request's estimated cost before invoking a high-cost media
+                // provider. Redis serializes concurrent reservations for the same group,
+                // preventing a thundering herd from all spending the same balance.
+                if (_batchSpendService != null)
+                {
+                    var estimatedCost = await CalculateCostForUsageAsync(
+                        modelInfo,
+                        CreateEstimatedUsageObject(request),
+                        reservationId,
+                        "estimate",
+                        suppressErrors: false);
+                    if (estimatedCost > 0)
+                    {
+                        reservationVirtualKeyId = virtualKey.Id;
+                        reservationCreated = await _batchSpendService.TryReserveSpendAsync(
+                            virtualKey.Id,
+                            estimatedCost,
+                            reservationId);
+                        if (!reservationCreated)
+                        {
+                            throw new UnauthorizedAccessException(
+                                $"Insufficient balance to reserve the estimated {GetMediaType().ToLowerInvariant()} generation cost");
+                        }
+                    }
+                }
+
                 // 7. Log generation details
                 LogGenerationDetails(request, modelInfo, generationRequest);
 
@@ -184,6 +218,7 @@ namespace ConduitLLM.Core.Services.Abstractions
                     if (int.TryParse(GetVirtualKeyId(request), out var vkId))
                     {
                         await UpdateSpendAsync(vkId, cost, GetRequestId(request), GetCorrelationId(request));
+                        reservationHandedOff = reservationCreated;
                     }
                 }
 
@@ -220,6 +255,23 @@ namespace ConduitLLM.Core.Services.Abstractions
             }
             finally
             {
+                if (reservationCreated && !reservationHandedOff && _batchSpendService != null)
+                {
+                    try
+                    {
+                        await _batchSpendService.ReleaseSpendReservationAsync(
+                            reservationVirtualKeyId,
+                            reservationId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Failed to release spend reservation {ReservationId} for Virtual Key {VirtualKeyId}",
+                            reservationId,
+                            reservationVirtualKeyId);
+                    }
+                }
+
                 // Always unregister the task from the cancellation registry
                 _taskRegistry.UnregisterTask(GetRequestId(request));
             }
@@ -233,6 +285,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected abstract Task<TRequest> BuildGenerationRequestAsync(TEventRequest request, GenerationModelInfo modelInfo);
         protected abstract void ValidateModelSupport(GenerationModelInfo modelInfo, TEventRequest request);
         protected abstract Usage CreateUsageObject(TEventRequest request, TResponse response);
+        protected abstract Usage CreateEstimatedUsageObject(TEventRequest request);
         protected abstract Task PublishStartedEventAsync(TEventRequest request);
         protected abstract Task PublishCompletedEventAsync(TEventRequest request, ProcessedMedia media, decimal cost, GenerationModelInfo modelInfo, TimeSpan duration);
         protected abstract Task PublishFailedEventAsync(TEventRequest request, Exception ex, bool isRetryable, int retryCount, int maxRetries);
@@ -328,6 +381,21 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected virtual async Task<decimal> CalculateCostAsync(TEventRequest request, GenerationModelInfo modelInfo, TResponse response)
         {
             var usage = CreateUsageObject(request, response);
+            return await CalculateCostForUsageAsync(
+                modelInfo,
+                usage,
+                GetRequestId(request),
+                "actual",
+                suppressErrors: true);
+        }
+
+        private async Task<decimal> CalculateCostForUsageAsync(
+            GenerationModelInfo modelInfo,
+            Usage usage,
+            string requestId,
+            string calculationKind,
+            bool suppressErrors)
+        {
             try
             {
                 // Prefer the ModelCost link resolved from the model association — string matching can
@@ -352,9 +420,17 @@ namespace ConduitLLM.Core.Services.Abstractions
                 // cost preserves the existing request log for reconciliation, while this alert makes
                 // the revenue-impacting configuration error visible to operators.
                 _logger.LogError(ex,
-                    "BILLING ALERT: Failed to calculate {MediaType} cost for request {RequestId}. " +
-                    "Completing delivered media at zero cost for reconciliation",
-                    GetMediaType(), GetRequestId(request));
+                    "BILLING ALERT: Failed to calculate {CalculationKind} {MediaType} cost for request {RequestId}. " +
+                    "The operation cannot be safely billed",
+                    calculationKind, GetMediaType(), requestId);
+
+                if (!suppressErrors)
+                {
+                    throw new InvalidOperationException(
+                        $"Unable to estimate the {GetMediaType().ToLowerInvariant()} generation cost",
+                        ex);
+                }
+
                 return 0m;
             }
         }

@@ -59,11 +59,12 @@ namespace ConduitLLM.Core.Services
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
             IProviderErrorTrackingService errorTrackingService,
-            ILogger<VideoGenerationOrchestrator> logger)
+            ILogger<VideoGenerationOrchestrator> logger,
+            ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService? batchSpendService = null)
             : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
                    webhookService, httpClientFactory, parameterValidator, metrics,
-                   errorTrackingService, logger)
+                   errorTrackingService, logger, batchSpendService)
         {
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
 
@@ -391,6 +392,11 @@ namespace ConduitLLM.Core.Services
                 VideoResolution = resolution,
                 PricingParameters = pricingParameters
             };
+        }
+
+        protected override Usage CreateEstimatedUsageObject(VideoGenerationRequested request)
+        {
+            return CreateUsageObject(request, new VideoGenerationResponse());
         }
 
         /// <summary>

@@ -20,6 +20,7 @@ namespace ConduitLLM.Tests.Http.Services
         private readonly Mock<IVirtualKeyCache> _cacheMock;
         private readonly Mock<IEventBus> _publishEndpointMock;
         private readonly Mock<ILogger<CachedApiVirtualKeyService>> _loggerMock;
+        private readonly Mock<IBatchSpendUpdateService> _batchSpendServiceMock;
         private readonly CachedApiVirtualKeyService _service;
 
         public CachedApiVirtualKeyServiceTests(ITestOutputHelper output) : base(output)
@@ -30,6 +31,7 @@ namespace ConduitLLM.Tests.Http.Services
             _cacheMock = new Mock<IVirtualKeyCache>();
             _publishEndpointMock = new Mock<IEventBus>();
             _loggerMock = CreateLogger<CachedApiVirtualKeyService>();
+            _batchSpendServiceMock = new Mock<IBatchSpendUpdateService>();
 
             _service = new CachedApiVirtualKeyService(
                 _virtualKeyRepositoryMock.Object,
@@ -37,7 +39,8 @@ namespace ConduitLLM.Tests.Http.Services
                 _groupRepositoryMock.Object,
                 _cacheMock.Object,
                 _publishEndpointMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object,
+                _batchSpendServiceMock.Object);
         }
 
         [Fact]
@@ -160,6 +163,29 @@ namespace ConduitLLM.Tests.Http.Services
             
             // Verify no cache invalidation for valid keys
             _cacheMock.Verify(c => c.InvalidateVirtualKeyAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ValidateVirtualKeyAsync_WhenPendingSpendConsumesBalance_ReturnsNull()
+        {
+            // Arrange
+            var keyValue = "condt_pending_spend";
+            var keyHash = ComputeExpectedHash(keyValue);
+            var virtualKey = CreateEnabledVirtualKey();
+
+            _cacheMock.Setup(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>() ))
+                .ReturnsAsync(virtualKey);
+            _groupRepositoryMock.Setup(g => g.GetByIdAsync(virtualKey.VirtualKeyGroupId))
+                .ReturnsAsync(CreateGroupWithBalance(5m));
+            _batchSpendServiceMock.Setup(s => s.GetPendingSpendAsync(virtualKey.Id))
+                .ReturnsAsync(5m);
+
+            // Act
+            var result = await _service.ValidateVirtualKeyAsync(keyValue);
+
+            // Assert
+            Assert.Null(result);
+            _batchSpendServiceMock.Verify(s => s.GetPendingSpendAsync(virtualKey.Id), Times.Once);
         }
 
         [Fact]

@@ -8,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration.Interfaces;
 using Moq;
 using Xunit;
 
@@ -306,6 +307,48 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 It.IsAny<object?>(),
                 It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenEstimatedCostCannotBeReserved_ShouldNotCallProvider()
+        {
+            // Arrange
+            var batchSpendService = new Mock<IBatchSpendUpdateService>();
+            batchSpendService
+                .Setup(x => x.TryReserveSpendAsync(1, 0.01m, "test-task-id"))
+                .ReturnsAsync(false);
+
+            var orchestrator = new ImageGenerationOrchestrator(
+                ClientFactoryMock.Object,
+                TaskServiceMock.Object,
+                StorageServiceMock.Object,
+                EventBusMock.Object,
+                ModelMappingServiceMock.Object,
+                VirtualKeyServiceMock.Object,
+                CostServiceMock.Object,
+                TaskRegistryMock.Object,
+                WebhookServiceMock.Object,
+                HttpClientFactoryMock.Object,
+                ParameterValidatorMock.Object,
+                Metrics,
+                ErrorTrackingServiceMock.Object,
+                LoggerMock.Object as ILogger<ImageGenerationOrchestrator>
+                    ?? new Mock<ILogger<ImageGenerationOrchestrator>>().Object,
+                batchSpendService.Object);
+
+            // Act
+            await orchestrator.HandleAsync(CreateTestEventRequest(), CreateEventContext());
+
+            // Assert
+            batchSpendService.Verify(
+                x => x.TryReserveSpendAsync(1, 0.01m, "test-task-id"),
+                Times.Once);
+            ClientFactoryMock.Verify(
+                x => x.GetClientByProviderIdAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]
