@@ -3,6 +3,8 @@ using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
@@ -42,6 +44,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="virtualKeyGroupId">Optional filter by virtual key group ID</param>
         /// <returns>Overall storage statistics.</returns>
         [HttpGet("stats")]
+        [ProducesResponseType(typeof(OverallMediaStorageStats), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetOverallStats([FromQuery] int? virtualKeyGroupId = null)
         {
             var stats = await _mediaService.GetOverallStorageStatsAsync(virtualKeyGroupId);
@@ -54,6 +57,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
         /// <returns>Storage statistics for the virtual key.</returns>
         [HttpGet("stats/virtual-key/{virtualKeyId}")]
+        [ProducesResponseType(typeof(MediaStorageStats), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStatsByVirtualKey(int virtualKeyId)
         {
             var stats = await _mediaService.GetStorageStatsByVirtualKeyAsync(virtualKeyId);
@@ -65,6 +69,7 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>Dictionary of provider names to storage size.</returns>
         [HttpGet("stats/by-provider")]
+        [ProducesResponseType(typeof(Dictionary<string, long>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStatsByProvider()
         {
             var stats = await _mediaService.GetStorageStatsByProviderAsync();
@@ -76,6 +81,7 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>Dictionary of media types to storage size.</returns>
         [HttpGet("stats/by-type")]
+        [ProducesResponseType(typeof(Dictionary<string, long>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStatsByMediaType()
         {
             var stats = await _mediaService.GetStorageStatsByMediaTypeAsync();
@@ -88,6 +94,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
         /// <returns>List of media records.</returns>
         [HttpGet("virtual-key/{virtualKeyId}")]
+        [ProducesResponseType(typeof(List<MediaRecord>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMediaByVirtualKey(int virtualKeyId)
         {
             var media = await _mediaService.GetMediaByVirtualKeyAsync(virtualKeyId);
@@ -100,6 +107,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="pattern">The pattern to search for in storage keys.</param>
         /// <returns>List of matching media records.</returns>
         [HttpGet("search")]
+        [ProducesResponseType(typeof(List<MediaRecord>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> SearchMedia([FromQuery] string pattern)
         {
             if (string.IsNullOrWhiteSpace(pattern))
@@ -117,12 +126,14 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="mediaId">The ID of the media record to delete.</param>
         /// <returns>Success status.</returns>
         [HttpDelete("{mediaId}")]
+        [ProducesResponseType(typeof(MediaDeletionResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteMedia(Guid mediaId)
         {
             if (!await _mediaService.DeleteMediaAsync(mediaId))
                 throw new KeyNotFoundException();
             LogAdminAudit("Deleted", "Media", mediaId);
-            return Ok(new { message = "Media deleted successfully" });
+            return Ok(new MediaDeletionResponseDto { Message = "Media deleted successfully" });
         }
 
         /// <summary>
@@ -130,14 +141,15 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>Number of files cleaned up.</returns>
         [HttpPost("cleanup/expired")]
+        [ProducesResponseType(typeof(MediaCleanupResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CleanupExpiredMedia()
         {
             var count = await _mediaService.CleanupExpiredMediaAsync();
             LogAdminAudit("CleanedUpExpired", "Media", detail: $"DeletedCount: {count}");
-            return Ok(new
+            return Ok(new MediaCleanupResponseDto
             {
-                message = $"Cleaned up {count} expired media files",
-                deletedCount = count
+                Message = $"Cleaned up {count} expired media files",
+                DeletedCount = count
             });
         }
 
@@ -146,14 +158,15 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>Number of files cleaned up.</returns>
         [HttpPost("cleanup/orphaned")]
+        [ProducesResponseType(typeof(MediaCleanupResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CleanupOrphanedMedia()
         {
             var count = await _mediaService.CleanupOrphanedMediaAsync();
             LogAdminAudit("CleanedUpOrphaned", "Media", detail: $"DeletedCount: {count}");
-            return Ok(new
+            return Ok(new MediaCleanupResponseDto
             {
-                message = $"Cleaned up {count} orphaned media files",
-                deletedCount = count
+                Message = $"Cleaned up {count} orphaned media files",
+                DeletedCount = count
             });
         }
 
@@ -163,6 +176,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="request">The pruning request with days to keep.</param>
         /// <returns>Number of files pruned.</returns>
         [HttpPost("cleanup/prune")]
+        [ProducesResponseType(typeof(MediaCleanupResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> PruneOldMedia([FromBody] PruneMediaRequest request)
         {
             if (request?.DaysToKeep == null || request.DaysToKeep <= 0)
@@ -172,10 +187,10 @@ namespace ConduitLLM.Admin.Controllers
 
             var count = await _mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
             LogAdminAudit("Pruned", "Media", detail: $"DaysToKeep: {request.DaysToKeep}, DeletedCount: {count}");
-            return Ok(new
+            return Ok(new MediaCleanupResponseDto
             {
-                message = $"Pruned {count} media files older than {request.DaysToKeep} days",
-                deletedCount = count
+                Message = $"Pruned {count} media files older than {request.DaysToKeep} days",
+                DeletedCount = count
             });
         }
 
@@ -197,10 +212,11 @@ namespace ConduitLLM.Admin.Controllers
         /// Gets whether the media cleanup service is currently enabled.
         /// </summary>
         [HttpGet("/api/admin/media-cleanup/enabled")]
+        [ProducesResponseType(typeof(MediaCleanupEnabledDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetCleanupEnabled()
         {
             var isEnabled = await _cleanupStatusService.IsEnabledAsync();
-            return Ok(new { enabled = isEnabled });
+            return Ok(new MediaCleanupEnabledDto { Enabled = isEnabled });
         }
 
         /// <summary>
@@ -208,14 +224,15 @@ namespace ConduitLLM.Admin.Controllers
         /// This setting persists across restarts via GlobalSettings.
         /// </summary>
         [HttpPost("/api/admin/media-cleanup/enabled")]
+        [ProducesResponseType(typeof(MediaCleanupEnabledChangedDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> SetCleanupEnabled([FromBody] UpdateMediaCleanupEnabledRequest request)
         {
             await _cleanupStatusService.SetEnabledAsync(request.Enabled);
             LogAdminAudit("SetEnabled", "MediaCleanupService", detail: $"Enabled: {request.Enabled}");
-            return Ok(new
+            return Ok(new MediaCleanupEnabledChangedDto
             {
-                enabled = request.Enabled,
-                message = request.Enabled
+                Enabled = request.Enabled,
+                Message = request.Enabled
                     ? "Media cleanup service has been enabled"
                     : "Media cleanup service has been disabled"
             });

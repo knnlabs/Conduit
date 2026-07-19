@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs.Cache;
@@ -53,6 +54,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Routing configuration data.</returns>
         [HttpGet("routing")]
+        [ProducesResponseType(typeof(RoutingConfigurationDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRoutingConfig(CancellationToken cancellationToken = default)
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -60,13 +62,13 @@ namespace ConduitLLM.Admin.Controllers
             // Get model-to-provider mappings
             var modelMappings = await dbContext.ModelProviderMappings
                 .Include(m => m.Provider)
-                .Select(m => new
+                .Select(m => new RoutingRuleDto
                 {
                     Id = m.Id,
                     ModelAlias = m.ModelAlias,
                     ProviderModelId = m.ProviderModelId,
                     IsEnabled = m.IsEnabled,
-                    Provider = new
+                    Provider = new RoutingRuleProviderDto
                     {
                         Id = m.Provider.Id,
                         Name = m.Provider.ProviderName,
@@ -77,9 +79,9 @@ namespace ConduitLLM.Admin.Controllers
                 .ToListAsync(cancellationToken);
 
             // Get load balancing configuration
-            var loadBalancers = new List<object>
+            var loadBalancers = new List<LoadBalancerDto>
             {
-                new
+                new LoadBalancerDto
                 {
                     Id = "primary",
                     Name = "Primary Load Balancer",
@@ -93,13 +95,13 @@ namespace ConduitLLM.Admin.Controllers
             // Get routing statistics
             var routingStats = await GetRoutingStatistics(dbContext, cancellationToken);
 
-            return Ok(new
+            return Ok(new RoutingConfigurationDto
             {
                 Timestamp = DateTime.UtcNow,
                 RoutingRules = modelMappings,
                 LoadBalancers = loadBalancers,
                 Statistics = routingStats,
-                Configuration = new
+                Configuration = new RoutingSettingsDto
                 {
                     EnableFailover = _configuration.GetValue<bool>("Routing:EnableFailover", true),
                     EnableLoadBalancing = _configuration.GetValue<bool>("Routing:EnableLoadBalancing", true),
@@ -109,7 +111,7 @@ namespace ConduitLLM.Admin.Controllers
             });
         }
 
-        private async Task<List<object>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<List<LoadBalancerEndpointDto>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             var providers = await dbContext.Providers
                 .Where(p => p.IsEnabled)
@@ -122,7 +124,7 @@ namespace ConduitLLM.Admin.Controllers
                 })
                 .ToListAsync(cancellationToken);
 
-            return providers.Select(p => (object)new
+            return providers.Select(p => new LoadBalancerEndpointDto
             {
                 Id = p.Id,
                 Name = p.ProviderName,
@@ -132,14 +134,14 @@ namespace ConduitLLM.Admin.Controllers
             }).ToList();
         }
 
-        private async Task<object> GetRoutingStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<RoutingStatisticsDto> GetRoutingStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             var oneDayAgo = DateTime.UtcNow.AddDays(-1);
 
             var stats = await dbContext.RequestLogs
                 .Where(r => r.Timestamp >= oneDayAgo)
                 .GroupBy(r => r.ModelName)
-                .Select(g => new
+                .Select(g => new ProviderDistributionDto
                 {
                     Provider = g.Key,
                     RequestCount = g.Count(),
@@ -148,7 +150,7 @@ namespace ConduitLLM.Admin.Controllers
                 })
                 .ToListAsync(cancellationToken);
 
-            return new
+            return new RoutingStatisticsDto
             {
                 TotalRequests = stats.Sum(s => s.RequestCount),
                 ProviderDistribution = stats

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
@@ -47,14 +48,15 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Service health information.</returns>
         [HttpGet("services")]
+        [ProducesResponseType(typeof(ServiceHealthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetServiceHealth(CancellationToken cancellationToken = default)
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var services = new List<object>();
+            var services = new List<ServiceStatusDto>();
 
             // Gateway API Service
-            services.Add(new
+            services.Add(new ServiceStatusDto
             {
                 Id = "core-api",
                 Name = "Gateway API",
@@ -72,7 +74,7 @@ namespace ConduitLLM.Admin.Controllers
             });
 
             // Admin API Service
-            services.Add(new
+            services.Add(new ServiceStatusDto
             {
                 Id = "admin-api",
                 Name = "Admin API",
@@ -89,7 +91,7 @@ namespace ConduitLLM.Admin.Controllers
 
             // Database Service
             var dbHealthCheck = await CheckDatabaseHealth(dbContext, cancellationToken);
-            services.Add(new
+            services.Add(new ServiceStatusDto
             {
                 Id = "database",
                 Name = "PostgreSQL Database",
@@ -107,15 +109,15 @@ namespace ConduitLLM.Admin.Controllers
 
 
             // Calculate overall health
-            var healthyCount = services.Count(s => ((dynamic)s).Status == "healthy");
-            var degradedCount = services.Count(s => ((dynamic)s).Status == "degraded");
-            var unhealthyCount = services.Count(s => ((dynamic)s).Status == "unhealthy");
+            var healthyCount = services.Count(s => s.Status == "healthy");
+            var degradedCount = services.Count(s => s.Status == "degraded");
+            var unhealthyCount = services.Count(s => s.Status == "unhealthy");
 
-            return Ok(new
+            return Ok(new ServiceHealthResponse
             {
                 Timestamp = DateTime.UtcNow,
                 OverallStatus = unhealthyCount > 0 ? "unhealthy" : (degradedCount > 0 ? "degraded" : "healthy"),
-                Summary = new
+                Summary = new ServiceHealthSummary
                 {
                     Healthy = healthyCount,
                     Degraded = degradedCount,
@@ -133,6 +135,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Incident history data.</returns>
         [HttpGet("incidents")]
+        [ProducesResponseType(typeof(IncidentsResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetIncidents(
             [FromQuery] int days = 7,
             CancellationToken cancellationToken = default)
@@ -162,7 +165,7 @@ namespace ConduitLLM.Admin.Controllers
                 .ToListAsync(cancellationToken);
 
             // Convert to incidents
-            var incidents = errorSpikes.Select(spike => new
+            var incidents = errorSpikes.Select(spike => new IncidentDto
             {
                 Id = Guid.NewGuid().ToString(),
                 Title = $"{spike.Service} Service Degradation",
@@ -174,7 +177,7 @@ namespace ConduitLLM.Admin.Controllers
                          new DateTime(spike.Date.Year, spike.Date.Month, spike.Date.Day, spike.Hour, 59, 59),
                 AffectedService = spike.Service,
                 Impact = $"{spike.ErrorCount} errors in 1 hour period",
-                Details = new
+                Details = new IncidentDetailsDto
                 {
                     ErrorCount = spike.ErrorCount,
                     UniqueErrorTypes = spike.ErrorTypes
@@ -184,26 +187,25 @@ namespace ConduitLLM.Admin.Controllers
             // Health failures removed - no longer tracking provider health
 
             var allIncidents = incidents
-                .Cast<object>()
-                .OrderByDescending(i => ((dynamic)i).StartTime)
+                .OrderByDescending(i => i.StartTime)
                 .ToList();
 
-            return Ok(new
+            return Ok(new IncidentsResponse
             {
                 Timestamp = DateTime.UtcNow,
-                TimeRange = new { Start = startDate, End = DateTime.UtcNow },
+                TimeRange = new TimeRangeDto { Start = startDate, End = DateTime.UtcNow },
                 TotalIncidents = allIncidents.Count,
-                ActiveIncidents = allIncidents.Count(i => ((dynamic)i).Status == "active"),
-                IncidentsByType = allIncidents.GroupBy(i => ((dynamic)i).Type).Select(g => new
+                ActiveIncidents = allIncidents.Count(i => i.Status == "active"),
+                IncidentsByType = allIncidents.GroupBy(i => i.Type).Select(g => new IncidentTypeCountDto
                 {
                     Type = g.Key,
                     Count = g.Count()
-                }),
-                IncidentsBySeverity = allIncidents.GroupBy(i => ((dynamic)i).Severity).Select(g => new
+                }).ToList(),
+                IncidentsBySeverity = allIncidents.GroupBy(i => i.Severity).Select(g => new IncidentSeverityCountDto
                 {
                     Severity = g.Key,
                     Count = g.Count()
-                }),
+                }).ToList(),
                 Incidents = allIncidents
             });
         }
@@ -215,6 +217,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Health history time series.</returns>
         [HttpGet("history")]
+        [ProducesResponseType(typeof(HealthHistoryResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetHealthHistory(
             [FromQuery] int hours = 24,
             CancellationToken cancellationToken = default)
@@ -224,7 +227,7 @@ namespace ConduitLLM.Admin.Controllers
             var startTime = DateTime.UtcNow.AddHours(-hours);
             var intervalMinutes = hours <= 24 ? 15 : 60; // 15 min intervals for 24h, 1h for longer
 
-            var healthHistory = new List<object>();
+            var healthHistory = new List<HealthHistoryPointDto>();
             var currentTime = startTime;
 
             while (currentTime < DateTime.UtcNow)
@@ -245,7 +248,7 @@ namespace ConduitLLM.Admin.Controllers
                     })
                     .FirstOrDefaultAsync(cancellationToken);
 
-                healthHistory.Add(new
+                healthHistory.Add(new HealthHistoryPointDto
                 {
                     Timestamp = currentTime,
                     SystemHealth = errorStats?.TotalRequests > 0
@@ -262,10 +265,10 @@ namespace ConduitLLM.Admin.Controllers
                 currentTime = intervalEnd;
             }
 
-            return Ok(new
+            return Ok(new HealthHistoryResponse
             {
                 Timestamp = DateTime.UtcNow,
-                TimeRange = new { Start = startTime, End = DateTime.UtcNow },
+                TimeRange = new TimeRangeDto { Start = startTime, End = DateTime.UtcNow },
                 IntervalMinutes = intervalMinutes,
                 History = healthHistory
             });

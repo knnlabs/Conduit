@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
@@ -42,6 +43,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="isActive">Optional active status filter</param>
         /// <returns>List of provider tools</returns>
         [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<ProviderToolDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetProviderTools(
             [FromQuery] ProviderType? provider = null,
             [FromQuery] bool? isActive = null)
@@ -72,6 +74,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">Tool ID</param>
         /// <returns>Provider tool details</returns>
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(ProviderToolDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetProviderTool(int id)
         {
             var tool = await _context.ProviderTools.FindAsync(id);
@@ -89,6 +93,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dto">Provider tool creation data</param>
         /// <returns>Created provider tool</returns>
         [HttpPost]
+        [ProducesResponseType(typeof(ProviderToolDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateProviderTool([FromBody] CreateProviderToolDto dto)
         {
             // Validate billing unit
@@ -134,6 +140,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dto">Updated tool data</param>
         /// <returns>Updated provider tool</returns>
         [HttpPut("{id}")]
+        [ProducesResponseType(typeof(ProviderToolDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateProviderTool(int id, [FromBody] UpdateProviderToolDto dto)
         {
             // Validate billing unit
@@ -168,6 +177,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">Tool ID</param>
         /// <returns>Success status</returns>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteProviderTool(int id)
         {
             var tool = await _context.ProviderTools.FindAsync(id);
@@ -192,15 +203,16 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>List of provider types with tool support</returns>
         [HttpGet("providers")]
-        public ActionResult<IEnumerable<object>> GetToolProviders()
+        [ProducesResponseType(typeof(IEnumerable<ToolProviderDto>), StatusCodes.Status200OK)]
+        public ActionResult<IEnumerable<ToolProviderDto>> GetToolProviders()
         {
             // Define which providers support tools
             var toolProviders = new[]
             {
-                new { Value = (int)ProviderType.Groq, Name = "Groq", Description = "Supports code_interpreter, browser tools" },
-                new { Value = (int)ProviderType.OpenAI, Name = "OpenAI", Description = "Function calling (client-side tools)" },
-                new { Value = (int)ProviderType.Fireworks, Name = "Fireworks", Description = "May support tools" },
-                new { Value = (int)ProviderType.OpenAICompatible, Name = "OpenAI Compatible", Description = "Depends on implementation" }
+                new ToolProviderDto { Value = (int)ProviderType.Groq, Name = "Groq", Description = "Supports code_interpreter, browser tools" },
+                new ToolProviderDto { Value = (int)ProviderType.OpenAI, Name = "OpenAI", Description = "Function calling (client-side tools)" },
+                new ToolProviderDto { Value = (int)ProviderType.Fireworks, Name = "Fireworks", Description = "May support tools" },
+                new ToolProviderDto { Value = (int)ProviderType.OpenAICompatible, Name = "OpenAI Compatible", Description = "Depends on implementation" }
             };
 
             return Ok(toolProviders);
@@ -211,6 +223,7 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>List of billing unit options</returns>
         [HttpGet("billing-units")]
+        [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
         public ActionResult<IEnumerable<string>> GetBillingUnits()
         {
             return Ok(ProviderToolBillingUnits.All);
@@ -222,6 +235,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="tools">Array of provider tools to import</param>
         /// <returns>Import results</returns>
         [HttpPost("import")]
+        [ProducesResponseType(typeof(ProviderToolImportResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> ImportProviderTools([FromBody] List<CreateProviderToolDto> tools)
         {
             var imported = 0;
@@ -289,12 +303,12 @@ namespace ConduitLLM.Admin.Controllers
             LogAdminAudit("Imported", "ProviderTool",
                 detail: $"Imported: {imported}, Skipped: {skipped}, Total: {tools.Count}");
 
-            return Ok(new
+            return Ok(new ProviderToolImportResultDto
             {
-                imported,
-                skipped,
-                total = tools.Count,
-                errors = errors.Count > 0 ? errors : null
+                Imported = imported,
+                Skipped = skipped,
+                Total = tools.Count,
+                Errors = errors.Count > 0 ? errors : null
             });
         }
 
@@ -303,6 +317,7 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>JSON array of all provider tools</returns>
         [HttpGet("export")]
+        [ProducesResponseType(typeof(IEnumerable<ProviderToolDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> ExportProviderTools()
         {
             var tools = await _context.ProviderTools

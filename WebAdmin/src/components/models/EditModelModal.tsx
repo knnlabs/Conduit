@@ -19,20 +19,9 @@ import type {
   NormalizedProviderTypeAssociation 
 } from '@knn_labs/conduit-admin-client';
 
-// Extend ModelDto to include capability fields and modelParameters until SDK types are updated
-interface ExtendedModelDto extends ModelDto {
-  modelParameters?: string | null;
-  supportsChat?: boolean;
-  supportsVision?: boolean;
-  supportsFunctionCalling?: boolean;
-  supportsStreaming?: boolean;
-  supportsImageGeneration?: boolean;
-  supportsVideoGeneration?: boolean;
-  supportsEmbeddings?: boolean;
-  maxInputTokens?: number | null;
-  maxOutputTokens?: number | null;
-  tokenizerType?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20;
-}
+// The SDK's generated ModelDto now includes capability fields, modelParameters,
+// and tokenizerType directly
+type ExtendedModelDto = ModelDto;
 
 
 

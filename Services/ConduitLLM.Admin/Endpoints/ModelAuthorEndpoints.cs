@@ -28,12 +28,25 @@ namespace ConduitLLM.Admin.Endpoints
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
                 .WithTags("ModelAuthor");
 
-            group.MapGet("/", GetAll);
-            group.MapGet("/{id:int}", GetById).WithName("GetModelAuthorById");
-            group.MapGet("/{id:int}/series", GetSeriesByAuthor);
-            group.MapPost("/", Create);
-            group.MapPut("/{id:int}", Update);
-            group.MapDelete("/{id:int}", Delete);
+            group.MapGet("/", GetAll)
+                .Produces<IEnumerable<ModelAuthorDto>>(StatusCodes.Status200OK);
+            group.MapGet("/{id:int}", GetById).WithName("GetModelAuthorById")
+                .Produces<ModelAuthorDto>(StatusCodes.Status200OK)
+                .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            group.MapGet("/{id:int}/series", GetSeriesByAuthor)
+                .Produces<IEnumerable<SimpleModelSeriesDto>>(StatusCodes.Status200OK)
+                .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            group.MapPost("/", Create)
+                .Produces<ModelAuthorDto>(StatusCodes.Status201Created)
+                .Produces(StatusCodes.Status400BadRequest);
+            group.MapPut("/{id:int}", Update)
+                .Produces(StatusCodes.Status204NoContent)
+                .Produces(StatusCodes.Status400BadRequest)
+                .Produces(StatusCodes.Status404NotFound);
+            group.MapDelete("/{id:int}", Delete)
+                .Produces(StatusCodes.Status204NoContent)
+                .Produces(StatusCodes.Status400BadRequest)
+                .Produces(StatusCodes.Status404NotFound);
 
             return app;
         }

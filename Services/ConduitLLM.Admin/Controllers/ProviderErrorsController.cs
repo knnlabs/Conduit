@@ -48,6 +48,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="limit">Maximum number of errors to return (default: 100)</param>
         /// <returns>List of recent provider errors</returns>
         [HttpGet("recent")]
+        [ProducesResponseType(typeof(List<ProviderErrorDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRecentErrors(
             [FromQuery] int? providerId = null,
             [FromQuery] int? keyId = null,
@@ -82,6 +83,7 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>List of provider error summaries</returns>
         [HttpGet("summary")]
+        [ProducesResponseType(typeof(List<ProviderErrorSummaryDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetErrorSummary()
         {
             // Use paginated retrieval - get all providers in batches
@@ -130,6 +132,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="keyId">ID of the key</param>
         /// <returns>Detailed error information for the key</returns>
         [HttpGet("keys/{keyId}")]
+        [ProducesResponseType(typeof(KeyErrorDetailsDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetKeyErrors(int keyId)
         {
             var details = await _errorService.GetKeyErrorDetailsAsync(keyId);
@@ -176,6 +180,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="request">Clear errors request</param>
         /// <returns>Operation result</returns>
         [HttpPost("keys/{keyId}/clear")]
+        [ProducesResponseType(typeof(ClearKeyErrorsResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ClearKeyErrors(
             int keyId,
             [FromBody] ClearErrorsRequest request)
@@ -216,13 +222,13 @@ namespace ConduitLLM.Admin.Controllers
                 LogAdminAudit("ClearedErrors", "ProviderKeyCredential", keyId);
             }
 
-            return Ok(new
+            return Ok(new ClearKeyErrorsResponseDto
             {
-                message = request.ReenableKey
+                Message = request.ReenableKey
                     ? "Errors cleared and key re-enabled successfully"
                     : "Errors cleared successfully",
-                keyId = keyId,
-                reenabled = request.ReenableKey
+                KeyId = keyId,
+                Reenabled = request.ReenableKey
             });
         }
 
@@ -232,6 +238,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="hours">Time window in hours (default: 24)</param>
         /// <returns>Error statistics</returns>
         [HttpGet("stats")]
+        [ProducesResponseType(typeof(ErrorStatisticsDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetErrorStatistics(
             [FromQuery] int hours = 24)
         {
@@ -269,6 +276,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="hours">Time window in hours (default: 1)</param>
         /// <returns>Dictionary of key ID to error count</returns>
         [HttpGet("providers/{providerId}/key-errors")]
+        [ProducesResponseType(typeof(Dictionary<int, int>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetErrorCountsByKey(
             int providerId,
             [FromQuery] int hours = 1)
@@ -289,6 +297,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="reason">Reason for disabling</param>
         /// <returns>Operation result</returns>
         [HttpPost("keys/{keyId}/disable")]
+        [ProducesResponseType(typeof(DisableKeyResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> DisableKey(
             int keyId,
             [FromBody] string reason)
@@ -303,10 +313,10 @@ namespace ConduitLLM.Admin.Controllers
             LogAdminAudit("Disabled", "ProviderKeyCredential", keyId,
                 $"Reason: {reason}");
 
-            return Ok(new
+            return Ok(new DisableKeyResponseDto
             {
-                message = "Key disabled successfully",
-                keyId = keyId
+                Message = "Key disabled successfully",
+                KeyId = keyId
             });
         }
     }

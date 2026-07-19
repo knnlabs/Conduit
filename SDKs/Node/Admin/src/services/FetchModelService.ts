@@ -28,10 +28,10 @@ import {
 } from '../errors/modelErrors';
 
 // Type aliases for better readability
-type ModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.ModelDto'];
-type CreateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.CreateModelDto'];
-type UpdateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.UpdateModelDto'];
-type ModelProviderMappingDto = components['schemas']['ConduitLLM.Configuration.DTOs.ModelProviderMappingDto'];
+type ModelDto = components['schemas']['ModelDto'];
+type CreateModelDto = components['schemas']['CreateModelDto'];
+type UpdateModelDto = components['schemas']['UpdateModelDto'];
+type ModelProviderMappingDto = components['schemas']['ModelProviderMappingDto'];
 
 /**
  * Type-safe Model service using native fetch
@@ -284,20 +284,15 @@ export class FetchModelService {
     const models = await this.list(config);
 
     return models.map(model => {
-      const identifiers = (model as ModelDto & { identifiers?: Array<{
-        id: number;
-        identifier: string;
-        provider: number | null;
-        isPrimary: boolean;
-      }> }).identifiers ?? [];
+      const identifiers = model.identifiers ?? [];
 
       const providers = identifiers.map(i => {
         const normalizedProvider = i.provider ? i.provider as ProviderType : null;
         return {
-          id: i.id,
-          identifier: i.identifier,
-          provider: i.provider,
-          isPrimary: i.isPrimary,
+          id: i.id ?? 0,
+          identifier: i.identifier ?? '',
+          provider: i.provider ?? null,
+          isPrimary: i.isPrimary ?? false,
           normalizedProvider: normalizedProvider ?? null,
           providerName: normalizedProvider ? getProviderTypeName(normalizedProvider) : null
         };
@@ -364,20 +359,15 @@ export class FetchModelService {
 
     // Enrich items with provider mapping status from included identifiers
     const items = response.items.map(model => {
-      const identifiers = (model as ModelDto & { identifiers?: Array<{
-        id: number;
-        identifier: string;
-        provider: number | null;
-        isPrimary: boolean;
-      }> }).identifiers ?? [];
+      const identifiers = model.identifiers ?? [];
 
       const providers = identifiers.map(i => {
         const normalizedProvider = i.provider ? i.provider as ProviderType : null;
         return {
-          id: i.id,
-          identifier: i.identifier,
-          provider: i.provider,
-          isPrimary: i.isPrimary,
+          id: i.id ?? 0,
+          identifier: i.identifier ?? '',
+          provider: i.provider ?? null,
+          isPrimary: i.isPrimary ?? false,
           normalizedProvider: normalizedProvider ?? null,
           providerName: normalizedProvider ? getProviderTypeName(normalizedProvider) : null
         };

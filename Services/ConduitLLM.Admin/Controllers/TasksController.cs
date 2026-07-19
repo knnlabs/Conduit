@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -38,6 +39,7 @@ namespace ConduitLLM.Admin.Controllers
         /// permanently deletes archived tasks older than 30 days.
         /// </remarks>
         [HttpPost("cleanup")]
+        [ProducesResponseType(typeof(TaskCleanupResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CleanupOldTasks([FromQuery] int olderThanHours = 24)
         {
             olderThanHours = Math.Max(olderThanHours, 1); // Min 1 hour
@@ -46,7 +48,7 @@ namespace ConduitLLM.Admin.Controllers
             LogAdminAudit("CleanedUp", "Tasks", null,
                 $"Removed {count} tasks older than {olderThanHours} hours");
 
-            return Ok(new { cleaned_up = count, older_than_hours = olderThanHours });
+            return Ok(new TaskCleanupResponseDto { CleanedUp = count, OlderThanHours = olderThanHours });
         }
     }
 }

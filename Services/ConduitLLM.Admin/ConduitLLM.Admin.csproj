@@ -7,6 +7,12 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- 1591: missing XML doc; NU1510: redundant pin (kept for SBOM clarity). -->
     <NoWarn>$(NoWarn);1591;NU1510</NoWarn>
+    <!-- Build-time OpenAPI document export (opt-in): the committed openapi-admin.json is the
+         source of truth for SDK type generation. Regenerate with
+         `dotnet build -p:OpenApiGenerateDocumentsOnBuild=true` or via SDKs/Node/scripts. -->
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOnBuild>false</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiGenerateDocumentsOptions>--file-name openapi-admin</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +20,10 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
     <!-- Override vulnerable transitive from AspNetCore.OpenApi (GHSA-v5pm-xwqc-g5wc, high); fixed in 2.7.5 -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.9">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="10.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.9" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.2" />

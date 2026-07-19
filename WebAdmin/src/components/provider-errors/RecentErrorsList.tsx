@@ -15,7 +15,7 @@ import {
 import { IconSearch, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import type { components } from '@knn_labs/conduit-admin-client';
 
-type ProviderErrorDto = components['schemas']['ConduitLLM.Admin.DTOs.ProviderErrorDto'];
+type ProviderErrorDto = components['schemas']['ProviderErrorDto'];
 
 interface RecentErrorsListProps {
   errors: ProviderErrorDto[];

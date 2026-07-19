@@ -4,6 +4,238 @@
  */
 
 export interface paths {
+  "/api/ModelAuthor": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ModelAuthorDto"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CreateModelAuthorDto"];
+        };
+      };
+      responses: {
+        /** @description Created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ModelAuthorDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelAuthor/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GetModelAuthorById"];
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateModelAuthorDto"];
+        };
+      };
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelAuthor/{id}/series": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["SimpleModelSeriesDto"][];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ErrorResponseDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/Analytics/logs": {
     parameters: {
       query?: never;
@@ -42,9 +274,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/plain": components["schemas"]["PagedResultOfLogRequestDto"];
+            "application/json": components["schemas"]["PagedResultOfLogRequestDto"];
+            "text/json": components["schemas"]["PagedResultOfLogRequestDto"];
           };
         };
         /** @description Bad Request */
@@ -53,12 +285,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -101,9 +333,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.LogRequestDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.LogRequestDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.LogRequestDto"];
+            "text/plain": components["schemas"]["LogRequestDto"];
+            "application/json": components["schemas"]["LogRequestDto"];
+            "text/json": components["schemas"]["LogRequestDto"];
           };
         };
         /** @description Not Found */
@@ -112,12 +344,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -151,7 +383,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of model names */
         200: {
           headers: {
             [name: string]: unknown;
@@ -162,7 +394,7 @@ export interface paths {
             "text/json": string[];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -209,9 +441,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"];
+            "text/plain": components["schemas"]["CostDashboardDto"];
+            "application/json": components["schemas"]["CostDashboardDto"];
+            "text/json": components["schemas"]["CostDashboardDto"];
           };
         };
         /** @description Bad Request */
@@ -220,12 +452,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -272,9 +504,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"];
+            "text/plain": components["schemas"]["CostTrendDto"];
+            "application/json": components["schemas"]["CostTrendDto"];
+            "text/json": components["schemas"]["CostTrendDto"];
           };
         };
         /** @description Bad Request */
@@ -283,12 +515,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -329,18 +561,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Model cost breakdown */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.ModelCostBreakdownDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.ModelCostBreakdownDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.ModelCostBreakdownDto"];
+            "text/plain": components["schemas"]["ModelCostBreakdownDto"];
+            "application/json": components["schemas"]["ModelCostBreakdownDto"];
+            "text/json": components["schemas"]["ModelCostBreakdownDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -381,18 +613,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Virtual key cost breakdown */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostBreakdownDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostBreakdownDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostBreakdownDto"];
+            "text/plain": components["schemas"]["VirtualKeyCostBreakdownDto"];
+            "application/json": components["schemas"]["VirtualKeyCostBreakdownDto"];
+            "text/json": components["schemas"]["VirtualKeyCostBreakdownDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -439,9 +671,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto"];
+            "text/plain": components["schemas"]["AnalyticsSummaryDto"];
+            "application/json": components["schemas"]["AnalyticsSummaryDto"];
+            "text/json": components["schemas"]["AnalyticsSummaryDto"];
           };
         };
         /** @description Bad Request */
@@ -450,12 +682,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -497,18 +729,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Usage statistics */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.UsageStatisticsDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UsageStatisticsDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UsageStatisticsDto"];
+            "text/plain": components["schemas"]["UsageStatisticsDto"];
+            "application/json": components["schemas"]["UsageStatisticsDto"];
+            "text/json": components["schemas"]["UsageStatisticsDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -559,9 +791,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": string;
-            "application/json": string;
-            "text/json": string;
+            "text/plain": components["schemas"]["FileContentResult"];
+            "application/json": components["schemas"]["FileContentResult"];
+            "text/json": components["schemas"]["FileContentResult"];
           };
         };
         /** @description Bad Request */
@@ -570,12 +802,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -615,15 +847,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": {
-              [key: string]: unknown;
-            };
-            "application/json": {
-              [key: string]: unknown;
-            };
-            "text/json": {
-              [key: string]: unknown;
-            };
+            "text/plain": Record<string, never>;
+            "application/json": Record<string, never>;
+            "text/json": Record<string, never>;
           };
         };
         /** @description Not Found */
@@ -632,10 +858,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -687,10 +920,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -724,14 +964,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Success response */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -771,9 +1011,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"];
+            "text/plain": components["schemas"]["EphemeralMasterKeyResponse"];
+            "application/json": components["schemas"]["EphemeralMasterKeyResponse"];
+            "text/json": components["schemas"]["EphemeralMasterKeyResponse"];
           };
         };
         /** @description Authentication failed - master key required */
@@ -782,12 +1022,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal server error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -829,7 +1069,7 @@ export interface paths {
           /** @description Optional reason for the flush operation (for audit trail) */
           reason?: string;
           /** @description Priority level: Normal (default) or High for urgent operations */
-          priority?: components["schemas"]["ConduitLLM.Configuration.Events.FlushPriority"];
+          priority?: components["schemas"]["FlushPriority"];
           /** @description Optional timeout in seconds (default: service timeout) */
           timeoutSeconds?: number;
           /** @description Whether to include detailed statistics in logs (default: true) */
@@ -858,9 +1098,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Internal Server Error */
@@ -903,7 +1143,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description System status and configuration information */
         200: {
           headers: {
             [name: string]: unknown;
@@ -913,6 +1153,13 @@ export interface paths {
             "application/json": unknown;
             "text/json": unknown;
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -944,7 +1191,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Operational information and usage guidance */
         200: {
           headers: {
             [name: string]: unknown;
@@ -954,6 +1201,13 @@ export interface paths {
             "application/json": unknown;
             "text/json": unknown;
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -983,11 +1237,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description Query parameters */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditQueryRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditQueryRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditQueryRequest"];
+          "application/json": components["schemas"]["BillingAuditQueryRequest"];
+          "text/json": components["schemas"]["BillingAuditQueryRequest"];
+          "application/*+json": components["schemas"]["BillingAuditQueryRequest"];
         };
       };
       responses: {
@@ -997,9 +1251,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditResponse"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditResponse"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditResponse"];
+            "text/plain": components["schemas"]["BillingAuditResponse"];
+            "application/json": components["schemas"]["BillingAuditResponse"];
+            "text/json": components["schemas"]["BillingAuditResponse"];
           };
         };
         /** @description Bad Request */
@@ -1008,10 +1262,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1051,9 +1312,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Interfaces.BillingAuditSummary"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Interfaces.BillingAuditSummary"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Interfaces.BillingAuditSummary"];
+            "text/plain": components["schemas"]["BillingAuditSummary"];
+            "application/json": components["schemas"]["BillingAuditSummary"];
+            "text/json": components["schemas"]["BillingAuditSummary"];
           };
         };
         /** @description Bad Request */
@@ -1062,10 +1323,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1105,9 +1373,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Interfaces.BillingAnomaly"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Interfaces.BillingAnomaly"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Interfaces.BillingAnomaly"][];
+            "text/plain": components["schemas"]["BillingAnomaly"][];
+            "application/json": components["schemas"]["BillingAnomaly"][];
+            "text/json": components["schemas"]["BillingAnomaly"][];
           };
         };
         /** @description Bad Request */
@@ -1116,10 +1384,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1170,10 +1445,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1203,11 +1485,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description Export parameters */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditExportRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditExportRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditExportRequest"];
+          "application/json": components["schemas"]["BillingAuditExportRequest"];
+          "text/json": components["schemas"]["BillingAuditExportRequest"];
+          "application/*+json": components["schemas"]["BillingAuditExportRequest"];
         };
       };
       responses: {
@@ -1224,10 +1506,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1254,7 +1543,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of event types with descriptions */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1264,6 +1553,13 @@ export interface paths {
             "application/json": unknown;
             "text/json": unknown;
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1292,8 +1588,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Routing configuration data. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["RoutingConfigurationDto"];
+            "application/json": components["schemas"]["RoutingConfigurationDto"];
+            "text/json": components["schemas"]["RoutingConfigurationDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -1309,14 +1616,14 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/config/caching": {
+  "/api/config/caching/llm-status": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets caching configuration and statistics. */
+    /** Gets the current LLM caching status. */
     get: {
       parameters: {
         query?: never;
@@ -1326,8 +1633,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description LLM cache control status. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["LLMCacheControlDto"];
+            "application/json": components["schemas"]["LLMCacheControlDto"];
+            "text/json": components["schemas"]["LLMCacheControlDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -1335,63 +1653,53 @@ export interface paths {
         };
       };
     };
-    /** Updates caching configuration. */
-    put: {
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/config/caching/llm-toggle": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Toggles LLM caching for all instances. */
+    post: {
       parameters: {
         query?: never;
         header?: never;
         path?: never;
         cookie?: never;
       };
-      /** @description Updated caching configuration. */
-      requestBody?: {
+      /** @description Cancellation token. */
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"];
+          "application/json": components["schemas"]["ToggleLLMCacheRequest"];
+          "text/json": components["schemas"]["ToggleLLMCacheRequest"];
+          "application/*+json": components["schemas"]["ToggleLLMCacheRequest"];
         };
       };
       responses: {
-        /** @description OK */
+        /** @description Updated LLM cache control status. */
         200: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "text/plain": components["schemas"]["LLMCacheControlDto"];
+            "application/json": components["schemas"]["LLMCacheControlDto"];
+            "text/json": components["schemas"]["LLMCacheControlDto"];
+          };
         };
-      };
-    };
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/{cacheId}/clear": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Clears specific cache by ID. */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description Cache policy ID. */
-          cacheId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -1405,51 +1713,14 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/config/caching/statistics": {
+  "/api/FunctionConfigurations": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets cache statistics for all regions or a specific region. */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Optional region ID. */
-          regionId?: string;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/regions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Lists all cache regions. */
+    /** Gets all function configurations. */
     get: {
       parameters: {
         query?: never;
@@ -1459,8 +1730,15 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all function configurations */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -1469,82 +1747,43 @@ export interface paths {
       };
     };
     put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/{regionId}/entries": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets entries from a specific cache region. */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Number of entries to skip. */
-          skip?: number;
-          /** @description Number of entries to return. */
-          take?: number;
-        };
-        header?: never;
-        path: {
-          /** @description Region ID. */
-          regionId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/{regionId}/refresh": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Forces a refresh of cache entries in a region. */
+    /** Creates a new function configuration. */
     post: {
       parameters: {
-        query?: {
-          /** @description Optional specific key to refresh. */
-          key?: string;
-        };
+        query?: never;
         header?: never;
-        path: {
-          /** @description Region ID. */
-          regionId: string;
-        };
+        path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      /** @description The function configuration to create */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["FunctionConfiguration"];
+          "text/json": components["schemas"]["FunctionConfiguration"];
+          "application/*+json": components["schemas"]["FunctionConfiguration"];
+        };
+      };
       responses: {
-        /** @description OK */
-        200: {
+        /** @description Created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -1558,31 +1797,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/config/caching/{regionId}/policy": {
+  "/api/FunctionConfigurations/{id}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get?: never;
-    /** Updates the policy for a specific cache region. */
+    /** Gets a function configuration by ID. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the function configuration */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    /** Updates an existing function configuration. */
     put: {
       parameters: {
         query?: never;
         header?: never;
         path: {
-          /** @description Region ID. */
-          regionId: string;
+          /** @description The ID of the function configuration to update */
+          id: number;
         };
         cookie?: never;
       };
-      /** @description Policy update details. */
-      requestBody?: {
+      /** @description The updated function configuration data */
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"];
+          "application/json": components["schemas"]["FunctionConfiguration"];
+          "text/json": components["schemas"]["FunctionConfiguration"];
+          "application/*+json": components["schemas"]["FunctionConfiguration"];
         };
       };
       responses: {
@@ -1593,10 +1871,1181 @@ export interface paths {
           };
           content?: never;
         };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     post?: never;
+    /** Deletes a function configuration. */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the function configuration to delete */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionConfigurations/provider/{providerType}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets function configurations by provider type. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The provider type (e.g., "Exa") */
+          providerType: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of function configurations for the specified provider */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionConfigurations/purpose/{purpose}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets function configurations by purpose. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The purpose (e.g., "Search", "Answer", "Enrich") */
+          purpose: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of function configurations for the specified purpose */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionCosts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets all function costs. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of all function costs */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    /** Creates a new function cost. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The function cost to create */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CreateFunctionCostDto"];
+          "text/json": components["schemas"]["CreateFunctionCostDto"];
+          "application/*+json": components["schemas"]["CreateFunctionCostDto"];
+        };
+      };
+      responses: {
+        /** @description Created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionCosts/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets a function cost by ID. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the function cost */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    /** Updates an existing function cost. */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the function cost to update */
+          id: number;
+        };
+        cookie?: never;
+      };
+      /** @description The updated function cost data */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateFunctionCostDto"];
+          "text/json": components["schemas"]["UpdateFunctionCostDto"];
+          "application/*+json": components["schemas"]["UpdateFunctionCostDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    /** Deletes a function cost. */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the function cost to delete */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionCosts/configuration/{functionConfigurationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the active cost for a function configuration. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The function configuration ID */
+          functionConfigurationId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionCosts/cache/clear": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Clears the function cost cache. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success message */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionCredentials": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets all function credentials. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of all credentials */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    /** Creates a new function credential. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The credential to create */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["FunctionCredential"];
+          "text/json": components["schemas"]["FunctionCredential"];
+          "application/*+json": components["schemas"]["FunctionCredential"];
+        };
+      };
+      responses: {
+        /** @description Created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionCredentials/configuration/{functionConfigurationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets credentials for a specific function configuration (returns all credentials for the configuration's provider type). */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The function configuration ID */
+          functionConfigurationId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionCredentials/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets a credential by ID. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the credential */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    /** Updates an existing function credential. */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the credential to update */
+          id: number;
+        };
+        cookie?: never;
+      };
+      /** @description The updated credential data */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["FunctionCredential"];
+          "text/json": components["schemas"]["FunctionCredential"];
+          "application/*+json": components["schemas"]["FunctionCredential"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    /** Deletes a function credential. */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the credential to delete */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionCredentials/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Tests a function credential by verifying authentication. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description Test request containing configuration ID and optional API key override */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["TestCredentialRequest"];
+          "text/json": components["schemas"]["TestCredentialRequest"];
+          "application/*+json": components["schemas"]["TestCredentialRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionExecutions/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets an execution by ID. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The execution ID */
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionExecutions/virtualkey/{virtualKeyId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets executions for a virtual key. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The virtual key ID */
+          virtualKeyId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of executions */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionExecutions/configuration/{functionConfigurationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets executions for a function configuration. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The function configuration ID */
+          functionConfigurationId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of executions */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionExecutions/state/{state}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets executions by state. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The execution state (e.g., "Pending", "Running", "Completed", "Failed") */
+          state: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionExecutions/expired-leases": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets executions with expired leases. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of executions with expired leases */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionExecutions/ready-for-retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets executions ready for retry. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of executions ready for retry */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/FunctionExecutions/cleanup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Deletes old executions. */
+    delete: {
+      parameters: {
+        query?: {
+          /** @description Delete executions older than this many days */
+          olderThanDays?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
@@ -1619,18 +3068,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all global settings */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"][];
+            "text/plain": components["schemas"]["GlobalSettingDto"][];
+            "application/json": components["schemas"]["GlobalSettingDto"][];
+            "text/json": components["schemas"]["GlobalSettingDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1649,11 +3098,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The setting to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateGlobalSettingDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateGlobalSettingDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateGlobalSettingDto"];
+          "application/json": components["schemas"]["CreateGlobalSettingDto"];
+          "text/json": components["schemas"]["CreateGlobalSettingDto"];
+          "application/*+json": components["schemas"]["CreateGlobalSettingDto"];
         };
       };
       responses: {
@@ -1663,9 +3112,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
+            "text/plain": components["schemas"]["GlobalSettingDto"];
+            "application/json": components["schemas"]["GlobalSettingDto"];
+            "text/json": components["schemas"]["GlobalSettingDto"];
           };
         };
         /** @description Bad Request */
@@ -1674,12 +3123,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1720,9 +3169,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
+            "text/plain": components["schemas"]["GlobalSettingDto"];
+            "application/json": components["schemas"]["GlobalSettingDto"];
+            "text/json": components["schemas"]["GlobalSettingDto"];
           };
         };
         /** @description Not Found */
@@ -1731,12 +3180,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1757,11 +3206,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated setting data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateGlobalSettingDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateGlobalSettingDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateGlobalSettingDto"];
+          "application/json": components["schemas"]["UpdateGlobalSettingDto"];
+          "text/json": components["schemas"]["UpdateGlobalSettingDto"];
+          "application/*+json": components["schemas"]["UpdateGlobalSettingDto"];
         };
       };
       responses: {
@@ -1778,9 +3227,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -1789,12 +3238,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1830,12 +3279,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1875,9 +3324,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.GlobalSettingDto"];
+            "text/plain": components["schemas"]["GlobalSettingDto"];
+            "application/json": components["schemas"]["GlobalSettingDto"];
+            "text/json": components["schemas"]["GlobalSettingDto"];
           };
         };
         /** @description Not Found */
@@ -1886,12 +3335,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1928,12 +3377,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1964,11 +3413,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The setting data with key, value, and optional description */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateGlobalSettingByKeyDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateGlobalSettingByKeyDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateGlobalSettingByKeyDto"];
+          "application/json": components["schemas"]["UpdateGlobalSettingByKeyDto"];
+          "text/json": components["schemas"]["UpdateGlobalSettingByKeyDto"];
+          "application/*+json": components["schemas"]["UpdateGlobalSettingByKeyDto"];
         };
       };
       responses: {
@@ -1985,12 +3434,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2000,6 +3449,136 @@ export interface paths {
       };
     };
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/GlobalSettings/cache/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets global settings cache statistics */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Cache statistics including hit rate, size, and invalidation count */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["GlobalSettingCacheStatsDto"];
+            "application/json": components["schemas"]["GlobalSettingCacheStatsDto"];
+            "text/json": components["schemas"]["GlobalSettingCacheStatsDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/GlobalSettings/cache/reload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reloads all global settings from the database into the cache */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No content if successful */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/GlobalSettings/cache/invalidate/{key}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Invalidates a specific cached setting, forcing it to be reloaded from database on next access */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The key of the setting to invalidate */
+          key: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No content if successful */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -2023,8 +3602,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Service health information. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ServiceHealthResponse"];
+            "application/json": components["schemas"]["ServiceHealthResponse"];
+            "text/json": components["schemas"]["ServiceHealthResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2060,8 +3650,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Incident history data. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["IncidentsResponse"];
+            "application/json": components["schemas"]["IncidentsResponse"];
+            "text/json": components["schemas"]["IncidentsResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2097,8 +3698,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Health history time series. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["HealthHistoryResponse"];
+            "application/json": components["schemas"]["HealthHistoryResponse"];
+            "text/json": components["schemas"]["HealthHistoryResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2131,18 +3743,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all IP filters */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"][];
+            "text/plain": components["schemas"]["IpFilterDto"][];
+            "application/json": components["schemas"]["IpFilterDto"][];
+            "text/json": components["schemas"]["IpFilterDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2161,11 +3773,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The filter to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.CreateIpFilterDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.CreateIpFilterDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.CreateIpFilterDto"];
+          "application/json": components["schemas"]["CreateIpFilterDto"];
+          "text/json": components["schemas"]["CreateIpFilterDto"];
+          "application/*+json": components["schemas"]["CreateIpFilterDto"];
         };
       };
       responses: {
@@ -2175,9 +3787,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"];
+            "text/plain": components["schemas"]["IpFilterDto"];
+            "application/json": components["schemas"]["IpFilterDto"];
+            "text/json": components["schemas"]["IpFilterDto"];
           };
         };
         /** @description Bad Request */
@@ -2186,9 +3798,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Unauthorized */
@@ -2197,9 +3809,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -2208,12 +3820,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2245,18 +3857,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all enabled IP filters */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"][];
+            "text/plain": components["schemas"]["IpFilterDto"][];
+            "application/json": components["schemas"]["IpFilterDto"][];
+            "text/json": components["schemas"]["IpFilterDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2299,9 +3911,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"];
+            "text/plain": components["schemas"]["IpFilterDto"];
+            "application/json": components["schemas"]["IpFilterDto"];
+            "text/json": components["schemas"]["IpFilterDto"];
           };
         };
         /** @description Not Found */
@@ -2310,12 +3922,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2336,11 +3948,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated filter data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.UpdateIpFilterDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.UpdateIpFilterDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.UpdateIpFilterDto"];
+          "application/json": components["schemas"]["UpdateIpFilterDto"];
+          "text/json": components["schemas"]["UpdateIpFilterDto"];
+          "application/*+json": components["schemas"]["UpdateIpFilterDto"];
         };
       };
       responses: {
@@ -2357,9 +3969,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Unauthorized */
@@ -2368,9 +3980,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -2379,9 +3991,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -2390,12 +4002,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2431,9 +4043,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -2442,9 +4054,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -2453,12 +4065,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2489,18 +4101,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description The current IP filter settings */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto"];
+            "text/plain": components["schemas"]["IpFilterSettingsDto"];
+            "application/json": components["schemas"]["IpFilterSettingsDto"];
+            "text/json": components["schemas"]["IpFilterSettingsDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2518,11 +4130,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The new settings */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto"];
+          "application/json": components["schemas"]["IpFilterSettingsDto"];
+          "text/json": components["schemas"]["IpFilterSettingsDto"];
+          "application/*+json": components["schemas"]["IpFilterSettingsDto"];
         };
       };
       responses: {
@@ -2539,9 +4151,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Unauthorized */
@@ -2550,9 +4162,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -2561,12 +4173,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2608,9 +4220,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpCheckResult"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpCheckResult"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpCheckResult"];
+            "text/plain": components["schemas"]["IpCheckResult"];
+            "application/json": components["schemas"]["IpCheckResult"];
+            "text/json": components["schemas"]["IpCheckResult"];
           };
         };
         /** @description Bad Request */
@@ -2619,12 +4231,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2661,8 +4273,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Overall storage statistics. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OverallMediaStorageStats"];
+            "application/json": components["schemas"]["OverallMediaStorageStats"];
+            "text/json": components["schemas"]["OverallMediaStorageStats"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2698,8 +4321,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Storage statistics for the virtual key. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaStorageStats"];
+            "application/json": components["schemas"]["MediaStorageStats"];
+            "text/json": components["schemas"]["MediaStorageStats"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2732,8 +4366,25 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Dictionary of provider names to storage size. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": {
+              [key: string]: number;
+            };
+            "application/json": {
+              [key: string]: number;
+            };
+            "text/json": {
+              [key: string]: number;
+            };
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2766,8 +4417,25 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Dictionary of media types to storage size. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": {
+              [key: string]: number;
+            };
+            "application/json": {
+              [key: string]: number;
+            };
+            "text/json": {
+              [key: string]: number;
+            };
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2803,8 +4471,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of media records. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaRecord"][];
+            "application/json": components["schemas"]["MediaRecord"][];
+            "text/json": components["schemas"]["MediaRecord"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2842,6 +4521,28 @@ export interface paths {
       responses: {
         /** @description OK */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaRecord"][];
+            "application/json": components["schemas"]["MediaRecord"][];
+            "text/json": components["schemas"]["MediaRecord"][];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2885,6 +4586,28 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
+          content: {
+            "text/plain": components["schemas"]["MediaDeletionResponseDto"];
+            "application/json": components["schemas"]["MediaDeletionResponseDto"];
+            "text/json": components["schemas"]["MediaDeletionResponseDto"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
           content?: never;
         };
       };
@@ -2913,8 +4636,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Number of files cleaned up. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupResponseDto"];
+            "application/json": components["schemas"]["MediaCleanupResponseDto"];
+            "text/json": components["schemas"]["MediaCleanupResponseDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2947,8 +4681,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Number of files cleaned up. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupResponseDto"];
+            "application/json": components["schemas"]["MediaCleanupResponseDto"];
+            "text/json": components["schemas"]["MediaCleanupResponseDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -2980,16 +4725,245 @@ export interface paths {
         cookie?: never;
       };
       /** @description The pruning request with days to keep. */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.PruneMediaRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.PruneMediaRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.PruneMediaRequest"];
+          "application/json": components["schemas"]["PruneMediaRequest"];
+          "text/json": components["schemas"]["PruneMediaRequest"];
+          "application/*+json": components["schemas"]["PruneMediaRequest"];
         };
       };
       responses: {
         /** @description OK */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupResponseDto"];
+            "application/json": components["schemas"]["MediaCleanupResponseDto"];
+            "text/json": components["schemas"]["MediaCleanupResponseDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/media-cleanup/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the current status of the media cleanup service. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupStatusDto"];
+            "application/json": components["schemas"]["MediaCleanupStatusDto"];
+            "text/json": components["schemas"]["MediaCleanupStatusDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/media-cleanup/enabled": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets whether the media cleanup service is currently enabled. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupEnabledDto"];
+            "application/json": components["schemas"]["MediaCleanupEnabledDto"];
+            "text/json": components["schemas"]["MediaCleanupEnabledDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    /** Enables or disables the media cleanup service at runtime.
+     *     This setting persists across restarts via GlobalSettings. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
+          "text/json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
+          "application/*+json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupEnabledChangedDto"];
+            "application/json": components["schemas"]["MediaCleanupEnabledChangedDto"];
+            "text/json": components["schemas"]["MediaCleanupEnabledChangedDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/media-cleanup/simple-retention": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the simple retention override setting. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["SimpleRetentionResponse"];
+            "application/json": components["schemas"]["SimpleRetentionResponse"];
+            "text/json": components["schemas"]["SimpleRetentionResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    /** Sets or clears the simple retention override.
+     *     Pass null for RetentionDays to clear the override and use policy-based retention. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateSimpleRetentionRequest"];
+          "text/json": components["schemas"]["UpdateSimpleRetentionRequest"];
+          "application/*+json": components["schemas"]["UpdateSimpleRetentionRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["SimpleRetentionResponse"];
+            "application/json": components["schemas"]["SimpleRetentionResponse"];
+            "text/json": components["schemas"]["SimpleRetentionResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -3020,16 +4994,23 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all retention policies */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"][];
+            "text/plain": components["schemas"]["MediaRetentionPolicyDto"][];
+            "application/json": components["schemas"]["MediaRetentionPolicyDto"][];
+            "text/json": components["schemas"]["MediaRetentionPolicyDto"][];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -3043,11 +5024,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description Policy creation request */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateMediaRetentionPolicyRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateMediaRetentionPolicyRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateMediaRetentionPolicyRequest"];
+          "application/json": components["schemas"]["CreateMediaRetentionPolicyRequest"];
+          "text/json": components["schemas"]["CreateMediaRetentionPolicyRequest"];
+          "application/*+json": components["schemas"]["CreateMediaRetentionPolicyRequest"];
         };
       };
       responses: {
@@ -3057,9 +5038,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"];
+            "text/plain": components["schemas"]["MediaRetentionPolicyDto"];
+            "application/json": components["schemas"]["MediaRetentionPolicyDto"];
+            "text/json": components["schemas"]["MediaRetentionPolicyDto"];
           };
         };
         /** @description Bad Request */
@@ -3068,10 +5049,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -3107,9 +5095,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDetailDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDetailDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDetailDto"];
+            "text/plain": components["schemas"]["MediaRetentionPolicyDetailDto"];
+            "application/json": components["schemas"]["MediaRetentionPolicyDetailDto"];
+            "text/json": components["schemas"]["MediaRetentionPolicyDetailDto"];
           };
         };
         /** @description Not Found */
@@ -3118,10 +5106,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -3137,11 +5132,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description Policy update request */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateMediaRetentionPolicyRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateMediaRetentionPolicyRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateMediaRetentionPolicyRequest"];
+          "application/json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
+          "text/json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
+          "application/*+json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
         };
       };
       responses: {
@@ -3151,9 +5146,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"];
+            "text/plain": components["schemas"]["MediaRetentionPolicyDto"];
+            "application/json": components["schemas"]["MediaRetentionPolicyDto"];
+            "text/json": components["schemas"]["MediaRetentionPolicyDto"];
           };
         };
         /** @description Bad Request */
@@ -3162,9 +5157,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -3173,10 +5168,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -3207,9 +5209,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -3218,10 +5220,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -3267,10 +5276,73 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/media-retention/policies/{id}/set-default": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Sets a policy as the new default retention policy.
+     *     Only one policy can be the default at a time. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Policy ID to set as default */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -3311,9 +5383,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.CleanupResultDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CleanupResultDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CleanupResultDto"];
+            "text/plain": components["schemas"]["CleanupResultDto"];
+            "application/json": components["schemas"]["CleanupResultDto"];
+            "text/json": components["schemas"]["CleanupResultDto"];
           };
         };
         /** @description Not Found */
@@ -3322,10 +5394,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -3352,8 +5431,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Connection pool metrics. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["DatabasePoolMetricsDto"];
+            "application/json": components["schemas"]["DatabasePoolMetricsDto"];
+            "text/json": components["schemas"]["DatabasePoolMetricsDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -3386,8 +5476,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Comprehensive application metrics. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["AllMetricsDto"];
+            "application/json": components["schemas"]["AllMetricsDto"];
+            "text/json": components["schemas"]["AllMetricsDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -3410,28 +5511,41 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets all models with their capabilities */
+    /** Gets all models with their capabilities.
+     *     Supports optional server-side pagination, search, and filtering.
+     *     When page/pageSize are omitted, returns all models (backward compatible). */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Page number (1-based). Required together with pageSize for pagination. */
+          page?: number;
+          /** @description Items per page (max 100). Required together with page for pagination. */
+          pageSize?: number;
+          /** @description Optional search term for model name (case-insensitive partial match) */
+          search?: string;
+          /** @description Optional capability filter: chat, vision, image, video, embeddings */
+          capability?: string;
+          /** @description Optional filter: true = only models with identifiers, false = without */
+          hasProviders?: boolean;
+        };
         header?: never;
         path?: never;
         cookie?: never;
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all models, or paginated result when page/pageSize are provided */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
+            "text/plain": components["schemas"]["ModelDto"][];
+            "application/json": components["schemas"]["ModelDto"][];
+            "text/json": components["schemas"]["ModelDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3450,11 +5564,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The model to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelDto"];
+          "application/json": components["schemas"]["CreateModelDto"];
+          "text/json": components["schemas"]["CreateModelDto"];
+          "application/*+json": components["schemas"]["CreateModelDto"];
         };
       };
       responses: {
@@ -3464,9 +5578,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "text/plain": components["schemas"]["ModelDto"];
+            "application/json": components["schemas"]["ModelDto"];
+            "text/json": components["schemas"]["ModelDto"];
           };
         };
         /** @description Bad Request */
@@ -3475,9 +5589,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -3486,12 +5600,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3532,9 +5646,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "text/plain": components["schemas"]["ModelDto"];
+            "application/json": components["schemas"]["ModelDto"];
+            "text/json": components["schemas"]["ModelDto"];
           };
         };
         /** @description Not Found */
@@ -3543,12 +5657,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3569,11 +5683,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated model data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelDto"];
+          "application/json": components["schemas"]["UpdateModelDto"];
+          "text/json": components["schemas"]["UpdateModelDto"];
+          "application/*+json": components["schemas"]["UpdateModelDto"];
         };
       };
       responses: {
@@ -3583,9 +5697,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "text/plain": components["schemas"]["ModelDto"];
+            "application/json": components["schemas"]["ModelDto"];
+            "text/json": components["schemas"]["ModelDto"];
           };
         };
         /** @description Bad Request */
@@ -3594,9 +5708,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -3605,9 +5719,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -3616,12 +5730,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3657,9 +5771,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -3668,12 +5782,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3707,18 +5821,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of matching models */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
+            "text/plain": components["schemas"]["ModelDto"][];
+            "application/json": components["schemas"]["ModelDto"][];
+            "text/json": components["schemas"]["ModelDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3761,9 +5875,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto"][];
+            "text/plain": components["schemas"]["ModelWithProviderIdDto"][];
+            "application/json": components["schemas"]["ModelWithProviderIdDto"][];
+            "text/json": components["schemas"]["ModelWithProviderIdDto"][];
           };
         };
         /** @description Bad Request */
@@ -3772,12 +5886,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3831,12 +5945,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3858,11 +5972,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The identifier data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelIdentifierDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelIdentifierDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelIdentifierDto"];
+          "application/json": components["schemas"]["CreateModelIdentifierDto"];
+          "text/json": components["schemas"]["CreateModelIdentifierDto"];
+          "application/*+json": components["schemas"]["CreateModelIdentifierDto"];
         };
       };
       responses: {
@@ -3883,9 +5997,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -3894,9 +6008,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -3905,13 +6019,80 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Model/{id}/available-providers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets model associations with available providers
+     *     Returns only associations where matching providers are configured */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The model ID */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown[];
+            "application/json": unknown[];
+            "text/json": unknown[];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3940,11 +6121,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated identifier data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelIdentifierDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelIdentifierDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelIdentifierDto"];
+          "application/json": components["schemas"]["UpdateModelIdentifierDto"];
+          "text/json": components["schemas"]["UpdateModelIdentifierDto"];
+          "application/*+json": components["schemas"]["UpdateModelIdentifierDto"];
         };
       };
       responses: {
@@ -3961,9 +6142,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -3972,9 +6153,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -3983,10 +6164,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -4019,10 +6207,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -4057,9 +6252,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
+            "text/plain": components["schemas"]["ModelProviderMappingDto"][];
+            "application/json": components["schemas"]["ModelProviderMappingDto"][];
+            "text/json": components["schemas"]["ModelProviderMappingDto"][];
           };
         };
         /** @description Not Found */
@@ -4068,12 +6263,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4095,11 +6290,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The provider mapping to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "application/json": components["schemas"]["ModelProviderMappingDto"];
+          "text/json": components["schemas"]["ModelProviderMappingDto"];
+          "application/*+json": components["schemas"]["ModelProviderMappingDto"];
         };
       };
       responses: {
@@ -4109,9 +6304,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "text/plain": components["schemas"]["ModelProviderMappingDto"];
+            "application/json": components["schemas"]["ModelProviderMappingDto"];
+            "text/json": components["schemas"]["ModelProviderMappingDto"];
           };
         };
         /** @description Bad Request */
@@ -4120,9 +6315,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -4131,9 +6326,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -4142,12 +6337,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4184,11 +6379,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated provider mapping data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "application/json": components["schemas"]["ModelProviderMappingDto"];
+          "text/json": components["schemas"]["ModelProviderMappingDto"];
+          "application/*+json": components["schemas"]["ModelProviderMappingDto"];
         };
       };
       responses: {
@@ -4205,9 +6400,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -4216,12 +6411,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4259,12 +6454,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4273,345 +6468,6 @@ export interface paths {
         };
       };
     };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelAuthor": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all model authors */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"][];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    /** Creates a new model author */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The model author to create */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto"];
-        };
-      };
-      responses: {
-        /** @description Created */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Conflict */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelAuthor/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets a specific model author by ID */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The author ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    /** Updates an existing model author */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The author ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      /** @description The updated model author data */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto"];
-        };
-      };
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Conflict */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    post?: never;
-    /** Deletes a model author */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The author ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Conflict */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelAuthor/{id}/series": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets series by author */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The author ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -4624,7 +6480,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets all model costs with optional pagination */
+    /** Gets all model costs with optional pagination and filtering */
     get: {
       parameters: {
         query?: {
@@ -4632,6 +6488,8 @@ export interface paths {
           page?: number;
           /** @description Number of items per page */
           pageSize?: number;
+          /** @description Optional filter by model type (chat, image, video, embedding, audio) */
+          modelType?: string;
         };
         header?: never;
         path?: never;
@@ -4639,18 +6497,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all model costs or paginated response */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"][];
+            "text/plain": components["schemas"]["ModelCostDto"][];
+            "application/json": components["schemas"]["ModelCostDto"][];
+            "text/json": components["schemas"]["ModelCostDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4669,11 +6527,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The model cost to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateModelCostDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateModelCostDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateModelCostDto"];
+          "application/json": components["schemas"]["CreateModelCostDto"];
+          "text/json": components["schemas"]["CreateModelCostDto"];
+          "application/*+json": components["schemas"]["CreateModelCostDto"];
         };
       };
       responses: {
@@ -4683,9 +6541,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
+            "text/plain": components["schemas"]["ModelCostDto"];
+            "application/json": components["schemas"]["ModelCostDto"];
+            "text/json": components["schemas"]["ModelCostDto"];
           };
         };
         /** @description Bad Request */
@@ -4694,12 +6552,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4740,9 +6598,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
+            "text/plain": components["schemas"]["ModelCostDto"];
+            "application/json": components["schemas"]["ModelCostDto"];
+            "text/json": components["schemas"]["ModelCostDto"];
           };
         };
         /** @description Not Found */
@@ -4751,12 +6609,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4777,11 +6635,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated model cost data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateModelCostDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateModelCostDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateModelCostDto"];
+          "application/json": components["schemas"]["UpdateModelCostDto"];
+          "text/json": components["schemas"]["UpdateModelCostDto"];
+          "application/*+json": components["schemas"]["UpdateModelCostDto"];
         };
       };
       responses: {
@@ -4798,9 +6656,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -4809,12 +6667,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4850,12 +6708,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4889,18 +6747,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of model costs for the specified provider */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"][];
+            "text/plain": components["schemas"]["ModelCostDto"][];
+            "application/json": components["schemas"]["ModelCostDto"][];
+            "text/json": components["schemas"]["ModelCostDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4943,9 +6801,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostDto"];
+            "text/plain": components["schemas"]["ModelCostDto"];
+            "application/json": components["schemas"]["ModelCostDto"];
+            "text/json": components["schemas"]["ModelCostDto"];
           };
         };
         /** @description Not Found */
@@ -4954,12 +6812,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5004,9 +6862,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostOverviewDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostOverviewDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelCostOverviewDto"][];
+            "text/plain": components["schemas"]["ModelCostOverviewDto"][];
+            "application/json": components["schemas"]["ModelCostOverviewDto"][];
+            "text/json": components["schemas"]["ModelCostOverviewDto"][];
           };
         };
         /** @description Bad Request */
@@ -5015,12 +6873,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5055,11 +6913,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The list of model costs to import */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateModelCostDto"][];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateModelCostDto"][];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateModelCostDto"][];
+          "application/json": components["schemas"]["CreateModelCostDto"][];
+          "text/json": components["schemas"]["CreateModelCostDto"][];
+          "application/*+json": components["schemas"]["CreateModelCostDto"][];
         };
       };
       responses: {
@@ -5080,12 +6938,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5120,18 +6978,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description CSV file containing model costs */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": string;
-            "application/json": string;
-            "text/json": string;
+            "text/plain": components["schemas"]["FileResult"];
+            "application/json": components["schemas"]["FileResult"];
+            "text/json": components["schemas"]["FileResult"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5168,18 +7026,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description JSON file containing model costs */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": string;
-            "application/json": string;
-            "text/json": string;
+            "text/plain": components["schemas"]["FileResult"];
+            "application/json": components["schemas"]["FileResult"];
+            "text/json": components["schemas"]["FileResult"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5213,30 +7071,27 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      /** @description CSV file containing model costs */
+      requestBody: {
         content: {
           "multipart/form-data": {
-            /**
-             * Format: binary
-             * @description CSV file containing model costs
-             */
-            file?: string;
+            file?: components["schemas"]["IFormFile"];
           };
         };
       };
       responses: {
-        /** @description Bad Request */
+        /** @description Import result with statistics */
         400: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5268,30 +7123,167 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      /** @description JSON file containing model costs */
+      requestBody: {
         content: {
           "multipart/form-data": {
-            /**
-             * Format: binary
-             * @description JSON file containing model costs
-             */
-            file?: string;
+            file?: components["schemas"]["IFormFile"];
           };
         };
       };
       responses: {
+        /** @description Import result with statistics */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelCosts/{id}/validate-pricing-rules": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Validates a pricing rules configuration JSON */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the model cost (used to retrieve associated model's parameter schema) */
+          id: number;
+        };
+        cookie?: never;
+      };
+      /** @description The pricing configuration to validate */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["ValidatePricingRulesRequest"];
+          "text/json": components["schemas"]["ValidatePricingRulesRequest"];
+          "application/*+json": components["schemas"]["ValidatePricingRulesRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ValidationResult"];
+            "application/json": components["schemas"]["ValidationResult"];
+            "text/json": components["schemas"]["ValidationResult"];
+          };
+        };
         /** @description Bad Request */
         400: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelCosts/validate-pricing-rules": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Validates a pricing rules configuration JSON without a model cost context */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The pricing configuration to validate */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["ValidatePricingRulesRequest"];
+          "text/json": components["schemas"]["ValidatePricingRulesRequest"];
+          "application/*+json": components["schemas"]["ValidatePricingRulesRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ValidationResult"];
+            "application/json": components["schemas"]["ValidationResult"];
+            "text/json": components["schemas"]["ValidationResult"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5323,18 +7315,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description A list of all model provider mappings */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
+            "text/plain": components["schemas"]["ModelProviderMappingDto"][];
+            "application/json": components["schemas"]["ModelProviderMappingDto"][];
+            "text/json": components["schemas"]["ModelProviderMappingDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5353,11 +7345,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The mapping to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "application/json": components["schemas"]["ModelProviderMappingDto"];
+          "text/json": components["schemas"]["ModelProviderMappingDto"];
+          "application/*+json": components["schemas"]["ModelProviderMappingDto"];
         };
       };
       responses: {
@@ -5367,9 +7359,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "text/plain": components["schemas"]["ModelProviderMappingDto"];
+            "application/json": components["schemas"]["ModelProviderMappingDto"];
+            "text/json": components["schemas"]["ModelProviderMappingDto"];
           };
         };
         /** @description Bad Request */
@@ -5378,9 +7370,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -5389,12 +7381,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5435,9 +7427,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "text/plain": components["schemas"]["ModelProviderMappingDto"];
+            "application/json": components["schemas"]["ModelProviderMappingDto"];
+            "text/json": components["schemas"]["ModelProviderMappingDto"];
           };
         };
         /** @description Not Found */
@@ -5446,12 +7438,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5472,11 +7464,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated mapping data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "application/json": components["schemas"]["ModelProviderMappingDto"];
+          "text/json": components["schemas"]["ModelProviderMappingDto"];
+          "application/*+json": components["schemas"]["ModelProviderMappingDto"];
         };
       };
       responses: {
@@ -5493,9 +7485,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -5504,12 +7496,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5545,12 +7537,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5581,18 +7573,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of providers with IDs and names */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.Provider"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.Provider"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.Provider"][];
+            "text/plain": components["schemas"]["Provider"][];
+            "application/json": components["schemas"]["Provider"][];
+            "text/json": components["schemas"]["Provider"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5627,11 +7619,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The mappings to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
+          "application/json": components["schemas"]["ModelProviderMappingDto"][];
+          "text/json": components["schemas"]["ModelProviderMappingDto"][];
+          "application/*+json": components["schemas"]["ModelProviderMappingDto"][];
         };
       };
       responses: {
@@ -5641,9 +7633,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.BulkMappingResult"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.BulkMappingResult"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.BulkMappingResult"];
+            "text/plain": components["schemas"]["BulkMappingResult"];
+            "application/json": components["schemas"]["BulkMappingResult"];
+            "text/json": components["schemas"]["BulkMappingResult"];
           };
         };
         /** @description Bad Request */
@@ -5652,12 +7644,201 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelProviderMapping/bulk/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Deletes multiple model provider mappings in a single operation */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The IDs of the mappings to delete */
+      requestBody: {
+        content: {
+          "application/json": number[];
+          "text/json": number[];
+          "application/*+json": number[];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BulkDeleteResult"];
+            "application/json": components["schemas"]["BulkDeleteResult"];
+            "text/json": components["schemas"]["BulkDeleteResult"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelProviderMapping/bulk/enable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Enables multiple model provider mappings in a single operation */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The IDs of the mappings to enable */
+      requestBody: {
+        content: {
+          "application/json": number[];
+          "text/json": number[];
+          "application/*+json": number[];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BulkUpdateResult"];
+            "application/json": components["schemas"]["BulkUpdateResult"];
+            "text/json": components["schemas"]["BulkUpdateResult"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelProviderMapping/bulk/disable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Disables multiple model provider mappings in a single operation */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The IDs of the mappings to disable */
+      requestBody: {
+        content: {
+          "application/json": number[];
+          "text/json": number[];
+          "application/*+json": number[];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BulkUpdateResult"];
+            "application/json": components["schemas"]["BulkUpdateResult"];
+            "text/json": components["schemas"]["BulkUpdateResult"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5689,18 +7870,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all model series */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"][];
+            "text/plain": components["schemas"]["ModelSeriesDto"][];
+            "application/json": components["schemas"]["ModelSeriesDto"][];
+            "text/json": components["schemas"]["ModelSeriesDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5719,11 +7900,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The model series to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto"];
+          "application/json": components["schemas"]["CreateModelSeriesDto"];
+          "text/json": components["schemas"]["CreateModelSeriesDto"];
+          "application/*+json": components["schemas"]["CreateModelSeriesDto"];
         };
       };
       responses: {
@@ -5733,9 +7914,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+            "text/plain": components["schemas"]["ModelSeriesDto"];
+            "application/json": components["schemas"]["ModelSeriesDto"];
+            "text/json": components["schemas"]["ModelSeriesDto"];
           };
         };
         /** @description Bad Request */
@@ -5744,9 +7925,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -5755,12 +7936,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5801,9 +7982,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+            "text/plain": components["schemas"]["ModelSeriesDto"];
+            "application/json": components["schemas"]["ModelSeriesDto"];
+            "text/json": components["schemas"]["ModelSeriesDto"];
           };
         };
         /** @description Not Found */
@@ -5812,12 +7993,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5838,11 +8019,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated model series data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto"];
+          "application/json": components["schemas"]["UpdateModelSeriesDto"];
+          "text/json": components["schemas"]["UpdateModelSeriesDto"];
+          "application/*+json": components["schemas"]["UpdateModelSeriesDto"];
         };
       };
       responses: {
@@ -5859,9 +8040,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -5870,9 +8051,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -5881,12 +8062,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5922,9 +8103,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Conflict */
@@ -5933,12 +8114,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5978,9 +8159,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto"][];
+            "text/plain": components["schemas"]["SeriesSimpleModelDto"][];
+            "application/json": components["schemas"]["SeriesSimpleModelDto"][];
+            "text/json": components["schemas"]["SeriesSimpleModelDto"][];
           };
         };
         /** @description Not Found */
@@ -5989,12 +8170,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6028,18 +8209,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all notifications */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"][];
+            "text/plain": components["schemas"]["NotificationDto"][];
+            "application/json": components["schemas"]["NotificationDto"][];
+            "text/json": components["schemas"]["NotificationDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6058,11 +8239,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The notification to create */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateNotificationDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateNotificationDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateNotificationDto"];
+          "application/json": components["schemas"]["CreateNotificationDto"];
+          "text/json": components["schemas"]["CreateNotificationDto"];
+          "application/*+json": components["schemas"]["CreateNotificationDto"];
         };
       };
       responses: {
@@ -6072,9 +8253,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"];
+            "text/plain": components["schemas"]["NotificationDto"];
+            "application/json": components["schemas"]["NotificationDto"];
+            "text/json": components["schemas"]["NotificationDto"];
           };
         };
         /** @description Bad Request */
@@ -6083,12 +8264,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6120,18 +8301,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of unread notifications */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"][];
+            "text/plain": components["schemas"]["NotificationDto"][];
+            "application/json": components["schemas"]["NotificationDto"][];
+            "text/json": components["schemas"]["NotificationDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6174,9 +8355,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.NotificationDto"];
+            "text/plain": components["schemas"]["NotificationDto"];
+            "application/json": components["schemas"]["NotificationDto"];
+            "text/json": components["schemas"]["NotificationDto"];
           };
         };
         /** @description Not Found */
@@ -6185,12 +8366,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6211,11 +8392,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated notification data */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateNotificationDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateNotificationDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateNotificationDto"];
+          "application/json": components["schemas"]["UpdateNotificationDto"];
+          "text/json": components["schemas"]["UpdateNotificationDto"];
+          "application/*+json": components["schemas"]["UpdateNotificationDto"];
         };
       };
       responses: {
@@ -6232,9 +8413,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -6243,12 +8424,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6284,12 +8465,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6338,12 +8519,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6377,7 +8558,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description The number of notifications marked as read */
         200: {
           headers: {
             [name: string]: unknown;
@@ -6388,7 +8569,7 @@ export interface paths {
             "text/json": number;
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6397,6 +8578,542 @@ export interface paths {
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/audit/query": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Query pricing audit events */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["PricingAuditQueryRequest"];
+          "text/json": components["schemas"]["PricingAuditQueryRequest"];
+          "application/*+json": components["schemas"]["PricingAuditQueryRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingAuditQueryResponse"];
+            "application/json": components["schemas"]["PricingAuditQueryResponse"];
+            "text/json": components["schemas"]["PricingAuditQueryResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/audit/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get pricing audit summary */
+    get: {
+      parameters: {
+        query?: {
+          from?: string;
+          to?: string;
+          virtualKeyId?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingAuditSummary"];
+            "application/json": components["schemas"]["PricingAuditSummary"];
+            "text/json": components["schemas"]["PricingAuditSummary"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/audit/request/{requestId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get pricing audit events by request ID */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          requestId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingAuditEventDto"][];
+            "application/json": components["schemas"]["PricingAuditEventDto"][];
+            "text/json": components["schemas"]["PricingAuditEventDto"][];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/types": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get available pricing types */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of pricing types with descriptions */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingTypeInfo"][];
+            "application/json": components["schemas"]["PricingTypeInfo"][];
+            "text/json": components["schemas"]["PricingTypeInfo"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/operators": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get available condition operators */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of operators with descriptions */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OperatorInfo"][];
+            "application/json": components["schemas"]["OperatorInfo"][];
+            "text/json": components["schemas"]["OperatorInfo"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/template": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get pricing configuration template */
+    get: {
+      parameters: {
+        query?: {
+          /** @description The pricing type to get template for */
+          pricingType?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description JSON template for the pricing configuration */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/validate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Validate pricing configuration JSON */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The pricing configuration to validate */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["PricingValidationRequest"];
+          "text/json": components["schemas"]["PricingValidationRequest"];
+          "application/*+json": components["schemas"]["PricingValidationRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingValidationResponse"];
+            "application/json": components["schemas"]["PricingValidationResponse"];
+            "text/json": components["schemas"]["PricingValidationResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/simulate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Simulate pricing calculation with test parameters */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The simulation request with configuration and test parameters */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["PricingSimulationRequest"];
+          "text/json": components["schemas"]["PricingSimulationRequest"];
+          "application/*+json": components["schemas"]["PricingSimulationRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingSimulationResponse"];
+            "application/json": components["schemas"]["PricingSimulationResponse"];
+            "text/json": components["schemas"]["PricingSimulationResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prompt-caching/config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the current prompt caching configuration. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description The current prompt caching configuration, or defaults if not set. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PromptCachingConfigDto"];
+            "application/json": components["schemas"]["PromptCachingConfigDto"];
+            "text/json": components["schemas"]["PromptCachingConfigDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    /** Updates the prompt caching configuration. */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The new prompt caching configuration. */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdatePromptCachingConfigDto"];
+          "text/json": components["schemas"]["UpdatePromptCachingConfigDto"];
+          "application/*+json": components["schemas"]["UpdatePromptCachingConfigDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PromptCachingConfigDto"];
+            "application/json": components["schemas"]["PromptCachingConfigDto"];
+            "text/json": components["schemas"]["PromptCachingConfigDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ErrorResponseDto"];
+            "application/json": components["schemas"]["ErrorResponseDto"];
+            "text/json": components["schemas"]["ErrorResponseDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -6440,12 +9157,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6467,11 +9184,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The request containing key credential details */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateKeyRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateKeyRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateKeyRequest"];
+          "application/json": components["schemas"]["CreateKeyRequest"];
+          "text/json": components["schemas"]["CreateKeyRequest"];
+          "application/*+json": components["schemas"]["CreateKeyRequest"];
         };
       };
       responses: {
@@ -6492,9 +9209,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -6503,12 +9220,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6562,12 +9279,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6590,11 +9307,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The update request containing new key credential values */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateKeyRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateKeyRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateKeyRequest"];
+          "application/json": components["schemas"]["UpdateKeyRequest"];
+          "text/json": components["schemas"]["UpdateKeyRequest"];
+          "application/*+json": components["schemas"]["UpdateKeyRequest"];
         };
       };
       responses: {
@@ -6611,9 +9328,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -6622,12 +9339,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6665,12 +9382,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6721,9 +9438,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -6732,12 +9449,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6759,28 +9476,33 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets all provider configurations */
+    /** Gets all provider configurations with pagination */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Page number (1-based, default: 1) */
+          page?: number;
+          /** @description Number of items per page (default: 50, max: 100) */
+          pageSize?: number;
+        };
         header?: never;
         path?: never;
         cookie?: never;
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Paginated list of providers */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": unknown[];
-            "application/json": unknown[];
-            "text/json": unknown[];
+            "text/plain": components["schemas"]["PagedResultOfObject"];
+            "application/json": components["schemas"]["PagedResultOfObject"];
+            "text/json": components["schemas"]["PagedResultOfObject"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6798,11 +9520,11 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateProviderRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateProviderRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateProviderRequest"];
+          "application/json": components["schemas"]["CreateProviderRequest"];
+          "text/json": components["schemas"]["CreateProviderRequest"];
+          "application/*+json": components["schemas"]["CreateProviderRequest"];
         };
       };
       responses: {
@@ -6823,12 +9545,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6880,12 +9602,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6906,11 +9628,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The update request containing new provider values */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateProviderRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateProviderRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateProviderRequest"];
+          "application/json": components["schemas"]["UpdateProviderRequest"];
+          "text/json": components["schemas"]["UpdateProviderRequest"];
+          "application/*+json": components["schemas"]["UpdateProviderRequest"];
         };
       };
       responses: {
@@ -6927,9 +9649,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -6938,12 +9660,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6979,12 +9701,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7026,9 +9748,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": unknown;
-            "application/json": unknown;
-            "text/json": unknown;
+            "text/plain": components["schemas"]["StandardApiKeyTestResponse"];
+            "application/json": components["schemas"]["StandardApiKeyTestResponse"];
+            "text/json": components["schemas"]["StandardApiKeyTestResponse"];
           };
         };
         /** @description Not Found */
@@ -7037,12 +9759,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7074,11 +9796,11 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.TestProviderRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.TestProviderRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.TestProviderRequest"];
+          "application/json": components["schemas"]["TestProviderRequest"];
+          "text/json": components["schemas"]["TestProviderRequest"];
+          "application/*+json": components["schemas"]["TestProviderRequest"];
         };
       };
       responses: {
@@ -7088,9 +9810,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": unknown;
-            "application/json": unknown;
-            "text/json": unknown;
+            "text/plain": components["schemas"]["StandardApiKeyTestResponse"];
+            "application/json": components["schemas"]["StandardApiKeyTestResponse"];
+            "text/json": components["schemas"]["StandardApiKeyTestResponse"];
           };
         };
         /** @description Bad Request */
@@ -7099,12 +9821,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7149,9 +9871,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": unknown;
-            "application/json": unknown;
-            "text/json": unknown;
+            "text/plain": components["schemas"]["StandardApiKeyTestResponse"];
+            "application/json": components["schemas"]["StandardApiKeyTestResponse"];
+            "text/json": components["schemas"]["StandardApiKeyTestResponse"];
           };
         };
         /** @description Not Found */
@@ -7160,12 +9882,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7204,16 +9926,23 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of recent provider errors */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorDto"][];
+            "text/plain": components["schemas"]["ProviderErrorDto"][];
+            "application/json": components["schemas"]["ProviderErrorDto"][];
+            "text/json": components["schemas"]["ProviderErrorDto"][];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7242,16 +9971,23 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of provider error summaries */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto"][];
+            "text/plain": components["schemas"]["ProviderErrorSummaryDto"][];
+            "application/json": components["schemas"]["ProviderErrorSummaryDto"][];
+            "text/json": components["schemas"]["ProviderErrorSummaryDto"][];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7289,10 +10025,28 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.KeyErrorDetailsDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.KeyErrorDetailsDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.KeyErrorDetailsDto"];
+            "text/plain": components["schemas"]["KeyErrorDetailsDto"];
+            "application/json": components["schemas"]["KeyErrorDetailsDto"];
+            "text/json": components["schemas"]["KeyErrorDetailsDto"];
           };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7325,16 +10079,38 @@ export interface paths {
         cookie?: never;
       };
       /** @description Clear errors request */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.ClearErrorsRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.ClearErrorsRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.DTOs.ClearErrorsRequest"];
+          "application/json": components["schemas"]["ClearErrorsRequest"];
+          "text/json": components["schemas"]["ClearErrorsRequest"];
+          "application/*+json": components["schemas"]["ClearErrorsRequest"];
         };
       };
       responses: {
         /** @description OK */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ClearKeyErrorsResponseDto"];
+            "application/json": components["schemas"]["ClearKeyErrorsResponseDto"];
+            "text/json": components["schemas"]["ClearKeyErrorsResponseDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -7368,16 +10144,23 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Error statistics */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.ErrorStatisticsDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.ErrorStatisticsDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.ErrorStatisticsDto"];
+            "text/plain": components["schemas"]["ErrorStatisticsDto"];
+            "application/json": components["schemas"]["ErrorStatisticsDto"];
+            "text/json": components["schemas"]["ErrorStatisticsDto"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7412,7 +10195,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Dictionary of key ID to error count */
         200: {
           headers: {
             [name: string]: unknown;
@@ -7428,6 +10211,13 @@ export interface paths {
               [key: string]: number;
             };
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7460,7 +10250,7 @@ export interface paths {
         cookie?: never;
       };
       /** @description Reason for disabling */
-      requestBody?: {
+      requestBody: {
         content: {
           "application/json": string;
           "text/json": string;
@@ -7473,10 +10263,475 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
+          content: {
+            "text/plain": components["schemas"]["DisableKeyResponseDto"];
+            "application/json": components["schemas"]["DisableKeyResponseDto"];
+            "text/json": components["schemas"]["DisableKeyResponseDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
           content?: never;
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/provider-tools": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets all provider tools. */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Optional provider type filter */
+          provider?: components["schemas"]["ProviderType"];
+          /** @description Optional active status filter */
+          isActive?: boolean;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of provider tools */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProviderToolDto"][];
+            "application/json": components["schemas"]["ProviderToolDto"][];
+            "text/json": components["schemas"]["ProviderToolDto"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    /** Creates a new provider tool. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description Provider tool creation data */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CreateProviderToolDto"];
+          "text/json": components["schemas"]["CreateProviderToolDto"];
+          "application/*+json": components["schemas"]["CreateProviderToolDto"];
+        };
+      };
+      responses: {
+        /** @description Created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProviderToolDto"];
+            "application/json": components["schemas"]["ProviderToolDto"];
+            "text/json": components["schemas"]["ProviderToolDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/provider-tools/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets a specific provider tool by ID. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Tool ID */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProviderToolDto"];
+            "application/json": components["schemas"]["ProviderToolDto"];
+            "text/json": components["schemas"]["ProviderToolDto"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    /** Updates an existing provider tool. */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Tool ID */
+          id: number;
+        };
+        cookie?: never;
+      };
+      /** @description Updated tool data */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateProviderToolDto"];
+          "text/json": components["schemas"]["UpdateProviderToolDto"];
+          "application/*+json": components["schemas"]["UpdateProviderToolDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProviderToolDto"];
+            "application/json": components["schemas"]["ProviderToolDto"];
+            "text/json": components["schemas"]["ProviderToolDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    /** Deletes a provider tool. */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Tool ID */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/provider-tools/providers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets available provider types that support tools. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of provider types with tool support */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ToolProviderDto"][];
+            "application/json": components["schemas"]["ToolProviderDto"][];
+            "text/json": components["schemas"]["ToolProviderDto"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/provider-tools/billing-units": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets available billing units. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of billing unit options */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": string[];
+            "application/json": string[];
+            "text/json": string[];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/provider-tools/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Bulk import provider tools from a JSON array. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description Array of provider tools to import */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CreateProviderToolDto"][];
+          "text/json": components["schemas"]["CreateProviderToolDto"][];
+          "application/*+json": components["schemas"]["CreateProviderToolDto"][];
+        };
+      };
+      responses: {
+        /** @description Import results */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProviderToolImportResultDto"];
+            "application/json": components["schemas"]["ProviderToolImportResultDto"];
+            "text/json": components["schemas"]["ProviderToolImportResultDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/provider-tools/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Exports all provider tools as JSON. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description JSON array of all provider tools */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProviderToolDto"][];
+            "application/json": components["schemas"]["ProviderToolDto"][];
+            "text/json": components["schemas"]["ProviderToolDto"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -7503,8 +10758,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Security events data. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["SecurityEventsResponse"];
+            "application/json": components["schemas"]["SecurityEventsResponse"];
+            "text/json": components["schemas"]["SecurityEventsResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -7537,8 +10803,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Threat analytics information. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ThreatAnalyticsResponse"];
+            "application/json": components["schemas"]["ThreatAnalyticsResponse"];
+            "text/json": components["schemas"]["ThreatAnalyticsResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -7571,8 +10848,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Compliance information. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ComplianceMetricsResponse"];
+            "application/json": components["schemas"]["ComplianceMetricsResponse"];
+            "text/json": components["schemas"]["ComplianceMetricsResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -7605,18 +10893,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description System information details */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"];
+            "text/plain": components["schemas"]["SystemInfoDto"];
+            "application/json": components["schemas"]["SystemInfoDto"];
+            "text/json": components["schemas"]["SystemInfoDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7650,18 +10938,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Health status information */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"];
+            "text/plain": components["schemas"]["HealthStatusDto"];
+            "application/json": components["schemas"]["HealthStatusDto"];
+            "text/json": components["schemas"]["HealthStatusDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7672,6 +10960,140 @@ export interface paths {
     };
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/SystemInfo/cache/invalidate-discovery": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Invalidates all discovery cache entries by publishing an event to all Gateway API instances */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success response with cache invalidation details */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/SystemInfo/cache/function-discovery/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets function discovery cache statistics */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/SystemInfo/cache/invalidate-function-discovery": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Invalidates all function discovery cache entries by publishing an event to all Gateway API instances */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success response with cache invalidation details */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -7705,8 +11127,19 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description The number of tasks cleaned up. */
         200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["TaskCleanupResponseDto"];
+            "application/json": components["schemas"]["TaskCleanupResponseDto"];
+            "text/json": components["schemas"]["TaskCleanupResponseDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -7727,10 +11160,15 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get all virtual key groups */
+    /** Get all virtual key groups with pagination */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Page number (1-based, default: 1) */
+          page?: number;
+          /** @description Number of items per page (default: 50, max: 100) */
+          pageSize?: number;
+        };
         header?: never;
         path?: never;
         cookie?: never;
@@ -7743,10 +11181,17 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"][];
+            "text/plain": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
+            "application/json": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
+            "text/json": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7759,24 +11204,31 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"];
+          "application/json": components["schemas"]["CreateVirtualKeyGroupRequestDto"];
+          "text/json": components["schemas"]["CreateVirtualKeyGroupRequestDto"];
+          "application/*+json": components["schemas"]["CreateVirtualKeyGroupRequestDto"];
         };
       };
       responses: {
-        /** @description OK */
-        200: {
+        /** @description Created */
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "text/plain": components["schemas"]["VirtualKeyGroupDto"];
+            "application/json": components["schemas"]["VirtualKeyGroupDto"];
+            "text/json": components["schemas"]["VirtualKeyGroupDto"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7811,10 +11263,28 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "text/plain": components["schemas"]["VirtualKeyGroupDto"];
+            "application/json": components["schemas"]["VirtualKeyGroupDto"];
+            "text/json": components["schemas"]["VirtualKeyGroupDto"];
           };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7828,16 +11298,34 @@ export interface paths {
         };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"];
+          "application/json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
+          "text/json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
+          "application/*+json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
         };
       };
       responses: {
-        /** @description OK */
-        200: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -7858,8 +11346,37 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
-        200: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
@@ -7891,11 +11408,11 @@ export interface paths {
         };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"];
+          "application/json": components["schemas"]["AdjustBalanceDto"];
+          "text/json": components["schemas"]["AdjustBalanceDto"];
+          "application/*+json": components["schemas"]["AdjustBalanceDto"];
         };
       };
       responses: {
@@ -7905,10 +11422,39 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "text/plain": components["schemas"]["VirtualKeyGroupDto"];
+            "application/json": components["schemas"]["VirtualKeyGroupDto"];
+            "text/json": components["schemas"]["VirtualKeyGroupDto"];
           };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -7946,9 +11492,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/plain": components["schemas"]["PagedResultOfVirtualKeyGroupTransactionDto"];
+            "application/json": components["schemas"]["PagedResultOfVirtualKeyGroupTransactionDto"];
+            "text/json": components["schemas"]["PagedResultOfVirtualKeyGroupTransactionDto"];
           };
         };
         /** @description Not Found */
@@ -7957,12 +11503,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8004,15 +11550,110 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
+            "text/plain": components["schemas"]["VirtualKeyDto"][];
+            "application/json": components["schemas"]["VirtualKeyDto"][];
+            "text/json": components["schemas"]["VirtualKeyDto"][];
           };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/VirtualKeyGroups/{id}/refund": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Process a refund for a virtual key group */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The virtual key group ID */
+          id: number;
+        };
+        cookie?: never;
+      };
+      /** @description The refund request details */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["ProcessRefundRequestDto"];
+          "text/json": components["schemas"]["ProcessRefundRequestDto"];
+          "application/*+json": components["schemas"]["ProcessRefundRequestDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["RefundResultDto"];
+            "application/json": components["schemas"]["RefundResultDto"];
+            "text/json": components["schemas"]["RefundResultDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -8039,18 +11680,18 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all virtual keys */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
+            "text/plain": components["schemas"]["VirtualKeyDto"][];
+            "application/json": components["schemas"]["VirtualKeyDto"][];
+            "text/json": components["schemas"]["VirtualKeyDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8069,11 +11710,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description Details for the key to be created */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto"];
+          "application/json": components["schemas"]["CreateVirtualKeyRequestDto"];
+          "text/json": components["schemas"]["CreateVirtualKeyRequestDto"];
+          "application/*+json": components["schemas"]["CreateVirtualKeyRequestDto"];
         };
       };
       responses: {
@@ -8083,9 +11724,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyResponseDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyResponseDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyResponseDto"];
+            "text/plain": components["schemas"]["CreateVirtualKeyResponseDto"];
+            "application/json": components["schemas"]["CreateVirtualKeyResponseDto"];
+            "text/json": components["schemas"]["CreateVirtualKeyResponseDto"];
           };
         };
         /** @description Bad Request */
@@ -8094,9 +11735,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Unauthorized */
@@ -8105,9 +11746,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -8116,12 +11757,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8157,11 +11798,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The updated key details */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyRequestDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyRequestDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyRequestDto"];
+          "application/json": components["schemas"]["UpdateVirtualKeyRequestDto"];
+          "text/json": components["schemas"]["UpdateVirtualKeyRequestDto"];
+          "application/*+json": components["schemas"]["UpdateVirtualKeyRequestDto"];
         };
       };
       responses: {
@@ -8178,9 +11819,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Unauthorized */
@@ -8189,9 +11830,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -8200,9 +11841,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -8211,12 +11852,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8252,9 +11893,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -8263,9 +11904,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -8274,12 +11915,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8311,11 +11952,11 @@ export interface paths {
         cookie?: never;
       };
       /** @description The validation request containing the key and optional model */
-      requestBody?: {
+      requestBody: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.ValidateVirtualKeyRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.ValidateVirtualKeyRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.ValidateVirtualKeyRequest"];
+          "application/json": components["schemas"]["ValidateVirtualKeyRequest"];
+          "text/json": components["schemas"]["ValidateVirtualKeyRequest"];
+          "application/*+json": components["schemas"]["ValidateVirtualKeyRequest"];
         };
       };
       responses: {
@@ -8325,9 +11966,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationResult"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationResult"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationResult"];
+            "text/plain": components["schemas"]["VirtualKeyValidationResult"];
+            "application/json": components["schemas"]["VirtualKeyValidationResult"];
+            "text/json": components["schemas"]["VirtualKeyValidationResult"];
           };
         };
         /** @description Bad Request */
@@ -8336,12 +11977,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8382,9 +12023,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationInfoDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationInfoDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationInfoDto"];
+            "text/plain": components["schemas"]["VirtualKeyValidationInfoDto"];
+            "application/json": components["schemas"]["VirtualKeyValidationInfoDto"];
+            "text/json": components["schemas"]["VirtualKeyValidationInfoDto"];
           };
         };
         /** @description Not Found */
@@ -8393,12 +12034,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8453,9 +12094,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -8464,12 +12105,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8513,9 +12154,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKeyDiscoveryPreviewDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKeyDiscoveryPreviewDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKeyDiscoveryPreviewDto"];
+            "text/plain": components["schemas"]["VirtualKeyDiscoveryPreviewDto"];
+            "application/json": components["schemas"]["VirtualKeyDiscoveryPreviewDto"];
+            "text/json": components["schemas"]["VirtualKeyDiscoveryPreviewDto"];
           };
         };
         /** @description Not Found */
@@ -8524,12 +12165,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8572,9 +12213,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "text/plain": components["schemas"]["VirtualKeyGroupDto"];
+            "application/json": components["schemas"]["VirtualKeyGroupDto"];
+            "text/json": components["schemas"]["VirtualKeyGroupDto"];
           };
         };
         /** @description Not Found */
@@ -8583,12 +12224,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8636,9 +12277,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyUsageDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyUsageDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyUsageDto"];
+            "text/plain": components["schemas"]["VirtualKeyUsageDto"];
+            "application/json": components["schemas"]["VirtualKeyUsageDto"];
+            "text/json": components["schemas"]["VirtualKeyUsageDto"];
           };
         };
         /** @description Bad Request */
@@ -8647,9 +12288,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Unauthorized */
@@ -8658,9 +12299,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Forbidden */
@@ -8669,9 +12310,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Not Found */
@@ -8680,12 +12321,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8706,738 +12347,45 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    /** @description Result of a bulk mapping operation */
-    "ConduitLLM.Admin.Controllers.BulkMappingResult": {
-      /** @description Successfully created mappings */
-      created?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][]
-        | null;
-      /** @description Error messages for failed mappings */
-      errors?: string[] | null;
+    /** @description Access control compliance details. */
+    AccessControlDto: {
       /**
        * Format: int32
-       * @description Total number of mappings processed
+       * @description Number of active virtual keys.
        */
-      totalProcessed?: number;
+      activeKeys?: number;
       /**
        * Format: int32
-       * @description Number of successful mappings
+       * @description Number of key groups with a positive balance (budget controls).
        */
-      successCount?: number;
-      /**
-       * Format: int32
-       * @description Number of failed mappings
-       */
-      failureCount?: number;
+      keysWithBudgets?: number;
+      /** @description Whether IP whitelisting is enabled. */
+      ipWhitelistEnabled?: boolean;
+      /** @description Whether rate limiting is enabled. */
+      rateLimitingEnabled?: boolean;
     };
-    /** @description Represents the result of a media cleanup operation. */
-    "ConduitLLM.Admin.Controllers.CleanupResultDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the virtual key group that was cleaned up.
-       */
-      virtualKeyGroupId?: number;
-      /** @description Gets or sets a value indicating whether this was a dry run (no actual deletions). */
-      dryRun?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the total number of media records evaluated during cleanup.
-       */
-      mediaRecordsEvaluated?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the number of media records marked for deletion.
-       */
-      mediaRecordsMarkedForDeletion?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the number of media records actually deleted.
-       */
-      mediaRecordsDeleted?: number;
-      /**
-       * Format: int64
-       * @description Gets or sets the total amount of storage space freed in bytes.
-       */
-      storageBytesFreed?: number;
-      /** @description Gets or sets an informational message about the cleanup operation. */
-      message?: string | null;
+    AdjustBalanceDto: {
+      /** Format: double */
+      amount?: number;
+      description?: null | string;
     };
-    /** @description Request model for creating a key credential */
-    "ConduitLLM.Admin.Controllers.CreateKeyRequest": {
-      /** @description The API key to create */
-      apiKey?: string | null;
-      /** @description The name for the key credential */
-      keyName?: string | null;
-      /** @description The organization for the key (optional) */
-      organization?: string | null;
-      /** @description The base URL for the key (optional) */
-      baseUrl?: string | null;
-      /** @description Whether this is the primary key for the provider */
-      isPrimary?: boolean;
-      /** @description Whether the key is enabled */
-      isEnabled?: boolean;
-      /**
-       * Format: int32
-       * @description The provider account group (optional)
-       */
-      providerAccountGroup?: number | null;
-    };
-    /** @description Request model for creating a new media retention policy. */
-    "ConduitLLM.Admin.Controllers.CreateMediaRetentionPolicyRequest": {
-      /** @description Gets or sets the name of the retention policy. */
-      name?: string | null;
-      /** @description Gets or sets the description of the retention policy. */
-      description?: string | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is positive.
-       */
-      positiveBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is zero.
-       */
-      zeroBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is negative.
-       */
-      negativeBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the grace period in days before permanently deleting soft-deleted media.
-       */
-      softDeleteGracePeriodDays?: number;
-      /** @description Gets or sets a value indicating whether to respect recent access when determining retention. */
-      respectRecentAccess?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the window in days for considering recent access.
-       */
-      recentAccessWindowDays?: number;
-      /** @description Gets or sets a value indicating whether this is a pro tier policy. */
-      isProTier?: boolean;
-      /** @description Gets or sets a value indicating whether this is the default policy. */
-      isDefault?: boolean;
-      /**
-       * Format: int64
-       * @description Gets or sets the maximum storage size in bytes allowed for this policy.
-       */
-      maxStorageSizeBytes?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of files allowed for this policy.
-       */
-      maxFileCount?: number | null;
-    };
-    /** @description Request model for creating a provider */
-    "ConduitLLM.Admin.Controllers.CreateProviderRequest": {
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      /** @description The name of the provider */
-      providerName?: string | null;
-      /** @description The base URL for the provider (optional) */
-      baseUrl?: string | null;
-      /** @description Whether the provider is enabled */
-      isEnabled?: boolean;
-    };
-    /** @description Extended DTO for media retention policy with additional details. */
-    "ConduitLLM.Admin.Controllers.MediaRetentionPolicyDetailDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier of the retention policy.
-       */
-      id?: number;
-      /** @description Gets or sets the name of the retention policy. */
-      name?: string | null;
-      /** @description Gets or sets the description of the retention policy. */
-      description?: string | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is positive.
-       */
-      positiveBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is zero.
-       */
-      zeroBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is negative.
-       */
-      negativeBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the grace period in days before permanently deleting soft-deleted media.
-       */
-      softDeleteGracePeriodDays?: number;
-      /** @description Gets or sets a value indicating whether to respect recent access when determining retention. */
-      respectRecentAccess?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the window in days for considering recent access.
-       */
-      recentAccessWindowDays?: number;
-      /** @description Gets or sets a value indicating whether this is a pro tier policy. */
-      isProTier?: boolean;
-      /** @description Gets or sets a value indicating whether this is the default policy. */
-      isDefault?: boolean;
-      /**
-       * Format: int64
-       * @description Gets or sets the maximum storage size in bytes allowed for this policy.
-       */
-      maxStorageSizeBytes?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of files allowed for this policy.
-       */
-      maxFileCount?: number | null;
-      /** @description Gets or sets a value indicating whether this policy is active. */
-      isActive?: boolean;
+    /** @description Comprehensive application metrics including database, application, and system metrics. */
+    AllMetricsDto: {
       /**
        * Format: date-time
-       * @description Gets or sets the date and time when the policy was created.
-       */
-      createdAt?: string;
-      /**
-       * Format: date-time
-       * @description Gets or sets the date and time when the policy was last updated.
-       */
-      updatedAt?: string;
-      /**
-       * Format: int32
-       * @description Gets or sets the count of virtual key groups using this policy.
-       */
-      virtualKeyGroupCount?: number;
-      /** @description Gets or sets the list of virtual key groups associated with this policy. */
-      virtualKeyGroups?:
-        | components["schemas"]["ConduitLLM.Admin.Controllers.VirtualKeyGroupSummaryDto"][]
-        | null;
-    };
-    /** @description Data transfer object for media retention policy information. */
-    "ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier of the retention policy.
-       */
-      id?: number;
-      /** @description Gets or sets the name of the retention policy. */
-      name?: string | null;
-      /** @description Gets or sets the description of the retention policy. */
-      description?: string | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is positive.
-       */
-      positiveBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is zero.
-       */
-      zeroBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is negative.
-       */
-      negativeBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the grace period in days before permanently deleting soft-deleted media.
-       */
-      softDeleteGracePeriodDays?: number;
-      /** @description Gets or sets a value indicating whether to respect recent access when determining retention. */
-      respectRecentAccess?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the window in days for considering recent access.
-       */
-      recentAccessWindowDays?: number;
-      /** @description Gets or sets a value indicating whether this is a pro tier policy. */
-      isProTier?: boolean;
-      /** @description Gets or sets a value indicating whether this is the default policy. */
-      isDefault?: boolean;
-      /**
-       * Format: int64
-       * @description Gets or sets the maximum storage size in bytes allowed for this policy.
-       */
-      maxStorageSizeBytes?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of files allowed for this policy.
-       */
-      maxFileCount?: number | null;
-      /** @description Gets or sets a value indicating whether this policy is active. */
-      isActive?: boolean;
-      /**
-       * Format: date-time
-       * @description Gets or sets the date and time when the policy was created.
-       */
-      createdAt?: string;
-      /**
-       * Format: date-time
-       * @description Gets or sets the date and time when the policy was last updated.
-       */
-      updatedAt?: string;
-      /**
-       * Format: int32
-       * @description Gets or sets the count of virtual key groups using this policy.
-       */
-      virtualKeyGroupCount?: number;
-    };
-    /** @description Request model for pruning old media. */
-    "ConduitLLM.Admin.Controllers.PruneMediaRequest": {
-      /**
-       * Format: int32
-       * @description Gets or sets the number of days to keep media files.
-       */
-      daysToKeep?: number | null;
-    };
-    /** @description Request model for testing a provider connection */
-    "ConduitLLM.Admin.Controllers.TestProviderRequest": {
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      /** @description The API key to test */
-      apiKey?: string | null;
-      /** @description The base URL to test (optional) */
-      baseUrl?: string | null;
-      /** @description The organization to test (optional) */
-      organization?: string | null;
-    };
-    /** @description Request model for updating a key credential */
-    "ConduitLLM.Admin.Controllers.UpdateKeyRequest": {
-      /** @description The new name for the key (optional) */
-      keyName?: string | null;
-      /** @description The new API key (optional) */
-      apiKey?: string | null;
-      /** @description The new organization (optional) */
-      organization?: string | null;
-      /** @description The new base URL (optional) */
-      baseUrl?: string | null;
-      /** @description Whether this should be the primary key (optional) */
-      isPrimary?: boolean | null;
-      /** @description Whether the key is enabled (optional) */
-      isEnabled?: boolean | null;
-      /**
-       * Format: int32
-       * @description The provider account group (optional)
-       */
-      providerAccountGroup?: number | null;
-    };
-    /** @description Request model for updating an existing media retention policy. */
-    "ConduitLLM.Admin.Controllers.UpdateMediaRetentionPolicyRequest": {
-      /** @description Gets or sets the name of the retention policy. */
-      name?: string | null;
-      /** @description Gets or sets the description of the retention policy. */
-      description?: string | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is positive.
-       */
-      positiveBalanceRetentionDays?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is zero.
-       */
-      zeroBalanceRetentionDays?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is negative.
-       */
-      negativeBalanceRetentionDays?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the grace period in days before permanently deleting soft-deleted media.
-       */
-      softDeleteGracePeriodDays?: number | null;
-      /** @description Gets or sets a value indicating whether to respect recent access when determining retention. */
-      respectRecentAccess?: boolean | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the window in days for considering recent access.
-       */
-      recentAccessWindowDays?: number | null;
-      /** @description Gets or sets a value indicating whether this is a pro tier policy. */
-      isProTier?: boolean | null;
-      /** @description Gets or sets a value indicating whether this is the default policy. */
-      isDefault?: boolean | null;
-      /**
-       * Format: int64
-       * @description Gets or sets the maximum storage size in bytes allowed for this policy.
-       */
-      maxStorageSizeBytes?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of files allowed for this policy.
-       */
-      maxFileCount?: number | null;
-      /** @description Gets or sets a value indicating whether this policy is active. */
-      isActive?: boolean | null;
-    };
-    /** @description Request model for updating a provider */
-    "ConduitLLM.Admin.Controllers.UpdateProviderRequest": {
-      /** @description The new name for the provider (optional) */
-      providerName?: string | null;
-      /** @description The new base URL for the provider (optional) */
-      baseUrl?: string | null;
-      /** @description Whether the provider is enabled */
-      isEnabled?: boolean;
-    };
-    /** @description Summary information for a virtual key group. */
-    "ConduitLLM.Admin.Controllers.VirtualKeyGroupSummaryDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the virtual key group identifier.
-       */
-      id?: number;
-      /**
-       * Format: double
-       * @description Gets or sets the current balance of the virtual key group.
-       */
-      balance?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the count of virtual keys in the group.
-       */
-      virtualKeyCount?: number;
-    };
-    /** @description DTO for billing audit event */
-    "ConduitLLM.Admin.DTOs.BillingAuditEventDto": {
-      /**
-       * Format: uuid
-       * @description Unique identifier for the audit event
-       */
-      id?: string;
-      /**
-       * Format: date-time
-       * @description Timestamp when the event occurred
+       * @description UTC timestamp when the metrics were captured.
        */
       timestamp?: string;
-      /** @description Type of billing event */
-      eventType?: string | null;
-      /**
-       * Format: int32
-       * @description Virtual key ID if applicable
-       */
-      virtualKeyId?: number | null;
-      /** @description Virtual key name for display */
-      virtualKeyName?: string | null;
-      /** @description Model name */
-      model?: string | null;
-      /** @description Request identifier */
-      requestId?: string | null;
-      /**
-       * Format: double
-       * @description Calculated cost
-       */
-      calculatedCost?: number | null;
-      /** @description Failure reason if applicable */
-      failureReason?: string | null;
-      /** @description Provider type */
-      providerType?: string | null;
-      /**
-       * Format: int32
-       * @description HTTP status code
-       */
-      httpStatusCode?: number | null;
-      /** @description Request path */
-      requestPath?: string | null;
-      /** @description Whether cost was estimated */
-      isEstimated?: boolean;
-      usage?: components["schemas"]["ConduitLLM.Admin.DTOs.UsageDto"];
-      /** @description Additional metadata */
-      metadata?: {
-        [key: string]: unknown;
-      } | null;
-    };
-    /** @description Request DTO for exporting audit events */
-    "ConduitLLM.Admin.DTOs.BillingAuditExportRequest": {
-      /**
-       * Format: date-time
-       * @description Start date for export
-       */
-      from?: string;
-      /**
-       * Format: date-time
-       * @description End date for export
-       */
-      to?: string;
-      format?: components["schemas"]["ConduitLLM.Admin.DTOs.ExportFormat"];
-      /**
-       * Format: int32
-       * @description Optional virtual key ID filter
-       */
-      virtualKeyId?: number | null;
-      eventType?: components["schemas"]["ConduitLLM.Configuration.Entities.BillingAuditEventType"];
-    };
-    /** @description Request DTO for querying billing audit events */
-    "ConduitLLM.Admin.DTOs.BillingAuditQueryRequest": {
-      /**
-       * Format: date-time
-       * @description Start date for the query (inclusive)
-       */
-      from?: string;
-      /**
-       * Format: date-time
-       * @description End date for the query (inclusive)
-       */
-      to?: string;
-      eventType?: components["schemas"]["ConduitLLM.Configuration.Entities.BillingAuditEventType"];
-      /**
-       * Format: int32
-       * @description Optional virtual key ID filter
-       */
-      virtualKeyId?: number | null;
-      /**
-       * Format: int32
-       * @description Page number (1-based)
-       */
-      pageNumber?: number;
-      /**
-       * Format: int32
-       * @description Page size (max 1000)
-       */
-      pageSize?: number;
-    };
-    /** @description Response DTO for billing audit event queries */
-    "ConduitLLM.Admin.DTOs.BillingAuditResponse": {
-      /** @description List of audit events */
-      events?:
-        | components["schemas"]["ConduitLLM.Admin.DTOs.BillingAuditEventDto"][]
-        | null;
-      /**
-       * Format: int32
-       * @description Total count of matching events
-       */
-      totalCount?: number;
-      /**
-       * Format: int32
-       * @description Current page number
-       */
-      pageNumber?: number;
-      /**
-       * Format: int32
-       * @description Page size
-       */
-      pageSize?: number;
-      /**
-       * Format: int32
-       * @description Total pages available
-       */
-      readonly totalPages?: number;
-    };
-    /** @description Request DTO for clearing errors and re-enabling a key */
-    "ConduitLLM.Admin.DTOs.ClearErrorsRequest": {
-      /** @description Whether to re-enable the key */
-      reenableKey?: boolean;
-      /** @description Confirmation that the admin wants to re-enable */
-      confirmReenable?: boolean;
-      /** @description Reason for re-enabling */
-      reason?: string | null;
-    };
-    /** @description DTO for error statistics */
-    "ConduitLLM.Admin.DTOs.ErrorStatisticsDto": {
-      /**
-       * Format: int32
-       * @description Total number of errors in the time window
-       */
-      totalErrors?: number;
-      /**
-       * Format: int32
-       * @description Number of fatal errors
-       */
-      fatalErrors?: number;
-      /**
-       * Format: int32
-       * @description Number of warnings
-       */
-      warnings?: number;
-      /**
-       * Format: int32
-       * @description Number of currently disabled keys
-       */
-      disabledKeys?: number;
-      /** @description Errors by type */
-      errorsByType?: {
-        [key: string]: number;
-      } | null;
-      /** @description Errors by provider */
-      errorsByProvider?: {
-        [key: string]: number;
-      } | null;
-      /**
-       * Format: date-span
-       * @description Time window for the statistics
-       */
-      timeWindow?: string;
-      /**
-       * Format: date-time
-       * @description When the statistics were generated
-       */
-      generatedAt?: string;
-    };
-    /**
-     * Format: int32
-     * @description Export format options
-     * @enum {integer}
-     */
-    "ConduitLLM.Admin.DTOs.ExportFormat": 1 | 2 | 3;
-    /** @description DTO for fatal error information */
-    "ConduitLLM.Admin.DTOs.FatalErrorDto": {
-      /** @description Type of error */
-      errorType?: string | null;
-      /**
-       * Format: int32
-       * @description Number of occurrences
-       */
-      count?: number;
-      /**
-       * Format: date-time
-       * @description When first seen
-       */
-      firstSeen?: string;
-      /**
-       * Format: date-time
-       * @description When last seen
-       */
-      lastSeen?: string;
-      /** @description Last error message */
-      lastErrorMessage?: string | null;
-      /**
-       * Format: int32
-       * @description Last HTTP status code
-       */
-      lastStatusCode?: number | null;
-    };
-    /** @description DTO for detailed key error information */
-    "ConduitLLM.Admin.DTOs.KeyErrorDetailsDto": {
-      /**
-       * Format: int32
-       * @description Key ID
-       */
-      keyId?: number;
-      /** @description Key name for display */
-      keyName?: string | null;
-      /** @description Whether the key is currently disabled */
-      isDisabled?: boolean;
-      /**
-       * Format: date-time
-       * @description When the key was disabled
-       */
-      disabledAt?: string | null;
-      fatalError?: components["schemas"]["ConduitLLM.Admin.DTOs.FatalErrorDto"];
-      /** @description Recent warning errors */
-      recentWarnings?:
-        | components["schemas"]["ConduitLLM.Admin.DTOs.WarningErrorDto"][]
-        | null;
-    };
-    /** @description DTO for individual provider error occurrence */
-    "ConduitLLM.Admin.DTOs.ProviderErrorDto": {
-      /**
-       * Format: int32
-       * @description ID of the key credential that caused the error
-       */
-      keyCredentialId?: number;
-      /** @description Name of the key for display */
-      keyName?: string | null;
-      /**
-       * Format: int32
-       * @description ID of the provider
-       */
-      providerId?: number;
-      /** @description Name of the provider */
-      providerName?: string | null;
-      /** @description Type of error */
-      errorType?: string | null;
-      /** @description Error message */
-      errorMessage?: string | null;
-      /**
-       * Format: int32
-       * @description HTTP status code if applicable
-       */
-      httpStatusCode?: number | null;
-      /**
-       * Format: date-time
-       * @description When the error occurred
-       */
-      occurredAt?: string;
-      /** @description Whether this is a fatal error */
-      isFatal?: boolean;
-      /** @description Model that was being used */
-      modelName?: string | null;
-    };
-    /** @description DTO for provider-level error summary */
-    "ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto": {
-      /**
-       * Format: int32
-       * @description Provider ID
-       */
-      providerId?: number;
-      /** @description Provider name */
-      providerName?: string | null;
-      /**
-       * Format: int32
-       * @description Total number of errors
-       */
-      totalErrors?: number;
-      /**
-       * Format: int32
-       * @description Number of fatal errors
-       */
-      fatalErrors?: number;
-      /**
-       * Format: int32
-       * @description Number of warnings
-       */
-      warnings?: number;
-      /** @description List of disabled key IDs */
-      disabledKeyIds?: number[] | null;
-      /**
-       * Format: date-time
-       * @description When the last error occurred
-       */
-      lastError?: string | null;
-      /**
-       * Format: int32
-       * @description Number of currently disabled keys
-       */
-      readonly disabledKeyCount?: number;
-    };
-    /** @description DTO for usage data */
-    "ConduitLLM.Admin.DTOs.UsageDto": {
-      /**
-       * Format: int32
-       * @description Prompt/input tokens
-       */
-      promptTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Completion/output tokens
-       */
-      completionTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Total tokens
-       */
-      totalTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Image count for image generation
-       */
-      imageCount?: number | null;
-    };
-    /** @description DTO for warning error information */
-    "ConduitLLM.Admin.DTOs.WarningErrorDto": {
-      /** @description Type of warning */
-      type?: string | null;
-      /** @description Warning message */
-      message?: string | null;
-      /**
-       * Format: date-time
-       * @description When the warning occurred
-       */
-      timestamp?: string;
+      /** @description Application identity information. */
+      application?: components["schemas"]["ApplicationInfoDto"];
+      /** @description Database connection pool metrics. Either DatabasePoolMetricsDto,
+       *     DatabasePoolMetricsUnavailableDto, or null when unavailable. */
+      database?: unknown;
+      /** @description Host system metrics for the current process. */
+      system?: components["schemas"]["SystemMetricsDto"];
     };
     /** @description Combined analytics summary DTO */
-    "ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto": {
+    AnalyticsSummaryDto: {
       /**
        * Format: int32
        * @description Total number of requests in the period
@@ -9479,21 +12427,645 @@ export interface components {
        */
       uniqueModels?: number;
       /** @description Top models by usage */
-      topModels?:
-        | components["schemas"]["ConduitLLM.Admin.Interfaces.ModelUsageSummary"][]
-        | null;
+      topModels?: components["schemas"]["ModelUsageSummary"][];
       /** @description Top virtual keys by cost */
-      topVirtualKeys?:
-        | components["schemas"]["ConduitLLM.Admin.Interfaces.VirtualKeyUsageSummary"][]
-        | null;
+      topVirtualKeys?: components["schemas"]["VirtualKeyUsageSummary"][];
       /** @description Daily statistics for the period */
-      dailyStats?:
-        | components["schemas"]["ConduitLLM.Admin.Interfaces.DailyStatistics"][]
-        | null;
-      comparison?: components["schemas"]["ConduitLLM.Admin.Interfaces.PeriodComparison"];
+      dailyStats?: components["schemas"]["DailyStatistics"][];
+      comparison?: null | components["schemas"]["PeriodComparison"];
+    };
+    ApiKeyTestDetails: {
+      /** Format: double */
+      responseTimeMs?: null | number;
+      modelsAvailable?: null | string[];
+      providerMessage?: null | string;
+      errorCode?: null | string;
+      /** Format: int32 */
+      statusCode?: null | number;
+    };
+    /** @enum {unknown} */
+    ApiKeyTestResult:
+      | "Success"
+      | "InvalidKey"
+      | "Ignored"
+      | "ProviderDown"
+      | "RateLimited"
+      | "UnknownError";
+    /** @description Application identity information. */
+    ApplicationInfoDto: {
+      /** @description The application name. */
+      name?: string;
+      /** @description The application assembly version. */
+      version?: string;
+      /** @description The ASP.NET Core environment name. */
+      environment?: string;
+    };
+    BillingAnomaly: {
+      anomalyType?: string;
+      description?: string;
+      severity?: string;
+      /** Format: date-time */
+      detectedAt?: string;
+      affectedVirtualKeyIds?: number[];
+      /** Format: double */
+      estimatedImpact?: number;
+      metadata?: Record<string, never>;
+    };
+    /** @description DTO for billing audit event */
+    BillingAuditEventDto: {
+      /**
+       * Format: uuid
+       * @description Unique identifier for the audit event
+       */
+      id?: string;
+      /**
+       * Format: date-time
+       * @description Timestamp when the event occurred
+       */
+      timestamp?: string;
+      /** @description Type of billing event */
+      eventType?: string;
+      /**
+       * Format: int32
+       * @description Virtual key ID if applicable
+       */
+      virtualKeyId?: null | number;
+      /** @description Virtual key name for display */
+      virtualKeyName?: null | string;
+      /** @description Model name */
+      model?: null | string;
+      /** @description Request identifier */
+      requestId?: null | string;
+      /**
+       * Format: double
+       * @description Calculated cost
+       */
+      calculatedCost?: null | number;
+      /** @description Failure reason if applicable */
+      failureReason?: null | string;
+      /** @description Provider type */
+      providerType?: null | string;
+      /**
+       * Format: int32
+       * @description HTTP status code
+       */
+      httpStatusCode?: null | number;
+      /** @description Request path */
+      requestPath?: null | string;
+      /** @description Whether cost was estimated */
+      isEstimated?: boolean;
+      usage?: null | components["schemas"]["UsageDto"];
+      /** @description Additional metadata */
+      metadata?: null | Record<string, never>;
+    };
+    BillingAuditEventType: number;
+    /** @description Request DTO for exporting audit events */
+    BillingAuditExportRequest: {
+      /**
+       * Format: date-time
+       * @description Start date for export
+       */
+      from?: string;
+      /**
+       * Format: date-time
+       * @description End date for export
+       */
+      to?: string;
+      /** @description Export format */
+      format?: components["schemas"]["ExportFormat"];
+      /**
+       * Format: int32
+       * @description Optional virtual key ID filter
+       */
+      virtualKeyId?: null | number;
+      eventType?: null | components["schemas"]["BillingAuditEventType"];
+    };
+    /** @description Request DTO for querying billing audit events */
+    BillingAuditQueryRequest: {
+      /**
+       * Format: date-time
+       * @description Start date for the query (inclusive)
+       */
+      from?: string;
+      /**
+       * Format: date-time
+       * @description End date for the query (inclusive)
+       */
+      to?: string;
+      eventType?: null | components["schemas"]["BillingAuditEventType"];
+      /**
+       * Format: int32
+       * @description Optional virtual key ID filter
+       */
+      virtualKeyId?: null | number;
+      /**
+       * Format: int32
+       * @description Page number (1-based)
+       */
+      pageNumber?: number;
+      /**
+       * Format: int32
+       * @description Page size (max 1000)
+       */
+      pageSize?: number;
+    };
+    /** @description Response DTO for billing audit event queries */
+    BillingAuditResponse: {
+      /** @description List of audit events */
+      events?: components["schemas"]["BillingAuditEventDto"][];
+      /**
+       * Format: int32
+       * @description Total count of matching events
+       */
+      totalCount?: number;
+      /**
+       * Format: int32
+       * @description Current page number
+       */
+      pageNumber?: number;
+      /**
+       * Format: int32
+       * @description Page size
+       */
+      pageSize?: number;
+      /**
+       * Format: int32
+       * @description Total pages available
+       */
+      totalPages?: number;
+    };
+    BillingAuditSummary: {
+      /** Format: int64 */
+      totalEvents?: number;
+      /** Format: int64 */
+      successfulBillings?: number;
+      /** Format: int64 */
+      zeroCostSkipped?: number;
+      /** Format: int64 */
+      estimatedUsages?: number;
+      /** Format: int64 */
+      failedUpdates?: number;
+      /** Format: int64 */
+      errorResponsesSkipped?: number;
+      /** Format: int64 */
+      missingUsageData?: number;
+      /** Format: double */
+      totalBilledAmount?: number;
+      /** Format: double */
+      potentialRevenueLoss?: number;
+      eventTypeBreakdown?: {
+        [key: string]: number;
+      };
+      providerTypeBreakdown?: {
+        [key: string]: number;
+      };
+    };
+    /** @description Result of a bulk delete operation */
+    BulkDeleteResult: {
+      /** @description IDs of successfully deleted mappings */
+      deletedIds?: number[];
+      /** @description Error messages for failed deletions */
+      errors?: string[];
+      /**
+       * Format: int32
+       * @description Total number of mappings processed
+       */
+      totalProcessed?: number;
+      /**
+       * Format: int32
+       * @description Number of successful deletions
+       */
+      successCount?: number;
+      /**
+       * Format: int32
+       * @description Number of failed deletions
+       */
+      failureCount?: number;
+    };
+    /** @description Result of a bulk mapping operation */
+    BulkMappingResult: {
+      /** @description Successfully created mappings */
+      created?: components["schemas"]["ModelProviderMappingDto"][];
+      /** @description Error messages for failed mappings */
+      errors?: string[];
+      /**
+       * Format: int32
+       * @description Total number of mappings processed
+       */
+      totalProcessed?: number;
+      /**
+       * Format: int32
+       * @description Number of successful mappings
+       */
+      successCount?: number;
+      /**
+       * Format: int32
+       * @description Number of failed mappings
+       */
+      failureCount?: number;
+    };
+    /** @description Result of a bulk update operation */
+    BulkUpdateResult: {
+      /** @description Successfully updated mappings */
+      updated?: components["schemas"]["ModelProviderMappingDto"][];
+      /** @description Error messages for failed updates */
+      errors?: string[];
+      /**
+       * Format: int32
+       * @description Total number of mappings processed
+       */
+      totalProcessed?: number;
+      /**
+       * Format: int32
+       * @description Number of successful updates
+       */
+      successCount?: number;
+      /**
+       * Format: int32
+       * @description Number of failed updates
+       */
+      failureCount?: number;
+    };
+    CacheInjectionPointDto: {
+      role?: null | string;
+      /** Format: int32 */
+      index?: null | number;
+    };
+    /** @description Represents the result of a media cleanup operation. */
+    CleanupResultDto: {
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
+      dryRun?: boolean;
+      /** Format: int32 */
+      mediaRecordsEvaluated?: number;
+      /** Format: int32 */
+      mediaRecordsMarkedForDeletion?: number;
+      /** Format: int32 */
+      mediaRecordsDeleted?: number;
+      /** Format: int64 */
+      storageBytesFreed?: number;
+      message?: string;
+    };
+    /** @description Request DTO for clearing errors and re-enabling a key */
+    ClearErrorsRequest: {
+      /** @description Whether to re-enable the key */
+      reenableKey?: boolean;
+      /** @description Confirmation that the admin wants to re-enable */
+      confirmReenable?: boolean;
+      /** @description Reason for re-enabling */
+      reason?: null | string;
+    };
+    /** @description DTO for the result of clearing errors for a key */
+    ClearKeyErrorsResponseDto: {
+      /** @description Human-readable result message */
+      message?: string;
+      /**
+       * Format: int32
+       * @description ID of the key whose errors were cleared
+       */
+      keyId?: number;
+      /** @description Whether the key was re-enabled as part of the operation */
+      reenabled?: boolean;
+    };
+    /** @description Response containing compliance metrics. */
+    ComplianceMetricsResponse: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the metrics were generated (UTC).
+       */
+      timestamp?: string;
+      /** @description Data protection compliance details. */
+      dataProtection?: components["schemas"]["DataProtectionDto"];
+      /** @description Access control compliance details. */
+      accessControl?: components["schemas"]["AccessControlDto"];
+      /** @description Monitoring compliance details. */
+      monitoring?: components["schemas"]["ComplianceMonitoringDto"];
+      /**
+       * Format: double
+       * @description Overall compliance score percentage.
+       */
+      complianceScore?: number;
+    };
+    /** @description Monitoring compliance details. */
+    ComplianceMonitoringDto: {
+      /**
+       * Format: int32
+       * @description Log retention period in days.
+       */
+      logRetentionDays?: number;
+      /** @description Whether request logging is enabled. */
+      requestLoggingEnabled?: boolean;
+      /** @description Whether security alerts are enabled. */
+      securityAlertsEnabled?: boolean;
+      /**
+       * Format: date-time
+       * @description Date of the last security review (UTC).
+       */
+      lastSecurityReview?: string;
+    };
+    ComponentHealth: {
+      status?: string;
+      description?: string;
+      /** Format: double */
+      duration?: null | number;
+      error?: null | string;
+    };
+    CostDashboardDto: {
+      timeFrame?: string;
+      /** Format: date-time */
+      startDate?: string;
+      /** Format: date-time */
+      endDate?: string;
+      /** Format: double */
+      last24HoursCost?: number;
+      /** Format: double */
+      last7DaysCost?: number;
+      /** Format: double */
+      last30DaysCost?: number;
+      /** Format: double */
+      totalCost?: number;
+      topModelsBySpend?: components["schemas"]["DetailedCostDataDto"][];
+      topProvidersBySpend?: components["schemas"]["DetailedCostDataDto"][];
+      topVirtualKeysBySpend?: components["schemas"]["DetailedCostDataDto"][];
+    };
+    CostTrendDataDto: {
+      /** Format: date-time */
+      date?: string;
+      /** Format: double */
+      cost?: number;
+      /** Format: int32 */
+      requestCount?: number;
+    };
+    CostTrendDto: {
+      period?: string;
+      /** Format: date-time */
+      startDate?: string;
+      /** Format: date-time */
+      endDate?: string;
+      data?: components["schemas"]["CostTrendDataDto"][];
+    };
+    CreateFunctionCostDto: {
+      costName: string;
+      providerType?: components["schemas"]["FunctionProviderType"];
+      purpose?: null | components["schemas"]["FunctionPurpose"];
+      description?: null | string;
+      /** Format: double */
+      baseCost?: null | number;
+      pricingModel?: components["schemas"]["FunctionPricingModel"];
+      pricingConfiguration?: null | string;
+      isActive?: boolean;
+      /** Format: int32 */
+      priority?: number;
+      /** Format: date-time */
+      effectiveDate?: string;
+      /** Format: date-time */
+      expiryDate?: null | string;
+    };
+    CreateGlobalSettingDto: {
+      key: string;
+      value: string;
+      description?: null | string;
+    };
+    CreateIpFilterDto: {
+      filterType: string;
+      ipAddressOrCidr: string;
+      name?: string;
+      description?: null | string;
+      isEnabled?: boolean;
+    };
+    /** @description Request model for creating a key credential */
+    CreateKeyRequest: {
+      /** @description The API key to create */
+      apiKey?: string;
+      /** @description The name for the key credential */
+      keyName?: string;
+      /** @description The organization for the key (optional) */
+      organization?: null | string;
+      /** @description The base URL for the key (optional) */
+      baseUrl?: null | string;
+      /** @description Whether this is the primary key for the provider */
+      isPrimary?: boolean;
+      /** @description Whether the key is enabled */
+      isEnabled?: boolean;
+      /**
+       * Format: int32
+       * @description The provider account group (optional)
+       */
+      providerAccountGroup?: null | number;
+    };
+    /** @description Request model for creating a new media retention policy. */
+    CreateMediaRetentionPolicyRequest: {
+      name?: string;
+      description?: null | string;
+      /** Format: int32 */
+      positiveBalanceRetentionDays?: number;
+      /** Format: int32 */
+      zeroBalanceRetentionDays?: number;
+      /** Format: int32 */
+      negativeBalanceRetentionDays?: number;
+      /** Format: int32 */
+      softDeleteGracePeriodDays?: number;
+      respectRecentAccess?: boolean;
+      /** Format: int32 */
+      recentAccessWindowDays?: number;
+      isDefault?: boolean;
+      /** Format: int64 */
+      maxStorageSizeBytes?: null | number;
+      /** Format: int32 */
+      maxFileCount?: null | number;
+    };
+    /** @description Data transfer object for creating a new model author/organization. */
+    CreateModelAuthorDto: {
+      /** @description Gets or sets the name of the author/organization. */
+      name?: string;
+      /** @description Gets or sets the optional website URL. */
+      websiteUrl?: null | string;
+      /** @description Gets or sets an optional description of the organization. */
+      description?: null | string;
+    };
+    CreateModelCostDto: {
+      costName: string;
+      pricingModel: components["schemas"]["PricingModel"];
+      pricingConfiguration?: null | string;
+      modelProviderTypeAssociationIds?: number[];
+      modelType: string;
+      /** Format: int32 */
+      priority?: number;
+      description?: null | string;
+      /** Format: double */
+      inputCostPerMillionTokens?: number;
+      /** Format: double */
+      outputCostPerMillionTokens?: number;
+      /** Format: double */
+      embeddingCostPerMillionTokens?: null | number;
+      /** Format: double */
+      batchProcessingMultiplier?: null | number;
+      supportsBatchProcessing?: boolean;
+      /** Format: double */
+      cachedInputCostPerMillionTokens?: null | number;
+      /** Format: double */
+      cachedInputWriteCostPerMillionTokens?: null | number;
+      /** Format: double */
+      costPerSearchUnit?: null | number;
+    };
+    /** @description Data transfer object for creating a new AI model in the system. */
+    CreateModelDto: {
+      /**
+       * @description Gets or sets the canonical name of the model to create.
+       *     The canonical model name.
+       * @example gpt-4-turbo
+       */
+      name?: string;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the model series this model will belong to.
+       *     The foreign key reference to an existing ModelSeries.
+       */
+      modelSeriesId?: number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of input tokens the model can process.
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of output tokens the model can generate.
+       */
+      maxOutputTokens?: null | number;
+      /** @description Gets or sets the tokenizer type used by this model. */
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets whether the model should be active upon creation.
+       *     True to create an active model; false for inactive; null for default (true). */
+      isActive?: null | boolean;
+      /** @description Gets or sets the model-specific parameter configuration for UI generation.
+       *     JSON string containing parameter definitions, or null to use series defaults. */
+      modelParameters?: null | string;
+    };
+    /** @description DTO for creating a model identifier */
+    CreateModelIdentifierDto: {
+      /** @description The identifier string used by a provider */
+      identifier?: string;
+      /**
+       * Format: int32
+       * @description The provider type that uses this identifier as an enum value
+       *     (OpenAI = 1, Groq = 2, Replicate = 3, etc.)
+       */
+      provider?: null | number;
+      /** @description Whether this is the primary identifier */
+      isPrimary?: null | boolean;
+      /** @description Optional metadata as JSON */
+      metadata?: null | string;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum input tokens
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum output tokens
+       */
+      maxOutputTokens?: null | number;
+      /**
+       * Format: double
+       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
+       */
+      speedScore?: null | number;
+      /**
+       * Format: double
+       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
+       */
+      qualityScore?: null | number;
+      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
+      providerVariation?: null | string;
+    };
+    /** @description Data transfer object for creating a new model series in the system. */
+    CreateModelSeriesDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the author/organization for this series.
+       *     The foreign key reference to an existing ModelAuthor.
+       */
+      authorId?: number;
+      /** @description Gets or sets the name of the model series.
+       *     The series name. */
+      name?: string;
+      /** @description Gets or sets an optional description of the model series.
+       *     The series description, or null if not provided. */
+      description?: null | string;
+      /** @description Gets or sets the tokenizer type for models in this series.
+       *     The tokenizer type enum value. */
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets optional UI parameter configuration for the series.
+       *     JSON string with UI parameters, or null for default. */
+      parameters?: null | string;
+    };
+    CreateNotificationDto: {
+      /** Format: int32 */
+      virtualKeyId?: null | number;
+      type?: components["schemas"]["NotificationType"];
+      severity?: components["schemas"]["NotificationSeverity"];
+      message?: string;
+    };
+    /** @description Request model for creating a provider */
+    CreateProviderRequest: {
+      /** @description The type of provider to create */
+      providerType?: components["schemas"]["ProviderType"];
+      /** @description The name of the provider */
+      providerName?: string;
+      /** @description The base URL for the provider (optional) */
+      baseUrl?: null | string;
+      /** @description Whether the provider is enabled */
+      isEnabled?: boolean;
+    };
+    CreateProviderToolDto: {
+      provider: components["schemas"]["ProviderType"];
+      toolName: string;
+      toolParameters?: null | string;
+      /** Format: double */
+      costPerUnit?: null | number;
+      billingUnit?: null | string;
+      costDescription?: null | string;
+      isActive?: boolean;
+    };
+    CreateVirtualKeyGroupRequestDto: {
+      groupName: string;
+      externalGroupId?: null | string;
+      /** Format: double */
+      initialBalance?: null | number;
+    };
+    CreateVirtualKeyRequestDto: {
+      keyName: string;
+      allowedModels?: null | string;
+      /** Format: int32 */
+      virtualKeyGroupId: number;
+      /** Format: date-time */
+      expiresAt?: null | string;
+      metadata?: null | string;
+      /** Format: int32 */
+      rateLimitRpm?: null | number;
+      /** Format: int32 */
+      rateLimitRpd?: null | number;
+    };
+    CreateVirtualKeyResponseDto: {
+      virtualKey?: string;
+      keyInfo?: components["schemas"]["VirtualKeyDto"];
     };
     /** @description Daily statistics */
-    "ConduitLLM.Admin.Interfaces.DailyStatistics": {
+    DailyStatistics: {
       /**
        * Format: date-time
        * @description Date for these statistics
@@ -9530,10 +13102,1131 @@ export interface components {
        */
       errorCount?: number;
     };
+    DatabaseInfo: {
+      provider?: string;
+      version?: string;
+      connected?: boolean;
+      connectionString?: string;
+      location?: string;
+      size?: string;
+      /** Format: int32 */
+      tableCount?: number;
+    };
+    /** @description Connection pool configuration settings. */
+    DatabasePoolConfigurationDto: {
+      /**
+       * Format: int32
+       * @description Minimum number of connections kept in the pool.
+       */
+      minPoolSize?: number;
+      /**
+       * Format: int32
+       * @description Maximum number of connections allowed in the pool.
+       */
+      maxPoolSize?: number;
+      /**
+       * Format: int32
+       * @description Maximum lifetime of a pooled connection, in seconds.
+       */
+      connectionLifetime?: number;
+      /**
+       * Format: int32
+       * @description Time before an idle pooled connection is closed, in seconds.
+       */
+      connectionIdleLifetime?: number;
+      /** @description Whether connection pooling is enabled. */
+      pooling?: boolean;
+    };
+    /** @description Non-sensitive connection details extracted from the database connection string. */
+    DatabasePoolConnectionInfoDto: {
+      /** @description The database server host. */
+      host?: null | string;
+      /**
+       * Format: int32
+       * @description The database server port.
+       */
+      port?: number;
+      /** @description The database name. */
+      database?: null | string;
+      /** @description The application name reported to the database server. */
+      applicationName?: string;
+    };
+    /** @description Current measured connection pool health metrics. */
+    DatabasePoolCurrentMetricsDto: {
+      /**
+       * Format: int64
+       * @description Time taken to acquire a connection from the pool, in milliseconds.
+       */
+      connectionAcquisitionTimeMs?: number;
+      /** @description Health status derived from the connection acquisition time
+       *     ("healthy", "degraded", or "unhealthy"). */
+      healthStatus?: string;
+      /** @description Additional note about the metrics. */
+      note?: string;
+    };
+    /** @description Database connection pool metrics for a PostgreSQL database. */
+    DatabasePoolMetricsDto: {
+      /**
+       * Format: date-time
+       * @description UTC timestamp when the metrics were captured.
+       */
+      timestamp?: string;
+      /** @description The database provider name (e.g. "postgresql"). */
+      provider?: string;
+      /** @description Non-sensitive connection details extracted from the connection string. */
+      connectionString?: components["schemas"]["DatabasePoolConnectionInfoDto"];
+      /** @description Connection pool configuration settings. */
+      poolConfiguration?: components["schemas"]["DatabasePoolConfigurationDto"];
+      /** @description Current measured pool health metrics. */
+      currentMetrics?: components["schemas"]["DatabasePoolCurrentMetricsDto"];
+    };
+    /** @description Data protection compliance details. */
+    DataProtectionDto: {
+      /**
+       * Format: int32
+       * @description Number of enabled (encrypted) virtual keys.
+       */
+      encryptedKeys?: number;
+      /** @description Whether endpoints are secured with HTTPS. */
+      secureEndpoints?: boolean;
+      /**
+       * Format: int32
+       * @description Data retention period in days.
+       */
+      dataRetentionDays?: number;
+      /**
+       * Format: date-time
+       * @description Date of the last data protection audit (UTC).
+       */
+      lastAudit?: string;
+    };
+    DetailedCostDataDto: {
+      name?: string;
+      /** Format: double */
+      cost?: number;
+      /** Format: double */
+      percentage?: number;
+      /** Format: int32 */
+      requestCount?: number;
+    };
+    /** @description DTO for the result of manually disabling a key */
+    DisableKeyResponseDto: {
+      /** @description Human-readable result message */
+      message?: string;
+      /**
+       * Format: int32
+       * @description ID of the key that was disabled
+       */
+      keyId?: number;
+    };
+    DiscoveredModelDto: {
+      id?: string;
+      providerType?: null | components["schemas"]["ProviderType"];
+      displayName?: string;
+      capabilities?: Record<string, never>;
+    };
+    EntityTagHeaderValue: {
+      tag?: components["schemas"]["StringSegment"];
+      isWeak?: boolean;
+    };
+    /** @description Response model for ephemeral master key generation */
+    EphemeralMasterKeyResponse: {
+      /** @description The generated ephemeral master key token */
+      ephemeralMasterKey?: string;
+      /**
+       * Format: date-time
+       * @description When the key expires
+       */
+      expiresAt?: string;
+      /**
+       * Format: int32
+       * @description Number of seconds until the key expires
+       */
+      expiresInSeconds?: number;
+    };
+    ErrorResponseDto: {
+      error?: unknown;
+      details?: null | string;
+      code?: null | string;
+    };
+    /** @description DTO for error statistics */
+    ErrorStatisticsDto: {
+      /**
+       * Format: int32
+       * @description Total number of errors in the time window
+       */
+      totalErrors?: number;
+      /**
+       * Format: int32
+       * @description Number of fatal errors
+       */
+      fatalErrors?: number;
+      /**
+       * Format: int32
+       * @description Number of warnings
+       */
+      warnings?: number;
+      /**
+       * Format: int32
+       * @description Number of currently disabled keys
+       */
+      disabledKeys?: number;
+      /** @description Errors by type */
+      errorsByType?: {
+        [key: string]: number;
+      };
+      /** @description Errors by provider */
+      errorsByProvider?: {
+        [key: string]: number;
+      };
+      /** @description Time window for the statistics */
+      timeWindow?: string;
+      /**
+       * Format: date-time
+       * @description When the statistics were generated
+       */
+      generatedAt?: string;
+    };
+    ExecutionMode: number;
+    /** @description Export format options */
+    ExportFormat: number;
+    /** @description DTO for fatal error information */
+    FatalErrorDto: {
+      /** @description Type of error */
+      errorType?: string;
+      /**
+       * Format: int32
+       * @description Number of occurrences
+       */
+      count?: number;
+      /**
+       * Format: date-time
+       * @description When first seen
+       */
+      firstSeen?: string;
+      /**
+       * Format: date-time
+       * @description When last seen
+       */
+      lastSeen?: string;
+      /** @description Last error message */
+      lastErrorMessage?: string;
+      /**
+       * Format: int32
+       * @description Last HTTP status code
+       */
+      lastStatusCode?: null | number;
+    };
+    FileContentResult: {
+      /** Format: byte */
+      fileContents?: string;
+      contentType?: null | string;
+      fileDownloadName?: null | string;
+      /** Format: date-time */
+      lastModified?: null | string;
+      entityTag?: null | components["schemas"]["EntityTagHeaderValue"];
+      enableRangeProcessing?: boolean;
+    };
+    FileResult: {
+      contentType?: null | string;
+      fileDownloadName?: null | string;
+      /** Format: date-time */
+      lastModified?: null | string;
+      entityTag?: null | components["schemas"]["EntityTagHeaderValue"];
+      enableRangeProcessing?: boolean;
+    };
+    FlushPriority: number;
+    FunctionConfiguration: {
+      /** Format: int32 */
+      id?: number;
+      providerType: components["schemas"]["FunctionProviderType"];
+      configurationName: string;
+      purpose: components["schemas"]["FunctionPurpose"];
+      defaultExecutionMode: components["schemas"]["ExecutionMode"];
+      baseUrl?: null | string;
+      isEnabled: boolean;
+      /** Format: int32 */
+      timeoutSeconds?: null | number;
+      /** Format: int32 */
+      cacheTtlMinutes?: null | number;
+      /** Format: int32 */
+      maxRetries?: null | number;
+      providerSettings?: null | string;
+      parameterSchema?: null | string;
+      description?: null | string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    FunctionCredential: {
+      /** Format: int32 */
+      id?: number;
+      providerType: components["schemas"]["FunctionProviderType"];
+      apiKey?: null | string;
+      baseUrl?: null | string;
+      organization?: null | string;
+      /** Format: int16 */
+      functionAccountGroup: number;
+      isPrimary: boolean;
+      isEnabled: boolean;
+      keyName?: null | string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    FunctionPricingModel: number;
+    FunctionProviderType: number;
+    FunctionPurpose: number;
+    GlobalSettingCacheStatsDto: {
+      /** Format: int32 */
+      cacheSize?: number;
+      /** Format: int64 */
+      cacheHits?: number;
+      /** Format: int64 */
+      cacheMisses?: number;
+      /** Format: int64 */
+      invalidations?: number;
+      /** Format: double */
+      hitRate?: number;
+      /** Format: date-time */
+      lastLoadTime?: string;
+      cachedKeys?: string[];
+    };
+    GlobalSettingDto: {
+      /** Format: int32 */
+      id?: number;
+      key: string;
+      value: string;
+      description?: null | string;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+    };
+    /** @description Health metrics for a single time interval. */
+    HealthHistoryPointDto: {
+      /**
+       * Format: date-time
+       * @description Start of the interval (UTC).
+       */
+      timestamp?: string;
+      /**
+       * Format: double
+       * @description System health percentage (100 minus error rate).
+       */
+      systemHealth?: number;
+      /**
+       * Format: int32
+       * @description Provider health percentage.
+       */
+      providerHealth?: number;
+      /**
+       * Format: double
+       * @description Average response time in milliseconds for the interval.
+       */
+      responseTime?: number;
+      /**
+       * Format: int32
+       * @description Number of requests handled during the interval.
+       */
+      requestVolume?: number;
+      /**
+       * Format: double
+       * @description Percentage of requests that resulted in an error.
+       */
+      errorRate?: number;
+    };
+    /** @description Response containing health history time series data. */
+    HealthHistoryResponse: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the response was generated (UTC).
+       */
+      timestamp?: string;
+      /** @description Time range covered by the history. */
+      timeRange?: components["schemas"]["TimeRangeDto"];
+      /**
+       * Format: int32
+       * @description Length of each history interval in minutes.
+       */
+      intervalMinutes?: number;
+      /** @description Health metrics for each interval, oldest first. */
+      history?: components["schemas"]["HealthHistoryPointDto"][];
+    };
+    HealthStatusDto: {
+      status?: string;
+      /** Format: date-time */
+      timestamp?: string;
+      checks?: {
+        [key: string]: components["schemas"]["ComponentHealth"];
+      };
+      /** Format: double */
+      totalDuration?: number;
+    };
+    /** Format: binary */
+    IFormFile: string;
+    /** @description Detail metrics for an incident. */
+    IncidentDetailsDto: {
+      /**
+       * Format: int32
+       * @description Number of errors observed during the incident window.
+       */
+      errorCount?: number;
+      /**
+       * Format: int32
+       * @description Number of distinct error status codes observed.
+       */
+      uniqueErrorTypes?: number;
+    };
+    /** @description A single incident derived from request log analysis. */
+    IncidentDto: {
+      /** @description Unique identifier for the incident. */
+      id?: string;
+      /** @description Human-readable incident title. */
+      title?: string;
+      /** @description Incident type identifier (e.g. service_degradation). */
+      type?: string;
+      /** @description Incident severity (critical, major, or minor). */
+      severity?: string;
+      /** @description Incident status (active or resolved). */
+      status?: string;
+      /**
+       * Format: date-time
+       * @description When the incident started (UTC).
+       */
+      startTime?: string;
+      /**
+       * Format: date-time
+       * @description When the incident ended (UTC), or null if still active.
+       */
+      endTime?: null | string;
+      /** @description Name of the affected service. */
+      affectedService?: string;
+      /** @description Human-readable impact description. */
+      impact?: string;
+      /** @description Additional incident detail metrics. */
+      details?: components["schemas"]["IncidentDetailsDto"];
+    };
+    /** @description Number of incidents of a given severity. */
+    IncidentSeverityCountDto: {
+      /** @description Incident severity (critical, major, or minor). */
+      severity?: string;
+      /**
+       * Format: int32
+       * @description Number of incidents with this severity.
+       */
+      count?: number;
+    };
+    /** @description Response containing incident history derived from request logs. */
+    IncidentsResponse: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the response was generated (UTC).
+       */
+      timestamp?: string;
+      /** @description Time range analyzed for incidents. */
+      timeRange?: components["schemas"]["TimeRangeDto"];
+      /**
+       * Format: int32
+       * @description Total number of incidents in the time range.
+       */
+      totalIncidents?: number;
+      /**
+       * Format: int32
+       * @description Number of incidents that are currently active.
+       */
+      activeIncidents?: number;
+      /** @description Incident counts grouped by incident type. */
+      incidentsByType?: components["schemas"]["IncidentTypeCountDto"][];
+      /** @description Incident counts grouped by severity. */
+      incidentsBySeverity?: components["schemas"]["IncidentSeverityCountDto"][];
+      /** @description The individual incidents, most recent first. */
+      incidents?: components["schemas"]["IncidentDto"][];
+    };
+    /** @description Number of incidents of a given type. */
+    IncidentTypeCountDto: {
+      /** @description Incident type identifier. */
+      type?: string;
+      /**
+       * Format: int32
+       * @description Number of incidents of this type.
+       */
+      count?: number;
+    };
+    IpCheckResult: {
+      isAllowed?: boolean;
+      deniedReason?: null | string;
+    };
+    IpFilterDto: {
+      /** Format: int32 */
+      id?: number;
+      filterType: string;
+      ipAddressOrCidr: string;
+      name?: string;
+      description?: null | string;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      createdBy?: null | string;
+      updatedBy?: null | string;
+    };
+    IpFilterSettingsDto: {
+      isEnabled?: boolean;
+      defaultAllow?: boolean;
+      bypassForAdminUi?: boolean;
+      excludedEndpoints?: string[];
+      filterMode?: string;
+      whitelistFilters?: components["schemas"]["IpFilterDto"][];
+      blacklistFilters?: components["schemas"]["IpFilterDto"][];
+    };
+    /** @description DTO for detailed key error information */
+    KeyErrorDetailsDto: {
+      /**
+       * Format: int32
+       * @description Key ID
+       */
+      keyId?: number;
+      /** @description Key name for display */
+      keyName?: string;
+      /** @description Whether the key is currently disabled */
+      isDisabled?: boolean;
+      /**
+       * Format: date-time
+       * @description When the key was disabled
+       */
+      disabledAt?: null | string;
+      fatalError?: null | components["schemas"]["FatalErrorDto"];
+      /** @description Recent warning errors */
+      recentWarnings?: components["schemas"]["WarningErrorDto"][];
+    };
+    LLMCacheControlDto: {
+      enabled?: boolean;
+      /** Format: date-time */
+      lastChangedAt?: null | string;
+      lastChangedBy?: null | string;
+      lastChangeReason?: null | string;
+      /** Format: int32 */
+      activeInstances?: null | number;
+    };
+    /** @description Load balancer configuration details. */
+    LoadBalancerDto: {
+      /** @description The load balancer identifier. */
+      id?: string;
+      /** @description The load balancer display name. */
+      name?: string;
+      /** @description The load balancing algorithm in use. */
+      algorithm?: string;
+      /**
+       * Format: int32
+       * @description Health check interval in seconds.
+       */
+      healthCheckInterval?: number;
+      /**
+       * Format: int32
+       * @description Number of failures before failover is triggered.
+       */
+      failoverThreshold?: number;
+      /** @description Provider endpoints behind this load balancer. */
+      endpoints?: components["schemas"]["LoadBalancerEndpointDto"][];
+    };
+    /** @description A provider endpoint behind a load balancer. */
+    LoadBalancerEndpointDto: {
+      /**
+       * Format: int32
+       * @description The provider ID.
+       */
+      id?: number;
+      /** @description The provider display name. */
+      name?: string;
+      /** @description The provider type name. */
+      type?: string;
+      /** @description The endpoint URL. */
+      url?: string;
+      /**
+       * Format: int32
+       * @description The load balancing weight assigned to this endpoint.
+       */
+      weight?: number;
+    };
+    LogRequestDto: {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      virtualKeyId?: number;
+      modelName?: string;
+      /** Format: int32 */
+      providerId?: null | number;
+      providerType?: null | string;
+      requestType?: string;
+      /** Format: int32 */
+      inputTokens?: number;
+      /** Format: int32 */
+      outputTokens?: number;
+      /** Format: int32 */
+      cachedInputTokens?: null | number;
+      /** Format: int32 */
+      cachedWriteTokens?: null | number;
+      /** Format: double */
+      cost?: number;
+      /** Format: double */
+      responseTimeMs?: number;
+      userId?: null | string;
+      clientIp?: null | string;
+      requestPath?: null | string;
+      /** Format: int32 */
+      statusCode?: null | number;
+      /** Format: date-time */
+      timestamp?: string;
+      metadata?: null | string;
+    };
+    /** @description Information about a matched pricing rule */
+    MatchedRuleInfo: {
+      /** @description Rule description */
+      description?: null | string;
+      /**
+       * Format: int32
+       * @description Rule priority
+       */
+      priority?: number;
+      /**
+       * Format: double
+       * @description Rule rate
+       */
+      rate?: number;
+      /** @description Summary of conditions */
+      conditionsSummary?: null | string[];
+    };
+    /** @description Response returned after enabling or disabling the media cleanup service. */
+    MediaCleanupEnabledChangedDto: {
+      /** @description The new enabled state of the media cleanup service. */
+      enabled?: boolean;
+      /** @description Human-readable confirmation of the state change. */
+      message?: string;
+    };
+    /** @description Response describing whether the media cleanup service is enabled. */
+    MediaCleanupEnabledDto: {
+      /** @description Whether the media cleanup service is currently enabled. */
+      enabled?: boolean;
+    };
+    /** @description Response returned by media cleanup and pruning operations. */
+    MediaCleanupResponseDto: {
+      /** @description Human-readable summary of the cleanup operation. */
+      message?: string;
+      /**
+       * Format: int32
+       * @description Number of media files deleted by the operation.
+       */
+      deletedCount?: number;
+    };
+    /** @description Status information for the media cleanup service.
+     *     Provides operational visibility into cleanup runs, budget usage, and configuration. */
+    MediaCleanupStatusDto: {
+      /** @description Whether the media cleanup service is currently enabled. */
+      isEnabled?: boolean;
+      /** @description Whether the service is running in dry run mode (logs but doesn't delete). */
+      isDryRunMode?: boolean;
+      /**
+       * Format: date-time
+       * @description The timestamp of the last cleanup run (UTC).
+       *     Null if no cleanup has run yet.
+       */
+      lastRunTimeUtc?: null | string;
+      /** @description The result of the last cleanup run. */
+      lastRunStatus?: null | string;
+      /**
+       * Format: int32
+       * @description Number of files deleted in the last run.
+       */
+      lastRunFilesDeleted?: number;
+      /**
+       * Format: int64
+       * @description Bytes freed in the last run.
+       */
+      lastRunBytesFreed?: number;
+      /**
+       * Format: double
+       * @description Duration of the last cleanup run in seconds.
+       */
+      lastRunDurationSeconds?: null | number;
+      /**
+       * Format: int64
+       * @description Number of delete operations performed this month.
+       */
+      monthlyDeleteCount?: number;
+      /**
+       * Format: int32
+       * @description Monthly delete budget limit.
+       */
+      monthlyDeleteBudget?: number;
+      /**
+       * Format: int64
+       * @description Remaining delete operations available this month.
+       */
+      monthlyDeleteBudgetRemaining?: number;
+      /**
+       * Format: double
+       * @description Percentage of monthly budget used (0-100).
+       */
+      monthlyBudgetUsedPercent?: number;
+      /**
+       * Format: int32
+       * @description Interval between cleanup runs in minutes.
+       */
+      scheduleIntervalMinutes?: number;
+      /**
+       * Format: int32
+       * @description Maximum batch size for deletions.
+       */
+      maxBatchSize?: number;
+      defaultRetentionPolicy?:
+        | null
+        | components["schemas"]["RetentionPolicySummaryDto"];
+      /**
+       * Format: int32
+       * @description Total number of active retention policies.
+       */
+      activeRetentionPoliciesCount?: number;
+      /**
+       * Format: date-time
+       * @description Estimated next run time (UTC).
+       */
+      nextScheduledRunUtc?: null | string;
+      /** @description Instance ID of the current cleanup leader (if known). */
+      currentLeaderInstanceId?: null | string;
+      /**
+       * Format: int32
+       * @description Simple retention override in days.
+       *     When set, all media is deleted after this many days regardless of account balance.
+       *     Null means using policy-based retention.
+       */
+      simpleRetentionOverrideDays?: null | number;
+      /** @description Whether the simple retention override is active. */
+      isSimpleRetentionOverrideActive?: boolean;
+    };
+    /** @description Response returned when a media record is deleted. */
+    MediaDeletionResponseDto: {
+      /** @description Human-readable confirmation message. */
+      message?: string;
+    };
+    MediaRecord: {
+      /** Format: uuid */
+      id?: string;
+      storageKey: string;
+      /** Format: int32 */
+      virtualKeyId: number;
+      virtualKey?: components["schemas"]["VirtualKey"];
+      mediaType: string;
+      contentType?: null | string;
+      /** Format: int64 */
+      sizeBytes?: null | number;
+      contentHash?: null | string;
+      provider?: null | string;
+      model?: null | string;
+      prompt?: null | string;
+      storageUrl?: null | string;
+      publicUrl?: null | string;
+      /** Format: date-time */
+      expiresAt?: null | string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      lastAccessedAt?: null | string;
+      /** Format: int32 */
+      accessCount?: number;
+    };
+    MediaRetentionPolicy: {
+      /** Format: int32 */
+      id?: number;
+      name: string;
+      description?: null | string;
+      /** Format: int32 */
+      positiveBalanceRetentionDays?: number;
+      /** Format: int32 */
+      zeroBalanceRetentionDays?: number;
+      /** Format: int32 */
+      negativeBalanceRetentionDays?: number;
+      /** Format: int32 */
+      softDeleteGracePeriodDays?: number;
+      respectRecentAccess?: boolean;
+      /** Format: int32 */
+      recentAccessWindowDays?: number;
+      isDefault?: boolean;
+      /** Format: int64 */
+      maxStorageSizeBytes?: null | number;
+      /** Format: int32 */
+      maxFileCount?: null | number;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+      isActive?: boolean;
+      virtualKeyGroups?: components["schemas"]["VirtualKeyGroup"][];
+    };
+    /** @description Extended DTO for media retention policy with virtual key group details. */
+    MediaRetentionPolicyDetailDto: {
+      virtualKeyGroups?: components["schemas"]["VirtualKeyGroupSummaryDto"][];
+      /** Format: int32 */
+      id?: number;
+      name?: string;
+      description?: null | string;
+      /** Format: int32 */
+      positiveBalanceRetentionDays?: number;
+      /** Format: int32 */
+      zeroBalanceRetentionDays?: number;
+      /** Format: int32 */
+      negativeBalanceRetentionDays?: number;
+      /** Format: int32 */
+      softDeleteGracePeriodDays?: number;
+      respectRecentAccess?: boolean;
+      /** Format: int32 */
+      recentAccessWindowDays?: number;
+      isDefault?: boolean;
+      /** Format: int64 */
+      maxStorageSizeBytes?: null | number;
+      /** Format: int32 */
+      maxFileCount?: null | number;
+      isActive?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      /** Format: int32 */
+      virtualKeyGroupCount?: number;
+    };
+    /** @description Data transfer object for media retention policy information. */
+    MediaRetentionPolicyDto: {
+      /** Format: int32 */
+      id?: number;
+      name?: string;
+      description?: null | string;
+      /** Format: int32 */
+      positiveBalanceRetentionDays?: number;
+      /** Format: int32 */
+      zeroBalanceRetentionDays?: number;
+      /** Format: int32 */
+      negativeBalanceRetentionDays?: number;
+      /** Format: int32 */
+      softDeleteGracePeriodDays?: number;
+      respectRecentAccess?: boolean;
+      /** Format: int32 */
+      recentAccessWindowDays?: number;
+      isDefault?: boolean;
+      /** Format: int64 */
+      maxStorageSizeBytes?: null | number;
+      /** Format: int32 */
+      maxFileCount?: null | number;
+      isActive?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      /** Format: int32 */
+      virtualKeyGroupCount?: number;
+    };
+    MediaStorageStats: {
+      /** Format: int32 */
+      virtualKeyId?: number;
+      /** Format: int64 */
+      totalSizeBytes?: number;
+      /** Format: int32 */
+      totalFiles?: number;
+      byMediaType?: {
+        [key: string]: components["schemas"]["MediaTypeStats"];
+      };
+    };
+    MediaTypeStats: {
+      /** Format: int32 */
+      fileCount?: number;
+      /** Format: int64 */
+      sizeBytes?: number;
+    };
+    /** @description Data transfer object representing an AI model author or organization. */
+    ModelAuthorDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for the author.
+       */
+      id?: number;
+      /** @description Gets or sets the name of the author/organization. */
+      name?: string;
+      /** @description Gets or sets the website URL for the author/organization. */
+      websiteUrl?: null | string;
+      /** @description Gets or sets a description of the author/organization. */
+      description?: null | string;
+      /**
+       * Format: date-time
+       * @description Gets or sets when the author record was created.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description Gets or sets when the author record was last updated.
+       */
+      updatedAt?: string;
+    };
+    ModelCapabilitiesDto: {
+      supportsVision?: boolean;
+      supportsImageGeneration?: boolean;
+      supportsVideoGeneration?: boolean;
+      supportsEmbeddings?: boolean;
+      supportsChat?: boolean;
+      supportsFunctionCalling?: boolean;
+      supportsStreaming?: boolean;
+      /** Format: int32 */
+      maxInputTokens?: null | number;
+      /** Format: int32 */
+      maxOutputTokens?: null | number;
+    };
+    ModelCostBreakdownDto: {
+      /** Format: date-time */
+      startDate?: string;
+      /** Format: date-time */
+      endDate?: string;
+      models?: components["schemas"]["ModelCostDetail"][];
+      /** Format: double */
+      totalCost?: number;
+      /** Format: int32 */
+      totalRequests?: number;
+    };
+    ModelCostDetail: {
+      modelName?: string;
+      /** Format: double */
+      totalCost?: number;
+      /** Format: int32 */
+      requestCount?: number;
+      /** Format: int64 */
+      inputTokens?: number;
+      /** Format: int64 */
+      outputTokens?: number;
+      /** Format: double */
+      averageCostPerRequest?: number;
+      /** Format: double */
+      costPercentage?: number;
+    };
+    ModelCostDto: {
+      /** Format: int32 */
+      id?: number;
+      costName: string;
+      pricingModel: components["schemas"]["PricingModel"];
+      pricingConfiguration?: null | string;
+      associatedModelAliases?: string[];
+      /** Format: double */
+      inputCostPerMillionTokens?: number;
+      /** Format: double */
+      outputCostPerMillionTokens?: number;
+      /** Format: double */
+      embeddingCostPerMillionTokens?: null | number;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      modelType: string;
+      isActive?: boolean;
+      /** Format: date-time */
+      effectiveDate?: string;
+      /** Format: date-time */
+      expiryDate?: null | string;
+      description?: null | string;
+      /** Format: int32 */
+      priority?: number;
+      /** Format: double */
+      batchProcessingMultiplier?: null | number;
+      supportsBatchProcessing?: boolean;
+      /** Format: double */
+      cachedInputCostPerMillionTokens?: null | number;
+      /** Format: double */
+      cachedInputWriteCostPerMillionTokens?: null | number;
+      /** Format: double */
+      costPerSearchUnit?: null | number;
+    };
+    ModelCostOverviewDto: {
+      model?: string;
+      /** Format: int32 */
+      requestCount?: number;
+      /** Format: double */
+      totalCost?: number;
+      /** Format: int64 */
+      inputTokens?: number;
+      /** Format: int64 */
+      outputTokens?: number;
+    };
+    /** @description Data transfer object representing a canonical AI model in the system. */
+    ModelDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for the model.
+       *     The database-generated ID that uniquely identifies this model across the system.
+       */
+      id?: number;
+      /** @description Gets or sets the canonical name of the model.
+       *     The canonical model name. */
+      name?: string;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the model series this model belongs to.
+       *     The foreign key reference to the ModelSeries entity.
+       */
+      modelSeriesId?: number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of input tokens the model can process.
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of output tokens the model can generate.
+       */
+      maxOutputTokens?: null | number;
+      /** @description Gets or sets the tokenizer type used by this model. */
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets whether this model is currently active and available for use.
+       *     True if the model is active and available; otherwise, false. */
+      isActive?: boolean;
+      /**
+       * Format: date-time
+       * @description Gets or sets the timestamp when this model was first created in the system.
+       *     The UTC timestamp of model creation.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description Gets or sets the timestamp when this model was last updated.
+       *     The UTC timestamp of the last update.
+       */
+      updatedAt?: string;
+      series?: null | components["schemas"]["ModelSeriesDto"];
+      /** @description Gets or sets the model-specific parameter configuration for UI generation.
+       *     JSON string containing parameter definitions, or null to use series defaults. */
+      modelParameters?: null | string;
+      /** @description Gets or sets the provider type associations (identifiers) for this model. */
+      identifiers?: null | components["schemas"]["ModelIdentifierDto"][];
+    };
+    /** @description Lightweight DTO for a model's provider type association (identifier). */
+    ModelIdentifierDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for this model-provider association.
+       */
+      id?: number;
+      /** @description Gets or sets the provider-specific model identifier string (e.g., "gpt-4-turbo" for OpenAI). */
+      identifier?: string;
+      /**
+       * Format: int32
+       * @description Gets or sets the provider ID that offers this model, or null if unassigned.
+       */
+      provider?: null | number;
+      /** @description Gets or sets whether this is the primary (preferred) provider for the model. */
+      isPrimary?: boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum input token limit for this provider's offering, or null if unknown.
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum output token limit for this provider's offering, or null if unknown.
+       */
+      maxOutputTokens?: null | number;
+      /**
+       * Format: double
+       * @description Gets or sets the relative speed score for this provider's offering, used for routing decisions.
+       */
+      speedScore?: null | number;
+      /**
+       * Format: double
+       * @description Gets or sets the relative quality score for this provider's offering, used for routing decisions.
+       */
+      qualityScore?: null | number;
+      /** @description Gets or sets the provider-specific variation label (e.g., "turbo", "mini") if applicable. */
+      providerVariation?: null | string;
+      /**
+       * Format: int32
+       * @description Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.
+       */
+      modelCostId?: null | number;
+    };
+    ModelProviderMappingDto: {
+      /** Format: int32 */
+      id?: number;
+      modelAlias: string;
+      providerModelId: string;
+      /** Format: int32 */
+      providerId: number;
+      provider?: null | components["schemas"]["ProviderReferenceDto"];
+      /** Format: int32 */
+      modelProviderTypeAssociationId: number;
+      /** Format: int32 */
+      priority?: number;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      notes?: null | string;
+      capabilities?: null | components["schemas"]["ModelCapabilitiesDto"];
+    };
+    /** @description Data transfer object representing a series or family of related AI models. */
+    ModelSeriesDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for this model series.
+       *     The database-generated ID that uniquely identifies this series.
+       */
+      id?: number;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the author/organization that created this model series.
+       *     The foreign key reference to the ModelAuthor entity.
+       */
+      authorId?: number;
+      /** @description Gets or sets the name of the author/organization.
+       *     The author's display name, or null if not loaded. */
+      authorName?: null | string;
+      /** @description Gets or sets the name of this model series.
+       *     The series name. */
+      name?: string;
+      /** @description Gets or sets a description of this model series.
+       *     The series description, or null if not provided. */
+      description?: null | string;
+      /** @description Gets or sets the tokenizer type used by models in this series.
+       *     The tokenizer type enum value. */
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets the UI parameters configuration for this series.
+       *     JSON string containing UI parameter configuration. */
+      parameters?: string;
+    };
+    ModelUsage: {
+      /** Format: int32 */
+      requestCount?: number;
+      /** Format: double */
+      cost?: number;
+      /** Format: int32 */
+      inputTokens?: number;
+      /** Format: int32 */
+      outputTokens?: number;
+    };
     /** @description Model usage summary */
-    "ConduitLLM.Admin.Interfaces.ModelUsageSummary": {
+    ModelUsageSummary: {
       /** @description Name of the model */
-      modelName?: string | null;
+      modelName?: string;
       /**
        * Format: int32
        * @description Total number of requests for this model
@@ -9565,8 +14258,205 @@ export interface components {
        */
       errorRate?: number;
     };
+    /** @description Extended model DTO that includes the provider-specific identifier for the model. */
+    ModelWithProviderIdDto: {
+      /**
+       * @description Gets or sets the provider-specific identifier for this model.
+       *     The provider-specific model identifier.
+       * @example gpt-4-0613
+       */
+      providerModelId?: string;
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for the model.
+       *     The database-generated ID that uniquely identifies this model across the system.
+       */
+      id?: number;
+      /** @description Gets or sets the canonical name of the model.
+       *     The canonical model name. */
+      name?: string;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the model series this model belongs to.
+       *     The foreign key reference to the ModelSeries entity.
+       */
+      modelSeriesId?: number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of input tokens the model can process.
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of output tokens the model can generate.
+       */
+      maxOutputTokens?: null | number;
+      /** @description Gets or sets the tokenizer type used by this model. */
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets whether this model is currently active and available for use.
+       *     True if the model is active and available; otherwise, false. */
+      isActive?: boolean;
+      /**
+       * Format: date-time
+       * @description Gets or sets the timestamp when this model was first created in the system.
+       *     The UTC timestamp of model creation.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description Gets or sets the timestamp when this model was last updated.
+       *     The UTC timestamp of the last update.
+       */
+      updatedAt?: string;
+      series?: null | components["schemas"]["ModelSeriesDto"];
+      /** @description Gets or sets the model-specific parameter configuration for UI generation.
+       *     JSON string containing parameter definitions, or null to use series defaults. */
+      modelParameters?: null | string;
+      /** @description Gets or sets the provider type associations (identifiers) for this model. */
+      identifiers?: null | components["schemas"]["ModelIdentifierDto"][];
+    };
+    Notification: {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      virtualKeyId?: null | number;
+      virtualKey?: null | components["schemas"]["VirtualKey"];
+      type?: components["schemas"]["NotificationType"];
+      severity?: components["schemas"]["NotificationSeverity"];
+      message: string;
+      isRead?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+    };
+    NotificationDto: {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      virtualKeyId?: null | number;
+      virtualKeyName?: null | string;
+      type?: components["schemas"]["NotificationType"];
+      severity?: components["schemas"]["NotificationSeverity"];
+      message?: string;
+      isRead?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+    };
+    NotificationSeverity: number;
+    NotificationType: number;
+    /** @description Information about a condition operator */
+    OperatorInfo: {
+      /** @description The operator identifier */
+      operator?: string;
+      /** @description Description of the operator */
+      description?: string;
+      /** @description Example usage */
+      example?: string;
+    };
+    OsInfo: {
+      description?: string;
+      architecture?: string;
+    };
+    OverallMediaStorageStats: {
+      /** Format: int64 */
+      totalSizeBytes?: number;
+      /** Format: int32 */
+      totalFiles?: number;
+      /** Format: int32 */
+      orphanedFiles?: number;
+      byProvider?: {
+        [key: string]: number;
+      };
+      storageByVirtualKey?: {
+        [key: string]: number;
+      };
+      byMediaType?: {
+        [key: string]: components["schemas"]["MediaTypeStats"];
+      };
+    };
+    PagedResultOfLogRequestDto: {
+      items?: components["schemas"]["LogRequestDto"][];
+      /** Format: int32 */
+      totalCount?: number;
+      /** Format: int32 */
+      currentPage?: number;
+      /** Format: int32 */
+      pageSize?: number;
+      /** Format: int32 */
+      totalPages?: number;
+      hasPreviousPage?: boolean;
+      hasNextPage?: boolean;
+      /** Format: int32 */
+      page?: number;
+      /** Format: int32 */
+      totalItems?: number;
+    };
+    PagedResultOfObject: {
+      items?: unknown[];
+      /** Format: int32 */
+      totalCount?: number;
+      /** Format: int32 */
+      currentPage?: number;
+      /** Format: int32 */
+      pageSize?: number;
+      /** Format: int32 */
+      totalPages?: number;
+      hasPreviousPage?: boolean;
+      hasNextPage?: boolean;
+      /** Format: int32 */
+      page?: number;
+      /** Format: int32 */
+      totalItems?: number;
+    };
+    PagedResultOfVirtualKeyGroupDto: {
+      items?: components["schemas"]["VirtualKeyGroupDto"][];
+      /** Format: int32 */
+      totalCount?: number;
+      /** Format: int32 */
+      currentPage?: number;
+      /** Format: int32 */
+      pageSize?: number;
+      /** Format: int32 */
+      totalPages?: number;
+      hasPreviousPage?: boolean;
+      hasNextPage?: boolean;
+      /** Format: int32 */
+      page?: number;
+      /** Format: int32 */
+      totalItems?: number;
+    };
+    PagedResultOfVirtualKeyGroupTransactionDto: {
+      items?: components["schemas"]["VirtualKeyGroupTransactionDto"][];
+      /** Format: int32 */
+      totalCount?: number;
+      /** Format: int32 */
+      currentPage?: number;
+      /** Format: int32 */
+      pageSize?: number;
+      /** Format: int32 */
+      totalPages?: number;
+      hasPreviousPage?: boolean;
+      hasNextPage?: boolean;
+      /** Format: int32 */
+      page?: number;
+      /** Format: int32 */
+      totalItems?: number;
+    };
     /** @description Period comparison for trend analysis */
-    "ConduitLLM.Admin.Interfaces.PeriodComparison": {
+    PeriodComparison: {
       /**
        * Format: double
        * @description Absolute change in cost compared to previous period
@@ -9598,15 +14488,1567 @@ export interface components {
        */
       errorRateChange?: number;
     };
+    /** @description Pricing audit event DTO */
+    PricingAuditEventDto: {
+      /**
+       * Format: int64
+       * @description Unique identifier for the audit event.
+       */
+      id?: number;
+      /**
+       * Format: date-time
+       * @description When the pricing event occurred.
+       */
+      timestamp?: string;
+      /**
+       * Format: int32
+       * @description The virtual key ID associated with this event.
+       */
+      virtualKeyId?: number;
+      /** @description The model identifier used for pricing. */
+      modelId?: string;
+      /**
+       * Format: int32
+       * @description The model cost configuration ID that was applied.
+       */
+      modelCostId?: number;
+      /** @description The type of pricing applied (e.g., token, image, audio). */
+      pricingType?: string;
+      /** @description JSON representation of input parameters used for pricing calculation. */
+      inputParameters?: string;
+      /** @description The pricing rule that matched, if any. */
+      matchedRule?: null | string;
+      /** @description Whether the default rate was used instead of a specific rule. */
+      usedDefaultRate?: boolean;
+      /**
+       * Format: double
+       * @description The rate that was applied for pricing.
+       */
+      appliedRate?: number;
+      /**
+       * Format: double
+       * @description The quantity (tokens, images, seconds, etc.) being priced.
+       */
+      quantity?: number;
+      /**
+       * Format: double
+       * @description The final calculated cost.
+       */
+      calculatedCost?: number;
+      /** @description The request ID for correlation, if available. */
+      requestId?: null | string;
+    };
+    /** @description Request to query pricing audit events */
+    PricingAuditQueryRequest: {
+      /**
+       * Format: date-time
+       * @description Start date
+       */
+      from?: string;
+      /**
+       * Format: date-time
+       * @description End date
+       */
+      to?: string;
+      /**
+       * Format: int32
+       * @description Optional virtual key ID filter
+       */
+      virtualKeyId?: null | number;
+      /** @description Optional model ID filter */
+      modelId?: null | string;
+      /** @description Optional pricing type filter */
+      pricingType?: null | string;
+      /**
+       * Format: int32
+       * @description Page number (1-based)
+       */
+      pageNumber?: number;
+      /**
+       * Format: int32
+       * @description Page size
+       */
+      pageSize?: number;
+    };
+    /** @description Response from pricing audit query */
+    PricingAuditQueryResponse: {
+      /** @description The audit events */
+      events?: components["schemas"]["PricingAuditEventDto"][];
+      /**
+       * Format: int32
+       * @description Total count of matching events
+       */
+      totalCount?: number;
+      /**
+       * Format: int32
+       * @description Current page number
+       */
+      pageNumber?: number;
+      /**
+       * Format: int32
+       * @description Page size
+       */
+      pageSize?: number;
+    };
+    PricingAuditSummary: {
+      /** Format: int64 */
+      totalEvaluations?: number;
+      /** Format: int64 */
+      defaultRateUsed?: number;
+      /** Format: int64 */
+      rulesMatched?: number;
+      /** Format: double */
+      totalRevenue?: number;
+      /** Format: double */
+      averageRate?: number;
+      pricingTypeBreakdown?: {
+        [key: string]: number;
+      };
+      modelBreakdown?: {
+        [key: string]: number;
+      };
+      topMatchedRules?: components["schemas"]["RuleMatchSummary"][];
+    };
+    PricingConstraints: {
+      /** Format: double */
+      minDuration?: null | number;
+      /** Format: double */
+      maxDuration?: null | number;
+      /** Format: int32 */
+      minSteps?: null | number;
+      /** Format: int32 */
+      maxSteps?: null | number;
+      allowedResolutions?: null | string[];
+    };
+    PricingModel: number;
+    PricingRule: {
+      conditions?: Record<string, never>;
+      /** Format: double */
+      rate?: number;
+      /** Format: int32 */
+      priority?: number;
+      description?: null | string;
+    };
+    PricingRulesConfig: {
+      version?: string;
+      pricingType?: string;
+      unitField?: null | string;
+      /** Format: double */
+      defaultRate?: number;
+      rules?: components["schemas"]["PricingRule"][];
+      constraints?: null | components["schemas"]["PricingConstraints"];
+    };
+    /** @description Request to simulate pricing calculation */
+    PricingSimulationRequest: {
+      /** @description The pricing configuration JSON */
+      pricingConfiguration?: string;
+      /** @description Parameters for the simulation */
+      parameters?: null | Record<string, never>;
+      /**
+       * Format: double
+       * @description Video duration in seconds (for per_second pricing)
+       */
+      videoDurationSeconds?: null | number;
+      /** @description Video resolution (e.g., "1080p") */
+      videoResolution?: null | string;
+      /**
+       * Format: int32
+       * @description Image count (for per_unit pricing)
+       */
+      imageCount?: null | number;
+      /** @description Image resolution (e.g., "1024x1024") */
+      imageResolution?: null | string;
+      /** @description Image quality (e.g., "hd", "standard") */
+      imageQuality?: null | string;
+    };
+    /** @description Response from pricing simulation */
+    PricingSimulationResponse: {
+      /**
+       * Format: double
+       * @description The calculated cost
+       */
+      calculatedCost?: number;
+      /**
+       * Format: double
+       * @description The rate that was applied
+       */
+      appliedRate?: number;
+      /**
+       * Format: double
+       * @description The quantity used in calculation
+       */
+      quantity?: number;
+      matchedRule?: null | components["schemas"]["MatchedRuleInfo"];
+      /** @description Whether the default rate was used */
+      usedDefaultRate?: boolean;
+      /** @description Warning message if any */
+      warningMessage?: null | string;
+    };
+    /** @description Information about a pricing type */
+    PricingTypeInfo: {
+      /** @description The pricing type identifier */
+      type?: string;
+      /** @description Description of the pricing type */
+      description?: string;
+      /** @description Example calculation */
+      example?: string;
+    };
+    /** @description Request to validate pricing configuration */
+    PricingValidationRequest: {
+      /** @description The pricing configuration JSON to validate */
+      pricingConfiguration?: string;
+    };
+    /** @description Response from pricing validation */
+    PricingValidationResponse: {
+      /** @description Whether the configuration is valid */
+      isValid?: boolean;
+      /** @description Validation errors if any */
+      errors?: string[];
+      /** @description Validation warnings if any */
+      warnings?: string[];
+    };
+    ProblemDetails: {
+      type?: null | string;
+      title?: null | string;
+      /** Format: int32 */
+      status?: null | number;
+      detail?: null | string;
+      instance?: null | string;
+    };
+    ProcessRefundRequestDto: {
+      modelId?: string;
+      originalUsage?: components["schemas"]["UsageDto"];
+      refundUsage?: components["schemas"]["UsageDto"];
+      refundReason?: string;
+      originalTransactionId?: null | string;
+    };
+    PromptCachingConfigDto: {
+      autoInjectEnabled?: boolean;
+      injectionPoints?: components["schemas"]["CacheInjectionPointDto"][];
+    };
+    Provider: {
+      /** Format: int32 */
+      id?: number;
+      providerType: components["schemas"]["ProviderType"];
+      providerName: string;
+      baseUrl?: null | string;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      providerKeyCredentials?: components["schemas"]["ProviderKeyCredential"][];
+    };
+    /** @description Request distribution statistics for a single model. */
+    ProviderDistributionDto: {
+      /** @description The model name the requests were routed for. */
+      provider?: string;
+      /**
+       * Format: int32
+       * @description Number of requests processed.
+       */
+      requestCount?: number;
+      /**
+       * Format: double
+       * @description Percentage of requests that succeeded (0-100).
+       */
+      successRate?: number;
+      /**
+       * Format: double
+       * @description Average response latency in milliseconds.
+       */
+      avgLatency?: number;
+    };
+    /** @description DTO for individual provider error occurrence */
+    ProviderErrorDto: {
+      /**
+       * Format: int32
+       * @description ID of the key credential that caused the error
+       */
+      keyCredentialId?: number;
+      /** @description Name of the key for display */
+      keyName?: null | string;
+      /**
+       * Format: int32
+       * @description ID of the provider
+       */
+      providerId?: number;
+      /** @description Name of the provider */
+      providerName?: null | string;
+      /** @description Type of error */
+      errorType?: string;
+      /** @description Error message */
+      errorMessage?: string;
+      /**
+       * Format: int32
+       * @description HTTP status code if applicable
+       */
+      httpStatusCode?: null | number;
+      /**
+       * Format: date-time
+       * @description When the error occurred
+       */
+      occurredAt?: string;
+      /** @description Whether this is a fatal error */
+      isFatal?: boolean;
+      /** @description Model that was being used */
+      modelName?: null | string;
+    };
+    /** @description DTO for provider-level error summary */
+    ProviderErrorSummaryDto: {
+      /**
+       * Format: int32
+       * @description Provider ID
+       */
+      providerId?: number;
+      /** @description Provider name */
+      providerName?: string;
+      /**
+       * Format: int32
+       * @description Total number of errors
+       */
+      totalErrors?: number;
+      /**
+       * Format: int32
+       * @description Number of fatal errors
+       */
+      fatalErrors?: number;
+      /**
+       * Format: int32
+       * @description Number of warnings
+       */
+      warnings?: number;
+      /** @description List of disabled key IDs */
+      disabledKeyIds?: number[];
+      /**
+       * Format: date-time
+       * @description When the last error occurred
+       */
+      lastError?: null | string;
+      /**
+       * Format: int32
+       * @description Number of currently disabled keys
+       */
+      disabledKeyCount?: number;
+    };
+    ProviderKeyCredential: {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      providerId: number;
+      provider?: components["schemas"]["Provider"];
+      /** Format: int16 */
+      providerAccountGroup?: number;
+      apiKey?: null | string;
+      baseUrl?: null | string;
+      organization?: null | string;
+      keyName?: null | string;
+      isPrimary?: boolean;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+    };
+    ProviderReferenceDto: {
+      /** Format: int32 */
+      id?: number;
+      providerType?: components["schemas"]["ProviderType"];
+      displayName?: string;
+      isEnabled?: boolean;
+    };
+    ProviderToolDto: {
+      /** Format: int32 */
+      id?: number;
+      isActive?: boolean;
+      /** Format: date-time */
+      updatedAt?: string;
+      provider: components["schemas"]["ProviderType"];
+      toolName: string;
+      toolParameters?: null | string;
+      /** Format: double */
+      costPerUnit?: null | number;
+      billingUnit?: null | string;
+      costDescription?: null | string;
+      providerName?: null | string;
+    };
+    /** @description DTO for the result of a bulk provider tool import */
+    ProviderToolImportResultDto: {
+      /**
+       * Format: int32
+       * @description Number of tools successfully imported
+       */
+      imported?: number;
+      /**
+       * Format: int32
+       * @description Number of tools skipped because they already exist
+       */
+      skipped?: number;
+      /**
+       * Format: int32
+       * @description Total number of tools in the import request
+       */
+      total?: number;
+      /** @description Error messages for tools that could not be imported, or null if there were none */
+      errors?: null | string[];
+    };
+    ProviderType: number;
+    /** @description Request model for pruning old media. */
+    PruneMediaRequest: {
+      /**
+       * Format: int32
+       * @description Gets or sets the number of days to keep media files.
+       */
+      daysToKeep?: null | number;
+    };
+    RecordCountsDto: {
+      /** Format: int32 */
+      virtualKeys?: number;
+      /** Format: int32 */
+      requests?: number;
+      /** Format: int32 */
+      settings?: number;
+      /** Format: int32 */
+      providers?: number;
+      /** Format: int32 */
+      modelMappings?: number;
+    };
+    ReferenceType: number;
+    RefundBreakdownDto: {
+      /** Format: double */
+      inputTokenRefund?: number;
+      /** Format: double */
+      outputTokenRefund?: number;
+      /** Format: double */
+      imageRefund?: number;
+      /** Format: double */
+      videoRefund?: number;
+      /** Format: double */
+      embeddingRefund?: number;
+      /** Format: double */
+      searchUnitRefund?: number;
+      /** Format: double */
+      inferenceStepRefund?: number;
+    };
+    RefundResultDto: {
+      /** Format: int64 */
+      transactionId?: number;
+      modelId?: string;
+      originalUsage?: components["schemas"]["UsageDto"];
+      refundUsage?: components["schemas"]["UsageDto"];
+      /** Format: double */
+      refundAmount?: number;
+      /** Format: double */
+      balanceAfter?: number;
+      originalTransactionId?: null | string;
+      refundReason?: string;
+      /** Format: date-time */
+      refundedAt?: string;
+      isPartialRefund?: boolean;
+      validationMessages?: string[];
+      breakdown?: null | components["schemas"]["RefundBreakdownDto"];
+    };
+    RequestLog: {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      virtualKeyId?: number;
+      virtualKey?: null | components["schemas"]["VirtualKey"];
+      modelName: string;
+      /** Format: int32 */
+      providerId?: null | number;
+      providerType?: null | string;
+      requestType: string;
+      /** Format: int32 */
+      inputTokens?: number;
+      /** Format: int32 */
+      outputTokens?: number;
+      /** Format: int32 */
+      cachedInputTokens?: null | number;
+      /** Format: int32 */
+      cachedWriteTokens?: null | number;
+      /** Format: double */
+      cost?: number;
+      /** Format: double */
+      responseTimeMs?: number;
+      /** Format: date-time */
+      timestamp?: string;
+      userId?: null | string;
+      clientIp?: null | string;
+      requestPath?: null | string;
+      /** Format: int32 */
+      statusCode?: null | number;
+      metadata?: null | string;
+    };
+    /** @description Summary of a retention policy for display. */
+    RetentionPolicySummaryDto: {
+      /** @description Name of the policy. */
+      name?: string;
+      /**
+       * Format: int32
+       * @description Retention days for positive balance accounts.
+       */
+      positiveBalanceRetentionDays?: number;
+      /**
+       * Format: int32
+       * @description Retention days for zero balance accounts.
+       */
+      zeroBalanceRetentionDays?: number;
+      /**
+       * Format: int32
+       * @description Retention days for negative balance accounts.
+       */
+      negativeBalanceRetentionDays?: number;
+    };
+    /** @description Response DTO for the routing configuration endpoint. */
+    RoutingConfigurationDto: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the configuration snapshot was generated (UTC).
+       */
+      timestamp?: string;
+      /** @description Model-to-provider routing rules. */
+      routingRules?: components["schemas"]["RoutingRuleDto"][];
+      /** @description Configured load balancers. */
+      loadBalancers?: components["schemas"]["LoadBalancerDto"][];
+      /** @description Routing statistics for the last 24 hours. */
+      statistics?: components["schemas"]["RoutingStatisticsDto"];
+      /** @description General routing configuration settings. */
+      configuration?: components["schemas"]["RoutingSettingsDto"];
+    };
+    /** @description A single model-to-provider routing rule. */
+    RoutingRuleDto: {
+      /**
+       * Format: int32
+       * @description The model provider mapping ID.
+       */
+      id?: number;
+      /** @description The model alias exposed to clients. */
+      modelAlias?: string;
+      /** @description The provider-specific model identifier. */
+      providerModelId?: string;
+      /** @description Whether the mapping is enabled. */
+      isEnabled?: boolean;
+      /** @description The provider that serves this rule. */
+      provider?: components["schemas"]["RoutingRuleProviderDto"];
+    };
+    /** @description Provider details for a routing rule. */
+    RoutingRuleProviderDto: {
+      /**
+       * Format: int32
+       * @description The provider ID.
+       */
+      id?: number;
+      /** @description The provider display name. */
+      name?: string;
+      /** @description The provider type. */
+      type?: components["schemas"]["ProviderType"];
+      /** @description Whether the provider is enabled. */
+      isEnabled?: boolean;
+    };
+    /** @description General routing configuration settings. */
+    RoutingSettingsDto: {
+      /** @description Whether automatic failover is enabled. */
+      enableFailover?: boolean;
+      /** @description Whether load balancing is enabled. */
+      enableLoadBalancing?: boolean;
+      /**
+       * Format: int32
+       * @description Request timeout in seconds.
+       */
+      requestTimeout?: number;
+      /**
+       * Format: int32
+       * @description Number of failures before the circuit breaker opens.
+       */
+      circuitBreakerThreshold?: number;
+    };
+    /** @description Routing statistics over the last 24 hours. */
+    RoutingStatisticsDto: {
+      /**
+       * Format: int32
+       * @description Total number of requests processed.
+       */
+      totalRequests?: number;
+      /** @description Per-model request distribution. */
+      providerDistribution?: components["schemas"]["ProviderDistributionDto"][];
+    };
+    RuleMatchSummary: {
+      ruleDescription?: string;
+      /** Format: int64 */
+      matchCount?: number;
+      /** Format: double */
+      totalRevenue?: number;
+    };
+    RuntimeInfo: {
+      runtimeVersion?: string;
+      /** Format: date-time */
+      startTime?: string;
+      uptime?: string;
+    };
+    /** @description Number of security events of a given severity. */
+    SecurityEventSeverityCountDto: {
+      /** @description Event severity (warning or high). */
+      severity?: string;
+      /**
+       * Format: int32
+       * @description Number of events with this severity.
+       */
+      count?: number;
+    };
+    /** @description Response containing recent security events. */
+    SecurityEventsResponse: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the response was generated (UTC).
+       */
+      timestamp?: string;
+      /** @description Time range analyzed for security events. */
+      timeRange?: components["schemas"]["TimeRangeDto"];
+      /**
+       * Format: int32
+       * @description Total number of security events returned.
+       */
+      totalEvents?: number;
+      /** @description Event counts grouped by event type. */
+      eventsByType?: components["schemas"]["SecurityEventTypeCountDto"][];
+      /** @description Event counts grouped by severity. */
+      eventsBySeverity?: components["schemas"]["SecurityEventSeverityCountDto"][];
+      /** @description The individual security events, most recent first. */
+      events?: components["schemas"]["SecurityMonitoringEventDto"][];
+    };
+    /** @description Number of security events of a given type. */
+    SecurityEventTypeCountDto: {
+      /** @description Security event type identifier. */
+      type?: string;
+      /**
+       * Format: int32
+       * @description Number of events of this type.
+       */
+      count?: number;
+    };
+    /** @description A single security event derived from request log analysis. */
+    SecurityMonitoringEventDto: {
+      /**
+       * Format: date-time
+       * @description When the event occurred (UTC).
+       */
+      timestamp?: string;
+      /** @description Event type (auth_failure, rate_limit, blocked_ip, or suspicious_activity). */
+      type?: string;
+      /** @description Event severity (warning or high). */
+      severity?: string;
+      /** @description Source IP address of the event. */
+      source?: string;
+      /** @description Identifier of the virtual key involved, if applicable. */
+      virtualKeyId?: null | string;
+      /** @description Human-readable event description. */
+      details?: string;
+      /**
+       * Format: int32
+       * @description HTTP status code associated with the event, if applicable.
+       */
+      statusCode?: null | number;
+    };
+    /** @description Simplified model information for display within a series context. */
+    SeriesSimpleModelDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier of the model.
+       *     The model's database ID.
+       */
+      id?: number;
+      /** @description Gets or sets the canonical name of the model.
+       *     The model name. */
+      name?: string;
+      /** @description Gets or sets the version identifier of the model.
+       *     The version string, or null if not versioned. */
+      version?: null | string;
+      /** @description Gets or sets whether the model is currently active.
+       *     True if the model is active; otherwise, false. */
+      isActive?: boolean;
+    };
+    /** @description Response containing current health status for all monitored services. */
+    ServiceHealthResponse: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the health snapshot was generated (UTC).
+       */
+      timestamp?: string;
+      /** @description Overall health status across all services (healthy, degraded, or unhealthy). */
+      overallStatus?: string;
+      /** @description Summary counts of services by health status. */
+      summary?: components["schemas"]["ServiceHealthSummary"];
+      /** @description Health details for each monitored service. */
+      services?: components["schemas"]["ServiceStatusDto"][];
+    };
+    /** @description Summary counts of services by health status. */
+    ServiceHealthSummary: {
+      /**
+       * Format: int32
+       * @description Number of healthy services.
+       */
+      healthy?: number;
+      /**
+       * Format: int32
+       * @description Number of degraded services.
+       */
+      degraded?: number;
+      /**
+       * Format: int32
+       * @description Number of unhealthy services.
+       */
+      unhealthy?: number;
+      /**
+       * Format: int32
+       * @description Total number of monitored services.
+       */
+      total?: number;
+    };
+    /** @description Health status for a single monitored service. */
+    ServiceStatusDto: {
+      /** @description Service identifier (e.g. core-api, admin-api, database). */
+      id?: string;
+      /** @description Display name of the service. */
+      name?: string;
+      /** @description Health status of the service (healthy, degraded, or unhealthy). */
+      status?: string;
+      /** @description How long the service has been running. */
+      uptime?: string;
+      /**
+       * Format: date-time
+       * @description Timestamp of the last health check (UTC).
+       */
+      lastCheck?: string;
+      /**
+       * Format: int32
+       * @description Health check response time in milliseconds.
+       */
+      responseTime?: number;
+      /** @description Service-specific detail values (shape varies per service). */
+      details?: unknown;
+    };
+    /** @description Simplified model series information for display within an author context. */
+    SimpleModelSeriesDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier of the series.
+       */
+      id?: number;
+      /** @description Gets or sets the name of the model series. */
+      name?: string;
+      /** @description Gets or sets the description of the series. */
+      description?: null | string;
+      /** @description Gets or sets the tokenizer type used by this series. */
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /**
+       * Format: int32
+       * @description Gets or sets the number of models in this series.
+       */
+      modelCount?: number;
+    };
+    /** @description Response for simple retention override operations. */
+    SimpleRetentionResponse: {
+      /**
+       * Format: int32
+       * @description Current retention days setting (null if using policy-based).
+       */
+      retentionDays?: null | number;
+      /** @description Whether the simple override is currently active. */
+      isOverrideActive?: boolean;
+      /** @description Informational message about the change. */
+      message?: null | string;
+    };
+    StandardApiKeyTestResponse: {
+      result?: components["schemas"]["ApiKeyTestResult"];
+      message?: string;
+      details?: null | components["schemas"]["ApiKeyTestDetails"];
+    };
+    StringSegment: {
+      buffer?: null | string;
+      /** Format: int32 */
+      offset?: number;
+      /** Format: int32 */
+      length?: number;
+      value?: null | string;
+      hasValue?: boolean;
+    };
+    SystemInfoDto: {
+      version?: components["schemas"]["VersionInfo"];
+      operatingSystem?: components["schemas"]["OsInfo"];
+      database?: components["schemas"]["DatabaseInfo"];
+      runtime?: components["schemas"]["RuntimeInfo"];
+      recordCounts?: components["schemas"]["RecordCountsDto"];
+    };
+    /** @description Host system metrics for the current process. */
+    SystemMetricsDto: {
+      /**
+       * Format: int32
+       * @description Number of logical processors available.
+       */
+      cpuCount?: number;
+      /**
+       * Format: int64
+       * @description Process working set size in megabytes.
+       */
+      workingSetMb?: number;
+      /**
+       * Format: int64
+       * @description Total memory tracked by the garbage collector in megabytes.
+       */
+      gcMemoryMb?: number;
+      /**
+       * Format: int32
+       * @description Number of threads in the current process.
+       */
+      threadCount?: number;
+      /** @description Time elapsed since the process started. */
+      uptime?: string;
+    };
+    /** @description Response returned when old asynchronous tasks are cleaned up. */
+    TaskCleanupResponseDto: {
+      /**
+       * Format: int32
+       * @description Number of tasks that were cleaned up.
+       */
+      cleaned_up?: number;
+      /**
+       * Format: int32
+       * @description The age threshold, in hours, used for the cleanup.
+       */
+      older_than_hours?: number;
+    };
+    /** @description Request model for testing credentials. */
+    TestCredentialRequest: {
+      /**
+       * Format: int32
+       * @description The credential ID to test.
+       */
+      credentialId?: number;
+      /** @description Optional API key to override the stored credential for testing. */
+      apiKeyOverride?: null | string;
+    };
+    /** @description Request model for testing a provider connection */
+    TestProviderRequest: {
+      /** @description The type of provider to test */
+      providerType?: components["schemas"]["ProviderType"];
+      /** @description The API key to test */
+      apiKey?: null | string;
+      /** @description The base URL to test (optional) */
+      baseUrl?: null | string;
+      /** @description The organization to test (optional) */
+      organization?: null | string;
+    };
+    /** @description Aggregate security metrics for threat analytics. */
+    ThreatAnalyticsMetricsDto: {
+      /**
+       * Format: int32
+       * @description Total number of threats detected today.
+       */
+      totalThreatsToday?: number;
+      /**
+       * Format: int32
+       * @description Number of unique threat source IPs detected today.
+       */
+      uniqueThreatsToday?: number;
+      /**
+       * Format: int32
+       * @description Number of IP addresses currently blocked.
+       */
+      blockedIPs?: number;
+      /**
+       * Format: double
+       * @description Overall compliance score percentage.
+       */
+      complianceScore?: number;
+    };
+    /** @description Response containing threat analytics data. */
+    ThreatAnalyticsResponse: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the analytics were generated (UTC).
+       */
+      timestamp?: string;
+      /** @description Aggregate security metrics. */
+      metrics?: components["schemas"]["ThreatAnalyticsMetricsDto"];
+      /** @description Highest-risk threat sources, ordered by risk score. */
+      topThreats?: components["schemas"]["TopThreatSourceDto"][];
+      /** @description Threat counts grouped by threat type. */
+      threatDistribution?: components["schemas"]["ThreatDistributionDto"][];
+      /** @description Daily threat counts over the analyzed period. */
+      threatTrend?: components["schemas"]["ThreatTrendPointDto"][];
+    };
+    /** @description Threat counts for a single threat type. */
+    ThreatDistributionDto: {
+      /** @description Threat type (Authentication, Authorization, RateLimit, InvalidRequest, or Other). */
+      type?: string;
+      /**
+       * Format: int32
+       * @description Number of threats of this type.
+       */
+      count?: number;
+      /**
+       * Format: int32
+       * @description Number of unique source IPs for this threat type.
+       */
+      uniqueIPs?: number;
+    };
+    /** @description Threat count for a single day. */
+    ThreatTrendPointDto: {
+      /**
+       * Format: date-time
+       * @description The day the threats occurred (UTC).
+       */
+      date?: string;
+      /**
+       * Format: int32
+       * @description Number of threats detected on this day.
+       */
+      threats?: number;
+    };
+    /** @description Time range covered by a monitoring response. */
+    TimeRangeDto: {
+      /**
+       * Format: date-time
+       * @description Start of the time range (UTC).
+       */
+      start?: string;
+      /**
+       * Format: date-time
+       * @description End of the time range (UTC).
+       */
+      end?: string;
+    };
+    ToggleLLMCacheRequest: {
+      enabled?: boolean;
+      reason?: null | string;
+    };
+    TokenizerType: number;
+    /** @description DTO describing a provider type that supports tools */
+    ToolProviderDto: {
+      /**
+       * Format: int32
+       * @description Numeric value of the provider type
+       */
+      value?: number;
+      /** @description Display name of the provider */
+      name?: string;
+      /** @description Description of the provider's tool support */
+      description?: string;
+    };
+    /** @description A threat source ranked by risk score. */
+    TopThreatSourceDto: {
+      /** @description IP address of the threat source. */
+      ipAddress?: null | string;
+      /**
+       * Format: int32
+       * @description Total number of failed requests from this source.
+       */
+      totalFailures?: number;
+      /**
+       * Format: int32
+       * @description Number of distinct days this source was active.
+       */
+      daysActive?: number;
+      /**
+       * Format: date-time
+       * @description Date this source was last seen (UTC).
+       */
+      lastSeen?: string;
+      /**
+       * Format: double
+       * @description Calculated risk score (failures per active day).
+       */
+      riskScore?: number;
+    };
+    TransactionType: number;
+    UpdateFunctionCostDto: {
+      /** Format: int32 */
+      id?: number;
+      costName: string;
+      purpose?: null | components["schemas"]["FunctionPurpose"];
+      description?: null | string;
+      /** Format: double */
+      baseCost?: null | number;
+      pricingModel?: components["schemas"]["FunctionPricingModel"];
+      pricingConfiguration?: null | string;
+      isActive?: boolean;
+      /** Format: int32 */
+      priority?: number;
+      /** Format: date-time */
+      effectiveDate?: string;
+      /** Format: date-time */
+      expiryDate?: null | string;
+    };
+    UpdateGlobalSettingByKeyDto: {
+      key: string;
+      value: string;
+      description?: null | string;
+    };
+    UpdateGlobalSettingDto: {
+      /** Format: int32 */
+      id?: number;
+      value: string;
+      description?: null | string;
+    };
+    UpdateIpFilterDto: {
+      /** Format: int32 */
+      id: number;
+      filterType: string;
+      ipAddressOrCidr: string;
+      name?: string;
+      description?: null | string;
+      isEnabled?: boolean;
+    };
+    /** @description Request model for updating a key credential */
+    UpdateKeyRequest: {
+      /** @description The new name for the key (optional) */
+      keyName?: null | string;
+      /** @description The new API key (optional) */
+      apiKey?: null | string;
+      /** @description The new organization (optional) */
+      organization?: null | string;
+      /** @description The new base URL (optional) */
+      baseUrl?: null | string;
+      /** @description Whether this should be the primary key (optional) */
+      isPrimary?: null | boolean;
+      /** @description Whether the key is enabled (optional) */
+      isEnabled?: null | boolean;
+      /**
+       * Format: int32
+       * @description The provider account group (optional)
+       */
+      providerAccountGroup?: null | number;
+    };
+    /** @description Request to update the media cleanup enabled state. */
+    UpdateMediaCleanupEnabledRequest: {
+      /** @description Whether to enable or disable the media cleanup service. */
+      enabled?: boolean;
+    };
+    /** @description Request model for updating an existing media retention policy. */
+    UpdateMediaRetentionPolicyRequest: {
+      name?: null | string;
+      description?: null | string;
+      /** Format: int32 */
+      positiveBalanceRetentionDays?: null | number;
+      /** Format: int32 */
+      zeroBalanceRetentionDays?: null | number;
+      /** Format: int32 */
+      negativeBalanceRetentionDays?: null | number;
+      /** Format: int32 */
+      softDeleteGracePeriodDays?: null | number;
+      respectRecentAccess?: null | boolean;
+      /** Format: int32 */
+      recentAccessWindowDays?: null | number;
+      isDefault?: null | boolean;
+      /** Format: int64 */
+      maxStorageSizeBytes?: null | number;
+      /** Format: int32 */
+      maxFileCount?: null | number;
+      isActive?: null | boolean;
+    };
+    /** @description Data transfer object for updating an existing model author/organization. */
+    UpdateModelAuthorDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the author to update.
+       */
+      id?: number;
+      /** @description Gets or sets the new name for the author. */
+      name?: null | string;
+      /** @description Gets or sets the new website URL. */
+      websiteUrl?: null | string;
+      /** @description Gets or sets the new description. */
+      description?: null | string;
+    };
+    UpdateModelCostDto: {
+      /** Format: int32 */
+      id?: number;
+      costName: string;
+      pricingModel: components["schemas"]["PricingModel"];
+      pricingConfiguration?: null | string;
+      modelProviderTypeAssociationIds?: null | number[];
+      modelType: string;
+      /** Format: int32 */
+      priority?: number;
+      description?: null | string;
+      isActive?: boolean;
+      /** Format: double */
+      inputCostPerMillionTokens?: number;
+      /** Format: double */
+      outputCostPerMillionTokens?: number;
+      /** Format: double */
+      embeddingCostPerMillionTokens?: null | number;
+      /** Format: double */
+      batchProcessingMultiplier?: null | number;
+      supportsBatchProcessing?: boolean;
+      /** Format: double */
+      cachedInputCostPerMillionTokens?: null | number;
+      /** Format: double */
+      cachedInputWriteCostPerMillionTokens?: null | number;
+      /** Format: double */
+      costPerSearchUnit?: null | number;
+    };
+    /** @description Data transfer object for updating an existing AI model in the system. */
+    UpdateModelDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the model to update.
+       *     The unique identifier of the model to update.
+       */
+      id?: number;
+      /** @description Gets or sets the new canonical name for the model.
+       *     The new model name, or null to keep existing. */
+      name?: null | string;
+      /**
+       * Format: int32
+       * @description Gets or sets the new model series ID.
+       *     The new series ID, or null to keep existing.
+       */
+      modelSeriesId?: null | number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions.
+       *     True to enable chat support, false to disable, or null to keep existing. */
+      supportsChat?: null | boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding.
+       *     True to enable vision support, false to disable, or null to keep existing. */
+      supportsVision?: null | boolean;
+      /** @description Gets or sets whether the model supports function/tool calling.
+       *     True to enable function calling, false to disable, or null to keep existing. */
+      supportsFunctionCalling?: null | boolean;
+      /** @description Gets or sets whether the model supports streaming responses.
+       *     True to enable streaming, false to disable, or null to keep existing. */
+      supportsStreaming?: null | boolean;
+      /** @description Gets or sets whether the model supports image generation.
+       *     True to enable image generation, false to disable, or null to keep existing. */
+      supportsImageGeneration?: null | boolean;
+      /** @description Gets or sets whether the model supports video generation.
+       *     True to enable video generation, false to disable, or null to keep existing. */
+      supportsVideoGeneration?: null | boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation.
+       *     True to enable embeddings, false to disable, or null to keep existing. */
+      supportsEmbeddings?: null | boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of input tokens the model can process.
+       *     The new max input tokens, or null to keep existing.
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of output tokens the model can generate.
+       *     The new max output tokens, or null to keep existing.
+       */
+      maxOutputTokens?: null | number;
+      /** @description Gets or sets the new activation status for the model.
+       *     True to activate, false to deactivate, or null to keep existing status. */
+      isActive?: null | boolean;
+      /** @description Gets or sets the model-specific parameter configuration for UI generation.
+       *     JSON string containing parameter definitions, or null to use series defaults. */
+      modelParameters?: null | string;
+    };
+    /** @description DTO for updating a model identifier */
+    UpdateModelIdentifierDto: {
+      /** @description The identifier string used by a provider */
+      identifier?: string;
+      /**
+       * Format: int32
+       * @description The provider type that uses this identifier as an enum value
+       *     (OpenAI = 1, Groq = 2, Replicate = 3, etc.)
+       */
+      provider?: null | number;
+      /** @description Whether this is the primary identifier */
+      isPrimary?: null | boolean;
+      /** @description Optional metadata as JSON */
+      metadata?: null | string;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum input tokens
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum output tokens
+       */
+      maxOutputTokens?: null | number;
+      /**
+       * Format: double
+       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
+       */
+      speedScore?: null | number;
+      /**
+       * Format: double
+       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
+       */
+      qualityScore?: null | number;
+      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
+      providerVariation?: null | string;
+    };
+    /** @description Data transfer object for updating an existing model series. */
+    UpdateModelSeriesDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the series to update.
+       *     The unique identifier of the series to update.
+       */
+      id?: number;
+      /** @description Gets or sets the new name for the series.
+       *     The new series name, or null to keep existing. */
+      name?: null | string;
+      /** @description Gets or sets the new description for the series.
+       *     The new description, or null to keep existing. */
+      description?: null | string;
+      tokenizerType?: null | components["schemas"]["TokenizerType"];
+      /** @description Gets or sets the new UI parameters configuration.
+       *     The new parameters JSON string, or null to keep existing. */
+      parameters?: null | string;
+    };
+    UpdateNotificationDto: {
+      /** Format: int32 */
+      id?: number;
+      isRead?: boolean;
+      message?: null | string;
+    };
+    UpdatePromptCachingConfigDto: {
+      autoInjectEnabled: boolean;
+      injectionPoints: components["schemas"]["CacheInjectionPointDto"][];
+    };
+    /** @description Request model for updating a provider */
+    UpdateProviderRequest: {
+      /** @description The new name for the provider (optional) */
+      providerName?: null | string;
+      /** @description The new base URL for the provider (optional) */
+      baseUrl?: null | string;
+      /** @description Whether the provider is enabled */
+      isEnabled?: boolean;
+    };
+    UpdateProviderToolDto: {
+      isActive?: boolean;
+      toolParameters?: null | string;
+      /** Format: double */
+      costPerUnit?: null | number;
+      billingUnit?: null | string;
+      costDescription?: null | string;
+    };
+    /** @description Request to set or clear the simple retention override. */
+    UpdateSimpleRetentionRequest: {
+      /**
+       * Format: int32
+       * @description Retention days (1-365), or null to clear the override and use policy-based retention.
+       */
+      retentionDays?: null | number;
+    };
+    UpdateVirtualKeyGroupRequestDto: {
+      groupName?: null | string;
+      externalGroupId?: null | string;
+    };
+    UpdateVirtualKeyRequestDto: {
+      keyName?: null | string;
+      allowedModels?: null | string;
+      /** Format: int32 */
+      virtualKeyGroupId?: null | number;
+      isEnabled?: null | boolean;
+      /** Format: date-time */
+      expiresAt?: null | string;
+      metadata?: null | string;
+      /** Format: int32 */
+      rateLimitRpm?: null | number;
+      /** Format: int32 */
+      rateLimitRpd?: null | number;
+    };
+    /** @description DTO for usage data */
+    UsageDto: {
+      /**
+       * Format: int32
+       * @description Prompt/input tokens
+       */
+      promptTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Completion/output tokens
+       */
+      completionTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Total tokens
+       */
+      totalTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Image count for image generation
+       */
+      imageCount?: null | number;
+    };
+    UsageStatisticsDto: {
+      /** Format: int32 */
+      totalRequests?: number;
+      /** Format: double */
+      totalCost?: number;
+      /** Format: int32 */
+      totalInputTokens?: number;
+      /** Format: int32 */
+      totalOutputTokens?: number;
+      /** Format: int32 */
+      totalTokens?: number;
+      /** Format: double */
+      averageResponseTimeMs?: number;
+      modelUsage?: {
+        [key: string]: components["schemas"]["ModelUsage"];
+      };
+    };
+    /** @description Request model for validating pricing rules */
+    ValidatePricingRulesRequest: {
+      /** @description The pricing configuration JSON to validate */
+      pricingConfiguration?: string;
+      /** @description Optional parameter schema JSON for validation against model parameters */
+      parameterSchema?: null | string;
+    };
+    ValidateVirtualKeyRequest: {
+      key: string;
+      requestedModel?: null | string;
+    };
+    ValidationError: {
+      field?: string;
+      message?: string;
+      /** Format: int32 */
+      ruleIndex?: null | number;
+    };
+    ValidationResult: {
+      isValid?: boolean;
+      errors?: components["schemas"]["ValidationError"][];
+      warnings?: string[];
+      parsedConfig?: null | components["schemas"]["PricingRulesConfig"];
+    };
+    VersionInfo: {
+      appVersion?: string;
+      /** Format: date-time */
+      buildDate?: null | string;
+    };
+    VirtualKey: {
+      /** Format: int32 */
+      id?: number;
+      keyName: string;
+      keyHash: string;
+      description?: null | string;
+      isEnabled?: boolean;
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
+      virtualKeyGroup?: components["schemas"]["VirtualKeyGroup"];
+      /** Format: date-time */
+      expiresAt?: null | string;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      metadata?: null | string;
+      allowedModels?: null | string;
+      /** Format: int32 */
+      rateLimitRpm?: null | number;
+      /** Format: int32 */
+      rateLimitRpd?: null | number;
+      requestLogs?: null | components["schemas"]["RequestLog"][];
+      spendHistory?: null | components["schemas"]["VirtualKeySpendHistory"][];
+      notifications?: null | components["schemas"]["Notification"][];
+      /** Format: byte */
+      rowVersion?: null | string;
+    };
+    VirtualKeyCostBreakdownDto: {
+      /** Format: date-time */
+      startDate?: string;
+      /** Format: date-time */
+      endDate?: string;
+      virtualKeys?: components["schemas"]["VirtualKeyCostDetail"][];
+      /** Format: double */
+      totalCost?: number;
+      /** Format: int32 */
+      totalRequests?: number;
+    };
+    VirtualKeyCostDetail: {
+      /** Format: int32 */
+      virtualKeyId?: number;
+      keyName?: string;
+      /** Format: double */
+      totalCost?: number;
+      /** Format: int32 */
+      requestCount?: number;
+      /** Format: double */
+      averageCostPerRequest?: number;
+      /** Format: date-time */
+      lastUsed?: null | string;
+      /** Format: int32 */
+      uniqueModels?: number;
+    };
+    VirtualKeyDiscoveryPreviewDto: {
+      data?: components["schemas"]["DiscoveredModelDto"][];
+      /** Format: int32 */
+      count?: number;
+    };
+    VirtualKeyDto: {
+      /** Format: int32 */
+      id?: number;
+      keyName: string;
+      keyPrefix?: null | string;
+      allowedModels?: null | string;
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      expiresAt?: null | string;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      metadata?: null | string;
+      /** Format: int32 */
+      rateLimitRpm?: null | number;
+      /** Format: int32 */
+      rateLimitRpd?: null | number;
+      description?: null | string;
+    };
+    VirtualKeyGroup: {
+      /** Format: int32 */
+      id?: number;
+      externalGroupId?: null | string;
+      groupName: string;
+      /** Format: double */
+      balance?: number;
+      /** Format: double */
+      lifetimeCreditsAdded?: number;
+      /** Format: double */
+      lifetimeSpent?: number;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      /** Format: int32 */
+      mediaRetentionPolicyId?: null | number;
+      mediaRetentionPolicy?:
+        | null
+        | components["schemas"]["MediaRetentionPolicy"];
+      virtualKeys?: components["schemas"]["VirtualKey"][];
+      transactions?: components["schemas"]["VirtualKeyGroupTransaction"][];
+      /** Format: byte */
+      rowVersion?: null | string;
+    };
+    VirtualKeyGroupDto: {
+      /** Format: int32 */
+      id?: number;
+      externalGroupId?: null | string;
+      groupName?: string;
+      /** Format: double */
+      balance?: number;
+      /** Format: double */
+      lifetimeCreditsAdded?: number;
+      /** Format: double */
+      lifetimeSpent?: number;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      /** Format: int32 */
+      virtualKeyCount?: number;
+    };
+    /** @description Summary information for a virtual key group. */
+    VirtualKeyGroupSummaryDto: {
+      /** Format: int32 */
+      id?: number;
+      /** Format: double */
+      balance?: number;
+      /** Format: int32 */
+      virtualKeyCount?: number;
+    };
+    VirtualKeyGroupTransaction: {
+      /** Format: int64 */
+      id?: number;
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
+      virtualKeyGroup?: components["schemas"]["VirtualKeyGroup"];
+      transactionType?: components["schemas"]["TransactionType"];
+      /** Format: double */
+      amount?: number;
+      /** Format: double */
+      balanceAfter?: number;
+      referenceType?: components["schemas"]["ReferenceType"];
+      referenceId?: null | string;
+      description?: null | string;
+      initiatedBy?: string;
+      initiatedByUserId?: null | string;
+      idempotencyKey?: null | string;
+      /** Format: date-time */
+      createdAt?: string;
+      isDeleted?: boolean;
+      /** Format: date-time */
+      deletedAt?: null | string;
+    };
+    VirtualKeyGroupTransactionDto: {
+      /** Format: int64 */
+      id?: number;
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
+      transactionType?: components["schemas"]["TransactionType"];
+      /** Format: double */
+      amount?: number;
+      /** Format: double */
+      balanceAfter?: number;
+      referenceType?: components["schemas"]["ReferenceType"];
+      referenceId?: null | string;
+      description?: null | string;
+      initiatedBy?: string;
+      initiatedByUserId?: null | string;
+      /** Format: date-time */
+      createdAt?: string;
+    };
+    VirtualKeySpendHistory: {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      virtualKeyId?: number;
+      virtualKey?: null | components["schemas"]["VirtualKey"];
+      /** Format: double */
+      amount?: number;
+      /** Format: date-time */
+      date?: string;
+      /** Format: date-time */
+      timestamp?: string;
+    };
+    VirtualKeyUsageDto: {
+      /** Format: int32 */
+      keyId?: number;
+      keyName?: string;
+      /** Format: int32 */
+      groupId?: number;
+      groupName?: string;
+      /** Format: double */
+      balance?: number;
+      /** Format: double */
+      lifetimeCreditsAdded?: number;
+      /** Format: double */
+      lifetimeSpent?: number;
+      /** Format: int32 */
+      totalRequests?: number;
+      /** Format: int64 */
+      totalTokens?: number;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      expiresAt?: null | string;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      lastUsedAt?: null | string;
+      /** Format: int32 */
+      rateLimitRpm?: null | number;
+      /** Format: int32 */
+      rateLimitRpd?: null | number;
+      allowedModels?: null | string;
+    };
     /** @description Virtual key usage summary */
-    "ConduitLLM.Admin.Interfaces.VirtualKeyUsageSummary": {
+    VirtualKeyUsageSummary: {
       /**
        * Format: int32
        * @description Virtual key identifier
        */
       virtualKeyId?: number;
       /** @description Name of the virtual key */
-      keyName?: string | null;
+      keyName?: string;
       /**
        * Format: int32
        * @description Total number of requests
@@ -9621,1332 +16063,45 @@ export interface components {
        * Format: date-time
        * @description Last time this key was used
        */
-      lastUsed?: string | null;
+      lastUsed?: null | string;
       /** @description List of model names used with this key */
-      modelsUsed?: string[] | null;
+      modelsUsed?: string[];
     };
-    /** @description Response model for ephemeral master key generation */
-    "ConduitLLM.Admin.Models.EphemeralMasterKeyResponse": {
-      /** @description The generated ephemeral master key token */
-      ephemeralMasterKey?: string | null;
-      /**
-       * Format: date-time
-       * @description When the key expires
-       */
-      expiresAt?: string;
-      /**
-       * Format: int32
-       * @description Number of seconds until the key expires
-       */
-      expiresInSeconds?: number;
-    };
-    /** @description Data transfer object for creating a new model author/organization. */
-    "ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto": {
-      /** @description Gets or sets the name of the author/organization. */
-      name?: string | null;
-      /** @description Gets or sets the optional website URL. */
-      websiteUrl?: string | null;
-      /** @description Gets or sets an optional description of the organization. */
-      description?: string | null;
-    };
-    /** @description Data transfer object representing an AI model author or organization. */
-    "ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier for the author.
-       */
-      id?: number;
-      /** @description Gets or sets the name of the author/organization. */
-      name?: string | null;
-      /** @description Gets or sets the website URL for the author/organization. */
-      websiteUrl?: string | null;
-      /** @description Gets or sets a description of the author/organization. */
-      description?: string | null;
-      /**
-       * Format: date-time
-       * @description Gets or sets when the author record was created.
-       */
-      createdAt?: string;
-      /**
-       * Format: date-time
-       * @description Gets or sets when the author record was last updated.
-       */
-      updatedAt?: string;
-    };
-    /** @description Simplified model series information for display within an author context. */
-    "ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier of the series.
-       */
-      id?: number;
-      /** @description Gets or sets the name of the model series. */
-      name?: string | null;
-      /** @description Gets or sets the description of the series. */
-      description?: string | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /**
-       * Format: int32
-       * @description Gets or sets the number of models in this series.
-       */
-      modelCount?: number;
-    };
-    /** @description Data transfer object for updating an existing model author/organization. */
-    "ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the author to update.
-       */
-      id?: number;
-      /** @description Gets or sets the new name for the author. */
-      name?: string | null;
-      /** @description Gets or sets the new website URL. */
-      websiteUrl?: string | null;
-      /** @description Gets or sets the new description. */
-      description?: string | null;
-    };
-    /** @description Data transfer object for creating a new model series in the system. */
-    "ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the author/organization for this series.
-       */
-      authorId?: number;
-      /** @description Gets or sets the name of the model series. */
-      name?: string | null;
-      /** @description Gets or sets an optional description of the model series. */
-      description?: string | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Gets or sets optional UI parameter configuration for the series. */
-      parameters?: string | null;
-    };
-    /** @description Data transfer object representing a series or family of related AI models. */
-    "ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier for this model series.
-       */
-      id?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the author/organization that created this model series.
-       */
-      authorId?: number;
-      /** @description Gets or sets the name of the author/organization. */
-      authorName?: string | null;
-      /** @description Gets or sets the name of this model series. */
-      name?: string | null;
-      /** @description Gets or sets a description of this model series. */
-      description?: string | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Gets or sets the UI parameters configuration for this series. */
-      parameters?: string | null;
-    };
-    /** @description Simplified model information for display within a series context. */
-    "ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier of the model.
-       */
-      id?: number;
-      /** @description Gets or sets the canonical name of the model. */
-      name?: string | null;
-      /** @description Gets or sets the version identifier of the model. */
-      version?: string | null;
-      /** @description Gets or sets whether the model is currently active. */
-      isActive?: boolean;
-    };
-    /** @description Data transfer object for updating an existing model series. */
-    "ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the series to update.
-       */
-      id?: number;
-      /** @description Gets or sets the new name for the series. */
-      name?: string | null;
-      /** @description Gets or sets the new description for the series. */
-      description?: string | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Gets or sets the new UI parameters configuration. */
-      parameters?: string | null;
-    };
-    /** @description Data transfer object for creating a new AI model in the system. */
-    "ConduitLLM.Admin.Models.Models.CreateModelDto": {
-      /**
-       * @description Gets or sets the canonical name of the model to create.
-       * @example gpt-4-turbo
-       */
-      name?: string | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the model series this model will belong to.
-       */
-      modelSeriesId?: number;
-      /** @description Gets or sets whether the model supports chat/conversation interactions. */
-      supportsChat?: boolean;
-      /** @description Gets or sets whether the model supports vision/image understanding. */
-      supportsVision?: boolean;
-      /** @description Gets or sets whether the model supports function/tool calling. */
-      supportsFunctionCalling?: boolean;
-      /** @description Gets or sets whether the model supports streaming responses. */
-      supportsStreaming?: boolean;
-      /** @description Gets or sets whether the model supports image generation. */
-      supportsImageGeneration?: boolean;
-      /** @description Gets or sets whether the model supports video generation. */
-      supportsVideoGeneration?: boolean;
-      /** @description Gets or sets whether the model supports text embeddings generation. */
-      supportsEmbeddings?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of input tokens the model can process.
-       */
-      maxInputTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of output tokens the model can generate.
-       */
-      maxOutputTokens?: number | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Gets or sets whether the model should be active upon creation. */
-      isActive?: boolean | null;
-      /** @description Gets or sets the model-specific parameter configuration for UI generation. */
-      modelParameters?: string | null;
-    };
-    /** @description DTO for creating a model identifier */
-    "ConduitLLM.Admin.Models.Models.CreateModelIdentifierDto": {
-      /** @description The identifier string used by a provider */
-      identifier?: string | null;
-      /** @description The provider type that uses this identifier (e.g., "OpenAI", "Groq") */
-      provider?: string | null;
-      /** @description Whether this is the primary identifier */
-      isPrimary?: boolean | null;
-      /** @description Optional metadata as JSON */
-      metadata?: string | null;
-      /**
-       * Format: int32
-       * @description Provider-specific override for maximum input tokens
-       */
-      maxInputTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Provider-specific override for maximum output tokens
-       */
-      maxOutputTokens?: number | null;
-      /**
-       * Format: double
-       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
-       */
-      speedScore?: number | null;
-      /**
-       * Format: double
-       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
-       */
-      qualityScore?: number | null;
-      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
-      providerVariation?: string | null;
-    };
-    /** @description Data transfer object representing a canonical AI model in the system. */
-    "ConduitLLM.Admin.Models.Models.ModelDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier for the model.
-       */
-      id?: number;
-      /** @description Gets or sets the canonical name of the model. */
-      name?: string | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the model series this model belongs to.
-       */
-      modelSeriesId?: number;
-      /** @description Gets or sets whether the model supports chat/conversation interactions. */
-      supportsChat?: boolean;
-      /** @description Gets or sets whether the model supports vision/image understanding. */
-      supportsVision?: boolean;
-      /** @description Gets or sets whether the model supports function/tool calling. */
-      supportsFunctionCalling?: boolean;
-      /** @description Gets or sets whether the model supports streaming responses. */
-      supportsStreaming?: boolean;
-      /** @description Gets or sets whether the model supports image generation. */
-      supportsImageGeneration?: boolean;
-      /** @description Gets or sets whether the model supports video generation. */
-      supportsVideoGeneration?: boolean;
-      /** @description Gets or sets whether the model supports text embeddings generation. */
-      supportsEmbeddings?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of input tokens the model can process.
-       */
-      maxInputTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of output tokens the model can generate.
-       */
-      maxOutputTokens?: number | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Gets or sets whether this model is currently active and available for use. */
-      isActive?: boolean;
-      /**
-       * Format: date-time
-       * @description Gets or sets the timestamp when this model was first created in the system.
-       */
-      createdAt?: string;
-      /**
-       * Format: date-time
-       * @description Gets or sets the timestamp when this model was last updated.
-       */
-      updatedAt?: string;
-      series?: components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
-      /** @description Gets or sets the model-specific parameter configuration for UI generation. */
-      modelParameters?: string | null;
-    };
-    /** @description Extended model DTO that includes the provider-specific identifier for the model. */
-    "ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier for the model.
-       */
-      id?: number;
-      /** @description Gets or sets the canonical name of the model. */
-      name?: string | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the model series this model belongs to.
-       */
-      modelSeriesId?: number;
-      /** @description Gets or sets whether the model supports chat/conversation interactions. */
-      supportsChat?: boolean;
-      /** @description Gets or sets whether the model supports vision/image understanding. */
-      supportsVision?: boolean;
-      /** @description Gets or sets whether the model supports function/tool calling. */
-      supportsFunctionCalling?: boolean;
-      /** @description Gets or sets whether the model supports streaming responses. */
-      supportsStreaming?: boolean;
-      /** @description Gets or sets whether the model supports image generation. */
-      supportsImageGeneration?: boolean;
-      /** @description Gets or sets whether the model supports video generation. */
-      supportsVideoGeneration?: boolean;
-      /** @description Gets or sets whether the model supports text embeddings generation. */
-      supportsEmbeddings?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of input tokens the model can process.
-       */
-      maxInputTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of output tokens the model can generate.
-       */
-      maxOutputTokens?: number | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Gets or sets whether this model is currently active and available for use. */
-      isActive?: boolean;
-      /**
-       * Format: date-time
-       * @description Gets or sets the timestamp when this model was first created in the system.
-       */
-      createdAt?: string;
-      /**
-       * Format: date-time
-       * @description Gets or sets the timestamp when this model was last updated.
-       */
-      updatedAt?: string;
-      series?: components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
-      /** @description Gets or sets the model-specific parameter configuration for UI generation. */
-      modelParameters?: string | null;
-      /**
-       * @description Gets or sets the provider-specific identifier for this model.
-       * @example gpt-4-0613
-       */
-      providerModelId?: string | null;
-    };
-    /** @description Data transfer object for updating an existing AI model in the system. */
-    "ConduitLLM.Admin.Models.Models.UpdateModelDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the model to update.
-       */
-      id?: number;
-      /** @description Gets or sets the new canonical name for the model. */
-      name?: string | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the new model series ID.
-       */
-      modelSeriesId?: number | null;
-      /** @description Gets or sets whether the model supports chat/conversation interactions. */
-      supportsChat?: boolean | null;
-      /** @description Gets or sets whether the model supports vision/image understanding. */
-      supportsVision?: boolean | null;
-      /** @description Gets or sets whether the model supports function/tool calling. */
-      supportsFunctionCalling?: boolean | null;
-      /** @description Gets or sets whether the model supports streaming responses. */
-      supportsStreaming?: boolean | null;
-      /** @description Gets or sets whether the model supports image generation. */
-      supportsImageGeneration?: boolean | null;
-      /** @description Gets or sets whether the model supports video generation. */
-      supportsVideoGeneration?: boolean | null;
-      /** @description Gets or sets whether the model supports text embeddings generation. */
-      supportsEmbeddings?: boolean | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of input tokens the model can process.
-       */
-      maxInputTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of output tokens the model can generate.
-       */
-      maxOutputTokens?: number | null;
-      /** @description Gets or sets the new activation status for the model. */
-      isActive?: boolean | null;
-      /** @description Gets or sets the model-specific parameter configuration for UI generation. */
-      modelParameters?: string | null;
-    };
-    /** @description DTO for updating a model identifier */
-    "ConduitLLM.Admin.Models.Models.UpdateModelIdentifierDto": {
-      /** @description The identifier string used by a provider */
-      identifier?: string | null;
-      /** @description The provider type that uses this identifier */
-      provider?: string | null;
-      /** @description Whether this is the primary identifier */
-      isPrimary?: boolean | null;
-      /** @description Optional metadata as JSON */
-      metadata?: string | null;
-      /**
-       * Format: int32
-       * @description Provider-specific override for maximum input tokens
-       */
-      maxInputTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Provider-specific override for maximum output tokens
-       */
-      maxOutputTokens?: number | null;
-      /**
-       * Format: double
-       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
-       */
-      speedScore?: number | null;
-      /**
-       * Format: double
-       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
-       */
-      qualityScore?: number | null;
-      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
-      providerVariation?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto": {
-      /** Format: int32 */
-      defaultTTLSeconds?: number | null;
-      maxMemorySize?: string | null;
-      evictionPolicy?: string | null;
-      enableCompression?: boolean;
-      clearAffectedCaches?: boolean;
-      applyGlobally?: boolean;
-      regionId?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto": {
-      /** Format: int32 */
-      ttl?: number | null;
-      /** Format: int32 */
-      maxSize?: number | null;
-      strategy?: string | null;
-      enabled?: boolean | null;
-      reason: string;
-    };
-    "ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto": {
-      timeFrame?: string | null;
-      /** Format: date-time */
-      startDate?: string;
-      /** Format: date-time */
-      endDate?: string;
-      /** Format: double */
-      last24HoursCost?: number;
-      /** Format: double */
-      last7DaysCost?: number;
-      /** Format: double */
-      last30DaysCost?: number;
-      /** Format: double */
-      totalCost?: number;
-      topModelsBySpend?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto"][]
-        | null;
-      topProvidersBySpend?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto"][]
-        | null;
-      topVirtualKeysBySpend?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto"][]
-        | null;
-    };
-    "ConduitLLM.Configuration.DTOs.Costs.CostTrendDataDto": {
-      /** Format: date-time */
-      date?: string;
-      /** Format: double */
-      cost?: number;
-      /** Format: int32 */
-      requestCount?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Costs.CostTrendDto": {
-      period?: string | null;
-      /** Format: date-time */
-      startDate?: string;
-      /** Format: date-time */
-      endDate?: string;
-      data?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.CostTrendDataDto"][]
-        | null;
-    };
-    "ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto": {
-      name?: string | null;
-      /** Format: double */
-      cost?: number;
-      /** Format: double */
-      percentage?: number;
-      /** Format: int32 */
-      requestCount?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Costs.ModelCostBreakdownDto": {
-      /** Format: date-time */
-      startDate?: string;
-      /** Format: date-time */
-      endDate?: string;
-      models?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.ModelCostDetail"][]
-        | null;
-      /** Format: double */
-      totalCost?: number;
-      /** Format: int32 */
-      totalRequests?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Costs.ModelCostDetail": {
-      modelName?: string | null;
-      /** Format: double */
-      totalCost?: number;
-      /** Format: int32 */
-      requestCount?: number;
-      /** Format: int64 */
-      inputTokens?: number;
-      /** Format: int64 */
-      outputTokens?: number;
-      /** Format: double */
-      averageCostPerRequest?: number;
-      /** Format: double */
-      costPercentage?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostBreakdownDto": {
-      /** Format: date-time */
-      startDate?: string;
-      /** Format: date-time */
-      endDate?: string;
-      virtualKeys?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDetail"][]
-        | null;
-      /** Format: double */
-      totalCost?: number;
-      /** Format: int32 */
-      totalRequests?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDetail": {
-      /** Format: int32 */
-      virtualKeyId?: number;
-      keyName?: string | null;
-      /** Format: double */
-      totalCost?: number;
-      /** Format: int32 */
-      requestCount?: number;
-      /** Format: double */
-      averageCostPerRequest?: number;
-      /** Format: date-time */
-      lastUsed?: string | null;
-      /** Format: int32 */
-      uniqueModels?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.CreateGlobalSettingDto": {
-      key: string;
-      value: string;
-      description?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.CreateModelCostDto": {
-      costName: string;
-      pricingModel: components["schemas"]["ConduitLLM.Configuration.PricingModel"];
-      pricingConfiguration?: string | null;
-      modelProviderTypeAssociationIds?: number[] | null;
-      modelType: string;
-      /** Format: int32 */
-      priority?: number;
-      description?: string | null;
-      /** Format: double */
-      inputCostPerMillionTokens?: number;
-      /** Format: double */
-      outputCostPerMillionTokens?: number;
-      /** Format: double */
-      embeddingCostPerMillionTokens?: number | null;
-      /** Format: double */
-      imageCostPerImage?: number | null;
-      /** Format: double */
-      videoCostPerSecond?: number | null;
-      videoResolutionMultipliers?: string | null;
-      /** Format: double */
-      batchProcessingMultiplier?: number | null;
-      supportsBatchProcessing?: boolean;
-      imageQualityMultipliers?: string | null;
-      imageResolutionMultipliers?: string | null;
-      /** Format: double */
-      cachedInputCostPerMillionTokens?: number | null;
-      /** Format: double */
-      cachedInputWriteCostPerMillionTokens?: number | null;
-      /** Format: double */
-      costPerSearchUnit?: number | null;
-      /** Format: double */
-      costPerInferenceStep?: number | null;
-      /** Format: int32 */
-      defaultInferenceSteps?: number | null;
-    };
-    "ConduitLLM.Configuration.DTOs.CreateNotificationDto": {
-      /** Format: int32 */
-      virtualKeyId?: number | null;
-      type?: components["schemas"]["ConduitLLM.Configuration.Entities.NotificationType"];
-      severity?: components["schemas"]["ConduitLLM.Configuration.Entities.NotificationSeverity"];
-      message?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.DiscoveredModelDto": {
-      id?: string | null;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      displayName?: string | null;
-      capabilities?: {
-        [key: string]: unknown;
-      } | null;
-    };
-    "ConduitLLM.Configuration.DTOs.GlobalSettingDto": {
+    VirtualKeyValidationInfoDto: {
       /** Format: int32 */
       id?: number;
-      key: string;
-      value: string;
-      description?: string | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-    };
-    "ConduitLLM.Configuration.DTOs.IpFilter.CreateIpFilterDto": {
-      filterType: string;
-      ipAddressOrCidr: string;
-      name?: string | null;
-      description?: string | null;
-      isEnabled?: boolean;
-    };
-    "ConduitLLM.Configuration.DTOs.IpFilter.IpCheckResult": {
-      isAllowed?: boolean;
-      deniedReason?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto": {
-      /** Format: int32 */
-      id?: number;
-      filterType: string;
-      ipAddressOrCidr: string;
-      name?: string | null;
-      description?: string | null;
-      isEnabled?: boolean;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-    };
-    "ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto": {
-      isEnabled?: boolean;
-      defaultAllow?: boolean;
-      bypassForAdminUi?: boolean;
-      excludedEndpoints?: string[] | null;
-      filterMode?: string | null;
-      whitelistFilters?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"][]
-        | null;
-      blacklistFilters?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto"][]
-        | null;
-    };
-    "ConduitLLM.Configuration.DTOs.IpFilter.UpdateIpFilterDto": {
-      /** Format: int32 */
-      id: number;
-      filterType: string;
-      ipAddressOrCidr: string;
-      name?: string | null;
-      description?: string | null;
-      isEnabled?: boolean;
-    };
-    "ConduitLLM.Configuration.DTOs.LogRequestDto": {
-      /** Format: int32 */
-      id?: number;
-      /** Format: int32 */
-      virtualKeyId?: number;
-      modelName?: string | null;
-      requestType?: string | null;
-      /** Format: int32 */
-      inputTokens?: number;
-      /** Format: int32 */
-      outputTokens?: number;
-      /** Format: double */
-      cost?: number;
-      /** Format: double */
-      responseTimeMs?: number;
-      userId?: string | null;
-      clientIp?: string | null;
-      requestPath?: string | null;
-      /** Format: int32 */
-      statusCode?: number | null;
-      /** Format: date-time */
-      timestamp?: string;
-    };
-    "ConduitLLM.Configuration.DTOs.ModelCostDto": {
-      /** Format: int32 */
-      id?: number;
-      costName: string;
-      pricingModel: components["schemas"]["ConduitLLM.Configuration.PricingModel"];
-      pricingConfiguration?: string | null;
-      associatedModelAliases?: string[] | null;
-      /** Format: double */
-      inputCostPerMillionTokens?: number;
-      /** Format: double */
-      outputCostPerMillionTokens?: number;
-      /** Format: double */
-      embeddingCostPerMillionTokens?: number | null;
-      /** Format: double */
-      imageCostPerImage?: number | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-      modelType: string;
-      isActive?: boolean;
-      /** Format: date-time */
-      effectiveDate?: string;
-      /** Format: date-time */
-      expiryDate?: string | null;
-      description?: string | null;
-      /** Format: int32 */
-      priority?: number;
-      /** Format: double */
-      videoCostPerSecond?: number | null;
-      videoResolutionMultipliers?: string | null;
-      /** Format: double */
-      batchProcessingMultiplier?: number | null;
-      supportsBatchProcessing?: boolean;
-      imageQualityMultipliers?: string | null;
-      imageResolutionMultipliers?: string | null;
-      /** Format: double */
-      cachedInputCostPerMillionTokens?: number | null;
-      /** Format: double */
-      cachedInputWriteCostPerMillionTokens?: number | null;
-      /** Format: double */
-      costPerSearchUnit?: number | null;
-      /** Format: double */
-      costPerInferenceStep?: number | null;
-      /** Format: int32 */
-      defaultInferenceSteps?: number | null;
-    };
-    "ConduitLLM.Configuration.DTOs.ModelCostOverviewDto": {
-      model?: string | null;
-      /** Format: int32 */
-      requestCount?: number;
-      /** Format: double */
-      totalCost?: number;
-      /** Format: int64 */
-      inputTokens?: number;
-      /** Format: int64 */
-      outputTokens?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.ModelProviderMappingDto": {
-      /** Format: int32 */
-      id?: number;
-      modelAlias: string;
-      /** Format: int32 */
-      modelId: number;
-      providerModelId: string;
-      /** Format: int32 */
-      providerId: number;
-      provider?: components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderReferenceDto"];
-      /** Format: int32 */
-      modelProviderTypeAssociationId?: number | null;
-      /** Format: int32 */
-      priority?: number;
-      isEnabled?: boolean;
-      /** Format: int32 */
-      maxContextTokensOverride?: number | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-      notes?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.ModelUsage": {
-      /** Format: int32 */
-      requestCount?: number;
-      /** Format: double */
-      cost?: number;
-      /** Format: int32 */
-      inputTokens?: number;
-      /** Format: int32 */
-      outputTokens?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.ComponentHealth": {
-      status?: string | null;
-      description?: string | null;
-      /** Format: double */
-      duration?: number | null;
-      error?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.DatabaseInfo": {
-      provider?: string | null;
-      version?: string | null;
-      connected?: boolean;
-      connectionString?: string | null;
-      location?: string | null;
-      size?: string | null;
-      /** Format: int32 */
-      tableCount?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto": {
-      status?: string | null;
-      /** Format: date-time */
-      timestamp?: string;
-      checks?: {
-        [
-          key: string
-        ]: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.ComponentHealth"];
-      } | null;
-      /** Format: double */
-      totalDuration?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.OsInfo": {
-      description?: string | null;
-      architecture?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.RecordCountsDto": {
-      /** Format: int32 */
-      virtualKeys?: number;
-      /** Format: int32 */
-      requests?: number;
-      /** Format: int32 */
-      settings?: number;
-      /** Format: int32 */
-      providers?: number;
-      /** Format: int32 */
-      modelMappings?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.RuntimeInfo": {
-      runtimeVersion?: string | null;
-      /** Format: date-time */
-      startTime?: string;
-      /** Format: date-span */
-      uptime?: string;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto": {
-      version?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.VersionInfo"];
-      operatingSystem?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.OsInfo"];
-      database?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.DatabaseInfo"];
-      runtime?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.RuntimeInfo"];
-      recordCounts?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.RecordCountsDto"];
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.VersionInfo": {
-      appVersion?: string | null;
-      /** Format: date-time */
-      buildDate?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.NotificationDto": {
-      /** Format: int32 */
-      id?: number;
-      /** Format: int32 */
-      virtualKeyId?: number | null;
-      virtualKeyName?: string | null;
-      type?: components["schemas"]["ConduitLLM.Configuration.Entities.NotificationType"];
-      severity?: components["schemas"]["ConduitLLM.Configuration.Entities.NotificationSeverity"];
-      message?: string | null;
-      isRead?: boolean;
-      /** Format: date-time */
-      createdAt?: string;
-    };
-    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]": {
-      items?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.LogRequestDto"][]
-        | null;
-      /** Format: int32 */
-      totalCount?: number;
-      /** Format: int32 */
-      currentPage?: number;
-      /** Format: int32 */
-      pageSize?: number;
-      /** Format: int32 */
-      totalPages?: number;
-      readonly hasPreviousPage?: boolean;
-      readonly hasNextPage?: boolean;
-      /** Format: int32 */
-      page?: number;
-      /** Format: int32 */
-      totalItems?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]": {
-      items?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto"][]
-        | null;
-      /** Format: int32 */
-      totalCount?: number;
-      /** Format: int32 */
-      currentPage?: number;
-      /** Format: int32 */
-      pageSize?: number;
-      /** Format: int32 */
-      totalPages?: number;
-      readonly hasPreviousPage?: boolean;
-      readonly hasNextPage?: boolean;
-      /** Format: int32 */
-      page?: number;
-      /** Format: int32 */
-      totalItems?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.ProviderReferenceDto": {
-      /** Format: int32 */
-      id?: number;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      displayName?: string | null;
-      isEnabled?: boolean;
-    };
-    "ConduitLLM.Configuration.DTOs.UpdateGlobalSettingByKeyDto": {
-      key: string;
-      value: string;
-      description?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.UpdateGlobalSettingDto": {
-      /** Format: int32 */
-      id?: number;
-      value: string;
-      description?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.UpdateModelCostDto": {
-      /** Format: int32 */
-      id?: number;
-      costName: string;
-      pricingModel: components["schemas"]["ConduitLLM.Configuration.PricingModel"];
-      pricingConfiguration?: string | null;
-      modelProviderTypeAssociationIds?: number[] | null;
-      modelType: string;
-      /** Format: int32 */
-      priority?: number;
-      description?: string | null;
-      isActive?: boolean;
-      /** Format: double */
-      inputCostPerMillionTokens?: number;
-      /** Format: double */
-      outputCostPerMillionTokens?: number;
-      /** Format: double */
-      embeddingCostPerMillionTokens?: number | null;
-      /** Format: double */
-      imageCostPerImage?: number | null;
-      /** Format: double */
-      videoCostPerSecond?: number | null;
-      videoResolutionMultipliers?: string | null;
-      /** Format: double */
-      batchProcessingMultiplier?: number | null;
-      supportsBatchProcessing?: boolean;
-      imageQualityMultipliers?: string | null;
-      imageResolutionMultipliers?: string | null;
-      /** Format: double */
-      cachedInputCostPerMillionTokens?: number | null;
-      /** Format: double */
-      cachedInputWriteCostPerMillionTokens?: number | null;
-      /** Format: double */
-      costPerSearchUnit?: number | null;
-      /** Format: double */
-      costPerInferenceStep?: number | null;
-      /** Format: int32 */
-      defaultInferenceSteps?: number | null;
-    };
-    "ConduitLLM.Configuration.DTOs.UpdateNotificationDto": {
-      /** Format: int32 */
-      id?: number;
-      isRead?: boolean;
-      message?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.UsageStatisticsDto": {
-      /** Format: int32 */
-      totalRequests?: number;
-      /** Format: double */
-      totalCost?: number;
-      /** Format: int32 */
-      totalInputTokens?: number;
-      /** Format: int32 */
-      totalOutputTokens?: number;
-      /** Format: int32 */
-      readonly totalTokens?: number;
-      /** Format: double */
-      averageResponseTimeMs?: number;
-      modelUsage?: {
-        [
-          key: string
-        ]: components["schemas"]["ConduitLLM.Configuration.DTOs.ModelUsage"];
-      } | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto": {
-      /** Format: double */
-      amount?: number;
-      description?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto": {
-      groupName: string;
-      externalGroupId?: string | null;
-      /** Format: double */
-      initialBalance?: number | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto": {
-      keyName: string;
-      allowedModels?: string | null;
-      /** Format: int32 */
-      virtualKeyGroupId: number;
-      /** Format: date-time */
-      expiresAt?: string | null;
-      metadata?: string | null;
-      /** Format: int32 */
-      rateLimitRpm?: number | null;
-      /** Format: int32 */
-      rateLimitRpd?: number | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyResponseDto": {
-      virtualKey?: string | null;
-      keyInfo?: components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"];
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto": {
-      groupName?: string | null;
-      externalGroupId?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyRequestDto": {
-      keyName?: string | null;
-      allowedModels?: string | null;
-      /** Format: int32 */
-      virtualKeyGroupId?: number | null;
-      isEnabled?: boolean | null;
-      /** Format: date-time */
-      expiresAt?: string | null;
-      metadata?: string | null;
-      /** Format: int32 */
-      rateLimitRpm?: number | null;
-      /** Format: int32 */
-      rateLimitRpd?: number | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.ValidateVirtualKeyRequest": {
-      key: string;
-      requestedModel?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto": {
-      /** Format: int32 */
-      id?: number;
-      keyName: string;
-      keyPrefix?: string | null;
-      allowedModels?: string | null;
+      keyName?: string;
+      allowedModels?: null | string;
       /** Format: int32 */
       virtualKeyGroupId?: number;
       isEnabled?: boolean;
       /** Format: date-time */
-      expiresAt?: string | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-      metadata?: string | null;
+      expiresAt?: null | string;
       /** Format: int32 */
-      rateLimitRpm?: number | null;
+      rateLimitRpm?: null | number;
       /** Format: int32 */
-      rateLimitRpd?: number | null;
-      description?: string | null;
+      rateLimitRpd?: null | number;
     };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto": {
-      /** Format: int32 */
-      id?: number;
-      externalGroupId?: string | null;
-      groupName?: string | null;
-      /** Format: double */
-      balance?: number;
-      /** Format: double */
-      lifetimeCreditsAdded?: number;
-      /** Format: double */
-      lifetimeSpent?: number;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-      /** Format: int32 */
-      virtualKeyCount?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto": {
-      /** Format: int64 */
-      id?: number;
-      /** Format: int32 */
-      virtualKeyGroupId?: number;
-      transactionType?: components["schemas"]["ConduitLLM.Configuration.Enums.TransactionType"];
-      /** Format: double */
-      amount?: number;
-      /** Format: double */
-      balanceAfter?: number;
-      referenceType?: components["schemas"]["ConduitLLM.Configuration.Enums.ReferenceType"];
-      referenceId?: string | null;
-      description?: string | null;
-      initiatedBy?: string | null;
-      initiatedByUserId?: string | null;
-      /** Format: date-time */
-      createdAt?: string;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyUsageDto": {
-      /** Format: int32 */
-      keyId?: number;
-      keyName?: string | null;
-      /** Format: int32 */
-      groupId?: number;
-      groupName?: string | null;
-      /** Format: double */
-      balance?: number;
-      /** Format: double */
-      lifetimeCreditsAdded?: number;
-      /** Format: double */
-      lifetimeSpent?: number;
-      /** Format: int32 */
-      totalRequests?: number;
-      /** Format: int64 */
-      totalTokens?: number;
-      isEnabled?: boolean;
-      /** Format: date-time */
-      expiresAt?: string | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      lastUsedAt?: string | null;
-      /** Format: int32 */
-      rateLimitRpm?: number | null;
-      /** Format: int32 */
-      rateLimitRpd?: number | null;
-      allowedModels?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationInfoDto": {
-      /** Format: int32 */
-      id?: number;
-      keyName?: string | null;
-      allowedModels?: string | null;
-      /** Format: int32 */
-      virtualKeyGroupId?: number;
-      isEnabled?: boolean;
-      /** Format: date-time */
-      expiresAt?: string | null;
-      /** Format: int32 */
-      rateLimitRpm?: number | null;
-      /** Format: int32 */
-      rateLimitRpd?: number | null;
-    };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationResult": {
+    VirtualKeyValidationResult: {
       isValid?: boolean;
       /** Format: int32 */
-      virtualKeyId?: number | null;
-      keyName?: string | null;
-      allowedModels?: string | null;
-      errorMessage?: string | null;
+      virtualKeyId?: null | number;
+      keyName?: null | string;
+      allowedModels?: null | string;
+      errorMessage?: null | string;
     };
-    "ConduitLLM.Configuration.DTOs.VirtualKeyDiscoveryPreviewDto": {
-      data?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.DiscoveredModelDto"][]
-        | null;
-      /** Format: int32 */
-      count?: number;
+    /** @description DTO for warning error information */
+    WarningErrorDto: {
+      /** @description Type of warning */
+      type?: string;
+      /** @description Warning message */
+      message?: string;
+      /**
+       * Format: date-time
+       * @description When the warning occurred
+       */
+      timestamp?: string;
     };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.Entities.BillingAuditEventType":
-      | 1
-      | 2
-      | 3
-      | 4
-      | 5
-      | 6
-      | 7
-      | 8
-      | 9
-      | 10
-      | 11;
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.Entities.NotificationSeverity": 0 | 1 | 2;
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.Entities.NotificationType": 0 | 1 | 2;
-    "ConduitLLM.Configuration.Entities.Provider": {
-      /** Format: int32 */
-      id?: number;
-      providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      providerName: string;
-      baseUrl?: string | null;
-      isEnabled?: boolean;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-      providerKeyCredentials?:
-        | components["schemas"]["ConduitLLM.Configuration.Entities.ProviderKeyCredential"][]
-        | null;
-    };
-    "ConduitLLM.Configuration.Entities.ProviderKeyCredential": {
-      /** Format: int32 */
-      id?: number;
-      /** Format: int32 */
-      providerId: number;
-      provider?: components["schemas"]["ConduitLLM.Configuration.Entities.Provider"];
-      /** Format: int32 */
-      providerAccountGroup?: number;
-      apiKey?: string | null;
-      baseUrl?: string | null;
-      organization?: string | null;
-      keyName?: string | null;
-      isPrimary?: boolean;
-      isEnabled?: boolean;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-    };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.Enums.ReferenceType": 1 | 2 | 3 | 4;
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.Enums.TransactionType": 1 | 2 | 3 | 4;
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.Events.FlushPriority": 0 | 1;
-    "ConduitLLM.Configuration.Interfaces.BillingAnomaly": {
-      anomalyType?: string | null;
-      description?: string | null;
-      severity?: string | null;
-      /** Format: date-time */
-      detectedAt?: string;
-      affectedVirtualKeyIds?: number[] | null;
-      /** Format: double */
-      estimatedImpact?: number;
-      metadata?: {
-        [key: string]: unknown;
-      } | null;
-    };
-    "ConduitLLM.Configuration.Interfaces.BillingAuditSummary": {
-      /** Format: int64 */
-      totalEvents?: number;
-      /** Format: int64 */
-      successfulBillings?: number;
-      /** Format: int64 */
-      zeroCostSkipped?: number;
-      /** Format: int64 */
-      estimatedUsages?: number;
-      /** Format: int64 */
-      failedUpdates?: number;
-      /** Format: int64 */
-      errorResponsesSkipped?: number;
-      /** Format: int64 */
-      missingUsageData?: number;
-      /** Format: double */
-      totalBilledAmount?: number;
-      /** Format: double */
-      potentialRevenueLoss?: number;
-      eventTypeBreakdown?: {
-        /** Format: int64 */
-        UsageTracked?: number;
-        /** Format: int64 */
-        UsageEstimated?: number;
-        /** Format: int64 */
-        ZeroCostSkipped?: number;
-        /** Format: int64 */
-        MissingCostConfig?: number;
-        /** Format: int64 */
-        MissingUsageData?: number;
-        /** Format: int64 */
-        SpendUpdateFailed?: number;
-        /** Format: int64 */
-        ErrorResponseSkipped?: number;
-        /** Format: int64 */
-        StreamingUsageMissing?: number;
-        /** Format: int64 */
-        NoVirtualKey?: number;
-        /** Format: int64 */
-        JsonParseError?: number;
-        /** Format: int64 */
-        UnexpectedError?: number;
-      } | null;
-      providerTypeBreakdown?: {
-        [key: string]: number;
-      } | null;
-    };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.PricingModel": 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.ProviderType":
-      | 1
-      | 2
-      | 3
-      | 4
-      | 5
-      | 6
-      | 7
-      | 8
-      | 9
-      | 10
-      | 11;
-    "Microsoft.AspNetCore.Mvc.ProblemDetails": {
-      type?: string | null;
-      title?: string | null;
-      /** Format: int32 */
-      status?: number | null;
-      detail?: string | null;
-      instance?: string | null;
-    } & {
-      [key: string]: unknown;
-    };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    TokenizerType:
-      | 0
-      | 1
-      | 2
-      | 3
-      | 4
-      | 5
-      | 6
-      | 7
-      | 8
-      | 9
-      | 10
-      | 11
-      | 12
-      | 13
-      | 14
-      | 15
-      | 16
-      | 17
-      | 18
-      | 19
-      | 20;
   };
   responses: never;
   parameters: never;
@@ -10956,6 +16111,44 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  GetModelAuthorById: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ModelAuthorDto"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponseDto"];
+        };
+      };
+      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   GetKeyById: {
     parameters: {
       query?: never;
@@ -10974,9 +16167,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"];
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"];
+          "text/plain": components["schemas"]["VirtualKeyDto"];
+          "application/json": components["schemas"]["VirtualKeyDto"];
+          "text/json": components["schemas"]["VirtualKeyDto"];
         };
       };
       /** @description Not Found */
@@ -10985,12 +16178,12 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
         };
       };
-      /** @description Internal Server Error */
+      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
       500: {
         headers: {
           [name: string]: unknown;

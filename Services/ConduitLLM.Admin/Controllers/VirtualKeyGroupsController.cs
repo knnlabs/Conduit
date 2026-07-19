@@ -91,6 +91,8 @@ namespace ConduitLLM.Admin.Controllers
         /// Get a specific virtual key group by ID
         /// </summary>
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetGroup(int id)
         {
             var group = await _groupRepository.GetByIdWithKeysAsync(id);
@@ -116,6 +118,7 @@ namespace ConduitLLM.Admin.Controllers
         /// Create a new virtual key group
         /// </summary>
         [HttpPost]
+        [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status201Created)]
         public async Task<IActionResult> CreateGroup([FromBody] CreateVirtualKeyGroupRequestDto request)
         {
             var group = new VirtualKeyGroup
@@ -154,6 +157,8 @@ namespace ConduitLLM.Admin.Controllers
         /// Update a virtual key group
         /// </summary>
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateGroup(int id, [FromBody] UpdateVirtualKeyGroupRequestDto request)
         {
             var group = await _groupRepository.GetByIdAsync(id);
@@ -186,6 +191,9 @@ namespace ConduitLLM.Admin.Controllers
         /// Adjust the balance of a virtual key group
         /// </summary>
         [HttpPost("{id}/adjust-balance")]
+        [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> AdjustBalance(int id, [FromBody] AdjustBalanceDto request)
         {
             // Get the authenticated user's identity
@@ -223,6 +231,9 @@ namespace ConduitLLM.Admin.Controllers
         /// Delete a virtual key group
         /// </summary>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteGroup(int id)
         {
             var group = await _groupRepository.GetByIdAsync(id);
@@ -307,6 +318,8 @@ namespace ConduitLLM.Admin.Controllers
         /// Get virtual keys in a group
         /// </summary>
         [HttpGet("{id}/keys")]
+        [ProducesResponseType(typeof(List<VirtualKeyDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetKeysInGroup(int id)
         {
             var group = await _groupRepository.GetByIdWithKeysAsync(id);

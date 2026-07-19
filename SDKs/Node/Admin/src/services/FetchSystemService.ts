@@ -270,7 +270,7 @@ export class FetchSystemService implements ISystemService {
       keyName: 'WebAdmin Internal Key',
       metadata: JSON.stringify(metadata),
       virtualKeyGroupId: group.id
-    } as components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto'];
+    } as components['schemas']['CreateVirtualKeyRequestDto'];
     
     const response = await virtualKeyService.create(virtualKeyRequest, config);
     

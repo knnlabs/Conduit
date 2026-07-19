@@ -8,21 +8,21 @@ import type { components } from '../generated/admin-api';
 export { ModelType } from './modelType';
 
 // Model DTOs
-export type ModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.ModelDto'];
-export type CreateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.CreateModelDto'];
-export type UpdateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.UpdateModelDto'];
+export type ModelDto = components['schemas']['ModelDto'];
+export type CreateModelDto = components['schemas']['CreateModelDto'];
+export type UpdateModelDto = components['schemas']['UpdateModelDto'];
 
 // Model Series DTOs  
-export type ModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto'];
-export type CreateModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto'];
-export type UpdateModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto'];
-export type SimpleModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto'];
-export type SeriesSimpleModelDto = components['schemas']['ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto'];
+export type ModelSeriesDto = components['schemas']['ModelSeriesDto'];
+export type CreateModelSeriesDto = components['schemas']['CreateModelSeriesDto'];
+export type UpdateModelSeriesDto = components['schemas']['UpdateModelSeriesDto'];
+export type SimpleModelSeriesDto = components['schemas']['SimpleModelSeriesDto'];
+export type SeriesSimpleModelDto = components['schemas']['SeriesSimpleModelDto'];
 
 // Model Author DTOs
-export type ModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto'];
-export type CreateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto'];
-export type UpdateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto'];
+export type ModelAuthorDto = components['schemas']['ModelAuthorDto'];
+export type CreateModelAuthorDto = components['schemas']['CreateModelAuthorDto'];
+export type UpdateModelAuthorDto = components['schemas']['UpdateModelAuthorDto'];
 
 // Simplified type aliases for convenience
 export type Model = ModelDto;

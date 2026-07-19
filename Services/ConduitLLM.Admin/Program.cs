@@ -82,6 +82,7 @@ public partial class Program
             // Tier 2b (#905): document the universal 500 once, so controllers can drop the per-action
             // [ProducesResponseType(Status500InternalServerError)] boilerplate.
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.DefaultErrorResponsesOperationTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.NumericSchemaTransformer>();
         });
 
         // Configure services (partial class methods)
@@ -144,10 +145,15 @@ public partial class Program
         // Map monitoring endpoints (health, metrics, Prometheus)
         MapMonitoringEndpoints(app);
 
+        // app.Urls throws when no server is present (e.g. under build-time OpenAPI
+        // document generation, which builds the host without Kestrel) — read the
+        // address feature null-safely instead.
+        var serverAddresses = ((Microsoft.AspNetCore.Builder.IApplicationBuilder)app).ServerFeatures
+            .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>()?.Addresses;
         app.Logger.LogInformation(
             "Admin API started — Environment: {Environment}, URLs: {Urls}",
             app.Environment.EnvironmentName,
-            string.Join(", ", app.Urls));
+            string.Join(", ", serverAddresses ?? Array.Empty<string>()));
 
         // JasperFx command-line integration (#961): with no arguments this runs the web
         // host exactly like app.Run(); with a command verb (e.g. `dotnet run -- codegen

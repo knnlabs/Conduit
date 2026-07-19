@@ -67,7 +67,9 @@ namespace ConduitLLM.Admin.Extensions
             {
                 // No Redis - use in-memory tracking (development mode)
                 services.AddSingleton<IMediaDeletionBudgetService, InMemoryMediaDeletionBudgetService>();
-                Console.Error.WriteLine("[ConduitLLM.Admin] WARNING: Budget tracking will not persist across restarts or be shared across instances");
+                // stdout like the other startup warnings: stderr here fails design-time
+                // hosts (build-time OpenAPI export treats stderr output as errors)
+                Console.WriteLine("[ConduitLLM.Admin] WARNING: Budget tracking will not persist across restarts or be shared across instances");
             }
         }
 
