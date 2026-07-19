@@ -36,6 +36,8 @@ namespace ConduitLLM.Configuration.Extensions
                 Provider = mapping.Provider?.ToReferenceDto(),
                 ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
                 Priority = mapping.Priority,
+                ModelId = mapping.ModelProviderTypeAssociation?.ModelId,
+                ModelName = mapping.ModelProviderTypeAssociation?.Model?.Name,
                 IsEnabled = mapping.IsEnabled,
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,

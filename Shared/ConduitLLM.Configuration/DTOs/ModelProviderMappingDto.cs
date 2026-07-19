@@ -49,6 +49,18 @@ namespace ConduitLLM.Configuration.DTOs
         public int Priority { get; set; }
 
         /// <summary>
+        /// The canonical Model entity id resolved via the ModelProviderTypeAssociation
+        /// (populated when retrieving mappings). Lets clients detect aliases whose failover
+        /// chain spans different canonical models.
+        /// </summary>
+        public int? ModelId { get; set; }
+
+        /// <summary>
+        /// The canonical model name (populated when retrieving mappings).
+        /// </summary>
+        public string? ModelName { get; set; }
+
+        /// <summary>
         /// Whether this mapping is currently enabled
         /// </summary>
         public bool IsEnabled { get; set; } = true;

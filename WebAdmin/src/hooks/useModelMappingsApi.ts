@@ -67,6 +67,22 @@ export function useDeleteModelMapping() {
   });
 }
 
+export function useReorderFailoverChain() {
+  return useAdminMutation({
+    // Writes priority = list index for an alias's mappings after a drag-reorder. The Admin
+    // API has no batch-priority endpoint; the SDK's bulkUpdate fans out to per-mapping
+    // updates. Unchanged rows are skipped.
+    mutationFn: (orderedMappings: ModelProviderMappingDto[]) => client =>
+      client.modelMappings.bulkUpdate(
+        orderedMappings
+          .map((mapping, index) => ({ id: mapping.id, data: { id: mapping.id, priority: index } }))
+          .filter((update, index) => orderedMappings[index].priority !== index)
+      ),
+    successMessage: 'Failover order saved',
+    invalidateKeys: [QUERY_KEY],
+  });
+}
+
 export function useBulkDeleteModelMappings() {
   return useAdminMutation({
     mutationFn: (ids: number[]) => client => client.modelMappings.bulkDelete(ids),

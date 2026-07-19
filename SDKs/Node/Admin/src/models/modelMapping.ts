@@ -9,7 +9,11 @@ export interface ModelProviderMappingDto {
   providerModelId: string;
   modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
   isEnabled: boolean;
-  priority: number;
+  priority: number;  // Lower = preferred; failover walks enabled mappings of an alias in ascending order
+  /** Canonical Model entity id (via the association) — lets clients detect failover chains spanning different models */
+  modelId?: number | null;
+  /** Canonical model name (populated when retrieving mappings) */
+  modelName?: string | null;
   createdAt: string;
   updatedAt: string;
   notes?: string;

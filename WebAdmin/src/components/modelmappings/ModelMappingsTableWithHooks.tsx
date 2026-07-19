@@ -18,6 +18,8 @@ import {
   IconDotsVertical,
   IconArrowRight,
   IconAlertCircle,
+  IconAlertTriangle,
+  IconListNumbers,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { useRouter } from 'next/navigation';
@@ -30,6 +32,7 @@ import {
 } from '@/hooks/useModelMappingsApi';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 import { BulkActionsBar } from './BulkActionsBar';
+import { FailoverChainModal } from './FailoverChainModal';
 
 // Extend the DTO type to ensure provider and capabilities properties are available
 interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
@@ -66,6 +69,23 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Failover chain modal state (alias being edited, null = closed)
+  const [failoverAlias, setFailoverAlias] = useState<string | null>(null);
+
+  // Per-alias stats: mapping count and whether the chain spans different canonical models
+  const aliasStats = useMemo(() => {
+    const stats = new Map<string, { count: number; modelIds: Set<number> }>();
+    for (const mapping of mappings) {
+      const entry = stats.get(mapping.modelAlias) ?? { count: 0, modelIds: new Set<number>() };
+      entry.count++;
+      if (mapping.modelId !== null && mapping.modelId !== undefined) {
+        entry.modelIds.add(mapping.modelId);
+      }
+      stats.set(mapping.modelAlias, entry);
+    }
+    return stats;
+  }, [mappings]);
   
   // Computed values for selection
   
@@ -221,6 +241,29 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
           <Text size="sm" fw={500}>{mapping.modelAlias}</Text>
           <IconArrowRight size={14} style={{ color: 'var(--mantine-color-dimmed)' }} />
           <Text size="sm" c="dimmed">{mapping.providerModelId}</Text>
+          {(aliasStats.get(mapping.modelAlias)?.count ?? 0) > 1 && (
+            <Badge
+              size="xs"
+              variant="light"
+              color="blue"
+              style={{ cursor: 'pointer' }}
+              onClick={() => setFailoverAlias(mapping.modelAlias)}
+              title="This alias has a failover chain — click to reorder"
+            >
+              chain ×{aliasStats.get(mapping.modelAlias)?.count}
+            </Badge>
+          )}
+          {(aliasStats.get(mapping.modelAlias)?.modelIds.size ?? 0) > 1 && (
+            <Badge
+              size="xs"
+              variant="light"
+              color="yellow"
+              leftSection={<IconAlertTriangle size={10} />}
+              title="Providers in this failover chain resolve to different canonical models"
+            >
+              cross-model
+            </Badge>
+          )}
         </Group>
       </Table.Td>
       
@@ -264,6 +307,12 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
                 onClick={() => handleEdit(mapping)}
               >
                 Edit
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<IconListNumbers style={{ width: rem(14), height: rem(14) }} />}
+                onClick={() => setFailoverAlias(mapping.modelAlias)}
+              >
+                Failover chain
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item
@@ -317,6 +366,13 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
         isDeleting={bulkDelete.isPending}
         isEnabling={bulkEnable.isPending}
         isDisabling={bulkDisable.isPending}
+      />
+
+      <FailoverChainModal
+        opened={failoverAlias !== null}
+        onClose={() => setFailoverAlias(null)}
+        modelAlias={failoverAlias ?? ''}
+        mappings={mappings}
       />
     </>
   );
