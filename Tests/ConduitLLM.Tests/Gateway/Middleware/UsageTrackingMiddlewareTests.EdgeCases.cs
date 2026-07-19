@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -44,6 +45,69 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert
             UsageTrackingAssertions.VerifyCostCalculated(Fixture.CostService, "gpt-4", 50, 150);
             UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 654, 0.006m);
+        }
+
+        [Fact]
+        public async Task Streaming_Response_Is_Billed_Before_Copy_To_Disconnected_Client()
+        {
+            var streamingUsage = new Usage
+            {
+                PromptTokens = 50,
+                CompletionTokens = 150,
+                TotalTokens = 200
+            };
+
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(655)
+                .AsOpenAI()
+                .AsStreaming(streamingUsage, "gpt-4")
+                .Build();
+            context.Response.Body = new ThrowingWriteStream();
+
+            Fixture.SetupCostForModel("gpt-4", 0.006m);
+
+            await Assert.ThrowsAsync<IOException>(() => Invoker
+                .WithNextDelegate(async ctx =>
+                {
+                    ctx.Response.ContentType = "text/event-stream";
+                    await ctx.Response.Body.WriteAsync("data: partial\n\n"u8.ToArray());
+                })
+                .InvokeAsync(context));
+
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 655, 0.006m);
+        }
+
+        private sealed class ThrowingWriteStream : Stream
+        {
+            public override bool CanRead => false;
+            public override bool CanSeek => false;
+            public override bool CanWrite => true;
+            public override long Length => throw new NotSupportedException();
+            public override long Position
+            {
+                get => throw new NotSupportedException();
+                set => throw new NotSupportedException();
+            }
+
+            public override void Flush() { }
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) =>
+                throw new IOException("Client disconnected");
+
+            public override ValueTask WriteAsync(
+                ReadOnlyMemory<byte> buffer,
+                CancellationToken cancellationToken = default) =>
+                ValueTask.FromException(new IOException("Client disconnected"));
+
+            public override Task WriteAsync(
+                byte[] buffer,
+                int offset,
+                int count,
+                CancellationToken cancellationToken) =>
+                Task.FromException(new IOException("Client disconnected"));
         }
 
         [Fact]

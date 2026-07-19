@@ -86,12 +86,11 @@ namespace ConduitLLM.Gateway.Controllers
 
             _logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", LoggingSanitizer.S(request.Model), providerId);
             var metricsCollector = new StreamingMetricsCollector(requestId, request.Model, providerId);
+            var state = new StreamingAccumulatorState();
+            var firstChunkTime = DateTime.UtcNow;
 
             try
             {
-                var state = new StreamingAccumulatorState();
-                var firstChunkTime = DateTime.UtcNow;
-
                 await foreach (var chunk in _conduit.StreamChatCompletionAsync(
                     request, null, virtualKeyId,
                     CreateToolExecutionCallback(sseWriter, state),
@@ -110,7 +109,7 @@ namespace ConduitLLM.Gateway.Controllers
                     await EmitPeriodicMetrics(chunk, sseWriter, metricsCollector);
                 }
 
-                await StoreStreamingResultsAsync(request, state, metricsCollector, sseWriter, cancellationToken);
+                await WriteStreamingCompletionEventsAsync(state, metricsCollector, sseWriter);
 
                 _logger.LogInformation("Streaming completed: {ChunkCount} chunks over {Duration}ms",
                     state.ChunkCount, (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
@@ -123,6 +122,12 @@ namespace ConduitLLM.Gateway.Controllers
                 await sseWriter.WriteErrorEventAsync(streamEx.Message);
                 GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "error", operationStopwatch.Elapsed.TotalSeconds);
                 GatewayOpsMetrics.RecordStreamingRequest(request.Model, "error");
+            }
+            finally
+            {
+                // Billing data must survive provider failures and client disconnects. Do not use the
+                // request token here: it is normally cancelled precisely when this fallback is needed.
+                await StoreStreamingResultsAsync(request, state, CancellationToken.None);
             }
         }
 
@@ -158,6 +163,10 @@ namespace ConduitLLM.Gateway.Controllers
                 if (!string.IsNullOrEmpty(choice.Delta?.Content))
                 {
                     state.ContentAccumulator.Append(choice.Delta.Content);
+                }
+                if (!string.IsNullOrEmpty(choice.Delta?.Reasoning))
+                {
+                    state.ContentAccumulator.Append(choice.Delta.Reasoning);
                 }
             }
         }
@@ -253,8 +262,6 @@ namespace ConduitLLM.Gateway.Controllers
         private async Task StoreStreamingResultsAsync(
             ChatCompletionRequest request,
             StreamingAccumulatorState state,
-            StreamingMetricsCollector metricsCollector,
-            EnhancedSSEResponseWriter sseWriter,
             CancellationToken cancellationToken)
         {
             // Store usage data for middleware
@@ -294,7 +301,13 @@ namespace ConduitLLM.Gateway.Controllers
                     state.FunctionExecutionResults.Count, state.TotalFunctionCost);
             }
 
-            // Write final metrics
+        }
+
+        private async Task WriteStreamingCompletionEventsAsync(
+            StreamingAccumulatorState state,
+            StreamingMetricsCollector metricsCollector,
+            EnhancedSSEResponseWriter sseWriter)
+        {
             _logger.LogInformation("StreamingUsage before GetFinalMetrics: {Usage}",
                 state.StreamingUsage != null ?
                 $"Prompt={state.StreamingUsage.PromptTokens}, Completion={state.StreamingUsage.CompletionTokens}, Total={state.StreamingUsage.TotalTokens}" :

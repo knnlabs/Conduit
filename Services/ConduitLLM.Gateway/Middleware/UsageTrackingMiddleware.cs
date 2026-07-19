@@ -74,18 +74,30 @@ namespace ConduitLLM.Gateway.Middleware
                 using var responseBody = new MemoryStream();
                 context.Response.Body = responseBody;
 
-                await _next(context);
+                try
+                {
+                    await _next(context);
+                }
+                finally
+                {
+                    // The downstream stream can fail because the provider errored or the client
+                    // disconnected. The controller stores partial usage in its own finally block,
+                    // so bill it here before any copy to the possibly-aborted client response.
+                    if (context.Response.ContentType?.Contains("text/event-stream") == true)
+                    {
+                        await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService,
+                            requestLogService, virtualKeyService, billingAuditService, toolCostCalculationService);
+                    }
+                }
 
                 // After the controller has run, check if this is a streaming response
                 // by checking the Content-Type that was set by the controller
                 if (context.Response.ContentType?.Contains("text/event-stream") == true)
                 {
                     _logger.LogDebug("Detected streaming response, skipping JSON parsing");
-                    // For streaming, just copy the stream directly without parsing
+                    // Usage was tracked before copying because the original client stream may be aborted.
                     responseBody.Seek(0, SeekOrigin.Begin);
                     await responseBody.CopyToAsync(originalBodyStream);
-                    await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService, 
-                        requestLogService, virtualKeyService, billingAuditService, toolCostCalculationService);
                     return;
                 }
 
