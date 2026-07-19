@@ -289,9 +289,9 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task PublishCompletedEvent_WithDefaultParameters_ShouldUseDefaults()
+        public async Task ProviderReportedMetadata_ShouldDriveBillingAndCompletionEvent()
         {
-            // Arrange - Request without duration/size specified
+            // Arrange - the provider delivers a 6-second 1080p video despite omitted parameters
             var request = new VideoGenerationRequested
             {
                 RequestId = "test-task-id",
@@ -304,17 +304,31 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             };
             var context = CreateEventContext();
             var response = CreateTestResponse();
+            response.Data[0].Metadata = new VideoMetadata
+            {
+                Duration = 6,
+                Width = 1920,
+                Height = 1080
+            };
 
             SetupSuccessfulGeneration(response);
 
             // Act
             await Orchestrator.HandleAsync(request, context);
 
-            // Assert - Should use default values (5 seconds, 1280x720)
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                It.IsAny<string>(),
+                It.Is<Usage>(usage =>
+                    usage.VideoDurationSeconds == 6 &&
+                    usage.VideoResolution == "1920x1080" &&
+                    (double)usage.PricingParameters!["duration"] == 6 &&
+                    (string)usage.PricingParameters["resolution"] == "1080p"),
+                It.IsAny<CancellationToken>()), Times.Once);
+
             EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<VideoGenerationCompleted>(e =>
-                    e.Duration == 5 && // Default duration
-                    e.Resolution == "1280x720"), // Default resolution
+                    e.Duration == 6 &&
+                    e.Resolution == "1920x1080"),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 

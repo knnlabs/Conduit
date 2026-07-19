@@ -250,6 +250,33 @@ namespace ConduitLLM.Core.Services
             var results = await Task.WhenAll(tasks);
             processedMedia.Items = results.Where(r => r != null).ToList()!;
 
+            // Preserve provider-reported output metadata after media processing. The storage
+            // strategies add operational metadata but do not carry VideoData.Metadata forward;
+            // billing and completion events need the delivered values rather than request defaults.
+            foreach (var item in processedMedia.Items)
+            {
+                var providerMetadata = response.Data.ElementAtOrDefault(item.Index)?.Metadata;
+                if (providerMetadata == null)
+                {
+                    continue;
+                }
+
+                if (providerMetadata.Duration > 0)
+                {
+                    item.Metadata["duration"] = providerMetadata.Duration;
+                }
+
+                if (providerMetadata.Width > 0 && providerMetadata.Height > 0)
+                {
+                    item.Metadata["resolution"] = $"{providerMetadata.Width}x{providerMetadata.Height}";
+                }
+
+                if (providerMetadata.FileSizeBytes > 0)
+                {
+                    item.Metadata["fileSize"] = providerMetadata.FileSizeBytes;
+                }
+            }
+
             // Set primary URL to first video
             if (processedMedia.Items.Any())
             {
@@ -313,8 +340,15 @@ namespace ConduitLLM.Core.Services
 
         protected override Usage CreateUsageObject(VideoGenerationRequested request, VideoGenerationResponse response)
         {
-            var resolution = request.Parameters?.Size ?? "1280x720";
-            var duration = request.Parameters?.Duration ?? 5;
+            var providerMetadata = response.Data?.FirstOrDefault()?.Metadata;
+            var resolution = providerMetadata is { Width: > 0, Height: > 0 }
+                ? $"{providerMetadata.Width}x{providerMetadata.Height}"
+                : request.Parameters?.Size ?? "1280x720";
+            var duration = providerMetadata?.Duration > 0
+                ? providerMetadata.Duration
+                : response.Usage?.TotalDurationSeconds > 0
+                    ? response.Usage.TotalDurationSeconds
+                    : request.Parameters?.Duration ?? 5;
 
             // Build pricing parameters for rules-based pricing
             var pricingParameters = new Dictionary<string, object>
@@ -400,8 +434,8 @@ namespace ConduitLLM.Core.Services
             GenerationModelInfo modelInfo,
             TimeSpan duration)
         {
-            // Get video duration from request parameters (default to 5 if not specified)
-            var videoDuration = request.Parameters?.Duration ?? 5;
+            // Fall back to request values only when the provider did not report delivered metadata.
+            double videoDuration = request.Parameters?.Duration ?? 5;
             var resolution = request.Parameters?.Size ?? "1280x720";
 
             // Extract file size from processed media metadata if available
@@ -410,6 +444,16 @@ namespace ConduitLLM.Core.Services
             if (media.Items?.Any() == true)
             {
                 var firstItem = media.Items.First();
+                if (firstItem.Metadata.TryGetValue("duration", out var durationObj) &&
+                    durationObj is double actualDuration && actualDuration > 0)
+                {
+                    videoDuration = actualDuration;
+                }
+                if (firstItem.Metadata.TryGetValue("resolution", out var resolutionObj) &&
+                    resolutionObj is string actualResolution && !string.IsNullOrWhiteSpace(actualResolution))
+                {
+                    resolution = actualResolution;
+                }
                 if (firstItem.Metadata.TryGetValue("fileSize", out var fileSizeObj) && fileSizeObj is long fs)
                 {
                     fileSize = fs;
