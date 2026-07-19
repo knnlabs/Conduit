@@ -320,6 +320,14 @@ export interface TavilySearchPricingConfig extends BasePricingConfig {
   costPerImage?: number; // Default: 0
 }
 
+/** Perplexity pricing - base request plus separate input/output token rates */
+export interface PerplexityHybridPricingConfig extends BasePricingConfig {
+  pricingModel: FunctionPricingModel.Hybrid;
+  baseRequestCost: number;
+  inputTokenCostPerMillion: number;
+  outputTokenCostPerMillion: number;
+}
+
 /** Union type for all pricing configurations */
 export type FunctionPricingConfig =
   | FlatRatePricingConfig
@@ -328,7 +336,8 @@ export type FunctionPricingConfig =
   | TimeBasedPricingConfig
   | TieredPricingConfig
   | ExaHybridPricingConfig
-  | TavilySearchPricingConfig;
+  | TavilySearchPricingConfig
+  | PerplexityHybridPricingConfig;
 
 // ============================================================================
 // List Responses with Pagination

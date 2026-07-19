@@ -8,7 +8,8 @@ namespace ConduitLLM.Functions.Models.Pricing;
 /// <remarks>
 /// This class defines the structure for Tavily pricing configuration.
 /// Actual pricing values must be provided via seed data or admin configuration.
-/// All fields default to 0 - functions without cost configuration are free.
+/// Required fields prevent unrelated hybrid configuration shapes from being
+/// silently interpreted as a free Tavily request.
 ///
 /// Tavily pricing structure:
 /// - Basic search: N credits
@@ -28,14 +29,14 @@ public class TavilySearchPricingConfig
     /// Must be configured via seed data or admin UI.
     /// </summary>
     [JsonPropertyName("costPerCredit")]
-    public decimal CostPerCredit { get; set; }
+    public required decimal CostPerCredit { get; set; }
 
     /// <summary>
     /// Credits consumed by basic search.
     /// Basic search provides quick results with standard depth.
     /// </summary>
     [JsonPropertyName("basicSearchCredits")]
-    public int BasicSearchCredits { get; set; }
+    public required int BasicSearchCredits { get; set; }
 
     /// <summary>
     /// Credits consumed by advanced search.
@@ -43,7 +44,7 @@ public class TavilySearchPricingConfig
     /// Supports content chunks (1-3 chunks per source).
     /// </summary>
     [JsonPropertyName("advancedSearchCredits")]
-    public int AdvancedSearchCredits { get; set; }
+    public required int AdvancedSearchCredits { get; set; }
 
     /// <summary>
     /// Additional credits for auto-parameters feature.

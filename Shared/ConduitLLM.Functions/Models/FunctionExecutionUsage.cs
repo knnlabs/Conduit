@@ -36,6 +36,20 @@ public class FunctionExecutionUsage
     public int? TokensConsumed { get; set; }
 
     /// <summary>
+    /// Number of input tokens consumed when the provider reports token types separately.
+    /// </summary>
+    [JsonPropertyName("input_tokens_consumed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? InputTokensConsumed { get; set; }
+
+    /// <summary>
+    /// Number of output tokens consumed when the provider reports token types separately.
+    /// </summary>
+    [JsonPropertyName("output_tokens_consumed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? OutputTokensConsumed { get; set; }
+
+    /// <summary>
     /// Duration of the function execution.
     /// </summary>
     /// <remarks>

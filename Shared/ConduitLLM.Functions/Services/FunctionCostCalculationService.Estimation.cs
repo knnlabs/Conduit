@@ -217,27 +217,66 @@ public partial class FunctionCostCalculationService
     {
         if (string.IsNullOrWhiteSpace(functionCost.PricingConfiguration))
         {
-            return 0m;
+            throw new InvalidOperationException(
+                $"Hybrid pricing configuration is required for cost '{functionCost.CostName}'.");
         }
 
-        // Try Exa format
         try
         {
-            var exaConfig = JsonSerializer.Deserialize<ExaHybridPricingConfig>(functionCost.PricingConfiguration);
-            if (exaConfig != null)
+            return functionCost.ProviderType switch
             {
-                return EstimateExaHybridCost(exaConfig, requestParameters);
-            }
+                Enums.FunctionProviderType.Exa => EstimateExaHybridCost(
+                    DeserializeHybridConfig<ExaHybridPricingConfig>(functionCost), requestParameters),
+                Enums.FunctionProviderType.Tavily => EstimateTavilySearchCost(
+                    DeserializeHybridConfig<TavilySearchPricingConfig>(functionCost), requestParameters),
+                Enums.FunctionProviderType.Perplexity => EstimatePerplexityHybridCost(
+                    DeserializeHybridConfig<PerplexityHybridPricingConfig>(functionCost), requestParameters),
+                _ => throw new InvalidOperationException(
+                    $"Hybrid pricing is not supported for provider {functionCost.ProviderType} on cost '{functionCost.CostName}'.")
+            };
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
-            _logger.LogDebug("Failed to parse as Exa hybrid pricing config for estimation");
+            _logger.LogError(exception,
+                "Invalid {ProviderType} hybrid pricing configuration for cost {CostName} during estimation.",
+                functionCost.ProviderType, functionCost.CostName);
+            throw new InvalidOperationException(
+                $"Invalid {functionCost.ProviderType} hybrid pricing configuration for cost '{functionCost.CostName}'.",
+                exception);
+        }
+    }
+
+    private decimal EstimateTavilySearchCost(
+        TavilySearchPricingConfig config,
+        Dictionary<string, object> requestParameters)
+    {
+        var advanced = requestParameters.TryGetValue("searchDepth", out var depth)
+            && string.Equals(Convert.ToString(depth), "advanced", StringComparison.OrdinalIgnoreCase);
+        var credits = advanced ? config.AdvancedSearchCredits : config.BasicSearchCredits;
+
+        if (requestParameters.TryGetValue("autoParameters", out var autoParameters)
+            && Convert.ToBoolean(autoParameters))
+        {
+            credits += config.AutoParametersCredits ?? 0;
         }
 
-        // Future: Add other hybrid estimation formats
+        return credits * config.CostPerCredit;
+    }
 
-        _logger.LogWarning("Could not estimate hybrid pricing cost. Unknown format.");
-        return 0m;
+    private static decimal EstimatePerplexityHybridCost(
+        PerplexityHybridPricingConfig config,
+        Dictionary<string, object> requestParameters)
+    {
+        var maxOutputTokens = requestParameters.TryGetValue("maxTokens", out var maxTokens)
+            ? Convert.ToInt32(maxTokens)
+            : requestParameters.TryGetValue("max_tokens", out var maxTokensSnake)
+                ? Convert.ToInt32(maxTokensSnake)
+                : 0;
+
+        // The request does not expose a reliable tokenizer here. The base charge is always
+        // reserved, and any declared maximum output is reserved at the output-token rate.
+        return config.BaseRequestCost
+            + maxOutputTokens * config.OutputTokenCostPerMillion / 1_000_000m;
     }
 
     /// <summary>
