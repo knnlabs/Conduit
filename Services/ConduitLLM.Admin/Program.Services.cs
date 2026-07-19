@@ -23,12 +23,9 @@ public partial class Program
         // Add Configuration services
         builder.Services.AddConfigurationServices(builder.Configuration);
 
-        // Add Provider services (needed for ILLMClientFactory)
+        // Add Provider services (needed for ILLMClientFactory; also registers the named
+        // provider HttpClients with the resilience pipeline)
         builder.Services.AddProviderServices();
-
-        // Register named provider HttpClients so resilience policies attach to provider
-        // traffic (key verification, model discovery) in the Admin API as well
-        builder.Services.AddLLMProviderHttpClients();
 
         // Add Admin services
         builder.Services.AddAdminServices(builder.Configuration);

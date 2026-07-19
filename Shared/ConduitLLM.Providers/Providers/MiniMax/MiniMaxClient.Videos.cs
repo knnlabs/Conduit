@@ -399,8 +399,9 @@ namespace ConduitLLM.Providers.MiniMax
                     "Creating HttpClient instances directly can cause socket exhaustion under load.");
             }
 
-            // Use a dedicated named client for video operations (should be configured without aggressive timeout policies)
-            var client = HttpClientFactory.CreateClient($"{ProviderName}VideoClient");
+            // Dedicated named client for video operations — registered with the video budget
+            // (long attempts, no retries)
+            var client = HttpClientFactory.CreateClient(Http.ProviderHttpClientNames.Video(Provider.ProviderType));
 
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))

@@ -24,6 +24,10 @@ namespace ConduitLLM.Providers.Extensions
             // Register LLM client factory
             services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
 
+            // Every host that creates provider clients needs the named HttpClients with the
+            // resilience pipeline — registering here (idempotently) means no host can forget
+            services.AddLLMProviderHttpClients();
+
             // OBSOLETE: External model discovery is no longer used. 
             // The ProviderModelsController now returns models from the local database.
             // services.AddScoped<ModelListService>();

@@ -51,7 +51,7 @@ public partial class Program
         // ========== HTTP Infrastructure ==========
 
         builder.Services.AddHttpClient();
-        builder.Services.AddLLMProviderHttpClients();
+        // Provider named clients + resilience pipeline are registered by AddProviderServices()
         builder.Services.AddVideoGenerationHttpClients();
         builder.Services.AddHttpClientServices(builder.Configuration);
 
