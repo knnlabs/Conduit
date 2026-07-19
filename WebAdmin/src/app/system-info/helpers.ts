@@ -20,23 +20,6 @@ export interface ServiceInfo {
   cpu?: string;
 }
 
-// Helper function to format uptime from seconds
-export const formatUptime = (uptimeSeconds: number): string => {
-  if (!uptimeSeconds) return 'Unknown';
-  
-  const days = Math.floor(uptimeSeconds / 86400);
-  const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-  const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-  
-  if (days > 0) {
-    return `${days}d ${hours}h ${minutes}m`;
-  } else if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  } else {
-    return `${minutes}m`;
-  }
-};
-
 // Generate system metrics from real data
 export const generateSystemMetrics = (
   systemInfo: SystemInfoDto | null,
@@ -44,11 +27,11 @@ export const generateSystemMetrics = (
 ): SystemMetric[] => {
   const systemMetrics: SystemMetric[] = [];
 
-  if (systemInfo?.database?.isConnected !== undefined) {
+  if (systemInfo?.database?.connected !== undefined) {
     systemMetrics.push({
       name: 'Database Status',
-      value: systemInfo.database.isConnected ? 'Connected' : 'Disconnected',
-      status: systemInfo.database.isConnected ? 'healthy' : 'critical',
+      value: systemInfo.database.connected ? 'Connected' : 'Disconnected',
+      status: systemInfo.database.connected ? 'healthy' : 'critical',
       description: `Provider: ${systemInfo.database.provider ?? 'Unknown'}`
     });
   }
@@ -75,16 +58,17 @@ export const generateServiceInfo = (systemInfo: SystemInfoDto | null): ServiceIn
   if (systemInfo) {
     services.push({
       name: 'Conduit Gateway API',
-      version: systemInfo.version ?? 'Unknown',
+      version: systemInfo.version?.appVersion ?? 'Unknown',
       status: 'running',
-      uptime: formatUptime(systemInfo.uptime ?? 0)
+      // runtime.uptime is now a preformatted string (.NET TimeSpan) — display as-is
+      uptime: systemInfo.runtime?.uptime ?? 'Unknown'
     });
-    
-    if (systemInfo.database?.isConnected) {
+
+    if (systemInfo.database?.connected) {
       services.push({
         name: systemInfo.database.provider ?? 'Database',
         version: 'Unknown',
-        status: systemInfo.database.isConnected ? 'running' : 'stopped'
+        status: systemInfo.database.connected ? 'running' : 'stopped'
       });
     }
   }

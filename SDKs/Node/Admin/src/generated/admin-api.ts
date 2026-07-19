@@ -10295,6 +10295,361 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/ProviderSync/drift": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lists drift items (defaults to Pending), optionally filtered. */
+    get: {
+      parameters: {
+        query?: {
+          status?: string;
+          driftType?: string;
+          providerId?: number;
+          page?: number;
+          pageSize?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ProviderSync/drift/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets a single drift item. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ProviderSync/drift/{id}/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Applies a drift item's proposed change. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ProviderSync/drift/{id}/dismiss": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Dismisses a drift item. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ProviderSync/drift/bulk/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Applies multiple drift items. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["BulkDriftActionRequest"];
+          "text/json": components["schemas"]["BulkDriftActionRequest"];
+          "application/*+json": components["schemas"]["BulkDriftActionRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ProviderSync/drift/bulk/dismiss": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Dismisses multiple drift items. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["BulkDriftActionRequest"];
+          "text/json": components["schemas"]["BulkDriftActionRequest"];
+          "application/*+json": components["schemas"]["BulkDriftActionRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ProviderSync/run": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Triggers a sync now. Returns 409 if a sync is already in progress. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ProviderSync/runs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lists recent sync runs. */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/admin/provider-tools": {
     parameters: {
       query?: never;
@@ -12642,6 +12997,10 @@ export interface components {
        */
       failureCount?: number;
     };
+    /** @description Request body for bulk apply/dismiss. */
+    BulkDriftActionRequest: {
+      ids?: number[];
+    };
     /** @description Result of a bulk mapping operation */
     BulkMappingResult: {
       /** @description Successfully created mappings */
@@ -12907,6 +13266,10 @@ export interface components {
       cachedInputWriteCostPerMillionTokens?: null | number;
       /** Format: double */
       costPerSearchUnit?: null | number;
+      /** Format: double */
+      audioCostPerMinute?: null | number;
+      /** Format: double */
+      audioCostPerThousandCharacters?: null | number;
     };
     /** @description Data transfer object for creating a new AI model in the system. */
     CreateModelDto: {
@@ -12934,6 +13297,12 @@ export interface components {
       supportsImageGeneration?: boolean;
       /** @description Gets or sets whether the model supports video generation. */
       supportsVideoGeneration?: boolean;
+      /** @description Whether the model supports speech-to-text transcription. */
+      supportsSpeechToText?: boolean;
+      /** @description Whether the model supports text-to-speech synthesis. */
+      supportsTextToSpeech?: boolean;
+      /** @description Whether the model supports document reranking. */
+      supportsRerank?: boolean;
       /** @description Gets or sets whether the model supports text embeddings generation. */
       supportsEmbeddings?: boolean;
       /**
@@ -13030,6 +13399,15 @@ export interface components {
       baseUrl?: null | string;
       /** @description Whether the provider is enabled */
       isEnabled?: boolean;
+      /** @description When true, the cost the provider reports per request is authoritative for billing
+       *     (falls back to ModelCost when no cost is reported). Defaults to false. */
+      trustProviderReportedCosts?: boolean;
+      /**
+       * Format: double
+       * @description Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).
+       *     Only consulted when bool CreateProviderRequest.TrustProviderReportedCosts is true.
+       */
+      providerCostMarkupMultiplier?: number;
     };
     CreateProviderToolDto: {
       provider: components["schemas"]["ProviderType"];
@@ -13672,6 +14050,9 @@ export interface components {
       cachedWriteTokens?: null | number;
       /** Format: double */
       cost?: number;
+      billingMethod?: null | components["schemas"]["RequestBillingMethod"];
+      /** Format: double */
+      providerReportedCostUsd?: null | number;
       /** Format: double */
       responseTimeMs?: number;
       userId?: null | string;
@@ -13973,6 +14354,9 @@ export interface components {
       supportsImageGeneration?: boolean;
       supportsVideoGeneration?: boolean;
       supportsEmbeddings?: boolean;
+      supportsSpeechToText?: boolean;
+      supportsTextToSpeech?: boolean;
+      supportsRerank?: boolean;
       supportsChat?: boolean;
       supportsFunctionCalling?: boolean;
       supportsStreaming?: boolean;
@@ -14042,6 +14426,10 @@ export interface components {
       cachedInputWriteCostPerMillionTokens?: null | number;
       /** Format: double */
       costPerSearchUnit?: null | number;
+      /** Format: double */
+      audioCostPerMinute?: null | number;
+      /** Format: double */
+      audioCostPerThousandCharacters?: null | number;
     };
     ModelCostOverviewDto: {
       model?: string;
@@ -14083,6 +14471,12 @@ export interface components {
       supportsImageGeneration?: boolean;
       /** @description Gets or sets whether the model supports video generation. */
       supportsVideoGeneration?: boolean;
+      /** @description Whether the model supports speech-to-text transcription. */
+      supportsSpeechToText?: boolean;
+      /** @description Whether the model supports text-to-speech synthesis. */
+      supportsTextToSpeech?: boolean;
+      /** @description Whether the model supports document reranking. */
+      supportsRerank?: boolean;
       /** @description Gets or sets whether the model supports text embeddings generation. */
       supportsEmbeddings?: boolean;
       /**
@@ -14181,6 +14575,7 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string;
       notes?: null | string;
+      providerOptions?: null | string;
       capabilities?: null | components["schemas"]["ModelCapabilitiesDto"];
     };
     /** @description Data transfer object representing a series or family of related AI models. */
@@ -14293,6 +14688,12 @@ export interface components {
       supportsImageGeneration?: boolean;
       /** @description Gets or sets whether the model supports video generation. */
       supportsVideoGeneration?: boolean;
+      /** @description Whether the model supports speech-to-text transcription. */
+      supportsSpeechToText?: boolean;
+      /** @description Whether the model supports text-to-speech synthesis. */
+      supportsTextToSpeech?: boolean;
+      /** @description Whether the model supports document reranking. */
+      supportsRerank?: boolean;
       /** @description Gets or sets whether the model supports text embeddings generation. */
       supportsEmbeddings?: boolean;
       /**
@@ -14721,6 +15122,8 @@ export interface components {
       refundUsage?: components["schemas"]["UsageDto"];
       refundReason?: string;
       originalTransactionId?: null | string;
+      /** Format: int32 */
+      requestLogId?: null | number;
     };
     PromptCachingConfigDto: {
       autoInjectEnabled?: boolean;
@@ -14733,6 +15136,9 @@ export interface components {
       providerName: string;
       baseUrl?: null | string;
       isEnabled?: boolean;
+      trustProviderReportedCosts?: boolean;
+      /** Format: double */
+      providerCostMarkupMultiplier?: number;
       /** Format: date-time */
       createdAt?: string;
       /** Format: date-time */
@@ -14948,6 +15354,7 @@ export interface components {
       validationMessages?: string[];
       breakdown?: null | components["schemas"]["RefundBreakdownDto"];
     };
+    RequestBillingMethod: number;
     RequestLog: {
       /** Format: int32 */
       id?: number;
@@ -14969,6 +15376,9 @@ export interface components {
       cachedWriteTokens?: null | number;
       /** Format: double */
       cost?: number;
+      billingMethod?: null | components["schemas"]["RequestBillingMethod"];
+      /** Format: double */
+      providerReportedCostUsd?: null | number;
       /** Format: double */
       responseTimeMs?: number;
       /** Format: date-time */
@@ -15588,6 +15998,10 @@ export interface components {
       cachedInputWriteCostPerMillionTokens?: null | number;
       /** Format: double */
       costPerSearchUnit?: null | number;
+      /** Format: double */
+      audioCostPerMinute?: null | number;
+      /** Format: double */
+      audioCostPerThousandCharacters?: null | number;
     };
     /** @description Data transfer object for updating an existing AI model in the system. */
     UpdateModelDto: {
@@ -15624,6 +16038,12 @@ export interface components {
       /** @description Gets or sets whether the model supports video generation.
        *     True to enable video generation, false to disable, or null to keep existing. */
       supportsVideoGeneration?: null | boolean;
+      /** @description Whether the model supports speech-to-text transcription. */
+      supportsSpeechToText?: null | boolean;
+      /** @description Whether the model supports text-to-speech synthesis. */
+      supportsTextToSpeech?: null | boolean;
+      /** @description Whether the model supports document reranking. */
+      supportsRerank?: null | boolean;
       /** @description Gets or sets whether the model supports text embeddings generation.
        *     True to enable embeddings, false to disable, or null to keep existing. */
       supportsEmbeddings?: null | boolean;
@@ -15720,6 +16140,15 @@ export interface components {
       baseUrl?: null | string;
       /** @description Whether the provider is enabled */
       isEnabled?: boolean;
+      /** @description When true, the cost the provider reports per request is authoritative for billing
+       *     (falls back to ModelCost when no cost is reported). Defaults to false when omitted. */
+      trustProviderReportedCosts?: boolean;
+      /**
+       * Format: double
+       * @description Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).
+       *     Defaults to 1.0 when omitted, so a partial update never silently zeroes the markup.
+       */
+      providerCostMarkupMultiplier?: number;
     };
     UpdateProviderToolDto: {
       isActive?: boolean;

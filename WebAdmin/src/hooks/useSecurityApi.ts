@@ -40,8 +40,9 @@ function ipFilterToLegacyRule(filter: IpFilterDto): IpRule {
     description: filter.description,
     createdAt: filter.createdAt,
     isEnabled: filter.isEnabled,
-    lastMatchedAt: filter.lastMatchedAt,
-    matchCount: filter.matchCount,
+    // lastMatchedAt/matchCount are no longer tracked server-side (removed from IpFilterDto in #1038)
+    lastMatchedAt: undefined,
+    matchCount: undefined,
   };
 }
 
@@ -186,7 +187,8 @@ export function useSecurityApi() {
         allowRules: filters.filter(f => f.filterType === 'whitelist').length,
         blockRules: filters.filter(f => f.filterType === 'blacklist').length,
         activeRules: filters.filter(f => f.isEnabled).length,
-        blockedRequests24h: filters.reduce((sum, f) => sum + (f.matchCount ?? 0), 0),
+        // Per-filter match counts are no longer tracked server-side (removed in #1038)
+        blockedRequests24h: 0,
         lastRuleUpdate: filters.length > 0 ?
           Math.max(...filters.map(f => new Date(f.updatedAt).getTime())).toString() :
           null,

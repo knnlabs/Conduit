@@ -16,80 +16,65 @@ export enum PricingModel {
   PerThousandCharacters = 8
 }
 
+// Matches the wire `ModelCostDto` (modelType narrows the wire string to a client enum — asserted
+// with SameKeys). Media/inference pricing is carried in the polymorphic pricingConfiguration JSON,
+// not as flat fields; the legacy image/video/inference/extra-audio flat fields were removed and
+// audioCostPerKCharacters was corrected to audioCostPerThousandCharacters in issue #1038.
 export interface ModelCostDto {
   id: number;
   costName: string; // User-friendly name like "GPT-4 Standard Pricing"
-  associatedModelAliases: string[]; // Model aliases using this cost
   pricingModel: PricingModel; // The pricing model type
   pricingConfiguration?: string; // JSON configuration for polymorphic pricing
-  modelType: ModelType;
+  associatedModelAliases: string[]; // Model aliases using this cost
   inputCostPerMillionTokens: number; // Cost per million tokens in USD
   outputCostPerMillionTokens: number; // Cost per million tokens in USD
   embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
-  imageCostPerImage?: number;
-  audioCostPerMinute?: number;
-  audioCostPerKCharacters?: number;
-  audioInputCostPerMinute?: number;
-  audioOutputCostPerMinute?: number;
-  videoCostPerSecond?: number;
-  videoResolutionMultipliers?: string; // JSON string
-  imageResolutionMultipliers?: string; // JSON string for image resolution multipliers
+  createdAt: string;
+  updatedAt: string;
+  modelType: ModelType;
   isActive: boolean;
-  priority: number;
   effectiveDate: string;
   expiryDate?: string;
   description?: string;
-  createdAt: string;
-  updatedAt: string;
-  // Phase 1 fields
+  priority: number;
   batchProcessingMultiplier?: number;
   supportsBatchProcessing: boolean;
-  imageQualityMultipliers?: string; // JSON string
-  // Phase 2 fields
   cachedInputCostPerMillionTokens?: number; // Cost per million tokens in USD
   cachedInputWriteCostPerMillionTokens?: number; // Cost per million tokens in USD
   costPerSearchUnit?: number;
-  costPerInferenceStep?: number;
-  defaultInferenceSteps?: number;
+  audioCostPerMinute?: number;
+  audioCostPerThousandCharacters?: number;
 }
 
+// Matches the wire `CreateModelCostDto` (SameKeys — modelType narrows wire string). Media/inference
+// pricing is set via pricingConfiguration; the ID field is modelProviderTypeAssociationIds. See #1038.
 export interface CreateModelCostDto {
   costName: string; // Required: User-friendly name
-  modelProviderMappingIds: number[]; // IDs of ModelProviderMapping entities
   pricingModel?: PricingModel; // Default: Standard
   pricingConfiguration?: string; // JSON configuration for polymorphic pricing
+  modelProviderTypeAssociationIds?: number[]; // IDs of provider/model type associations
   modelType?: ModelType; // Default: ModelType.Chat
   priority?: number; // Default: 0
   description?: string;
   inputCostPerMillionTokens: number; // Cost per million tokens in USD
   outputCostPerMillionTokens: number; // Cost per million tokens in USD
   embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
-  imageCostPerImage?: number;
-  audioCostPerMinute?: number;
-  audioCostPerKCharacters?: number;
-  audioInputCostPerMinute?: number;
-  audioOutputCostPerMinute?: number;
-  videoCostPerSecond?: number;
-  videoResolutionMultipliers?: string; // JSON string
-  imageResolutionMultipliers?: string; // JSON string for image resolution multipliers
-  // Phase 1 fields
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
-  imageQualityMultipliers?: string; // JSON string
-  // Phase 2 fields
   cachedInputCostPerMillionTokens?: number; // Cost per million tokens in USD
   cachedInputWriteCostPerMillionTokens?: number; // Cost per million tokens in USD
   costPerSearchUnit?: number;
-  costPerInferenceStep?: number;
-  defaultInferenceSteps?: number;
+  audioCostPerMinute?: number;
+  audioCostPerThousandCharacters?: number;
 }
 
+// Matches the wire `UpdateModelCostDto` (SameKeys — modelType narrows wire string). See issue #1038.
 export interface UpdateModelCostDto {
   id: number; // Required for update
   costName: string; // Required: User-friendly name
-  modelProviderMappingIds: number[]; // IDs of ModelProviderMapping entities
   pricingModel?: PricingModel;
   pricingConfiguration?: string; // JSON configuration for polymorphic pricing
+  modelProviderTypeAssociationIds?: number[]; // IDs of provider/model type associations
   modelType?: ModelType;
   priority?: number;
   description?: string;
@@ -97,24 +82,13 @@ export interface UpdateModelCostDto {
   inputCostPerMillionTokens?: number; // Cost per million tokens in USD
   outputCostPerMillionTokens?: number; // Cost per million tokens in USD
   embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
-  imageCostPerImage?: number;
-  audioCostPerMinute?: number;
-  audioCostPerKCharacters?: number;
-  audioInputCostPerMinute?: number;
-  audioOutputCostPerMinute?: number;
-  videoCostPerSecond?: number;
-  videoResolutionMultipliers?: string; // JSON string
-  imageResolutionMultipliers?: string; // JSON string for image resolution multipliers
-  // Phase 1 fields
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
-  imageQualityMultipliers?: string; // JSON string
-  // Phase 2 fields
   cachedInputCostPerMillionTokens?: number; // Cost per million tokens in USD
   cachedInputWriteCostPerMillionTokens?: number; // Cost per million tokens in USD
   costPerSearchUnit?: number;
-  costPerInferenceStep?: number;
-  defaultInferenceSteps?: number;
+  audioCostPerMinute?: number;
+  audioCostPerThousandCharacters?: number;
 }
 
 export interface ModelCostFilters extends FilterOptions {

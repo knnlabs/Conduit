@@ -79,39 +79,12 @@ export const ModelCostDisplay: React.FC<ModelCostDisplayProps> = ({
         </Group>
       )}
 
-      {/* Inference steps */}
-      {modelCost.costPerInferenceStep && (
-        <Group gap="xs">
-          <Text size={compact ? 'xs' : 'sm'} c="dimmed">Per Step:</Text>
-          <Text size={compact ? 'xs' : 'sm'} fw={500}>
-            {formatCost(modelCost.costPerInferenceStep, 6)}
-          </Text>
-          {modelCost.defaultInferenceSteps && (
-            <Text size="xs" c="dimmed">
-              (Default: {modelCost.defaultInferenceSteps} steps = {formatCost(
-                modelCost.costPerInferenceStep * modelCost.defaultInferenceSteps
-              )})
-            </Text>
-          )}
-        </Group>
-      )}
-
-      {/* Image cost */}
-      {modelCost.imageCostPerImage && (
-        <Group gap="xs">
-          <Text size={compact ? 'xs' : 'sm'} c="dimmed">Per Image:</Text>
-          <Text size={compact ? 'xs' : 'sm'} fw={500}>
-            {formatCost(modelCost.imageCostPerImage, 2)}
-          </Text>
-          {modelCost.imageQualityMultipliers && modelCost.imageQualityMultipliers !== '{}' && (
-            <Badge size="xs" variant="light" color="orange">Quality tiers</Badge>
-          )}
-        </Group>
-      )}
+      {/* Inference-step, image, and video pricing (plus the per-input/output audio splits) were
+          removed from ModelCostDto in #1038; they now live in pricingConfiguration, which this
+          summary does not parse, so those rows are omitted here. */}
 
       {/* Audio costs */}
-      {(modelCost.audioCostPerMinute ?? modelCost.audioCostPerKCharacters ?? 
-        modelCost.audioInputCostPerMinute ?? modelCost.audioOutputCostPerMinute) && (
+      {(modelCost.audioCostPerMinute ?? modelCost.audioCostPerThousandCharacters) && (
         <>
           {modelCost.audioCostPerMinute && (
             <Group gap="xs">
@@ -121,44 +94,15 @@ export const ModelCostDisplay: React.FC<ModelCostDisplayProps> = ({
               </Text>
             </Group>
           )}
-          {modelCost.audioCostPerKCharacters && (
+          {modelCost.audioCostPerThousandCharacters && (
             <Group gap="xs">
               <Text size={compact ? 'xs' : 'sm'} c="dimmed">Audio (TTS):</Text>
               <Text size={compact ? 'xs' : 'sm'} fw={500}>
-                {formatCost(modelCost.audioCostPerKCharacters, 2)}/1K chars
-              </Text>
-            </Group>
-          )}
-          {modelCost.audioInputCostPerMinute && (
-            <Group gap="xs">
-              <Text size={compact ? 'xs' : 'sm'} c="dimmed">Transcription:</Text>
-              <Text size={compact ? 'xs' : 'sm'} fw={500}>
-                {formatCost(modelCost.audioInputCostPerMinute, 2)}/minute
-              </Text>
-            </Group>
-          )}
-          {modelCost.audioOutputCostPerMinute && (
-            <Group gap="xs">
-              <Text size={compact ? 'xs' : 'sm'} c="dimmed">Speech:</Text>
-              <Text size={compact ? 'xs' : 'sm'} fw={500}>
-                {formatCost(modelCost.audioOutputCostPerMinute, 2)}/minute
+                {formatCost(modelCost.audioCostPerThousandCharacters, 2)}/1K chars
               </Text>
             </Group>
           )}
         </>
-      )}
-
-      {/* Video cost */}
-      {modelCost.videoCostPerSecond && (
-        <Group gap="xs">
-          <Text size={compact ? 'xs' : 'sm'} c="dimmed">Video:</Text>
-          <Text size={compact ? 'xs' : 'sm'} fw={500}>
-            {formatCost(modelCost.videoCostPerSecond, 2)}/second
-          </Text>
-          {modelCost.videoResolutionMultipliers && modelCost.videoResolutionMultipliers !== '{}' && (
-            <Badge size="xs" variant="light" color="pink">Resolution tiers</Badge>
-          )}
-        </Group>
       )}
 
       {/* Batch processing */}

@@ -69,50 +69,9 @@ export const CostPreview: React.FC<CostPreviewProps> = ({ modelCost }) => {
       });
     }
 
-    // Inference steps example
-    if (modelCost.costPerInferenceStep && modelCost.defaultInferenceSteps) {
-      const stepCost = modelCost.costPerInferenceStep * modelCost.defaultInferenceSteps;
-      examples.push({
-        label: `1 image (${modelCost.defaultInferenceSteps} steps)`,
-        cost: stepCost,
-        breakdown: `${modelCost.defaultInferenceSteps} × ${formatCost(modelCost.costPerInferenceStep, 6)}`
-      });
-
-      // Custom step count
-      const customSteps = 50;
-      const customStepCost = modelCost.costPerInferenceStep * customSteps;
-      examples.push({
-        label: `1 image (${customSteps} steps)`,
-        description: 'High quality generation',
-        cost: customStepCost,
-        breakdown: `${customSteps} × ${formatCost(modelCost.costPerInferenceStep, 6)}`
-      });
-    }
-
-    // Image generation example
-    if (modelCost.imageCostPerImage) {
-      examples.push({
-        label: '1 standard image',
-        cost: modelCost.imageCostPerImage
-      });
-
-      // With quality multiplier
-      if (modelCost.imageQualityMultipliers) {
-        try {
-          const multipliers = JSON.parse(modelCost.imageQualityMultipliers) as Record<string, number>;
-          if (multipliers.hd) {
-            examples.push({
-              label: '1 HD image',
-              cost: modelCost.imageCostPerImage * multipliers.hd,
-              breakdown: `${formatCost(modelCost.imageCostPerImage)} × ${multipliers.hd}x`
-            });
-          }
-        } catch (error) {
-          // Skip the multiplier rows; surface that the stored JSON is corrupt
-          console.warn('Failed to parse image quality multipliers for cost preview:', error);
-        }
-      }
-    }
+    // Inference-step, image, and video cost previews were dropped: those flat fields were removed
+    // from ModelCostDto in #1038 and now live only in pricingConfiguration, which this preview does
+    // not parse. Token/search/audio/batch estimates below remain accurate.
 
     // Audio examples
     if (modelCost.audioCostPerMinute) {
@@ -123,20 +82,11 @@ export const CostPreview: React.FC<CostPreviewProps> = ({ modelCost }) => {
       });
     }
 
-    if (modelCost.audioCostPerKCharacters) {
+    if (modelCost.audioCostPerThousandCharacters) {
       examples.push({
         label: '10K characters TTS',
-        cost: modelCost.audioCostPerKCharacters * 10,
-        breakdown: `10 × ${formatCost(modelCost.audioCostPerKCharacters, 2)}/1K chars`
-      });
-    }
-
-    // Video example
-    if (modelCost.videoCostPerSecond) {
-      examples.push({
-        label: '10 second video',
-        cost: modelCost.videoCostPerSecond * 10,
-        breakdown: `10 × ${formatCost(modelCost.videoCostPerSecond, 2)}/sec`
+        cost: modelCost.audioCostPerThousandCharacters * 10,
+        breakdown: `10 × ${formatCost(modelCost.audioCostPerThousandCharacters, 2)}/1K chars`
       });
     }
 

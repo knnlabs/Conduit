@@ -9,43 +9,9 @@ export class FetchSystemHelpers implements ISystemHelpers {
    * Transform backend SystemInfo response to match frontend expectations
    */
   transformSystemInfoResponse(response: BackendSystemInfoResponse): SystemInfoDto {
-    // Calculate uptime in seconds from the TimeSpan format
-    let uptimeSeconds = 0;
-    if (response.runtime.uptime) {
-      // Parse TimeSpan format (e.g., "00:05:30" or "1.02:03:04.5")
-      const timeSpanMatch = response.runtime.uptime.match(/^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/);
-      if (timeSpanMatch) {
-        const days = parseInt(timeSpanMatch[1] ?? '0', 10);
-        const hours = parseInt(timeSpanMatch[2], 10);
-        const minutes = parseInt(timeSpanMatch[3], 10);
-        const seconds = parseInt(timeSpanMatch[4], 10);
-        uptimeSeconds = (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60) + seconds;
-      }
-    }
-    
-    return {
-      version: response.version.appVersion,
-      buildDate: response.version.buildDate ? new Date(response.version.buildDate).toISOString() : '',
-      environment: 'production',
-      uptime: uptimeSeconds,
-      systemTime: new Date().toISOString(),
-      features: {
-        ipFiltering: false,
-        costTracking: false,
-        audioSupport: false
-      },
-      runtime: {
-        dotnetVersion: response.runtime.runtimeVersion,
-        os: response.operatingSystem.description,
-        architecture: response.operatingSystem.architecture
-      },
-      database: {
-        provider: response.database.provider,
-        connectionString: response.database.connectionString,
-        isConnected: response.database.connected,
-        pendingMigrations: []
-      }
-    };
+    // The backend response now matches the wire SystemInfoDto shape (nested
+    // version/os/database/runtime/recordCounts), so no transformation is needed. See issue #1038.
+    return response;
   }
 
   /**
@@ -82,10 +48,12 @@ export class FetchSystemHelpers implements ISystemHelpers {
   }
 
   /**
-   * Helper method to check if a feature is enabled
+   * Helper method to check if a feature is enabled.
+   * The system-info endpoint no longer reports feature flags (issue #1038), so this
+   * always returns false. Retained for backward compatibility of the method surface.
    */
-  isFeatureEnabled(systemInfo: SystemInfoDto, feature: keyof SystemInfoDto['features']): boolean {
-    return systemInfo.features[feature] === true;
+  isFeatureEnabled(_systemInfo: SystemInfoDto, _feature: string): boolean {
+    return false;
   }
 
   /**

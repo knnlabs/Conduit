@@ -3,6 +3,9 @@ import { FilterOptions } from './common';
 export type FilterType = 'whitelist' | 'blacklist';
 export type FilterMode = 'permissive' | 'restrictive';
 
+// Matches the wire `IpFilterDto` (filterType narrows the wire `string` to a union — asserted
+// with SameKeys). Client-only match-stats fields (lastMatchedAt/matchCount/blockedCount) and
+// the never-sent expiresAt/lastModifiedBy were removed in issue #1038; added updatedBy.
 export interface IpFilterDto {
   id: number;
   name: string;
@@ -12,12 +15,8 @@ export interface IpFilterDto {
   description?: string;
   createdAt: string;
   updatedAt: string;
-  lastMatchedAt?: string;
-  matchCount?: number;
-  expiresAt?: string; // For temporary rules
   createdBy?: string;
-  lastModifiedBy?: string;
-  blockedCount?: number; // Number of requests blocked
+  updatedBy?: string;
 }
 
 export interface CreateIpFilterDto {
@@ -37,6 +36,7 @@ export interface UpdateIpFilterDto {
   description?: string;
 }
 
+// Reconciled to wire shape — issue #1038 (dropped client-only maxFiltersPerType/ipv6Enabled)
 export interface IpFilterSettingsDto {
   isEnabled: boolean;
   defaultAllow: boolean;
@@ -45,8 +45,6 @@ export interface IpFilterSettingsDto {
   filterMode: FilterMode;
   whitelistFilters: IpFilterDto[];
   blacklistFilters: IpFilterDto[];
-  maxFiltersPerType?: number;
-  ipv6Enabled?: boolean;
 }
 
 export interface UpdateIpFilterSettingsDto {
@@ -63,13 +61,11 @@ export interface IpCheckRequest {
   endpoint?: string;
 }
 
+// Matches the wire `IpCheckResult`. The API returns only allow/deny + reason; the client-only
+// matchedFilter/matchedFilterId/filterType/isDefaultAction fields were removed in issue #1038.
 export interface IpCheckResult {
   isAllowed: boolean;
   deniedReason?: string;
-  matchedFilter?: string;
-  matchedFilterId?: number;
-  filterType?: FilterType;
-  isDefaultAction?: boolean;
 }
 
 export interface IpFilterFilters extends FilterOptions {

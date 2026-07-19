@@ -134,9 +134,13 @@ export default function AddModelCostV2Page() {
   });
 
   const handleSubmit = (values: FormValues) => {
+    // Media/inference pricing (image/video/inference-step/resolution & quality multipliers plus the
+    // per-input/output audio splits) is carried in pricingConfiguration (serialized by the pricing
+    // selector), not as flat fields — those were removed from CreateModelCostDto in #1038. Only the
+    // token/search/batch and top-level audio (per-minute, per-1K-chars) fields remain flat.
     const data: CreateModelCostDto = {
       costName: values.costName,
-      modelProviderMappingIds: values.modelProviderMappingIds,
+      modelProviderTypeAssociationIds: values.modelProviderMappingIds,
       pricingModel: values.pricingModel,
       pricingConfiguration: values.pricingConfiguration || undefined,
       modelType: values.modelType,
@@ -148,19 +152,10 @@ export default function AddModelCostV2Page() {
       cachedInputWriteCostPerMillionTokens: values.cachedInputWriteCostPerMillion || undefined,
       embeddingCostPerMillionTokens: values.embeddingCostPerMillion || undefined,
       costPerSearchUnit: values.searchUnitCostPer1K || undefined,
-      costPerInferenceStep: values.inferenceStepCost || undefined,
-      defaultInferenceSteps: values.defaultInferenceSteps || undefined,
-      imageCostPerImage: values.imageCostPerImage || undefined,
       audioCostPerMinute: values.audioCostPerMinute || undefined,
-      audioCostPerKCharacters: values.audioCostPerKCharacters || undefined,
-      audioInputCostPerMinute: values.audioInputCostPerMinute || undefined,
-      audioOutputCostPerMinute: values.audioOutputCostPerMinute || undefined,
-      videoCostPerSecond: values.videoCostPerSecond || undefined,
-      videoResolutionMultipliers: values.videoResolutionMultipliers || undefined,
-      imageResolutionMultipliers: values.imageResolutionMultipliers || undefined,
+      audioCostPerThousandCharacters: values.audioCostPerKCharacters || undefined,
       supportsBatchProcessing: values.supportsBatchProcessing,
       batchProcessingMultiplier: values.supportsBatchProcessing ? values.batchProcessingMultiplier : undefined,
-      imageQualityMultipliers: values.imageQualityMultipliers || undefined,
     };
 
     createMutation.mutate(data);

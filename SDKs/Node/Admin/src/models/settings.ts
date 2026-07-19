@@ -1,6 +1,8 @@
 import { FilterOptions } from './common';
 import type { CustomSettings, ConfigValue } from './common-types';
 
+// Matches the wire `GlobalSettingDto`. The API returns no category/dataType/isSecret
+// metadata, so those client-only fields were removed in issue #1038.
 export interface GlobalSettingDto {
   id: number;
   key: string;
@@ -8,10 +10,6 @@ export interface GlobalSettingDto {
   description?: string;
   createdAt: string;
   updatedAt: string;
-  // Legacy fields for helper methods (not returned by API)
-  dataType?: 'string' | 'number' | 'boolean' | 'json';
-  category?: string;
-  isSecret?: boolean;
 }
 
 export interface GlobalSettingCacheStats {

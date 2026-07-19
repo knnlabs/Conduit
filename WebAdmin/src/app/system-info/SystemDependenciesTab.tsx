@@ -42,7 +42,7 @@ export function SystemDependenciesTab({ systemInfo }: SystemDependenciesTabProps
               <Table.Td>
                 <Code>Conduit Core</Code>
               </Table.Td>
-              <Table.Td>{systemInfo?.version ?? 'Unknown'}</Table.Td>
+              <Table.Td>{systemInfo?.version?.appVersion ?? 'Unknown'}</Table.Td>
               <Table.Td>
                 <Badge variant="light" color="green">
                   Current
@@ -53,7 +53,7 @@ export function SystemDependenciesTab({ systemInfo }: SystemDependenciesTabProps
               <Table.Td>
                 <Code>.NET Runtime</Code>
               </Table.Td>
-              <Table.Td>{systemInfo?.runtime?.dotnetVersion ?? 'Unknown'}</Table.Td>
+              <Table.Td>{systemInfo?.runtime?.runtimeVersion ?? 'Unknown'}</Table.Td>
               <Table.Td>
                 <Badge variant="light" color="green">
                   Runtime
@@ -68,9 +68,9 @@ export function SystemDependenciesTab({ systemInfo }: SystemDependenciesTabProps
               <Table.Td>
                 <Badge 
                   variant="light" 
-                  color={systemInfo?.database?.isConnected ? 'green' : 'red'}
+                  color={systemInfo?.database?.connected ? 'green' : 'red'}
                 >
-                  {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
+                  {systemInfo?.database?.connected ? 'Connected' : 'Disconnected'}
                 </Badge>
               </Table.Td>
             </Table.Tr>

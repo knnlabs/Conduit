@@ -2,7 +2,7 @@
  * Analytics export-related models for the Admin SDK
  */
 
-import type { ExportDestinationConfig, ExtendedMetadata } from './common-types';
+import type { ExportDestinationConfig } from './common-types';
 import { ProviderType } from './providerType';
 
 /**
@@ -332,34 +332,34 @@ export interface RequestLogSummary {
 }
 
 /**
- * Enhanced request log type with additional fields
+ * A single request-log record.
+ *
+ * Reconciled to wire shape — issue #1038.
  */
 export interface RequestLog {
-  id: string;
-  timestamp: string;
-  method: string;
-  endpoint: string;
-  statusCode: number;
-  responseTime: number;
-  virtualKeyId: string;
-  virtualKeyName?: string;
-  providerType?: ProviderType;
-  modelName?: string;
-  ipAddress: string;
-  userAgent?: string;
-  requestSize: number;
-  responseSize: number;
-  tokensUsed?: {
-    prompt: number;
-    completion: number;
-    total: number;
-  };
+  id?: number;
+  virtualKeyId?: number;
+  /** Wire references the VirtualKey schema; typed loosely on the client. */
+  virtualKey?: unknown;
+  modelName: string;
+  providerId?: number | null;
+  providerType?: string | null;
+  requestType: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  cachedInputTokens?: number | null;
+  cachedWriteTokens?: number | null;
   cost?: number;
-  error?: {
-    type: string;
-    message: string;
-  };
-  metadata?: ExtendedMetadata;
+  /** Wire references the RequestBillingMethod schema; typed loosely on the client. */
+  billingMethod?: unknown;
+  providerReportedCostUsd?: number | null;
+  responseTimeMs?: number;
+  timestamp?: string;
+  userId?: string | null;
+  clientIp?: string | null;
+  requestPath?: string | null;
+  statusCode?: number | null;
+  metadata?: string | null;
 }
 
 /**

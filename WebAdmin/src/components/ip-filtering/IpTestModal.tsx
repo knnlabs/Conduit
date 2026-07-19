@@ -73,34 +73,12 @@ export function IpTestModal({ opened, onClose }: IpTestModalProps) {
         client.ipFilters.checkIp(values.ipAddress)
       );
 
-      // Convert IpCheckResult to TestResult format
+      // Convert IpCheckResult to TestResult format. The API now returns only allow/deny + reason;
+      // matched-filter enrichment was removed from IpCheckResult in #1038.
       const testResult: TestResult = {
         allowed: result.isAllowed,
         reason: result.deniedReason ?? (result.isAllowed ? 'IP address is allowed' : 'IP address is blocked'),
       };
-
-      // If there's a matched filter, add rule details
-      if (result.matchedFilter && result.matchedFilterId) {
-        try {
-          const filter = await withAdminClient(client =>
-            client.ipFilters.getById(result.matchedFilterId as number)
-          );
-          
-          testResult.matchedRule = {
-            id: filter.id.toString(),
-            ipAddress: filter.ipAddressOrCidr,
-            action: filter.filterType === 'whitelist' ? 'allow' : 'block',
-            description: filter.description,
-          };
-        } catch {
-          // If we can't get the filter details, just use the basic info
-          testResult.matchedRule = {
-            id: result.matchedFilterId.toString(),
-            ipAddress: result.matchedFilter,
-            action: result.filterType === 'whitelist' ? 'allow' : 'block',
-          };
-        }
-      }
 
       setTestResult(testResult);
     } catch (error) {

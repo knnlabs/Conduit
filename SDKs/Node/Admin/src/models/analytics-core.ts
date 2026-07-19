@@ -70,13 +70,12 @@ export interface VirtualKeyUsage {
   averageLatency: number;
 }
 
+// Matches the wire `ModelUsage` schema (per-model usage aggregate). See issue #1038.
 export interface ModelUsage {
-  model: string;
-  provider: string;
-  requests: number;
-  tokens: number;
+  requestCount: number;
   cost: number;
-  averageLatency: number;
+  inputTokens: number;
+  outputTokens: number;
 }
 
 export interface TimeSeriesData {
