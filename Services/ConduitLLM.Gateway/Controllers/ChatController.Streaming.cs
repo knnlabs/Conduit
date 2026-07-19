@@ -25,6 +25,8 @@ namespace ConduitLLM.Gateway.Controllers
             _logger.LogInformation("Handling non-streaming request.");
             var response = await _conduit.CreateChatCompletionAsync(request, null, virtualKeyId, cancellationToken);
 
+            SetFallbackHeaderIfFailoverOccurred();
+
             if (response.AgenticMetrics?.FunctionCalls != null && response.AgenticMetrics.FunctionCalls.Count > 0)
             {
                 StoreFunctionExecutionResults(response.AgenticMetrics);
@@ -32,6 +34,26 @@ namespace ConduitLLM.Gateway.Controllers
 
             GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "success", operationStopwatch.Elapsed.TotalSeconds);
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Surfaces in-request failover to the API consumer as <c>X-Conduit-Fallback:
+        /// attempts=&lt;n&gt;</c> — attempt count only, never the serving provider (upstream
+        /// topology stays private; full detail goes to logs and the request log).
+        /// </summary>
+        private void SetFallbackHeaderIfFailoverOccurred()
+        {
+            var attribution = HttpContext.RequestServices
+                .GetService<ConduitLLM.Core.Services.IFailoverAttributionAccessor>();
+            if (attribution is { FailoverOccurred: true } && !HttpContext.Response.HasStarted)
+            {
+                HttpContext.Response.Headers["X-Conduit-Fallback"] = $"attempts={attribution.AttemptCount}";
+                _logger.LogInformation(
+                    "Request served after failover: {Attempts} attempts, serving key {KeyId} (provider {ProviderId})",
+                    attribution.AttemptCount,
+                    attribution.Current?.KeyCredentialId,
+                    attribution.Current?.ProviderId);
+            }
         }
 
         private void StoreFunctionExecutionResults(AgenticExecutionMetrics agenticMetrics)
@@ -93,6 +115,9 @@ namespace ConduitLLM.Gateway.Controllers
                     if (state.ChunkCount == 1)
                     {
                         _logger.LogInformation("First chunk received at {Time}ms", (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
+                        // Candidate selection is final once the first chunk exists, and headers
+                        // are still writable until the first body write below.
+                        SetFallbackHeaderIfFailoverOccurred();
                     }
 
                     AccumulateContent(chunk, state);

@@ -268,43 +268,8 @@ namespace ConduitLLM.Core.Decorators
             return baseUrl ?? "https://api.provider.com/health";
         }
 
-        private LLMCommunicationException? ExtractLLMCommunicationException(Exception ex)
-        {
-            // Check if it's already an LLMCommunicationException with a StatusCode
-            if (ex is LLMCommunicationException llmEx && llmEx.StatusCode.HasValue)
-                return llmEx;
-            
-            // If it's an LLMCommunicationException without StatusCode, check its inner exceptions
-            if (ex is LLMCommunicationException outerLlmEx && outerLlmEx.InnerException != null)
-            {
-                var innerWithStatus = ExtractLLMCommunicationException(outerLlmEx.InnerException);
-                if (innerWithStatus != null)
-                    return innerWithStatus;
-            }
-            
-            // Check inner exceptions recursively for any LLMCommunicationException with StatusCode
-            var current = ex.InnerException;
-            while (current != null)
-            {
-                if (current is LLMCommunicationException innerLlmEx && innerLlmEx.StatusCode.HasValue)
-                    return innerLlmEx;
-                current = current.InnerException;
-            }
-            
-            // If we only found exceptions without StatusCode, return the first one we found
-            if (ex is LLMCommunicationException firstLlmEx)
-                return firstLlmEx;
-                
-            current = ex.InnerException;
-            while (current != null)
-            {
-                if (current is LLMCommunicationException innerLlmEx)
-                    return innerLlmEx;
-                current = current.InnerException;
-            }
-            
-            return null;
-        }
+        private static LLMCommunicationException? ExtractLLMCommunicationException(Exception ex)
+            => FailoverErrorClassifier.ExtractLLMCommunicationException(ex);
 
         private async Task TrackErrorAsync(LLMCommunicationException ex)
         {

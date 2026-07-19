@@ -4,11 +4,15 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+using FailoverOptions = ConduitLLM.Core.Configuration.FailoverOptions;
 
 namespace ConduitLLM.Providers
 {
@@ -84,8 +88,114 @@ namespace ConduitLLM.Providers
                 throw new ServiceUnavailableException($"Provider for model '{modelName}' is not available.", "Provider");
             }
 
+            // In-request key failover: wrap an ordered candidate list when enabled and more
+            // than one key is available. Flag off or a single key → today's chain, unchanged.
+            var failoverOptions = _serviceProvider.GetService<IOptions<FailoverOptions>>()?.Value;
+            if (failoverOptions?.Enabled == true)
+            {
+                var failoverClient = await TryCreateFailoverClientAsync(provider, mapping, failoverOptions);
+                if (failoverClient != null)
+                {
+                    return failoverClient;
+                }
+            }
+
             var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
             return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId);
+        }
+
+        /// <summary>
+        /// Builds a <see cref="FailoverLLMClient"/> over the provider's enabled keys, or null
+        /// when only one key exists (single-key requests keep the plain chain).
+        /// </summary>
+        private async Task<ILLMClient?> TryCreateFailoverClientAsync(
+            Provider provider,
+            ModelProviderMapping mapping,
+            FailoverOptions failoverOptions)
+        {
+            if (!provider.IsEnabled)
+            {
+                throw new ServiceUnavailableException(
+                    $"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
+            }
+
+            var keys = OrderKeysForFailover(
+                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id),
+                failoverOptions.MaxKeyAttemptsPerProvider);
+
+            if (keys.Count == 0)
+            {
+                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
+            }
+
+            if (keys.Count == 1)
+            {
+                return null; // nothing to fail over to — use the plain chain
+            }
+
+            var candidates = keys.Select(key => new FailoverCandidate
+            {
+                ProviderId = provider.Id,
+                ProviderType = provider.ProviderType,
+                KeyCredentialId = key.Id,
+                ProviderAccountGroup = key.ProviderAccountGroup,
+                ProviderModelId = mapping.ProviderModelId,
+                BaseUrl = key.BaseUrl ?? provider.BaseUrl,
+                MappingId = mapping.Id,
+                ModelCostId = mapping.ModelProviderTypeAssociation?.ModelCostId,
+                ClientFactory = () => CreateClientForProvider(provider, key, mapping.ProviderModelId),
+            }).ToList();
+
+            _logger.LogDebug(
+                "Failover enabled for provider {ProviderId}: {CandidateCount} key candidates (keys: {KeyIds})",
+                provider.Id, candidates.Count, string.Join(",", candidates.Select(c => c.KeyCredentialId)));
+
+            return new FailoverLLMClient(
+                candidates,
+                failoverOptions,
+                _serviceProvider.GetService<IFailoverAttributionAccessor>(),
+                _loggerFactory.CreateLogger<FailoverLLMClient>());
+        }
+
+        /// <summary>
+        /// Orders enabled keys for failover: the primary key first (preserving today's
+        /// selection for attempt #1), then remaining keys round-robin across
+        /// ProviderAccountGroup values starting with groups different from the primary's —
+        /// quota and balance are shared per external account, so 429/402 failures should hop
+        /// accounts rather than retry a sibling key of the same account.
+        /// </summary>
+        internal static List<ProviderKeyCredential> OrderKeysForFailover(
+            IEnumerable<ProviderKeyCredential> keyCredentials, int maxKeys)
+        {
+            var enabled = keyCredentials.Where(k => k.IsEnabled).OrderBy(k => k.Id).ToList();
+            if (enabled.Count == 0)
+            {
+                return new List<ProviderKeyCredential>();
+            }
+
+            var primary = enabled.FirstOrDefault(k => k.IsPrimary) ?? enabled[0];
+            var ordered = new List<ProviderKeyCredential> { primary };
+
+            var groupQueues = enabled
+                .Where(k => k.Id != primary.Id)
+                .GroupBy(k => k.ProviderAccountGroup)
+                .OrderBy(g => g.Key == primary.ProviderAccountGroup ? 1 : 0) // other accounts first
+                .ThenBy(g => g.Key)
+                .Select(g => new Queue<ProviderKeyCredential>(g))
+                .ToList();
+
+            while (ordered.Count < maxKeys && groupQueues.Any(q => q.Count > 0))
+            {
+                foreach (var queue in groupQueues)
+                {
+                    if (queue.Count > 0 && ordered.Count < maxKeys)
+                    {
+                        ordered.Add(queue.Dequeue());
+                    }
+                }
+            }
+
+            return ordered;
         }
 
         /// <inheritdoc />

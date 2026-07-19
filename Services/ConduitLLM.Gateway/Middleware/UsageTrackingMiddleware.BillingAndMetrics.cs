@@ -32,6 +32,8 @@ namespace ConduitLLM.Gateway.Middleware
                     ? providerTypeObj?.ToString()
                     : null;
 
+                metadata = AppendFailoverMetadata(context, metadata);
+
                 var logRequest = new LogRequestDto
                 {
                     VirtualKeyId = virtualKeyId,
@@ -62,6 +64,55 @@ namespace ConduitLLM.Gateway.Middleware
             {
                 _logger.LogError(ex, "Failed to log request for VirtualKey {VirtualKeyId}", virtualKeyId);
                 // Don't throw - logging failure shouldn't break the request
+            }
+        }
+
+        /// <summary>
+        /// Records in-request failover details (attempts + serving key/provider) into the
+        /// RequestLog metadata JSON so operators can audit which candidate actually served.
+        /// Attribution overrides for cost (provider-level failover) ship separately.
+        /// </summary>
+        private string? AppendFailoverMetadata(HttpContext context, string? metadata)
+        {
+            try
+            {
+                var attribution = context.RequestServices
+                    .GetService<ConduitLLM.Core.Services.IFailoverAttributionAccessor>();
+                if (attribution is not { FailoverOccurred: true } || attribution.Current == null)
+                {
+                    return metadata;
+                }
+
+                var failover = new
+                {
+                    failover = new
+                    {
+                        attempts = attribution.AttemptCount,
+                        servingProviderId = attribution.Current.ProviderId,
+                        servingKeyCredentialId = attribution.Current.KeyCredentialId,
+                    },
+                };
+
+                if (string.IsNullOrEmpty(metadata))
+                {
+                    return System.Text.Json.JsonSerializer.Serialize(failover);
+                }
+
+                // Merge into existing metadata JSON object if possible; otherwise leave as-is.
+                var existing = System.Text.Json.Nodes.JsonNode.Parse(metadata);
+                if (existing is System.Text.Json.Nodes.JsonObject obj)
+                {
+                    obj["failover"] = System.Text.Json.Nodes.JsonNode.Parse(
+                        System.Text.Json.JsonSerializer.Serialize(failover.failover));
+                    return obj.ToJsonString();
+                }
+
+                return metadata;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to append failover metadata to request log");
+                return metadata;
             }
         }
 
