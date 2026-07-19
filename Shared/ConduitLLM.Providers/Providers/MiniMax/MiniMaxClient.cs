@@ -55,8 +55,8 @@ namespace ConduitLLM.Providers.MiniMax
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(
                 new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
-            // Use video generation timeout since MiniMax supports video
-            client.Timeout = VideoGenerationTimeout;
+            // client.Timeout stays infinite (set by base): all budgets live in the resilience
+            // pipeline, and video traffic goes through the dedicated *VideoClient anyway
         }
 
         /// <summary>

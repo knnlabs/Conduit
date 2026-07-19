@@ -24,35 +24,9 @@ namespace ConduitLLM.Providers
     /// </summary>
     public abstract class BaseLLMClient : ILLMClient, IAuthenticationVerifiable
     {
-        /// <summary>
-        /// Default timeout for standard API requests (2 minutes).
-        /// Matches <see cref="ProviderHttpClientOptions.DefaultTimeoutSeconds"/>.
-        /// </summary>
-        protected static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(120);
-
-        /// <summary>
-        /// Timeout for authentication verification requests (30 seconds).
-        /// Matches <see cref="ProviderHttpClientOptions.AuthVerificationTimeoutSeconds"/>.
-        /// </summary>
-        protected static readonly TimeSpan AuthVerificationTimeout = TimeSpan.FromSeconds(30);
-
-        /// <summary>
-        /// Timeout for image generation requests (3 minutes).
-        /// Matches <see cref="ProviderHttpClientOptions.ImageGenerationTimeoutSeconds"/>.
-        /// </summary>
-        protected static readonly TimeSpan ImageGenerationTimeout = TimeSpan.FromSeconds(180);
-
-        /// <summary>
-        /// Timeout for video generation requests (10 minutes).
-        /// Matches <see cref="ProviderHttpClientOptions.VideoGenerationTimeoutSeconds"/>.
-        /// </summary>
-        protected static readonly TimeSpan VideoGenerationTimeout = TimeSpan.FromMinutes(10);
-
-        /// <summary>
-        /// Timeout for large file downloads (30 minutes).
-        /// Matches <see cref="ProviderHttpClientOptions.LargeFileDownloadTimeoutSeconds"/>.
-        /// </summary>
-        protected static readonly TimeSpan LargeFileDownloadTimeout = TimeSpan.FromMinutes(30);
+        // NOTE: all HTTP time budgets (per-attempt, total, per operation class) live in the
+        // resilience pipeline — see ProviderResilienceOptions and
+        // docs/architecture/provider-http-resilience.md. HttpClient.Timeout is always infinite.
 
         protected readonly Provider Provider;
         protected readonly ProviderKeyCredential PrimaryKeyCredential;
