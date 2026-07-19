@@ -64,6 +64,24 @@ namespace ConduitLLM.Core.Services
             return capability?.SupportsVideoGeneration ?? false;
         }
 
+        public async Task<bool> SupportsSpeechToTextAsync(string model)
+        {
+            var capability = await GetModelCapabilityAsync(model);
+            return capability?.SupportsSpeechToText ?? false;
+        }
+
+        public async Task<bool> SupportsTextToSpeechAsync(string model)
+        {
+            var capability = await GetModelCapabilityAsync(model);
+            return capability?.SupportsTextToSpeech ?? false;
+        }
+
+        public async Task<bool> SupportsRerankAsync(string model)
+        {
+            var capability = await GetModelCapabilityAsync(model);
+            return capability?.SupportsRerank ?? false;
+        }
+
         public async Task<string?> GetTokenizerTypeAsync(string model)
         {
             var capability = await GetModelCapabilityAsync(model);

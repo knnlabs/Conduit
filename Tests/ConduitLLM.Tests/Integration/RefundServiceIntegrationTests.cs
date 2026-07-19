@@ -108,6 +108,7 @@ namespace ConduitLLM.Tests.Integration
                     refundUsage,
                     refundReason,
                     It.IsAny<string?>(),
+                    It.IsAny<ProviderCostRefundContext?>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockRefundResult);
 
@@ -215,6 +216,7 @@ namespace ConduitLLM.Tests.Integration
                     refundUsage,
                     refundReason,
                     It.IsAny<string?>(),
+                    It.IsAny<ProviderCostRefundContext?>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockRefundResult);
 
@@ -257,7 +259,7 @@ namespace ConduitLLM.Tests.Integration
             _mockCostCalculationService
                 .Setup(s => s.CalculateRefundAsync(
                     modelId, originalUsage, refundUsage, refundReason,
-                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<string?>(), It.IsAny<ProviderCostRefundContext?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => new RefundResult
                 {
                     ModelId = modelId,

@@ -562,7 +562,16 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("SupportsImageGeneration")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("SupportsRerank")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("SupportsSpeechToText")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("SupportsStreaming")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("SupportsTextToSpeech")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("SupportsVideoGeneration")
@@ -625,6 +634,12 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("AudioCostPerMinute")
+                        .HasColumnType("decimal(18, 8)");
+
+                    b.Property<decimal?>("AudioCostPerThousandCharacters")
+                        .HasColumnType("decimal(18, 8)");
 
                     b.Property<decimal?>("BatchProcessingMultiplier")
                         .HasColumnType("decimal(18, 4)");
@@ -727,6 +742,9 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ProviderOptions")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -988,6 +1006,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal>("ProviderCostMarkupMultiplier")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("ProviderName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -995,6 +1016,9 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<int>("ProviderType")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("TrustProviderReportedCosts")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1067,6 +1091,126 @@ namespace ConduitLLM.Configuration.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderMetadataDriftItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CurrentValuesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("DriftType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("FirstDetectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastDetectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastSyncRunId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ModelProviderMappingId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OpenRouterModelId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ProposedValuesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderId")
+                        .HasDatabaseName("IX_ProviderMetadataDriftItems_ProviderId");
+
+                    b.HasIndex("ModelProviderMappingId", "DriftType")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ProviderMetadataDriftItems_Mapping_Type_Pending")
+                        .HasFilter("\"Status\" = 'Pending'");
+
+                    b.HasIndex("Status", "DriftType")
+                        .HasDatabaseName("IX_ProviderMetadataDriftItems_Status_Type");
+
+                    b.ToTable("ProviderMetadataDriftItems", (string)null);
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderMetadataSyncRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("ItemsAutoResolved")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ItemsCreated")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ItemsUpdated")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MappingsChecked")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ModelsFetched")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProviderType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("TriggeredBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ProviderMetadataSyncRuns");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderTool", b =>
                 {
                     b.Property<int>("Id")
@@ -1122,6 +1266,9 @@ namespace ConduitLLM.Configuration.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BillingMethod")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("CachedInputTokens")
                         .HasColumnType("integer");
 
@@ -1151,6 +1298,9 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<int?>("ProviderId")
                         .HasColumnType("integer");
+
+                    b.Property<decimal?>("ProviderReportedCostUsd")
+                        .HasColumnType("decimal(18, 8)");
 
                     b.Property<string>("ProviderType")
                         .HasMaxLength(50)
@@ -1998,6 +2148,17 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsRequired();
 
                     b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderMetadataDriftItem", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.ModelProviderMapping", "Mapping")
+                        .WithMany()
+                        .HasForeignKey("ModelProviderMappingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mapping");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.RequestLog", b =>

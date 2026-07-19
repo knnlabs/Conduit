@@ -14,6 +14,7 @@ import {
   IconBrain,
   IconAlertCircle,
   IconListDetails,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { NavigationSection } from '@/types/navigation';
 
@@ -88,6 +89,14 @@ export const navigationSections: NavigationSection[] = [
         href: '/model-mappings',
         description: 'Configure model provider mappings',
         color: 'indigo',
+      },
+      {
+        id: 'provider-sync',
+        label: 'Provider Sync',
+        icon: IconRefresh,
+        href: '/provider-sync',
+        description: 'Review and apply OpenRouter metadata drift',
+        color: 'teal',
       },
       {
         id: 'ip-filtering',

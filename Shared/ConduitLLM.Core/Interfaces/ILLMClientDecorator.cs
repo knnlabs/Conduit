@@ -38,5 +38,27 @@ namespace ConduitLLM.Core.Interfaces
 
             return client;
         }
+
+        /// <summary>
+        /// Walks a decorator chain (outermost first) and returns the first client assignable to
+        /// <typeparamref name="T"/>, or null if none is. Used to reach optional capability interfaces
+        /// (e.g. audio transcription/TTS, rerank) that are not part of <see cref="ILLMClient"/>.
+        /// </summary>
+        /// <typeparam name="T">The capability interface to locate.</typeparam>
+        /// <param name="client">The potentially decorated client.</param>
+        /// <returns>The first client in the chain assignable to <typeparamref name="T"/>, or null.</returns>
+        public static T? FindInChain<T>(this ILLMClient client) where T : class
+        {
+            for (ILLMClient? current = client; current != null;
+                 current = (current as ILLMClientDecorator)?.InnerClient)
+            {
+                if (current is T match)
+                {
+                    return match;
+                }
+            }
+
+            return null;
+        }
     }
 }

@@ -22,6 +22,27 @@ namespace ConduitLLM.Core.Interfaces
         Task<bool> SupportsVideoGenerationAsync(string model);
 
         /// <summary>
+        /// Determines if a model supports speech-to-text transcription.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model supports speech-to-text, false otherwise.</returns>
+        Task<bool> SupportsSpeechToTextAsync(string model);
+
+        /// <summary>
+        /// Determines if a model supports text-to-speech synthesis.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model supports text-to-speech, false otherwise.</returns>
+        Task<bool> SupportsTextToSpeechAsync(string model);
+
+        /// <summary>
+        /// Determines if a model supports document reranking.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model supports reranking, false otherwise.</returns>
+        Task<bool> SupportsRerankAsync(string model);
+
+        /// <summary>
         /// Gets the tokenizer type for a model.
         /// </summary>
         /// <param name="model">The model identifier.</param>

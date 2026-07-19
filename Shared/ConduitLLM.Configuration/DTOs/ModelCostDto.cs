@@ -164,5 +164,11 @@ namespace ConduitLLM.Configuration.DTOs
         /// </remarks>
         public decimal? CostPerSearchUnit { get; set; }
 
+        /// <summary>Cost per minute of transcribed audio (speech-to-text).</summary>
+        public decimal? AudioCostPerMinute { get; set; }
+
+        /// <summary>Cost per thousand input characters synthesized (text-to-speech).</summary>
+        public decimal? AudioCostPerThousandCharacters { get; set; }
+
     }
 }

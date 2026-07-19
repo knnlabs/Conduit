@@ -29,6 +29,13 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Optional original transaction ID for audit trail
         /// </summary>
         public string? OriginalTransactionId { get; set; }
+
+        /// <summary>
+        /// Optional ID of the original request log being refunded. When supplied and that request was
+        /// billed from a trusted provider-reported cost, the refund is prorated from the amount actually
+        /// charged rather than recomputed from ModelCost rates.
+        /// </summary>
+        public int? RequestLogId { get; set; }
     }
 
     /// <summary>

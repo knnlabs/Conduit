@@ -388,7 +388,8 @@ namespace ConduitLLM.Admin.Controllers
                 request.RefundReason,
                 request.OriginalTransactionId,
                 initiatedBy,
-                initiatedByUserId);
+                initiatedByUserId,
+                request.RequestLogId);
 
             // Get updated group info for balance
             var group = await _groupRepository.GetByIdAsync(id);

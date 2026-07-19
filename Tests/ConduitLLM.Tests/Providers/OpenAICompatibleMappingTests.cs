@@ -7,13 +7,14 @@ using Xunit;
 namespace ConduitLLM.Tests.Providers;
 
 /// <summary>
-/// Tests for cached token extraction from provider-specific usage formats.
-/// Tests the internal static ExtractCachedTokensFromExtensionData method.
+/// Tests for provider-specific usage extraction (cached tokens, cache-write tokens, and
+/// provider-reported cost) from provider usage formats.
+/// Tests the internal static ExtractProviderUsageFromExtensionData method.
 /// </summary>
 public class OpenAICompatibleMappingTests
 {
     [Fact]
-    public void ExtractCachedTokens_OpenAIFormat_MapsCachedInputTokens()
+    public void ExtractProviderUsage_OpenAIFormat_MapsCachedInputTokens()
     {
         // Arrange — OpenAI returns prompt_tokens_details.cached_tokens
         var usageJson = """
@@ -29,7 +30,7 @@ public class OpenAICompatibleMappingTests
         var usage = JsonSerializer.Deserialize<Usage>(usageJson);
 
         // Act
-        OpenAICompatibleClient.ExtractCachedTokensFromExtensionData(usage);
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(usage);
 
         // Assert
         usage!.CachedInputTokens.Should().Be(80);
@@ -37,7 +38,7 @@ public class OpenAICompatibleMappingTests
     }
 
     [Fact]
-    public void ExtractCachedTokens_AnthropicFormat_MapsBothCachedFields()
+    public void ExtractProviderUsage_AnthropicFormat_MapsBothCachedFields()
     {
         // Arrange — Anthropic returns cache_read_input_tokens and cache_creation_input_tokens
         var usageJson = """
@@ -52,7 +53,7 @@ public class OpenAICompatibleMappingTests
         var usage = JsonSerializer.Deserialize<Usage>(usageJson);
 
         // Act
-        OpenAICompatibleClient.ExtractCachedTokensFromExtensionData(usage);
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(usage);
 
         // Assert
         usage!.CachedInputTokens.Should().Be(150);
@@ -60,7 +61,7 @@ public class OpenAICompatibleMappingTests
     }
 
     [Fact]
-    public void ExtractCachedTokens_DeepseekFormat_MapsCachedInputTokens()
+    public void ExtractProviderUsage_DeepseekFormat_MapsCachedInputTokens()
     {
         // Arrange — Deepseek returns prompt_cache_hit_tokens
         var usageJson = """
@@ -74,21 +75,119 @@ public class OpenAICompatibleMappingTests
         var usage = JsonSerializer.Deserialize<Usage>(usageJson);
 
         // Act
-        OpenAICompatibleClient.ExtractCachedTokensFromExtensionData(usage);
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(usage);
 
         // Assert
         usage!.CachedInputTokens.Should().Be(60);
     }
 
     [Fact]
-    public void ExtractCachedTokens_NullUsage_DoesNotThrow()
+    public void ExtractProviderUsage_OpenRouterCacheWriteTokens_MapsCacheWrite()
     {
-        // Act & Assert — should not throw
-        OpenAICompatibleClient.ExtractCachedTokensFromExtensionData(null);
+        // Arrange — OpenRouter nests cache write under prompt_tokens_details.cache_write_tokens
+        var usageJson = """
+        {
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "total_tokens": 150,
+            "prompt_tokens_details": {
+                "cached_tokens": 40,
+                "cache_write_tokens": 25
+            }
+        }
+        """;
+        var usage = JsonSerializer.Deserialize<Usage>(usageJson);
+
+        // Act
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(usage);
+
+        // Assert
+        usage!.CachedInputTokens.Should().Be(40);
+        usage.CachedWriteTokens.Should().Be(25);
     }
 
     [Fact]
-    public void ExtractCachedTokens_NoExtensionData_DoesNotModifyUsage()
+    public void ExtractProviderUsage_OpenRouterCost_CapturesAndStripsCost()
+    {
+        // Arrange — OpenRouter returns usage.cost (USD credits charged)
+        var usageJson = """
+        {
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "total_tokens": 150,
+            "cost": 0.00123
+        }
+        """;
+        var usage = JsonSerializer.Deserialize<Usage>(usageJson);
+
+        // Act
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(usage);
+
+        // Assert — captured onto the server-only field and removed from ExtensionData
+        usage!.ProviderReportedCostUsd.Should().Be(0.00123m);
+        (usage.ExtensionData == null || !usage.ExtensionData.ContainsKey("cost")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ExtractProviderUsage_ZeroCost_CapturedAsZero()
+    {
+        // Arrange — free variants report cost: 0; we must bill 0, not fall back to ModelCost
+        var usageJson = """
+        {
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "total_tokens": 150,
+            "cost": 0
+        }
+        """;
+        var usage = JsonSerializer.Deserialize<Usage>(usageJson);
+
+        // Act
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(usage);
+
+        // Assert
+        usage!.ProviderReportedCostUsd.Should().Be(0m);
+    }
+
+    [Fact]
+    public void ExtractProviderUsage_Cost_NotSerializedBackToClient()
+    {
+        // Arrange — a streaming final chunk carrying usage.cost, as OpenRouter sends it
+        var chunkJson = """
+        {
+            "id": "chatcmpl-123",
+            "object": "chat.completion.chunk",
+            "created": 1234567890,
+            "model": "openai/gpt-4o",
+            "choices": [],
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 50,
+                "total_tokens": 150,
+                "cost": 0.0042
+            }
+        }
+        """;
+        var chunk = JsonSerializer.Deserialize<ChatCompletionChunk>(chunkJson);
+
+        // Act — the streaming code path post-processes usage before yielding the chunk
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(chunk!.Usage);
+        var reserialized = JsonSerializer.Serialize(chunk);
+
+        // Assert — cost captured for billing but never re-serialized to the client
+        chunk.Usage!.ProviderReportedCostUsd.Should().Be(0.0042m);
+        reserialized.Should().NotContain("cost");
+    }
+
+    [Fact]
+    public void ExtractProviderUsage_NullUsage_DoesNotThrow()
+    {
+        // Act & Assert — should not throw
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(null);
+    }
+
+    [Fact]
+    public void ExtractProviderUsage_NoExtensionData_DoesNotModifyUsage()
     {
         // Arrange — standard usage without any provider-specific fields
         var usage = new Usage
@@ -99,15 +198,16 @@ public class OpenAICompatibleMappingTests
         };
 
         // Act
-        OpenAICompatibleClient.ExtractCachedTokensFromExtensionData(usage);
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(usage);
 
         // Assert
         usage.CachedInputTokens.Should().BeNull();
         usage.CachedWriteTokens.Should().BeNull();
+        usage.ProviderReportedCostUsd.Should().BeNull();
     }
 
     [Fact]
-    public void ExtractCachedTokens_ExistingCachedTokens_DoesNotOverwrite()
+    public void ExtractProviderUsage_ExistingCachedTokens_DoesNotOverwrite()
     {
         // Arrange — Usage already has cached_input_tokens set (e.g., from direct JSON deserialization)
         // plus provider-specific extension data that would also map
@@ -123,14 +223,14 @@ public class OpenAICompatibleMappingTests
         var usage = JsonSerializer.Deserialize<Usage>(usageJson);
 
         // Act
-        OpenAICompatibleClient.ExtractCachedTokensFromExtensionData(usage);
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(usage);
 
         // Assert — the named property (42) should be preserved, not overwritten by extension data (99)
         usage!.CachedInputTokens.Should().Be(42);
     }
 
     [Fact]
-    public void ExtractCachedTokens_StreamingChunkUsage_MapsCorrectly()
+    public void ExtractProviderUsage_StreamingChunkUsage_MapsCorrectly()
     {
         // Arrange — simulate a streaming final chunk with usage data (as providers send it)
         var chunkJson = """
@@ -153,7 +253,7 @@ public class OpenAICompatibleMappingTests
         var chunk = JsonSerializer.Deserialize<ChatCompletionChunk>(chunkJson);
 
         // Act — this is what the streaming code path does
-        OpenAICompatibleClient.ExtractCachedTokensFromExtensionData(chunk!.Usage);
+        OpenAICompatibleClient.ExtractProviderUsageFromExtensionData(chunk!.Usage);
 
         // Assert
         chunk.Usage!.CachedInputTokens.Should().Be(80);

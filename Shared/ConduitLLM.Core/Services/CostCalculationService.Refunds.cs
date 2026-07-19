@@ -37,6 +37,7 @@ public partial class CostCalculationService
         Usage refundUsage,
         string refundReason,
         string? originalTransactionId = null,
+        ProviderCostRefundContext? providerCostContext = null,
         CancellationToken cancellationToken = default)
     {
         var result = new RefundResult
@@ -79,6 +80,19 @@ public partial class CostCalculationService
             _logger.LogWarning(
                 "Refund rejected for model {ModelId}: refund usage exceeds original or is invalid. {ValidationMessages}",
                 modelId, string.Join("; ", validationMessages));
+            return result;
+        }
+
+        // Provider-cost-billed requests have no per-unit rates to recompute from. Refund proportionally
+        // from the amount actually charged, by the fraction of billable tokens being refunded.
+        if (providerCostContext != null)
+        {
+            var ratio = ComputeRefundTokenRatio(originalUsage, refundUsage);
+            result.RefundAmount = decimal.Round(providerCostContext.OriginalChargedCost * ratio, 8);
+            result.Breakdown = new RefundBreakdown();
+            _logger.LogInformation(
+                "Calculated proportional provider-cost refund for model {ModelId}: charged {Charged} * ratio {Ratio} = {RefundAmount}. Reason: {RefundReason}. Original Transaction: {OriginalTransactionId}",
+                modelId, providerCostContext.OriginalChargedCost, ratio, result.RefundAmount, refundReason, originalTransactionId ?? "N/A");
             return result;
         }
 
@@ -184,6 +198,24 @@ public partial class CostCalculationService
                 searchRefund);
         }
 
+        // Handle audio transcription (speech-to-text) refunds, billed per minute.
+        if (refundUsage.AudioDurationSeconds is > 0 && modelCost.AudioCostPerMinute.HasValue)
+        {
+            var audioRefund = ((decimal)refundUsage.AudioDurationSeconds.Value / 60m) * modelCost.AudioCostPerMinute.Value;
+            totalRefund += audioRefund;
+            _logger.LogDebug("Audio transcription refund for model {ModelId}: {Seconds}s = ${Total}",
+                modelId, refundUsage.AudioDurationSeconds.Value, audioRefund);
+        }
+
+        // Handle text-to-speech refunds, billed per thousand characters.
+        if (refundUsage.TtsCharacters is > 0 && modelCost.AudioCostPerThousandCharacters.HasValue)
+        {
+            var ttsRefund = (refundUsage.TtsCharacters.Value / 1000m) * modelCost.AudioCostPerThousandCharacters.Value;
+            totalRefund += ttsRefund;
+            _logger.LogDebug("Text-to-speech refund for model {ModelId}: {Chars} chars = ${Total}",
+                modelId, refundUsage.TtsCharacters.Value, ttsRefund);
+        }
+
         // Inference step refunds are now handled via RulesBased pricing configuration
 
         // Apply batch processing discount if applicable
@@ -259,6 +291,29 @@ public partial class CostCalculationService
             messages.Add("Refund search units must be non-negative.");
         }
 
+        // Validate audio refund amounts
+        if (refundUsage.AudioDurationSeconds.HasValue && originalUsage.AudioDurationSeconds.HasValue &&
+            refundUsage.AudioDurationSeconds.Value > originalUsage.AudioDurationSeconds.Value)
+        {
+            messages.Add($"Refund audio duration ({refundUsage.AudioDurationSeconds.Value}s) cannot exceed original ({originalUsage.AudioDurationSeconds.Value}s).");
+        }
+
+        if (refundUsage.AudioDurationSeconds is < 0)
+        {
+            messages.Add("Refund audio duration must be non-negative.");
+        }
+
+        if (refundUsage.TtsCharacters.HasValue && originalUsage.TtsCharacters.HasValue &&
+            refundUsage.TtsCharacters.Value > originalUsage.TtsCharacters.Value)
+        {
+            messages.Add($"Refund TTS characters ({refundUsage.TtsCharacters.Value}) cannot exceed original ({originalUsage.TtsCharacters.Value}).");
+        }
+
+        if (refundUsage.TtsCharacters is < 0)
+        {
+            messages.Add("Refund TTS characters must be non-negative.");
+        }
+
         // Validate inference steps refund amounts
         if (refundUsage.InferenceSteps.HasValue && originalUsage.InferenceSteps.HasValue &&
             refundUsage.InferenceSteps.Value > originalUsage.InferenceSteps.Value)
@@ -272,5 +327,30 @@ public partial class CostCalculationService
         }
 
         return messages;
+    }
+
+    /// <summary>
+    /// Computes the fraction of the original charge to refund for a provider-cost-billed request,
+    /// based on the share of billable (prompt + completion + reasoning) tokens being refunded.
+    /// Clamped to [0, 1]. When the original request has no token basis (e.g. image/video only), any
+    /// refund request is treated as a full refund.
+    /// </summary>
+    private static decimal ComputeRefundTokenRatio(Usage originalUsage, Usage refundUsage)
+    {
+        var originalTokens = (originalUsage.PromptTokens ?? 0)
+            + (originalUsage.CompletionTokens ?? 0)
+            + (originalUsage.ReasoningTokens ?? 0);
+
+        if (originalTokens <= 0)
+        {
+            return 1.0m;
+        }
+
+        var refundTokens = (refundUsage.PromptTokens ?? 0)
+            + (refundUsage.CompletionTokens ?? 0)
+            + (refundUsage.ReasoningTokens ?? 0);
+
+        var ratio = (decimal)refundTokens / originalTokens;
+        return Math.Clamp(ratio, 0m, 1.0m);
     }
 }

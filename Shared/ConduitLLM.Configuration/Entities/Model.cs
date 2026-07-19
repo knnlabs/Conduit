@@ -74,6 +74,21 @@ namespace ConduitLLM.Configuration.Entities
         public bool SupportsEmbeddings { get; set; } = false;
 
         /// <summary>
+        /// Indicates whether this model supports speech-to-text transcription.
+        /// </summary>
+        public bool SupportsSpeechToText { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports text-to-speech synthesis.
+        /// </summary>
+        public bool SupportsTextToSpeech { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports document reranking.
+        /// </summary>
+        public bool SupportsRerank { get; set; } = false;
+
+        /// <summary>
         /// Indicates whether this model supports chat completions.
         /// </summary>
         public bool SupportsChat { get; set; } = false;

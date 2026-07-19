@@ -65,5 +65,8 @@ public partial class Program
 
         // Add media lifecycle services (scheduler, storage, distributed locking)
         builder.Services.AddMediaLifecycleServices(builder.Configuration);
+
+        // Add OpenRouter metadata sync (drift detection + review + scheduled job)
+        builder.Services.AddOpenRouterSyncServices(builder.Configuration);
     }
 }

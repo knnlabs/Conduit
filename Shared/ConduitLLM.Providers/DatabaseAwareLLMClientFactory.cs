@@ -85,7 +85,7 @@ namespace ConduitLLM.Providers
             }
 
             var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
-            return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId);
+            return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId, mapping.ProviderOptions);
         }
 
         /// <inheritdoc />
@@ -193,7 +193,7 @@ namespace ConduitLLM.Providers
             return primaryKey;
         }
 
-        private ILLMClient CreateClientForProvider(Provider provider, ProviderKeyCredential keyCredential, string modelId)
+        private ILLMClient CreateClientForProvider(Provider provider, ProviderKeyCredential keyCredential, string modelId, string? providerOptionsJson = null)
         {
             var providerName = provider.ProviderType.ToString().ToLowerInvariant();
 
@@ -206,7 +206,8 @@ namespace ConduitLLM.Providers
                 LoggerFactory = _loggerFactory,
                 HttpClientFactory = _httpClientFactory,
                 CapabilityService = _capabilityService,
-                DefaultModels = null // TODO: Get default models configuration from somewhere (database?)
+                DefaultModels = null, // TODO: Get default models configuration from somewhere (database?)
+                ProviderOptionsJson = providerOptionsJson
             };
 
             // Create the base client using the registry

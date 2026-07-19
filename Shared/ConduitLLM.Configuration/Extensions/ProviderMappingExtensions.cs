@@ -40,6 +40,7 @@ namespace ConduitLLM.Configuration.Extensions
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
                 Notes = null, // Entity doesn't have Notes
+                ProviderOptions = mapping.ProviderOptions,
                 Capabilities = mapping.ModelProviderTypeAssociation?.Model != null ? new ModelCapabilitiesDto
                 {
                     SupportsVision = mapping.ModelProviderTypeAssociation.Model.SupportsVision,
@@ -65,6 +66,7 @@ namespace ConduitLLM.Configuration.Extensions
             mapping.ProviderId = dto.ProviderId;
             mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId;
             mapping.IsEnabled = dto.IsEnabled;
+            mapping.ProviderOptions = dto.ProviderOptions;
             mapping.UpdatedAt = System.DateTime.UtcNow;
             // Note: Priority and Notes are DTO-only properties
         }

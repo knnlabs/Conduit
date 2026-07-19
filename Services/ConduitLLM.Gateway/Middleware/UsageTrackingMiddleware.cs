@@ -138,7 +138,31 @@ namespace ConduitLLM.Gateway.Middleware
                    path.Contains("/audio/transcriptions") ||
                    path.Contains("/audio/speech") ||
                    path.Contains("/videos/generations") ||
+                   path.Contains("/rerank") ||
                    path.Contains("/functions/execute");
+        }
+
+        /// <summary>
+        /// Stamps the provider billing policy — and, where the controller stashed it, the
+        /// provider-reported cost — from HttpContext.Items onto the usage object before cost
+        /// calculation. Streaming carries the cost on the usage object itself; non-streaming and
+        /// media paths supply it via the ProviderReportedCost item because the cost is never
+        /// serialized into the client-facing response body.
+        /// </summary>
+        private static void ApplyProviderBillingPolicy(HttpContext context, ConduitLLM.Core.Models.Usage usage)
+        {
+            if (context.Items.TryGetValue(HttpContextKeys.ProviderBillingPolicy, out var policyObj) &&
+                policyObj is ConduitLLM.Core.Models.ProviderCostBillingPolicy policy)
+            {
+                usage.ProviderCostPolicy = policy;
+            }
+
+            if (usage.ProviderReportedCostUsd == null &&
+                context.Items.TryGetValue(HttpContextKeys.ProviderReportedCost, out var costObj) &&
+                costObj is decimal reportedCost)
+            {
+                usage.ProviderReportedCostUsd = reportedCost;
+            }
         }
 
         private async Task ProcessResponseAsync(
@@ -182,6 +206,15 @@ namespace ConduitLLM.Gateway.Middleware
                     return;
                 }
 
+                // Handle audio (STT/TTS) — bill from the typed usage context, never the body. The TTS
+                // response body is raw binary audio and would fail JSON parsing below.
+                if (endpointType == "transcription" || endpointType == "tts")
+                {
+                    await ProcessAudioResponseAsync(context, costCalculationService, batchSpendService,
+                        requestLogService, virtualKeyService, billingAuditService);
+                    return;
+                }
+
                 // Parse the response JSON
                 using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
                 var root = jsonDocument.RootElement;
@@ -215,6 +248,10 @@ namespace ConduitLLM.Gateway.Middleware
                     _logger.LogWarning("Failed to extract usage data for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                     return;
                 }
+
+                // Apply the provider billing policy + provider-reported cost from the side channel
+                // (the cost is never in the re-parsed body, so it must come from HttpContext.Items).
+                ApplyProviderBillingPolicy(context, usage);
 
                 // Get virtual key ID
                 var virtualKeyId = (int)context.Items["VirtualKeyId"]!;

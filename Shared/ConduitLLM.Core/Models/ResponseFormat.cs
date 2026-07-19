@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models
@@ -29,6 +30,13 @@ namespace ConduitLLM.Core.Models
         public string? Type { get; set; }
 
         /// <summary>
+        /// The JSON Schema definition, used when <see cref="Type"/> is <c>json_schema</c>.
+        /// </summary>
+        [JsonPropertyName("json_schema")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonSchemaFormat? JsonSchema { get; set; }
+
+        /// <summary>
         /// Creates a new instance of the ResponseFormat class with default values.
         /// </summary>
         public ResponseFormat() { }
@@ -58,6 +66,21 @@ namespace ConduitLLM.Core.Models
         public static ResponseFormat Text()
         {
             return new ResponseFormat("text");
+        }
+
+        /// <summary>
+        /// Creates a new ResponseFormat configured for schema-constrained JSON output.
+        /// </summary>
+        /// <param name="name">The schema name.</param>
+        /// <param name="schema">The JSON Schema document the output must conform to.</param>
+        /// <param name="strict">Whether the provider must strictly enforce the schema.</param>
+        /// <returns>A ResponseFormat with type set to "json_schema".</returns>
+        public static ResponseFormat WithJsonSchema(string name, JsonElement schema, bool? strict = null)
+        {
+            return new ResponseFormat("json_schema")
+            {
+                JsonSchema = new JsonSchemaFormat { Name = name, Schema = schema, Strict = strict }
+            };
         }
     }
 }

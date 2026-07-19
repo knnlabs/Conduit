@@ -191,6 +191,9 @@ namespace ConduitLLM.Admin.Controllers
                     SupportsStreaming = baseDto.SupportsStreaming,
                     SupportsImageGeneration = baseDto.SupportsImageGeneration,
                     SupportsVideoGeneration = baseDto.SupportsVideoGeneration,
+                    SupportsSpeechToText = baseDto.SupportsSpeechToText,
+                    SupportsTextToSpeech = baseDto.SupportsTextToSpeech,
+                    SupportsRerank = baseDto.SupportsRerank,
                     SupportsEmbeddings = baseDto.SupportsEmbeddings,
                     MaxInputTokens = baseDto.MaxInputTokens,
                     MaxOutputTokens = baseDto.MaxOutputTokens,
@@ -240,6 +243,9 @@ namespace ConduitLLM.Admin.Controllers
                 SupportsStreaming = dto.SupportsStreaming,
                 SupportsImageGeneration = dto.SupportsImageGeneration,
                 SupportsVideoGeneration = dto.SupportsVideoGeneration,
+                SupportsSpeechToText = dto.SupportsSpeechToText,
+                SupportsTextToSpeech = dto.SupportsTextToSpeech,
+                SupportsRerank = dto.SupportsRerank,
                 SupportsEmbeddings = dto.SupportsEmbeddings,
                 MaxInputTokens = dto.MaxInputTokens,
                 MaxOutputTokens = dto.MaxOutputTokens,
@@ -370,6 +376,24 @@ namespace ConduitLLM.Admin.Controllers
                     changes.Add(("SupportsVideoGeneration", model.SupportsVideoGeneration.ToString(), dto.SupportsVideoGeneration.Value.ToString()));
                 model.SupportsVideoGeneration = dto.SupportsVideoGeneration.Value;
             }
+            if (dto.SupportsSpeechToText.HasValue)
+            {
+                if (model.SupportsSpeechToText != dto.SupportsSpeechToText.Value)
+                    changes.Add(("SupportsSpeechToText", model.SupportsSpeechToText.ToString(), dto.SupportsSpeechToText.Value.ToString()));
+                model.SupportsSpeechToText = dto.SupportsSpeechToText.Value;
+            }
+            if (dto.SupportsTextToSpeech.HasValue)
+            {
+                if (model.SupportsTextToSpeech != dto.SupportsTextToSpeech.Value)
+                    changes.Add(("SupportsTextToSpeech", model.SupportsTextToSpeech.ToString(), dto.SupportsTextToSpeech.Value.ToString()));
+                model.SupportsTextToSpeech = dto.SupportsTextToSpeech.Value;
+            }
+            if (dto.SupportsRerank.HasValue)
+            {
+                if (model.SupportsRerank != dto.SupportsRerank.Value)
+                    changes.Add(("SupportsRerank", model.SupportsRerank.ToString(), dto.SupportsRerank.Value.ToString()));
+                model.SupportsRerank = dto.SupportsRerank.Value;
+            }
             if (dto.SupportsEmbeddings.HasValue)
             {
                 if (model.SupportsEmbeddings != dto.SupportsEmbeddings.Value)
@@ -472,6 +496,9 @@ namespace ConduitLLM.Admin.Controllers
             if (dto.SupportsStreaming.HasValue) changedProps.Add("SupportsStreaming");
             if (dto.SupportsImageGeneration.HasValue) changedProps.Add("SupportsImageGeneration");
             if (dto.SupportsVideoGeneration.HasValue) changedProps.Add("SupportsVideoGeneration");
+            if (dto.SupportsSpeechToText.HasValue) changedProps.Add("SupportsSpeechToText");
+            if (dto.SupportsTextToSpeech.HasValue) changedProps.Add("SupportsTextToSpeech");
+            if (dto.SupportsRerank.HasValue) changedProps.Add("SupportsRerank");
             if (dto.SupportsEmbeddings.HasValue) changedProps.Add("SupportsEmbeddings");
             if (dto.MaxInputTokens.HasValue) changedProps.Add("MaxInputTokens");
             if (dto.MaxOutputTokens.HasValue) changedProps.Add("MaxOutputTokens");

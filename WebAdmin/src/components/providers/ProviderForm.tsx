@@ -18,6 +18,7 @@ import {
   LoadingOverlay,
   ThemeIcon,
   Switch,
+  NumberInput,
 } from '@mantine/core';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck, IconArrowLeft, IconServer, IconSparkles, IconEdit } from '@tabler/icons-react';
 import { 
@@ -225,6 +226,25 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                     {...form.getInputProps('isEnabled', { type: 'checkbox' })}
                     size="md"
                   />
+
+                  <Switch
+                    label="Trust provider-reported cost"
+                    description="Bill from the cost this provider reports per request (e.g. OpenRouter usage.cost) instead of the configured ModelCost. Falls back to ModelCost when no cost is reported."
+                    {...form.getInputProps('trustProviderReportedCosts', { type: 'checkbox' })}
+                    size="md"
+                  />
+
+                  {form.values.trustProviderReportedCosts && (
+                    <NumberInput
+                      label="Cost markup multiplier"
+                      description="Multiplier applied to the provider-reported cost when billing (1.0 = pass-through)."
+                      min={0}
+                      step={0.05}
+                      decimalScale={4}
+                      {...form.getInputProps('providerCostMarkupMultiplier')}
+                      size="md"
+                    />
+                  )}
                 </Stack>
               </Card>
 

@@ -43,6 +43,14 @@ export interface ChatCompletionMessage {
   tool_call_id?: string;
 }
 
+/** Unified reasoning configuration (OpenRouter-style). Only set fields are sent. */
+export interface ReasoningConfig {
+  effort?: 'max' | 'xhigh' | 'high' | 'medium' | 'low' | 'minimal' | 'none';
+  max_tokens?: number;
+  enabled?: boolean;
+  exclude?: boolean;
+}
+
 export interface ChatCompletionRequest {
   model: string;
   messages: ChatCompletionMessage[];
@@ -54,6 +62,8 @@ export interface ChatCompletionRequest {
   n?: number;
   presence_penalty?: number;
   response_format?: ResponseFormat;
+  /** Unified reasoning configuration, forwarded to providers that support it (e.g. OpenRouter). */
+  reasoning?: ReasoningConfig;
   seed?: number;
   stop?: string | string[];
   stream?: boolean;

@@ -229,6 +229,62 @@ namespace ConduitLLM.Gateway.Middleware
         /// Process image generation responses and log them with image-specific metadata.
         /// Extracts image-specific data, then delegates to the shared media pipeline.
         /// </summary>
+        /// <summary>
+        /// Bills an audio (STT/TTS) request from the typed <see cref="AudioUsageContext"/> set by the
+        /// controller — never from the response body, which for TTS is raw binary audio.
+        /// </summary>
+        private async Task ProcessAudioResponseAsync(
+            HttpContext context,
+            ICostCalculationService costCalculationService,
+            IBatchSpendUpdateService batchSpendService,
+            IRequestLogService requestLogService,
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
+        {
+            try
+            {
+                var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
+                var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
+                    ? providerTypeObj?.ToString() ?? "unknown"
+                    : "unknown";
+
+                var audioContext = context.GetUsageContext() as AudioUsageContext;
+                var endpointType = UsageExtractor.DetermineRequestType(context.Request.Path);
+                var model = audioContext?.Model ?? "unknown";
+
+                var usage = new Usage
+                {
+                    AudioDurationSeconds = audioContext?.AudioDurationSeconds,
+                    TtsCharacters = audioContext?.TtsCharacters
+                };
+                ApplyProviderBillingPolicy(context, usage);
+
+                var metadata = JsonSerializer.Serialize(new
+                {
+                    type = endpointType,
+                    audioDurationSeconds = audioContext?.AudioDurationSeconds,
+                    ttsCharacters = audioContext?.TtsCharacters
+                });
+
+                await ProcessMediaResponseAsync(context, new MediaProcessingContext
+                {
+                    MediaType = endpointType,
+                    Model = model,
+                    Usage = usage,
+                    MetadataJson = metadata,
+                    ProviderType = providerType,
+                    VirtualKeyId = virtualKeyId,
+                    LogDetail = endpointType == "tts"
+                        ? $"TtsCharacters={audioContext?.TtsCharacters ?? 0}"
+                        : $"AudioSeconds={audioContext?.AudioDurationSeconds ?? 0}"
+                }, costCalculationService, batchSpendService, requestLogService, virtualKeyService, billingAuditService);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process audio response for usage tracking");
+            }
+        }
+
         private async Task ProcessImageResponseAsync(
             HttpContext context,
             MemoryStream responseBody,
@@ -283,6 +339,9 @@ namespace ConduitLLM.Gateway.Middleware
                     usage.ImageQuality = quality;
                 if (string.IsNullOrEmpty(usage.ImageResolution))
                     usage.ImageResolution = size;
+
+                // Apply provider billing policy + provider-reported cost (side channel) before billing.
+                ApplyProviderBillingPolicy(context, usage);
 
                 var metadata = JsonSerializer.Serialize(new
                 {

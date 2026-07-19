@@ -69,6 +69,12 @@ namespace ConduitLLM.Configuration.DTOs
         public string? Notes { get; set; }
 
         /// <summary>
+        /// Optional provider-specific request options as a JSON object (OpenRouter: provider/plugins/
+        /// transforms/models/route), merged into outgoing requests routed through this mapping.
+        /// </summary>
+        public string? ProviderOptions { get; set; }
+
+        /// <summary>
         /// Model capability flags (populated from Model entity)
         /// </summary>
         public ModelCapabilitiesDto? Capabilities { get; set; }
@@ -98,6 +104,21 @@ namespace ConduitLLM.Configuration.DTOs
         /// Indicates whether this model supports embedding generation
         /// </summary>
         public bool SupportsEmbeddings { get; set; }
+
+        /// <summary>
+        /// Indicates whether the model supports speech-to-text transcription.
+        /// </summary>
+        public bool SupportsSpeechToText { get; set; }
+
+        /// <summary>
+        /// Indicates whether the model supports text-to-speech synthesis.
+        /// </summary>
+        public bool SupportsTextToSpeech { get; set; }
+
+        /// <summary>
+        /// Indicates whether the model supports document reranking.
+        /// </summary>
+        public bool SupportsRerank { get; set; }
 
         /// <summary>
         /// Indicates whether this model supports chat completions

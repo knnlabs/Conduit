@@ -52,5 +52,21 @@ namespace ConduitLLM.Providers.OpenAICompatible
         {
             return $"{BaseUrl}/images/generations";
         }
+
+        /// <summary>
+        /// Gets the audio transcription (speech-to-text) endpoint URL.
+        /// </summary>
+        protected virtual string GetAudioTranscriptionEndpoint()
+        {
+            return $"{BaseUrl}/audio/transcriptions";
+        }
+
+        /// <summary>
+        /// Gets the text-to-speech endpoint URL.
+        /// </summary>
+        protected virtual string GetTextToSpeechEndpoint()
+        {
+            return $"{BaseUrl}/audio/speech";
+        }
     }
 }

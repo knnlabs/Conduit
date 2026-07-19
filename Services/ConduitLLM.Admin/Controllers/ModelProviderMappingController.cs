@@ -89,6 +89,12 @@ public class ModelProviderMappingController : AdminControllerBase
             return Conflict(new ErrorResponseDto($"A mapping for model alias '{mappingDto.ModelAlias}' already exists"));
         }
 
+        var optionsError = ValidateProviderOptions(mappingDto.ProviderOptions);
+        if (optionsError != null)
+        {
+            return BadRequest(new ErrorResponseDto(optionsError));
+        }
+
         var mapping = mappingDto.ToEntity();
         var success = await _mappingService.AddMappingAsync(mapping);
 
@@ -130,6 +136,12 @@ public class ModelProviderMappingController : AdminControllerBase
             throw new KeyNotFoundException($"Model provider mapping with ID '{id}' not found");
         }
 
+        var optionsError = ValidateProviderOptions(mappingDto.ProviderOptions);
+        if (optionsError != null)
+        {
+            return BadRequest(new ErrorResponseDto(optionsError));
+        }
+
         existingMapping.UpdateFromDto(mappingDto);
         var success = await _mappingService.UpdateMappingAsync(existingMapping);
 
@@ -143,6 +155,49 @@ public class ModelProviderMappingController : AdminControllerBase
         AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "update");
 
         return NoContent();
+    }
+
+    private static readonly string[] ForbiddenProviderOptionKeys = { "model", "messages", "stream", "stream_options" };
+
+    /// <summary>
+    /// Validates a mapping's ProviderOptions JSON. Returns an error message if invalid, else null.
+    /// The value must be a JSON object and may not contain keys that would hijack the request
+    /// (model/messages/stream/stream_options).
+    /// </summary>
+    private static string? ValidateProviderOptions(string? providerOptions)
+    {
+        if (string.IsNullOrWhiteSpace(providerOptions))
+        {
+            return null;
+        }
+
+        System.Text.Json.JsonDocument doc;
+        try
+        {
+            doc = System.Text.Json.JsonDocument.Parse(providerOptions);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return "ProviderOptions must be valid JSON.";
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+            {
+                return "ProviderOptions must be a JSON object.";
+            }
+
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (ForbiddenProviderOptionKeys.Contains(prop.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    return $"ProviderOptions may not contain the reserved key '{prop.Name}'.";
+                }
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

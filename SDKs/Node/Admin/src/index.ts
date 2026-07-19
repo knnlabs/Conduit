@@ -28,6 +28,7 @@ export * from './models/ipFilter';
 export * from './models/media';
 export * from './models/functions';
 export * from './models/promptCaching';
+export * from './models/providerSync';
 // Re-export model types except ModelCapabilities (conflicts with providerModels)
 export {
   ModelType,
@@ -177,6 +178,7 @@ export {
 } from './services/FetchFunctionsService';
 export { FetchPricingService } from './services/FetchPricingService';
 export * from './models/pricing';
+export { FetchProviderSyncService } from './services/FetchProviderSyncService';
 
 // SignalR Hub Clients removed - WebAdmin uses React Query instead of SignalR for data fetching
 

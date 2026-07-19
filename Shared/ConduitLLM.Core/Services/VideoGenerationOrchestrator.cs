@@ -108,10 +108,11 @@ namespace ConduitLLM.Core.Services
                 throw new NotSupportedException($"Provider for model {modelInfo.ModelAlias} does not support video generation");
             }
 
-            // Set up progress callback if the provider client is MiniMax
-            if (innermostType.Name == "MiniMaxClient")
+            // Set up the progress callback for any provider client that exposes SetProgressCallback
+            // (e.g. MiniMax, OpenRouter), not just MiniMax by name.
+            if (innermostType.GetMethod("SetProgressCallback") != null)
             {
-                SetupMiniMaxProgressCallback(innermostClient, request.Model, cancellationToken);
+                SetupProgressCallback(innermostClient, request.Model, cancellationToken);
             }
 
             // Invoke through the outermost client in the chain that exposes CreateVideoAsync so
@@ -148,10 +149,10 @@ namespace ConduitLLM.Core.Services
             return await task;
         }
 
-        private void SetupMiniMaxProgressCallback(object client, string requestId, CancellationToken cancellationToken)
+        private void SetupProgressCallback(object client, string requestId, CancellationToken cancellationToken)
         {
             var clientType = client.GetType();
-            var setCallbackMethod = clientType.GetMethod("SetVideoProgressCallback");
+            var setCallbackMethod = clientType.GetMethod("SetProgressCallback");
             if (setCallbackMethod != null)
             {
                 Func<string, string, int, Task> progressCallback = async (taskId, status, progressPercentage) =>

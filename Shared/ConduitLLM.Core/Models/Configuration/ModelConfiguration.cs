@@ -72,6 +72,21 @@ namespace ConduitLLM.Core.Models.Configuration
         public bool SupportsVideoGeneration { get; set; }
 
         /// <summary>
+        /// Gets or sets whether the model supports speech-to-text transcription.
+        /// </summary>
+        public bool SupportsSpeechToText { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports text-to-speech synthesis.
+        /// </summary>
+        public bool SupportsTextToSpeech { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports document reranking.
+        /// </summary>
+        public bool SupportsRerank { get; set; }
+
+        /// <summary>
         /// Gets or sets the tokenizer type for the model.
         /// </summary>
         public string? TokenizerType { get; set; }

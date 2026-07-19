@@ -46,6 +46,23 @@ namespace ConduitLLM.Configuration.Entities
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
+        /// When true, the cost the provider reports for each request (e.g. OpenRouter's usage.cost)
+        /// is authoritative for billing virtual keys; ModelCost calculation is only a fallback when
+        /// no cost is reported. Defaults to false (bill from ModelCost, the historical behavior).
+        /// </summary>
+        /// <remarks>
+        /// Only enable for providers that return a trustworthy per-request charge. Note that for BYOK
+        /// keys some providers report only their own fee, not the full upstream cost.
+        /// </remarks>
+        public bool TrustProviderReportedCosts { get; set; } = false;
+
+        /// <summary>
+        /// Multiplier applied to the provider-reported cost when billing (1.0 = pass-through markup).
+        /// Only consulted when <see cref="TrustProviderReportedCosts"/> is true.
+        /// </summary>
+        public decimal ProviderCostMarkupMultiplier { get; set; } = 1.0m;
+
+        /// <summary>
         /// Gets or sets the UTC timestamp when this provider was created.
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

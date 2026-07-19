@@ -92,6 +92,28 @@ public partial class CostCalculationService
                 searchCost);
         }
 
+        // Add audio transcription (speech-to-text) cost, billed per minute of audio.
+        if (usage.AudioDurationSeconds is > 0 && modelCost.AudioCostPerMinute.HasValue)
+        {
+            var audioCost = ((decimal)usage.AudioDurationSeconds.Value / 60m) * modelCost.AudioCostPerMinute.Value;
+            calculatedCost += audioCost;
+
+            _logger.LogDebug(
+                "Audio transcription cost for model {ModelId}: {Seconds}s = ${Total}",
+                modelId, usage.AudioDurationSeconds.Value, audioCost);
+        }
+
+        // Add text-to-speech cost, billed per thousand input characters.
+        if (usage.TtsCharacters is > 0 && modelCost.AudioCostPerThousandCharacters.HasValue)
+        {
+            var ttsCost = (usage.TtsCharacters.Value / 1000m) * modelCost.AudioCostPerThousandCharacters.Value;
+            calculatedCost += ttsCost;
+
+            _logger.LogDebug(
+                "Text-to-speech cost for model {ModelId}: {Chars} chars = ${Total}",
+                modelId, usage.TtsCharacters.Value, ttsCost);
+        }
+
         // Inference step costs are now handled via RulesBased pricing configuration
         // Use PricingModel.InferenceSteps instead
 

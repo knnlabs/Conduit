@@ -107,7 +107,19 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Only send ResponseFormat if explicitly requested and not "text" (default)
             // Some providers like SambaNova don't support response_format with type "text"
             if (request.ResponseFormat != null && request.ResponseFormat.Type != "text")
-                openAiRequest["response_format"] = new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
+            {
+                // For json_schema, forward the Core ResponseFormat as-is so the schema payload
+                // ({ type, json_schema: { name, strict, schema } }) reaches the provider. For other
+                // types (e.g. json_object) send only { type } to match providers that reject extras.
+                openAiRequest["response_format"] =
+                    request.ResponseFormat.Type == "json_schema" && request.ResponseFormat.JsonSchema != null
+                        ? (object)request.ResponseFormat
+                        : new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
+            }
+            // Unified reasoning config — only forwarded when the caller set it (providers that don't
+            // support it simply ignore/return an error, same as any explicit unsupported parameter).
+            if (request.Reasoning != null)
+                openAiRequest["reasoning"] = request.Reasoning;
             if (request.Stream != null)
                 openAiRequest["stream"] = request.Stream;
             if (request.StreamOptions != null)
@@ -338,41 +350,72 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 ReasoningTokens = openAiUsage.ReasoningTokens
             };
 
-            if (openAiUsage.ExtensionData == null)
-                return usage;
+            if (openAiUsage.ExtensionData != null)
+            {
+                PopulateProviderUsageFields(openAiUsage.ExtensionData, usage);
+            }
 
-            // OpenAI format: usage.prompt_tokens_details.cached_tokens
-            if (openAiUsage.ExtensionData.TryGetValue("prompt_tokens_details", out var promptDetails) &&
+            return usage;
+        }
+
+        /// <summary>
+        /// Populates provider-agnostic <see cref="CoreModels.Usage"/> fields (cached tokens,
+        /// cache-write tokens, and provider-reported cost) from a provider usage extension-data
+        /// dictionary. Shared by the non-streaming mapper (<see cref="MapUsageFromOpenAI"/>) and the
+        /// streaming post-processor so both paths capture the same provider-specific fields.
+        /// </summary>
+        /// <remarks>
+        /// Uses null-coalescing assignment so the first non-null value wins; callers pass a freshly
+        /// constructed usage on the non-streaming path, so this is equivalent to plain assignment there.
+        /// </remarks>
+        private static void PopulateProviderUsageFields(
+            IDictionary<string, System.Text.Json.JsonElement> extensionData,
+            CoreModels.Usage usage)
+        {
+            // OpenAI / OpenRouter format: prompt_tokens_details.{cached_tokens, cache_write_tokens}
+            if (extensionData.TryGetValue("prompt_tokens_details", out var promptDetails) &&
                 promptDetails.ValueKind == System.Text.Json.JsonValueKind.Object)
             {
                 if (promptDetails.TryGetProperty("cached_tokens", out var cachedTokens) &&
                     cachedTokens.TryGetInt32(out var cached))
                 {
-                    usage.CachedInputTokens = cached;
+                    usage.CachedInputTokens ??= cached;
+                }
+
+                if (promptDetails.TryGetProperty("cache_write_tokens", out var cacheWriteTokens) &&
+                    cacheWriteTokens.TryGetInt32(out var cacheWritten))
+                {
+                    usage.CachedWriteTokens ??= cacheWritten;
                 }
             }
 
-            // Anthropic format: usage.cache_read_input_tokens / usage.cache_creation_input_tokens
-            if (openAiUsage.ExtensionData.TryGetValue("cache_read_input_tokens", out var cacheRead) &&
+            // Anthropic format: cache_read_input_tokens / cache_creation_input_tokens
+            if (extensionData.TryGetValue("cache_read_input_tokens", out var cacheRead) &&
                 cacheRead.TryGetInt32(out var cacheReadCount))
             {
-                usage.CachedInputTokens = cacheReadCount;
+                usage.CachedInputTokens ??= cacheReadCount;
             }
 
-            if (openAiUsage.ExtensionData.TryGetValue("cache_creation_input_tokens", out var cacheWrite) &&
+            if (extensionData.TryGetValue("cache_creation_input_tokens", out var cacheWrite) &&
                 cacheWrite.TryGetInt32(out var cacheWriteCount))
             {
-                usage.CachedWriteTokens = cacheWriteCount;
+                usage.CachedWriteTokens ??= cacheWriteCount;
             }
 
-            // Deepseek format: usage.prompt_cache_hit_tokens / usage.prompt_cache_miss_tokens
-            if (openAiUsage.ExtensionData.TryGetValue("prompt_cache_hit_tokens", out var cacheHit) &&
+            // Deepseek format: prompt_cache_hit_tokens
+            if (extensionData.TryGetValue("prompt_cache_hit_tokens", out var cacheHit) &&
                 cacheHit.TryGetInt32(out var cacheHitCount))
             {
-                usage.CachedInputTokens = cacheHitCount;
+                usage.CachedInputTokens ??= cacheHitCount;
             }
 
-            return usage;
+            // OpenRouter (and compatible): usage.cost = actual credits charged (USD).
+            if (extensionData.TryGetValue("cost", out var cost) &&
+                cost.ValueKind == System.Text.Json.JsonValueKind.Number &&
+                cost.TryGetDecimal(out var costValue))
+            {
+                usage.ProviderReportedCostUsd ??= costValue;
+            }
         }
 
         /// <summary>
@@ -394,46 +437,23 @@ namespace ConduitLLM.Providers.OpenAICompatible
         }
 
         /// <summary>
-        /// Post-processes a deserialized Usage object to extract cached token counts
-        /// from provider-specific extension data fields.
-        /// Call this after deserializing a Usage object from provider JSON.
+        /// Post-processes a deserialized Usage object to extract cached token counts and the
+        /// provider-reported cost from provider-specific extension data, then strips the raw
+        /// <c>cost</c> key so it is never re-serialized back to API clients.
+        /// Call this after deserializing a Usage object from provider JSON (e.g. streaming chunks).
         /// </summary>
         /// <param name="usage">The deserialized Usage object to post-process.</param>
-        internal static void ExtractCachedTokensFromExtensionData(CoreModels.Usage? usage)
+        internal static void ExtractProviderUsageFromExtensionData(CoreModels.Usage? usage)
         {
             if (usage?.ExtensionData == null)
                 return;
 
-            // OpenAI format: prompt_tokens_details.cached_tokens
-            if (usage.ExtensionData.TryGetValue("prompt_tokens_details", out var promptDetails) &&
-                promptDetails.ValueKind == System.Text.Json.JsonValueKind.Object)
-            {
-                if (promptDetails.TryGetProperty("cached_tokens", out var cachedTokens) &&
-                    cachedTokens.TryGetInt32(out var cached))
-                {
-                    usage.CachedInputTokens ??= cached;
-                }
-            }
+            PopulateProviderUsageFields(usage.ExtensionData, usage);
 
-            // Anthropic format: cache_read_input_tokens / cache_creation_input_tokens
-            if (usage.ExtensionData.TryGetValue("cache_read_input_tokens", out var cacheRead) &&
-                cacheRead.TryGetInt32(out var cacheReadCount))
-            {
-                usage.CachedInputTokens ??= cacheReadCount;
-            }
-
-            if (usage.ExtensionData.TryGetValue("cache_creation_input_tokens", out var cacheWrite) &&
-                cacheWrite.TryGetInt32(out var cacheWriteCount))
-            {
-                usage.CachedWriteTokens ??= cacheWriteCount;
-            }
-
-            // Deepseek format: prompt_cache_hit_tokens
-            if (usage.ExtensionData.TryGetValue("prompt_cache_hit_tokens", out var cacheHit) &&
-                cacheHit.TryGetInt32(out var cacheHitCount))
-            {
-                usage.CachedInputTokens ??= cacheHitCount;
-            }
+            // The provider-reported cost is captured onto ProviderReportedCostUsd (server-only) above.
+            // Remove it from ExtensionData so the operator's upstream cost is never leaked back to API
+            // clients when the chunk/response is re-serialized.
+            usage.ExtensionData.Remove("cost");
         }
 
         private static object? ConvertJsonElement(System.Text.Json.JsonElement element) =>

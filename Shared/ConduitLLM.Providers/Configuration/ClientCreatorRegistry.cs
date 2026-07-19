@@ -55,6 +55,12 @@ namespace ConduitLLM.Providers.Configuration
         /// Optional default models configuration.
         /// </summary>
         public ProviderDefaultModels? DefaultModels { get; init; }
+
+        /// <summary>
+        /// Optional per-mapping provider options JSON (see ModelProviderMapping.ProviderOptions),
+        /// merged into outgoing requests by providers that support it (currently OpenRouter).
+        /// </summary>
+        public string? ProviderOptionsJson { get; init; }
     }
 
     /// <summary>
@@ -321,7 +327,8 @@ namespace ConduitLLM.Providers.Configuration
                 modelId,
                 logger,
                 context.HttpClientFactory,
-                context.DefaultModels);
+                context.DefaultModels,
+                context.ProviderOptionsJson);
         }
 
         private static ILLMClient CreateMetaClient(

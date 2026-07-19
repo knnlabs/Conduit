@@ -18,6 +18,8 @@ public interface IRefundService
     /// <param name="originalTransactionId">Optional original transaction ID for audit trail</param>
     /// <param name="initiatedBy">User who initiated the refund</param>
     /// <param name="initiatedByUserId">Clerk user ID if initiated by an admin user</param>
+    /// <param name="requestLogId">Optional ID of the original request log, used to prorate refunds of
+    /// provider-cost-billed requests from the amount actually charged.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>A RefundResult containing the refund details and transaction ID</returns>
     /// <exception cref="InvalidOperationException">Thrown when the virtual key group is not found</exception>
@@ -31,5 +33,6 @@ public interface IRefundService
         string? originalTransactionId,
         string initiatedBy,
         string? initiatedByUserId,
+        int? requestLogId = null,
         CancellationToken cancellationToken = default);
 }

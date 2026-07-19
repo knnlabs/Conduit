@@ -141,6 +141,14 @@ public class ChatCompletionRequest
     public ResponseFormat? ResponseFormat { get; set; }
 
     /// <summary>
+    /// Unified reasoning configuration (effort / max tokens / enabled / exclude). Forwarded to
+    /// providers that support reasoning (e.g. OpenRouter). Only serialized when set.
+    /// </summary>
+    [JsonPropertyName("reasoning")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReasoningConfig? Reasoning { get; set; }
+
+    /// <summary>
     /// A random number seed for deterministic outputs.
     /// </summary>
     [JsonPropertyName("seed")]
@@ -226,8 +234,9 @@ public class ChatCompletionRequest
     /// Examples include reasoning_effort, min_p, language, timestamp_granularities, etc.
     /// </summary>
     /// <remarks>
-    /// This property captures any JSON properties not explicitly mapped to other properties.
-    /// The router validates these against the model's supported parameters before forwarding.
+    /// This property captures any JSON properties not explicitly mapped to other properties, and they
+    /// are forwarded to the provider as-is (they are not validated against the model's supported
+    /// parameters). Standard mapped parameters take precedence on key collision.
     /// </remarks>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
