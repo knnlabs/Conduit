@@ -92,6 +92,13 @@ public partial class CostCalculationService : ICostCalculationService
             return 0m;
         }
 
+        // Provider-reported cost is authoritative when the provider is configured as trusted.
+        // Checked before the ModelCost lookup so a missing/stale ModelCost row still bills correctly.
+        if (TryBillProviderReportedCost(usage, modelId, out var providerBilledCost))
+        {
+            return providerBilledCost;
+        }
+
         var modelCost = await _modelCostService.GetCostForModelAsync(modelId, cancellationToken);
 
         if (modelCost == null)
@@ -176,6 +183,13 @@ public partial class CostCalculationService : ICostCalculationService
             return 0m;
         }
 
+        // Provider-reported cost is authoritative when the provider is configured as trusted.
+        // Checked before the ModelCost lookup so a missing/stale ModelCost row still bills correctly.
+        if (TryBillProviderReportedCost(usage, $"ModelCostId:{modelCostId}", out var providerBilledCost))
+        {
+            return providerBilledCost;
+        }
+
         var modelCost = await _modelCostService.GetCostByIdAsync(modelCostId, cancellationToken);
 
         if (modelCost == null)
@@ -253,5 +267,37 @@ public partial class CostCalculationService : ICostCalculationService
         }
 
         return calculatedCost;
+    }
+
+    /// <summary>
+    /// When the usage carries a trusted provider-reported cost, computes the authoritative billed
+    /// amount (provider cost times the configured markup) and returns true, bypassing ModelCost
+    /// calculation. Returns false when the provider is not trusted or reported no cost.
+    /// </summary>
+    /// <remarks>
+    /// The batch-processing multiplier is deliberately NOT applied here: the provider-reported cost
+    /// is the actual amount the operator was charged, so applying the list-price batch discount on
+    /// top would double-discount. A trusted cost of 0 (e.g. free model variants) bills as 0.
+    /// </remarks>
+    private bool TryBillProviderReportedCost(Usage usage, string modelIdentifier, out decimal billedCost)
+    {
+        billedCost = 0m;
+
+        if (usage.ProviderCostPolicy is not { TrustProviderReportedCost: true } policy ||
+            usage.ProviderReportedCostUsd is not decimal providerCost ||
+            providerCost < 0m)
+        {
+            return false;
+        }
+
+        var markup = policy.MarkupMultiplier > 0m ? policy.MarkupMultiplier : 1.0m;
+        billedCost = providerCost * markup;
+
+        _logger.LogInformation(
+            "Billing provider-reported cost for {ModelIdentifier}: provider cost {ProviderCost}, " +
+            "markup {Markup}, billed {BilledCost}. ModelCost calculation bypassed.",
+            modelIdentifier, providerCost, markup, billedCost);
+
+        return true;
     }
 }

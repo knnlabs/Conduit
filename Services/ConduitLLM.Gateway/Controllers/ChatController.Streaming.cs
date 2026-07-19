@@ -30,6 +30,14 @@ namespace ConduitLLM.Gateway.Controllers
                 StoreFunctionExecutionResults(response.AgenticMetrics);
             }
 
+            // Stash the provider-reported cost via the side channel so the middleware can bill from it.
+            // It is intentionally not serialized into the response body (server-only), so the middleware
+            // cannot recover it by re-parsing the body the way it does for token counts.
+            if (response.Usage?.ProviderReportedCostUsd is decimal providerReportedCost)
+            {
+                HttpContext.Items[HttpContextKeys.ProviderReportedCost] = providerReportedCost;
+            }
+
             GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "success", operationStopwatch.Elapsed.TotalSeconds);
             return Ok(response);
         }

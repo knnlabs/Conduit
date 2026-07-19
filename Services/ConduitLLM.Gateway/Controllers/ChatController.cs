@@ -123,6 +123,16 @@ namespace ConduitLLM.Gateway.Controllers
                     {
                         HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.ModelCostId] = modelMapping.ModelProviderTypeAssociation.ModelCostId;
                     }
+
+                    if (modelMapping.Provider?.TrustProviderReportedCosts == true)
+                    {
+                        HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.ProviderBillingPolicy] =
+                            new ConduitLLM.Core.Models.ProviderCostBillingPolicy
+                            {
+                                TrustProviderReportedCost = true,
+                                MarkupMultiplier = modelMapping.Provider.ProviderCostMarkupMultiplier
+                            };
+                    }
                 }
             }
             catch (Exception ex)

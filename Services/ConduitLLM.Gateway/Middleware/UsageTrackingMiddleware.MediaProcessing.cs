@@ -284,6 +284,9 @@ namespace ConduitLLM.Gateway.Middleware
                 if (string.IsNullOrEmpty(usage.ImageResolution))
                     usage.ImageResolution = size;
 
+                // Apply provider billing policy + provider-reported cost (side channel) before billing.
+                ApplyProviderBillingPolicy(context, usage);
+
                 var metadata = JsonSerializer.Serialize(new
                 {
                     type = "image",
