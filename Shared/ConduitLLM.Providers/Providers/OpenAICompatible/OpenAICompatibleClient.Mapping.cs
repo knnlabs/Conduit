@@ -107,7 +107,15 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Only send ResponseFormat if explicitly requested and not "text" (default)
             // Some providers like SambaNova don't support response_format with type "text"
             if (request.ResponseFormat != null && request.ResponseFormat.Type != "text")
-                openAiRequest["response_format"] = new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
+            {
+                // For json_schema, forward the Core ResponseFormat as-is so the schema payload
+                // ({ type, json_schema: { name, strict, schema } }) reaches the provider. For other
+                // types (e.g. json_object) send only { type } to match providers that reject extras.
+                openAiRequest["response_format"] =
+                    request.ResponseFormat.Type == "json_schema" && request.ResponseFormat.JsonSchema != null
+                        ? (object)request.ResponseFormat
+                        : new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
+            }
             // Unified reasoning config — only forwarded when the caller set it (providers that don't
             // support it simply ignore/return an error, same as any explicit unsupported parameter).
             if (request.Reasoning != null)

@@ -3,7 +3,13 @@ export type { Usage, PerformanceMetrics } from '@knn_labs/conduit-common';
 
 // Core-specific types that aren't in Common
 export interface ResponseFormat {
-  type: 'text' | 'json_object';
+  type: 'text' | 'json_object' | 'json_schema';
+  /** Schema payload, required when type is 'json_schema'. */
+  json_schema?: {
+    name: string;
+    strict?: boolean;
+    schema: Record<string, unknown>;
+  };
 }
 
 export interface FunctionCall {
