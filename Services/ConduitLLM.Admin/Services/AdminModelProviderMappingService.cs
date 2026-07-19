@@ -161,7 +161,8 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             existingMapping.ProviderId = mapping.ProviderId;
             existingMapping.ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId;
             existingMapping.IsEnabled = mapping.IsEnabled;
-            
+            existingMapping.ProviderOptions = mapping.ProviderOptions;
+
             existingMapping.UpdatedAt = DateTime.UtcNow;
 
             // Update the mapping

@@ -67,7 +67,8 @@ namespace ConduitLLM.Providers.OpenRouter
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
-            ProviderDefaultModels? defaultModels = null)
+            ProviderDefaultModels? defaultModels = null,
+            string? providerOptionsJson = null)
             : base(
                 provider,
                 keyCredential,
@@ -78,6 +79,7 @@ namespace ConduitLLM.Providers.OpenRouter
                 baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenRouter),
                 defaultModels: defaultModels)
         {
+            _mappingOptions = ParseProviderOptions(providerOptionsJson);
         }
 
         /// <summary>

@@ -13,6 +13,8 @@ export interface ModelProviderMappingDto {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  /** Optional provider-specific request options (JSON object) merged into outgoing requests (OpenRouter). */
+  providerOptions?: string;
   capabilities?: ModelCapabilitiesDto;
 }
 
@@ -36,6 +38,7 @@ export interface CreateModelProviderMappingDto {
   isEnabled?: boolean;
   priority?: number;
   notes?: string;
+  providerOptions?: string;
 }
 
 export interface UpdateModelProviderMappingDto {
@@ -51,6 +54,7 @@ export interface UpdateModelProviderMappingDto {
   isEnabled?: boolean;
   priority?: number;
   notes?: string;
+  providerOptions?: string;
 }
 
 // For bulk operations

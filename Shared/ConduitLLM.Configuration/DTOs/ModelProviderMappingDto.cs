@@ -69,6 +69,12 @@ namespace ConduitLLM.Configuration.DTOs
         public string? Notes { get; set; }
 
         /// <summary>
+        /// Optional provider-specific request options as a JSON object (OpenRouter: provider/plugins/
+        /// transforms/models/route), merged into outgoing requests routed through this mapping.
+        /// </summary>
+        public string? ProviderOptions { get; set; }
+
+        /// <summary>
         /// Model capability flags (populated from Model entity)
         /// </summary>
         public ModelCapabilitiesDto? Capabilities { get; set; }

@@ -56,6 +56,15 @@ namespace ConduitLLM.Configuration.Entities
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
+        /// Optional provider-specific request options as a JSON object. For OpenRouter mappings the
+        /// top-level keys (provider, plugins, transforms, models, route) are merged into every
+        /// outgoing request routed through this mapping. Caller-supplied ExtensionData wins on key
+        /// conflict; standard parameters always win.
+        /// </summary>
+        [Column(TypeName = "text")]
+        public string? ProviderOptions { get; set; }
+
+        /// <summary>
         /// The UTC timestamp when this mapping was created.
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

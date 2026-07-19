@@ -9,12 +9,13 @@ import {
   NumberInput,
   Button,
   Select,
+  JsonInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useEffect, useState, useCallback } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
-import type { ProviderDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { ProviderType, type ProviderDto, type ModelProviderMappingDto, type UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 interface EditModelMappingModalProps {
@@ -32,6 +33,7 @@ interface FormValues {
   priority: number;
   isEnabled: boolean;
   notes?: string;
+  providerOptions?: string;
 }
 
 export function EditModelMappingModal({
@@ -52,6 +54,7 @@ export function EditModelMappingModal({
     priority: 100,
     isEnabled: true,
     notes: undefined,
+    providerOptions: undefined,
   }));
 
   const form = useForm<FormValues>({
@@ -97,6 +100,7 @@ export function EditModelMappingModal({
         priority: mapping.priority ?? 100,
         isEnabled: mapping.isEnabled,
         notes: mapping.notes,
+        providerOptions: mapping.providerOptions,
       };
       
       updateForm(newFormValues);
@@ -119,6 +123,7 @@ export function EditModelMappingModal({
       priority: values.priority,
       isEnabled: values.isEnabled,
       notes: values.notes,
+      providerOptions: values.providerOptions?.trim() ? values.providerOptions : undefined,
     };
 
     try {
@@ -148,6 +153,16 @@ export function EditModelMappingModal({
       };
     }
   }).filter(opt => opt.value !== '') || [];
+
+  const selectedProvider = providers?.find((p: ProviderDto) => p.id?.toString() === form.values.providerId);
+  let isOpenRouter = false;
+  if (selectedProvider) {
+    try {
+      isOpenRouter = getProviderTypeFromDto(selectedProvider) === ProviderType.OpenRouter;
+    } catch {
+      isOpenRouter = false;
+    }
+  }
 
   return (
     <Modal
@@ -203,6 +218,19 @@ export function EditModelMappingModal({
             description="Additional notes about this mapping"
             {...form.getInputProps('notes')}
           />
+
+          {isOpenRouter && (
+            <JsonInput
+              label="Provider request options (JSON)"
+              placeholder='{"provider": {"order": ["anthropic"]}, "plugins": [...]}'
+              description="OpenRouter routing options merged into every request for this mapping (provider, plugins, transforms, models, route). Must be a JSON object; model/messages/stream are not allowed."
+              validationError="Invalid JSON"
+              formatOnBlur
+              autosize
+              minRows={3}
+              {...form.getInputProps('providerOptions')}
+            />
+          )}
 
           <Group justify="flex-end" mt="md">
             <Button variant="subtle" onClick={handleClose}>

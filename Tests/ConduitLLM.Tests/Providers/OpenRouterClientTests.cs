@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
@@ -35,6 +36,9 @@ namespace ConduitLLM.Tests.Providers
         private string _videoStatusJson = "{\"status\":\"completed\",\"unsigned_urls\":[\"https://openrouter.ai/videos/vid_1.mp4\"]}";
         private string _transcriptionJson = "{\"text\":\"hello\"}";
         private string _rerankJson = "{\"results\":[]}";
+        private const string ChatJson = "{\"id\":\"c\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"openai/gpt-4o\"," +
+            "\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"hi\"},\"finish_reason\":\"stop\"}]," +
+            "\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1,\"total_tokens\":2}}";
 
         public OpenRouterClientTests(ITestOutputHelper output) : base(output)
         {
@@ -68,7 +72,8 @@ namespace ConduitLLM.Tests.Providers
                     }
 
                     string responseBody;
-                    if (path.EndsWith("/key")) responseBody = "{\"data\":{}}";
+                    if (path.EndsWith("/chat/completions")) responseBody = ChatJson;
+                    else if (path.EndsWith("/key")) responseBody = "{\"data\":{}}";
                     else if (path.EndsWith("/images")) responseBody = _imagesJson;
                     else if (path.EndsWith("/audio/transcriptions")) responseBody = _transcriptionJson;
                     else if (path.EndsWith("/rerank")) responseBody = _rerankJson;
@@ -83,12 +88,12 @@ namespace ConduitLLM.Tests.Providers
                 });
         }
 
-        private OpenRouterClient CreateClient()
+        private OpenRouterClient CreateClient(string? providerOptionsJson = null)
         {
             var provider = new Provider { Id = 1, ProviderType = ProviderType.OpenRouter };
             var keyCredential = new ProviderKeyCredential { Id = 1, ProviderId = 1, ApiKey = "test-api-key" };
             var logger = CreateLogger<OpenRouterClient>();
-            return new OpenRouterClient(provider, keyCredential, "openai/gpt-4o", logger.Object, _httpClientFactoryMock.Object);
+            return new OpenRouterClient(provider, keyCredential, "openai/gpt-4o", logger.Object, _httpClientFactoryMock.Object, null, providerOptionsJson);
         }
 
         [Fact]
@@ -338,6 +343,69 @@ namespace ConduitLLM.Tests.Providers
             result.Results[0].Index.Should().Be(1);
             result.Results[0].RelevanceScore.Should().Be(0.9);
             result.Usage!.SearchUnits.Should().Be(1); // ceil(2 / 100)
+        }
+
+        [Fact]
+        public async Task CreateChatCompletionAsync_WithMappingOptions_MergesIntoRequest()
+        {
+            // Arrange — per-mapping routing options configured on the client
+            var client = CreateClient(providerOptionsJson: "{\"provider\":{\"order\":[\"anthropic\"]},\"transforms\":[\"middle-out\"]}");
+            var request = new ChatCompletionRequest
+            {
+                Model = "openai/gpt-4o",
+                Messages = new List<Message> { new() { Role = "user", Content = "hi" } }
+            };
+
+            // Act
+            await client.CreateChatCompletionAsync(request);
+
+            // Assert — the mapping options were merged into the outgoing request body
+            var body = _capturedRequests.Single(r => r.Path.EndsWith("/chat/completions")).Body;
+            body.Should().Contain("\"provider\"");
+            body.Should().Contain("\"order\"");
+            body.Should().Contain("\"transforms\"");
+        }
+
+        [Fact]
+        public async Task CreateChatCompletionAsync_CallerExtensionData_WinsOverMappingOptions()
+        {
+            // Arrange — mapping sets provider.sort=price; caller sends its own provider object
+            var client = CreateClient(providerOptionsJson: "{\"provider\":{\"sort\":\"price\"}}");
+            var request = new ChatCompletionRequest
+            {
+                Model = "openai/gpt-4o",
+                Messages = new List<Message> { new() { Role = "user", Content = "hi" } },
+                ExtensionData = new Dictionary<string, JsonElement>
+                {
+                    ["provider"] = JsonDocument.Parse("{\"sort\":\"throughput\"}").RootElement
+                }
+            };
+
+            // Act
+            await client.CreateChatCompletionAsync(request);
+
+            // Assert — the caller's provider object wins (whole-key precedence)
+            var body = _capturedRequests.Single(r => r.Path.EndsWith("/chat/completions")).Body;
+            body.Should().Contain("throughput");
+            body.Should().NotContain("price");
+        }
+
+        [Fact]
+        public async Task CreateChatCompletionAsync_MalformedMappingOptions_IgnoredAndRequestSucceeds()
+        {
+            // Arrange — invalid JSON must not break the request
+            var client = CreateClient(providerOptionsJson: "not valid json");
+            var request = new ChatCompletionRequest
+            {
+                Model = "openai/gpt-4o",
+                Messages = new List<Message> { new() { Role = "user", Content = "hi" } }
+            };
+
+            // Act
+            var response = await client.CreateChatCompletionAsync(request);
+
+            // Assert
+            response.Should().NotBeNull();
         }
     }
 }
