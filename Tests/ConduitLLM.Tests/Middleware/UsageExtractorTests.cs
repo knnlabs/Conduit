@@ -34,6 +34,52 @@ namespace ConduitLLM.Tests.Middleware
             Assert.False(usage.CachedInputTokensIncludedInPrompt);
         }
 
+        [Fact]
+        public void ExtractUsage_OpenAITokenDetails_ExtractsCachedAndReasoningSubsets()
+        {
+            using var document = JsonDocument.Parse("""
+                {
+                    "prompt_tokens": 1200,
+                    "completion_tokens": 300,
+                    "total_tokens": 1500,
+                    "prompt_tokens_details": {
+                        "cached_tokens": 800
+                    },
+                    "completion_tokens_details": {
+                        "reasoning_tokens": 200
+                    }
+                }
+                """);
+
+            var usage = UsageExtractor.ExtractUsage(document.RootElement, _mockLogger.Object);
+
+            Assert.NotNull(usage);
+            Assert.Equal(1200, usage.PromptTokens);
+            Assert.Equal(300, usage.CompletionTokens);
+            Assert.Equal(800, usage.CachedInputTokens);
+            Assert.True(usage.CachedInputTokensIncludedInPrompt);
+            Assert.Equal(200, usage.ReasoningTokens);
+        }
+
+        [Fact]
+        public void ExtractUsage_OpenAINestedReasoningTokens_TakePrecedenceOverTopLevelFallback()
+        {
+            using var document = JsonDocument.Parse("""
+                {
+                    "completion_tokens": 300,
+                    "reasoning_tokens": 175,
+                    "completion_tokens_details": {
+                        "reasoning_tokens": 200
+                    }
+                }
+                """);
+
+            var usage = UsageExtractor.ExtractUsage(document.RootElement, _mockLogger.Object);
+
+            Assert.NotNull(usage);
+            Assert.Equal(200, usage.ReasoningTokens);
+        }
+
         #region DetermineRequestType Tests
 
         [Theory]

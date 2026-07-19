@@ -32,6 +32,28 @@ namespace ConduitLLM.Gateway.Middleware
                 if (usageElement.TryGetProperty("total_tokens", out var totalTokens))
                     usage.TotalTokens = totalTokens.GetInt32();
 
+                // Some OpenAI-compatible providers expose reasoning_tokens at the top level.
+                // Treat this as a fallback because OpenAI's canonical value is nested below.
+                if (usageElement.TryGetProperty("reasoning_tokens", out var reasoningTokens))
+                    usage.ReasoningTokens = reasoningTokens.GetInt32();
+
+                // OpenAI includes cached tokens in prompt_tokens and reasoning tokens in
+                // completion_tokens. The detail fields identify those subsets for pricing.
+                if (usageElement.TryGetProperty("prompt_tokens_details", out var promptTokenDetails) &&
+                    promptTokenDetails.ValueKind == JsonValueKind.Object &&
+                    promptTokenDetails.TryGetProperty("cached_tokens", out var cachedTokens))
+                {
+                    usage.CachedInputTokens = cachedTokens.GetInt32();
+                    usage.CachedInputTokensIncludedInPrompt = true;
+                }
+
+                if (usageElement.TryGetProperty("completion_tokens_details", out var completionTokenDetails) &&
+                    completionTokenDetails.ValueKind == JsonValueKind.Object &&
+                    completionTokenDetails.TryGetProperty("reasoning_tokens", out var nestedReasoningTokens))
+                {
+                    usage.ReasoningTokens = nestedReasoningTokens.GetInt32();
+                }
+
                 // Anthropic format (uses input_tokens/output_tokens)
                 // Note: These will override OpenAI fields if both exist
                 if (usageElement.TryGetProperty("input_tokens", out var inputTokens))
@@ -49,10 +71,6 @@ namespace ConduitLLM.Gateway.Middleware
 
                 if (usageElement.TryGetProperty("cache_read_input_tokens", out var cacheReadTokens))
                     usage.CachedInputTokens = cacheReadTokens.GetInt32();
-
-                // Reasoning tokens (o1 models and other reasoning models)
-                if (usageElement.TryGetProperty("reasoning_tokens", out var reasoningTokens))
-                    usage.ReasoningTokens = reasoningTokens.GetInt32();
 
                 // Image generation
                 if (usageElement.TryGetProperty("images", out var imageCount))
