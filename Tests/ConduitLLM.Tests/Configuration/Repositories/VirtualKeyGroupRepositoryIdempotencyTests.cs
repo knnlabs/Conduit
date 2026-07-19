@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Repositories;
 
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -15,15 +16,20 @@ namespace ConduitLLM.Tests.Configuration.Repositories
     /// one application per idempotency key, with the key recorded on the ledger row
     /// in the same atomic save as the balance change.
     /// </summary>
-    public class VirtualKeyGroupRepositoryIdempotencyTests
+    public class VirtualKeyGroupRepositoryIdempotencyTests : IDisposable
     {
+        private readonly SqliteConnection _connection;
         private readonly DbContextOptions<ConduitDbContext> _options;
         private readonly VirtualKeyGroupRepository _repository;
 
         public VirtualKeyGroupRepositoryIdempotencyTests()
         {
+            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection.Open();
             _options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                // A relational provider is required to exercise the database-side
+                // atomic increment used to prevent lost balance updates (#1000).
+                .UseSqlite(_connection)
                 .Options;
 
             var dbContextFactoryMock = new Mock<IDbContextFactory<ConduitDbContext>>();
@@ -39,6 +45,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 new Mock<ILogger<VirtualKeyGroupRepository>>().Object);
 
             using var context = new ConduitDbContext(_options);
+            context.Database.EnsureCreated();
             context.VirtualKeyGroups.Add(new VirtualKeyGroup
             {
                 Id = 1,
@@ -130,5 +137,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             var ledgerRow = await context.VirtualKeyGroupTransactions.SingleAsync();
             Assert.Null(ledgerRow.IdempotencyKey);
         }
+
+        public void Dispose() => _connection.Dispose();
     }
 }

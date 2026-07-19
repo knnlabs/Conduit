@@ -254,6 +254,14 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         string? referenceId,
         string? idempotencyKey)
     {
+        if (context.Database.IsRelational())
+        {
+            return await ApplyRelationalBalanceAdjustmentAsync(
+                context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey);
+        }
+
+        // The in-memory provider does not support ExecuteUpdate. Keep the tracked
+        // implementation for unit tests and other non-relational providers.
         var group = await GetDbSet(context).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
         {
@@ -295,6 +303,76 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
             groupId, amount, previousBalance, group.Balance, referenceType);
 
         return group;
+    }
+
+    /// <summary>
+    /// Atomically increments all balance counters in the database. The transaction
+    /// keeps the increment and its ledger row together, while the database-side
+    /// expression prevents concurrent writers from overwriting one another (#1000).
+    /// </summary>
+    private async Task<VirtualKeyGroup> ApplyRelationalBalanceAdjustmentAsync(
+        ConduitDbContext context,
+        int groupId,
+        decimal amount,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId,
+        string? idempotencyKey)
+    {
+        var strategy = context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            // A retry must not retain entities or ledger rows from the failed attempt.
+            context.ChangeTracker.Clear();
+            await using var databaseTransaction = await context.Database.BeginTransactionAsync();
+
+            var updatedAt = DateTime.UtcNow;
+            var rowsAffected = await GetDbSet(context)
+                .Where(g => g.Id == groupId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(g => g.Balance, g => g.Balance + amount)
+                    .SetProperty(
+                        g => g.LifetimeCreditsAdded,
+                        g => g.LifetimeCreditsAdded + (amount > 0 ? amount : 0m))
+                    .SetProperty(
+                        g => g.LifetimeSpent,
+                        g => g.LifetimeSpent + (amount <= 0 ? Math.Abs(amount) : 0m))
+                    .SetProperty(g => g.UpdatedAt, updatedAt));
+
+            if (rowsAffected == 0)
+            {
+                throw new InvalidOperationException($"Virtual key group {groupId} not found");
+            }
+
+            // This read occurs in the same transaction after the row-level update,
+            // so it is the exact balance produced by this adjustment.
+            var group = await GetDbSet(context)
+                .AsNoTracking()
+                .SingleAsync(g => g.Id == groupId);
+            var previousBalance = group.Balance - amount;
+
+            var transaction = CreateTransaction(
+                groupId,
+                amount,
+                group.Balance,
+                amount > 0 ? TransactionType.Credit : TransactionType.Debit,
+                referenceType,
+                description ?? (amount > 0 ? "Credits added" : "Usage deducted"),
+                referenceId,
+                initiatedBy ?? "System");
+            transaction.IdempotencyKey = idempotencyKey;
+
+            context.VirtualKeyGroupTransactions.Add(transaction);
+            await context.SaveChangesAsync();
+            await databaseTransaction.CommitAsync();
+
+            Logger.LogInformation(
+                "Atomically adjusted balance for group {GroupId} by {Amount}. Previous: {PreviousBalance}, New: {Balance}, ReferenceType: {ReferenceType}",
+                groupId, amount, previousBalance, group.Balance, referenceType);
+
+            return group;
+        });
     }
 
     private async Task<BalanceAdjustmentResult> GetCurrentStateAsync(ConduitDbContext context, int groupId, bool applied)

@@ -135,10 +135,6 @@ public class RefundService : IRefundService
         {
             // Re-read all mutable state inside the serializable transaction. This makes the aggregate
             // check safe when two admins refund the same charge concurrently.
-            var trackedGroup = await _context.VirtualKeyGroups
-                .SingleOrDefaultAsync(g => g.Id == virtualKeyGroupId, ct)
-                ?? throw new InvalidOperationException($"Virtual key group {virtualKeyGroupId} not found");
-
             var chargeAmount = await _context.VirtualKeyGroupTransactions
                 .IgnoreQueryFilters()
                 .Where(t => t.Id == originalTransactionKey
@@ -178,10 +174,43 @@ public class RefundService : IRefundService
                     $"charged {chargeAmount}, already refunded {refundedAmount}, requested {refundResult.RefundAmount}.");
             }
 
-            // Update group balance
-            var previousBalance = trackedGroup.Balance;
-            trackedGroup.Balance += refundResult.RefundAmount; // Refunds are always positive, so we add
-            trackedGroup.UpdatedAt = DateTime.UtcNow;
+            decimal previousBalance;
+            decimal newBalance;
+            if (_context is DbContext relationalContext && relationalContext.Database.IsRelational())
+            {
+                previousBalance = await _context.VirtualKeyGroups
+                    .Where(g => g.Id == virtualKeyGroupId)
+                    .Select(g => (decimal?)g.Balance)
+                    .SingleOrDefaultAsync(ct)
+                    ?? throw new InvalidOperationException($"Virtual key group {virtualKeyGroupId} not found");
+
+                var updatedAt = DateTime.UtcNow;
+                var rowsAffected = await _context.VirtualKeyGroups
+                    .Where(g => g.Id == virtualKeyGroupId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(g => g.Balance, g => g.Balance + refundResult.RefundAmount)
+                        .SetProperty(g => g.UpdatedAt, updatedAt), ct);
+                if (rowsAffected == 0)
+                {
+                    throw new InvalidOperationException($"Virtual key group {virtualKeyGroupId} not found");
+                }
+
+                newBalance = await _context.VirtualKeyGroups
+                    .Where(g => g.Id == virtualKeyGroupId)
+                    .Select(g => g.Balance)
+                    .SingleAsync(ct);
+            }
+            else
+            {
+                // ExecuteUpdate is unavailable for the in-memory provider used by unit tests.
+                var trackedGroup = await _context.VirtualKeyGroups
+                    .SingleOrDefaultAsync(g => g.Id == virtualKeyGroupId, ct)
+                    ?? throw new InvalidOperationException($"Virtual key group {virtualKeyGroupId} not found");
+                previousBalance = trackedGroup.Balance;
+                trackedGroup.Balance += refundResult.RefundAmount;
+                trackedGroup.UpdatedAt = DateTime.UtcNow;
+                newBalance = trackedGroup.Balance;
+            }
 
             // Create transaction record with Refund type
             var transaction = new VirtualKeyGroupTransaction
@@ -189,7 +218,7 @@ public class RefundService : IRefundService
                 VirtualKeyGroupId = virtualKeyGroupId,
                 TransactionType = TransactionType.Refund,
                 Amount = refundResult.RefundAmount, // Always positive
-                BalanceAfter = trackedGroup.Balance,
+                BalanceAfter = newBalance,
                 ReferenceType = ReferenceType.Manual, // Refunds are manual administrative actions
                 ReferenceId = originalTransactionId,
                 IdempotencyKey = idempotencyKey,
@@ -211,7 +240,7 @@ public class RefundService : IRefundService
                 modelId,
                 refundReason,
                 previousBalance,
-                trackedGroup.Balance,
+                newBalance,
                 transaction.Id);
         }, cancellationToken);
 
