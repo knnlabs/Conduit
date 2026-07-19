@@ -19,6 +19,21 @@ namespace ConduitLLM.Tests.Http.Controllers;
 public class ChatControllerStreamingTests
 {
     [Fact]
+    public void Constructor_Requires_Usage_Estimator()
+    {
+        var conduit = new Conduit(Mock.Of<ILLMClientFactory>(), Mock.Of<ILogger<Conduit>>());
+
+        Assert.Throws<ArgumentNullException>(() => new ChatController(
+            conduit,
+            Mock.Of<ILogger<ChatController>>(),
+            Mock.Of<IModelProviderMappingService>(),
+            new JsonSerializerOptions(),
+            Mock.Of<IEventBus>(),
+            Mock.Of<IGlobalSettingsCacheService>(),
+            null!));
+    }
+
+    [Fact]
     public async Task MidStream_Exception_Estimates_Accumulated_Content_And_Reasoning()
     {
         var client = new Mock<ILLMClient>();
@@ -67,6 +82,89 @@ public class ChatControllerStreamingTests
         Assert.Equal("test-model", controller.HttpContext.Items["StreamingModel"]);
         Assert.Equal(true, controller.HttpContext.Items["UsageIsEstimated"]);
         estimator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ToolCallOnly_Stream_Estimates_Serialized_Tool_Call()
+    {
+        var client = new Mock<ILLMClient>();
+        client.Setup(x => x.StreamChatCompletionAsync(
+                It.IsAny<ChatCompletionRequest>(), null, It.IsAny<CancellationToken>()))
+            .Returns(ToolCallOnlyStream());
+
+        var clientFactory = new Mock<ILLMClientFactory>();
+        clientFactory.Setup(x => x.GetClientAsync("test-model", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client.Object);
+
+        var estimator = new Mock<IUsageEstimationService>();
+        estimator.Setup(x => x.EstimateUsageFromStreamingResponseAsync(
+                "test-model",
+                It.IsAny<List<Message>>(),
+                It.Is<string>(output => output.Contains("get_weather") && output.Contains("Seattle")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Usage { PromptTokens = 3, CompletionTokens = 4, TotalTokens = 7 });
+
+        var controller = CreateController(new Conduit(clientFactory.Object, Mock.Of<ILogger<Conduit>>()), estimator.Object);
+        await controller.CreateChatCompletion(CreateRequest());
+
+        Assert.Equal(true, controller.HttpContext.Items["UsageIsEstimated"]);
+        Assert.Equal(7, Assert.IsType<Usage>(controller.HttpContext.Items["StreamingUsage"]).TotalTokens);
+        estimator.VerifyAll();
+    }
+
+    private static ChatController CreateController(Conduit conduit, IUsageEstimationService estimator)
+    {
+        var controller = new ChatController(
+            conduit,
+            Mock.Of<ILogger<ChatController>>(),
+            Mock.Of<IModelProviderMappingService>(),
+            new JsonSerializerOptions(),
+            Mock.Of<IEventBus>(),
+            Mock.Of<IGlobalSettingsCacheService>(),
+            estimator)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+        controller.HttpContext.Response.Body = new MemoryStream();
+        return controller;
+    }
+
+    private static ChatCompletionRequest CreateRequest() => new()
+    {
+        Model = "test-model",
+        Stream = true,
+        MaxAgenticIterations = 1,
+        EnableAgenticMode = false,
+        Messages = new List<Message> { new() { Role = "user", Content = "hello" } }
+    };
+
+    private static async IAsyncEnumerable<ChatCompletionChunk> ToolCallOnlyStream()
+    {
+        yield return new ChatCompletionChunk
+        {
+            Model = "test-model",
+            Choices = new List<StreamingChoice>
+            {
+                new()
+                {
+                    Index = 0,
+                    Delta = new DeltaContent
+                    {
+                        ToolCalls = new List<ToolCallChunk>
+                        {
+                            new()
+                            {
+                                Index = 0,
+                                Id = "call-1",
+                                Type = "function",
+                                Function = new FunctionCallChunk { Name = "get_weather", Arguments = "{\"city\":\"Seattle\"}" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        await Task.Yield();
     }
 
     private static async IAsyncEnumerable<ChatCompletionChunk> StreamThenThrow(

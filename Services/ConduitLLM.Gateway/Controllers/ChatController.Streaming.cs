@@ -173,8 +173,12 @@ namespace ConduitLLM.Gateway.Controllers
 
         private static void AccumulateToolCalls(ChatCompletionChunk chunk, StreamingAccumulatorState state)
         {
-            if (chunk.Choices?.Count > 0 && chunk.Choices[0].Delta?.ToolCalls is { } toolCallDeltas)
+            if (chunk.Choices == null) return;
+
+            foreach (var choice in chunk.Choices)
             {
+                if (choice.Delta?.ToolCalls is not { } toolCallDeltas) continue;
+
                 foreach (var toolCallChunk in toolCallDeltas)
                 {
                     if (!state.AccumulatedToolCalls.ContainsKey(toolCallChunk.Index))
@@ -271,14 +275,14 @@ namespace ConduitLLM.Gateway.Controllers
                 HttpContext.Items["StreamingModel"] = state.StreamingModel;
                 HttpContext.Items["UsageIsEstimated"] = false;
             }
-            else if (_usageEstimationService != null && state.ContentAccumulator.Length > 0)
+            else if (state.ContentAccumulator.Length > 0 || state.AccumulatedToolCalls.Count > 0)
             {
                 _logger.LogWarning("No usage data received from provider for streaming response, estimating usage for model {Model}", LoggingSanitizer.S(request.Model));
                 await EstimateStreamingUsageAsync(request, state, cancellationToken);
             }
-            else if (state.ContentAccumulator.Length == 0)
+            else
             {
-                _logger.LogWarning("No content accumulated from streaming response, cannot estimate usage");
+                _logger.LogWarning("No output accumulated from streaming response, cannot estimate usage");
             }
 
             // Store tool calls for request logging
@@ -329,10 +333,18 @@ namespace ConduitLLM.Gateway.Controllers
         {
             try
             {
-                var estimatedUsage = await _usageEstimationService!.EstimateUsageFromStreamingResponseAsync(
+                var completionOutput = state.ContentAccumulator.ToString();
+                if (state.AccumulatedToolCalls.Count > 0)
+                {
+                    completionOutput += JsonSerializer.Serialize(
+                        state.AccumulatedToolCalls.OrderBy(entry => entry.Key).Select(entry => entry.Value),
+                        _jsonSerializerOptions);
+                }
+
+                var estimatedUsage = await _usageEstimationService.EstimateUsageFromStreamingResponseAsync(
                     state.StreamingModel ?? request.Model,
                     request.Messages,
-                    state.ContentAccumulator.ToString(),
+                    completionOutput,
                     cancellationToken);
 
                 HttpContext.Items["StreamingUsage"] = estimatedUsage;

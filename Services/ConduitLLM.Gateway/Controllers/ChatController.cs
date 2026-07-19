@@ -30,7 +30,7 @@ namespace ConduitLLM.Gateway.Controllers
         private readonly ILogger<ChatController> _logger;
         private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
         private readonly JsonSerializerOptions _jsonSerializerOptions;
-        private readonly ConduitLLM.Core.Interfaces.IUsageEstimationService? _usageEstimationService;
+        private readonly ConduitLLM.Core.Interfaces.IUsageEstimationService _usageEstimationService;
         private readonly ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? _functionConfigRepository;
         private readonly ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService _globalSettingsCacheService;
 
@@ -41,7 +41,7 @@ namespace ConduitLLM.Gateway.Controllers
             JsonSerializerOptions jsonSerializerOptions,
             IEventBus eventBus,
             ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService globalSettingsCacheService,
-            ConduitLLM.Core.Interfaces.IUsageEstimationService? usageEstimationService = null,
+            ConduitLLM.Core.Interfaces.IUsageEstimationService usageEstimationService,
             ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null) : base(eventBus, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
@@ -49,7 +49,7 @@ namespace ConduitLLM.Gateway.Controllers
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
             _jsonSerializerOptions = jsonSerializerOptions ?? throw new ArgumentNullException(nameof(jsonSerializerOptions));
             _globalSettingsCacheService = globalSettingsCacheService ?? throw new ArgumentNullException(nameof(globalSettingsCacheService));
-            _usageEstimationService = usageEstimationService;
+            _usageEstimationService = usageEstimationService ?? throw new ArgumentNullException(nameof(usageEstimationService));
             _functionConfigRepository = functionConfigRepository;
         }
 
