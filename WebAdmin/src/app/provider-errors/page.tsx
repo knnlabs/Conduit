@@ -19,7 +19,7 @@ import {
   IconCircleX,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { ProviderErrorDashboard } from '@/components/provider-errors/ProviderErrorDashboard';
 import { ProviderErrorTable } from '@/components/provider-errors/ProviderErrorTable';
@@ -50,11 +50,7 @@ export default function ProviderErrorsPage() {
     setIsRefreshing(true);
     await refresh();
     setIsRefreshing(false);
-    notifications.show({
-      title: 'Refreshed',
-      message: 'Provider error data has been refreshed',
-      color: 'teal',
-    });
+    notify.success('Provider error data has been refreshed', 'Refreshed');
   };
 
   const handleClearErrors = async (keyId: number, reenableKey: boolean) => {
@@ -67,19 +63,11 @@ export default function ProviderErrorsPage() {
         })
       );
 
-      notifications.show({
-        title: 'Success',
-        message: `Errors cleared${reenableKey ? ' and key re-enabled' : ''}`,
-        color: 'teal',
-      });
+      notify.success(`Errors cleared${reenableKey ? ' and key re-enabled' : ''}`);
 
       await refresh();
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to clear errors',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to clear errors'));
     }
   };
 

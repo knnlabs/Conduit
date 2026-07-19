@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ConduitLLM.Functions.Enums;
+using ConduitLLM.Functions.Interfaces;
 
 namespace ConduitLLM.Functions.Entities;
 
@@ -10,7 +11,7 @@ namespace ConduitLLM.Functions.Entities;
 /// Links to both the parent chat completion request and the function execution.
 /// </summary>
 [Table("FunctionCallAudits")]
-public class FunctionCallAudit
+public class FunctionCallAudit : IAuditEvent
 {
     /// <summary>
     /// Unique identifier for this audit event

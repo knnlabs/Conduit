@@ -509,9 +509,6 @@ Enable debug logging to troubleshoot authentication issues:
 
 ## Related Documentation
 
-- [SignalR Architecture](./architecture.md) - Overall SignalR system architecture
 - [Hub Reference](./hub-reference.md) - Complete hub method reference
-- [Configuration Guide](./configuration.md) - SignalR configuration options
-- [API Reference](../api-reference/API-REFERENCE.md) - REST API documentation
-- [Virtual Key Management](../virtual-keys.md) - Virtual key management guide
-- [Security Guidelines](../operations/security/Security-Guidelines.md) - General security practices
+- [SignalR Configuration](../../operations/signalr/configuration.md) - SignalR configuration options
+- [Security Guidelines](../../operations/security/Security-Guidelines.md) - General security practices

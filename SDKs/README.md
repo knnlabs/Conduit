@@ -106,8 +106,8 @@ Each SDK includes:
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/knnlabs/Conduit/issues)
-- **Documentation**: [Conduit Docs](https://github.com/knnlabs/Conduit/docs)
+- **Issues**: [GitHub Issues](https://github.com/nickna/Conduit/issues)
+- **Documentation**: [Conduit Docs](https://github.com/nickna/Conduit/docs)
 - **Discord**: [Community Discord](https://discord.gg/conduit) (if available)
 
 ---

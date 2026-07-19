@@ -105,8 +105,8 @@ namespace ConduitLLM.Tests.Core.Fixtures
         {
             var mock = new Mock<IMediaRecordRepository>();
 
-            mock.Setup(x => x.CreateAsync(It.IsAny<MediaRecord>()))
-                .ReturnsAsync((MediaRecord record) => record);
+            mock.Setup(x => x.CreateAsync(It.IsAny<MediaRecord>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((MediaRecord record, CancellationToken _) => record.Id == Guid.Empty ? Guid.NewGuid() : record.Id);
 
             mock.Setup(x => x.GetByStorageKeyAsync(It.IsAny<string>()))
                 .ReturnsAsync((string key) => new MediaRecordBuilder()

@@ -22,7 +22,7 @@ import { useCreateModelMapping, useModelMappings } from '@/hooks/useModelMapping
 import { useModels } from '@/hooks/useModelsApi';
 import { useModelAssociations } from '@/hooks/useModelAssociations';
 import { AssociationProviderSelect } from './AssociationProviderSelect';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelMappingModalProps {
@@ -91,11 +91,7 @@ export function CreateModelMappingModal({
     const validationErrors = form.validate();
     if (validationErrors.hasErrors) {
       // Show notification about validation errors
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Please fill in all required fields correctly',
-        color: 'red',
-      });
+      notify.error(new Error('Please fill in all required fields correctly'));
       return;
     }
 
@@ -106,22 +102,14 @@ export function CreateModelMappingModal({
       const [associationId, providerId] = values.associationProviderId.split(':').map(Number);
       
       if (!associationId || !providerId) {
-        notifications.show({
-          title: 'Configuration Error',
-          message: 'Invalid provider configuration selected',
-          color: 'red',
-        });
+        notify.error(new Error('Invalid provider configuration selected'));
         return;
       }
 
       // Find the selected association to get the identifier
       const selectedAssociation = associations?.find(a => a.associationId === associationId);
       if (!selectedAssociation) {
-        notifications.show({
-          title: 'Configuration Error',
-          message: 'Selected configuration not found',
-          color: 'red',
-        });
+        notify.error(new Error('Selected configuration not found'));
         return;
       }
       
@@ -132,11 +120,7 @@ export function CreateModelMappingModal({
       );
       
       if (duplicateMapping) {
-        notifications.show({
-          title: 'Duplicate Mapping',
-          message: `This provider configuration is already mapped as '${duplicateMapping.modelAlias}'`,
-          color: 'red',
-        });
+        notify.error(new Error(`This provider configuration is already mapped as '${duplicateMapping.modelAlias}'`));
         return;
       }
 

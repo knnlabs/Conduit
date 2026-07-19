@@ -6,6 +6,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
@@ -13,7 +14,7 @@ using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Validation;
-using MassTransit;
+using ConduitLLM.Tests.Messaging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -35,7 +36,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected readonly Mock<ILLMClientFactory> ClientFactoryMock;
         protected readonly Mock<IAsyncTaskService> TaskServiceMock;
         protected readonly Mock<IMediaStorageService> StorageServiceMock;
-        protected readonly Mock<IPublishEndpoint> PublishEndpointMock;
+        protected readonly Mock<IEventBus> EventBusMock;
         protected readonly Mock<IModelProviderMappingService> ModelMappingServiceMock;
         protected readonly Mock<IVirtualKeyService> VirtualKeyServiceMock;
         protected readonly Mock<ICostCalculationService> CostServiceMock;
@@ -44,6 +45,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected readonly Mock<IHttpClientFactory> HttpClientFactoryMock;
         protected readonly Mock<MinimalParameterValidator> ParameterValidatorMock;
         protected readonly MediaGenerationMetrics Metrics;
+        protected readonly Mock<IProviderErrorTrackingService> ErrorTrackingServiceMock;
         protected readonly Mock<ILogger> LoggerMock;
 
         // System under test
@@ -70,13 +72,14 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             ClientFactoryMock = new Mock<ILLMClientFactory>();
             TaskServiceMock = new Mock<IAsyncTaskService>();
             StorageServiceMock = new Mock<IMediaStorageService>();
-            PublishEndpointMock = new Mock<IPublishEndpoint>();
+            EventBusMock = new Mock<IEventBus>();
             ModelMappingServiceMock = new Mock<IModelProviderMappingService>();
             VirtualKeyServiceMock = new Mock<IVirtualKeyService>();
             CostServiceMock = new Mock<ICostCalculationService>();
             TaskRegistryMock = new Mock<ICancellableTaskRegistry>();
             WebhookServiceMock = new Mock<IWebhookNotificationService>();
             HttpClientFactoryMock = new Mock<IHttpClientFactory>();
+            ErrorTrackingServiceMock = new Mock<IProviderErrorTrackingService>();
             LoggerMock = new Mock<ILogger>();
             
             // MinimalParameterValidator requires a logger in its constructor
@@ -181,11 +184,8 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(0.01m);
 
-            // Setup publish endpoint
-            PublishEndpointMock.Setup(x => x.Publish(
-                It.IsAny<object>(),
-                It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+            // No IEventBus setup needed — the loose mock returns a completed Task for
+            // any PublishAsync<TEvent> call; individual tests Verify specific publishes.
         }
 
         // ==========================================
@@ -193,17 +193,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         // ==========================================
 
         [Fact]
-        public async Task Consume_WhenRequestIsValid_ShouldProcessSuccessfully()
+        public async Task HandleAsync_WhenRequestIsValid_ShouldProcessSuccessfully()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -224,17 +224,39 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenGenerationFails_ShouldUpdateTaskAsFailed()
+        public async Task HandleAsync_ShouldGetClientByResolvedProviderId_NotByReResolvingModelName()
+        {
+            // Arrange - the default mapping mock has ModelAlias "test-model" and
+            // ProviderModelId "provider-model-id" (deliberately different), so re-resolving
+            // the provider model id as an alias would fail (issue #958)
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert
+            ClientFactoryMock.Verify(x => x.GetClientByProviderIdAsync(
+                1, "provider-model-id", It.IsAny<CancellationToken>()), Times.Once);
+            ClientFactoryMock.Verify(x => x.GetClientAsync(
+                It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenGenerationFails_ShouldUpdateTaskAsFailed()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var exception = new InvalidOperationException("Generation failed");
 
             SetupFailedGeneration(exception);
 
             // Act - Should handle failure gracefully
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should update task status to Failed with error message
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -254,17 +276,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         // Each derived orchestrator can implement its own cancellation test if needed.
 
         [Fact]
-        public async Task Consume_WhenVirtualKeyIsInvalid_ShouldFailGracefully()
+        public async Task HandleAsync_WhenVirtualKeyIsInvalid_ShouldFailGracefully()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
 
             VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
                 .ReturnsAsync((VirtualKey?)null);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should update task status to Failed with appropriate error
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -277,11 +299,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenVirtualKeyIsDisabled_ShouldFailGracefully()
+        public async Task HandleAsync_WhenVirtualKeyIsDisabled_ShouldFailGracefully()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
 
             VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
                 .ReturnsAsync(new VirtualKey
@@ -294,7 +316,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 });
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should update task status to Failed with appropriate error
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -307,17 +329,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenModelNotFound_ShouldFailGracefully()
+        public async Task HandleAsync_WhenModelNotFound_ShouldFailGracefully()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
 
             ModelMappingServiceMock.Setup(x => x.GetMappingByModelAliasAsync(It.IsAny<string>()))
                 .ReturnsAsync((ModelProviderMapping?)null);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should update task status to Failed with appropriate error
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -330,17 +352,17 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_ShouldRegisterAndUnregisterTaskInRegistry()
+        public async Task HandleAsync_ShouldRegisterAndUnregisterTaskInRegistry()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             TaskRegistryMock.Verify(x => x.RegisterTask(
@@ -352,23 +374,23 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WhenWebhookConfigured_ShouldSendNotification()
+        public async Task HandleAsync_WhenWebhookConfigured_ShouldSendNotification()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             var webhookUrl = GetWebhookUrl(request);
             if (!string.IsNullOrEmpty(webhookUrl))
             {
-                PublishEndpointMock.Verify(x => x.Publish(
+                EventBusMock.Verify(x => x.PublishAsync(
                     It.Is<WebhookDeliveryRequested>(w => 
                         w.TaskId == GetRequestId(request) &&
                         w.WebhookUrl == webhookUrl),
@@ -376,30 +398,149 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             }
         }
 
+        [Fact]
+        public async Task HandleAsync_WhenMappingHasModelCostId_ShouldUseDirectCostLookupAndPublishSpend()
+        {
+            // Arrange - mapping resolved through the model catalog: legacy ProviderModelId is stale
+            // ("unknown"), but the association carries a direct ModelCost link (issue #955)
+            SetupMappingWithAssociation(providerModelId: "unknown", modelCostId: 42, identifier: "canonical-model-id");
+
+            CostServiceMock.Setup(x => x.CalculateCostByIdAsync(
+                42,
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(0.05m);
+
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert - direct lookup used, string matching skipped
+            CostServiceMock.Verify(x => x.CalculateCostByIdAsync(
+                42,
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                It.IsAny<string>(),
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+
+            // Assert - spend event published with the calculated cost
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<SpendUpdateRequested>(e => e.KeyId == 1 && e.Amount == 0.05m),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenNoModelCostId_ShouldFallBackToAssociationIdentifierLookup()
+        {
+            // Arrange - no direct cost link; the string fallback must use the association's
+            // canonical identifier (what cost records match against), not the stale ProviderModelId
+            SetupMappingWithAssociation(providerModelId: "unknown", modelCostId: null, identifier: "canonical-model-id");
+
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                "canonical-model-id",
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            CostServiceMock.Verify(x => x.CalculateCostByIdAsync(
+                It.IsAny<int>(),
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenCostIsZero_ShouldNotPublishSpendEvent()
+        {
+            // Arrange
+            SetupMappingWithAssociation(providerModelId: "unknown", modelCostId: 42, identifier: "canonical-model-id");
+
+            CostServiceMock.Setup(x => x.CalculateCostByIdAsync(
+                42,
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(0m);
+
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.IsAny<SpendUpdateRequested>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
         // ==========================================
         // Helper Methods
         // ==========================================
 
+        /// <summary>
+        /// Configures the model mapping service to return a mapping whose
+        /// ModelProviderTypeAssociation carries the given cost linkage.
+        /// </summary>
+        protected void SetupMappingWithAssociation(string providerModelId, int? modelCostId, string identifier)
+        {
+            var testProvider = new Provider
+            {
+                Id = 1,
+                ProviderName = "Test Provider",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+
+            ModelMappingServiceMock.Setup(x => x.GetMappingByModelAliasAsync(It.IsAny<string>()))
+                .ReturnsAsync(new ModelProviderMapping
+                {
+                    Id = 1,
+                    ModelAlias = "test-model",
+                    ProviderModelId = providerModelId,
+                    ProviderId = 1,
+                    Provider = testProvider,
+                    IsEnabled = true,
+                    ModelProviderTypeAssociationId = 10,
+                    ModelProviderTypeAssociation = new ModelProviderTypeAssociation
+                    {
+                        Id = 10,
+                        ModelId = 100,
+                        Identifier = identifier,
+                        ModelCostId = modelCostId,
+                        IsEnabled = true
+                    }
+                });
+        }
+
         protected abstract void SetupSuccessfulGeneration(TResponse response);
         protected abstract void SetupFailedGeneration(Exception exception);
 
-        protected Mock<ConsumeContext<TEventRequest>> CreateConsumeContext(
-            TEventRequest message, 
-            CancellationToken cancellationToken = default)
+        protected TestEventContext CreateEventContext(CancellationToken cancellationToken = default)
         {
-            var contextMock = new Mock<ConsumeContext<TEventRequest>>();
-            contextMock.Setup(x => x.Message).Returns(message);
-            contextMock.Setup(x => x.CancellationToken).Returns(cancellationToken);
-            contextMock.Setup(x => x.MessageId).Returns(Guid.NewGuid());
-            contextMock.Setup(x => x.CorrelationId).Returns(Guid.NewGuid());
-            contextMock.Setup(x => x.ConversationId).Returns(Guid.NewGuid());
-            
-            // Setup publish endpoint interface
-            contextMock.As<IPublishEndpoint>()
-                .Setup(x => x.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-            
-            return contextMock;
+            return new TestEventContext
+            {
+                CancellationToken = cancellationToken,
+                CorrelationId = Guid.NewGuid().ToString()
+            };
         }
     }
     

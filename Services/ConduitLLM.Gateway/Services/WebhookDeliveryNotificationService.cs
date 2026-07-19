@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Core.Services;
 
@@ -318,21 +319,21 @@ namespace ConduitLLM.Gateway.Services
         {
             // This is now handled by the metrics service when available
             // Keep as fallback for when Redis is not available
-            _logger.LogDebug("Recording delivery attempt for {WebhookUrl} (fallback mode)", webhookUrl);
+            _logger.LogDebug("Recording delivery attempt for {WebhookUrl} (fallback mode)", LoggingSanitizer.S(webhookUrl));
         }
 
         public void RecordDeliverySuccess(string webhookUrl, long responseTimeMs)
         {
             // This is now handled by the metrics service when available
             // Keep as fallback for when Redis is not available
-            _logger.LogDebug("Recording delivery success for {WebhookUrl} (fallback mode)", webhookUrl);
+            _logger.LogDebug("Recording delivery success for {WebhookUrl} (fallback mode)", LoggingSanitizer.S(webhookUrl));
         }
 
         public void RecordDeliveryFailure(string webhookUrl, bool isPermanent)
         {
             // This is now handled by the metrics service when available
             // Keep as fallback for when Redis is not available
-            _logger.LogDebug("Recording delivery failure for {WebhookUrl} (fallback mode)", webhookUrl);
+            _logger.LogDebug("Recording delivery failure for {WebhookUrl} (fallback mode)", LoggingSanitizer.S(webhookUrl));
         }
 
         public async Task<WebhookStatistics> GetStatisticsAsync(string period = "last_hour")

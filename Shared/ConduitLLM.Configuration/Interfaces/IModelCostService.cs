@@ -62,7 +62,9 @@ public interface IModelCostService
     Task<bool> DeleteModelCostAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Clears the cache for model costs
+    /// Clears the cache for model costs asynchronously.
     /// </summary>
-    void ClearCache();
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A task representing the asynchronous operation</returns>
+    Task ClearCacheAsync(CancellationToken cancellationToken = default);
 }

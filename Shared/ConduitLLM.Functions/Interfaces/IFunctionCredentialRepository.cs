@@ -13,7 +13,32 @@ public interface IFunctionCredentialRepository
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of all credentials</returns>
+    /// <remarks>
+    /// DEPRECATED: Use GetAllUnboundedAsync() for unbounded queries,
+    /// or GetPaginatedAsync() for bounded pagination.
+    /// </remarks>
+    [Obsolete("Use GetAllUnboundedAsync() for cache warming/exports, or GetPaginatedAsync() for bounded queries. This method will be removed in a future version.")]
     Task<List<FunctionCredential>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all function credentials WITHOUT pagination. Use ONLY for legitimate batch operations
+    /// like cache warming, exports, or migrations.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of all credentials</returns>
+    Task<List<FunctionCredential>> GetAllUnboundedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a paginated list of function credentials.
+    /// </summary>
+    /// <param name="page">Page number (1-based)</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A tuple containing the items and total count</returns>
+    Task<(List<FunctionCredential> Items, int TotalCount)> GetPaginatedAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a function credential by ID
@@ -69,14 +94,16 @@ public interface IFunctionCredentialRepository
     /// </summary>
     /// <param name="credential">The credential to update</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task UpdateAsync(FunctionCredential credential, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was updated</returns>
+    Task<bool> UpdateAsync(FunctionCredential credential, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a function credential by ID
     /// </summary>
     /// <param name="id">The credential ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task DeleteAsync(int id, CancellationToken cancellationToken = default);
+    /// <returns>True if the entity was deleted</returns>
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a credential as primary and unsets any existing primary credential for the provider type

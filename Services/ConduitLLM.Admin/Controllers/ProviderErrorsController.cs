@@ -1,15 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using ConduitLLM.Admin.DTOs;
+using ConduitLLM.Admin.Filters;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -19,13 +15,13 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/provider-errors")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class ProviderErrorsController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class ProviderErrorsController : AdminControllerBase
     {
         private readonly IProviderErrorTrackingService _errorService;
         private readonly IProviderKeyCredentialRepository _keyRepo;
         private readonly IProviderRepository _providerRepo;
-        private readonly IPublishEndpoint _publishEndpoint;
-        private readonly ILogger<ProviderErrorsController> _logger;
+        private readonly IEventBus _eventBus;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProviderErrorsController"/> class.
@@ -34,14 +30,14 @@ namespace ConduitLLM.Admin.Controllers
             IProviderErrorTrackingService errorService,
             IProviderKeyCredentialRepository keyRepo,
             IProviderRepository providerRepo,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<ProviderErrorsController> logger)
+            : base(eventBus, logger)
         {
             _errorService = errorService ?? throw new ArgumentNullException(nameof(errorService));
             _keyRepo = keyRepo ?? throw new ArgumentNullException(nameof(keyRepo));
             _providerRepo = providerRepo ?? throw new ArgumentNullException(nameof(providerRepo));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         }
 
         /// <summary>
@@ -53,43 +49,33 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of recent provider errors</returns>
         [HttpGet("recent")]
         [ProducesResponseType(typeof(List<ProviderErrorDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<List<ProviderErrorDto>>> GetRecentErrors(
+        public async Task<IActionResult> GetRecentErrors(
             [FromQuery] int? providerId = null,
             [FromQuery] int? keyId = null,
             [FromQuery] int limit = 100)
         {
-            try
-            {
-                if (limit > 1000)
-                    limit = 1000; // Cap at 1000 for performance
+            if (limit > 1000)
+                limit = 1000; // Cap at 1000 for performance
 
-                var errors = await _errorService.GetRecentErrorsAsync(providerId, keyId, limit);
-                
-                // Get provider and key names for display
-                var providers = await _providerRepo.GetAllAsync();
-                var providerMap = providers.ToDictionary(p => p.Id, p => p.ProviderName);
-                
-                var dtos = errors.Select(e => new ProviderErrorDto
-                {
-                    KeyCredentialId = e.KeyCredentialId,
-                    ProviderId = e.ProviderId,
-                    ProviderName = providerMap.GetValueOrDefault(e.ProviderId),
-                    ErrorType = e.ErrorType.ToString(),
-                    ErrorMessage = e.ErrorMessage,
-                    HttpStatusCode = e.HttpStatusCode,
-                    OccurredAt = e.OccurredAt,
-                    IsFatal = e.IsFatal,
-                    ModelName = e.ModelName
-                }).ToList();
+            var errors = await _errorService.GetRecentErrorsAsync(providerId, keyId, limit);
 
-                return Ok(dtos);
-            }
-            catch (Exception ex)
+            // Get provider names for display using efficient lookup
+            var providerMap = await _providerRepo.GetProviderNameMapAsync();
+
+            var dtos = errors.Select(e => new ProviderErrorDto
             {
-                _logger.LogError(ex, "Failed to get recent errors");
-                return StatusCode(500, new { error = "Failed to retrieve error data" });
-            }
+                KeyCredentialId = e.KeyCredentialId,
+                ProviderId = e.ProviderId,
+                ProviderName = providerMap.GetValueOrDefault(e.ProviderId),
+                ErrorType = e.ErrorType.ToString(),
+                ErrorMessage = e.ErrorMessage,
+                HttpStatusCode = e.HttpStatusCode,
+                OccurredAt = e.OccurredAt,
+                IsFatal = e.IsFatal,
+                ModelName = e.ModelName
+            }).ToList();
+
+            return Ok(dtos);
         }
 
         /// <summary>
@@ -98,39 +84,46 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of provider error summaries</returns>
         [HttpGet("summary")]
         [ProducesResponseType(typeof(List<ProviderErrorSummaryDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<List<ProviderErrorSummaryDto>>> GetErrorSummary()
+        public async Task<IActionResult> GetErrorSummary()
         {
-            try
-            {
-                var providers = await _providerRepo.GetAllAsync();
-                var summaries = new List<ProviderErrorSummaryDto>();
+            // Use paginated retrieval - get all providers in batches
+            var allProviders = new List<ConduitLLM.Configuration.Entities.Provider>();
+            var pageNumber = 1;
+            const int pageSize = 100;
+            int totalCount;
 
-                foreach (var provider in providers)
+            do
+            {
+                var (items, count) = await _providerRepo.GetPaginatedAsync(pageNumber, pageSize);
+                allProviders.AddRange(items);
+                totalCount = count;
+                pageNumber++;
+            } while (allProviders.Count < totalCount);
+
+            // Fetch all provider summaries in parallel to avoid N+1
+            var summaryTasks = allProviders.Select(async provider =>
+            {
+                var summary = await _errorService.GetProviderSummaryAsync(provider.Id);
+                return (provider, summary);
+            });
+
+            var results = await Task.WhenAll(summaryTasks);
+
+            var summaries = results
+                .Where(r => r.summary != null)
+                .Select(r => new ProviderErrorSummaryDto
                 {
-                    var summary = await _errorService.GetProviderSummaryAsync(provider.Id);
-                    if (summary != null)
-                    {
-                        summaries.Add(new ProviderErrorSummaryDto
-                        {
-                            ProviderId = provider.Id,
-                            ProviderName = provider.ProviderName,
-                            TotalErrors = summary.TotalErrors,
-                            FatalErrors = summary.FatalErrors,
-                            Warnings = summary.Warnings,
-                            DisabledKeyIds = summary.DisabledKeyIds,
-                            LastError = summary.LastError
-                        });
-                    }
-                }
+                    ProviderId = r.provider.Id,
+                    ProviderName = r.provider.ProviderName,
+                    TotalErrors = r.summary!.TotalErrors,
+                    FatalErrors = r.summary.FatalErrors,
+                    Warnings = r.summary.Warnings,
+                    DisabledKeyIds = r.summary.DisabledKeyIds,
+                    LastError = r.summary.LastError
+                })
+                .ToList();
 
-                return Ok(summaries);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get error summary");
-                return StatusCode(500, new { error = "Failed to retrieve error summary" });
-            }
+            return Ok(summaries);
         }
 
         /// <summary>
@@ -141,52 +134,43 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("keys/{keyId}")]
         [ProducesResponseType(typeof(KeyErrorDetailsDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<KeyErrorDetailsDto>> GetKeyErrors(int keyId)
+        public async Task<IActionResult> GetKeyErrors(int keyId)
         {
-            try
+            var details = await _errorService.GetKeyErrorDetailsAsync(keyId);
+            if (details == null)
             {
-                var details = await _errorService.GetKeyErrorDetailsAsync(keyId);
-                if (details == null)
-                {
-                    return NotFound(new { error = $"No error data found for key {keyId}" });
-                }
+                throw new KeyNotFoundException($"No error data found for key {keyId}");
+            }
 
-                var dto = new KeyErrorDetailsDto
+            var dto = new KeyErrorDetailsDto
+            {
+                KeyId = details.KeyId,
+                KeyName = details.KeyName,
+                IsDisabled = details.IsDisabled,
+                DisabledAt = details.DisabledAt
+            };
+
+            if (details.FatalError != null)
+            {
+                dto.FatalError = new FatalErrorDto
                 {
-                    KeyId = details.KeyId,
-                    KeyName = details.KeyName,
-                    IsDisabled = details.IsDisabled,
-                    DisabledAt = details.DisabledAt
+                    ErrorType = details.FatalError.ErrorType.ToString(),
+                    Count = details.FatalError.Count,
+                    FirstSeen = details.FatalError.FirstSeen,
+                    LastSeen = details.FatalError.LastSeen,
+                    LastErrorMessage = details.FatalError.LastErrorMessage,
+                    LastStatusCode = details.FatalError.LastStatusCode
                 };
-
-                if (details.FatalError != null)
-                {
-                    dto.FatalError = new FatalErrorDto
-                    {
-                        ErrorType = details.FatalError.ErrorType.ToString(),
-                        Count = details.FatalError.Count,
-                        FirstSeen = details.FatalError.FirstSeen,
-                        LastSeen = details.FatalError.LastSeen,
-                        LastErrorMessage = details.FatalError.LastErrorMessage,
-                        LastStatusCode = details.FatalError.LastStatusCode
-                    };
-                }
-
-                dto.RecentWarnings = details.RecentWarnings.Select(w => new WarningErrorDto
-                {
-                    Type = w.Type.ToString(),
-                    Message = w.Message,
-                    Timestamp = w.Timestamp
-                }).ToList();
-
-                return Ok(dto);
             }
-            catch (Exception ex)
+
+            dto.RecentWarnings = details.RecentWarnings.Select(w => new WarningErrorDto
             {
-                _logger.LogError(ex, "Failed to get key errors for key {KeyId}", keyId);
-                return StatusCode(500, new { error = "Failed to retrieve key error data" });
-            }
+                Type = w.Type.ToString(),
+                Message = w.Message,
+                Timestamp = w.Timestamp
+            }).ToList();
+
+            return Ok(dto);
         }
 
         /// <summary>
@@ -198,67 +182,54 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("keys/{keyId}/clear")]
         [ProducesResponseType(typeof(ClearKeyErrorsResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ClearKeyErrors(
             int keyId,
             [FromBody] ClearErrorsRequest request)
         {
-            try
+            if (!request.ConfirmReenable && request.ReenableKey)
             {
-                if (!request.ConfirmReenable && request.ReenableKey)
+                return BadRequest(new { error = "Must confirm re-enabling the key" });
+            }
+
+            // Look up the key to get its providerId for proper cleanup
+            var key = await _keyRepo.GetByIdAsync(keyId);
+            int? providerId = key?.ProviderId;
+
+            // Clear errors from Redis (including provider disabled keys cleanup)
+            await _errorService.ClearErrorsForKeyAsync(keyId, providerId);
+
+            // Re-enable the key if requested
+            if (request.ReenableKey && key != null && !key.IsEnabled)
+            {
+                key.IsEnabled = true;
+                await _keyRepo.UpdateAsync(key);
+
+                // Publish event for UI update
+                PublishEventFireAndForget(new ProviderKeyReenabledEvent
                 {
-                    return BadRequest(new { error = "Must confirm re-enabling the key" });
-                }
-
-                // Clear errors from Redis
-                await _errorService.ClearErrorsForKeyAsync(keyId);
-                _logger.LogInformation("Cleared errors for key {KeyId}", keyId);
-
-                // Re-enable the key if requested
-                if (request.ReenableKey)
-                {
-                    var key = await _keyRepo.GetByIdAsync(keyId);
-                    if (key == null)
-                    {
-                        return NotFound(new { error = $"Key {keyId} not found" });
-                    }
-
-                    if (!key.IsEnabled)
-                    {
-                        key.IsEnabled = true;
-                        await _keyRepo.UpdateAsync(key);
-
-                        // Publish event for UI update
-                        await _publishEndpoint.Publish(new ProviderKeyReenabledEvent
-                        {
-                            KeyId = keyId,
-                            ProviderId = key.ProviderId,
-                            ReenabledBy = User.Identity?.Name ?? "Admin",
-                            Reason = request.Reason ?? "Manual re-enable after error resolution",
-                            ReenabledAt = DateTime.UtcNow
-                        });
-
-                        _logger.LogInformation(
-                            "Re-enabled key {KeyId} for provider {ProviderId} by {User}",
-                            keyId, key.ProviderId, User.Identity?.Name);
-                    }
-                }
-
-                return Ok(new ClearKeyErrorsResponseDto
-                {
-                    Message = request.ReenableKey
-                        ? "Errors cleared and key re-enabled successfully"
-                        : "Errors cleared successfully",
                     KeyId = keyId,
-                    Reenabled = request.ReenableKey
-                });
+                    ProviderId = key.ProviderId,
+                    ReenabledBy = User.Identity?.Name ?? "Admin",
+                    Reason = request.Reason ?? "Manual re-enable after error resolution",
+                    ReenabledAt = DateTime.UtcNow
+                }, "ClearKeyErrors");
+
+                LogAdminAudit("ClearedErrorsAndReenabled", "ProviderKeyCredential", keyId,
+                    $"ProviderId: {key.ProviderId}");
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Failed to clear errors for key {KeyId}", keyId);
-                return StatusCode(500, new { error = "Failed to clear key errors" });
+                LogAdminAudit("ClearedErrors", "ProviderKeyCredential", keyId);
             }
+
+            return Ok(new ClearKeyErrorsResponseDto
+            {
+                Message = request.ReenableKey
+                    ? "Errors cleared and key re-enabled successfully"
+                    : "Errors cleared successfully",
+                KeyId = keyId,
+                Reenabled = request.ReenableKey
+            });
         }
 
         /// <summary>
@@ -268,41 +239,34 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Error statistics</returns>
         [HttpGet("stats")]
         [ProducesResponseType(typeof(ErrorStatisticsDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<ErrorStatisticsDto>> GetErrorStatistics(
+        public async Task<IActionResult> GetErrorStatistics(
             [FromQuery] int hours = 24)
         {
-            try
+            if (hours > 168) // Cap at 1 week
+                hours = 168;
+
+            var window = TimeSpan.FromHours(hours);
+            var stats = await _errorService.GetErrorStatisticsAsync(window);
+
+            // Map provider IDs to names for the statistics
+            var providerNameMap = await _providerRepo.GetProviderNameMapAsync();
+            var errorsByProviderName = stats.ErrorsByProvider.ToDictionary(
+                kvp => providerNameMap.GetValueOrDefault(int.Parse(kvp.Key), $"Provider {kvp.Key}"),
+                kvp => kvp.Value);
+
+            var dto = new ErrorStatisticsDto
             {
-                if (hours > 168) // Cap at 1 week
-                    hours = 168;
+                TotalErrors = stats.TotalErrors,
+                FatalErrors = stats.FatalErrors,
+                Warnings = stats.Warnings,
+                DisabledKeys = stats.DisabledKeys,
+                ErrorsByType = stats.ErrorsByType,
+                ErrorsByProvider = errorsByProviderName,
+                TimeWindow = window,
+                GeneratedAt = DateTime.UtcNow
+            };
 
-                var window = TimeSpan.FromHours(hours);
-                var stats = await _errorService.GetErrorStatisticsAsync(window);
-                
-                // Get provider names for the statistics
-                var providers = await _providerRepo.GetAllAsync();
-                var providerNames = providers.ToDictionary(p => p.Id.ToString(), p => p.ProviderName);
-
-                var dto = new ErrorStatisticsDto
-                {
-                    TotalErrors = stats.TotalErrors,
-                    FatalErrors = stats.FatalErrors,
-                    Warnings = stats.Warnings,
-                    DisabledKeys = stats.DisabledKeys,
-                    ErrorsByType = stats.ErrorsByType,
-                    ErrorsByProvider = stats.ErrorsByProvider,
-                    TimeWindow = window,
-                    GeneratedAt = DateTime.UtcNow
-                };
-
-                return Ok(dto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get error statistics");
-                return StatusCode(500, new { error = "Failed to retrieve error statistics" });
-            }
+            return Ok(dto);
         }
 
         /// <summary>
@@ -313,26 +277,17 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Dictionary of key ID to error count</returns>
         [HttpGet("providers/{providerId}/key-errors")]
         [ProducesResponseType(typeof(Dictionary<int, int>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Dictionary<int, int>>> GetErrorCountsByKey(
+        public async Task<IActionResult> GetErrorCountsByKey(
             int providerId,
             [FromQuery] int hours = 1)
         {
-            try
-            {
-                if (hours > 24)
-                    hours = 24; // Cap at 24 hours
+            if (hours > 24)
+                hours = 24; // Cap at 24 hours
 
-                var window = TimeSpan.FromHours(hours);
-                var counts = await _errorService.GetErrorCountsByKeyAsync(providerId, window);
+            var window = TimeSpan.FromHours(hours);
+            var counts = await _errorService.GetErrorCountsByKeyAsync(providerId, window);
 
-                return Ok(counts);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get error counts for provider {ProviderId}", providerId);
-                return StatusCode(500, new { error = "Failed to retrieve error counts" });
-            }
+            return Ok(counts);
         }
 
         /// <summary>
@@ -344,35 +299,25 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("keys/{keyId}/disable")]
         [ProducesResponseType(typeof(DisableKeyResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DisableKey(
             int keyId,
             [FromBody] string reason)
         {
-            try
+            if (string.IsNullOrWhiteSpace(reason))
             {
-                if (string.IsNullOrWhiteSpace(reason))
-                {
-                    return BadRequest(new { error = "Reason is required for disabling a key" });
-                }
-
-                await _errorService.DisableKeyAsync(keyId, $"Manual disable: {reason}");
-                
-                _logger.LogInformation(
-                    "Manually disabled key {KeyId} by {User}: {Reason}",
-                    keyId, User.Identity?.Name, reason);
-
-                return Ok(new DisableKeyResponseDto
-                {
-                    Message = "Key disabled successfully",
-                    KeyId = keyId
-                });
+                return BadRequest(new { error = "Reason is required for disabling a key" });
             }
-            catch (Exception ex)
+
+            await _errorService.DisableKeyAsync(keyId, $"Manual disable: {reason}");
+
+            LogAdminAudit("Disabled", "ProviderKeyCredential", keyId,
+                $"Reason: {reason}");
+
+            return Ok(new DisableKeyResponseDto
             {
-                _logger.LogError(ex, "Failed to disable key {KeyId}", keyId);
-                return StatusCode(500, new { error = "Failed to disable key" });
-            }
+                Message = "Key disabled successfully",
+                KeyId = keyId
+            });
         }
     }
 }

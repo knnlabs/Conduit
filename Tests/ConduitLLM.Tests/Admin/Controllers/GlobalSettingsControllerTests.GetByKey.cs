@@ -1,9 +1,6 @@
-using ConduitLLM.Tests.Admin.TestHelpers;
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Controllers
@@ -31,8 +28,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetSettingByKey("rate_limit");
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedSetting = Assert.IsType<GlobalSettingDto>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedSetting = okResult.Value.Should().BeOfType<GlobalSettingDto>().Subject;
             returnedSetting.Key.Should().Be("rate_limit");
         }
 
@@ -47,27 +44,22 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetSettingByKey("non_existing");
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             notFoundResult.Value.Should().NotBeNull();
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            errorResponse.error.Should().Be("Global setting not found");
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            errorResponse.Code.Should().Be("not_found");
         }
 
         [Fact]
-        public async Task GetSettingByKey_WithException_ShouldReturn500()
+        public async Task GetSettingByKey_WithException_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.GetSettingByKeyAsync(It.IsAny<string>()))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.GetSettingByKey("test_key");
-
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error getting global setting with key");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.GetSettingByKey("test_key");
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

@@ -300,7 +300,7 @@ if (process.env.NODE_ENV === 'development') {
 
 If you're still experiencing issues:
 
-1. Check the [GitHub Issues](https://github.com/knnlabs/Conduit/issues)
+1. Check the [GitHub Issues](https://github.com/nickna/Conduit/issues)
 2. Review the [Documentation](./README.md)
 3. Enable debug logging and collect logs
 4. Create a minimal reproduction example

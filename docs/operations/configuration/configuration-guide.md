@@ -240,6 +240,7 @@ Key environment variables for configuration:
 | `DB_PROVIDER` | Database provider: `sqlite` or `postgres` | `sqlite` |
 | `CONDUIT_SQLITE_PATH` | SQLite database path | None |
 | `CONDUIT_POSTGRES_CONNECTION_STRING` | PostgreSQL connection string | None |
+| `CONDUIT_HEALTH_MONITORING_KEY` | Health endpoint auth key for external monitoring | None |
 | `CONDUITLLM_CACHE_ENABLED` | Enable response caching | `true` |
 | `CONDUITLLM_PORT` | Port for the HTTP server | `5000` |
 | `CONDUITLLM_LOG_LEVEL` | Logging level | `Information` |

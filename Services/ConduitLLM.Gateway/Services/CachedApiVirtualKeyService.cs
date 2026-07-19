@@ -1,10 +1,12 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
+using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Gateway.Services
@@ -13,11 +15,8 @@ namespace ConduitLLM.Gateway.Services
     /// High-performance Virtual Key service with Redis caching and immediate invalidation
     /// Maintains security guarantees while providing ~50x performance improvement
     /// </summary>
-    public class CachedApiVirtualKeyService : EventPublishingServiceBase, IVirtualKeyService
+    public class CachedApiVirtualKeyService : VirtualKeyServiceBase, IVirtualKeyService
     {
-        private readonly IVirtualKeyRepository _virtualKeyRepository;
-        private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
-        private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly ConduitLLM.Core.Interfaces.IVirtualKeyCache _cache;
         private readonly ILogger<CachedApiVirtualKeyService> _logger;
 
@@ -26,19 +25,27 @@ namespace ConduitLLM.Gateway.Services
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IVirtualKeyGroupRepository groupRepository,
             ConduitLLM.Core.Interfaces.IVirtualKeyCache cache,
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger<CachedApiVirtualKeyService> logger)
-            : base(publishEndpoint, logger)
+            : base(virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger)
         {
-            _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
-            _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
-            _groupRepository = groupRepository ?? throw new ArgumentNullException(nameof(groupRepository));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
-            // Log event publishing configuration status
-            LogEventPublishingConfiguration(nameof(CachedApiVirtualKeyService));
         }
+
+        #region Virtual Key Hooks (Cache Invalidation)
+
+        protected override async Task OnVirtualKeyUpdatedAsync(VirtualKey key, string[] changedProperties)
+        {
+            await _cache.InvalidateVirtualKeyAsync(key.KeyHash);
+        }
+
+        protected override async Task OnVirtualKeyDeletedAsync(VirtualKey key)
+        {
+            await _cache.InvalidateVirtualKeyAsync(key.KeyHash);
+        }
+
+        #endregion
 
         /// <summary>
         /// Validates virtual key for authentication only (no balance check)
@@ -57,14 +64,14 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var keyHash = VirtualKeyUtilities.HashKey(key);
-                _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}", 
-                    key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
-                
+                _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}",
+                    LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
+
                 // Use cache with database fallback
-                var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash => 
+                var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash =>
                 {
                     // This fallback only runs on cache miss
-                    var dbKey = await _virtualKeyRepository.GetByKeyHashAsync(hash);
+                    var dbKey = await VirtualKeyRepository.GetByKeyHashAsync(hash);
                     _logger.LogDebug("Database fallback executed for Virtual Key authentication validation");
                     return dbKey;
                 });
@@ -77,10 +84,10 @@ namespace ConduitLLM.Gateway.Services
 
                 // Validate without balance check
                 var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
-                    virtualKey, 
-                    requestedModel, 
-                    checkBalance: false, 
-                    groupRepository: null, 
+                    virtualKey,
+                    requestedModel,
+                    checkBalance: false,
+                    groupRepository: null,
                     _logger);
 
                 return validationResult.IsValid ? virtualKey : null;
@@ -104,14 +111,14 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var keyHash = VirtualKeyUtilities.HashKey(key);
-                _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}", 
-                    key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
-                
+                _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}",
+                    LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
+
                 // Use cache with database fallback
-                var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash => 
+                var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash =>
                 {
                     // This fallback only runs on cache miss
-                    var dbKey = await _virtualKeyRepository.GetByKeyHashAsync(hash);
+                    var dbKey = await VirtualKeyRepository.GetByKeyHashAsync(hash);
                     _logger.LogDebug("Database fallback executed for Virtual Key validation");
                     return dbKey;
                 });
@@ -124,20 +131,23 @@ namespace ConduitLLM.Gateway.Services
 
                 // Validate with balance check
                 var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
-                    virtualKey, 
-                    requestedModel, 
-                    checkBalance: true, 
-                    _groupRepository, 
+                    virtualKey,
+                    requestedModel,
+                    checkBalance: true,
+                    GroupRepository,
                     _logger);
 
                 if (!validationResult.IsValid)
                 {
+                    _logger.LogWarning("Virtual key {KeyId} validation failed: {Reason}",
+                        virtualKey.Id, validationResult.Reason ?? "unknown");
+
                     // Handle 402 status code for insufficient balance
                     if (validationResult.StatusCode == 402)
                     {
                         // Note: This violates clean architecture but is pragmatic
                         // TODO: Find a better way to handle this
-                        try 
+                        try
                         {
                             var httpContext = new Microsoft.AspNetCore.Http.HttpContextAccessor().HttpContext;
                             if (httpContext != null)
@@ -145,7 +155,10 @@ namespace ConduitLLM.Gateway.Services
                                 httpContext.Response.StatusCode = 402;
                             }
                         }
-                        catch { /* Ignore if no HTTP context */ }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Could not set 402 status — HTTP context not available for insufficient balance response");
+                        }
                     }
                     return null;
                 }
@@ -160,216 +173,9 @@ namespace ConduitLLM.Gateway.Services
         }
 
         /// <inheritdoc />
-        public async Task<CreateVirtualKeyResponseDto> GenerateVirtualKeyAsync(CreateVirtualKeyRequestDto request)
-        {
-            try
-            {
-                // Generate a new key with prefix
-                var keyValue = VirtualKeyUtilities.GenerateSecureKey();
-                var keyWithPrefix = $"condt_{keyValue}";
-                
-                // Hash the key for storage
-                var keyHash = VirtualKeyUtilities.HashKey(keyWithPrefix);
-                
-                // VirtualKeyGroupId is now required
-                var groupId = request.VirtualKeyGroupId;
-
-                // Create the virtual key entity
-                var virtualKey = new VirtualKey
-                {
-                    KeyName = request.KeyName ?? string.Empty,
-                    KeyHash = keyHash,
-                    AllowedModels = request.AllowedModels,
-                    VirtualKeyGroupId = groupId,
-                    IsEnabled = true,
-                    ExpiresAt = request.ExpiresAt,
-                    Metadata = request.Metadata,
-                    RateLimitRpm = request.RateLimitRpm,
-                    RateLimitRpd = request.RateLimitRpd,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                
-                // Save to database
-                var createdId = await _virtualKeyRepository.CreateAsync(virtualKey);
-                
-                if (createdId > 0)
-                {
-                    // Retrieve the created virtual key to get all populated fields
-                    var created = await _virtualKeyRepository.GetByIdAsync(createdId);
-                    if (created != null)
-                    {
-                        _logger.LogInformation("Created new virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(created.KeyName), created.Id);
-                        
-                        // Return the response with the actual key (only shown once)
-                        return new CreateVirtualKeyResponseDto
-                        {
-                            VirtualKey = keyWithPrefix,
-                            KeyInfo = VirtualKeyUtilities.MapToDto(created)
-                        };
-                    }
-                }
-                
-                throw new InvalidOperationException("Failed to create virtual key");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating virtual key");
-                throw;
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task<VirtualKeyDto?> GetVirtualKeyInfoAsync(int id)
-        {
-            try
-            {
-                var virtualKey = await _virtualKeyRepository.GetByIdAsync(id);
-                if (virtualKey == null)
-                {
-                    _logger.LogWarning("Virtual key with ID {KeyId} not found", id);
-                    return null;
-                }
-                
-                return VirtualKeyUtilities.MapToDto(virtualKey);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving virtual key info for ID {KeyId}", id);
-                throw;
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task<List<VirtualKeyDto>> ListVirtualKeysAsync()
-        {
-            try
-            {
-                var virtualKeys = await _virtualKeyRepository.GetAllAsync();
-                return [..virtualKeys.Select(VirtualKeyUtilities.MapToDto)];
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error listing virtual keys");
-                throw;
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task<bool> UpdateVirtualKeyAsync(int id, UpdateVirtualKeyRequestDto request)
-        {
-            try
-            {
-                var virtualKey = await _virtualKeyRepository.GetByIdAsync(id);
-                if (virtualKey == null)
-                {
-                    _logger.LogWarning("Virtual key with ID {KeyId} not found for update", id);
-                    return false;
-                }
-                
-                // Update fields only if provided (null means no change)
-                if (request.KeyName != null)
-                    virtualKey.KeyName = request.KeyName;
-                    
-                if (request.AllowedModels != null)
-                    virtualKey.AllowedModels = string.IsNullOrEmpty(request.AllowedModels) ? null : request.AllowedModels;
-                    
-                if (request.VirtualKeyGroupId.HasValue)
-                    virtualKey.VirtualKeyGroupId = request.VirtualKeyGroupId.Value;
-                    
-                if (request.IsEnabled.HasValue)
-                    virtualKey.IsEnabled = request.IsEnabled.Value;
-                    
-                if (request.ExpiresAt.HasValue)
-                    virtualKey.ExpiresAt = request.ExpiresAt.Value;
-                    
-                if (request.Metadata != null)
-                    virtualKey.Metadata = string.IsNullOrEmpty(request.Metadata) ? null : request.Metadata;
-                    
-                if (request.RateLimitRpm.HasValue)
-                    virtualKey.RateLimitRpm = request.RateLimitRpm.Value;
-                    
-                if (request.RateLimitRpd.HasValue)
-                    virtualKey.RateLimitRpd = request.RateLimitRpd.Value;
-                
-                virtualKey.UpdatedAt = DateTime.UtcNow;
-                
-                var success = await _virtualKeyRepository.UpdateAsync(virtualKey);
-                
-                if (success)
-                {
-                    // SECURITY CRITICAL: Immediately invalidate cache
-                    await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                    _logger.LogInformation("Updated virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(virtualKey.KeyName), id);
-                }
-                
-                return success;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating virtual key with ID {KeyId}", id);
-                return false;
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task<bool> DeleteVirtualKeyAsync(int id)
-        {
-            try
-            {
-                var virtualKey = await _virtualKeyRepository.GetByIdAsync(id);
-                if (virtualKey == null)
-                {
-                    _logger.LogWarning("Virtual key with ID {KeyId} not found for deletion", id);
-                    return false;
-                }
-                
-                var success = await _virtualKeyRepository.DeleteAsync(id);
-                
-                if (success)
-                {
-                    // SECURITY CRITICAL: Immediately invalidate cache
-                    await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                    _logger.LogInformation("Deleted virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(virtualKey.KeyName), id);
-                }
-                
-                return success;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}", id);
-                return false;
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task<bool> ResetSpendAsync(int id)
-        {
-            var virtualKey = await _virtualKeyRepository.GetByIdAsync(id);
-            if (virtualKey == null) return false;
-
-            try
-            {
-                // Budget tracking is now at the group level
-                // This method is deprecated but kept for compatibility
-                _logger.LogWarning("ResetSpendAsync called for key {KeyId} - this operation is no longer supported", id);
-                
-                // Still invalidate cache for consistency
-                await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}", id);
-                return false;
-            }
-        }
-
-        /// <inheritdoc />
         public async Task<bool> UpdateSpendAsync(int keyId, decimal cost)
         {
-            if (cost <= 0) 
+            if (cost <= 0)
             {
                 _logger.LogDebug("Spend update for key {KeyId} has zero or negative cost {Cost} - skipping", keyId, cost);
                 return true; // No cost to add, consider it successful
@@ -381,8 +187,8 @@ namespace ConduitLLM.Gateway.Services
                 {
                     // Event-driven approach - publish SpendUpdateRequested event
                     var requestId = Guid.NewGuid().ToString();
-                    
-                    await PublishEventAsync(
+
+                    var published = await TryPublishEventAsync(
                         new SpendUpdateRequested
                         {
                             KeyId = keyId,
@@ -392,42 +198,30 @@ namespace ConduitLLM.Gateway.Services
                         },
                         $"spend update for key {keyId}",
                         new { KeyId = keyId, Amount = cost, RequestId = requestId });
-                    
-                    // Event-driven approach returns true immediately - processing happens asynchronously
-                    // The SpendUpdateProcessor will handle the actual database update and cache invalidation
-                    return true;
+
+                    if (published)
+                    {
+                        // Event-driven approach returns true immediately - processing happens asynchronously
+                        // The SpendUpdateProcessor will handle the actual database update and cache invalidation
+                        return true;
+                    }
+
+                    // Publish failure fallback (#927): charge directly instead of losing the
+                    // spend. The same RequestId-derived idempotency key is written to the
+                    // ledger, so if the event WAS actually delivered despite the reported
+                    // failure, the consumer's dedup makes it a no-op — no double charge.
+                    _logger.LogError(
+                        "Spend update event for key {KeyId} (requestId {RequestId}) could not be published - falling back to direct balance adjustment",
+                        keyId, requestId);
+
+                    return await UpdateSpendDirectAsync(keyId, cost, SpendIdempotency.KeyFor(requestId));
                 }
                 else
                 {
                     // FALLBACK: Direct database update approach when event bus not configured
                     _logger.LogDebug("Event publishing not configured - using direct database update for key {KeyId}", keyId);
-                    
-                    var virtualKey = await _virtualKeyRepository.GetByIdAsync(keyId);
-                    if (virtualKey == null) 
-                    {
-                        _logger.LogWarning("Virtual key {KeyId} not found for spend update", keyId);
-                        return false;
-                    }
 
-                    // Get the key's group and adjust its balance
-                    var group = await _groupRepository.GetByKeyIdAsync(keyId);
-                    if (group == null)
-                    {
-                        _logger.LogWarning("No group found for virtual key with ID {KeyId}", keyId);
-                        return false;
-                    }
-
-                    var newBalance = await _groupRepository.AdjustBalanceAsync(group.Id, -cost);
-                    
-                    // Invalidate cache after spend update
-                    await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                    
-                    _logger.LogInformation("Updated spend for key ID {KeyId} in group {GroupId}. New balance: {NewBalance}",
-                        keyId, group.Id, newBalance);
-                    
-                    bool success = true;
-
-                    return success;
+                    return await UpdateSpendDirectAsync(keyId, cost, idempotencyKey: null);
                 }
             }
             catch (Exception ex)
@@ -437,10 +231,60 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
+        /// <summary>
+        /// Adjusts the key's group balance directly, bypassing the event bus. Used when
+        /// event publishing is not configured, and as the durability fallback when a
+        /// spend publish fails (#927) — in the latter case with the RequestId-derived
+        /// idempotency key so the adjustment applies at most once across both paths.
+        /// </summary>
+        private async Task<bool> UpdateSpendDirectAsync(int keyId, decimal cost, string? idempotencyKey)
+        {
+            var virtualKey = await VirtualKeyRepository.GetByIdAsync(keyId);
+            if (virtualKey == null)
+            {
+                _logger.LogWarning("Virtual key {KeyId} not found for spend update", keyId);
+                return false;
+            }
+
+            // Get the key's group and adjust its balance
+            var group = await GroupRepository.GetByKeyIdAsync(keyId);
+            if (group == null)
+            {
+                _logger.LogWarning("No group found for virtual key with ID {KeyId}", keyId);
+                return false;
+            }
+
+            decimal newBalance;
+            if (idempotencyKey != null)
+            {
+                var result = await GroupRepository.AdjustBalanceIdempotentAsync(
+                    group.Id,
+                    -cost,
+                    idempotencyKey,
+                    $"API usage by virtual key #{keyId}",
+                    "System",
+                    ReferenceType.VirtualKey,
+                    keyId.ToString());
+                newBalance = result.NewBalance;
+            }
+            else
+            {
+                newBalance = await GroupRepository.AdjustBalanceAsync(group.Id, -cost);
+            }
+
+            // Invalidate cache after spend update
+            await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
+
+            _logger.LogInformation("Updated spend for key ID {KeyId} in group {GroupId}. New balance: {NewBalance}",
+                keyId, group.Id, newBalance);
+
+            return true;
+        }
+
         /// <inheritdoc />
         public async Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
         {
-            return await _virtualKeyRepository.GetByIdAsync(keyId, cancellationToken);
+            return await VirtualKeyRepository.GetByIdAsync(keyId, cancellationToken);
         }
 
         /// <summary>

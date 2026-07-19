@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ConduitLLM.Functions.Interfaces;
 
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
     /// Represents an audit event for billing operations, tracking all billing decisions and failures
     /// </summary>
-    public class BillingAuditEvent
+    public class BillingAuditEvent : IAuditEvent
     {
         /// <summary>
         /// Unique identifier for the audit event

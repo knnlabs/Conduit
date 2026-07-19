@@ -163,7 +163,7 @@ dotnet add package ConduitLLM.Configuration
 ### Dev Versions
 ```bash
 # Add GitHub Packages source
-dotnet nuget add source https://nuget.pkg.github.com/knnlabs/index.json -n github
+dotnet nuget add source https://nuget.pkg.github.com/nickna/index.json -n github
 
 # Install dev versions
 dotnet add package ConduitLLM.Core --version 0.1.0-dev.20250619123456 --source github

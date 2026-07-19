@@ -51,7 +51,7 @@ namespace ConduitLLM.Providers.MiniMax
                 var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
                 httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
                 
-                var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+                using var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
                 var rawContent = await httpResponse.Content.ReadAsStringAsync();
                 
                 Logger.LogInformation("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);
@@ -66,14 +66,10 @@ namespace ConduitLLM.Providers.MiniMax
                 MiniMaxImageGenerationResponse response;
                 try
                 {
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                    };
-                    response = JsonSerializer.Deserialize<MiniMaxImageGenerationResponse>(rawContent, options)!;
+                    response = JsonSerializer.Deserialize<MiniMaxImageGenerationResponse>(rawContent, DefaultJsonOptions)
+                        ?? throw new LLMCommunicationException("MiniMax returned null response");
                 }
-                catch (Exception ex)
+                catch (JsonException ex)
                 {
                     Logger.LogError(ex, "Error deserializing MiniMax response: {Response}", rawContent);
                     throw new LLMCommunicationException("Failed to deserialize MiniMax response", ex);

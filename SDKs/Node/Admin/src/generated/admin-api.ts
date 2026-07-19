@@ -4,6 +4,238 @@
  */
 
 export interface paths {
+  "/api/ModelAuthor": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ModelAuthorDto"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CreateModelAuthorDto"];
+        };
+      };
+      responses: {
+        /** @description Created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ModelAuthorDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelAuthor/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GetModelAuthorById"];
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateModelAuthorDto"];
+        };
+      };
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ModelAuthor/{id}/series": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["SimpleModelSeriesDto"][];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ErrorResponseDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/Analytics/logs": {
     parameters: {
       query?: never;
@@ -58,7 +290,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -117,7 +349,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -151,7 +383,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of model names */
         200: {
           headers: {
             [name: string]: unknown;
@@ -162,7 +394,7 @@ export interface paths {
             "text/json": string[];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -225,7 +457,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -288,7 +520,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -329,7 +561,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Model cost breakdown */
         200: {
           headers: {
             [name: string]: unknown;
@@ -340,7 +572,7 @@ export interface paths {
             "text/json": components["schemas"]["ModelCostBreakdownDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -381,7 +613,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Virtual key cost breakdown */
         200: {
           headers: {
             [name: string]: unknown;
@@ -392,7 +624,7 @@ export interface paths {
             "text/json": components["schemas"]["VirtualKeyCostBreakdownDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -455,7 +687,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -497,7 +729,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Usage statistics */
         200: {
           headers: {
             [name: string]: unknown;
@@ -508,7 +740,7 @@ export interface paths {
             "text/json": components["schemas"]["UsageStatisticsDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -575,7 +807,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -630,6 +862,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -686,6 +925,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     put?: never;
@@ -718,14 +964,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Success response */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -781,7 +1027,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal server error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -908,6 +1154,13 @@ export interface paths {
             "text/json": unknown;
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     put?: never;
@@ -948,6 +1201,13 @@ export interface paths {
             "application/json": unknown;
             "text/json": unknown;
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1007,6 +1267,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     delete?: never;
@@ -1060,6 +1327,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1115,6 +1389,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     put?: never;
@@ -1168,6 +1449,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1223,6 +1511,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     delete?: never;
@@ -1259,6 +1554,13 @@ export interface paths {
             "text/json": unknown;
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     put?: never;
@@ -1286,7 +1588,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Routing configuration data. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1297,7 +1599,7 @@ export interface paths {
             "text/json": components["schemas"]["RoutingConfigurationDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1307,509 +1609,6 @@ export interface paths {
       };
     };
     put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets caching configuration and statistics. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["CacheConfigurationDto"];
-            "application/json": components["schemas"]["CacheConfigurationDto"];
-            "text/json": components["schemas"]["CacheConfigurationDto"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Implemented */
-        501: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    /** Updates caching configuration. */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description Cancellation token. */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["UpdateCacheConfigDto"];
-          "text/json": components["schemas"]["UpdateCacheConfigDto"];
-          "application/*+json": components["schemas"]["UpdateCacheConfigDto"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["MessageResponseDto"];
-            "application/json": components["schemas"]["MessageResponseDto"];
-            "text/json": components["schemas"]["MessageResponseDto"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Implemented */
-        501: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/{cacheId}/clear": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Clears specific cache by ID. */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description Cache policy ID. */
-          cacheId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["MessageResponseDto"];
-            "application/json": components["schemas"]["MessageResponseDto"];
-            "text/json": components["schemas"]["MessageResponseDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Implemented */
-        501: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/statistics": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets cache statistics for all regions or a specific region. */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Optional region ID. */
-          regionId?: string;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["CacheStatisticsDto"];
-            "application/json": components["schemas"]["CacheStatisticsDto"];
-            "text/json": components["schemas"]["CacheStatisticsDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Implemented */
-        501: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/regions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Lists all cache regions. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["CacheRegionsResponseDto"];
-            "application/json": components["schemas"]["CacheRegionsResponseDto"];
-            "text/json": components["schemas"]["CacheRegionsResponseDto"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Implemented */
-        501: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/{regionId}/entries": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets entries from a specific cache region. */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Number of entries to skip. */
-          skip?: number;
-          /** @description Number of entries to return. */
-          take?: number;
-        };
-        header?: never;
-        path: {
-          /** @description Region ID. */
-          regionId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["CacheEntriesDto"];
-            "application/json": components["schemas"]["CacheEntriesDto"];
-            "text/json": components["schemas"]["CacheEntriesDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Implemented */
-        501: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/{regionId}/refresh": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Forces a refresh of cache entries in a region. */
-    post: {
-      parameters: {
-        query?: {
-          /** @description Optional specific key to refresh. */
-          key?: string;
-        };
-        header?: never;
-        path: {
-          /** @description Region ID. */
-          regionId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["MessageResponseDto"];
-            "application/json": components["schemas"]["MessageResponseDto"];
-            "text/json": components["schemas"]["MessageResponseDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Implemented */
-        501: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/config/caching/{regionId}/policy": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /** Updates the policy for a specific cache region. */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description Region ID. */
-          regionId: string;
-        };
-        cookie?: never;
-      };
-      /** @description Cancellation token. */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["UpdateCachePolicyDto"];
-          "text/json": components["schemas"]["UpdateCachePolicyDto"];
-          "application/*+json": components["schemas"]["UpdateCachePolicyDto"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["MessageResponseDto"];
-            "application/json": components["schemas"]["MessageResponseDto"];
-            "text/json": components["schemas"]["MessageResponseDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Implemented */
-        501: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
     post?: never;
     delete?: never;
     options?: never;
@@ -1844,6 +1643,13 @@ export interface paths {
             "application/json": components["schemas"]["LLMCacheControlDto"];
             "text/json": components["schemas"]["LLMCacheControlDto"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -1892,6 +1698,13 @@ export interface paths {
             "text/json": components["schemas"]["LLMCacheControlDto"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     delete?: never;
@@ -1917,14 +1730,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all function configurations */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -1969,7 +1782,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2022,7 +1835,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2080,7 +1893,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2121,7 +1934,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2155,14 +1968,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of function configurations for the specified provider */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2199,14 +2012,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of function configurations for the specified purpose */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2240,14 +2053,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all function costs */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2292,7 +2105,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2345,7 +2158,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2403,7 +2216,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2444,7 +2257,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2496,7 +2309,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2532,14 +2345,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Success message */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2571,14 +2384,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all credentials */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2623,7 +2436,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2676,7 +2489,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2731,7 +2544,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2789,7 +2602,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2830,7 +2643,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2888,7 +2701,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2941,7 +2754,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -2978,14 +2791,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of executions */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3022,14 +2835,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of executions */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3084,7 +2897,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3118,14 +2931,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of executions with expired leases */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3159,14 +2972,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of executions ready for retry */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3224,7 +3037,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3255,7 +3068,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all global settings */
         200: {
           headers: {
             [name: string]: unknown;
@@ -3266,7 +3079,7 @@ export interface paths {
             "text/json": components["schemas"]["GlobalSettingDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3315,7 +3128,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3372,7 +3185,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3430,7 +3243,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3471,7 +3284,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3527,7 +3340,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3569,7 +3382,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3626,7 +3439,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3659,7 +3472,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Cache statistics including hit rate, size, and invalidation count */
         200: {
           headers: {
             [name: string]: unknown;
@@ -3670,7 +3483,7 @@ export interface paths {
             "text/json": components["schemas"]["GlobalSettingCacheStatsDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3706,14 +3519,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description No Content */
+        /** @description No content if successful */
         204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3750,14 +3563,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description No Content */
+        /** @description No content if successful */
         204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3789,7 +3602,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Service health information. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -3800,7 +3613,7 @@ export interface paths {
             "text/json": components["schemas"]["ServiceHealthResponse"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3837,7 +3650,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Incident history data. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -3848,7 +3661,7 @@ export interface paths {
             "text/json": components["schemas"]["IncidentsResponse"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3885,7 +3698,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Health history time series. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -3896,7 +3709,7 @@ export interface paths {
             "text/json": components["schemas"]["HealthHistoryResponse"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -3930,7 +3743,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all IP filters */
         200: {
           headers: {
             [name: string]: unknown;
@@ -3941,7 +3754,7 @@ export interface paths {
             "text/json": components["schemas"]["IpFilterDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4012,7 +3825,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4044,7 +3857,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all enabled IP filters */
         200: {
           headers: {
             [name: string]: unknown;
@@ -4055,7 +3868,7 @@ export interface paths {
             "text/json": components["schemas"]["IpFilterDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4114,7 +3927,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4194,7 +4007,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4257,7 +4070,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4288,7 +4101,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description The current IP filter settings */
         200: {
           headers: {
             [name: string]: unknown;
@@ -4299,7 +4112,7 @@ export interface paths {
             "text/json": components["schemas"]["IpFilterSettingsDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4365,7 +4178,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4423,7 +4236,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4434,239 +4247,6 @@ export interface paths {
     };
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/admin/media-cleanup/status": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the current status of the media cleanup service. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["MediaCleanupStatusDto"];
-            "application/json": components["schemas"]["MediaCleanupStatusDto"];
-            "text/json": components["schemas"]["MediaCleanupStatusDto"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/admin/media-cleanup/enabled": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets whether the media cleanup service is currently enabled. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": unknown;
-            "application/json": unknown;
-            "text/json": unknown;
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    /** Enables or disables the media cleanup service at runtime.
-     *     This setting persists across restarts via GlobalSettings. */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The enabled state to set. */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
-          "text/json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
-          "application/*+json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": unknown;
-            "application/json": unknown;
-            "text/json": unknown;
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/admin/media-cleanup/simple-retention": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the simple retention override setting.
-     *     When active, all media uses this retention period regardless of account balance. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["SimpleRetentionResponse"];
-            "application/json": components["schemas"]["SimpleRetentionResponse"];
-            "text/json": components["schemas"]["SimpleRetentionResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    /** Sets or clears the simple retention override.
-     *     When set, all media is deleted after the specified number of days regardless of account balance.
-     *     Pass null for RetentionDays to clear the override and use policy-based retention. */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The retention days to set (1-365), or null to clear. */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["UpdateSimpleRetentionRequest"];
-          "text/json": components["schemas"]["UpdateSimpleRetentionRequest"];
-          "application/*+json": components["schemas"]["UpdateSimpleRetentionRequest"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["SimpleRetentionResponse"];
-            "application/json": components["schemas"]["SimpleRetentionResponse"];
-            "text/json": components["schemas"]["SimpleRetentionResponse"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
     delete?: never;
     options?: never;
     head?: never;
@@ -4693,7 +4273,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Overall storage statistics. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -4704,7 +4284,7 @@ export interface paths {
             "text/json": components["schemas"]["OverallMediaStorageStats"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4741,7 +4321,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Storage statistics for the virtual key. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -4752,7 +4332,7 @@ export interface paths {
             "text/json": components["schemas"]["MediaStorageStats"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4786,7 +4366,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Dictionary of provider names to storage size. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -4803,7 +4383,7 @@ export interface paths {
             };
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4837,7 +4417,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Dictionary of media types to storage size. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -4854,7 +4434,7 @@ export interface paths {
             };
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4891,7 +4471,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of media records. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -4902,7 +4482,7 @@ export interface paths {
             "text/json": components["schemas"]["MediaRecord"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -4961,7 +4541,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5023,7 +4603,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5056,7 +4636,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Number of files cleaned up. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -5067,7 +4647,7 @@ export interface paths {
             "text/json": components["schemas"]["MediaCleanupResponseDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5101,7 +4681,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Number of files cleaned up. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -5112,7 +4692,7 @@ export interface paths {
             "text/json": components["schemas"]["MediaCleanupResponseDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5175,7 +4755,214 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/media-cleanup/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the current status of the media cleanup service. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupStatusDto"];
+            "application/json": components["schemas"]["MediaCleanupStatusDto"];
+            "text/json": components["schemas"]["MediaCleanupStatusDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/media-cleanup/enabled": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets whether the media cleanup service is currently enabled. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupEnabledDto"];
+            "application/json": components["schemas"]["MediaCleanupEnabledDto"];
+            "text/json": components["schemas"]["MediaCleanupEnabledDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    /** Enables or disables the media cleanup service at runtime.
+     *     This setting persists across restarts via GlobalSettings. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
+          "text/json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
+          "application/*+json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["MediaCleanupEnabledChangedDto"];
+            "application/json": components["schemas"]["MediaCleanupEnabledChangedDto"];
+            "text/json": components["schemas"]["MediaCleanupEnabledChangedDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/media-cleanup/simple-retention": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the simple retention override setting. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["SimpleRetentionResponse"];
+            "application/json": components["schemas"]["SimpleRetentionResponse"];
+            "text/json": components["schemas"]["SimpleRetentionResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    /** Sets or clears the simple retention override.
+     *     Pass null for RetentionDays to clear the override and use policy-based retention. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateSimpleRetentionRequest"];
+          "text/json": components["schemas"]["UpdateSimpleRetentionRequest"];
+          "application/*+json": components["schemas"]["UpdateSimpleRetentionRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["SimpleRetentionResponse"];
+            "application/json": components["schemas"]["SimpleRetentionResponse"];
+            "text/json": components["schemas"]["SimpleRetentionResponse"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5218,6 +5005,13 @@ export interface paths {
             "text/json": components["schemas"]["MediaRetentionPolicyDto"][];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     put?: never;
@@ -5259,6 +5053,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -5309,6 +5110,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -5365,6 +5173,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     post?: never;
@@ -5409,6 +5224,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -5459,6 +5281,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     delete?: never;
@@ -5507,6 +5336,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -5563,6 +5399,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     delete?: never;
@@ -5588,7 +5431,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Connection pool metrics. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -5599,7 +5442,7 @@ export interface paths {
             "text/json": components["schemas"]["DatabasePoolMetricsDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -5633,7 +5476,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Comprehensive application metrics. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -5644,346 +5487,7 @@ export interface paths {
             "text/json": components["schemas"]["AllMetricsDto"];
           };
         };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelAuthor": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all model authors */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ModelAuthorDto"][];
-            "application/json": components["schemas"]["ModelAuthorDto"][];
-            "text/json": components["schemas"]["ModelAuthorDto"][];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    /** Creates a new model author */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The model author to create */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["CreateModelAuthorDto"];
-          "text/json": components["schemas"]["CreateModelAuthorDto"];
-          "application/*+json": components["schemas"]["CreateModelAuthorDto"];
-        };
-      };
-      responses: {
-        /** @description Created */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ModelAuthorDto"];
-            "application/json": components["schemas"]["ModelAuthorDto"];
-            "text/json": components["schemas"]["ModelAuthorDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Conflict */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelAuthor/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets a specific model author by ID */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The author ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ModelAuthorDto"];
-            "application/json": components["schemas"]["ModelAuthorDto"];
-            "text/json": components["schemas"]["ModelAuthorDto"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    /** Updates an existing model author */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The author ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      /** @description The updated model author data */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["UpdateModelAuthorDto"];
-          "text/json": components["schemas"]["UpdateModelAuthorDto"];
-          "application/*+json": components["schemas"]["UpdateModelAuthorDto"];
-        };
-      };
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Conflict */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    post?: never;
-    /** Deletes a model author */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The author ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Conflict */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelAuthor/{id}/series": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets series by author */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The author ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["SimpleModelSeriesDto"][];
-            "application/json": components["schemas"]["SimpleModelSeriesDto"][];
-            "text/json": components["schemas"]["SimpleModelSeriesDto"][];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6007,17 +5511,30 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets all models with their capabilities */
+    /** Gets all models with their capabilities.
+     *     Supports optional server-side pagination, search, and filtering.
+     *     When page/pageSize are omitted, returns all models (backward compatible). */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Page number (1-based). Required together with pageSize for pagination. */
+          page?: number;
+          /** @description Items per page (max 100). Required together with page for pagination. */
+          pageSize?: number;
+          /** @description Optional search term for model name (case-insensitive partial match) */
+          search?: string;
+          /** @description Optional capability filter: chat, vision, image, video, embeddings */
+          capability?: string;
+          /** @description Optional filter: true = only models with identifiers, false = without */
+          hasProviders?: boolean;
+        };
         header?: never;
         path?: never;
         cookie?: never;
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all models, or paginated result when page/pageSize are provided */
         200: {
           headers: {
             [name: string]: unknown;
@@ -6028,7 +5545,7 @@ export interface paths {
             "text/json": components["schemas"]["ModelDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6088,7 +5605,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6145,7 +5662,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6218,7 +5735,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6270,7 +5787,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6304,7 +5821,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of matching models */
         200: {
           headers: {
             [name: string]: unknown;
@@ -6315,7 +5832,7 @@ export interface paths {
             "text/json": components["schemas"]["ModelDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6374,7 +5891,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6433,7 +5950,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6507,6 +6024,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     delete?: never;
@@ -6558,7 +6082,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6645,6 +6169,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     post?: never;
@@ -6680,6 +6211,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -6730,7 +6268,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6804,7 +6342,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6878,7 +6416,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6921,7 +6459,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -6959,7 +6497,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all model costs or paginated response */
         200: {
           headers: {
             [name: string]: unknown;
@@ -6970,7 +6508,7 @@ export interface paths {
             "text/json": components["schemas"]["ModelCostDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7019,7 +6557,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7076,7 +6614,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7134,7 +6672,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7175,7 +6713,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7209,7 +6747,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of model costs for the specified provider */
         200: {
           headers: {
             [name: string]: unknown;
@@ -7220,7 +6758,7 @@ export interface paths {
             "text/json": components["schemas"]["ModelCostDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7279,7 +6817,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7340,7 +6878,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7405,7 +6943,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7440,7 +6978,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description CSV file containing model costs */
         200: {
           headers: {
             [name: string]: unknown;
@@ -7451,7 +6989,7 @@ export interface paths {
             "text/json": components["schemas"]["FileResult"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7488,7 +7026,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description JSON file containing model costs */
         200: {
           headers: {
             [name: string]: unknown;
@@ -7499,7 +7037,7 @@ export interface paths {
             "text/json": components["schemas"]["FileResult"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7542,7 +7080,7 @@ export interface paths {
         };
       };
       responses: {
-        /** @description Bad Request */
+        /** @description Import result with statistics */
         400: {
           headers: {
             [name: string]: unknown;
@@ -7553,7 +7091,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7594,7 +7132,7 @@ export interface paths {
         };
       };
       responses: {
-        /** @description Bad Request */
+        /** @description Import result with statistics */
         400: {
           headers: {
             [name: string]: unknown;
@@ -7605,7 +7143,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7682,7 +7220,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7745,7 +7283,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7777,7 +7315,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description A list of all model provider mappings */
         200: {
           headers: {
             [name: string]: unknown;
@@ -7788,7 +7326,7 @@ export interface paths {
             "text/json": components["schemas"]["ModelProviderMappingDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7848,7 +7386,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7905,7 +7443,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -7963,7 +7501,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8004,7 +7542,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8035,7 +7573,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of providers with IDs and names */
         200: {
           headers: {
             [name: string]: unknown;
@@ -8046,7 +7584,7 @@ export interface paths {
             "text/json": components["schemas"]["Provider"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8111,7 +7649,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8174,7 +7712,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8237,7 +7775,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8300,7 +7838,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8332,7 +7870,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all model series */
         200: {
           headers: {
             [name: string]: unknown;
@@ -8343,7 +7881,7 @@ export interface paths {
             "text/json": components["schemas"]["ModelSeriesDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8403,7 +7941,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8460,7 +7998,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8529,7 +8067,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8581,7 +8119,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8637,7 +8175,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8671,7 +8209,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all notifications */
         200: {
           headers: {
             [name: string]: unknown;
@@ -8682,7 +8220,7 @@ export interface paths {
             "text/json": components["schemas"]["NotificationDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8731,7 +8269,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8763,7 +8301,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of unread notifications */
         200: {
           headers: {
             [name: string]: unknown;
@@ -8774,7 +8312,7 @@ export interface paths {
             "text/json": components["schemas"]["NotificationDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8833,7 +8371,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8891,7 +8429,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8932,7 +8470,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -8986,7 +8524,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9020,7 +8558,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description The number of notifications marked as read */
         200: {
           headers: {
             [name: string]: unknown;
@@ -9031,7 +8569,7 @@ export interface paths {
             "text/json": number;
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9040,6 +8578,324 @@ export interface paths {
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/audit/query": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Query pricing audit events */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["PricingAuditQueryRequest"];
+          "text/json": components["schemas"]["PricingAuditQueryRequest"];
+          "application/*+json": components["schemas"]["PricingAuditQueryRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingAuditQueryResponse"];
+            "application/json": components["schemas"]["PricingAuditQueryResponse"];
+            "text/json": components["schemas"]["PricingAuditQueryResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/audit/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get pricing audit summary */
+    get: {
+      parameters: {
+        query?: {
+          from?: string;
+          to?: string;
+          virtualKeyId?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingAuditSummary"];
+            "application/json": components["schemas"]["PricingAuditSummary"];
+            "text/json": components["schemas"]["PricingAuditSummary"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/audit/request/{requestId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get pricing audit events by request ID */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          requestId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingAuditEventDto"][];
+            "application/json": components["schemas"]["PricingAuditEventDto"][];
+            "text/json": components["schemas"]["PricingAuditEventDto"][];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/types": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get available pricing types */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of pricing types with descriptions */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PricingTypeInfo"][];
+            "application/json": components["schemas"]["PricingTypeInfo"][];
+            "text/json": components["schemas"]["PricingTypeInfo"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/operators": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get available condition operators */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of operators with descriptions */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OperatorInfo"][];
+            "application/json": components["schemas"]["OperatorInfo"][];
+            "text/json": components["schemas"]["OperatorInfo"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Pricing/template": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get pricing configuration template */
+    get: {
+      parameters: {
+        query?: {
+          /** @description The pricing type to get template for */
+          pricingType?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description JSON template for the pricing configuration */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -9093,6 +8949,13 @@ export interface paths {
             "application/json": components["schemas"]["ProblemDetails"];
             "text/json": components["schemas"]["ProblemDetails"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
@@ -9150,6 +9013,13 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     delete?: never;
@@ -9158,14 +9028,14 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/types": {
+  "/api/prompt-caching/config": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Get available pricing types */
+    /** Gets the current prompt caching configuration. */
     get: {
       parameters: {
         query?: never;
@@ -9175,128 +9045,40 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description List of pricing types with descriptions */
+        /** @description The current prompt caching configuration, or defaults if not set. */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["PricingTypeInfo"][];
-            "application/json": components["schemas"]["PricingTypeInfo"][];
-            "text/json": components["schemas"]["PricingTypeInfo"][];
+            "text/plain": components["schemas"]["PromptCachingConfigDto"];
+            "application/json": components["schemas"]["PromptCachingConfigDto"];
+            "text/json": components["schemas"]["PromptCachingConfigDto"];
           };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/Pricing/operators": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get available condition operators */
-    get: {
+    /** Updates the prompt caching configuration. */
+    put: {
       parameters: {
         query?: never;
         header?: never;
         path?: never;
         cookie?: never;
       };
-      requestBody?: never;
-      responses: {
-        /** @description List of operators with descriptions */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["OperatorInfo"][];
-            "application/json": components["schemas"]["OperatorInfo"][];
-            "text/json": components["schemas"]["OperatorInfo"][];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/Pricing/template": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get pricing configuration template */
-    get: {
-      parameters: {
-        query?: {
-          /** @description The pricing type to get template for */
-          pricingType?: string;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description JSON template for the pricing configuration */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": unknown;
-            "application/json": unknown;
-            "text/json": unknown;
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/Pricing/audit/query": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Query pricing audit events */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
+      /** @description The new prompt caching configuration. */
       requestBody: {
         content: {
-          "application/json": components["schemas"]["PricingAuditQueryRequest"];
-          "text/json": components["schemas"]["PricingAuditQueryRequest"];
-          "application/*+json": components["schemas"]["PricingAuditQueryRequest"];
+          "application/json": components["schemas"]["UpdatePromptCachingConfigDto"];
+          "text/json": components["schemas"]["UpdatePromptCachingConfigDto"];
+          "application/*+json": components["schemas"]["UpdatePromptCachingConfigDto"];
         };
       };
       responses: {
@@ -9306,9 +9088,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["PricingAuditQueryResponse"];
-            "application/json": components["schemas"]["PricingAuditQueryResponse"];
-            "text/json": components["schemas"]["PricingAuditQueryResponse"];
+            "text/plain": components["schemas"]["PromptCachingConfigDto"];
+            "application/json": components["schemas"]["PromptCachingConfigDto"];
+            "text/json": components["schemas"]["PromptCachingConfigDto"];
           };
         };
         /** @description Bad Request */
@@ -9317,116 +9099,20 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
+            "text/plain": components["schemas"]["ErrorResponseDto"];
+            "application/json": components["schemas"]["ErrorResponseDto"];
+            "text/json": components["schemas"]["ErrorResponseDto"];
           };
         };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/Pricing/audit/summary": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get pricing audit summary */
-    get: {
-      parameters: {
-        query?: {
-          from?: string;
-          to?: string;
-          virtualKeyId?: number;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
           headers: {
             [name: string]: unknown;
           };
-          content: {
-            "text/plain": components["schemas"]["PricingAuditSummary"];
-            "application/json": components["schemas"]["PricingAuditSummary"];
-            "text/json": components["schemas"]["PricingAuditSummary"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
+          content?: never;
         };
       };
     };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/Pricing/audit/request/{requestId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get pricing audit events by request ID */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          requestId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["PricingAuditEventDto"][];
-            "application/json": components["schemas"]["PricingAuditEventDto"][];
-            "text/json": components["schemas"]["PricingAuditEventDto"][];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-      };
-    };
-    put?: never;
     post?: never;
     delete?: never;
     options?: never;
@@ -9476,7 +9162,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9539,7 +9225,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9598,7 +9284,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9658,7 +9344,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9701,7 +9387,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9768,7 +9454,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9790,28 +9476,33 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets all provider configurations */
+    /** Gets all provider configurations with pagination */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Page number (1-based, default: 1) */
+          page?: number;
+          /** @description Number of items per page (default: 50, max: 100) */
+          pageSize?: number;
+        };
         header?: never;
         path?: never;
         cookie?: never;
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Paginated list of providers */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": unknown[];
-            "application/json": unknown[];
-            "text/json": unknown[];
+            "text/plain": components["schemas"]["PagedResultOfObject"];
+            "application/json": components["schemas"]["PagedResultOfObject"];
+            "text/json": components["schemas"]["PagedResultOfObject"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9859,7 +9550,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9916,7 +9607,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -9974,7 +9665,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10015,7 +9706,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10073,7 +9764,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10135,7 +9826,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10196,7 +9887,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10235,7 +9926,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of recent provider errors */
         200: {
           headers: {
             [name: string]: unknown;
@@ -10246,7 +9937,7 @@ export interface paths {
             "text/json": components["schemas"]["ProviderErrorDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10280,7 +9971,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of provider error summaries */
         200: {
           headers: {
             [name: string]: unknown;
@@ -10291,7 +9982,7 @@ export interface paths {
             "text/json": components["schemas"]["ProviderErrorSummaryDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10350,7 +10041,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10418,18 +10109,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10464,7 +10144,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Error statistics */
         200: {
           headers: {
             [name: string]: unknown;
@@ -10475,7 +10155,7 @@ export interface paths {
             "text/json": components["schemas"]["ErrorStatisticsDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10515,7 +10195,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Dictionary of key ID to error count */
         200: {
           headers: {
             [name: string]: unknown;
@@ -10532,7 +10212,7 @@ export interface paths {
             };
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10600,7 +10280,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10637,7 +10317,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of provider tools */
         200: {
           headers: {
             [name: string]: unknown;
@@ -10648,7 +10328,7 @@ export interface paths {
             "text/json": components["schemas"]["ProviderToolDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10686,8 +10366,8 @@ export interface paths {
             "text/json": components["schemas"]["ProviderToolDto"];
           };
         };
-        /** @description Conflict */
-        409: {
+        /** @description Bad Request */
+        400: {
           headers: {
             [name: string]: unknown;
           };
@@ -10697,7 +10377,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10754,7 +10434,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10794,6 +10474,17 @@ export interface paths {
             "text/json": components["schemas"]["ProviderToolDto"];
           };
         };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
         /** @description Not Found */
         404: {
           headers: {
@@ -10805,7 +10496,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10846,7 +10537,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -10888,6 +10579,13 @@ export interface paths {
             "text/json": components["schemas"]["ToolProviderDto"][];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     put?: never;
@@ -10926,6 +10624,13 @@ export interface paths {
             "text/json": string[];
           };
         };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     put?: never;
@@ -10962,7 +10667,7 @@ export interface paths {
         };
       };
       responses: {
-        /** @description OK */
+        /** @description Import results */
         200: {
           headers: {
             [name: string]: unknown;
@@ -10973,7 +10678,7 @@ export interface paths {
             "text/json": components["schemas"]["ProviderToolImportResultDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11005,7 +10710,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description JSON array of all provider tools */
         200: {
           headers: {
             [name: string]: unknown;
@@ -11016,7 +10721,7 @@ export interface paths {
             "text/json": components["schemas"]["ProviderToolDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11053,7 +10758,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Security events data. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -11064,7 +10769,7 @@ export interface paths {
             "text/json": components["schemas"]["SecurityEventsResponse"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11098,7 +10803,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Threat analytics information. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -11109,7 +10814,7 @@ export interface paths {
             "text/json": components["schemas"]["ThreatAnalyticsResponse"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11143,7 +10848,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Compliance information. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -11154,7 +10859,7 @@ export interface paths {
             "text/json": components["schemas"]["ComplianceMetricsResponse"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11188,7 +10893,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description System information details */
         200: {
           headers: {
             [name: string]: unknown;
@@ -11199,7 +10904,7 @@ export interface paths {
             "text/json": components["schemas"]["SystemInfoDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11233,7 +10938,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Health status information */
         200: {
           headers: {
             [name: string]: unknown;
@@ -11244,7 +10949,7 @@ export interface paths {
             "text/json": components["schemas"]["HealthStatusDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11280,14 +10985,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Success response with cache invalidation details */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11337,7 +11042,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11373,14 +11078,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Success response with cache invalidation details */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11422,7 +11127,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description The number of tasks cleaned up. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -11433,7 +11138,7 @@ export interface paths {
             "text/json": components["schemas"]["TaskCleanupResponseDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11455,10 +11160,15 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get all virtual key groups */
+    /** Get all virtual key groups with pagination */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Page number (1-based, default: 1) */
+          page?: number;
+          /** @description Number of items per page (default: 50, max: 100) */
+          pageSize?: number;
+        };
         header?: never;
         path?: never;
         cookie?: never;
@@ -11471,12 +11181,12 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["VirtualKeyGroupDto"][];
-            "application/json": components["schemas"]["VirtualKeyGroupDto"][];
-            "text/json": components["schemas"]["VirtualKeyGroupDto"][];
+            "text/plain": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
+            "application/json": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
+            "text/json": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11513,7 +11223,7 @@ export interface paths {
             "text/json": components["schemas"]["VirtualKeyGroupDto"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11569,7 +11279,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11614,7 +11324,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11665,7 +11375,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11739,7 +11449,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11798,7 +11508,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11856,7 +11566,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11935,7 +11645,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -11970,7 +11680,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description List of all virtual keys */
         200: {
           headers: {
             [name: string]: unknown;
@@ -11981,7 +11691,7 @@ export interface paths {
             "text/json": components["schemas"]["VirtualKeyDto"][];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12052,7 +11762,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12147,7 +11857,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12210,7 +11920,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12272,7 +11982,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12329,7 +12039,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12400,7 +12110,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12460,7 +12170,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12519,7 +12229,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12616,7 +12326,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Internal Server Error */
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
         500: {
           headers: {
             [name: string]: unknown;
@@ -12976,130 +12686,24 @@ export interface components {
        */
       failureCount?: number;
     };
-    CacheConfigurationDto: {
-      /** Format: date-time */
-      timestamp?: string;
-      cachePolicies?: components["schemas"]["CachePolicyDto"][];
-      cacheRegions?: components["schemas"]["CacheRegionDto"][];
-      statistics?: components["schemas"]["CacheStatisticsDto"];
-      configuration?: components["schemas"]["CacheGlobalConfigDto"];
-    };
-    CacheEntriesDto: {
-      regionId?: string;
-      entries?: components["schemas"]["CacheEntryDto"][];
+    CacheInjectionPointDto: {
+      role?: null | string;
       /** Format: int32 */
-      totalCount?: number;
-      /** Format: int32 */
-      skip?: number;
-      /** Format: int32 */
-      take?: number;
-      message?: null | string;
-    };
-    CacheEntryDto: {
-      key?: string;
-      size?: string;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      lastAccessedAt?: string;
-      /** Format: date-time */
-      expiresAt?: null | string;
-      /** Format: int64 */
-      accessCount?: number;
-      /** Format: int32 */
-      priority?: number;
-    };
-    CacheGlobalConfigDto: {
-      /** Format: int32 */
-      defaultTTL?: number;
-      maxMemorySize?: string;
-      evictionPolicy?: string;
-      compressionEnabled?: boolean;
-      redisConnectionString?: null | string;
-    };
-    CacheMetricsDto: {
-      size?: string;
-      /** Format: int64 */
-      items?: number;
-      /** Format: double */
-      hitRate?: number;
-      /** Format: double */
-      missRate?: number;
-      /** Format: double */
-      evictionRate?: number;
-    };
-    CachePolicyDto: {
-      id?: string;
-      name?: string;
-      type?: string;
-      /** Format: int32 */
-      ttl?: number;
-      /** Format: int32 */
-      maxSize?: number;
-      strategy?: string;
-      enabled?: boolean;
-      description?: string;
-    };
-    CacheRegionDto: {
-      id?: string;
-      name?: string;
-      type?: string;
-      status?: string;
-      /** Format: int32 */
-      nodes?: number;
-      metrics?: components["schemas"]["CacheMetricsDto"];
-    };
-    /** @description Response DTO for the cache regions endpoint. */
-    CacheRegionsResponseDto: {
-      /** @description The configured cache regions. */
-      regions?: components["schemas"]["CacheRegionDto"][];
-      /**
-       * Format: date-time
-       * @description Timestamp when the response was generated (UTC).
-       */
-      timestamp?: string;
-    };
-    CacheStatisticsDto: {
-      /** Format: int64 */
-      totalHits?: number;
-      /** Format: int64 */
-      totalMisses?: number;
-      /** Format: double */
-      hitRate?: number;
-      avgResponseTime?: components["schemas"]["ResponseTimeDto"];
-      memoryUsage?: components["schemas"]["MemoryUsageDto"];
-      topCachedItems?: components["schemas"]["TopCachedItemDto"][];
+      index?: null | number;
     };
     /** @description Represents the result of a media cleanup operation. */
     CleanupResultDto: {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the virtual key group that was cleaned up.
-       */
+      /** Format: int32 */
       virtualKeyGroupId?: number;
-      /** @description Gets or sets a value indicating whether this was a dry run (no actual deletions). */
       dryRun?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the total number of media records evaluated during cleanup.
-       */
+      /** Format: int32 */
       mediaRecordsEvaluated?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the number of media records marked for deletion.
-       */
+      /** Format: int32 */
       mediaRecordsMarkedForDeletion?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the number of media records actually deleted.
-       */
+      /** Format: int32 */
       mediaRecordsDeleted?: number;
-      /**
-       * Format: int64
-       * @description Gets or sets the total amount of storage space freed in bytes.
-       */
+      /** Format: int64 */
       storageBytesFreed?: number;
-      /** @description Gets or sets an informational message about the cleanup operation. */
       message?: string;
     };
     /** @description Request DTO for clearing errors and re-enabling a key */
@@ -13251,48 +12855,23 @@ export interface components {
     };
     /** @description Request model for creating a new media retention policy. */
     CreateMediaRetentionPolicyRequest: {
-      /** @description Gets or sets the name of the retention policy. */
       name?: string;
-      /** @description Gets or sets the description of the retention policy. */
       description?: null | string;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is positive.
-       */
+      /** Format: int32 */
       positiveBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is zero.
-       */
+      /** Format: int32 */
       zeroBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is negative.
-       */
+      /** Format: int32 */
       negativeBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the grace period in days before permanently deleting soft-deleted media.
-       */
+      /** Format: int32 */
       softDeleteGracePeriodDays?: number;
-      /** @description Gets or sets a value indicating whether to respect recent access when determining retention. */
       respectRecentAccess?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the window in days for considering recent access.
-       */
+      /** Format: int32 */
       recentAccessWindowDays?: number;
-      /** @description Gets or sets a value indicating whether this is the default policy. */
       isDefault?: boolean;
-      /**
-       * Format: int64
-       * @description Gets or sets the maximum storage size in bytes allowed for this policy.
-       */
+      /** Format: int64 */
       maxStorageSizeBytes?: null | number;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of files allowed for this policy.
-       */
+      /** Format: int32 */
       maxFileCount?: null | number;
     };
     /** @description Data transfer object for creating a new model author/organization. */
@@ -13665,6 +13244,11 @@ export interface components {
        */
       expiresInSeconds?: number;
     };
+    ErrorResponseDto: {
+      error?: unknown;
+      details?: null | string;
+      code?: null | string;
+    };
     /** @description DTO for error statistics */
     ErrorStatisticsDto: {
       /**
@@ -13751,7 +13335,6 @@ export interface components {
       entityTag?: null | components["schemas"]["EntityTagHeaderValue"];
       enableRangeProcessing?: boolean;
     };
-    /** @default 0 */
     FlushPriority: number;
     FunctionConfiguration: {
       /** Format: int32 */
@@ -14083,6 +13666,10 @@ export interface components {
       inputTokens?: number;
       /** Format: int32 */
       outputTokens?: number;
+      /** Format: int32 */
+      cachedInputTokens?: null | number;
+      /** Format: int32 */
+      cachedWriteTokens?: null | number;
       /** Format: double */
       cost?: number;
       /** Format: double */
@@ -14112,6 +13699,18 @@ export interface components {
       rate?: number;
       /** @description Summary of conditions */
       conditionsSummary?: null | string[];
+    };
+    /** @description Response returned after enabling or disabling the media cleanup service. */
+    MediaCleanupEnabledChangedDto: {
+      /** @description The new enabled state of the media cleanup service. */
+      enabled?: boolean;
+      /** @description Human-readable confirmation of the state change. */
+      message?: string;
+    };
+    /** @description Response describing whether the media cleanup service is enabled. */
+    MediaCleanupEnabledDto: {
+      /** @description Whether the media cleanup service is currently enabled. */
+      enabled?: boolean;
     };
     /** @description Response returned by media cleanup and pruning operations. */
     MediaCleanupResponseDto: {
@@ -14267,142 +13866,65 @@ export interface components {
       isActive?: boolean;
       virtualKeyGroups?: components["schemas"]["VirtualKeyGroup"][];
     };
-    /** @description Extended DTO for media retention policy with additional details. */
+    /** @description Extended DTO for media retention policy with virtual key group details. */
     MediaRetentionPolicyDetailDto: {
-      /** @description Gets or sets the list of virtual key groups associated with this policy. */
       virtualKeyGroups?: components["schemas"]["VirtualKeyGroupSummaryDto"][];
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier of the retention policy.
-       */
+      /** Format: int32 */
       id?: number;
-      /** @description Gets or sets the name of the retention policy. */
       name?: string;
-      /** @description Gets or sets the description of the retention policy. */
       description?: null | string;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is positive.
-       */
+      /** Format: int32 */
       positiveBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is zero.
-       */
+      /** Format: int32 */
       zeroBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is negative.
-       */
+      /** Format: int32 */
       negativeBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the grace period in days before permanently deleting soft-deleted media.
-       */
+      /** Format: int32 */
       softDeleteGracePeriodDays?: number;
-      /** @description Gets or sets a value indicating whether to respect recent access when determining retention. */
       respectRecentAccess?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the window in days for considering recent access.
-       */
+      /** Format: int32 */
       recentAccessWindowDays?: number;
-      /** @description Gets or sets a value indicating whether this is the default policy. */
       isDefault?: boolean;
-      /**
-       * Format: int64
-       * @description Gets or sets the maximum storage size in bytes allowed for this policy.
-       */
+      /** Format: int64 */
       maxStorageSizeBytes?: null | number;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of files allowed for this policy.
-       */
+      /** Format: int32 */
       maxFileCount?: null | number;
-      /** @description Gets or sets a value indicating whether this policy is active. */
       isActive?: boolean;
-      /**
-       * Format: date-time
-       * @description Gets or sets the date and time when the policy was created.
-       */
+      /** Format: date-time */
       createdAt?: string;
-      /**
-       * Format: date-time
-       * @description Gets or sets the date and time when the policy was last updated.
-       */
+      /** Format: date-time */
       updatedAt?: string;
-      /**
-       * Format: int32
-       * @description Gets or sets the count of virtual key groups using this policy.
-       */
+      /** Format: int32 */
       virtualKeyGroupCount?: number;
     };
     /** @description Data transfer object for media retention policy information. */
     MediaRetentionPolicyDto: {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier of the retention policy.
-       */
+      /** Format: int32 */
       id?: number;
-      /** @description Gets or sets the name of the retention policy. */
       name?: string;
-      /** @description Gets or sets the description of the retention policy. */
       description?: null | string;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is positive.
-       */
+      /** Format: int32 */
       positiveBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is zero.
-       */
+      /** Format: int32 */
       zeroBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is negative.
-       */
+      /** Format: int32 */
       negativeBalanceRetentionDays?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the grace period in days before permanently deleting soft-deleted media.
-       */
+      /** Format: int32 */
       softDeleteGracePeriodDays?: number;
-      /** @description Gets or sets a value indicating whether to respect recent access when determining retention. */
       respectRecentAccess?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the window in days for considering recent access.
-       */
+      /** Format: int32 */
       recentAccessWindowDays?: number;
-      /** @description Gets or sets a value indicating whether this is the default policy. */
       isDefault?: boolean;
-      /**
-       * Format: int64
-       * @description Gets or sets the maximum storage size in bytes allowed for this policy.
-       */
+      /** Format: int64 */
       maxStorageSizeBytes?: null | number;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of files allowed for this policy.
-       */
+      /** Format: int32 */
       maxFileCount?: null | number;
-      /** @description Gets or sets a value indicating whether this policy is active. */
       isActive?: boolean;
-      /**
-       * Format: date-time
-       * @description Gets or sets the date and time when the policy was created.
-       */
+      /** Format: date-time */
       createdAt?: string;
-      /**
-       * Format: date-time
-       * @description Gets or sets the date and time when the policy was last updated.
-       */
+      /** Format: date-time */
       updatedAt?: string;
-      /**
-       * Format: int32
-       * @description Gets or sets the count of virtual key groups using this policy.
-       */
+      /** Format: int32 */
       virtualKeyGroupCount?: number;
     };
     MediaStorageStats: {
@@ -14421,16 +13943,6 @@ export interface components {
       fileCount?: number;
       /** Format: int64 */
       sizeBytes?: number;
-    };
-    MemoryUsageDto: {
-      current?: string;
-      peak?: string;
-      limit?: string;
-    };
-    /** @description Generic response DTO carrying a confirmation message. */
-    MessageResponseDto: {
-      /** @description The confirmation message. */
-      message?: string;
     };
     /** @description Data transfer object representing an AI model author or organization. */
     ModelAuthorDto: {
@@ -14604,6 +14116,52 @@ export interface components {
       /** @description Gets or sets the model-specific parameter configuration for UI generation.
        *     JSON string containing parameter definitions, or null to use series defaults. */
       modelParameters?: null | string;
+      /** @description Gets or sets the provider type associations (identifiers) for this model. */
+      identifiers?: null | components["schemas"]["ModelIdentifierDto"][];
+    };
+    /** @description Lightweight DTO for a model's provider type association (identifier). */
+    ModelIdentifierDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for this model-provider association.
+       */
+      id?: number;
+      /** @description Gets or sets the provider-specific model identifier string (e.g., "gpt-4-turbo" for OpenAI). */
+      identifier?: string;
+      /**
+       * Format: int32
+       * @description Gets or sets the provider ID that offers this model, or null if unassigned.
+       */
+      provider?: null | number;
+      /** @description Gets or sets whether this is the primary (preferred) provider for the model. */
+      isPrimary?: boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum input token limit for this provider's offering, or null if unknown.
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum output token limit for this provider's offering, or null if unknown.
+       */
+      maxOutputTokens?: null | number;
+      /**
+       * Format: double
+       * @description Gets or sets the relative speed score for this provider's offering, used for routing decisions.
+       */
+      speedScore?: null | number;
+      /**
+       * Format: double
+       * @description Gets or sets the relative quality score for this provider's offering, used for routing decisions.
+       */
+      qualityScore?: null | number;
+      /** @description Gets or sets the provider-specific variation label (e.g., "turbo", "mini") if applicable. */
+      providerVariation?: null | string;
+      /**
+       * Format: int32
+       * @description Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.
+       */
+      modelCostId?: null | number;
     };
     ModelProviderMappingDto: {
       /** Format: int32 */
@@ -14768,6 +14326,8 @@ export interface components {
       /** @description Gets or sets the model-specific parameter configuration for UI generation.
        *     JSON string containing parameter definitions, or null to use series defaults. */
       modelParameters?: null | string;
+      /** @description Gets or sets the provider type associations (identifiers) for this model. */
+      identifiers?: null | components["schemas"]["ModelIdentifierDto"][];
     };
     Notification: {
       /** Format: int32 */
@@ -14829,6 +14389,40 @@ export interface components {
     };
     PagedResultOfLogRequestDto: {
       items?: components["schemas"]["LogRequestDto"][];
+      /** Format: int32 */
+      totalCount?: number;
+      /** Format: int32 */
+      currentPage?: number;
+      /** Format: int32 */
+      pageSize?: number;
+      /** Format: int32 */
+      totalPages?: number;
+      hasPreviousPage?: boolean;
+      hasNextPage?: boolean;
+      /** Format: int32 */
+      page?: number;
+      /** Format: int32 */
+      totalItems?: number;
+    };
+    PagedResultOfObject: {
+      items?: unknown[];
+      /** Format: int32 */
+      totalCount?: number;
+      /** Format: int32 */
+      currentPage?: number;
+      /** Format: int32 */
+      pageSize?: number;
+      /** Format: int32 */
+      totalPages?: number;
+      hasPreviousPage?: boolean;
+      hasNextPage?: boolean;
+      /** Format: int32 */
+      page?: number;
+      /** Format: int32 */
+      totalItems?: number;
+    };
+    PagedResultOfVirtualKeyGroupDto: {
+      items?: components["schemas"]["VirtualKeyGroupDto"][];
       /** Format: int32 */
       totalCount?: number;
       /** Format: int32 */
@@ -15128,6 +14722,10 @@ export interface components {
       refundReason?: string;
       originalTransactionId?: null | string;
     };
+    PromptCachingConfigDto: {
+      autoInjectEnabled?: boolean;
+      injectionPoints?: components["schemas"]["CacheInjectionPointDto"][];
+    };
     Provider: {
       /** Format: int32 */
       id?: number;
@@ -15365,6 +14963,10 @@ export interface components {
       inputTokens?: number;
       /** Format: int32 */
       outputTokens?: number;
+      /** Format: int32 */
+      cachedInputTokens?: null | number;
+      /** Format: int32 */
+      cachedWriteTokens?: null | number;
       /** Format: double */
       cost?: number;
       /** Format: double */
@@ -15377,12 +14979,6 @@ export interface components {
       /** Format: int32 */
       statusCode?: null | number;
       metadata?: null | string;
-    };
-    ResponseTimeDto: {
-      /** Format: int32 */
-      withCache?: number;
-      /** Format: int32 */
-      withoutCache?: number;
     };
     /** @description Summary of a retention policy for display. */
     RetentionPolicySummaryDto: {
@@ -15840,12 +15436,6 @@ export interface components {
       /** @description Description of the provider's tool support */
       description?: string;
     };
-    TopCachedItemDto: {
-      key?: string;
-      /** Format: int64 */
-      hits?: number;
-      size?: string;
-    };
     /** @description A threat source ranked by risk score. */
     TopThreatSourceDto: {
       /** @description IP address of the threat source. */
@@ -15872,25 +15462,6 @@ export interface components {
       riskScore?: number;
     };
     TransactionType: number;
-    UpdateCacheConfigDto: {
-      /** Format: int32 */
-      defaultTTLSeconds?: null | number;
-      maxMemorySize?: null | string;
-      evictionPolicy?: null | string;
-      enableCompression?: boolean;
-      clearAffectedCaches?: boolean;
-      applyGlobally?: boolean;
-      regionId?: null | string;
-    };
-    UpdateCachePolicyDto: {
-      /** Format: int32 */
-      ttl?: null | number;
-      /** Format: int32 */
-      maxSize?: null | number;
-      strategy?: null | string;
-      enabled?: null | boolean;
-      reason: string;
-    };
     UpdateFunctionCostDto: {
       /** Format: int32 */
       id?: number;
@@ -15956,50 +15527,24 @@ export interface components {
     };
     /** @description Request model for updating an existing media retention policy. */
     UpdateMediaRetentionPolicyRequest: {
-      /** @description Gets or sets the name of the retention policy. */
       name?: null | string;
-      /** @description Gets or sets the description of the retention policy. */
       description?: null | string;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is positive.
-       */
+      /** Format: int32 */
       positiveBalanceRetentionDays?: null | number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is zero.
-       */
+      /** Format: int32 */
       zeroBalanceRetentionDays?: null | number;
-      /**
-       * Format: int32
-       * @description Gets or sets the retention period in days for media when balance is negative.
-       */
+      /** Format: int32 */
       negativeBalanceRetentionDays?: null | number;
-      /**
-       * Format: int32
-       * @description Gets or sets the grace period in days before permanently deleting soft-deleted media.
-       */
+      /** Format: int32 */
       softDeleteGracePeriodDays?: null | number;
-      /** @description Gets or sets a value indicating whether to respect recent access when determining retention. */
       respectRecentAccess?: null | boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the window in days for considering recent access.
-       */
+      /** Format: int32 */
       recentAccessWindowDays?: null | number;
-      /** @description Gets or sets a value indicating whether this is the default policy. */
       isDefault?: null | boolean;
-      /**
-       * Format: int64
-       * @description Gets or sets the maximum storage size in bytes allowed for this policy.
-       */
+      /** Format: int64 */
       maxStorageSizeBytes?: null | number;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of files allowed for this policy.
-       */
+      /** Format: int32 */
       maxFileCount?: null | number;
-      /** @description Gets or sets a value indicating whether this policy is active. */
       isActive?: null | boolean;
     };
     /** @description Data transfer object for updating an existing model author/organization. */
@@ -16022,7 +15567,7 @@ export interface components {
       costName: string;
       pricingModel: components["schemas"]["PricingModel"];
       pricingConfiguration?: null | string;
-      modelProviderTypeAssociationIds?: number[];
+      modelProviderTypeAssociationIds?: null | number[];
       modelType: string;
       /** Format: int32 */
       priority?: number;
@@ -16163,6 +15708,10 @@ export interface components {
       isRead?: boolean;
       message?: null | string;
     };
+    UpdatePromptCachingConfigDto: {
+      autoInjectEnabled: boolean;
+      injectionPoints: components["schemas"]["CacheInjectionPointDto"][];
+    };
     /** @description Request model for updating a provider */
     UpdateProviderRequest: {
       /** @description The new name for the provider (optional) */
@@ -16206,31 +15755,28 @@ export interface components {
       /** Format: int32 */
       rateLimitRpd?: null | number;
     };
+    /** @description DTO for usage data */
     UsageDto: {
-      /** Format: int32 */
+      /**
+       * Format: int32
+       * @description Prompt/input tokens
+       */
       promptTokens?: null | number;
-      /** Format: int32 */
+      /**
+       * Format: int32
+       * @description Completion/output tokens
+       */
       completionTokens?: null | number;
-      /** Format: int32 */
+      /**
+       * Format: int32
+       * @description Total tokens
+       */
       totalTokens?: null | number;
-      /** Format: int32 */
-      cachedInputTokens?: null | number;
-      /** Format: int32 */
-      cachedWriteTokens?: null | number;
-      /** Format: int32 */
-      reasoningTokens?: null | number;
-      /** Format: int32 */
+      /**
+       * Format: int32
+       * @description Image count for image generation
+       */
       imageCount?: null | number;
-      imageQuality?: null | string;
-      imageResolution?: null | string;
-      /** Format: double */
-      videoDurationSeconds?: null | number;
-      videoResolution?: null | string;
-      /** Format: int32 */
-      searchUnits?: null | number;
-      /** Format: int32 */
-      inferenceSteps?: null | number;
-      isBatch?: null | boolean;
     };
     UsageStatisticsDto: {
       /** Format: int32 */
@@ -16403,20 +15949,11 @@ export interface components {
     };
     /** @description Summary information for a virtual key group. */
     VirtualKeyGroupSummaryDto: {
-      /**
-       * Format: int32
-       * @description Gets or sets the virtual key group identifier.
-       */
+      /** Format: int32 */
       id?: number;
-      /**
-       * Format: double
-       * @description Gets or sets the current balance of the virtual key group.
-       */
+      /** Format: double */
       balance?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the count of virtual keys in the group.
-       */
+      /** Format: int32 */
       virtualKeyCount?: number;
     };
     VirtualKeyGroupTransaction: {
@@ -16435,6 +15972,7 @@ export interface components {
       description?: null | string;
       initiatedBy?: string;
       initiatedByUserId?: null | string;
+      idempotencyKey?: null | string;
       /** Format: date-time */
       createdAt?: string;
       isDeleted?: boolean;
@@ -16573,6 +16111,44 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  GetModelAuthorById: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ModelAuthorDto"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponseDto"];
+        };
+      };
+      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   GetKeyById: {
     parameters: {
       query?: never;
@@ -16607,7 +16183,7 @@ export interface operations {
           "text/json": components["schemas"]["ProblemDetails"];
         };
       };
-      /** @description Internal Server Error */
+      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
       500: {
         headers: {
           [name: string]: unknown;

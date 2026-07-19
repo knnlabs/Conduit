@@ -87,7 +87,7 @@ namespace ConduitLLM.Gateway.Services
                 existing.DurationSeconds = result.Duration.TotalSeconds;
                 existing.ItemsPerSecond = result.ItemsPerSecond;
 
-                if (result.Status == BatchOperationStatusEnum.Failed && result.Errors.Count() > 0)
+                if (result.Status == BatchOperationStatusEnum.Failed && result.Errors.Any())
                 {
                     existing.ErrorMessage = $"{result.FailedCount} items failed";
                     existing.ErrorDetails = JsonSerializer.Serialize(result.Errors);
@@ -98,7 +98,7 @@ namespace ConduitLLM.Gateway.Services
                 }
 
                 // Store summary of results
-                if (result.ProcessedItems.Count() > 0)
+                if (result.ProcessedItems.Any())
                 {
                     var summary = new
                     {

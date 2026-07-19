@@ -1,5 +1,7 @@
 using ConduitLLM.Core.Models;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -38,8 +40,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMediaInfo(storageKey);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
-            var okResult = result as OkObjectResult;
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.Equal(mediaInfo, okResult.Value);
         }
 
@@ -56,7 +57,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMediaInfo(storageKey);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         [Fact]
@@ -68,14 +69,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockStorageService.Setup(x => x.GetInfoAsync(storageKey))
                 .ThrowsAsync(new Exception("Storage error"));
 
-            // Act
-            var result = await _controller.GetMediaInfo(storageKey);
-
-            // Assert
-            Assert.IsType<ObjectResult>(result);
-            var objectResult = result as ObjectResult;
-            Assert.Equal(500, objectResult.StatusCode);
-            Assert.Equal("An error occurred while retrieving media information", objectResult.Value);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GetMediaInfo(storageKey);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Storage error");
         }
 
         #endregion

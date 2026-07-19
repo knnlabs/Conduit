@@ -1,6 +1,6 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
-
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Extensions
 {
@@ -10,7 +10,8 @@ namespace ConduitLLM.Admin.Extensions
     public static class RepositoryExtensions
     {
         /// <summary>
-        /// Gets daily costs from request logs within a specified date range
+        /// Gets daily costs from request logs within a specified date range.
+        /// Uses database-level aggregation instead of loading all logs into memory.
         /// </summary>
         /// <param name="repository">The request log repository</param>
         /// <param name="startDate">The start date (inclusive)</param>
@@ -23,18 +24,10 @@ namespace ConduitLLM.Admin.Extensions
             DateTime endDate,
             CancellationToken cancellationToken = default)
         {
-            // Get the logs for the date range
-            var logs = await repository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
-
-            // Group by date and calculate daily costs
-            var dailyCosts = logs
-                .GroupBy(l => l.Timestamp.Date)
-                .Select(g => new { Date = g.Key, Cost = g.Sum(l => l.Cost) })
-                .OrderBy(d => d.Date)
-                .Select(d => (d.Date, d.Cost))
+            var aggregations = await repository.GetCostsByDateAsync(startDate, endDate, cancellationToken);
+            return aggregations
+                .Select(a => (a.Date, a.TotalCost))
                 .ToList();
-
-            return dailyCosts;
         }
 
         /// <summary>
@@ -49,12 +42,14 @@ namespace ConduitLLM.Admin.Extensions
             string keyName,
             CancellationToken cancellationToken = default)
         {
-            var keys = await repository.GetAllAsync(cancellationToken);
+            var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                repository.GetPaginatedAsync, cancellationToken: cancellationToken);
             return keys.FirstOrDefault(k => k.KeyName.Equals(keyName, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
-        /// Gets the spend history for a virtual key within a date range
+        /// Gets the spend history for a virtual key within a date range.
+        /// Delegates to the repository's database-level filtered query.
         /// </summary>
         /// <param name="repository">The spend history repository</param>
         /// <param name="virtualKeyId">The ID of the virtual key</param>
@@ -69,85 +64,10 @@ namespace ConduitLLM.Admin.Extensions
             DateTime endDate,
             CancellationToken cancellationToken = default)
         {
-            var history = await repository.GetByVirtualKeyIdAsync(virtualKeyId, cancellationToken);
-            return history
-                .Where(h => h.Timestamp >= startDate && h.Timestamp <= endDate)
-                .OrderBy(h => h.Timestamp)
-                .ToList();
+            // Use the repository's DB-level filtered query instead of loading all history then filtering in memory
+            var history = await repository.GetByVirtualKeyAndDateRangeAsync(virtualKeyId, startDate, endDate, cancellationToken);
+            return history.OrderBy(h => h.Timestamp).ToList();
         }
-
-        /// <summary>
-        /// Maps a ModelProviderMapping entity to a ModelProviderMappingDto
-        /// </summary>
-        /// <param name="mapping">The entity to map</param>
-        /// <returns>The mapped DTO</returns>
-        public static ModelProviderMappingDto ToDto(this ConduitLLM.Configuration.Entities.ModelProviderMapping mapping)
-        {
-            if (mapping == null)
-            {
-                throw new ArgumentNullException(nameof(mapping));
-            }
-
-            return new ConduitLLM.Configuration.DTOs.ModelProviderMappingDto
-            {
-                Id = mapping.Id,
-                ModelAlias = mapping.ModelAlias,
-                ProviderModelId = mapping.ProviderModelId,
-                ProviderId = mapping.ProviderId,
-                Provider = mapping.Provider != null ? new ProviderReferenceDto
-                {
-                    Id = mapping.Provider.Id,
-                    ProviderType = mapping.Provider.ProviderType,
-                    DisplayName = mapping.Provider.ProviderName,
-                    IsEnabled = mapping.Provider.IsEnabled
-                } : null,
-                ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
-                Priority = 0, // Default priority if not available in entity
-                IsEnabled = mapping.IsEnabled,
-                CreatedAt = mapping.CreatedAt,
-                UpdatedAt = mapping.UpdatedAt,
-                Notes = null, // Not available in entity
-                Capabilities = mapping.ModelProviderTypeAssociation?.Model != null ? new ConduitLLM.Configuration.DTOs.ModelCapabilitiesDto
-                {
-                    SupportsVision = mapping.ModelProviderTypeAssociation.Model.SupportsVision,
-                    SupportsImageGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsImageGeneration,
-                    SupportsVideoGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsVideoGeneration,
-                    SupportsEmbeddings = mapping.ModelProviderTypeAssociation.Model.SupportsEmbeddings,
-                    SupportsChat = mapping.ModelProviderTypeAssociation.Model.SupportsChat,
-                    SupportsFunctionCalling = mapping.ModelProviderTypeAssociation.Model.SupportsFunctionCalling,
-                    SupportsStreaming = mapping.ModelProviderTypeAssociation.Model.SupportsStreaming,
-                    MaxInputTokens = mapping.ModelProviderTypeAssociation.Model.MaxInputTokens,
-                    MaxOutputTokens = mapping.ModelProviderTypeAssociation.Model.MaxOutputTokens
-                } : null
-            };
-        }
-
-        /// <summary>
-        /// Maps a ModelProviderMappingDto to a ModelProviderMapping entity
-        /// </summary>
-        /// <param name="dto">The DTO to map</param>
-        /// <returns>The mapped entity</returns>
-        public static ConduitLLM.Configuration.Entities.ModelProviderMapping ToEntity(this ModelProviderMappingDto dto)
-        {
-            if (dto == null)
-            {
-                throw new ArgumentNullException(nameof(dto));
-            }
-
-            return new ConduitLLM.Configuration.Entities.ModelProviderMapping
-            {
-                Id = dto.Id,
-                ModelAlias = dto.ModelAlias,
-                ProviderModelId = dto.ProviderModelId,
-                ProviderId = dto.ProviderId,
-                ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId,
-                IsEnabled = dto.IsEnabled,
-                CreatedAt = dto.CreatedAt,
-                UpdatedAt = dto.UpdatedAt
-            };
-        }
-
-
 
 
 
@@ -363,6 +283,10 @@ namespace ConduitLLM.Admin.Extensions
             entity.CostName = dto.CostName;
             entity.PricingModel = dto.PricingModel;
             entity.PricingConfiguration = dto.PricingConfiguration;
+            entity.ModelType = dto.ModelType;
+            entity.IsActive = dto.IsActive;
+            entity.Priority = dto.Priority;
+            entity.Description = dto.Description;
             entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens;
             entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens;
             entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;

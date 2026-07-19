@@ -16,7 +16,7 @@ import {
   Card,
 } from '@mantine/core';
 import { IconFileTypeCsv, IconAlertCircle, IconCheck } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
 import { parseCSVContent, ParsedModelCost } from '../utils/csvHelpers';
 
@@ -65,11 +65,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
   const handleImport = async () => {
     const validData = parsedData.filter(d => d.isValid);
     if (validData.length === 0) {
-      notifications.show({
-        title: 'Error',
-        message: 'No valid data to import',
-        color: 'red',
-      });
+      notify.error(new Error('No valid data to import'));
       return;
     }
 

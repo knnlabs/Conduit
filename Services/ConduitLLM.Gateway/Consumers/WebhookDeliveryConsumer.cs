@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
@@ -8,14 +8,14 @@ using ConduitLLM.Gateway.Services;
 namespace ConduitLLM.Gateway.Consumers
 {
     /// <summary>
-    /// MassTransit consumer for processing webhook delivery requests
-    /// Handles deduplication, retry logic, and delivery tracking
-    /// 
+    /// Event handler for processing webhook delivery requests
+    /// Handles deduplication, retry logic (via deferred/scheduled publish), and delivery tracking
+    ///
     /// For detailed architecture and troubleshooting information, see:
     /// - Architecture: docs/architecture/webhook-delivery-system.md
     /// - Operations: docs/operations/webhook-monitoring.md
     /// </summary>
-    public class WebhookDeliveryConsumer : IConsumer<WebhookDeliveryRequested>
+    public class WebhookDeliveryConsumer : IEventHandler<WebhookDeliveryRequested>
     {
         private readonly IWebhookNotificationService _webhookService;
         private readonly IWebhookDeliveryTracker _deliveryTracker;
@@ -39,10 +39,8 @@ namespace ConduitLLM.Gateway.Consumers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         
-        public async Task Consume(ConsumeContext<WebhookDeliveryRequested> context)
+        public async Task HandleAsync(WebhookDeliveryRequested request, IEventContext context)
         {
-            var request = context.Message;
-            
             // Create unique delivery key for deduplication
             var deliveryKey = $"{request.TaskId}:{request.EventType}:{context.MessageId}";
             
@@ -175,7 +173,7 @@ namespace ConduitLLM.Gateway.Consumers
                         MAX_RETRY_COUNT);
                     
                     // Schedule a new message with incremented retry count
-                    await context.ScheduleSend(
+                    await context.SchedulePublishAsync(
                         retryTime,
                         new WebhookDeliveryRequested
                         {
@@ -226,7 +224,7 @@ namespace ConduitLLM.Gateway.Consumers
                     // Record failure in circuit breaker
                     _circuitBreaker.RecordFailure(request.WebhookUrl);
                     
-                    // Message will be moved to error/dead letter queue by MassTransit
+                    // Message will be moved to the error/dead-letter queue by the transport
                     throw new InvalidOperationException(
                         $"Webhook delivery failed after {MAX_RETRY_COUNT} attempts to {request.WebhookUrl}");
                 }
@@ -252,7 +250,7 @@ namespace ConduitLLM.Gateway.Consumers
                     request.WebhookUrl, 
                     ex.Message);
                 
-                // Re-throw to let MassTransit handle retry
+                // Re-throw to let the endpoint retry policy handle it
                 throw;
             }
         }

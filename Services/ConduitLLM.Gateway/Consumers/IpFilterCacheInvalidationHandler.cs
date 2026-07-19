@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -9,7 +10,7 @@ namespace ConduitLLM.Gateway.Consumers
     /// Handles IpFilterChanged events for cache invalidation.
     /// Invalidates the Redis-based IP filter cache when filters are modified.
     /// </summary>
-    public class IpFilterCacheInvalidationHandler : IConsumer<IpFilterChanged>
+    public class IpFilterCacheInvalidationHandler : IEventHandler<IpFilterChanged>
     {
         private readonly IIpFilterCache? _ipFilterCache;
         private readonly ILogger<IpFilterCacheInvalidationHandler> _logger;
@@ -30,10 +31,11 @@ namespace ConduitLLM.Gateway.Consumers
         /// <summary>
         /// Consumes IpFilterChanged events and logs them for monitoring
         /// </summary>
+        /// <param name="message">The IP filter change event</param>
         /// <param name="context">The consume context containing the event</param>
-        public async Task Consume(ConsumeContext<IpFilterChanged> context)
+        public async Task HandleAsync(IpFilterChanged message, IEventContext context)
         {
-            var @event = context.Message;
+            var @event = message;
 
             _logger.LogInformation(
                 "IpFilterChanged event received - FilterId: {FilterId}, IP: {IpAddressOrCidr}, ChangeType: {ChangeType}, FilterType: {FilterType}, IsEnabled: {IsEnabled}",

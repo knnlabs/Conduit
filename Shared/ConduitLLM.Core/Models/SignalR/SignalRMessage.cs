@@ -24,6 +24,32 @@ namespace ConduitLLM.Core.Models.SignalR
         /// Retry count if message delivery fails
         /// </summary>
         public int RetryCount { get; set; }
+
+        /// <summary>
+        /// Type of the message for routing and processing.
+        /// Override in derived classes to specify the message type.
+        /// </summary>
+        public virtual string MessageType => GetType().Name;
+
+        /// <summary>
+        /// Priority of the message (higher values = higher priority)
+        /// </summary>
+        public int Priority { get; set; } = 0;
+
+        /// <summary>
+        /// Indicates if this is a critical message that must be delivered
+        /// </summary>
+        public bool IsCritical { get; set; } = false;
+
+        /// <summary>
+        /// Expiration time for the message (null = no expiration)
+        /// </summary>
+        public DateTime? ExpiresAt { get; set; }
+
+        /// <summary>
+        /// Checks if the message has expired
+        /// </summary>
+        public bool IsExpired => ExpiresAt.HasValue && DateTime.UtcNow > ExpiresAt.Value;
     }
 
     /// <summary>

@@ -39,27 +39,39 @@ namespace ConduitLLM.Gateway.Services
 
         private void CollectMetrics(object? state)
         {
+            // Fire-and-forget async metrics collection with proper exception handling
+            _ = CollectMetricsAsync();
+        }
+
+        private async Task CollectMetricsAsync()
+        {
             try
             {
                 using var scope = _serviceProvider.CreateScope();
-                
+
+                int totalConnections = 0;
+                int pendingMessages = 0;
+                int deadLetterMessages = 0;
+
                 // Collect connection metrics
                 var connectionMonitor = scope.ServiceProvider.GetService<ISignalRConnectionMonitor>();
                 if (connectionMonitor != null)
                 {
-                    var stats = connectionMonitor.GetStatistics();
-                    
+                    var stats = await connectionMonitor.GetStatisticsAsync();
+
                     // Update gauge metrics
                     foreach (var hub in stats.ConnectionsByHub)
                     {
                         _metrics.UpdateActiveConnections(hub.Key, 0); // Reset to current value
+                        totalConnections += hub.Value;
                     }
-                    
+
                     // Record acknowledgment rate
                     if (stats.TotalMessagesSent > 0)
                     {
                         var ackRate = (double)stats.TotalMessagesAcknowledged / stats.TotalMessagesSent * 100;
-                        _logger.LogDebug("Acknowledgment rate: {Rate}%", ackRate);
+                        _logger.LogDebug("SignalR acknowledgment rate: {Rate:F1}%, messages sent: {Sent}, acknowledged: {Acked}",
+                            ackRate, stats.TotalMessagesSent, stats.TotalMessagesAcknowledged);
                     }
                 }
 
@@ -68,21 +80,32 @@ namespace ConduitLLM.Gateway.Services
                 if (queueService != null)
                 {
                     var stats = queueService.GetStatistics();
-                    _metrics.UpdateQueueDepth(stats.PendingMessages);
-                    _metrics.UpdateDeadLetterQueueDepth(stats.DeadLetterMessages);
+                    pendingMessages = stats.PendingMessages;
+                    deadLetterMessages = stats.DeadLetterMessages;
+                    _metrics.UpdateQueueDepth(pendingMessages);
+                    _metrics.UpdateDeadLetterQueueDepth(deadLetterMessages);
                 }
 
                 // Collect batching metrics
                 var batchingService = scope.ServiceProvider.GetService<ISignalRMessageBatcher>();
                 if (batchingService != null)
                 {
-                    var stats = batchingService.GetStatistics();
+                    var stats = await batchingService.GetStatisticsAsync();
                     _metrics.UpdatePendingBatches((int)stats.CurrentPendingMessages);
-                    
+
                     if (stats.BatchEfficiencyPercentage > 0)
                     {
-                        _logger.LogDebug("Batch efficiency: {Efficiency}%", stats.BatchEfficiencyPercentage);
+                        _logger.LogDebug("SignalR batch efficiency: {Efficiency:F1}%", stats.BatchEfficiencyPercentage);
                     }
+                }
+
+                _logger.LogDebug(
+                    "SignalR metrics collection completed — connections: {Connections}, pending: {Pending}, dead letters: {DeadLetters}",
+                    totalConnections, pendingMessages, deadLetterMessages);
+
+                if (deadLetterMessages > 0)
+                {
+                    _logger.LogWarning("SignalR dead letter queue has {DeadLetterCount} messages", deadLetterMessages);
                 }
             }
             catch (Exception ex)
@@ -120,38 +143,8 @@ namespace ConduitLLM.Gateway.Services
         {
             services.AddSingleton<SignalRMetrics>();
             services.AddHostedService<SignalROpenTelemetryService>();
-            
-            return services;
-        }
 
-        /// <summary>
-        /// Records a SignalR operation with metrics
-        /// </summary>
-        public static async Task<T> RecordSignalROperationAsync<T>(
-            this SignalRMetrics metrics,
-            string hub,
-            string method,
-            Func<Task<T>> operation)
-        {
-            using var activity = SignalRMetrics.StartMessageActivity($"SignalR.{method}", hub, method);
-            var startTime = DateTime.UtcNow;
-            
-            try
-            {
-                var result = await operation();
-                
-                var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                metrics.RecordMessageDeliveryDuration(hub, method, duration);
-                metrics.RecordMessageDelivered(hub, method, true);
-                
-                return result;
-            }
-            catch (Exception ex)
-            {
-                metrics.RecordMessageDelivered(hub, method, false);
-                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-                throw;
-            }
+            return services;
         }
     }
 }

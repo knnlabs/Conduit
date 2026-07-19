@@ -3,6 +3,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -19,18 +21,6 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
-            var taskStatus = new AsyncTaskStatus
-            {
-                TaskId = taskId,
-                State = TaskState.Completed,
-                Progress = 100,
-                CreatedAt = DateTime.UtcNow.AddMinutes(-5),
-                UpdatedAt = DateTime.UtcNow,
-                CompletedAt = DateTime.UtcNow,
-                Result = "video-url-123",
-                Metadata = new TaskMetadata(123) // Same virtual key ID as in claims
-            };
 
             var videoResponse = new VideoGenerationResponse
             {
@@ -40,11 +30,20 @@ namespace ConduitLLM.Tests.Http.Controllers
                 }
             };
 
+            var taskStatus = new AsyncTaskStatus
+            {
+                TaskId = taskId,
+                State = TaskState.Completed,
+                Progress = 100,
+                CreatedAt = DateTime.UtcNow.AddMinutes(-5),
+                UpdatedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                Result = videoResponse, // Stored result is deserialized inline by the controller
+                Metadata = new TaskMetadata(123) // Same virtual key ID as in claims
+            };
+
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
-
-            _mockVideoService.Setup(x => x.GetVideoGenerationStatusAsync(taskId, virtualKey, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(videoResponse);
 
             _controller.ControllerContext = CreateControllerContext();
             _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
@@ -58,12 +57,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<VideoGenerationTaskStatus>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<VideoGenerationTaskStatus>().Subject;
             Assert.Equal(taskId, response.TaskId);
             Assert.Equal(TaskStateConstants.Completed, response.Status);
             Assert.Equal(100, response.Progress);
-            Assert.NotNull(response.VideoResponse);
+            Assert.NotNull(response.Result);
         }
 
         [Fact]
@@ -88,10 +87,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
-            Assert.Equal("Task Not Found", problemDetails.Title);
-            Assert.Equal("The requested task was not found", problemDetails.Detail);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("The requested task was not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -105,9 +104,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(unauthorizedResult.Value);
-            Assert.Equal("Unauthorized", problemDetails.Title);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Virtual key not found in request context", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -128,14 +128,9 @@ namespace ConduitLLM.Tests.Http.Controllers
                     new System.Security.Claims.Claim("VirtualKeyId", "123")
                 }, "Test"));
 
-            // Act
-            var result = await _controller.GetTaskStatus(taskId);
-
-            // Assert
-            var internalServerErrorResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, internalServerErrorResult.StatusCode);
-            var problemDetails = Assert.IsType<ProblemDetails>(internalServerErrorResult.Value);
-            Assert.Equal("Internal Server Error", problemDetails.Title);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GetTaskStatus(taskId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Database error");
         }
 
         #endregion

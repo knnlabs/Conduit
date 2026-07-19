@@ -1,11 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
     /// Represents a global application setting
     /// </summary>
-    public class GlobalSetting
+    public class GlobalSetting : IEntity<int>, IAuditableEntity
     {
         /// <summary>
         /// Unique identifier for the setting

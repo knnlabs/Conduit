@@ -352,5 +352,5 @@ MIT - see LICENSE file for details
 
 ## Support
 
-- GitHub Issues: https://github.com/knnlabs/Conduit/issues
-- Documentation: https://github.com/knnlabs/Conduit/tree/master/SDKs/Node/Admin
+- GitHub Issues: https://github.com/nickna/Conduit/issues
+- Documentation: https://github.com/nickna/Conduit/tree/master/SDKs/Node/Admin

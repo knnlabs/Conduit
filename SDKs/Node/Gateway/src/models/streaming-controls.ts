@@ -8,7 +8,7 @@ export interface StreamControlOptions {
   onCancel?: () => void;
 }
 
-export interface ControllableStream<T extends BaseStreamChunk> extends StreamingResponse<T> {
+export interface ControllableStream<T> extends StreamingResponse<T> {
   pause(): void;
   resume(): void;
   cancel(): void;

@@ -1,20 +1,15 @@
 import { NextResponse } from 'next/server';
 
+/**
+ * Health check endpoint for WebAdmin.
+ * Returns minimal information to avoid exposing sensitive details.
+ * WebAdmin runs behind Clerk authentication, but this endpoint is intentionally
+ * simple to support external monitoring services.
+ */
 export async function GET() {
   try {
-    return NextResponse.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memory: process.memoryUsage().rss
-    });
+    return NextResponse.json({ status: 'ok' });
   } catch {
-    return NextResponse.json(
-      { 
-        status: 'unhealthy',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ status: 'error' }, { status: 500 });
   }
 }

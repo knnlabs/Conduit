@@ -67,6 +67,9 @@ The factory currently supports **9 active providers** (as of 2025-11-08):
 | `Cerebras` | `CerebrasClient` | High-performance inference | ✅ Active |
 | `SambaNova` | `SambaNovaClient` | Ultra-fast inference | ✅ Active |
 | `DeepInfra` | `DeepInfraClient` | OpenAI-compatible inference platform | ✅ Active |
+| `Cloudflare` | `CloudflareClient` | Cloudflare Workers AI serverless inference | ✅ Active |
+| `OpenRouter` | `OpenRouterClient` | Multi-provider routing | ✅ Active |
+| `Meta` | `MetaClient` | Meta Model API (Muse Spark models) | ✅ Active |
 
 **Obsolete Providers (removed):**
 - `Ultravox` (Audio functionality removed)
@@ -282,10 +285,8 @@ var client = await _factory.GetClientByProviderId(providerId: 1);
 
 ## Related Documentation
 
-- **Provider Architecture:** `/docs/architecture/provider-multi-instance.md`
-- **Model Cost Mapping:** `/docs/architecture/model-cost-mapping.md`
-- **Provider Models:** `/docs/claude/provider-models.md`
-- **Database Migration Guide:** `/docs/claude/database-migration-guide.md`
+- **Provider Architecture:** [Provider Architecture](../architecture/provider-system/provider-architecture.md)
+- **Model & Cost Mapping:** [Model & Cost Mapping](../architecture/provider-system/model-and-cost-mapping.md)
 
 ---
 

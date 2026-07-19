@@ -12,10 +12,10 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Services.Strategies;
 using ConduitLLM.Core.Validation;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -29,8 +29,7 @@ namespace ConduitLLM.Core.Services
         VideoGenerationRequest,
         VideoGenerationResponse,
         VideoGenerationRequested>,
-        IConsumer<VideoGenerationRequested>,
-        IConsumer<VideoGenerationCancelled>
+        IEventHandler<VideoGenerationCancelled>
     {
         private readonly VideoGenerationRetryConfiguration _retryConfiguration;
         private readonly IMediaProcessingStrategy<VideoData> _base64Processor;
@@ -49,7 +48,7 @@ namespace ConduitLLM.Core.Services
             ILLMClientFactory clientFactory,
             IAsyncTaskService taskService,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IModelProviderMappingService modelMappingService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
@@ -59,17 +58,19 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
+            IProviderErrorTrackingService errorTrackingService,
             ILogger<VideoGenerationOrchestrator> logger)
-            : base(clientFactory, taskService, storageService, publishEndpoint,
+            : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics,
+                   errorTrackingService, logger)
         {
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
-            
+
             // Initialize processing strategies
-            _base64Processor = new Base64MediaProcessor(storageService, publishEndpoint,
+            _base64Processor = new Base64MediaProcessor(storageService, eventBus,
                 logger as ILogger<Base64MediaProcessor> ?? new NullLogger<Base64MediaProcessor>());
-            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, publishEndpoint,
+            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, eventBus,
                 logger as ILogger<UrlMediaProcessor> ?? new NullLogger<UrlMediaProcessor>());
         }
 
@@ -86,56 +87,62 @@ namespace ConduitLLM.Core.Services
             VirtualKey virtualKey,
             CancellationToken cancellationToken)
         {
-            // Get the client for the model
-            var client = _clientFactory.GetClient(modelInfo.ModelAlias);
+            // Get the client via the already-resolved provider instead of re-resolving the alias
+            var client = await _clientFactory.GetClientByProviderIdAsync(modelInfo.ProviderId, modelInfo.ModelId, cancellationToken);
             if (client == null)
             {
                 throw new NotSupportedException($"No provider available for model {modelInfo.ModelAlias}");
             }
 
-            // Check if client supports video generation using reflection
-            var clientType = client.GetType();
-            
-            // Handle decorators by getting inner client
-            object clientToCheck = client;
-            if (clientType.FullName?.Contains("Decorator") == true || 
-                clientType.FullName?.Contains("PerformanceTracking") == true)
+            // Video generation is not part of ILLMClient — only specific provider clients
+            // implement CreateVideoAsync. Unwrap the decorator chain to the innermost provider
+            // client to check the capability; decorators would otherwise hide it (issue #976).
+            var innermostClient = client.UnwrapInnermost();
+            var innermostType = innermostClient.GetType();
+
+            var supportsVideo = innermostType.GetMethods()
+                .Any(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+
+            if (!supportsVideo)
             {
-                var innerClientField = clientType.GetField("_innerClient",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                if (innerClientField != null)
-                {
-                    var innerClient = innerClientField.GetValue(client);
-                    if (innerClient != null)
-                    {
-                        clientToCheck = innerClient;
-                        clientType = innerClient.GetType();
-                    }
-                }
+                throw new NotSupportedException($"Provider for model {modelInfo.ModelAlias} does not support video generation");
             }
 
-            // Find CreateVideoAsync method
-            var createVideoMethod = clientType.GetMethods()
-                .FirstOrDefault(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+            // Set up progress callback if the provider client is MiniMax
+            if (innermostType.Name == "MiniMaxClient")
+            {
+                SetupMiniMaxProgressCallback(innermostClient, request.Model, cancellationToken);
+            }
+
+            // Invoke through the outermost client in the chain that exposes CreateVideoAsync so
+            // decorators (e.g. ContextAwareLLMClient's key context and error tracking) still run.
+            object invocationTarget = innermostClient;
+            MethodInfo? createVideoMethod = null;
+            for (ILLMClient? current = client; current != null;
+                 current = (current as ILLMClientDecorator)?.InnerClient)
+            {
+                var method = current.GetType().GetMethods()
+                    .FirstOrDefault(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+                if (method != null)
+                {
+                    invocationTarget = current;
+                    createVideoMethod = method;
+                    break;
+                }
+            }
 
             if (createVideoMethod == null)
             {
                 throw new NotSupportedException($"Provider for model {modelInfo.ModelAlias} does not support video generation");
             }
 
-            // Set up progress callback if the client is MiniMax
-            if (clientType.Name == "MiniMaxClient")
-            {
-                SetupMiniMaxProgressCallback(clientToCheck, request.Model, cancellationToken);
-            }
-
             // Invoke video generation
-            var task = createVideoMethod.Invoke(clientToCheck, new object?[] { request, null, cancellationToken }) 
+            var task = createVideoMethod.Invoke(invocationTarget, new object?[] { request, null, cancellationToken })
                 as Task<VideoGenerationResponse>;
-            
+
             if (task == null)
             {
-                throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
+                throw new InvalidOperationException($"CreateVideoAsync method on {invocationTarget.GetType().Name} did not return expected Task<VideoGenerationResponse>");
             }
 
             return await task;
@@ -159,7 +166,7 @@ namespace ConduitLLM.Core.Services
                         progress: progressPercentage);
 
                     // Publish progress event
-                    await _publishEndpoint.Publish(new VideoGenerationProgress
+                    await _eventBus.PublishAsync(new VideoGenerationProgress
                     {
                         RequestId = requestId,
                         ProgressPercentage = progressPercentage,
@@ -371,7 +378,7 @@ namespace ConduitLLM.Core.Services
 
         protected override async Task PublishStartedEventAsync(VideoGenerationRequested request)
         {
-            await _publishEndpoint.Publish(new VideoGenerationStarted
+            await _eventBus.PublishAsync(new VideoGenerationStarted
             {
                 RequestId = request.RequestId,
                 Provider = "pending",
@@ -408,7 +415,7 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            await _publishEndpoint.Publish(new VideoGenerationCompleted
+            await _eventBus.PublishAsync(new VideoGenerationCompleted
             {
                 RequestId = request.RequestId,
                 VideoUrl = media.Url ?? string.Empty,
@@ -439,7 +446,7 @@ namespace ConduitLLM.Core.Services
                 nextRetryAt = DateTime.UtcNow.AddSeconds(delaySeconds);
             }
 
-            await _publishEndpoint.Publish(new VideoGenerationFailed
+            await _eventBus.PublishAsync(new VideoGenerationFailed
             {
                 RequestId = request.RequestId,
                 Error = ex.Message,
@@ -459,7 +466,7 @@ namespace ConduitLLM.Core.Services
             int total,
             string status)
         {
-            await _publishEndpoint.Publish(new VideoGenerationProgress
+            await _eventBus.PublishAsync(new VideoGenerationProgress
             {
                 RequestId = request.RequestId,
                 ProgressPercentage = total > 0 ? (current * 100 / total) : 0,
@@ -521,10 +528,9 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Handles video generation cancellation events.
         /// </summary>
-        public async Task Consume(ConsumeContext<VideoGenerationCancelled> context)
+        public async Task HandleAsync(VideoGenerationCancelled cancellationEvent, IEventContext context)
         {
-            var cancellationEvent = context.Message;
-            _logger.LogInformation("Received cancellation request for video generation task {RequestId}", 
+            _logger.LogInformation("Received cancellation request for video generation task {RequestId}",
                 cancellationEvent.RequestId);
 
             // Cancel the task using the task registry
@@ -542,7 +548,7 @@ namespace ConduitLLM.Core.Services
                     error: "Task cancelled by user request");
                 
                 // Publish cancellation completed event
-                await _publishEndpoint.Publish(new VideoGenerationProgress
+                await _eventBus.PublishAsync(new VideoGenerationProgress
                 {
                     RequestId = cancellationEvent.RequestId,
                     Status = "cancelled",

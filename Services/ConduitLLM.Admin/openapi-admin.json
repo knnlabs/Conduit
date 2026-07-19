@@ -6,6 +6,228 @@
     "version": "v1"
   },
   "paths": {
+    "/api/ModelAuthor": {
+      "get": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelAuthorDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateModelAuthorDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelAuthorDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ModelAuthor/{id}": {
+      "get": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "operationId": "GetModelAuthorById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelAuthorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateModelAuthorDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/ModelAuthor/{id}/series": {
+      "get": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SimpleModelSeriesDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
     "/api/Analytics/logs": {
       "get": {
         "tags": [
@@ -120,7 +342,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -186,7 +408,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -199,7 +421,7 @@
         "summary": "Gets a list of distinct model names from request logs",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of model names",
             "content": {
               "text/plain": {
                 "schema": {
@@ -228,7 +450,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -310,7 +532,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -392,7 +614,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -435,7 +657,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Model cost breakdown",
             "content": {
               "text/plain": {
                 "schema": {
@@ -455,7 +677,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -498,7 +720,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Virtual key cost breakdown",
             "content": {
               "text/plain": {
                 "schema": {
@@ -518,7 +740,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -600,7 +822,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -644,7 +866,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Usage statistics",
             "content": {
               "text/plain": {
                 "schema": {
@@ -664,7 +886,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -763,7 +985,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -814,6 +1036,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -876,6 +1101,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -899,10 +1127,10 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Success response"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -955,7 +1183,7 @@
             }
           },
           "500": {
-            "description": "Internal server error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -980,6 +1208,7 @@
             "in": "query",
             "description": "Priority level: Normal (default) or High for urgent operations",
             "schema": {
+              "default": 0,
               "$ref": "#/components/schemas/FlushPriority"
             }
           },
@@ -1063,6 +1292,9 @@
                 "schema": { }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -1087,6 +1319,9 @@
                 "schema": { }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -1158,6 +1393,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -1237,6 +1475,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -1316,6 +1557,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -1380,6 +1624,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -1434,6 +1681,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -1458,6 +1708,9 @@
                 "schema": { }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -1470,7 +1723,7 @@
         "summary": "Gets routing configuration and rules.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Routing configuration data.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1490,537 +1743,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/config/caching": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Gets caching configuration and statistics.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheConfigurationDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheConfigurationDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheConfigurationDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Updates caching configuration.",
-        "requestBody": {
-          "description": "Cancellation token.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCacheConfigDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCacheConfigDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCacheConfigDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        }
-      }
-    },
-    "/api/config/caching/{cacheId}/clear": {
-      "post": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Clears specific cache by ID.",
-        "parameters": [
-          {
-            "name": "cacheId",
-            "in": "path",
-            "description": "Cache policy ID.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        }
-      }
-    },
-    "/api/config/caching/statistics": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Gets cache statistics for all regions or a specific region.",
-        "parameters": [
-          {
-            "name": "regionId",
-            "in": "query",
-            "description": "Optional region ID.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheStatisticsDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheStatisticsDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheStatisticsDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        }
-      }
-    },
-    "/api/config/caching/regions": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Lists all cache regions.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheRegionsResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheRegionsResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheRegionsResponseDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        }
-      }
-    },
-    "/api/config/caching/{regionId}/entries": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Gets entries from a specific cache region.",
-        "parameters": [
-          {
-            "name": "regionId",
-            "in": "path",
-            "description": "Region ID.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "description": "Number of entries to skip.",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "take",
-            "in": "query",
-            "description": "Number of entries to return.",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 100
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheEntriesDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheEntriesDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CacheEntriesDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        }
-      }
-    },
-    "/api/config/caching/{regionId}/refresh": {
-      "post": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Forces a refresh of cache entries in a region.",
-        "parameters": [
-          {
-            "name": "regionId",
-            "in": "path",
-            "description": "Region ID.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "key",
-            "in": "query",
-            "description": "Optional specific key to refresh.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        }
-      }
-    },
-    "/api/config/caching/{regionId}/policy": {
-      "put": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Updates the policy for a specific cache region.",
-        "parameters": [
-          {
-            "name": "regionId",
-            "in": "path",
-            "description": "Region ID.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "Cancellation token.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCachePolicyDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCachePolicyDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCachePolicyDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          },
-          "501": {
-            "description": "Not Implemented"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2051,6 +1774,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2102,6 +1828,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2114,10 +1843,10 @@
         "summary": "Gets all function configurations.",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of all function configurations"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -2172,7 +1901,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2220,7 +1949,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -2307,7 +2036,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -2353,7 +2082,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2377,10 +2106,10 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of function configurations for the specified provider"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2404,10 +2133,10 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of function configurations for the specified purpose"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2420,10 +2149,10 @@
         "summary": "Gets all function costs.",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of all function costs"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -2478,7 +2207,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2526,7 +2255,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -2613,7 +2342,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -2659,7 +2388,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2707,7 +2436,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2720,10 +2449,10 @@
         "summary": "Clears the function cost cache.",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Success message"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2736,10 +2465,10 @@
         "summary": "Gets all function credentials.",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of all credentials"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -2794,7 +2523,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2842,7 +2571,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -2890,7 +2619,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -2977,7 +2706,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -3023,7 +2752,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3080,7 +2809,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3128,7 +2857,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3153,10 +2882,10 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of executions"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3181,10 +2910,10 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of executions"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3231,7 +2960,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3244,10 +2973,10 @@
         "summary": "Gets executions with expired leases.",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of executions with expired leases"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3260,10 +2989,10 @@
         "summary": "Gets executions ready for retry.",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of executions ready for retry"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3311,7 +3040,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3324,7 +3053,7 @@
         "summary": "Gets all global settings",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of all global settings",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3353,7 +3082,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -3425,7 +3154,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3490,7 +3219,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -3577,7 +3306,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -3623,7 +3352,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3687,7 +3416,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -3732,7 +3461,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3789,7 +3518,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3802,7 +3531,7 @@
         "summary": "Gets global settings cache statistics",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Cache statistics including hit rate, size, and invalidation count",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3822,7 +3551,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3835,10 +3564,10 @@
         "summary": "Reloads all global settings from the database into the cache",
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "No content if successful"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3862,10 +3591,10 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "No content if successful"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3878,7 +3607,7 @@
         "summary": "Gets current service health status.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Service health information.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3898,7 +3627,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3923,7 +3652,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Incident history data.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3943,7 +3672,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -3968,7 +3697,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Health history time series.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3988,7 +3717,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -4001,7 +3730,7 @@
         "summary": "Gets all IP filters",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of all IP filters",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4030,7 +3759,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -4142,7 +3871,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -4155,7 +3884,7 @@
         "summary": "Gets all enabled IP filters",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of all enabled IP filters",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4184,7 +3913,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -4249,7 +3978,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -4376,7 +4105,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -4462,7 +4191,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -4475,7 +4204,7 @@
         "summary": "Gets the current IP filter settings",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "The current IP filter settings",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4495,7 +4224,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -4590,7 +4319,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -4654,238 +4383,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/admin/media-cleanup/status": {
-      "get": {
-        "tags": [
-          "MediaCleanup"
-        ],
-        "summary": "Gets the current status of the media cleanup service.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/MediaCleanupStatusDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MediaCleanupStatusDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MediaCleanupStatusDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/admin/media-cleanup/enabled": {
-      "get": {
-        "tags": [
-          "MediaCleanup"
-        ],
-        "summary": "Gets whether the media cleanup service is currently enabled.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": { }
-              },
-              "application/json": {
-                "schema": { }
-              },
-              "text/json": {
-                "schema": { }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "MediaCleanup"
-        ],
-        "summary": "Enables or disables the media cleanup service at runtime.\r\nThis setting persists across restarts via GlobalSettings.",
-        "requestBody": {
-          "description": "The enabled state to set.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateMediaCleanupEnabledRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateMediaCleanupEnabledRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateMediaCleanupEnabledRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": { }
-              },
-              "application/json": {
-                "schema": { }
-              },
-              "text/json": {
-                "schema": { }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/admin/media-cleanup/simple-retention": {
-      "get": {
-        "tags": [
-          "MediaCleanup"
-        ],
-        "summary": "Gets the simple retention override setting.\r\nWhen active, all media uses this retention period regardless of account balance.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimpleRetentionResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimpleRetentionResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimpleRetentionResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "MediaCleanup"
-        ],
-        "summary": "Sets or clears the simple retention override.\r\nWhen set, all media is deleted after the specified number of days regardless of account balance.\r\nPass null for RetentionDays to clear the override and use policy-based retention.",
-        "requestBody": {
-          "description": "The retention days to set (1-365), or null to clear.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSimpleRetentionRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSimpleRetentionRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSimpleRetentionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimpleRetentionResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimpleRetentionResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimpleRetentionResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -4909,7 +4407,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Overall storage statistics.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4929,7 +4427,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -4954,7 +4452,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Storage statistics for the virtual key.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4974,7 +4472,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -4987,7 +4485,7 @@
         "summary": "Gets storage statistics grouped by provider.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Dictionary of provider names to storage size.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5019,7 +4517,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5032,7 +4530,7 @@
         "summary": "Gets storage statistics grouped by media type.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Dictionary of media types to storage size.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5064,7 +4562,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5089,7 +4587,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of media records.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5118,7 +4616,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5190,7 +4688,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5255,7 +4753,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5268,7 +4766,7 @@
         "summary": "Manually triggers cleanup of expired media files.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Number of files cleaned up.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5288,7 +4786,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5301,7 +4799,7 @@
         "summary": "Manually triggers cleanup of orphaned media files.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Number of files cleaned up.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5321,7 +4819,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5395,7 +4893,208 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/admin/media-cleanup/status": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Gets the current status of the media cleanup service.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupStatusDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/admin/media-cleanup/enabled": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Gets whether the media cleanup service is currently enabled.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupEnabledDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupEnabledDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupEnabledDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Enables or disables the media cleanup service at runtime.\r\nThis setting persists across restarts via GlobalSettings.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaCleanupEnabledRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaCleanupEnabledRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaCleanupEnabledRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupEnabledChangedDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupEnabledChangedDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupEnabledChangedDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/admin/media-cleanup/simple-retention": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Gets the simple retention override setting.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleRetentionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleRetentionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleRetentionResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Sets or clears the simple retention override.\r\nPass null for RetentionDays to clear the override and use policy-based retention.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSimpleRetentionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSimpleRetentionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSimpleRetentionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleRetentionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleRetentionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleRetentionResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5435,6 +5134,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -5504,6 +5206,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5566,6 +5271,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -5667,6 +5375,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -5730,6 +5441,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5785,6 +5499,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5830,6 +5547,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5901,6 +5621,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5913,7 +5636,7 @@
         "summary": "Gets database connection pool metrics.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Connection pool metrics.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5933,7 +5656,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -5946,7 +5669,7 @@
         "summary": "Gets all application metrics including database, cache, and performance metrics.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Comprehensive application metrics.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5966,453 +5689,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ModelAuthor": {
-      "get": {
-        "tags": [
-          "ModelAuthor"
-        ],
-        "summary": "Gets all model authors",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelAuthorDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelAuthorDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelAuthorDto"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "ModelAuthor"
-        ],
-        "summary": "Creates a new model author",
-        "requestBody": {
-          "description": "The model author to create",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateModelAuthorDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateModelAuthorDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateModelAuthorDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelAuthorDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelAuthorDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelAuthorDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ModelAuthor/{id}": {
-      "get": {
-        "tags": [
-          "ModelAuthor"
-        ],
-        "summary": "Gets a specific model author by ID",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The author ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelAuthorDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelAuthorDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelAuthorDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "ModelAuthor"
-        ],
-        "summary": "Updates an existing model author",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The author ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The updated model author data",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateModelAuthorDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateModelAuthorDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateModelAuthorDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "ModelAuthor"
-        ],
-        "summary": "Deletes a model author",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The author ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ModelAuthor/{id}/series": {
-      "get": {
-        "tags": [
-          "ModelAuthor"
-        ],
-        "summary": "Gets series by author",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The author ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SimpleModelSeriesDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SimpleModelSeriesDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SimpleModelSeriesDto"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -6422,10 +5699,54 @@
         "tags": [
           "Model"
         ],
-        "summary": "Gets all models with their capabilities",
+        "summary": "Gets all models with their capabilities.\r\nSupports optional server-side pagination, search, and filtering.\r\nWhen page/pageSize are omitted, returns all models (backward compatible).",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based). Required together with pageSize for pagination.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Items per page (max 100). Required together with page for pagination.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Optional search term for model name (case-insensitive partial match)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "capability",
+            "in": "query",
+            "description": "Optional capability filter: chat, vision, image, video, embeddings",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasProviders",
+            "in": "query",
+            "description": "Optional filter: true = only models with identifiers, false = without",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of all models, or paginated result when page/pageSize are provided",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6454,7 +5775,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -6546,7 +5867,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -6611,7 +5932,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -6735,7 +6056,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -6801,7 +6122,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -6824,7 +6145,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of matching models",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6853,7 +6174,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -6926,7 +6247,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -6991,7 +6312,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -7107,6 +6428,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -7171,7 +6495,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -7288,6 +6612,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -7341,6 +6668,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -7414,7 +6744,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -7538,7 +6868,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -7637,7 +6967,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -7693,7 +7023,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -7734,7 +7064,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of all model costs or paginated response",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7763,7 +7093,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -7835,7 +7165,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -7900,7 +7230,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -7987,7 +7317,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -8033,7 +7363,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8058,7 +7388,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of model costs for the specified provider",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8087,7 +7417,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8151,7 +7481,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8233,7 +7563,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8319,7 +7649,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8343,7 +7673,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "CSV file containing model costs",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8363,7 +7693,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8387,7 +7717,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "JSON file containing model costs",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8407,7 +7737,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8436,7 +7766,7 @@
         },
         "responses": {
           "400": {
-            "description": "Bad Request",
+            "description": "Import result with statistics",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8456,7 +7786,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8485,7 +7815,7 @@
         },
         "responses": {
           "400": {
-            "description": "Bad Request",
+            "description": "Import result with statistics",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8505,7 +7835,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8611,7 +7941,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8685,7 +8015,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8698,7 +8028,7 @@
         "summary": "Gets all model provider mappings",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "A list of all model provider mappings",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8727,7 +8057,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -8819,7 +8149,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -8884,7 +8214,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -8971,7 +8301,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -9017,7 +8347,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9030,7 +8360,7 @@
         "summary": "Gets all available providers",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of providers with IDs and names",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9059,7 +8389,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9142,7 +8472,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9228,7 +8558,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9314,7 +8644,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9400,7 +8730,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9413,7 +8743,7 @@
         "summary": "Gets all model series",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of all model series",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9442,7 +8772,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -9534,7 +8864,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9599,7 +8929,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -9706,7 +9036,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -9772,7 +9102,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9846,7 +9176,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9859,7 +9189,7 @@
         "summary": "Gets all notifications",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of all notifications",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9888,7 +9218,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -9960,7 +9290,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -9973,7 +9303,7 @@
         "summary": "Gets all unread notifications",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of unread notifications",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10002,7 +9332,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -10067,7 +9397,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -10154,7 +9484,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -10200,7 +9530,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -10248,7 +9578,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -10261,7 +9591,7 @@
         "summary": "Marks all notifications as read",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "The number of notifications marked as read",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10284,262 +9614,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Pricing/validate": {
-      "post": {
-        "tags": [
-          "Pricing"
-        ],
-        "summary": "Validate pricing configuration JSON",
-        "requestBody": {
-          "description": "The pricing configuration to validate",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PricingValidationRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PricingValidationRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/PricingValidationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/PricingValidationResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PricingValidationResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PricingValidationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Pricing/simulate": {
-      "post": {
-        "tags": [
-          "Pricing"
-        ],
-        "summary": "Simulate pricing calculation with test parameters",
-        "requestBody": {
-          "description": "The simulation request with configuration and test parameters",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PricingSimulationRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PricingSimulationRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/PricingSimulationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/PricingSimulationResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PricingSimulationResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PricingSimulationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Pricing/types": {
-      "get": {
-        "tags": [
-          "Pricing"
-        ],
-        "summary": "Get available pricing types",
-        "responses": {
-          "200": {
-            "description": "List of pricing types with descriptions",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PricingTypeInfo"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PricingTypeInfo"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PricingTypeInfo"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Pricing/operators": {
-      "get": {
-        "tags": [
-          "Pricing"
-        ],
-        "summary": "Get available condition operators",
-        "responses": {
-          "200": {
-            "description": "List of operators with descriptions",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OperatorInfo"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OperatorInfo"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OperatorInfo"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Pricing/template": {
-      "get": {
-        "tags": [
-          "Pricing"
-        ],
-        "summary": "Get pricing configuration template",
-        "parameters": [
-          {
-            "name": "pricingType",
-            "in": "query",
-            "description": "The pricing type to get template for",
-            "schema": {
-              "type": "string",
-              "default": "per_second"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "JSON template for the pricing configuration",
-            "content": {
-              "text/plain": {
-                "schema": { }
-              },
-              "application/json": {
-                "schema": { }
-              },
-              "text/json": {
-                "schema": { }
-              }
-            }
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -10610,6 +9685,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -10686,6 +9764,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -10755,6 +9836,384 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/Pricing/types": {
+      "get": {
+        "tags": [
+          "Pricing"
+        ],
+        "summary": "Get available pricing types",
+        "responses": {
+          "200": {
+            "description": "List of pricing types with descriptions",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PricingTypeInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PricingTypeInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PricingTypeInfo"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/Pricing/operators": {
+      "get": {
+        "tags": [
+          "Pricing"
+        ],
+        "summary": "Get available condition operators",
+        "responses": {
+          "200": {
+            "description": "List of operators with descriptions",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OperatorInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OperatorInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OperatorInfo"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/Pricing/template": {
+      "get": {
+        "tags": [
+          "Pricing"
+        ],
+        "summary": "Get pricing configuration template",
+        "parameters": [
+          {
+            "name": "pricingType",
+            "in": "query",
+            "description": "The pricing type to get template for",
+            "schema": {
+              "type": "string",
+              "default": "per_second"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON template for the pricing configuration",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/Pricing/validate": {
+      "post": {
+        "tags": [
+          "Pricing"
+        ],
+        "summary": "Validate pricing configuration JSON",
+        "requestBody": {
+          "description": "The pricing configuration to validate",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricingValidationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricingValidationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricingValidationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingValidationResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingValidationResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingValidationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/Pricing/simulate": {
+      "post": {
+        "tags": [
+          "Pricing"
+        ],
+        "summary": "Simulate pricing calculation with test parameters",
+        "requestBody": {
+          "description": "The simulation request with configuration and test parameters",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricingSimulationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricingSimulationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricingSimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingSimulationResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingSimulationResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingSimulationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/prompt-caching/config": {
+      "get": {
+        "tags": [
+          "PromptCaching"
+        ],
+        "summary": "Gets the current prompt caching configuration.",
+        "responses": {
+          "200": {
+            "description": "The current prompt caching configuration, or defaults if not set.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingConfigDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingConfigDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingConfigDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "PromptCaching"
+        ],
+        "summary": "Updates the prompt caching configuration.",
+        "requestBody": {
+          "description": "The new prompt caching configuration.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromptCachingConfigDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromptCachingConfigDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromptCachingConfigDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingConfigDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingConfigDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingConfigDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -10819,7 +10278,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -10917,7 +10376,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -10986,7 +10445,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -11083,7 +10542,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -11139,7 +10598,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11217,7 +10676,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11227,30 +10686,52 @@
         "tags": [
           "ProviderCredentials"
         ],
-        "summary": "Gets all provider configurations",
+        "summary": "Gets all provider configurations with pagination",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based, default: 1)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items per page (default: 50, max: 100)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Paginated list of providers",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array"
+                  "$ref": "#/components/schemas/PagedResultOfObject"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array"
+                  "$ref": "#/components/schemas/PagedResultOfObject"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array"
+                  "$ref": "#/components/schemas/PagedResultOfObject"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -11315,7 +10796,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11374,7 +10855,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -11461,7 +10942,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -11507,7 +10988,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11572,7 +11053,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11645,7 +11126,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11720,7 +11201,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11763,7 +11244,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of recent provider errors",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11792,7 +11273,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11805,7 +11286,7 @@
         "summary": "Get error summary for all providers",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of provider error summaries",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11834,7 +11315,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11899,7 +11380,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -11984,28 +11465,8 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12030,7 +11491,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Error statistics",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12050,7 +11511,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12085,7 +11546,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Dictionary of key ID to error count",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12117,7 +11578,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12203,7 +11664,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12234,7 +11695,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of provider tools",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12263,7 +11724,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -12314,8 +11775,8 @@
               }
             }
           },
-          "409": {
-            "description": "Conflict",
+          "400": {
+            "description": "Bad Request",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12335,7 +11796,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12400,7 +11861,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -12463,6 +11924,26 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -12484,7 +11965,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -12530,7 +12011,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12570,6 +12051,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12609,6 +12093,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12651,7 +12138,7 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Import results",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12671,7 +12158,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12684,7 +12171,7 @@
         "summary": "Exports all provider tools as JSON.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "JSON array of all provider tools",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12713,7 +12200,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12738,7 +12225,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Security events data.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12758,7 +12245,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12771,7 +12258,7 @@
         "summary": "Gets threat analytics data.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Threat analytics information.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12791,7 +12278,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12804,7 +12291,7 @@
         "summary": "Gets compliance metrics.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Compliance information.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12824,7 +12311,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12837,7 +12324,7 @@
         "summary": "Gets system information",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "System information details",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12857,7 +12344,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12870,7 +12357,7 @@
         "summary": "Gets health status",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Health status information",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12890,7 +12377,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12903,10 +12390,10 @@
         "summary": "Invalidates all discovery cache entries by publishing an event to all Gateway API instances",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Success response with cache invalidation details"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12942,7 +12429,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12955,10 +12442,10 @@
         "summary": "Invalidates all function discovery cache entries by publishing an event to all Gateway API instances",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Success response with cache invalidation details"
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -12984,7 +12471,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "The number of tasks cleaned up.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -13004,7 +12491,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -13014,39 +12501,52 @@
         "tags": [
           "VirtualKeyGroups"
         ],
-        "summary": "Get all virtual key groups",
+        "summary": "Get all virtual key groups with pagination",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based, default: 1)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items per page (default: 50, max: 100)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/VirtualKeyGroupDto"
-                  }
+                  "$ref": "#/components/schemas/PagedResultOfVirtualKeyGroupDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/VirtualKeyGroupDto"
-                  }
+                  "$ref": "#/components/schemas/PagedResultOfVirtualKeyGroupDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/VirtualKeyGroupDto"
-                  }
+                  "$ref": "#/components/schemas/PagedResultOfVirtualKeyGroupDto"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -13097,7 +12597,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -13161,7 +12661,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -13226,7 +12726,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -13291,7 +12791,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -13395,7 +12895,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -13477,7 +12977,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -13550,7 +13050,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -13656,7 +13156,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -13770,7 +13270,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -13792,7 +13292,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of all virtual keys",
             "content": {
               "text/plain": {
                 "schema": {
@@ -13821,7 +13321,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -13887,7 +13387,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -14014,7 +13514,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       },
@@ -14100,7 +13600,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -14174,7 +13674,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -14239,7 +13739,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -14296,7 +13796,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -14369,7 +13869,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -14434,7 +13934,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -14445,7 +13945,7 @@
           "VirtualKeys"
         ],
         "summary": "Get usage information for a virtual key by its key value",
-        "description": "This endpoint allows administrators to check the usage and balance of a virtual key \r\nusing the actual key value instead of the database ID. This is useful for support \r\nscenarios where users provide their key value.",
+        "description": "This endpoint allows administrators to check the usage and balance of a virtual key\r\nusing the actual key value instead of the database ID. This is useful for support\r\nscenarios where users provide their key value.",
         "parameters": [
           {
             "name": "key",
@@ -14559,7 +14059,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -15195,246 +14695,24 @@
         },
         "description": "Result of a bulk update operation"
       },
-      "CacheConfigurationDto": {
+      "CacheInjectionPointDto": {
         "type": "object",
         "properties": {
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "cachePolicies": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CachePolicyDto"
-            }
-          },
-          "cacheRegions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CacheRegionDto"
-            }
-          },
-          "statistics": {
-            "$ref": "#/components/schemas/CacheStatisticsDto"
-          },
-          "configuration": {
-            "$ref": "#/components/schemas/CacheGlobalConfigDto"
-          }
-        }
-      },
-      "CacheEntriesDto": {
-        "type": "object",
-        "properties": {
-          "regionId": {
-            "type": "string"
-          },
-          "entries": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CacheEntryDto"
-            }
-          },
-          "totalCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "skip": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "take": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
+          "role": {
+            "pattern": "^(system|user|assistant)$",
             "type": [
               "null",
               "string"
             ]
-          }
-        }
-      },
-      "CacheEntryDto": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
           },
-          "size": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "lastAccessedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "expiresAt": {
+          "index": {
+            "maximum": 100,
+            "minimum": -100,
             "type": [
               "null",
-              "string"
+              "integer"
             ],
-            "format": "date-time"
-          },
-          "accessCount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "priority": {
-            "type": "integer",
             "format": "int32"
-          }
-        }
-      },
-      "CacheGlobalConfigDto": {
-        "type": "object",
-        "properties": {
-          "defaultTTL": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "maxMemorySize": {
-            "type": "string"
-          },
-          "evictionPolicy": {
-            "type": "string"
-          },
-          "compressionEnabled": {
-            "type": "boolean"
-          },
-          "redisConnectionString": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "CacheMetricsDto": {
-        "type": "object",
-        "properties": {
-          "size": {
-            "type": "string"
-          },
-          "items": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "hitRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "missRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "evictionRate": {
-            "type": "number",
-            "format": "double"
-          }
-        }
-      },
-      "CachePolicyDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "ttl": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "maxSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "strategy": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "description": {
-            "type": "string"
-          }
-        }
-      },
-      "CacheRegionDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "nodes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "metrics": {
-            "$ref": "#/components/schemas/CacheMetricsDto"
-          }
-        }
-      },
-      "CacheRegionsResponseDto": {
-        "type": "object",
-        "properties": {
-          "regions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CacheRegionDto"
-            },
-            "description": "The configured cache regions."
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "Timestamp when the response was generated (UTC).",
-            "format": "date-time"
-          }
-        },
-        "description": "Response DTO for the cache regions endpoint."
-      },
-      "CacheStatisticsDto": {
-        "type": "object",
-        "properties": {
-          "totalHits": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalMisses": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "hitRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "avgResponseTime": {
-            "$ref": "#/components/schemas/ResponseTimeDto"
-          },
-          "memoryUsage": {
-            "$ref": "#/components/schemas/MemoryUsageDto"
-          },
-          "topCachedItems": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TopCachedItemDto"
-            }
           }
         }
       },
@@ -15443,36 +14721,29 @@
         "properties": {
           "virtualKeyGroupId": {
             "type": "integer",
-            "description": "Gets or sets the ID of the virtual key group that was cleaned up.",
             "format": "int32"
           },
           "dryRun": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether this was a dry run (no actual deletions)."
+            "type": "boolean"
           },
           "mediaRecordsEvaluated": {
             "type": "integer",
-            "description": "Gets or sets the total number of media records evaluated during cleanup.",
             "format": "int32"
           },
           "mediaRecordsMarkedForDeletion": {
             "type": "integer",
-            "description": "Gets or sets the number of media records marked for deletion.",
             "format": "int32"
           },
           "mediaRecordsDeleted": {
             "type": "integer",
-            "description": "Gets or sets the number of media records actually deleted.",
             "format": "int32"
           },
           "storageBytesFreed": {
             "type": "integer",
-            "description": "Gets or sets the total amount of storage space freed in bytes.",
             "format": "int64"
           },
           "message": {
-            "type": "string",
-            "description": "Gets or sets an informational message about the cleanup operation."
+            "type": "string"
           }
         },
         "description": "Represents the result of a media cleanup operation."
@@ -15853,55 +15124,45 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "Gets or sets the name of the retention policy."
+            "type": "string"
           },
           "description": {
             "type": [
               "null",
               "string"
-            ],
-            "description": "Gets or sets the description of the retention policy."
+            ]
           },
           "positiveBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is positive.",
             "format": "int32"
           },
           "zeroBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is zero.",
             "format": "int32"
           },
           "negativeBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is negative.",
             "format": "int32"
           },
           "softDeleteGracePeriodDays": {
             "type": "integer",
-            "description": "Gets or sets the grace period in days before permanently deleting soft-deleted media.",
             "format": "int32"
           },
           "respectRecentAccess": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether to respect recent access when determining retention."
+            "type": "boolean"
           },
           "recentAccessWindowDays": {
             "type": "integer",
-            "description": "Gets or sets the window in days for considering recent access.",
             "format": "int32"
           },
           "isDefault": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether this is the default policy."
+            "type": "boolean"
           },
           "maxStorageSizeBytes": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum storage size in bytes allowed for this policy.",
             "format": "int64"
           },
           "maxFileCount": {
@@ -15909,7 +15170,6 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum number of files allowed for this policy.",
             "format": "int32"
           }
         },
@@ -16687,6 +15947,24 @@
         },
         "description": "Response model for ephemeral master key generation"
       },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "error": { },
+          "details": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "ErrorStatisticsDto": {
         "type": "object",
         "properties": {
@@ -16862,8 +16140,7 @@
         }
       },
       "FlushPriority": {
-        "type": "integer",
-        "default": 0
+        "type": "integer"
       },
       "FunctionConfiguration": {
         "required": [
@@ -17620,6 +16897,20 @@
             "type": "integer",
             "format": "int32"
           },
+          "cachedInputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "cachedWriteTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "cost": {
             "type": "number",
             "format": "double"
@@ -17697,6 +16988,30 @@
           }
         },
         "description": "Information about a matched pricing rule"
+      },
+      "MediaCleanupEnabledChangedDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "The new enabled state of the media cleanup service."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable confirmation of the state change."
+          }
+        },
+        "description": "Response returned after enabling or disabling the media cleanup service."
+      },
+      "MediaCleanupEnabledDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the media cleanup service is currently enabled."
+          }
+        },
+        "description": "Response describing whether the media cleanup service is enabled."
       },
       "MediaCleanupResponseDto": {
         "type": "object",
@@ -18037,64 +17352,52 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/VirtualKeyGroupSummaryDto"
-            },
-            "description": "Gets or sets the list of virtual key groups associated with this policy."
+            }
           },
           "id": {
             "type": "integer",
-            "description": "Gets or sets the unique identifier of the retention policy.",
             "format": "int32"
           },
           "name": {
-            "type": "string",
-            "description": "Gets or sets the name of the retention policy."
+            "type": "string"
           },
           "description": {
             "type": [
               "null",
               "string"
-            ],
-            "description": "Gets or sets the description of the retention policy."
+            ]
           },
           "positiveBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is positive.",
             "format": "int32"
           },
           "zeroBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is zero.",
             "format": "int32"
           },
           "negativeBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is negative.",
             "format": "int32"
           },
           "softDeleteGracePeriodDays": {
             "type": "integer",
-            "description": "Gets or sets the grace period in days before permanently deleting soft-deleted media.",
             "format": "int32"
           },
           "respectRecentAccess": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether to respect recent access when determining retention."
+            "type": "boolean"
           },
           "recentAccessWindowDays": {
             "type": "integer",
-            "description": "Gets or sets the window in days for considering recent access.",
             "format": "int32"
           },
           "isDefault": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether this is the default policy."
+            "type": "boolean"
           },
           "maxStorageSizeBytes": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum storage size in bytes allowed for this policy.",
             "format": "int64"
           },
           "maxFileCount": {
@@ -18102,89 +17405,73 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum number of files allowed for this policy.",
             "format": "int32"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether this policy is active."
+            "type": "boolean"
           },
           "createdAt": {
             "type": "string",
-            "description": "Gets or sets the date and time when the policy was created.",
             "format": "date-time"
           },
           "updatedAt": {
             "type": "string",
-            "description": "Gets or sets the date and time when the policy was last updated.",
             "format": "date-time"
           },
           "virtualKeyGroupCount": {
             "type": "integer",
-            "description": "Gets or sets the count of virtual key groups using this policy.",
             "format": "int32"
           }
         },
-        "description": "Extended DTO for media retention policy with additional details."
+        "description": "Extended DTO for media retention policy with virtual key group details."
       },
       "MediaRetentionPolicyDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Gets or sets the unique identifier of the retention policy.",
             "format": "int32"
           },
           "name": {
-            "type": "string",
-            "description": "Gets or sets the name of the retention policy."
+            "type": "string"
           },
           "description": {
             "type": [
               "null",
               "string"
-            ],
-            "description": "Gets or sets the description of the retention policy."
+            ]
           },
           "positiveBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is positive.",
             "format": "int32"
           },
           "zeroBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is zero.",
             "format": "int32"
           },
           "negativeBalanceRetentionDays": {
             "type": "integer",
-            "description": "Gets or sets the retention period in days for media when balance is negative.",
             "format": "int32"
           },
           "softDeleteGracePeriodDays": {
             "type": "integer",
-            "description": "Gets or sets the grace period in days before permanently deleting soft-deleted media.",
             "format": "int32"
           },
           "respectRecentAccess": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether to respect recent access when determining retention."
+            "type": "boolean"
           },
           "recentAccessWindowDays": {
             "type": "integer",
-            "description": "Gets or sets the window in days for considering recent access.",
             "format": "int32"
           },
           "isDefault": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether this is the default policy."
+            "type": "boolean"
           },
           "maxStorageSizeBytes": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum storage size in bytes allowed for this policy.",
             "format": "int64"
           },
           "maxFileCount": {
@@ -18192,26 +17479,21 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum number of files allowed for this policy.",
             "format": "int32"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "Gets or sets a value indicating whether this policy is active."
+            "type": "boolean"
           },
           "createdAt": {
             "type": "string",
-            "description": "Gets or sets the date and time when the policy was created.",
             "format": "date-time"
           },
           "updatedAt": {
             "type": "string",
-            "description": "Gets or sets the date and time when the policy was last updated.",
             "format": "date-time"
           },
           "virtualKeyGroupCount": {
             "type": "integer",
-            "description": "Gets or sets the count of virtual key groups using this policy.",
             "format": "int32"
           }
         },
@@ -18252,30 +17534,6 @@
             "format": "int64"
           }
         }
-      },
-      "MemoryUsageDto": {
-        "type": "object",
-        "properties": {
-          "current": {
-            "type": "string"
-          },
-          "peak": {
-            "type": "string"
-          },
-          "limit": {
-            "type": "string"
-          }
-        }
-      },
-      "MessageResponseDto": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "The confirmation message."
-          }
-        },
-        "description": "Generic response DTO carrying a confirmation message."
       },
       "ModelAuthorDto": {
         "type": "object",
@@ -18653,9 +17911,93 @@
               "string"
             ],
             "description": "Gets or sets the model-specific parameter configuration for UI generation.\nJSON string containing parameter definitions, or null to use series defaults."
+          },
+          "identifiers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ModelIdentifierDto"
+            },
+            "description": "Gets or sets the provider type associations (identifiers) for this model."
           }
         },
         "description": "Data transfer object representing a canonical AI model in the system."
+      },
+      "ModelIdentifierDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Gets or sets the unique identifier for this model-provider association.",
+            "format": "int32"
+          },
+          "identifier": {
+            "type": "string",
+            "description": "Gets or sets the provider-specific model identifier string (e.g., \"gpt-4-turbo\" for OpenAI)."
+          },
+          "provider": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Gets or sets the provider ID that offers this model, or null if unassigned.",
+            "format": "int32"
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "description": "Gets or sets whether this is the primary (preferred) provider for the model."
+          },
+          "maxInputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Gets or sets the maximum input token limit for this provider's offering, or null if unknown.",
+            "format": "int32"
+          },
+          "maxOutputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Gets or sets the maximum output token limit for this provider's offering, or null if unknown.",
+            "format": "int32"
+          },
+          "speedScore": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Gets or sets the relative speed score for this provider's offering, used for routing decisions.",
+            "format": "double"
+          },
+          "qualityScore": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Gets or sets the relative quality score for this provider's offering, used for routing decisions.",
+            "format": "double"
+          },
+          "providerVariation": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Gets or sets the provider-specific variation label (e.g., \"turbo\", \"mini\") if applicable."
+          },
+          "modelCostId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.",
+            "format": "int32"
+          }
+        },
+        "description": "Lightweight DTO for a model's provider type association (identifier)."
       },
       "ModelProviderMappingDto": {
         "required": [
@@ -18931,6 +18273,16 @@
               "string"
             ],
             "description": "Gets or sets the model-specific parameter configuration for UI generation.\nJSON string containing parameter definitions, or null to use series defaults."
+          },
+          "identifiers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ModelIdentifierDto"
+            },
+            "description": "Gets or sets the provider type associations (identifiers) for this model."
           }
         },
         "description": "Extended model DTO that includes the provider-specific identifier for the model."
@@ -19098,6 +18450,85 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LogRequestDto"
+            }
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "currentPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfObject": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "currentPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfVirtualKeyGroupDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VirtualKeyGroupDto"
             }
           },
           "totalCount": {
@@ -19713,6 +19144,20 @@
           }
         }
       },
+      "PromptCachingConfigDto": {
+        "type": "object",
+        "properties": {
+          "autoInjectEnabled": {
+            "type": "boolean"
+          },
+          "injectionPoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheInjectionPointDto"
+            }
+          }
+        }
+      },
       "Provider": {
         "required": [
           "providerType",
@@ -20259,6 +19704,20 @@
             "type": "integer",
             "format": "int32"
           },
+          "cachedInputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "cachedWriteTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "cost": {
             "type": "number",
             "format": "double"
@@ -20304,19 +19763,6 @@
               "null",
               "string"
             ]
-          }
-        }
-      },
-      "ResponseTimeDto": {
-        "type": "object",
-        "properties": {
-          "withCache": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "withoutCache": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },
@@ -21100,21 +20546,6 @@
         },
         "description": "DTO describing a provider type that supports tools"
       },
-      "TopCachedItemDto": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "hits": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "size": {
-            "type": "string"
-          }
-        }
-      },
       "TopThreatSourceDto": {
         "type": "object",
         "properties": {
@@ -21150,93 +20581,6 @@
       },
       "TransactionType": {
         "type": "integer"
-      },
-      "UpdateCacheConfigDto": {
-        "type": "object",
-        "properties": {
-          "defaultTTLSeconds": {
-            "maximum": 86400,
-            "minimum": 0,
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "maxMemorySize": {
-            "pattern": "^\\d+(\\.\\d+)?\\s*(B|KB|MB|GB|TB)$",
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "evictionPolicy": {
-            "pattern": "^(LRU|LFU|FIFO|Random|Priority|TTL)$",
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "enableCompression": {
-            "type": "boolean"
-          },
-          "clearAffectedCaches": {
-            "type": "boolean"
-          },
-          "applyGlobally": {
-            "type": "boolean"
-          },
-          "regionId": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "UpdateCachePolicyDto": {
-        "required": [
-          "reason"
-        ],
-        "type": "object",
-        "properties": {
-          "ttl": {
-            "maximum": 86400,
-            "minimum": 0,
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "maxSize": {
-            "maximum": 2147483647,
-            "minimum": 1,
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "strategy": {
-            "pattern": "^(LRU|LFU|FIFO|Random|Priority|TTL)$",
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "enabled": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "reason": {
-            "maxLength": 500,
-            "minLength": 0,
-            "type": "string"
-          }
-        }
       },
       "UpdateFunctionCostDto": {
         "required": [
@@ -21463,22 +20807,19 @@
             "type": [
               "null",
               "string"
-            ],
-            "description": "Gets or sets the name of the retention policy."
+            ]
           },
           "description": {
             "type": [
               "null",
               "string"
-            ],
-            "description": "Gets or sets the description of the retention policy."
+            ]
           },
           "positiveBalanceRetentionDays": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "Gets or sets the retention period in days for media when balance is positive.",
             "format": "int32"
           },
           "zeroBalanceRetentionDays": {
@@ -21486,7 +20827,6 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the retention period in days for media when balance is zero.",
             "format": "int32"
           },
           "negativeBalanceRetentionDays": {
@@ -21494,7 +20834,6 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the retention period in days for media when balance is negative.",
             "format": "int32"
           },
           "softDeleteGracePeriodDays": {
@@ -21502,37 +20841,32 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the grace period in days before permanently deleting soft-deleted media.",
             "format": "int32"
           },
           "respectRecentAccess": {
             "type": [
               "null",
               "boolean"
-            ],
-            "description": "Gets or sets a value indicating whether to respect recent access when determining retention."
+            ]
           },
           "recentAccessWindowDays": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "Gets or sets the window in days for considering recent access.",
             "format": "int32"
           },
           "isDefault": {
             "type": [
               "null",
               "boolean"
-            ],
-            "description": "Gets or sets a value indicating whether this is the default policy."
+            ]
           },
           "maxStorageSizeBytes": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum storage size in bytes allowed for this policy.",
             "format": "int64"
           },
           "maxFileCount": {
@@ -21540,15 +20874,13 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum number of files allowed for this policy.",
             "format": "int32"
           },
           "isActive": {
             "type": [
               "null",
               "boolean"
-            ],
-            "description": "Gets or sets a value indicating whether this policy is active."
+            ]
           }
         },
         "description": "Request model for updating an existing media retention policy."
@@ -21611,7 +20943,10 @@
             ]
           },
           "modelProviderTypeAssociationIds": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "integer",
               "format": "int32"
@@ -21922,6 +21257,25 @@
           }
         }
       },
+      "UpdatePromptCachingConfigDto": {
+        "required": [
+          "autoInjectEnabled",
+          "injectionPoints"
+        ],
+        "type": "object",
+        "properties": {
+          "autoInjectEnabled": {
+            "type": "boolean"
+          },
+          "injectionPoints": {
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheInjectionPointDto"
+            }
+          }
+        }
+      },
       "UpdateProviderRequest": {
         "type": "object",
         "properties": {
@@ -22082,6 +21436,7 @@
               "null",
               "integer"
             ],
+            "description": "Prompt/input tokens",
             "format": "int32"
           },
           "completionTokens": {
@@ -22089,6 +21444,7 @@
               "null",
               "integer"
             ],
+            "description": "Completion/output tokens",
             "format": "int32"
           },
           "totalTokens": {
@@ -22096,27 +21452,7 @@
               "null",
               "integer"
             ],
-            "format": "int32"
-          },
-          "cachedInputTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "cachedWriteTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "reasoningTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
+            "description": "Total tokens",
             "format": "int32"
           },
           "imageCount": {
@@ -22124,54 +21460,11 @@
               "null",
               "integer"
             ],
+            "description": "Image count for image generation",
             "format": "int32"
-          },
-          "imageQuality": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "imageResolution": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "videoDurationSeconds": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "format": "double"
-          },
-          "videoResolution": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "searchUnits": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "inferenceSteps": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "isBatch": {
-            "type": [
-              "null",
-              "boolean"
-            ]
           }
-        }
+        },
+        "description": "DTO for usage data"
       },
       "UsageStatisticsDto": {
         "type": "object",
@@ -22696,17 +21989,14 @@
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Gets or sets the virtual key group identifier.",
             "format": "int32"
           },
           "balance": {
             "type": "number",
-            "description": "Gets or sets the current balance of the virtual key group.",
             "format": "double"
           },
           "virtualKeyCount": {
             "type": "integer",
-            "description": "Gets or sets the count of virtual keys in the group.",
             "format": "int32"
           }
         },
@@ -22759,6 +22049,13 @@
             "type": "string"
           },
           "initiatedByUserId": {
+            "maxLength": 100,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "idempotencyKey": {
             "maxLength": 100,
             "type": [
               "null",
@@ -23090,6 +22387,9 @@
   },
   "tags": [
     {
+      "name": "ModelAuthor"
+    },
+    {
       "name": "Analytics"
     },
     {
@@ -23126,9 +22426,6 @@
       "name": "IpFilter"
     },
     {
-      "name": "MediaCleanup"
-    },
-    {
       "name": "Media"
     },
     {
@@ -23136,9 +22433,6 @@
     },
     {
       "name": "Metrics"
-    },
-    {
-      "name": "ModelAuthor"
     },
     {
       "name": "Model"
@@ -23157,6 +22451,9 @@
     },
     {
       "name": "Pricing"
+    },
+    {
+      "name": "PromptCaching"
     },
     {
       "name": "ProviderCredentials"

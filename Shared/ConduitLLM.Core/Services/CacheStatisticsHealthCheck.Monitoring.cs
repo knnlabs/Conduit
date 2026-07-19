@@ -106,7 +106,7 @@ namespace ConduitLLM.Core.Services
                 var info = await server.InfoAsync("memory");
                 
                 var memorySection = info.FirstOrDefault(s => s.Key == "Memory");
-                if (memorySection != null && memorySection.Count() > 0)
+                if (memorySection != null && memorySection.Any())
                 {
                     var usedMemory = memorySection.FirstOrDefault(kvp => kvp.Key == "used_memory");
                     if (usedMemory.Value != null && long.TryParse(usedMemory.Value, out var bytes))

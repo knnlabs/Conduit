@@ -9,10 +9,10 @@ import {
   type StandardVideoResponse,
   isDefined
 } from './typeGuards';
-import { 
+import {
   normalizeBackendVideoResponse,
-  type BackendVideoResponse 
-} from './metadata';
+  type BackendVideoResponse
+} from '../MediaMetadata';
 
 /**
  * Normalize any video response to a consistent VideoGenerationResult

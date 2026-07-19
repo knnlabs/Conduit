@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -58,9 +59,11 @@ namespace ConduitLLM.Core.Interfaces
     public class DiscoveryModelsResult
     {
         /// <summary>
-        /// List of discovered models
+        /// List of discovered models serialized as JsonElement for reliable cache round-tripping.
+        /// Anonymous objects cannot survive JSON deserialization, so we store them as JsonElement
+        /// which serializes/deserializes correctly and produces the same JSON output for API consumers.
         /// </summary>
-        public List<object> Data { get; set; } = new();
+        public List<JsonElement> Data { get; set; } = new();
 
         /// <summary>
         /// Total count of models

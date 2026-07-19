@@ -1,6 +1,8 @@
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Gateway.EventHandlers
 {
@@ -8,7 +10,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles DiscoveryCacheInvalidationRequested events from Admin API
     /// Invalidates the discovery cache across all Gateway API instances
     /// </summary>
-    public class DiscoveryCacheInvalidationHandler : IConsumer<DiscoveryCacheInvalidationRequested>
+    public class DiscoveryCacheInvalidationHandler : IEventHandler<DiscoveryCacheInvalidationRequested>
     {
         private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly ILogger<DiscoveryCacheInvalidationHandler> _logger;
@@ -24,30 +26,28 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Handles manual discovery cache invalidation requests from Admin API
         /// </summary>
-        public async Task Consume(ConsumeContext<DiscoveryCacheInvalidationRequested> context)
+        public async Task HandleAsync(DiscoveryCacheInvalidationRequested message, IEventContext context)
         {
-            var @event = context.Message;
-
             try
             {
                 _logger.LogInformation(
                     "Processing discovery cache invalidation request. Reason: {Reason}, Requested by: {RequestedBy}",
-                    @event.Reason,
-                    @event.RequestedBy);
+                    message.Reason,
+                    message.RequestedBy);
 
                 // Invalidate all discovery cache entries
                 await _discoveryCacheService.InvalidateAllDiscoveryAsync();
 
                 _logger.LogInformation(
                     "Successfully invalidated all discovery cache entries. Reason: {Reason}",
-                    @event.Reason);
+                    message.Reason);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
                     "Failed to invalidate discovery cache. Reason: {Reason}",
-                    @event.Reason);
-                throw; // Re-throw to trigger MassTransit retry logic
+                    message.Reason);
+                throw; // Re-throw to trigger transport retry logic
             }
         }
     }

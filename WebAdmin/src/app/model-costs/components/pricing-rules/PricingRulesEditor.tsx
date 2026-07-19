@@ -48,8 +48,9 @@ export function PricingRulesEditor({
   if (initialConfig) {
     try {
       parsedInitialConfig = JSON.parse(initialConfig) as PricingRulesConfig;
-    } catch {
-      // Invalid JSON, will use default config
+    } catch (error) {
+      // Fall back to the default config, but surface that stored config is corrupt
+      console.warn('Failed to parse stored pricing rules config; using defaults:', error);
     }
   }
 

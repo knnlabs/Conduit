@@ -33,7 +33,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.ImportModelCosts(modelCosts);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             okResult.Value.Should().Be(2);
         }
 
@@ -44,7 +44,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.ImportModelCosts(new List<CreateModelCostDto>());
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequestResult.Value.Should().Be("No model costs provided for import");
         }
 
@@ -64,7 +64,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.ExportCsv();
 
             // Assert
-            var fileResult = Assert.IsType<FileContentResult>(result);
+            var fileResult = result.Should().BeOfType<FileContentResult>().Subject;
             fileResult.ContentType.Should().Be("text/csv");
             fileResult.FileDownloadName.Should().StartWith("model-costs-");
             fileResult.FileDownloadName.Should().EndWith(".csv");
@@ -85,7 +85,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.ExportJson(1);
 
             // Assert
-            var fileResult = Assert.IsType<FileContentResult>(result);
+            var fileResult = result.Should().BeOfType<FileContentResult>().Subject;
             fileResult.ContentType.Should().Be("application/json");
             fileResult.FileDownloadName.Should().StartWith("model-costs-");
             fileResult.FileDownloadName.Should().EndWith(".json");
@@ -121,8 +121,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.ImportCsv(formFile);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResult = Assert.IsType<BulkImportResult>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedResult = okResult.Value.Should().BeOfType<BulkImportResult>().Subject;
             returnedResult.SuccessCount.Should().Be(1);
             returnedResult.FailureCount.Should().Be(0);
         }
@@ -143,13 +143,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.ImportCsv(formFile);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             var errorObj = badRequestResult.Value as dynamic;
             ((string)errorObj.error).Should().Be("File must be a CSV file");
         }
 
         [Fact]
-        public async Task ImportJson_WithFailedImport_ShouldReturnBadRequest()
+        public async Task ImportJson_WithFailedImport_ShouldPropagateException()
         {
             // Arrange
             var jsonContent = "[{\"invalidField\":\"data\"}]";
@@ -171,12 +171,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(importResult);
 
             // Act
-            var result = await _controller.ImportJson(formFile);
+            var act = async () => await _controller.ImportJson(formFile);
 
-            // Assert
-            // The test should just verify it returns BadRequest - the exact format depends on the controller implementation
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            badRequestResult.Value.Should().NotBeNull();
+            // Assert - controller throws InvalidOperationException on failed import; AdminExceptionMiddleware owns mapping
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         #endregion

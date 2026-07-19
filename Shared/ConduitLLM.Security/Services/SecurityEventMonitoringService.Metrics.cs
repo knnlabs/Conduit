@@ -104,7 +104,7 @@ namespace ConduitLLM.Security.Services
         /// </summary>
         private ThreatLevel CalculateThreatLevel(List<SecurityEvent> recentEvents)
         {
-            if (recentEvents.Count() == 0)
+            if (!recentEvents.Any())
                 return ThreatLevel.None;
 
             var failureRate = (double)recentEvents.Count(e => e.EventType == SecurityEventType.AuthenticationFailure) / recentEvents.Count();

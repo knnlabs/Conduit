@@ -92,5 +92,16 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </summary>
         /// <returns>List of distinct model names</returns>
         Task<List<string>> GetDistinctModelsAsync();
+
+        /// <summary>
+        /// Forces a flush of all pending request logs to the database.
+        /// Use when immediate persistence is required.
+        /// </summary>
+        Task FlushEventsAsync();
+
+        /// <summary>
+        /// Removes request logs older than the retention period (90 days).
+        /// </summary>
+        Task CleanupOldRequestLogsAsync();
     }
 }

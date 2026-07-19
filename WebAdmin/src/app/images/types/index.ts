@@ -1,10 +1,11 @@
 // Local type definitions to avoid broken SDK imports
 
-import { 
+import {
   MediaData,
   Quality,
   Style,
-  MediaGenerationStatus
+  MediaGenerationStatus,
+  RetryHistoryEntry
 } from '@/app/types/media';
 
 // Re-export for components that use ErrorResponse
@@ -65,11 +66,7 @@ export interface ImageTask {
   error?: string;
   settings: ImageGenerationSettings;
   retryCount: number;
-  retryHistory: Array<{
-    attemptNumber: number;
-    timestamp: string;
-    error: string;
-  }>;
+  retryHistory: RetryHistoryEntry[];
 }
 
 

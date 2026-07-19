@@ -1,5 +1,8 @@
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 
@@ -14,11 +17,11 @@ namespace ConduitLLM.Admin.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Policy = "MasterKeyPolicy")]
-    public class GlobalSettingsController : ControllerBase
+    [ServiceFilter(typeof(OperationLoggingFilter))]
+    public class GlobalSettingsController : AdminControllerBase
     {
         private readonly IAdminGlobalSettingService _globalSettingService;
         private readonly IGlobalSettingsCacheService _cacheService;
-        private readonly ILogger<GlobalSettingsController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the GlobalSettingsController
@@ -30,10 +33,10 @@ namespace ConduitLLM.Admin.Controllers
             IAdminGlobalSettingService globalSettingService,
             IGlobalSettingsCacheService cacheService,
             ILogger<GlobalSettingsController> logger)
+            : base(logger)
         {
             _globalSettingService = globalSettingService ?? throw new ArgumentNullException(nameof(globalSettingService));
             _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -42,19 +45,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>List of all global settings</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<GlobalSettingDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllSettings()
         {
-            try
-            {
-                var settings = await _globalSettingService.GetAllSettingsAsync();
-                return Ok(settings);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all global settings");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            var settings = await _globalSettingService.GetAllSettingsAsync();
+            return Ok(settings);
         }
 
         /// <summary>
@@ -65,25 +59,14 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(GlobalSettingDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetSettingById(int id)
         {
-            try
+            var setting = await _globalSettingService.GetSettingByIdAsync(id);
+            if (setting == null)
             {
-                var setting = await _globalSettingService.GetSettingByIdAsync(id);
-
-                if (setting == null)
-                {
-                    return NotFound(new ErrorResponseDto("Global setting not found"));
-                }
-
-                return Ok(setting);
+                return this.NotFoundEntity("Global setting", id);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting global setting with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            return Ok(setting);
         }
 
         /// <summary>
@@ -94,25 +77,14 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("by-key/{key}")]
         [ProducesResponseType(typeof(GlobalSettingDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetSettingByKey(string key)
         {
-            try
+            var setting = await _globalSettingService.GetSettingByKeyAsync(key);
+            if (setting == null)
             {
-                var setting = await _globalSettingService.GetSettingByKeyAsync(key);
-
-                if (setting == null)
-                {
-                    return NotFound(new ErrorResponseDto("Global setting not found"));
-                }
-
-                return Ok(setting);
+                return this.NotFoundEntity("Global setting", key);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting global setting with key {Key}", LoggingSanitizer.S(key));
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            return Ok(setting);
         }
 
         /// <summary>
@@ -123,29 +95,12 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(GlobalSettingDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateSetting([FromBody] CreateGlobalSettingDto setting)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var createdSetting = await _globalSettingService.CreateSettingAsync(setting);
-                return CreatedAtAction(nameof(GetSettingById), new { id = createdSetting.Id }, createdSetting);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex, "Invalid operation when creating global setting");
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating global setting");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            var createdSetting = await _globalSettingService.CreateSettingAsync(setting);
+            LogAdminAudit("Created", "GlobalSetting", createdSetting.Id, $"Key: {LoggingSanitizer.S(setting.Key)}");
+            AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "create");
+            return CreatedAtAction(nameof(GetSettingById), new { id = createdSetting.Id }, createdSetting);
         }
 
         /// <summary>
@@ -158,36 +113,42 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateSetting(int id, [FromBody] UpdateGlobalSettingDto setting)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             // Ensure ID in route matches ID in body
             if (id != setting.Id)
             {
                 return BadRequest("ID in route must match ID in body");
             }
 
-            try
-            {
-                var success = await _globalSettingService.UpdateSettingAsync(setting);
+            // Fetch pre-state for change tracking
+            var preState = await _globalSettingService.GetSettingByIdAsync(id);
+            if (preState == null)
+                throw new KeyNotFoundException();
 
-                if (!success)
-                {
-                    return NotFound(new ErrorResponseDto("Global setting not found"));
-                }
+            if (!await _globalSettingService.UpdateSettingAsync(setting))
+                throw new KeyNotFoundException();
 
-                return NoContent();
-            }
-            catch (Exception ex)
+            // Build change list from pre-state vs request
+            var changes = new List<(string Property, string? OldValue, string? NewValue)>();
+
+            if (setting.Value != null && preState.Value != setting.Value)
+                changes.Add(("Value", preState.Value, setting.Value));
+            if (setting.Description != null && preState.Description != setting.Description)
+                changes.Add(("Description", preState.Description, setting.Description));
+
+            if (changes.Count > 0)
             {
-                _logger.LogError(ex, "Error updating global setting with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                LogAdminAuditWithChanges("GlobalSetting", id, changes,
+                    $"Key: {LoggingSanitizer.S(preState.Key)}");
             }
+            else
+            {
+                LogAdminAudit("Updated", "GlobalSetting", id);
+            }
+            AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "update");
+
+            return NoContent();
         }
 
         /// <summary>
@@ -198,30 +159,14 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPut("by-key")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateSettingByKey([FromBody] UpdateGlobalSettingByKeyDto setting)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!await _globalSettingService.UpdateSettingByKeyAsync(setting))
+                throw new InvalidOperationException("Failed to update or create global setting");
+            LogAdminAudit("Updated", "GlobalSetting", detail: $"Key: {LoggingSanitizer.S(setting.Key)}");
+            AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "update");
 
-            try
-            {
-                var success = await _globalSettingService.UpdateSettingByKeyAsync(setting);
-
-                if (!success)
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to update or create global setting");
-                }
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating global setting with key {Key}", LoggingSanitizer.S(setting.Key));
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            return NoContent();
         }
 
         /// <summary>
@@ -232,25 +177,14 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteSetting(int id)
         {
-            try
-            {
-                var success = await _globalSettingService.DeleteSettingAsync(id);
+            if (!await _globalSettingService.DeleteSettingAsync(id))
+                throw new KeyNotFoundException();
+            LogAdminAudit("Deleted", "GlobalSetting", id);
+            AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "delete");
 
-                if (!success)
-                {
-                    return NotFound(new ErrorResponseDto("Global setting not found"));
-                }
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting global setting with ID {Id}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            return NoContent();
         }
 
         /// <summary>
@@ -261,25 +195,14 @@ namespace ConduitLLM.Admin.Controllers
         [HttpDelete("by-key/{key}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteSettingByKey(string key)
         {
-            try
-            {
-                var success = await _globalSettingService.DeleteSettingByKeyAsync(key);
+            if (!await _globalSettingService.DeleteSettingByKeyAsync(key))
+                throw new KeyNotFoundException();
+            LogAdminAudit("Deleted", "GlobalSetting", detail: $"Key: {LoggingSanitizer.S(key)}");
+            AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "delete");
 
-                if (!success)
-                {
-                    return NotFound(new ErrorResponseDto("Global setting not found"));
-                }
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting global setting with key {Key}", LoggingSanitizer.S(key));
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            return NoContent();
         }
 
         /// <summary>
@@ -288,31 +211,20 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Cache statistics including hit rate, size, and invalidation count</returns>
         [HttpGet("cache/stats")]
         [ProducesResponseType(typeof(GlobalSettingCacheStatsDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetCacheStats()
         {
-            try
+            var stats = await _cacheService.GetCacheStatsAsync();
+            var statsDto = new GlobalSettingCacheStatsDto
             {
-                var stats = await _cacheService.GetCacheStatsAsync();
-
-                var dto = new GlobalSettingCacheStatsDto
-                {
-                    CacheSize = (int)stats["CacheSize"],
-                    CacheHits = (long)stats["CacheHits"],
-                    CacheMisses = (long)stats["CacheMisses"],
-                    Invalidations = (long)stats["Invalidations"],
-                    HitRate = (double)stats["HitRate"],
-                    LastLoadTime = (DateTime)stats["LastLoadTime"],
-                    CachedKeys = (List<string>)stats["CachedKeys"]
-                };
-
-                return Ok(dto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting cache statistics");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+                CacheSize = (int)stats["CacheSize"],
+                CacheHits = (long)stats["CacheHits"],
+                CacheMisses = (long)stats["CacheMisses"],
+                Invalidations = (long)stats["Invalidations"],
+                HitRate = (double)stats["HitRate"],
+                LastLoadTime = (DateTime)stats["LastLoadTime"],
+                CachedKeys = (List<string>)stats["CachedKeys"]
+            };
+            return Ok(statsDto);
         }
 
         /// <summary>
@@ -321,21 +233,12 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>No content if successful</returns>
         [HttpPost("cache/reload")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ReloadCache()
         {
-            try
-            {
-                _logger.LogInformation("Manual cache reload requested");
-                await _cacheService.ReloadAllSettingsAsync();
-                _logger.LogInformation("Cache reload completed successfully");
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error reloading cache");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            await _cacheService.ReloadAllSettingsAsync();
+            LogAdminAudit("Reloaded", "GlobalSettingsCache");
+
+            return NoContent();
         }
 
         /// <summary>
@@ -345,21 +248,12 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>No content if successful</returns>
         [HttpPost("cache/invalidate/{key}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> InvalidateCacheSetting(string key)
         {
-            try
-            {
-                _logger.LogInformation("Manual cache invalidation requested for key {Key}", LoggingSanitizer.S(key));
-                await _cacheService.InvalidateSettingAsync(key);
-                _logger.LogInformation("Cache invalidation completed for key {Key}", LoggingSanitizer.S(key));
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error invalidating cached setting with key {Key}", LoggingSanitizer.S(key));
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
+            await _cacheService.InvalidateSettingAsync(key);
+            LogAdminAudit("Invalidated", "GlobalSettingsCache", detail: $"Key: {LoggingSanitizer.S(key)}");
+
+            return NoContent();
         }
     }
 }

@@ -149,16 +149,21 @@ namespace ConduitLLM.Core.Utilities
 
             try
             {
-                using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
                 using var reader = new StreamReader(fileStream, Encoding.UTF8);
-                return await reader.ReadToEndAsync();
+                return await reader.ReadToEndAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                logger?.LogDebug("File read was cancelled for {FilePath}", filePath);
+                throw;
             }
             catch (IOException ex)
             {
                 logger?.LogError(ex, "IO error reading file {FilePath}", filePath);
                 throw new ConfigurationException($"Error reading file {filePath}: {ex.Message}", ex);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 logger?.LogError(ex, "Unexpected error reading file {FilePath}", filePath);
                 throw new ConfigurationException($"Unexpected error reading {filePath}: {ex.Message}", ex);
@@ -199,19 +204,24 @@ namespace ConduitLLM.Core.Utilities
                     Directory.CreateDirectory(directory);
                 }
 
-                using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+                using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
                 using var writer = new StreamWriter(fileStream, Encoding.UTF8);
-                await writer.WriteAsync(content);
-                await writer.FlushAsync();
+                await writer.WriteAsync(content.AsMemory(), cancellationToken);
+                await writer.FlushAsync(cancellationToken);
 
                 logger?.LogInformation("Successfully wrote to {FilePath}", filePath);
+            }
+            catch (OperationCanceledException)
+            {
+                logger?.LogDebug("File write was cancelled for {FilePath}", filePath);
+                throw;
             }
             catch (IOException ex)
             {
                 logger?.LogError(ex, "IO error writing file {FilePath}", filePath);
                 throw new ConfigurationException($"Error writing file {filePath}: {ex.Message}", ex);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 logger?.LogError(ex, "Unexpected error writing file {FilePath}", filePath);
                 throw new ConfigurationException($"Unexpected error writing {filePath}: {ex.Message}", ex);

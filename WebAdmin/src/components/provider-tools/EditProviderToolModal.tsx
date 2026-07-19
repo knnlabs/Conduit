@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, NumberInput, Select, Switch, Button, Stack, Group, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
 import type { ProviderTool, UpdateProviderTool } from '@knn_labs/conduit-admin-client';
 
 interface EditProviderToolModalProps {
@@ -15,9 +15,7 @@ interface EditProviderToolModalProps {
 }
 
 export function EditProviderToolModal({ isOpen, tool, onClose, onSuccess }: EditProviderToolModalProps) {
-  const { executeWithAdmin } = useAdminClient();
   const [billingUnits, setBillingUnits] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
 
   const form = useForm<UpdateProviderTool>({
     initialValues: {
@@ -32,10 +30,27 @@ export function EditProviderToolModal({ isOpen, tool, onClose, onSuccess }: Edit
     },
   });
 
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction: (values) =>
+      withAdminClient(client =>
+        client.providerTools.updateProviderTool(tool.id, {
+          ...values,
+          toolParameters: values.toolParameters?.trim() ?? null,
+          costDescription: values.costDescription?.trim() ?? null,
+          billingUnit: values.billingUnit?.trim() ?? null,
+        })
+      ),
+    successMessage: `Successfully updated ${tool.toolName}`,
+    resetOnClose: false,
+  });
+
   useEffect(() => {
     const loadBillingUnits = async () => {
       try {
-        const units = await executeWithAdmin(client => client.providerTools.getBillingUnits());
+        const units = await withAdminClient(client => client.providerTools.getBillingUnits());
         setBillingUnits(units);
       } catch (error) {
         console.error('Failed to load billing units:', error);
@@ -53,41 +68,12 @@ export function EditProviderToolModal({ isOpen, tool, onClose, onSuccess }: Edit
         costDescription: tool.costDescription ?? '',
       });
     }
-  }, [isOpen, tool, form, executeWithAdmin]);
-
-  const handleSubmit = async (values: UpdateProviderTool) => {
-    try {
-      setLoading(true);
-      await executeWithAdmin(client =>
-        client.providerTools.updateProviderTool(tool.id, {
-          ...values,
-          toolParameters: values.toolParameters?.trim() ?? null,
-          costDescription: values.costDescription?.trim() ?? null,
-          billingUnit: values.billingUnit?.trim() ?? null,
-        })
-      );
-      notifications.show({
-        title: 'Tool Updated',
-        message: `Successfully updated ${tool.toolName}`,
-        color: 'green',
-      });
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to update tool:', error);
-      notifications.show({
-        title: 'Update Failed',
-        message: error instanceof Error ? error.message : 'Failed to update provider tool',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isOpen, tool, form]);
 
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={`Edit ${tool.toolName}`}
       size="md"
     >
@@ -141,7 +127,7 @@ export function EditProviderToolModal({ isOpen, tool, onClose, onSuccess }: Edit
           />
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" loading={loading}>

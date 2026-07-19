@@ -12,6 +12,7 @@ import {
   createToastErrorHandler, 
   shouldShowBalanceWarning
 } from '@knn_labs/conduit-gateway-client';
+// Needs raw notifications API: .show is passed as callback to SDK's createToastErrorHandler
 import { notifications } from '@mantine/notifications';
 
 const LOCAL_STORAGE_KEY = 'conduit-image-generation';

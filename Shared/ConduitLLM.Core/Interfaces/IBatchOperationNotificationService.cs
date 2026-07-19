@@ -32,18 +32,6 @@ namespace ConduitLLM.Core.Interfaces
             string? message = null);
 
         /// <summary>
-        /// Notifies that a single item in the batch has been completed
-        /// </summary>
-        Task NotifyBatchItemCompletedAsync(
-            string operationId,
-            int itemIndex,
-            string? itemIdentifier,
-            bool success,
-            string? error,
-            TimeSpan duration,
-            object? result = null);
-
-        /// <summary>
         /// Notifies that a batch operation has completed
         /// </summary>
         Task NotifyBatchOperationCompletedAsync(

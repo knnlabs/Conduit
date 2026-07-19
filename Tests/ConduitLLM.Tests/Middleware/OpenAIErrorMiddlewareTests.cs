@@ -29,15 +29,15 @@ namespace ConduitLLM.Tests.Middleware
             _mockLogger = new Mock<ILogger<OpenAIErrorMiddleware>>();
             _mockEnvironment = new Mock<IWebHostEnvironment>();
             _mockSecurityLogger = new Mock<ISecurityEventLogger>();
-            
+
             _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Production);
-            
+
             _middleware = new OpenAIErrorMiddleware(
                 _mockNext.Object,
                 _mockLogger.Object,
                 _mockEnvironment.Object,
                 _mockSecurityLogger.Object);
-            
+
             _httpContext = new DefaultHttpContext();
             _httpContext.Response.Body = new MemoryStream();
             _httpContext.TraceIdentifier = "test-trace-id";
@@ -50,17 +50,16 @@ namespace ConduitLLM.Tests.Middleware
             var modelName = "gpt-5";
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(new ModelNotFoundException(modelName));
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(404, _httpContext.Response.StatusCode);
             Assert.Equal("application/json", _httpContext.Response.ContentType);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             Assert.NotNull(errorResponse.Error);
             Assert.Contains(modelName, errorResponse.Error.Message);
@@ -76,16 +75,15 @@ namespace ConduitLLM.Tests.Middleware
             var exception = new InvalidRequestException("Invalid parameter", "invalid_param", "test_field");
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(exception);
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(400, _httpContext.Response.StatusCode);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             Assert.Equal("Invalid parameter", errorResponse.Error.Message);
             Assert.Equal("invalid_request_error", errorResponse.Error.Type);
@@ -100,20 +98,19 @@ namespace ConduitLLM.Tests.Middleware
             var exception = new AuthorizationException("Access denied");
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(exception);
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(403, _httpContext.Response.StatusCode);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             Assert.Equal("Access denied", errorResponse.Error.Message);
             Assert.Equal("invalid_request_error", errorResponse.Error.Type);
-            Assert.Equal("authorization_required", errorResponse.Error.Code);
+            Assert.Equal("forbidden", errorResponse.Error.Code);
         }
 
         [Fact]
@@ -123,16 +120,15 @@ namespace ConduitLLM.Tests.Middleware
             var exception = new RequestTimeoutException("Request timed out");
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(exception);
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(408, _httpContext.Response.StatusCode);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             Assert.Equal("Request timed out", errorResponse.Error.Message);
             Assert.Equal("timeout_error", errorResponse.Error.Type);
@@ -146,16 +142,15 @@ namespace ConduitLLM.Tests.Middleware
             var exception = new PayloadTooLargeException("Payload too large", 10000, 5000);
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(exception);
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(413, _httpContext.Response.StatusCode);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             Assert.Equal("Payload too large", errorResponse.Error.Message);
             Assert.Equal("invalid_request_error", errorResponse.Error.Type);
@@ -169,17 +164,16 @@ namespace ConduitLLM.Tests.Middleware
             var exception = new RateLimitExceededException("Rate limit exceeded", 60);
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(exception);
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(429, _httpContext.Response.StatusCode);
             Assert.Equal("60", _httpContext.Response.Headers["Retry-After"]);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             Assert.Equal("Rate limit exceeded", errorResponse.Error.Message);
             Assert.Equal("rate_limit_error", errorResponse.Error.Type);
@@ -193,20 +187,64 @@ namespace ConduitLLM.Tests.Middleware
             var exception = new ServiceUnavailableException("Service unavailable", "TestService");
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(exception);
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(503, _httpContext.Response.StatusCode);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             Assert.Equal("Service unavailable", errorResponse.Error.Message);
             Assert.Equal("service_unavailable", errorResponse.Error.Type);
             Assert.Equal("service_unavailable", errorResponse.Error.Code);
+        }
+
+        [Fact]
+        public async Task LLMCommunicationException_WithStatusCode_ReturnsProviderStatus()
+        {
+            // Arrange
+            var exception = new LLMCommunicationException("Provider error",
+                System.Net.HttpStatusCode.BadGateway, "Bad gateway");
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
+                .ThrowsAsync(exception);
+
+            // Act
+            await _middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal(502, _httpContext.Response.StatusCode);
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
+            Assert.NotNull(errorResponse);
+            Assert.Equal("Provider error", errorResponse.Error.Message);
+            Assert.Equal("server_error", errorResponse.Error.Type);
+            Assert.Equal("provider_communication_error", errorResponse.Error.Code);
+        }
+
+        [Fact]
+        public async Task LLMCommunicationException_WithoutStatusCode_Returns500()
+        {
+            // Arrange
+            var exception = new LLMCommunicationException("Unknown provider error");
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
+                .ThrowsAsync(exception);
+
+            // Act
+            await _middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal(500, _httpContext.Response.StatusCode);
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
+            Assert.NotNull(errorResponse);
+            Assert.Equal("Unknown provider error", errorResponse.Error.Message);
+            Assert.Equal("server_error", errorResponse.Error.Type);
+            Assert.Equal("provider_communication_error", errorResponse.Error.Code);
         }
 
         [Fact]
@@ -215,16 +253,15 @@ namespace ConduitLLM.Tests.Middleware
             // Arrange
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(new Exception("Internal error details"));
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(500, _httpContext.Response.StatusCode);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             // In production, should not expose internal details
             Assert.Equal("An unexpected error occurred", errorResponse.Error.Message);
@@ -239,26 +276,83 @@ namespace ConduitLLM.Tests.Middleware
             _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(new Exception("Detailed error message"));
-            
+
             // Act
             await _middleware.InvokeAsync(_httpContext);
-            
+
             // Assert
             Assert.Equal(500, _httpContext.Response.StatusCode);
-            
-            var responseBody = GetResponseBody(_httpContext);
-            var errorResponse = JsonSerializer.Deserialize<OpenAIErrorResponse>(responseBody);
-            
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
             Assert.NotNull(errorResponse);
             // In development, should show actual error message
             Assert.Equal("Detailed error message", errorResponse.Error.Message);
         }
 
-        private static string GetResponseBody(HttpContext context)
+        [Fact]
+        public async Task ArgumentNullException_Returns400WithSafeMessage()
+        {
+            // Arrange
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
+                .ThrowsAsync(new ArgumentNullException("apiKey"));
+
+            // Act
+            await _middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal(400, _httpContext.Response.StatusCode);
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
+            Assert.NotNull(errorResponse);
+            Assert.Equal("Required parameter is missing", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
+            Assert.Equal("missing_parameter", errorResponse.Error.Code);
+            Assert.Equal("apiKey", errorResponse.Error.Param);
+        }
+
+        [Fact]
+        public async Task ArgumentNullException_InDevelopment_ShowsDetails()
+        {
+            // Arrange
+            _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
+                .ThrowsAsync(new ArgumentNullException("apiKey"));
+
+            // Act
+            await _middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal(400, _httpContext.Response.StatusCode);
+
+            var errorResponse = GetErrorResponse(_httpContext);
+
+            Assert.NotNull(errorResponse);
+            // In development, should show actual exception message
+            Assert.Contains("apiKey", errorResponse.Error.Message);
+        }
+
+        [Fact]
+        public async Task XRequestIdHeader_IsSet()
+        {
+            // Arrange
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
+                .ThrowsAsync(new Exception("test"));
+
+            // Act
+            await _middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal("test-trace-id", _httpContext.Response.Headers["X-Request-Id"]);
+        }
+
+        private static OpenAIErrorResponse GetErrorResponse(HttpContext context)
         {
             context.Response.Body.Position = 0;
             using var reader = new StreamReader(context.Response.Body);
-            return reader.ReadToEnd();
+            var body = reader.ReadToEnd();
+            return JsonSerializer.Deserialize<OpenAIErrorResponse>(body)!;
         }
     }
 }

@@ -30,27 +30,10 @@ namespace ConduitLLM.Tests.Core.Services
                 ExpiresAt = DateTime.UtcNow.AddDays(30)
             };
 
-            var expectedMediaRecord = new MediaRecord
-            {
-                Id = Guid.NewGuid(),
-                StorageKey = storageKey,
-                VirtualKeyId = virtualKeyId,
-                MediaType = mediaType,
-                ContentType = metadata.ContentType,
-                SizeBytes = metadata.SizeBytes,
-                ContentHash = metadata.ContentHash,
-                Provider = metadata.Provider,
-                Model = metadata.Model,
-                Prompt = metadata.Prompt,
-                StorageUrl = metadata.StorageUrl,
-                PublicUrl = metadata.PublicUrl,
-                ExpiresAt = metadata.ExpiresAt,
-                CreatedAt = DateTime.UtcNow,
-                AccessCount = 0
-            };
+            var expectedId = Guid.NewGuid();
 
-            _mockMediaRepository.Setup(x => x.CreateAsync(It.IsAny<MediaRecord>()))
-                .ReturnsAsync(expectedMediaRecord);
+            _mockMediaRepository.Setup(x => x.CreateAsync(It.IsAny<MediaRecord>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedId);
 
             // Act
             var result = await _service.TrackMediaAsync(virtualKeyId, storageKey, mediaType, metadata);
@@ -85,7 +68,7 @@ namespace ConduitLLM.Tests.Core.Services
                 r.PublicUrl == metadata.PublicUrl &&
                 r.ExpiresAt == metadata.ExpiresAt &&
                 r.AccessCount == 0
-            )), Times.Once);
+            ), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -96,27 +79,10 @@ namespace ConduitLLM.Tests.Core.Services
             var storageKey = "image/2023/01/01/test-hash.jpg";
             var mediaType = "image";
 
-            var expectedMediaRecord = new MediaRecord
-            {
-                Id = Guid.NewGuid(),
-                StorageKey = storageKey,
-                VirtualKeyId = virtualKeyId,
-                MediaType = mediaType,
-                ContentType = null,
-                SizeBytes = null,
-                ContentHash = null,
-                Provider = null,
-                Model = null,
-                Prompt = null,
-                StorageUrl = null,
-                PublicUrl = null,
-                ExpiresAt = null,
-                CreatedAt = DateTime.UtcNow,
-                AccessCount = 0
-            };
+            var expectedId = Guid.NewGuid();
 
-            _mockMediaRepository.Setup(x => x.CreateAsync(It.IsAny<MediaRecord>()))
-                .ReturnsAsync(expectedMediaRecord);
+            _mockMediaRepository.Setup(x => x.CreateAsync(It.IsAny<MediaRecord>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedId);
 
             // Act
             var result = await _service.TrackMediaAsync(virtualKeyId, storageKey, mediaType, null);

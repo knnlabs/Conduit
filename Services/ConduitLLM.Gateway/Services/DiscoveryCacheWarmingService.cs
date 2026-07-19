@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
@@ -39,7 +40,7 @@ namespace ConduitLLM.Gateway.Services
 
             // Wait for the application to fully start using configurable delay
             var startupDelay = TimeSpan.FromSeconds(_options.WarmupStartupDelaySeconds);
-            _logger.LogInformation("Waiting {Seconds} seconds before starting cache warming", _options.WarmupStartupDelaySeconds);
+            _logger.LogDebug("Waiting {Seconds} seconds before starting cache warming", _options.WarmupStartupDelaySeconds);
             await Task.Delay(startupDelay, stoppingToken);
 
             // Try to acquire distributed lock if enabled
@@ -53,7 +54,7 @@ namespace ConduitLLM.Gateway.Services
                     
                     if (lockService != null)
                     {
-                        _logger.LogInformation("Attempting to acquire distributed lock for cache warming");
+                        _logger.LogDebug("Attempting to acquire distributed lock for cache warming");
                         
                         var lockTimeout = TimeSpan.FromSeconds(_options.DistributedLockTimeoutSeconds);
                         distributedLock = await lockService.AcquireLockWithRetryAsync(
@@ -65,7 +66,7 @@ namespace ConduitLLM.Gateway.Services
                         
                         if (distributedLock != null)
                         {
-                            _logger.LogInformation("Acquired distributed lock for cache warming");
+                            _logger.LogDebug("Acquired distributed lock for cache warming");
                         }
                     }
                     else
@@ -164,7 +165,7 @@ namespace ConduitLLM.Gateway.Services
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync(cancellationToken);
 
-                var models = new List<object>();
+                var models = new List<JsonElement>();
 
                 foreach (var mapping in modelMappings)
                 {
@@ -202,7 +203,8 @@ namespace ConduitLLM.Gateway.Services
                     var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
                     var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? caps.MaxOutputTokens ?? 0;
 
-                    models.Add(new
+                    // Serialize to JsonElement for cache-safe storage (anonymous objects can't round-trip through JSON deserialization)
+                    models.Add(JsonSerializer.SerializeToElement(new
                     {
                         // Identity
                         id = mapping.ModelAlias,
@@ -236,7 +238,7 @@ namespace ConduitLLM.Gateway.Services
                             max_tokens = maxInputTokens + maxOutputTokens,
                             max_output_tokens = maxOutputTokens
                         }
-                    });
+                    }));
                 }
 
                 // Cache the results

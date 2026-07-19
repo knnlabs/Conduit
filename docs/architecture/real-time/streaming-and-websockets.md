@@ -696,4 +696,4 @@ class ClientSideMetricsEstimator {
 - [Webhook Delivery](./webhook-delivery.md) - Distributed webhook notification system
 - [Progress and Notifications](../media-generation/progress-and-notifications.md) - SignalR progress tracking
 - [Background Services](../patterns/background-services-and-workers.md) - Background service patterns
-- [Event-Driven Architecture](../../claude/event-driven-architecture.md) - MassTransit events
+- [MassTransit Events](../events/masstransit-event-inventory.md) - Event-driven architecture

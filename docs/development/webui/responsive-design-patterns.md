@@ -286,6 +286,4 @@ The responsive design documentation has been organized into focused guides:
 
 ## Related Documentation
 
-- [CSS Development Guidelines](./css-development-guidelines.md) - Complete CSS standards and best practices
 - [Component Library](./component-library.md) - UI component documentation with responsive examples
-- [Design Tokens](./design-tokens.md) - Design token system and usage

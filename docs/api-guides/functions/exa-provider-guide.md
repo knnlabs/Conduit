@@ -780,5 +780,5 @@ async function executeWithBudgetCheck(params) {
 
 - [Exa.ai Documentation](https://docs.exa.ai)
 - [Functions API Reference](./getting-started.md)
-- [Cost Optimization Guide](./cost-optimization.md)
-- [WebAdmin Functions Management](../../webadmin/functions-management.md)
+- [Cost Optimization Guide](../../../WebAdmin/docs/admin/routing/examples/cost-optimization.md)
+- [WebAdmin Functions Management](../../../WebAdmin/docs/README.md)

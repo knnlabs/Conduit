@@ -11,19 +11,6 @@ public partial class Program
         builder.Configuration.Sources.Clear();
         builder.Configuration.AddEnvironmentVariables();
 
-        // Database initialization strategy
-        // We use a flexible approach that works for both development and production
-        bool skipDatabaseInit = Environment.GetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT") == "true";
-
-        if (skipDatabaseInit)
-        {
-            Console.WriteLine("[Conduit] WARNING: Skipping database initialization. Ensure database schema is up to date.");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] Database will be initialized automatically.");
-        }
-
         // Configure JSON options for snake_case serialization (OpenAI compatibility)
         var jsonSerializerOptions = new JsonSerializerOptions
         {
@@ -40,6 +27,5 @@ public partial class Program
             .Bind(builder.Configuration.GetSection("Conduit"))
             .ValidateDataAnnotations(); // Add validation if using DataAnnotations in settings classes
 
-        // Database settings loading removed - provider configuration is now entirely database-driven
     }
 }

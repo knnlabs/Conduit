@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace ConduitLLM.Configuration.Entities
     /// This is the main entity for managing provider configurations and serves as the parent
     /// for multiple API keys through the ProviderKeyCredentials collection.
     /// </summary>
-    public class Provider
+    public class Provider : IEntity<int>, IAuditableEntity
     {
         /// <summary>
         /// Gets or sets the unique identifier for this provider.

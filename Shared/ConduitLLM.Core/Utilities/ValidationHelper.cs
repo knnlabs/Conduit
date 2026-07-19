@@ -32,7 +32,7 @@ namespace ConduitLLM.Core.Utilities
         /// <exception cref="ValidationException">Thrown if the collection is null or empty.</exception>
         public static void RequireNonEmpty<T>(IEnumerable<T>? collection, string parameterName)
         {
-            if (collection == null || collection.Count() == 0)
+            if (collection == null || !collection.Any())
             {
                 throw new ValidationException($"{parameterName} collection cannot be null or empty");
             }

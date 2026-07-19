@@ -50,6 +50,9 @@ artifacts/
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
+# Visual Studio launch settings (developer-specific)
+**/Properties/launchSettings.json
+
 # StyleCop
 StyleCopReport.xml
 
@@ -383,6 +386,9 @@ FodyWeavers.xsd
 *.sln.iml
 .idea/
 
+# Claude Code local settings
+.claude/
+
 # macOS
 .DS_Store
 
@@ -394,6 +400,9 @@ helm/requirements.lock
 # Temporary upload files
 uploads/
 usage_tracking*.json
+
+# .NET tool publish output
+/out/
 
 # Node.js build artifacts
 Clients/Node/*/dist/
@@ -448,3 +457,4 @@ replicate-text-models.sql
 replicate-video-models.sql
 scripts/db/replicate/replicate-text-models.sql
 scripts/db/replicate/replicate-video-models.sql
+scripts/db/providers/openrouter-models.sql

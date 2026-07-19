@@ -33,7 +33,7 @@ import {
   IconTestPipe,
   IconArrowLeft,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
 import type { ProviderDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
@@ -70,11 +70,7 @@ export default function ProviderKeysPage() {
       setProvider(data);
     } catch (error) {
       console.error('Error fetching provider:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load provider details',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load provider details'));
     }
   }, [providerId]);
 
@@ -87,11 +83,7 @@ export default function ProviderKeysPage() {
       setKeys(data);
     } catch (error) {
       console.error('Error fetching provider keys:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load provider keys',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load provider keys'));
     } finally {
       setIsLoading(false);
     }
@@ -111,11 +103,7 @@ export default function ProviderKeysPage() {
         client.providers.createKey(providerId, newKeyForm)
       );
       
-      notifications.show({
-        title: 'Success',
-        message: 'Provider key added successfully',
-        color: 'green',
-      });
+      notify.success('Provider key added successfully');
       
       // Reset form
       setNewKeyForm({
@@ -133,12 +121,7 @@ export default function ProviderKeysPage() {
       void fetchKeys();
     } catch (error) {
       console.error('Error adding key:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to add provider key';
-      notifications.show({
-        title: 'Error',
-        message: errorMessage,
-        color: 'red',
-      });
+      notify.error(error, 'Failed to add provider key');
     } finally {
       setIsAddingKey(false);
     }
@@ -150,20 +133,12 @@ export default function ProviderKeysPage() {
         client.providers.setPrimaryKey(providerId, keyId)
       );
       
-      notifications.show({
-        title: 'Success',
-        message: 'Primary key updated',
-        color: 'green',
-      });
-      
+      notify.success('Primary key updated');
+
       void fetchKeys();
     } catch (error) {
       console.error('Error setting primary key:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to set primary key',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to set primary key'));
     }
   };
 
@@ -173,20 +148,12 @@ export default function ProviderKeysPage() {
         client.providers.updateKey(providerId, keyId, { isEnabled: enabled })
       );
       
-      notifications.show({
-        title: 'Success',
-        message: `Key ${enabled ? 'enabled' : 'disabled'} successfully`,
-        color: 'green',
-      });
-      
+      notify.success(`Key ${enabled ? 'enabled' : 'disabled'} successfully`);
+
       void fetchKeys();
     } catch (error) {
       console.error('Error updating key:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update key',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to update key'));
     }
   };
 
@@ -200,28 +167,17 @@ export default function ProviderKeysPage() {
       // Handle new response format
       const isSuccess = (result.result as string) === 'success';
       const testResult = result.result as string;
-      
-      const colors: Record<string, string> = {
-        'success': 'green',
-        'invalid_key': 'red',
-        'ignored': 'yellow',
-        'provider_down': 'orange',
-        'rate_limited': 'orange',
-        'unknown_error': 'red'
-      };
-      
-      notifications.show({
-        title: isSuccess ? 'Key Test Successful' : 'Key Test Failed',
-        message: result.message ?? (isSuccess ? 'The API key is valid and working' : 'The API key is invalid or not working'),
-        color: colors[testResult] ?? 'red',
-      });
+
+      if (isSuccess) {
+        notify.success(result.message ?? 'The API key is valid and working', 'Key Test Successful');
+      } else if (testResult === 'ignored' || testResult === 'provider_down' || testResult === 'rate_limited') {
+        notify.warning(result.message ?? 'The API key is invalid or not working', 'Key Test Failed');
+      } else {
+        notify.error(new Error(result.message ?? 'The API key is invalid or not working'), 'Key Test Failed');
+      }
     } catch (error) {
       console.error('Error testing key:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to test key',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to test key'));
     } finally {
       setTestingKeys(prev => {
         const newSet = new Set(prev);
@@ -233,11 +189,7 @@ export default function ProviderKeysPage() {
 
   const handleDeleteKey = (key: ProviderKeyCredentialDto) => {
     if (key.isPrimary) {
-      notifications.show({
-        title: 'Cannot delete primary key',
-        message: 'Please set another key as primary before deleting this one',
-        color: 'red',
-      });
+      notify.error(new Error('Please set another key as primary before deleting this one'), 'Cannot delete primary key');
       return;
     }
 
@@ -257,20 +209,12 @@ export default function ProviderKeysPage() {
               client.providers.deleteKey(providerId, key.id)
             );
             
-            notifications.show({
-              title: 'Success',
-              message: 'Key deleted successfully',
-              color: 'green',
-            });
-            
+            notify.success('Key deleted successfully');
+
             void fetchKeys();
           } catch (error) {
             console.error('Error deleting key:', error);
-            notifications.show({
-              title: 'Error',
-              message: 'Failed to delete key',
-              color: 'red',
-            });
+            notify.error(new Error('Failed to delete key'));
           }
         })();
       },

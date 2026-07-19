@@ -1,9 +1,6 @@
-using ConduitLLM.Tests.Admin.TestHelpers;
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Controllers
@@ -30,8 +27,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllSettings();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedSettings = Assert.IsAssignableFrom<IEnumerable<GlobalSettingDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedSettings = okResult.Value.Should().BeAssignableTo<IEnumerable<GlobalSettingDto>>().Subject;
             returnedSettings.Should().HaveCount(3);
             returnedSettings.First().Key.Should().Be("rate_limit");
         }
@@ -47,27 +44,21 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllSettings();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedSettings = Assert.IsAssignableFrom<IEnumerable<GlobalSettingDto>>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var returnedSettings = okResult.Value.Should().BeAssignableTo<IEnumerable<GlobalSettingDto>>().Subject;
             returnedSettings.Should().BeEmpty();
         }
 
         [Fact]
-        public async Task GetAllSettings_WithException_ShouldReturn500()
+        public async Task GetAllSettings_WithException_ShouldPropagateException()
         {
             // Arrange
             _mockService.Setup(x => x.GetAllSettingsAsync())
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.GetAllSettings();
-
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            statusCodeResult.Value.Should().Be("An unexpected error occurred.");
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error getting all global settings");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.GetAllSettings();
+            await act.Should().ThrowAsync<Exception>();
         }
 
         #endregion

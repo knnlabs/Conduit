@@ -1,8 +1,10 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -51,7 +53,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CheckFileExists(fileId);
 
             // Assert
-            Assert.IsType<OkResult>(result);
+            result.Should().BeOfType<OkResult>();
             Assert.Equal("image/png", _controller.Response.Headers["Content-Type"]);
             Assert.Equal("2048", _controller.Response.Headers["Content-Length"]);
             Assert.Equal("\"xyz789\"", _controller.Response.Headers["ETag"]);
@@ -81,7 +83,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CheckFileExists(fileId);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         [Fact]
@@ -112,12 +114,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockFileRetrievalService.Setup(x => x.FileExistsAsync(fileId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Existence check error"));
 
-            // Act
-            var result = await _controller.CheckFileExists(fileId);
-
-            // Assert
-            var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(500, statusCodeResult.StatusCode);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.CheckFileExists(fileId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Existence check error");
         }
 
         #endregion
@@ -154,11 +153,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("File not found", errorDetails.Message);
-            Assert.Equal("not_found", errorDetails.Type);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("File not found");
+            errorDetails.Type.Should().Be("not_found");
         }
 
         [Fact]
@@ -181,11 +180,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("File not found", errorDetails.Message);
-            Assert.Equal("not_found", errorDetails.Type);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("File not found");
+            errorDetails.Type.Should().Be("not_found");
         }
 
         [Fact]
@@ -204,11 +203,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
-            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
-            Assert.Equal("File not found", errorDetails.Message);
-            Assert.Equal("not_found", errorDetails.Type);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
+            var errorDetails = errorResponse.error.Should().BeOfType<ErrorDetailsDto>().Subject;
+            errorDetails.Message.Should().Be("File not found");
+            errorDetails.Type.Should().Be("not_found");
         }
 
         #endregion

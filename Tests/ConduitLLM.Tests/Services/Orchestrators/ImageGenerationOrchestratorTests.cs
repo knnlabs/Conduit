@@ -35,7 +35,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 ClientFactoryMock.Object,
                 TaskServiceMock.Object,
                 StorageServiceMock.Object,
-                PublishEndpointMock.Object,
+                EventBusMock.Object,
                 ModelMappingServiceMock.Object,
                 VirtualKeyServiceMock.Object,
                 CostServiceMock.Object,
@@ -44,6 +44,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 HttpClientFactoryMock.Object,
                 ParameterValidatorMock.Object,
                 Metrics,
+                ErrorTrackingServiceMock.Object,
                 LoggerMock.Object as ILogger<ImageGenerationOrchestrator> ?? new Mock<ILogger<ImageGenerationOrchestrator>>().Object);
         }
 
@@ -97,8 +98,8 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(response);
             
-            ClientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Returns(mockClient.Object);
+            ClientFactoryMock.Setup(x => x.GetClientByProviderIdAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockClient.Object);
             
             StorageServiceMock.Setup(x => x.StoreAsync(
                 It.IsAny<Stream>(),
@@ -115,25 +116,25 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected override void SetupFailedGeneration(Exception exception)
         {
             // Setup to simulate failure during orchestration
-            ClientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Throws(exception);
+            ClientFactoryMock.Setup(x => x.GetClientByProviderIdAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(exception);
         }
 
         [Fact]
-        public async Task Consume_WithMultipleImages_ShouldProcessAllInParallel()
+        public async Task HandleAsync_WithMultipleImages_ShouldProcessAllInParallel()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should publish progress event with correct counts
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<ImageGenerationProgress>(e =>
                     e.TaskId == request.TaskId &&
                     e.TotalImages == 2),
@@ -141,11 +142,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WithBase64Response_ShouldProcessCorrectly()
+        public async Task HandleAsync_WithBase64Response_ShouldProcessCorrectly()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             
             var response = new ConduitLLM.Core.Models.ImageGenerationResponse
             {
@@ -162,7 +163,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -175,11 +176,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WithUrlResponse_ShouldDownloadAndStore()
+        public async Task HandleAsync_WithUrlResponse_ShouldDownloadAndStore()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
@@ -190,7 +191,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 .Returns(httpClient);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -207,16 +208,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<ImageGenerationCompleted>(e =>
                     e.TaskId == request.TaskId &&
                     e.Images.Count == 2 &&
@@ -229,16 +230,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should publish initial progress
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<ImageGenerationProgress>(e =>
                     e.TaskId == request.TaskId &&
                     e.Status == "processing" &&
@@ -252,16 +253,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<WebhookDeliveryRequested>(w =>
                     w.TaskId == request.TaskId &&
                     w.WebhookUrl == request.WebhookUrl),
@@ -269,11 +270,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WithPartialImageFailure_ShouldProcessSuccessfulOnes()
+        public async Task HandleAsync_WithPartialImageFailure_ShouldProcessSuccessfulOnes()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             
             // Create response with one valid URL and one invalid
             var response = new ConduitLLM.Core.Models.ImageGenerationResponse
@@ -295,7 +296,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should complete successfully with partial results
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(

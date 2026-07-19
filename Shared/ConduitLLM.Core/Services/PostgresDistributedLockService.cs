@@ -257,9 +257,20 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
+            public async ValueTask DisposeAsync()
+            {
+                await ReleaseAsync().ConfigureAwait(false);
+            }
+
             public void Dispose()
             {
-                ReleaseAsync().GetAwaiter().GetResult();
+                if (_disposed)
+                    return;
+
+                // Advisory locks are session-scoped, so closing the connection releases the
+                // lock without a pg_advisory_unlock round-trip we would have to block on.
+                _disposed = true;
+                _connection?.Dispose();
             }
         }
     }

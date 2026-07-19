@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
 
 namespace ConduitLLM.Gateway.Authentication
@@ -30,6 +32,8 @@ namespace ConduitLLM.Gateway.Authentication
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            var stopwatch = Stopwatch.StartNew();
+
             // Skip authentication for OPTIONS requests (CORS preflight)
             if (Request.Method == "OPTIONS")
             {
@@ -39,14 +43,16 @@ namespace ConduitLLM.Gateway.Authentication
             // Check for ephemeral key in X-Ephemeral-Key header
             if (!Request.Headers.ContainsKey("X-Ephemeral-Key"))
             {
+                GatewayAuthMetrics.RecordNoResult("EphemeralKey");
                 return AuthenticateResult.NoResult();
             }
 
             var ephemeralKey = Request.Headers["X-Ephemeral-Key"].ToString();
-            
+
             if (string.IsNullOrEmpty(ephemeralKey))
             {
                 Logger.LogWarning("Empty ephemeral key provided in X-Ephemeral-Key header");
+                GatewayAuthMetrics.RecordFailure("EphemeralKey", "empty_key");
                 return AuthenticateResult.Fail("Invalid ephemeral key");
             }
 
@@ -58,22 +64,25 @@ namespace ConduitLLM.Gateway.Authentication
             if (string.IsNullOrEmpty(actualVirtualKey))
             {
                 Logger.LogWarning("Ephemeral key not found or invalid: {Key}", SanitizeKeyForLogging(ephemeralKey));
+                GatewayAuthMetrics.RecordFailure("EphemeralKey", "not_found");
                 return AuthenticateResult.Fail("Ephemeral key not found");
             }
-            
+
             // Get the virtual key ID from the ephemeral key data without consuming it
             // The key will naturally expire via Redis TTL
             var keyData = await _ephemeralKeyService.GetKeyDataAsync(ephemeralKey);
             if (keyData == null)
             {
                 Logger.LogWarning("Ephemeral key not found: {Key}", SanitizeKeyForLogging(ephemeralKey));
+                GatewayAuthMetrics.RecordFailure("EphemeralKey", "not_found");
                 return AuthenticateResult.Fail("Ephemeral key not found");
             }
-            
+
             // Check if expired
             if (keyData.ExpiresAt < DateTimeOffset.UtcNow)
             {
                 Logger.LogWarning("Ephemeral key expired: {Key}", SanitizeKeyForLogging(ephemeralKey));
+                GatewayAuthMetrics.RecordFailure("EphemeralKey", "expired");
                 return AuthenticateResult.Fail("Ephemeral key expired");
             }
             
@@ -94,6 +103,7 @@ namespace ConduitLLM.Gateway.Authentication
                     Logger.LogWarning("Virtual key {VirtualKeyId} exists with name '{KeyName}' but validation failed - likely missing hash", 
                         virtualKeyId.Value, basicInfo.KeyName);
                 }
+                GatewayAuthMetrics.RecordFailure("EphemeralKey", "virtualkey_not_found");
                 return AuthenticateResult.Fail("Associated virtual key not found");
             }
 
@@ -101,6 +111,7 @@ namespace ConduitLLM.Gateway.Authentication
             if (!virtualKeyInfo.IsEnabled)
             {
                 Logger.LogWarning("Inactive virtual key {VirtualKeyId} used with ephemeral key", virtualKeyId.Value);
+                GatewayAuthMetrics.RecordFailure("EphemeralKey", "virtualkey_disabled");
                 return AuthenticateResult.Fail("Associated virtual key is inactive");
             }
 
@@ -130,9 +141,12 @@ namespace ConduitLLM.Gateway.Authentication
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
-            Logger.LogInformation("Ephemeral key authenticated for virtual key {VirtualKeyId} ({VirtualKeyName}), streaming: {IsStreaming}", 
+            Logger.LogInformation("Ephemeral key authenticated for virtual key {VirtualKeyId} ({VirtualKeyName}), streaming: {IsStreaming}",
                 virtualKeyInfo.Id, virtualKeyInfo.KeyName, isStreaming);
 
+            stopwatch.Stop();
+            GatewayAuthMetrics.RecordSuccess("EphemeralKey");
+            GatewayAuthMetrics.RecordDuration("EphemeralKey", stopwatch.Elapsed.TotalSeconds);
             return AuthenticateResult.Success(ticket);
         }
 

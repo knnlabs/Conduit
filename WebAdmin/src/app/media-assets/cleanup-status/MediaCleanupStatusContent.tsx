@@ -30,7 +30,7 @@ import {
   IconExternalLink,
 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { MediaCleanupStatus } from '@knn_labs/conduit-admin-client';
 
@@ -106,19 +106,10 @@ export default function MediaCleanupStatusContent() {
       const response = await withAdminClient(client =>
         client.media.setCleanupServiceEnabled(enabled)
       );
-      notifications.show({
-        title: 'Success',
-        message: response.message ?? `Cleanup service ${enabled ? 'enabled' : 'disabled'}`,
-        color: 'green',
-      });
+      notify.success(response.message ?? `Cleanup service ${enabled ? 'enabled' : 'disabled'}`);
       void fetchStatus();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to toggle service';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err, 'Failed to toggle service');
     } finally {
       setToggleLoading(false);
     }
@@ -130,20 +121,11 @@ export default function MediaCleanupStatusContent() {
       const response = await withAdminClient(client =>
         client.media.setSimpleRetentionOverride(simpleRetentionDays)
       );
-      notifications.show({
-        title: 'Success',
-        message: response.message ?? 'Simple retention override updated',
-        color: 'green',
-      });
+      notify.success(response.message ?? 'Simple retention override updated');
       setHasUnsavedChanges(false);
       void fetchStatus();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update retention';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err, 'Failed to update retention');
     } finally {
       setRetentionLoading(false);
     }

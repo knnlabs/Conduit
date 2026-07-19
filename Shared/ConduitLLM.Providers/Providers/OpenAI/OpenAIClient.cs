@@ -1,9 +1,9 @@
-using System.Net.Http.Headers;
-
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Providers.Authentication;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -21,31 +21,29 @@ namespace ConduitLLM.Providers.OpenAI
     /// </remarks>
     public partial class OpenAIClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
-        // Default API configuration constants
+        // API configuration constants
         private static class Constants
         {
-            public static class Urls
-            {
-                public const string DefaultOpenAIBaseUrl = "https://api.openai.com/v1";
-            }
-
-            // Azure API version is now hardcoded
             public const string AzureApiVersion = "2024-02-01";
 
             public static class Endpoints
             {
-                public const string ChatCompletions = "/chat/completions";
                 public const string Models = "/models";
+                public const string ChatCompletions = "/chat/completions";
                 public const string Embeddings = "/embeddings";
                 public const string ImageGenerations = "/images/generations";
-                public const string AudioTranscriptions = "/audio/transcriptions";
-                public const string AudioTranslations = "/audio/translations";
-                public const string AudioSpeech = "/audio/speech";
             }
         }
 
         private readonly bool _isAzure;
         private readonly IModelCapabilityService? _capabilityService;
+
+        /// <summary>
+        /// Gets the authentication strategy based on whether this is Azure or standard OpenAI.
+        /// Azure uses api-key header, standard OpenAI uses Bearer token.
+        /// </summary>
+        protected override IAuthenticationStrategy AuthenticationStrategy =>
+            _isAzure ? ApiKeyHeaderStrategy.AzureInstance : BearerTokenStrategy.Instance;
 
         /// <summary>
         /// Initializes a new instance of the OpenAIClient class.
@@ -96,40 +94,20 @@ namespace ConduitLLM.Providers.OpenAI
         {
             // Use key credential base URL if specified, otherwise fall back to provider base URL
             var baseUrl = keyCredential.BaseUrl ?? provider.BaseUrl;
-            
+
             // For Azure, we'll handle this specially in the endpoint methods
             if (providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
             {
                 return baseUrl ?? "";
             }
 
-            // For standard OpenAI or compatible providers
+            // For standard OpenAI or compatible providers, use registry default
             baseUrl = string.IsNullOrWhiteSpace(baseUrl)
-                ? Constants.Urls.DefaultOpenAIBaseUrl
+                ? ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)
                 : baseUrl;
-            
+
             // Ensure consistent formatting
-            return baseUrl.TrimEnd('/');
-        }
-
-        /// <summary>
-        /// Configures the HTTP client with appropriate headers and settings.
-        /// </summary>
-        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
-        {
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-
-            // Different authentication method for Azure vs. standard OpenAI
-            if (_isAzure)
-            {
-                client.DefaultRequestHeaders.Add("api-key", apiKey);
-            }
-            else
-            {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            }
+            return baseUrl?.TrimEnd('/') ?? "https://api.openai.com/v1";
         }
     }
 }

@@ -26,4 +26,31 @@ namespace ConduitLLM.Admin.DTOs
         /// </summary>
         public int DeletedCount { get; set; }
     }
+
+    /// <summary>
+    /// Response describing whether the media cleanup service is enabled.
+    /// </summary>
+    public class MediaCleanupEnabledDto
+    {
+        /// <summary>
+        /// Whether the media cleanup service is currently enabled.
+        /// </summary>
+        public bool Enabled { get; set; }
+    }
+
+    /// <summary>
+    /// Response returned after enabling or disabling the media cleanup service.
+    /// </summary>
+    public class MediaCleanupEnabledChangedDto
+    {
+        /// <summary>
+        /// The new enabled state of the media cleanup service.
+        /// </summary>
+        public bool Enabled { get; set; }
+
+        /// <summary>
+        /// Human-readable confirmation of the state change.
+        /// </summary>
+        public string Message { get; set; } = string.Empty;
+    }
 }

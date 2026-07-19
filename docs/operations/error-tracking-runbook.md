@@ -462,7 +462,6 @@ Error data is ephemeral and designed to be disposable. If lost:
 
 ## Related Documentation
 
-- [Administrator Guide](../admin/provider-error-tracking.md)
-- [Developer Guide](../development/error-tracking-architecture.md)
+- [Administrator Guide](../api-guides/admin/provider-error-tracking.md)
+- [Error Tracking Architecture](../architecture/provider-system/error-tracking.md)
 - [Redis Resilience](./infrastructure/redis-resilience.md)
-- [Provider Health Monitoring](./providers/health-monitoring.md)

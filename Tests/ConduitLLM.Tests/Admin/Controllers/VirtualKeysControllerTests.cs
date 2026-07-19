@@ -4,6 +4,8 @@ using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -81,14 +83,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GenerateKey(request);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
-            var response = Assert.IsType<CreateVirtualKeyResponseDto>(createdResult.Value);
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+            var response = createdResult.Value.Should().BeOfType<CreateVirtualKeyResponseDto>().Subject;
             Assert.Equal("vk_test123", response.VirtualKey);
             Assert.Equal(1, response.KeyInfo.VirtualKeyGroupId);
         }
 
         [Fact]
-        public async Task GenerateKey_ServiceThrowsInvalidOperation_ReturnsInternalServerError()
+        public async Task GenerateKey_ServiceThrowsInvalidOperation_ShouldPropagateException()
         {
             // Arrange
             var request = new CreateVirtualKeyRequestDto
@@ -100,15 +102,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockVirtualKeyService.Setup(x => x.GenerateVirtualKeyAsync(It.IsAny<CreateVirtualKeyRequestDto>()))
                 .ThrowsAsync(new InvalidOperationException("Virtual key group 999 not found. Ensure the group exists before creating keys."));
 
-            // Act
-            var result = await _controller.GenerateKey(request);
-
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusCodeResult.StatusCode);
-            
-            // In a real scenario, you might want to return a more specific error code (e.g., 404) 
-            // for "group not found" scenarios by catching specific exceptions
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.GenerateKey(request);
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         [Fact]

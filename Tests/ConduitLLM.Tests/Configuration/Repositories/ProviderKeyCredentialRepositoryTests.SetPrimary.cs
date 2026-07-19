@@ -52,11 +52,12 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             Assert.True(result);
-            
-            var keys = await _context.ProviderKeyCredentials
+
+            using var verifyContext = CreateVerificationContext();
+            var keys = await verifyContext.ProviderKeyCredentials
                 .Where(k => k.ProviderId == 1)
                 .ToListAsync();
-            
+
             Assert.Equal(2, keys.Count);
             Assert.False(keys.First(k => k.Id == 1).IsPrimary);
             Assert.True(keys.First(k => k.Id == 2).IsPrimary);
@@ -95,9 +96,10 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             Assert.True(result);
-            
-            var updatedKey = await _context.ProviderKeyCredentials.FindAsync(1);
-            Assert.True(updatedKey.IsPrimary);
+
+            using var verifyContext = CreateVerificationContext();
+            var updatedKey = await verifyContext.ProviderKeyCredentials.FindAsync(1);
+            Assert.True(updatedKey!.IsPrimary);
         }
 
         [Fact]
@@ -212,7 +214,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             };
 
             _context.ProviderKeyCredentials.AddRange(key1, key2, key3);
-            
+
             // Save without constraint validation (simulating corruption)
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             await _context.SaveChangesAsync();
@@ -223,11 +225,12 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             Assert.True(result);
-            
-            var keys = await _context.ProviderKeyCredentials
+
+            using var verifyContext = CreateVerificationContext();
+            var keys = await verifyContext.ProviderKeyCredentials
                 .Where(k => k.ProviderId == 1)
                 .ToListAsync();
-            
+
             Assert.Equal(3, keys.Count);
             Assert.False(keys.First(k => k.Id == 1).IsPrimary);
             Assert.False(keys.First(k => k.Id == 2).IsPrimary);
@@ -323,9 +326,10 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             Assert.True(result);
-            
-            var updatedKey = await _context.ProviderKeyCredentials.FindAsync(1);
-            Assert.True(updatedKey.UpdatedAt > originalTime);
+
+            using var verifyContext = CreateVerificationContext();
+            var updatedKey = await verifyContext.ProviderKeyCredentials.FindAsync(1);
+            Assert.True(updatedKey!.UpdatedAt > originalTime);
             Assert.Equal(originalTime, updatedKey.CreatedAt); // CreatedAt should not change
         }
     }

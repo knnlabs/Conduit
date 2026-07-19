@@ -12,20 +12,7 @@ public partial class Program
     public static void ConfigureSignalRServices(WebApplicationBuilder builder)
     {
         // Get Redis connection string from environment
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-        if (!string.IsNullOrEmpty(redisUrl))
-        {
-            try
-            {
-                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-            }
-            catch
-            {
-                // Failed to parse REDIS_URL, will use legacy connection string if available
-            }
-        }
+        var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
         // Register VirtualKeyHubFilter for SignalR authentication
         builder.Services.AddScoped<ConduitLLM.Gateway.Authentication.VirtualKeyHubFilter>();
@@ -49,7 +36,6 @@ public partial class Program
             // Register webhook metrics service (required for distributed tracking)
             builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookMetricsService, ConduitLLM.Core.Services.RedisWebhookMetricsService>();
             
-            Console.WriteLine("[Conduit] SignalR configured with Redis-based distributed rate limiting");
         }
         else
         {
@@ -85,7 +71,6 @@ public partial class Program
         builder.Services.AddScoped<ConduitLLM.Gateway.Authentication.ISignalRAuthenticationService, ConduitLLM.Gateway.Authentication.SignalRAuthenticationService>();
 
         // Register Metrics Aggregation Service and Hub - with leader election
-        Console.WriteLine("[Service Registration] Registering MetricsAggregationService as singleton...");
         // Use factory to prevent auto-discovery by ASP.NET Core
         builder.Services.AddSingleton<ConduitLLM.Gateway.Hubs.IMetricsAggregationService>(sp =>
         {
@@ -94,90 +79,31 @@ public partial class Program
             var hubContext = sp.GetRequiredService<IHubContext<ConduitLLM.Gateway.Hubs.MetricsHub>>();
             return new ConduitLLM.Gateway.Services.MetricsAggregationService(serviceProvider, logger, hubContext);
         });
-        Console.WriteLine("[Service Registration] Adding leader-elected hosted service for MetricsAggregationService...");
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.MetricsAggregationService>(
             sp => {
-                try
-                {
-                    Console.WriteLine("[Leader Election] Resolving MetricsAggregationService...");
-                    var service = (ConduitLLM.Gateway.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Gateway.Hubs.IMetricsAggregationService>();
-                    Console.WriteLine("[Leader Election] ✓ Successfully resolved MetricsAggregationService");
-                    return service;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve MetricsAggregationService: {ex.GetType().Name}: {ex.Message}");
-                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
-                    throw;
-                }
+                var service = (ConduitLLM.Gateway.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Gateway.Hubs.IMetricsAggregationService>();
+                return service;
             },
             "MetricsAggregationService");
 
-        // Register Business Metrics Background Service - with leader election
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.BusinessMetricsService>("BusinessMetricsService");
-
-        // Add SignalR for real-time navigation state updates
-        var signalRBuilder = builder.Services.AddSignalR(options =>
-        {
-            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-            options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
-            options.KeepAliveInterval = TimeSpan.FromSeconds(30);
-            options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
-            options.StreamBufferCapacity = 10;
-            
-            // Add global filters
-            options.AddFilter<ConduitLLM.Gateway.Filters.SignalRMetricsFilter>();
-            options.AddFilter<ConduitLLM.Gateway.Filters.SignalRErrorHandlingFilter>();
-            options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeyHubFilter>();
-            options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeySignalRRateLimitFilter>();
-        });
-
-        // Add MessagePack protocol support with LZ4 compression
-        // Enables both JSON (default) and MessagePack protocols for backward compatibility
-        var messagePackEnabled = Environment.GetEnvironmentVariable("SIGNALR_MESSAGEPACK_ENABLED")?.ToLowerInvariant() != "false";
-        if (messagePackEnabled)
-        {
-            signalRBuilder.AddMessagePackProtocol(options =>
-            {
-                // Configure MessagePack with security and compression
-                options.SerializerOptions = MessagePack.MessagePackSerializerOptions.Standard
-                    .WithResolver(MessagePack.Resolvers.StandardResolver.Instance)
-                    .WithSecurity(MessagePack.MessagePackSecurity.UntrustedData) // CVE-2020-5234 protection
-                    .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray) // Use Lz4BlockArray for GC optimization
-                    .WithCompressionMinLength(256); // Only compress messages > 256 bytes
-            });
-            Console.WriteLine("[Conduit] SignalR configured with MessagePack protocol (LZ4 compression enabled)");
-            Console.WriteLine("[Conduit] SignalR supports both JSON and MessagePack protocols for backward compatibility");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] SignalR configured with JSON protocol only (MessagePack disabled)");
-        }
-
-        // Configure SignalR Redis backplane for horizontal scaling
-        // Use dedicated Redis connection string if available, otherwise fall back to main Redis connection
+        // Add SignalR with shared configuration (MessagePack, Redis backplane)
         var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
-        if (!string.IsNullOrEmpty(signalRRedisConnectionString))
-        {
-            signalRBuilder.AddStackExchangeRedis(signalRRedisConnectionString, options =>
+        builder.Services.AddConduitSignalR(
+            builder.Environment,
+            signalRRedisConnectionString,
+            redisChannelPrefix: "conduit_signalr:",
+            redisDatabase: 2,
+            serviceName: "Conduit",
+            configureHubOptions: options =>
             {
-                options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("conduit_signalr:", StackExchange.Redis.RedisChannel.PatternMode.Literal);
-                options.Configuration.DefaultDatabase = 2; // Separate database for SignalR
+                options.AddFilter<ConduitLLM.Gateway.Filters.SignalRMetricsFilter>();
+                options.AddFilter<ConduitLLM.Gateway.Filters.SignalRErrorHandlingFilter>();
+                options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeyHubFilter>();
+                options.AddFilter<ConduitLLM.Gateway.Authentication.VirtualKeySignalRRateLimitFilter>();
             });
-            Console.WriteLine("[Conduit] SignalR configured with Redis backplane for horizontal scaling");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] SignalR configured without Redis backplane (single-instance mode)");
-        }
-
-        // Navigation state notification service removed - WebAdmin uses React Query instead of SignalR for model mapping updates
 
         // Register settings refresh service for runtime configuration updates
         builder.Services.AddSingleton<ISettingsRefreshService, SettingsRefreshService>();
-
-        // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
-        // Migration: 20250827194408_ConsolidateMediaTables.cs
 
         // Register video generation notification service
         builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerationNotificationService>();
@@ -193,8 +119,6 @@ public partial class Program
 
         // Register usage analytics notification service
         builder.Services.AddSingleton<IUsageAnalyticsNotificationService, UsageAnalyticsNotificationService>();
-
-        // Model discovery notification services removed - capabilities now come from ModelProviderMapping
 
         // Register billing alerting service for critical failure notifications
         builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAlertingService, ConduitLLM.Configuration.Services.BillingAlertingService>();
@@ -242,22 +166,10 @@ public partial class Program
 
             return batchService;
         });
-        Console.WriteLine("[Service Registration] Adding leader-elected hosted service for BatchSpendUpdateService...");
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(
             sp => {
-                try
-                {
-                    Console.WriteLine("[Leader Election] Resolving BatchSpendUpdateService...");
-                    var service = (ConduitLLM.Configuration.Services.BatchSpendUpdateService)sp.GetRequiredService<IBatchSpendUpdateService>();
-                    Console.WriteLine("[Leader Election] ✓ Successfully resolved BatchSpendUpdateService");
-                    return service;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve BatchSpendUpdateService: {ex.GetType().Name}: {ex.Message}");
-                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
-                    throw;
-                }
+                var service = (ConduitLLM.Configuration.Services.BatchSpendUpdateService)sp.GetRequiredService<IBatchSpendUpdateService>();
+                return service;
             },
             "BatchSpendUpdateService");
     }

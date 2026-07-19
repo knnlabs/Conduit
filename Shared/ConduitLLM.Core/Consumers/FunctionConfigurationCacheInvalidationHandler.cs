@@ -1,6 +1,6 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Consumers;
@@ -11,7 +11,7 @@ namespace ConduitLLM.Core.Consumers;
 ///
 /// This ensures cache consistency when function configurations are modified via the Admin API.
 /// </summary>
-public class FunctionConfigurationCacheInvalidationHandler : IConsumer<FunctionConfigurationChanged>
+public class FunctionConfigurationCacheInvalidationHandler : ConduitLLM.Configuration.Messaging.IEventHandler<FunctionConfigurationChanged>
 {
     private readonly IFunctionDiscoveryCacheService _cacheService;
     private readonly ILogger<FunctionConfigurationCacheInvalidationHandler> _logger;
@@ -24,10 +24,8 @@ public class FunctionConfigurationCacheInvalidationHandler : IConsumer<FunctionC
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task Consume(ConsumeContext<FunctionConfigurationChanged> context)
+    public async Task HandleAsync(FunctionConfigurationChanged message, IEventContext context)
     {
-        var message = context.Message;
-
         _logger.LogInformation(
             "Received FunctionConfigurationChanged event for '{ConfigName}' (ID: {ConfigId}, Provider: {ProviderType}, ChangeType: {ChangeType})",
             message.ConfigurationName,
@@ -54,7 +52,7 @@ public class FunctionConfigurationCacheInvalidationHandler : IConsumer<FunctionC
                 message.ConfigurationName,
                 message.FunctionConfigurationId);
 
-            // Rethrow to allow MassTransit retry policy to handle the failure
+            // Rethrow to allow the transport retry policy to handle the failure
             throw;
         }
     }
@@ -64,7 +62,7 @@ public class FunctionConfigurationCacheInvalidationHandler : IConsumer<FunctionC
 /// Consumer that handles FunctionDiscoveryCacheInvalidationRequested events for manual cache invalidation
 /// triggered by admins via the Admin API.
 /// </summary>
-public class FunctionDiscoveryCacheInvalidationRequestHandler : IConsumer<FunctionDiscoveryCacheInvalidationRequested>
+public class FunctionDiscoveryCacheInvalidationRequestHandler : ConduitLLM.Configuration.Messaging.IEventHandler<FunctionDiscoveryCacheInvalidationRequested>
 {
     private readonly IFunctionDiscoveryCacheService _cacheService;
     private readonly ILogger<FunctionDiscoveryCacheInvalidationRequestHandler> _logger;
@@ -77,10 +75,8 @@ public class FunctionDiscoveryCacheInvalidationRequestHandler : IConsumer<Functi
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task Consume(ConsumeContext<FunctionDiscoveryCacheInvalidationRequested> context)
+    public async Task HandleAsync(FunctionDiscoveryCacheInvalidationRequested message, IEventContext context)
     {
-        var message = context.Message;
-
         _logger.LogInformation(
             "Received FunctionDiscoveryCacheInvalidationRequested event. Reason: {Reason}, Requested by: {RequestedBy}",
             message.Reason,
@@ -101,7 +97,7 @@ public class FunctionDiscoveryCacheInvalidationRequestHandler : IConsumer<Functi
                 "Failed to invalidate function discovery cache. Reason: {Reason}",
                 message.Reason);
 
-            // Rethrow to allow MassTransit retry policy to handle the failure
+            // Rethrow to allow the transport retry policy to handle the failure
             throw;
         }
     }

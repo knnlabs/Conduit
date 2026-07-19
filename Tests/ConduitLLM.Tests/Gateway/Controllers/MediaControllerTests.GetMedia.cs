@@ -2,6 +2,8 @@ using System.Text;
 
 using ConduitLLM.Core.Models;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -48,9 +50,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<FileStreamResult>(result);
-            var fileResult = result as FileStreamResult;
-            Assert.NotNull(fileResult);
+            var fileResult = result.Should().BeOfType<FileStreamResult>().Subject;
             Assert.Equal("image/jpeg", fileResult.ContentType);
             Assert.Equal(contentStream, fileResult.FileStream);
             Assert.True(fileResult.EnableRangeProcessing);
@@ -97,9 +97,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<FileStreamResult>(result);
-            var fileResult = result as FileStreamResult;
-            Assert.NotNull(fileResult);
+            var fileResult = result.Should().BeOfType<FileStreamResult>().Subject;
             Assert.Equal("video/mp4", fileResult.ContentType);
             Assert.Equal(rangedStream.Stream, fileResult.FileStream);
 
@@ -141,8 +139,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<FileStreamResult>(result);
-            
+            result.Should().BeOfType<FileStreamResult>();
+
             // Verify video-specific headers are set
             Assert.Equal("bytes", _controller.Response.Headers["Accept-Ranges"]);
             Assert.Equal("*", _controller.Response.Headers["Access-Control-Allow-Origin"]);
@@ -163,7 +161,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         [Fact]
@@ -173,9 +171,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia("");
 
             // Assert
-            Assert.IsType<BadRequestObjectResult>(result);
-            var badRequestResult = result as BadRequestObjectResult;
-            Assert.Equal("Invalid storage key", badRequestResult.Value);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid storage key", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -185,9 +184,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(null);
 
             // Assert
-            Assert.IsType<BadRequestObjectResult>(result);
-            var badRequestResult = result as BadRequestObjectResult;
-            Assert.Equal("Invalid storage key", badRequestResult.Value);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid storage key", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -197,9 +197,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia("   ");
 
             // Assert
-            Assert.IsType<BadRequestObjectResult>(result);
-            var badRequestResult = result as BadRequestObjectResult;
-            Assert.Equal("Invalid storage key", badRequestResult.Value);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(400, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Invalid storage key", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -211,14 +212,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockStorageService.Setup(x => x.GetInfoAsync(storageKey))
                 .ThrowsAsync(new Exception("Storage error"));
 
-            // Act
-            var result = await _controller.GetMedia(storageKey);
-
-            // Assert
-            Assert.IsType<ObjectResult>(result);
-            var objectResult = result as ObjectResult;
-            Assert.Equal(500, objectResult.StatusCode);
-            Assert.Equal("An error occurred while retrieving the media", objectResult.Value);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GetMedia(storageKey);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Storage error");
         }
 
         [Fact]
@@ -254,8 +250,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<FileStreamResult>(result);
-            
+            result.Should().BeOfType<FileStreamResult>();
+
             // Verify cache headers are set
             Assert.Equal("public, max-age=3600", _controller.Response.Headers["Cache-Control"]);
             Assert.Equal($"\"{storageKey}\"", _controller.Response.Headers["ETag"]);
@@ -286,7 +282,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         #endregion

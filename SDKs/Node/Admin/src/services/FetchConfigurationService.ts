@@ -1,6 +1,7 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import type { LLMCacheControlDto, ToggleLLMCacheRequest } from '../models/cache-types';
+import type { PromptCachingConfigDto, UpdatePromptCachingConfigDto } from '../models/promptCaching';
 import { ENDPOINTS } from '../constants';
 
 /**
@@ -164,6 +165,32 @@ export class FetchConfigurationService {
     return this.client['post']<LLMCacheControlDto>(
       ENDPOINTS.CONFIG.CACHING.LLM_TOGGLE,
       request,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  async getPromptCachingConfig(config?: RequestConfig): Promise<PromptCachingConfigDto> {
+    return this.client['get']<PromptCachingConfigDto>(
+      ENDPOINTS.PROMPT_CACHING.CONFIG,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  async updatePromptCachingConfig(
+    data: UpdatePromptCachingConfigDto,
+    config?: RequestConfig
+  ): Promise<PromptCachingConfigDto> {
+    return this.client['put']<PromptCachingConfigDto>(
+      ENDPOINTS.PROMPT_CACHING.CONFIG,
+      data,
       {
         signal: config?.signal,
         timeout: config?.timeout,

@@ -24,7 +24,7 @@ import {
   IconX,
   IconInfoCircle,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 import { FunctionConfigurationDto } from '@/app/functions/types';
 
@@ -154,11 +154,11 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
       setActiveTab('result');
 
       // Show success notification
-      notifications.show({
-        title: 'Function executed',
-        message: `Execution completed in ${formatDuration(response.duration ?? 0)}`,
-        color: response.state === 'Completed' ? 'green' : 'yellow',
-      });
+      if (response.state === 'Completed') {
+        notify.success(`Execution completed in ${formatDuration(response.duration ?? 0)}`, 'Function executed');
+      } else {
+        notify.warning(`Execution completed in ${formatDuration(response.duration ?? 0)}`, 'Function executed');
+      }
     } catch (error) {
       console.warn('Error executing function:', error);
 
@@ -174,11 +174,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
       // Auto-switch to result tab
       setActiveTab('result');
 
-      notifications.show({
-        title: 'Execution failed',
-        message: errorMessage,
-        color: 'red',
-      });
+      notify.error(new Error(errorMessage));
     } finally {
       setIsLoading(false);
     }
@@ -289,12 +285,13 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
           </Tabs.Panel>
 
           <Tabs.Panel value="result" pt="md">
-            {isLoading ? (
+            {isLoading && (
               <Stack align="center" py="xl">
                 <Loader size="lg" />
                 <Text c="dimmed">Executing function...</Text>
               </Stack>
-            ) : testResult ? (
+            )}
+            {!isLoading && testResult && (
               <Stack gap="md">
                 <Group justify="space-between">
                   <Badge
@@ -406,7 +403,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                   </Grid>
                 </Card>
               </Stack>
-            ) : null}
+            )}
           </Tabs.Panel>
         </Tabs>
 

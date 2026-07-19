@@ -1,7 +1,7 @@
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
@@ -24,38 +24,9 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             MockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Database connection failed"));
 
-            // Act
-            var result = await Controller.GetModels();
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, objectResult.StatusCode);
-            var errorDto = Assert.IsType<ErrorResponseDto>(objectResult.Value);
-            Assert.Equal("Failed to retrieve model discovery information", errorDto.error.ToString());
-        }
-
-        [Fact]
-        public async Task GetModels_WhenExceptionOccurs_LogsError()
-        {
-            // Arrange
-            SetupValidVirtualKey("valid-key");
-            var exception = new Exception("Test exception");
-
-            MockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ThrowsAsync(exception);
-
-            // Act
-            await Controller.GetModels();
-
-            // Assert
-            MockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Error retrieving model discovery information")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await Controller.GetModels();
+            await act.Should().ThrowAsync<Exception>().WithMessage("Database connection failed");
         }
     }
 }

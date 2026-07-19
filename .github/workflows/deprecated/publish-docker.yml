@@ -28,7 +28,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }} # Uses owner/repo format like knnlabs/Conduit
+          images: ghcr.io/${{ github.repository }} # Uses owner/repo format like nickna/Conduit
           tags: |
             type=sha # Tag with the git commit SHA
             type=raw,value=latest,enable=${{ github.ref_name == 'master' }} # 'latest' only for master

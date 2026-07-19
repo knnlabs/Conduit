@@ -100,6 +100,15 @@ export function getErrorDisplayMessage(error: unknown, context?: string): string
   }
   
   if (error instanceof ServerError) {
+    // Include the actual error message if available and informative
+    const errorMessage = error.message;
+    const hasUsefulMessage = errorMessage &&
+      errorMessage !== 'Internal server error' &&
+      !errorMessage.includes('Unknown error');
+
+    if (hasUsefulMessage) {
+      return `🔧 ${errorMessage}`;
+    }
     return `🔧 Server error occurred. ${context ? `Failed to ${context}.` : ''} Please try again later.`;
   }
   

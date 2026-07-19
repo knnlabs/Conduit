@@ -53,30 +53,6 @@ namespace ConduitLLM.Core.Data.Extensions
         }
 
         /// <summary>
-        /// Adds database initialization services for the specified DbContext type.
-        /// </summary>
-        /// <typeparam name="TContext">The type of DbContext to use.</typeparam>
-        /// <param name="services">The service collection to add the services to.</param>
-        /// <returns>The service collection for method chaining.</returns>
-        /// <example>
-        /// ```csharp
-        /// services.AddConnectionStringManager()
-        ///         .AddDatabaseInitializer<ApplicationDbContext>();
-        /// ```
-        /// </example>
-        public static IServiceCollection AddDatabaseInitializer<TContext>(this IServiceCollection services)
-            where TContext : DbContext
-        {
-            // Make sure connection string manager is registered
-            services.AddConnectionStringManager();
-
-            // Register database initializer
-            services.TryAddScoped<IDatabaseInitializer, DatabaseInitializer<TContext>>();
-
-            return services;
-        }
-
-        /// <summary>
         /// Adds all database-related services to the service collection.
         /// </summary>
         /// <typeparam name="TContext">The type of DbContext to use.</typeparam>
@@ -93,7 +69,6 @@ namespace ConduitLLM.Core.Data.Extensions
             return services
                 .AddConnectionStringManager()
                 .AddDatabaseConnectionFactory()
-                .AddDatabaseInitializer<TContext>()
                 .AddDatabaseHealthChecks();
         }
 

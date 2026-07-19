@@ -81,10 +81,10 @@ export default function VirtualKeyGroupsPage() {
       setIsLoading(true);
       setError(null);
       
-      const data = await withAdminClient(client => 
+      const data = await withAdminClient(client =>
         client.virtualKeyGroups.list()
       );
-      setGroups(data);
+      setGroups(data.items);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {

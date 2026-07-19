@@ -31,7 +31,7 @@ import {
   IconDots,
   IconTrashX
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
 import { useAdminClient } from '@/lib/client/adminClient';
 import {
@@ -127,11 +127,7 @@ export default function FunctionCostsPage() {
       setCosts(response);
     } catch (err) {
       console.warn('Error loading costs:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to load costs',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to load costs');
     } finally {
       setLoading(false);
     }
@@ -149,21 +145,13 @@ export default function FunctionCostsPage() {
       await executeWithAdmin(client =>
         client.functionCosts.create(formData)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Cost configuration created successfully',
-        color: 'green',
-      });
+      notify.success('Cost configuration created successfully');
       setShowModal(false);
       resetForm();
       await loadCosts();
     } catch (err) {
       console.warn('Error creating cost:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to create cost',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to create cost');
     }
   };
 
@@ -190,22 +178,14 @@ export default function FunctionCostsPage() {
       await executeWithAdmin(client =>
         client.functionCosts.update(editingCost.id, updateData)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Cost configuration updated successfully',
-        color: 'green',
-      });
+      notify.success('Cost configuration updated successfully');
       setShowModal(false);
       setEditingCost(null);
       resetForm();
       await loadCosts();
     } catch (err) {
       console.warn('Error updating cost:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to update cost',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to update cost');
     }
   };
 
@@ -225,19 +205,11 @@ export default function FunctionCostsPage() {
             await executeWithAdmin(client =>
               client.functionCosts.deleteById(id)
             );
-            notifications.show({
-              title: 'Success',
-              message: 'Cost configuration deleted successfully',
-              color: 'green',
-            });
+            notify.success('Cost configuration deleted successfully');
             await loadCosts();
           } catch (err) {
             console.warn('Error deleting cost:', err);
-            notifications.show({
-              title: 'Error',
-              message: err instanceof Error ? err.message : 'Failed to delete cost',
-              color: 'red',
-            });
+            notify.error(err, 'Failed to delete cost');
           }
         })();
       },
@@ -260,18 +232,10 @@ export default function FunctionCostsPage() {
             await executeWithAdmin(client =>
               client.functionCosts.clearCache()
             );
-            notifications.show({
-              title: 'Success',
-              message: 'Cache cleared successfully',
-              color: 'green',
-            });
+            notify.success('Cache cleared successfully');
           } catch (err) {
             console.warn('Error clearing cache:', err);
-            notifications.show({
-              title: 'Error',
-              message: err instanceof Error ? err.message : 'Failed to clear cache',
-              color: 'red',
-            });
+            notify.error(err, 'Failed to clear cache');
           }
         })();
       },

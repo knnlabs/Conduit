@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
 
@@ -14,13 +13,10 @@ namespace ConduitLLM.Gateway.Hubs
         private readonly ISignalRMetrics _metrics;
         private readonly ILogger<SystemNotificationHub> _logger;
         
-        // Store notification preferences per connection
-        private static readonly ConcurrentDictionary<string, NotificationPreferences> _connectionPreferences = new();
-        
-        // Notification batching support
-        private static readonly ConcurrentDictionary<string, NotificationBatch> _pendingBatches = new();
-        private const int BatchSize = 10;
-        private const int BatchDelayMs = 500;
+        // Per-connection key into Context.Items holding the client's notification
+        // preferences, so the state is freed with the connection instead of
+        // accumulating in static server state.
+        private const string PreferencesKey = "notification-preferences";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SystemNotificationHub"/> class.
@@ -52,7 +48,7 @@ namespace ConduitLLM.Gateway.Hubs
             await base.OnConnectedAsync();
             
             // Initialize default preferences for the connection
-            _connectionPreferences[Context.ConnectionId] = new NotificationPreferences
+            Context.Items[PreferencesKey] = new NotificationPreferences
             {
                 EnabledTypes = new HashSet<string> { "rate_limit", "system_announcement", "service_degradation", "service_restoration" },
                 MinimumPriority = NotificationPriority.Low
@@ -68,12 +64,7 @@ namespace ConduitLLM.Gateway.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            // Clean up preferences
-            _connectionPreferences.TryRemove(Context.ConnectionId, out _);
-            
-            // Clean up any pending batches
-            _pendingBatches.TryRemove(Context.ConnectionId, out _);
-            
+            // Preference state lives in Context.Items and is freed with the connection
             await base.OnDisconnectedAsync(exception);
         }
 
@@ -94,7 +85,7 @@ namespace ConduitLLM.Gateway.Hubs
             {
                 try
                 {
-                    _connectionPreferences[Context.ConnectionId] = preferences;
+                    Context.Items[PreferencesKey] = preferences;
                     
                     await Clients.Caller.SendAsync("PreferencesUpdated", preferences);
                     
@@ -289,13 +280,5 @@ namespace ConduitLLM.Gateway.Hubs
             public NotificationPriority MinimumPriority { get; set; } = NotificationPriority.Low;
         }
 
-        /// <summary>
-        /// Represents a batch of notifications.
-        /// </summary>
-        private class NotificationBatch
-        {
-            public List<SystemNotification> Notifications { get; } = new();
-            public DateTime CreatedAt { get; } = DateTime.UtcNow;
-        }
     }
 }

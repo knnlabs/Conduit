@@ -1,9 +1,7 @@
 using ConduitLLM.Admin.Controllers;
-using ConduitLLM.Tests.Admin.TestHelpers;
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Controllers
@@ -38,16 +36,16 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateSetting(createDto);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+            var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
             createdResult.ActionName.Should().Be(nameof(GlobalSettingsController.GetSettingById));
             createdResult.RouteValues!["id"].Should().Be(10);
-            
-            var returnedSetting = Assert.IsType<GlobalSettingDto>(createdResult.Value);
+
+            var returnedSetting = createdResult.Value.Should().BeOfType<GlobalSettingDto>().Subject;
             returnedSetting.Key.Should().Be("new_setting");
         }
 
         [Fact]
-        public async Task CreateSetting_WithDuplicateKey_ShouldReturnBadRequest()
+        public async Task CreateSetting_WithDuplicateKey_ShouldPropagateException()
         {
             // Arrange
             var createDto = new CreateGlobalSettingDto
@@ -59,14 +57,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockService.Setup(x => x.CreateSettingAsync(It.IsAny<CreateGlobalSettingDto>()))
                 .ThrowsAsync(new InvalidOperationException("Setting with key already exists"));
 
-            // Act
-            var result = await _controller.CreateSetting(createDto);
-
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            badRequestResult.Value.Should().Be("Setting with key already exists");
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Warning, "Invalid operation when creating global setting");
+            // Act + Assert — error mapping is now owned by AdminExceptionMiddleware; the action propagates.
+            var act = async () => await _controller.CreateSetting(createDto);
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         #endregion

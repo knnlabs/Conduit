@@ -27,6 +27,26 @@ public interface ICostCalculationService
     Task<decimal> CalculateCostByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Calculates the estimated cost savings from prompt caching for a request.
+    /// Savings = cached_input_tokens * (standard_input_rate - cached_input_rate) / 1,000,000.
+    /// Returns 0 if no cached tokens or no cached pricing configured.
+    /// </summary>
+    /// <param name="modelId">The specific model ID used.</param>
+    /// <param name="usage">The usage data returned by the provider.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The estimated savings in dollars, or 0 if not applicable.</returns>
+    Task<decimal> CalculateCacheSavingsAsync(string modelId, Usage usage, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Calculates the estimated cost savings from prompt caching using a direct ModelCost ID lookup.
+    /// </summary>
+    /// <param name="modelCostId">The ID of the ModelCost record to use for pricing.</param>
+    /// <param name="usage">The usage data returned by the provider.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The estimated savings in dollars, or 0 if not applicable.</returns>
+    Task<decimal> CalculateCacheSavingsByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Calculates a refund for a previous LLM operation.
     /// </summary>
     /// <param name="modelId">The specific model ID used in the original operation.</param>

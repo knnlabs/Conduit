@@ -1,5 +1,3 @@
-using ConduitLLM.Configuration.Entities;
-
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Services
@@ -14,18 +12,12 @@ namespace ConduitLLM.Tests.Admin.Services
         [Fact]
         public async Task GetDistinctModelsAsync_ReturnsUniqueModels()
         {
-            // Arrange
-            var testLogs = new List<RequestLog>
-            {
-                new() { ModelName = "gpt-4" },
-                new() { ModelName = "gpt-3.5-turbo" },
-                new() { ModelName = "gpt-4" }, // Duplicate
-                new() { ModelName = "claude-3" }
-            };
-            
+            // Arrange - Repository now returns pre-filtered distinct models
+            var distinctModels = new List<string> { "claude-3", "gpt-3.5-turbo", "gpt-4" };
+
             _mockRequestLogRepository
-                .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(testLogs);
+                .Setup(x => x.GetDistinctModelsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(distinctModels);
 
             // Act
             var result = await _service.GetDistinctModelsAsync();
@@ -41,22 +33,19 @@ namespace ConduitLLM.Tests.Admin.Services
         [Fact]
         public async Task GetDistinctModelsAsync_UsesCaching()
         {
-            // Arrange
-            var testLogs = new List<RequestLog>
-            {
-                new() { ModelName = "gpt-4" }
-            };
-            
+            // Arrange - Repository now returns pre-filtered distinct models
+            var distinctModels = new List<string> { "gpt-4" };
+
             _mockRequestLogRepository
-                .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(testLogs);
+                .Setup(x => x.GetDistinctModelsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(distinctModels);
 
             // Act - Call twice
             var result1 = await _service.GetDistinctModelsAsync();
             var result2 = await _service.GetDistinctModelsAsync();
 
             // Assert - Repository should only be called once due to caching
-            _mockRequestLogRepository.Verify(x => x.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
+            _mockRequestLogRepository.Verify(x => x.GetDistinctModelsAsync(It.IsAny<CancellationToken>()), Times.Once);
             Assert.Equal(result1, result2);
         }
 

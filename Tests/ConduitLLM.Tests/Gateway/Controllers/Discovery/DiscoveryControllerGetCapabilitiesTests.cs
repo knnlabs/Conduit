@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Xunit.Abstractions;
 
@@ -19,10 +20,10 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetCapabilities();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             var capabilities = (string[])response.capabilities;
-            
+
             Assert.Contains("chat", capabilities);
             Assert.Contains("chat_stream", capabilities);
             Assert.Contains("vision", capabilities);
@@ -41,7 +42,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var result = await Controller.GetCapabilities();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             dynamic response = okResult.Value!;
             var capabilities = (string[])response.capabilities;
             Assert.Equal(9, capabilities.Length);

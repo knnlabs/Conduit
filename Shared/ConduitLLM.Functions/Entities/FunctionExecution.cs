@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ConduitLLM.Functions.Entities.Interfaces;
 using ConduitLLM.Functions.Enums;
 
 namespace ConduitLLM.Functions.Entities;
@@ -9,7 +10,7 @@ namespace ConduitLLM.Functions.Entities;
 /// Tracks the complete lifecycle from request to completion/failure.
 /// </summary>
 [Table("FunctionExecutions")]
-public class FunctionExecution
+public class FunctionExecution : IIdentifiableEntity<Guid>
 {
     /// <summary>
     /// Unique identifier for this execution

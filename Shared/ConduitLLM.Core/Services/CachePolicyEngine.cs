@@ -138,7 +138,7 @@ namespace ConduitLLM.Core.Services
                 .OrderByDescending(p => p.Priority)
                 .ToList();
 
-            if (ttlPolicies.Count() == 0)
+            if (!ttlPolicies.Any())
                 return null;
 
             DateTime? shortestExpiration = null;
@@ -178,7 +178,7 @@ namespace ConduitLLM.Core.Services
                 .OrderByDescending(p => p.Priority)
                 .ToList();
 
-            if (sizePolicies.Count() == 0)
+            if (!sizePolicies.Any())
                 return true; // No size restrictions
 
             foreach (var policy in sizePolicies)
@@ -217,7 +217,7 @@ namespace ConduitLLM.Core.Services
                 .OrderByDescending(p => p.Priority)
                 .ToList();
 
-            if (evictionPolicies.Count() == 0)
+            if (!evictionPolicies.Any())
             {
                 // Default: evict oldest entries
                 return entries

@@ -1,5 +1,7 @@
 using ConduitLLM.Core.Models;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -42,8 +44,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CheckMediaExists(storageKey);
 
             // Assert
-            Assert.IsType<OkResult>(result);
-            
+            result.Should().BeOfType<OkResult>();
+
             // Verify headers are set
             Assert.Equal("image/jpeg", _controller.Response.Headers["Content-Type"]);
             Assert.Equal("1000", _controller.Response.Headers["Content-Length"]);
@@ -62,7 +64,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CheckMediaExists(storageKey);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         [Fact]
@@ -87,8 +89,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CheckMediaExists(storageKey);
 
             // Assert
-            Assert.IsType<OkResult>(result);
-            
+            result.Should().BeOfType<OkResult>();
+
             // Verify no headers are set when media info is null
             Assert.False(_controller.Response.Headers.ContainsKey("Content-Type"));
             Assert.False(_controller.Response.Headers.ContainsKey("Content-Length"));
@@ -103,12 +105,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockStorageService.Setup(x => x.ExistsAsync(storageKey))
                 .ThrowsAsync(new Exception("Storage error"));
 
-            // Act
-            var result = await _controller.CheckMediaExists(storageKey);
-
-            // Assert
-            var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(500, statusCodeResult.StatusCode);
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.CheckMediaExists(storageKey);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Storage error");
         }
 
         #endregion

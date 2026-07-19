@@ -13,6 +13,19 @@ namespace ConduitLLM.Configuration.Data
         /// </summary>
         public ConduitDbContext CreateDbContext(string[] args)
         {
+            var optionsBuilder = new DbContextOptionsBuilder<ConduitDbContext>();
+            optionsBuilder.UseNpgsql(ResolveNpgsqlConnectionString());
+
+            return new ConduitDbContext(optionsBuilder.Options);
+        }
+
+        /// <summary>
+        /// Resolves the Npgsql connection string from the DATABASE_URL environment
+        /// variable, accepting either postgresql:// URI form or key=value form.
+        /// Shared by design-time tooling and the "migrate" CLI verb.
+        /// </summary>
+        public static string ResolveNpgsqlConnectionString()
+        {
             // Read connection string from environment variable
             var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
@@ -23,8 +36,6 @@ namespace ConduitLLM.Configuration.Data
                     "Set DATABASE_URL to a valid PostgreSQL connection string:\n" +
                     "Example: postgresql://user:password@localhost:5432/conduitdb");
             }
-
-            Console.WriteLine("Using database connection from environment: DATABASE_URL");
 
             // Parse the connection string
             if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
@@ -39,29 +50,20 @@ namespace ConduitLLM.Configuration.Data
                 var username = userInfo[0];
                 var password = userInfo.Length > 1 ? userInfo[1] : string.Empty;
 
-                var npgsqlConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password}";
-
-                var optionsBuilder = new DbContextOptionsBuilder<ConduitDbContext>();
-                optionsBuilder.UseNpgsql(npgsqlConnectionString);
-
-                return new ConduitDbContext(optionsBuilder.Options);
+                return $"Host={host};Port={port};Database={database};Username={username};Password={password}";
             }
-            else if (connectionString.Contains("Host=") || connectionString.Contains("Server="))
+
+            if (connectionString.Contains("Host=") || connectionString.Contains("Server="))
             {
                 // Already in Npgsql format
-                var optionsBuilder = new DbContextOptionsBuilder<ConduitDbContext>();
-                optionsBuilder.UseNpgsql(connectionString);
+                return connectionString;
+            }
 
-                return new ConduitDbContext(optionsBuilder.Options);
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    $"Invalid DATABASE_URL format. Must be a PostgreSQL connection string.\n" +
-                    $"Examples:\n" +
-                    $"  postgresql://user:password@localhost:5432/conduitdb\n" +
-                    $"  Host=localhost;Port=5432;Database=conduitdb;Username=user;Password=password");
-            }
+            throw new InvalidOperationException(
+                $"Invalid DATABASE_URL format. Must be a PostgreSQL connection string.\n" +
+                $"Examples:\n" +
+                $"  postgresql://user:password@localhost:5432/conduitdb\n" +
+                $"  Host=localhost;Port=5432;Database=conduitdb;Username=user;Password=password");
         }
     }
 }

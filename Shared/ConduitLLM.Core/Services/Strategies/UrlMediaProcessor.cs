@@ -4,10 +4,10 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services.Strategies
@@ -19,18 +19,18 @@ namespace ConduitLLM.Core.Services.Strategies
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IMediaStorageService _storageService;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<UrlMediaProcessor> _logger;
 
         public UrlMediaProcessor(
             IHttpClientFactory httpClientFactory,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<UrlMediaProcessor> logger)
         {
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -314,7 +314,7 @@ namespace ConduitLLM.Core.Services.Strategies
                 eventMetadata["resolution"] = videoMetadata.Resolution;
             }
 
-            await _publishEndpoint.Publish(new MediaGenerationCompleted
+            await _eventBus.PublishAsync(new MediaGenerationCompleted
             {
                 MediaType = context.MediaType,
                 VirtualKeyId = context.VirtualKeyId,

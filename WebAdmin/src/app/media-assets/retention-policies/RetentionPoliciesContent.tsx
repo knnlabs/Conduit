@@ -32,7 +32,7 @@ import {
   IconStar,
   IconCheck,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { MediaRetentionPolicy, CreateMediaRetentionPolicyRequest, UpdateMediaRetentionPolicyRequest } from '@knn_labs/conduit-admin-client';
 
@@ -126,11 +126,7 @@ export default function RetentionPoliciesContent() {
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Policy name is required',
-        color: 'red',
-      });
+      notify.error('Policy name is required');
       return;
     }
 
@@ -152,11 +148,7 @@ export default function RetentionPoliciesContent() {
         await withAdminClient(client =>
           client.media.createRetentionPolicy(createData)
         );
-        notifications.show({
-          title: 'Success',
-          message: `Policy "${formData.name}" created`,
-          color: 'green',
-        });
+        notify.success(`Policy "${formData.name}" created`);
       } else if (editingPolicy) {
         const updateData: UpdateMediaRetentionPolicyRequest = {
           name: formData.name,
@@ -172,21 +164,12 @@ export default function RetentionPoliciesContent() {
         await withAdminClient(client =>
           client.media.updateRetentionPolicy(editingPolicy.id, updateData)
         );
-        notifications.show({
-          title: 'Success',
-          message: `Policy "${formData.name}" updated`,
-          color: 'green',
-        });
+        notify.success(`Policy "${formData.name}" updated`);
       }
       setModalOpen(false);
       void fetchPolicies();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save policy';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err, 'Failed to save policy');
     } finally {
       setSaving(false);
     }
@@ -200,21 +183,12 @@ export default function RetentionPoliciesContent() {
       await withAdminClient(client =>
         client.media.deleteRetentionPolicy(deletingPolicy.id)
       );
-      notifications.show({
-        title: 'Success',
-        message: `Policy "${deletingPolicy.name}" deleted`,
-        color: 'green',
-      });
+      notify.success(`Policy "${deletingPolicy.name}" deleted`);
       setDeleteModalOpen(false);
       setDeletingPolicy(null);
       void fetchPolicies();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete policy';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err, 'Failed to delete policy');
     } finally {
       setDeleting(false);
     }
@@ -225,19 +199,10 @@ export default function RetentionPoliciesContent() {
       await withAdminClient(client =>
         client.media.setDefaultRetentionPolicy(policy.id)
       );
-      notifications.show({
-        title: 'Success',
-        message: `"${policy.name}" is now the default policy`,
-        color: 'green',
-      });
+      notify.success(`"${policy.name}" is now the default policy`);
       void fetchPolicies();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to set default policy';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(err, 'Failed to set default policy');
     }
   };
 

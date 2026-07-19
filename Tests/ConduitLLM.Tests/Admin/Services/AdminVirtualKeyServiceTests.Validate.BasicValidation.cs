@@ -153,7 +153,7 @@ namespace ConduitLLM.Tests.Admin.Services
 
             _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(virtualKey);
-            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+            _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(group);
 
             // Act

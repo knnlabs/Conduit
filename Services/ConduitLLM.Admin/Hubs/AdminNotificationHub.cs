@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Metrics;
 
 namespace ConduitLLM.Admin.Hubs
 {
@@ -14,22 +15,18 @@ namespace ConduitLLM.Admin.Hubs
     {
         private readonly ILogger<AdminNotificationHub> _logger;
         private readonly IAdminVirtualKeyService _virtualKeyService;
-        private readonly IAdminNotificationService _notificationService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AdminNotificationHub"/> class.
         /// </summary>
         /// <param name="logger">Logger instance.</param>
         /// <param name="virtualKeyService">Virtual key service for key management notifications.</param>
-        /// <param name="notificationService">Notification service for administrative alerts.</param>
         public AdminNotificationHub(
             ILogger<AdminNotificationHub> logger,
-            IAdminVirtualKeyService virtualKeyService,
-            IAdminNotificationService notificationService)
+            IAdminVirtualKeyService virtualKeyService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
-            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         }
 
         /// <summary>
@@ -38,12 +35,14 @@ namespace ConduitLLM.Admin.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task OnConnectedAsync()
         {
-            _logger.LogInformation("Admin client connected to AdminNotificationHub: {ConnectionId}", Context.ConnectionId);
-            
+            _logger.LogDebug("Admin client connected to AdminNotificationHub: {ConnectionId}", Context.ConnectionId);
+            AdminSignalRMetrics.Connections.WithLabels("connected").Inc();
+            AdminSignalRMetrics.ActiveConnections.Inc();
+
             // Add to admin group for receiving broadcast notifications
             await Groups.AddToGroupAsync(Context.ConnectionId, "admin");
-            
-            
+
+
             await base.OnConnectedAsync();
         }
 
@@ -54,16 +53,21 @@ namespace ConduitLLM.Admin.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            _logger.LogInformation("Admin client disconnected from AdminNotificationHub: {ConnectionId}", Context.ConnectionId);
-            
+            _logger.LogDebug("Admin client disconnected from AdminNotificationHub: {ConnectionId}", Context.ConnectionId);
+            AdminSignalRMetrics.ActiveConnections.Dec();
+            if (exception != null)
+                AdminSignalRMetrics.Connections.WithLabels("disconnected_error").Inc();
+            else
+                AdminSignalRMetrics.Connections.WithLabels("disconnected").Inc();
+
             // Remove from admin group
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, "admin");
-            
+
             if (exception != null)
             {
                 _logger.LogError(exception, "Admin client disconnected due to error");
             }
-            
+
             await base.OnDisconnectedAsync(exception);
         }
 
@@ -87,13 +91,15 @@ namespace ConduitLLM.Admin.Hubs
                 var groupName = $"admin-vkey-{virtualKeyId}";
                 await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin subscribed to virtual key {VirtualKeyId} notifications", virtualKeyId);
-                
+                _logger.LogDebug("Admin subscribed to virtual key {VirtualKeyId} notifications", virtualKeyId);
+                AdminSignalRMetrics.Subscriptions.WithLabels("virtualkey", "subscribe", "success").Inc();
+
                 await Clients.Caller.SendAsync("SubscribedToVirtualKey", virtualKeyId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error subscribing to virtual key {VirtualKeyId}", virtualKeyId);
+                AdminSignalRMetrics.Subscriptions.WithLabels("virtualkey", "subscribe", "failure").Inc();
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to subscribe to virtual key notifications" });
             }
         }
@@ -110,13 +116,15 @@ namespace ConduitLLM.Admin.Hubs
                 var groupName = $"admin-vkey-{virtualKeyId}";
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin unsubscribed from virtual key {VirtualKeyId} notifications", virtualKeyId);
-                
+                _logger.LogDebug("Admin unsubscribed from virtual key {VirtualKeyId} notifications", virtualKeyId);
+                AdminSignalRMetrics.Subscriptions.WithLabels("virtualkey", "unsubscribe", "success").Inc();
+
                 await Clients.Caller.SendAsync("UnsubscribedFromVirtualKey", virtualKeyId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error unsubscribing from virtual key {VirtualKeyId}", virtualKeyId);
+                AdminSignalRMetrics.Subscriptions.WithLabels("virtualkey", "unsubscribe", "failure").Inc();
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to unsubscribe from virtual key notifications" });
             }
         }
@@ -133,15 +141,17 @@ namespace ConduitLLM.Admin.Hubs
                 var groupName = $"admin-provider-{providerId}";
                 await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin subscribed to provider {ProviderId} notifications", providerId);
-                
+                _logger.LogDebug("Admin subscribed to provider {ProviderId} notifications", providerId);
+                AdminSignalRMetrics.Subscriptions.WithLabels("provider", "subscribe", "success").Inc();
+
                 // Provider health tracking has been removed
-                
+
                 await Clients.Caller.SendAsync("SubscribedToProvider", providerId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error subscribing to provider {ProviderId}", providerId);
+                AdminSignalRMetrics.Subscriptions.WithLabels("provider", "subscribe", "failure").Inc();
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to subscribe to provider notifications" });
             }
         }
@@ -158,13 +168,15 @@ namespace ConduitLLM.Admin.Hubs
                 var groupName = $"admin-provider-{providerId}";
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin unsubscribed from provider {ProviderId} notifications", providerId);
-                
+                _logger.LogDebug("Admin unsubscribed from provider {ProviderId} notifications", providerId);
+                AdminSignalRMetrics.Subscriptions.WithLabels("provider", "unsubscribe", "success").Inc();
+
                 await Clients.Caller.SendAsync("UnsubscribedFromProvider", providerId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error unsubscribing from provider {ProviderId}", providerId);
+                AdminSignalRMetrics.Subscriptions.WithLabels("provider", "unsubscribe", "failure").Inc();
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to unsubscribe from provider notifications" });
             }
         }

@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
@@ -75,13 +76,13 @@ namespace ConduitLLM.Core.Services
                 AccessCount = 0
             };
 
-            var created = await _mediaRepository.CreateAsync(mediaRecord);
-            
+            await _mediaRepository.CreateAsync(mediaRecord);
+
             _logger.LogInformation(
                 "Tracked media {StorageKey} of type {MediaType} for virtual key {VirtualKeyId}",
                 storageKey, mediaType, virtualKeyId);
-            
-            return created;
+
+            return mediaRecord;
         }
 
         /// <inheritdoc/>
@@ -354,7 +355,8 @@ namespace ConduitLLM.Core.Services
                     }
                     
                     // Get virtual keys for this group
-                    var virtualKeys = await _virtualKeyRepository.GetByVirtualKeyGroupIdAsync(virtualKeyGroupId.Value);
+                    var virtualKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                        _virtualKeyRepository.GetByVirtualKeyGroupIdPaginatedAsync, virtualKeyGroupId.Value);
                     var virtualKeyIds = virtualKeys.Select(vk => vk.Id).ToList();
                     
                     // Get media only for these virtual keys

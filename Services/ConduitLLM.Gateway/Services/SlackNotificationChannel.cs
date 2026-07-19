@@ -54,7 +54,7 @@ namespace ConduitLLM.Gateway.Services
             };
 
             // Add suggested actions if any
-            if (alert.SuggestedActions.Count() > 0)
+            if (alert.SuggestedActions.Any())
             {
                 attachments.Add(new
                 {
@@ -152,8 +152,8 @@ namespace ConduitLLM.Gateway.Services
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await httpClient.PostAsync(_options.WebhookUrl, content, cancellationToken);
-                
+                using var response = await httpClient.PostAsync(_options.WebhookUrl, content, cancellationToken);
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);

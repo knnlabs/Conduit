@@ -250,7 +250,7 @@ namespace ConduitLLM.Core.Caching
             var options = _cacheOptions.CurrentValue;
 
             // Check model-specific rules first
-            if (options.ModelSpecificRules != null && options.ModelSpecificRules.Count() > 0)
+            if (options.ModelSpecificRules != null && options.ModelSpecificRules.Any())
             {
                 foreach (var rule in options.ModelSpecificRules)
                 {

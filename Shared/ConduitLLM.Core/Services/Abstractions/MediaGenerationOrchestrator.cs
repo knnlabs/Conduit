@@ -4,13 +4,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Validation;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
@@ -25,8 +26,8 @@ namespace ConduitLLM.Core.Services.Abstractions
     /// <typeparam name="TRequest">The generation request type</typeparam>
     /// <typeparam name="TResponse">The generation response type</typeparam>
     /// <typeparam name="TEventRequest">The event request type</typeparam>
-    public abstract class MediaGenerationOrchestrator<TRequest, TResponse, TEventRequest> 
-        : IConsumer<TEventRequest>
+    public abstract class MediaGenerationOrchestrator<TRequest, TResponse, TEventRequest>
+        : IEventHandler<TEventRequest>
         where TRequest : class
         where TResponse : class
         where TEventRequest : class
@@ -44,7 +45,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected readonly ILLMClientFactory _clientFactory;
         protected readonly IAsyncTaskService _taskService;
         protected readonly IMediaStorageService _storageService;
-        protected readonly IPublishEndpoint _publishEndpoint;
+        protected readonly IEventBus _eventBus;
         protected readonly IModelProviderMappingService _modelMappingService;
         protected readonly IVirtualKeyService _virtualKeyService;
         protected readonly ICostCalculationService _costService;
@@ -53,13 +54,14 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected readonly IHttpClientFactory _httpClientFactory;
         protected readonly MinimalParameterValidator _parameterValidator;
         protected readonly MediaGenerationMetrics _metrics;
+        protected readonly IProviderErrorTrackingService _errorTrackingService;
         protected readonly ILogger _logger;
 
         protected MediaGenerationOrchestrator(
             ILLMClientFactory clientFactory,
             IAsyncTaskService taskService,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IModelProviderMappingService modelMappingService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
@@ -68,12 +70,13 @@ namespace ConduitLLM.Core.Services.Abstractions
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
+            IProviderErrorTrackingService errorTrackingService,
             ILogger logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
@@ -82,18 +85,18 @@ namespace ConduitLLM.Core.Services.Abstractions
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _parameterValidator = parameterValidator ?? throw new ArgumentNullException(nameof(parameterValidator));
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+            _errorTrackingService = errorTrackingService ?? throw new ArgumentNullException(nameof(errorTrackingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
         /// Template method defining the main processing flow for media generation.
         /// </summary>
-        public async Task Consume(ConsumeContext<TEventRequest> context)
+        public async Task HandleAsync(TEventRequest request, IEventContext context)
         {
-            var request = context.Message;
             var stopwatch = Stopwatch.StartNew();
             GenerationModelInfo? modelInfo = null;
-            
+
             // Check if request should be processed
             if (!ShouldProcessRequest(request))
             {
@@ -101,23 +104,32 @@ namespace ConduitLLM.Core.Services.Abstractions
                 return;
             }
 
+            // Start distributed tracing span for the entire generation pipeline
+            using var activity = MediaGenerationMetrics.StartGenerationActivity(
+                $"media.{GetMediaType().ToLowerInvariant()}.generate",
+                GetMediaType(),
+                GetModel(request),
+                "pending"); // Provider not yet known; updated below after model resolution
+            activity?.SetTag("media.request_id", GetRequestId(request));
+            activity?.SetTag("media.virtual_key_id", GetVirtualKeyId(request));
+
             // Create linked cancellation token for this task
             using var taskCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
-            
+
             // Register task for cancellation support
             _taskRegistry.RegisterTask(GetRequestId(request), taskCts);
 
             try
             {
-                _logger.LogInformation("Processing {MediaType} generation task {RequestId} for model {Model}", 
+                _logger.LogInformation("Processing {MediaType} generation task {RequestId} for model {Model}",
                     GetMediaType(), GetRequestId(request), GetModel(request));
-                
+
                 // 1. Update task status to processing
                 await UpdateTaskStatusAsync(GetRequestId(request), TaskState.Processing, taskCts.Token);
-                
+
                 // 2. Publish started event
                 await PublishStartedEventAsync(request);
-                
+
                 // 3. Get and validate model information
                 var virtualKeyIdStr = GetVirtualKeyId(request);
                 if (!int.TryParse(virtualKeyIdStr, out var virtualKeyId))
@@ -129,40 +141,44 @@ namespace ConduitLLM.Core.Services.Abstractions
                 {
                     throw new InvalidOperationException($"Model '{GetModel(request)}' is not configured or mapped to a provider. Please check your model configuration.");
                 }
-                
+
+                // Update the activity with resolved provider information
+                activity?.SetTag("media.provider", modelInfo.ProviderName);
+                activity?.SetTag("media.model", modelInfo.ModelId);
+
                 ValidateModelSupport(modelInfo, request);
-                
+
                 // Record generation started metrics
                 _metrics.RecordGenerationStarted(
-                    GetMediaType(), 
-                    GetModel(request), 
-                    modelInfo.ProviderName, 
+                    GetMediaType(),
+                    GetModel(request),
+                    modelInfo.ProviderName,
                     virtualKeyIdStr);
-                    
+
                 // Update task registry size
                 _metrics.UpdateTaskRegistrySize(1);
-                
+
                 // 4. Extract and validate virtual key
                 var virtualKey = await ExtractAndValidateVirtualKeyAsync(request);
-                
+
                 // 5. Build the generation request
                 var generationRequest = await BuildGenerationRequestAsync(request, modelInfo);
-                
+
                 // 6. Validate parameters
                 ValidateParameters(generationRequest);
-                
+
                 // 7. Log generation details
                 LogGenerationDetails(request, modelInfo, generationRequest);
-                
+
                 // 8. Execute the actual generation
                 var response = await ExecuteGenerationAsync(generationRequest, modelInfo, virtualKey, taskCts.Token);
-                
+
                 // 9. Process and store the generated media
                 var processedMedia = await ProcessMediaAsync(response, request, modelInfo, virtualKey, taskCts.Token);
-                
+
                 // 10. Calculate cost
                 var cost = await CalculateCostAsync(request, modelInfo, processedMedia);
-                
+
                 // 11. Update spend
                 if (cost > 0)
                 {
@@ -171,25 +187,33 @@ namespace ConduitLLM.Core.Services.Abstractions
                         await UpdateSpendAsync(vkId, cost, GetRequestId(request), GetCorrelationId(request));
                     }
                 }
-                
+
                 // 12. Complete the task
                 await CompleteTaskAsync(request, processedMedia, cost, modelInfo, stopwatch);
-                
+
                 // 13. Send webhook notification if configured
                 if (!string.IsNullOrEmpty(GetWebhookUrl(request)))
                 {
                     await SendWebhookNotificationAsync(request, processedMedia, stopwatch, "completed");
                 }
-                
+
+                activity?.SetTag("media.cost", cost);
+                activity?.SetTag("media.duration_seconds", stopwatch.Elapsed.TotalSeconds);
+
                 _logger.LogInformation("Completed {MediaType} generation task {RequestId} in {Duration}s",
                     GetMediaType(), GetRequestId(request), stopwatch.Elapsed.TotalSeconds);
             }
             catch (OperationCanceledException) when (taskCts.Token.IsCancellationRequested)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, "Cancelled");
+                activity?.SetTag("media.outcome", "cancelled");
                 await HandleCancellationAsync(request, stopwatch, modelInfo);
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.SetTag("media.outcome", "failed");
+                activity?.SetTag("media.error_type", ex.GetType().Name);
                 await HandleFailureAsync(request, ex, stopwatch, modelInfo);
             }
             finally
@@ -226,12 +250,21 @@ namespace ConduitLLM.Core.Services.Abstractions
                 return null;
             }
             
+            var association = mapping.ModelProviderTypeAssociation;
+
             return new GenerationModelInfo
             {
-                ModelId = mapping.ProviderModelId,
+                // The legacy ProviderModelId column can be stale on mappings created through the
+                // model-catalog flow; fall back to the association's canonical identifier so the
+                // provider call and cost lookup never receive an empty model id.
+                ModelId = !string.IsNullOrWhiteSpace(mapping.ProviderModelId)
+                    ? mapping.ProviderModelId
+                    : association?.Identifier ?? mapping.ModelAlias,
                 ModelAlias = mapping.ModelAlias,
                 ProviderId = mapping.ProviderId,
-                Provider = mapping.Provider // Use the Provider navigation property directly
+                Provider = mapping.Provider, // Use the Provider navigation property directly
+                ModelCostId = association?.ModelCostId,
+                CostIdentifier = association?.Identifier
             };
         }
 
@@ -293,7 +326,21 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected virtual async Task<decimal> CalculateCostAsync(TEventRequest request, GenerationModelInfo modelInfo, ProcessedMedia media)
         {
             var usage = CreateUsageObject(request, media);
-            return await _costService.CalculateCostAsync(modelInfo.ModelId, usage);
+
+            // Prefer the ModelCost link resolved from the model association — string matching can
+            // silently return 0 when the mapping's legacy ProviderModelId doesn't match any cost
+            // record's identifier (see issue #955).
+            if (modelInfo.ModelCostId.HasValue)
+            {
+                return await _costService.CalculateCostByIdAsync(modelInfo.ModelCostId.Value, usage);
+            }
+
+            // Fall back to string matching using the association's canonical identifier, which is
+            // the value cost records are matched against.
+            var costLookupModelId = !string.IsNullOrWhiteSpace(modelInfo.CostIdentifier)
+                ? modelInfo.CostIdentifier
+                : modelInfo.ModelId;
+            return await _costService.CalculateCostAsync(costLookupModelId, usage);
         }
 
         protected virtual bool IsRetryableError(Exception ex)
@@ -329,16 +376,53 @@ namespace ConduitLLM.Core.Services.Abstractions
 
         protected virtual async Task CompleteTaskAsync(TEventRequest request, ProcessedMedia media, decimal cost, GenerationModelInfo modelInfo, Stopwatch stopwatch)
         {
+            // Build data array from processed media items in OpenAI-compatible format
+            // This format is expected by SDKs: { created, data: [{ url, metadata }], model, usage }
+            var dataItems = new List<object>();
+
+            if (media.Items.Any())
+            {
+                foreach (var item in media.Items)
+                {
+                    dataItems.Add(new
+                    {
+                        url = item.Url,
+                        metadata = item.Metadata.Count > 0 ? item.Metadata : null
+                    });
+                }
+            }
+            else if (!string.IsNullOrEmpty(media.Url))
+            {
+                // Single item case - wrap in data array
+                dataItems.Add(new
+                {
+                    url = media.Url,
+                    metadata = media.Metadata.Count > 0 ? media.Metadata : null
+                });
+            }
+
+            // Create result in OpenAI-compatible format that SDKs expect
+            // Both ImageGenerationResponse and VideoGenerationResponse share this structure
             var result = new
             {
-                mediaUrl = media.Url ?? media.Items.FirstOrDefault()?.Url,
-                mediaCount = media.Count,
-                duration = stopwatch.Elapsed.TotalSeconds,
-                cost,
-                provider = modelInfo.ProviderName,
-                model = modelInfo.ModelId
+                created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                data = dataItems,
+                model = modelInfo.ModelId,
+                usage = new
+                {
+                    // Generic usage info - specific orchestrators can override if needed
+                    count = media.Count,
+                    duration_seconds = stopwatch.Elapsed.TotalSeconds
+                },
+                // Additional metadata for internal use (not part of OpenAI spec but useful)
+                _metadata = new
+                {
+                    cost,
+                    provider = modelInfo.ProviderName,
+                    generation_duration_seconds = stopwatch.Elapsed.TotalSeconds
+                }
             };
-            
+
             // Record completion metrics
             _metrics.RecordGenerationCompleted(
                 GetMediaType(),
@@ -347,16 +431,16 @@ namespace ConduitLLM.Core.Services.Abstractions
                 GetVirtualKeyId(request),
                 stopwatch.Elapsed.TotalSeconds,
                 (double)cost);
-            
+
             // Update task registry size
             _metrics.UpdateTaskRegistrySize(-1);
-            
+
             await _taskService.UpdateTaskStatusAsync(
                 GetRequestId(request),
                 TaskState.Completed,
                 progress: 100,
                 result: result);
-            
+
             await PublishCompletedEventAsync(request, media, cost, modelInfo, stopwatch.Elapsed);
         }
 
@@ -447,18 +531,100 @@ namespace ConduitLLM.Core.Services.Abstractions
                 GetRequestId(request),
                 TaskState.Failed,
                 error: ex.Message);
-            
+
+            // Track in provider error system for dashboard visibility and auto-disable policies
+            await TrackProviderErrorFromExceptionAsync(ex, modelInfo);
+
             await PublishFailedEventAsync(request, ex, isRetryable, 0, 0);
-            
+
             if (!string.IsNullOrEmpty(GetWebhookUrl(request)))
             {
                 await SendWebhookNotificationAsync(request, null, stopwatch, "failed", ex.Message);
             }
         }
 
+        /// <summary>
+        /// Tracks a provider error from an exception using the provider error tracking system.
+        /// </summary>
+        private async Task TrackProviderErrorFromExceptionAsync(Exception ex, GenerationModelInfo? modelInfo)
+        {
+            try
+            {
+                if (modelInfo?.Provider == null)
+                {
+                    _logger.LogDebug("Cannot track provider error — no provider context available");
+                    return;
+                }
+
+                var keyCredentialId = modelInfo.Provider.ProviderKeyCredentials?
+                    .FirstOrDefault(k => k.IsPrimary)?.Id
+                    ?? modelInfo.Provider.ProviderKeyCredentials?.FirstOrDefault()?.Id;
+
+                if (keyCredentialId == null)
+                {
+                    _logger.LogDebug("Cannot track provider error — no key credential found for provider {ProviderId}",
+                        modelInfo.ProviderId);
+                    return;
+                }
+
+                var errorType = ClassifyExceptionToProviderErrorType(ex);
+
+                var errorInfo = new ProviderErrorInfo
+                {
+                    KeyCredentialId = keyCredentialId.Value,
+                    ProviderId = modelInfo.ProviderId,
+                    ErrorType = errorType,
+                    ErrorMessage = ex.Message,
+                    HttpStatusCode = (ex as LLMCommunicationException)?.StatusCode.HasValue == true
+                        ? (int)(ex as LLMCommunicationException)!.StatusCode!.Value
+                        : null,
+                    ModelName = modelInfo.ModelId,
+                    OccurredAt = DateTime.UtcNow
+                };
+
+                await _errorTrackingService.TrackErrorAsync(errorInfo);
+
+                _logger.LogInformation("Tracked {MediaType} generation provider error: Type={ErrorType}, Provider={ProviderId}, Key={KeyCredentialId}, Model={Model}",
+                    GetMediaType(), errorType, modelInfo.ProviderId, keyCredentialId, modelInfo.ModelId);
+            }
+            catch (Exception trackEx)
+            {
+                _logger.LogWarning(trackEx, "Failed to track provider error for {MediaType} generation", GetMediaType());
+            }
+        }
+
+        /// <summary>
+        /// Classifies an exception into a <see cref="ProviderErrorType"/> for error tracking.
+        /// </summary>
+        private static ProviderErrorType ClassifyExceptionToProviderErrorType(Exception ex)
+        {
+            return ex switch
+            {
+                LLMCommunicationException commEx when commEx.StatusCode.HasValue => commEx.StatusCode.Value switch
+                {
+                    System.Net.HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
+                    System.Net.HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
+                    System.Net.HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
+                    System.Net.HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
+                    System.Net.HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
+                    System.Net.HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
+                    System.Net.HttpStatusCode.BadGateway => ProviderErrorType.ServiceUnavailable,
+                    System.Net.HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
+                    System.Net.HttpStatusCode.RequestTimeout => ProviderErrorType.Timeout,
+                    _ => ProviderErrorType.Unknown
+                },
+                RateLimitExceededException => ProviderErrorType.RateLimitExceeded,
+                Exceptions.RequestTimeoutException => ProviderErrorType.Timeout,
+                ModelNotFoundException => ProviderErrorType.ModelNotFound,
+                ServiceUnavailableException => ProviderErrorType.ServiceUnavailable,
+                HttpRequestException => ProviderErrorType.NetworkError,
+                _ => ProviderErrorType.Unknown
+            };
+        }
+
         protected virtual async Task UpdateSpendAsync(int virtualKeyId, decimal amount, string requestId, string? correlationId)
         {
-            await _publishEndpoint.Publish(new SpendUpdateRequested
+            await _eventBus.PublishAsync(new SpendUpdateRequested
             {
                 KeyId = virtualKeyId,
                 Amount = amount,
@@ -479,7 +645,7 @@ namespace ConduitLLM.Core.Services.Abstractions
                 _ => WebhookEventType.TaskProgress
             };
             
-            await _publishEndpoint.Publish(new WebhookDeliveryRequested
+            await _eventBus.PublishAsync(new WebhookDeliveryRequested
             {
                 TaskId = GetRequestId(request),
                 TaskType = GetMediaType().ToLowerInvariant(),

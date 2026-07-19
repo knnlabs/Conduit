@@ -1,7 +1,9 @@
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
+using FluentAssertions;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,14 +16,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public class SystemInfoControllerTests
     {
         private readonly Mock<IAdminSystemInfoService> _mockSystemInfoService;
-        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IEventBus> _mockPublishEndpoint;
         private readonly Mock<ILogger<SystemInfoController>> _mockLogger;
         private readonly SystemInfoController _controller;
 
         public SystemInfoControllerTests()
         {
             _mockSystemInfoService = new Mock<IAdminSystemInfoService>();
-            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<SystemInfoController>>();
 
             _controller = new SystemInfoController(
@@ -36,19 +38,19 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Arrange
             _mockPublishEndpoint
-                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
+                .Setup(x => x.PublishAsync(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .Returns(Task.CompletedTask);
 
             // Act
             var result = await _controller.InvalidateDiscoveryCache();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
 
             // Verify the event was published
             _mockPublishEndpoint.Verify(
-                x => x.Publish(
+                x => x.PublishAsync(
                     It.Is<DiscoveryCacheInvalidationRequested>(e =>
                         e.Reason == "Manual invalidation via Admin API" &&
                         e.RequestedBy == "Admin User"),
@@ -57,30 +59,19 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
-        public async Task InvalidateDiscoveryCache_WhenPublishThrowsException_ReturnsInternalServerError()
+        public async Task InvalidateDiscoveryCache_WhenPublishThrowsException_ShouldPropagateException()
         {
             // Arrange
             var exceptionMessage = "Event publishing failed";
             _mockPublishEndpoint
-                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
+                .Setup(x => x.PublishAsync(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .ThrowsAsync(new System.Exception(exceptionMessage));
 
             // Act
-            var result = await _controller.InvalidateDiscoveryCache();
+            var act = async () => await _controller.InvalidateDiscoveryCache();
 
-            // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
-
-            // Verify error was logged
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => true),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-                Times.Once);
+            // Assert - exception propagates to AdminExceptionMiddleware, which owns error mapping and logging
+            await act.Should().ThrowAsync<System.Exception>();
         }
 
         [Fact]
@@ -88,14 +79,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Arrange
             _mockPublishEndpoint
-                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
+                .Setup(x => x.PublishAsync(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .Returns(Task.CompletedTask);
 
             // Act
             var result = await _controller.InvalidateDiscoveryCache();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             Assert.NotNull(okResult.Value);
 
             // Check the response structure using JSON serialization

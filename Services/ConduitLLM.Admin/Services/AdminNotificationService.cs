@@ -1,7 +1,7 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
-
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
@@ -35,24 +35,20 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting all notifications");
+                _logger.LogDebug("Getting all notifications");
 
-                var notifications = await _notificationRepository.GetAllAsync();
+                var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetPaginatedAsync);
                 var virtualKeyIds = notifications
                     .Where(n => n.VirtualKeyId.HasValue)
                     .Select(n => n.VirtualKeyId!.Value)
                     .Distinct()
                     .ToList();
 
-                // Get virtual key names for the notifications
-                var virtualKeys = new Dictionary<int, string>();
-                if (virtualKeyIds.Count() > 0)
-                {
-                    var keys = await _virtualKeyRepository.GetAllAsync();
-                    virtualKeys = keys
-                        .Where(k => virtualKeyIds.Contains(k.Id))
-                        .ToDictionary(k => k.Id, k => k.KeyName);
-                }
+                // Get virtual key names for the notifications using efficient lookup
+                var virtualKeys = virtualKeyIds.Count != 0
+                    ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
+                    : new Dictionary<int, string>();
 
                 // Map to DTOs with virtual key names
                 var result = notifications
@@ -83,24 +79,20 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting unread notifications");
+                _logger.LogDebug("Getting unread notifications");
 
-                var notifications = await _notificationRepository.GetUnreadAsync();
+                var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetUnreadPaginatedAsync);
                 var virtualKeyIds = notifications
                     .Where(n => n.VirtualKeyId.HasValue)
                     .Select(n => n.VirtualKeyId!.Value)
                     .Distinct()
                     .ToList();
 
-                // Get virtual key names for the notifications
-                var virtualKeys = new Dictionary<int, string>();
-                if (virtualKeyIds.Count() > 0)
-                {
-                    var keys = await _virtualKeyRepository.GetAllAsync();
-                    virtualKeys = keys
-                        .Where(k => virtualKeyIds.Contains(k.Id))
-                        .ToDictionary(k => k.Id, k => k.KeyName);
-                }
+                // Get virtual key names for the notifications using efficient lookup
+                var virtualKeys = virtualKeyIds.Count != 0
+                    ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
+                    : new Dictionary<int, string>();
 
                 // Map to DTOs with virtual key names
                 var result = notifications
@@ -131,7 +123,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting notification with ID: {Id}", id);
+                _logger.LogDebug("Getting notification with ID: {Id}", id);
 
                 var notification = await _notificationRepository.GetByIdAsync(id);
                 if (notification == null)
@@ -162,7 +154,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Creating new notification");
+                _logger.LogDebug("Creating new notification");
 
                 // Validate virtual key ID if provided
                 if (notification.VirtualKeyId.HasValue)
@@ -195,6 +187,9 @@ namespace ConduitLLM.Admin.Services
                     keyName = key?.KeyName;
                 }
 
+                _logger.LogInformation("Created notification {NotificationId} of type {Type}",
+                    createdNotification.Id, createdNotification.Type);
+
                 return createdNotification.ToDto(keyName);
             }
             catch (Exception ex)
@@ -209,7 +204,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Updating notification with ID: {Id}", notification.Id);
+                _logger.LogDebug("Updating notification with ID: {Id}", notification.Id);
 
                 // Get the existing notification
                 var existingNotification = await _notificationRepository.GetByIdAsync(notification.Id);
@@ -241,7 +236,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Marking notification with ID {Id} as read", id);
+                _logger.LogDebug("Marking notification with ID {Id} as read", id);
 
                 return await _notificationRepository.MarkAsReadAsync(id);
             }
@@ -257,17 +252,19 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Marking all notifications as read");
+                _logger.LogDebug("Marking all notifications as read");
 
                 // Get all unread notifications
-                var unreadNotifications = await _notificationRepository.GetUnreadAsync();
-                if (unreadNotifications.Count() == 0)
+                var unreadNotifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _notificationRepository.GetUnreadPaginatedAsync);
+                if (!unreadNotifications.Any())
                 {
                     return 0;
                 }
 
                 // Mark each as read
                 int count = 0;
+                int failed = 0;
                 foreach (var notification in unreadNotifications)
                 {
                     var success = await _notificationRepository.MarkAsReadAsync(notification.Id);
@@ -275,6 +272,20 @@ namespace ConduitLLM.Admin.Services
                     {
                         count++;
                     }
+                    else
+                    {
+                        failed++;
+                    }
+                }
+
+                if (failed > 0)
+                {
+                    _logger.LogWarning("MarkAllNotificationsAsRead: {Marked} marked, {Failed} failed out of {Total}",
+                        count, failed, unreadNotifications.Count);
+                }
+                else if (count > 0)
+                {
+                    _logger.LogInformation("Marked {Count} notifications as read", count);
                 }
 
                 return count;
@@ -291,9 +302,14 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Deleting notification with ID: {Id}", id);
+                _logger.LogDebug("Deleting notification with ID: {Id}", id);
 
-                return await _notificationRepository.DeleteAsync(id);
+                var result = await _notificationRepository.DeleteAsync(id);
+                if (result)
+                {
+                    _logger.LogInformation("Deleted notification {NotificationId}", id);
+                }
+                return result;
             }
             catch (Exception ex)
             {

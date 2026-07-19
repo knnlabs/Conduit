@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Microsoft.AspNetCore.SignalR;
 using StackExchange.Redis;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Gateway.Interfaces;
 
@@ -45,7 +46,11 @@ namespace ConduitLLM.Gateway.Services
             _hubContext = hubContext;
             _serviceProvider = serviceProvider;
             InstanceId = Environment.MachineName + "_" + Environment.ProcessId + "_" + Guid.NewGuid().ToString("N")[..8];
-            _alertChannel = Channel.CreateUnbounded<HealthAlert>();
+            // Bounded so a stalled stream consumer cannot grow memory without limit;
+            // the oldest (least relevant) alerts are dropped first.
+            _alertChannel = Channel.CreateBounded<HealthAlert>(
+                new BoundedChannelOptions(1000) { FullMode = BoundedChannelFullMode.DropOldest },
+                dropped => _logger.LogWarning("Alert stream buffer full; dropped alert {AlertId} ({Title})", dropped.Id, dropped.Title));
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -148,21 +153,21 @@ namespace ConduitLLM.Gateway.Services
             // Check if alert should be suppressed
             if (await IsAlertSuppressedAsync(alert))
             {
-                _logger.LogDebug("Alert suppressed: {AlertTitle}", alert.Title);
+                _logger.LogDebug("Alert suppressed: {AlertTitle}", LoggingSanitizer.S(alert.Title));
                 return;
             }
 
             // Generate alert fingerprint for deduplication
             var fingerprint = GenerateAlertFingerprint(alert);
             var lockKey = $"{AlertLockPrefix}:{fingerprint}";
-            
+
             // Use distributed lock to prevent duplicate alerts from multiple instances
             var lockValue = Guid.NewGuid().ToString();
             var lockAcquired = await _database.StringSetAsync(lockKey, lockValue, TimeSpan.FromMinutes(5), false, When.NotExists, CommandFlags.None);
-            
+
             if (!lockAcquired)
             {
-                _logger.LogDebug("Alert already being processed by another instance: {AlertTitle}", alert.Title);
+                _logger.LogDebug("Alert already being processed by another instance: {AlertTitle}", LoggingSanitizer.S(alert.Title));
                 return;
             }
 
@@ -307,7 +312,7 @@ namespace ConduitLLM.Gateway.Services
             rule.Id = rule.Id ?? Guid.NewGuid().ToString();
             await _database.HashSetAsync(AlertRulesKey, rule.Id, JsonSerializer.Serialize(rule));
             
-            _logger.LogInformation("Alert rule {RuleId} saved: {RuleName}", rule.Id, rule.Name);
+            _logger.LogInformation("Alert rule {RuleId} saved: {RuleName}", rule.Id, LoggingSanitizer.S(rule.Name));
             return rule;
         }
 
@@ -399,7 +404,7 @@ namespace ConduitLLM.Gateway.Services
         public async Task<List<string>> GetActiveInstancesAsync()
         {
             var pattern = $"{InstancesSetKey}:*";
-            var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+            var server = _database.Multiplexer.GetPrimaryServer();
             var keys = server.Keys(pattern: pattern);
             
             var instances = new List<string>();
@@ -451,7 +456,7 @@ namespace ConduitLLM.Gateway.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to deserialize alert for fingerprint check");
+                    _logger.LogWarning(ex, "Failed to deserialize alert for fingerprint check: {Fingerprint}", fingerprint);
                 }
             }
             
@@ -595,7 +600,7 @@ namespace ConduitLLM.Gateway.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing alert stream");
+                        _logger.LogError(ex, "Error processing alert stream, backing off for 5s");
                         await Task.Delay(5000); // Back off on errors
                     }
                 }
@@ -633,7 +638,7 @@ namespace ConduitLLM.Gateway.Services
                 
                 // Clean up old alert history
                 var historyPattern = $"{AlertHistoryPrefix}:*";
-                var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints().First());
+                var server = _database.Multiplexer.GetPrimaryServer();
                 var historyKeys = server.Keys(pattern: historyPattern);
                 
                 foreach (var key in historyKeys)

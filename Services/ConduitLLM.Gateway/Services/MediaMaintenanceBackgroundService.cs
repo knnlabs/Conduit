@@ -47,7 +47,7 @@ namespace ConduitLLM.Gateway.Services
 
             if (!_options.EnableAutoCleanup)
             {
-                _logger.LogWarning("Media auto cleanup is disabled. Media maintenance service will not run.");
+                _logger.LogInformation("Media auto cleanup is disabled. Media maintenance service will not run.");
                 return;
             }
 

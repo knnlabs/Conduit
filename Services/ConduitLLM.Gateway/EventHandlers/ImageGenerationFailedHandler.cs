@@ -1,196 +1,110 @@
+using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 
 using ConduitLLM.Gateway.Interfaces;
 namespace ConduitLLM.Gateway.EventHandlers
 {
     /// <summary>
-    /// Handles ImageGenerationFailed events to log failures, implement retry logic, and clean up resources.
+    /// Handles ImageGenerationFailed events to track failure metrics, analyze error patterns, and send notifications.
     /// </summary>
-    public class ImageGenerationFailedHandler : IConsumer<ImageGenerationFailed>
+    public class ImageGenerationFailedHandler : IEventHandler<ImageGenerationFailed>
     {
+        private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
-        private readonly IMediaStorageService _storageService;
-        private readonly IPublishEndpoint _publishEndpoint;
         private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationFailedHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "image_generation_progress_";
         private const string FailureCountCacheKeyPrefix = "image_generation_failures_";
-        private const int MaxRetryAttempts = 3;
 
         public ImageGenerationFailedHandler(
+            IAsyncTaskService asyncTaskService,
             IMemoryCache progressCache,
-            IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
             IImageGenerationNotificationService notificationService,
             ILogger<ImageGenerationFailedHandler> logger)
         {
+            _asyncTaskService = asyncTaskService;
             _progressCache = progressCache;
-            _storageService = storageService;
-            _publishEndpoint = publishEndpoint;
             _notificationService = notificationService;
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<ImageGenerationFailed> context)
+        public async Task HandleAsync(ImageGenerationFailed message, IEventContext context)
         {
-            var message = context.Message;
-            
-            _logger.LogError("Image generation failed for task {TaskId}: {Error} (Provider: {Provider}, Retryable: {IsRetryable}, Attempt: {AttemptCount})", 
+            _logger.LogError("Image generation failed for task {TaskId}: {Error} (Provider: {Provider}, Retryable: {IsRetryable}, Attempt: {AttemptCount})",
                 message.TaskId, message.Error, message.Provider, message.IsRetryable, message.AttemptCount);
 
             try
             {
+                // Update task status to failed (if async task record exists)
+                var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.TaskId, context.CancellationToken);
+                if (taskStatus != null)
+                {
+                    var errorDetails = new
+                    {
+                        Error = message.Error,
+                        ErrorCode = message.ErrorCode,
+                        Provider = message.Provider,
+                        IsRetryable = message.IsRetryable,
+                        AttemptCount = message.AttemptCount
+                    };
+
+                    await _asyncTaskService.UpdateTaskStatusAsync(
+                        message.TaskId,
+                        TaskState.Failed,
+                        progress: null,
+                        errorDetails,
+                        message.Error,
+                        context.CancellationToken);
+                }
+
                 // Clear progress cache for failed task
-                var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.TaskId}";
+                var progressCacheKey = CacheKeys.MediaProgress.ImageProgress(message.TaskId);
                 _progressCache.Remove(progressCacheKey);
-                
-                // Track failure metrics
-                await TrackFailureMetrics(message);
-                
-                // Implement retry logic for retryable errors
-                if (message.IsRetryable && message.AttemptCount < MaxRetryAttempts)
-                {
-                    _logger.LogInformation("Scheduling retry for task {TaskId} (attempt {NextAttempt} of {MaxAttempts})",
-                        message.TaskId, message.AttemptCount + 1, MaxRetryAttempts);
-                    
-                    // Future: Re-queue the image generation request with increased attempt count
-                    // await _publishEndpoint.Publish(new ImageGenerationRequested
-                    // {
-                    //     TaskId = message.TaskId,
-                    //     VirtualKeyId = message.VirtualKeyId,
-                    //     // ... copy original request details ...
-                    //     AttemptCount = message.AttemptCount + 1
-                    // }, context => context.Delay = TimeSpan.FromSeconds(Math.Pow(2, message.AttemptCount)));
-                    
-                    // For now, just log the retry intention
-                    _logger.LogWarning("Retry mechanism not yet implemented - task {TaskId} will not be retried automatically", 
-                        message.TaskId);
-                }
-                else
-                {
-                    // Final failure - clean up any partial resources
-                    await CleanupPartialResources(message);
-                    
-                    // Log final failure details
-                    _logger.LogError("Image generation permanently failed for task {TaskId} after {AttemptCount} attempts. Error: {Error}",
-                        message.TaskId, message.AttemptCount, message.Error);
-                }
-                
-                // Analyze error patterns for common issues
-                AnalyzeErrorPattern(message);
-                
+
+                // Track per-provider failure count
+                MediaGenerationHandlerHelper.TrackFailureMetrics(
+                    _progressCache, FailureCountCacheKeyPrefix, message.Provider, "image", _logger);
+
+                // Analyze error patterns for actionable diagnostics
+                MediaGenerationHandlerHelper.AnalyzeErrorPattern(
+                    message.Error, message.TaskId, _logger,
+                    ImageSpecificErrorPatterns);
+
                 // Send failure notification to WebAdmin
                 await _notificationService.NotifyImageGenerationFailedAsync(
                     message.TaskId,
                     message.Error,
                     message.IsRetryable);
-                
-                // Future: Send alert for critical failures
-                if (IsCriticalFailure(message))
+
+                // Log permanent failure
+                if (!message.IsRetryable)
+                {
+                    _logger.LogError("Image generation permanently failed for task {TaskId} after {AttemptCount} attempts. Error: {Error}",
+                        message.TaskId, message.AttemptCount, message.Error);
+                }
+
+                // Flag critical failures (auth, account, credits) for immediate attention
+                if (MediaGenerationHandlerHelper.IsCriticalFailure(message.Error))
                 {
                     _logger.LogCritical("Critical image generation failure detected for provider {Provider}: {Error}",
                         message.Provider, message.Error);
-                    // await _alertService.SendCriticalFailureAlert(message);
                 }
-                
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing image generation failure for task {TaskId}", message.TaskId);
-                throw; // Let MassTransit handle retry
+                throw; // Let the endpoint retry policy handle it
             }
-
-            await Task.CompletedTask;
         }
 
-        private async Task TrackFailureMetrics(ImageGenerationFailed message)
+        /// <summary>
+        /// Image-specific error patterns beyond the common set.
+        /// </summary>
+        private static readonly Dictionary<string, string> ImageSpecificErrorPatterns = new()
         {
-            // Track failure count by provider
-            var failureCacheKey = $"{FailureCountCacheKeyPrefix}{message.Provider}";
-            var failureCount = 0;
-            
-            if (_progressCache.TryGetValue<int>(failureCacheKey, out var existingCount))
-            {
-                failureCount = existingCount;
-            }
-            
-            failureCount++;
-            
-            // Cache failure count for 1 hour sliding window
-            _progressCache.Set(failureCacheKey, failureCount, TimeSpan.FromHours(1));
-            
-            // Log metrics
-            _logger.LogWarning("Provider {Provider} failure count in last hour: {FailureCount}", 
-                message.Provider, failureCount);
-            
-            await Task.CompletedTask;
-        }
-
-        private async Task CleanupPartialResources(ImageGenerationFailed message)
-        {
-            try
-            {
-                // Clean up any partial uploads or temporary files
-                _logger.LogInformation("Cleaning up partial resources for failed task {TaskId}", message.TaskId);
-                
-                // Future: Implement actual cleanup logic
-                // - Check for partial uploads in storage
-                // - Remove temporary files
-                // - Clean up any reserved resources
-                
-                await Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error cleaning up resources for failed task {TaskId}", message.TaskId);
-                // Don't throw - cleanup failures shouldn't prevent event processing
-            }
-        }
-
-        private void AnalyzeErrorPattern(ImageGenerationFailed message)
-        {
-            // Analyze common error patterns
-            var errorPatterns = new Dictionary<string, string>
-            {
-                ["rate limit"] = "Provider rate limit exceeded - consider implementing backoff",
-                ["timeout"] = "Request timeout - provider may be experiencing high load",
-                ["invalid api key"] = "Authentication failure - check provider credentials",
-                ["insufficient credits"] = "Provider account has insufficient credits",
-                ["content policy"] = "Content violates provider's usage policy",
-                ["model not found"] = "Requested model is not available",
-                ["invalid size"] = "Requested image size is not supported"
-            };
-            
-            var lowerError = message.Error.ToLowerInvariant();
-            foreach (var (pattern, analysis) in errorPatterns)
-            {
-                if (lowerError.Contains(pattern))
-                {
-                    _logger.LogWarning("Error pattern detected for task {TaskId}: {Analysis}", 
-                        message.TaskId, analysis);
-                    break;
-                }
-            }
-        }
-
-        private bool IsCriticalFailure(ImageGenerationFailed message)
-        {
-            // Determine if this is a critical failure requiring immediate attention
-            var criticalErrorPatterns = new[]
-            {
-                "invalid api key",
-                "authentication failed",
-                "unauthorized",
-                "forbidden",
-                "account suspended",
-                "insufficient credits"
-            };
-            
-            var lowerError = message.Error.ToLowerInvariant();
-            return criticalErrorPatterns.Any(pattern => lowerError.Contains(pattern));
-        }
+            ["invalid size"] = "Requested image size is not supported"
+        };
     }
 }

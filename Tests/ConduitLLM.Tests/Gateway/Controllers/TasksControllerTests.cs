@@ -1,5 +1,8 @@
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
+
+using FluentAssertions;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -32,7 +35,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullTaskService_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => 
+            var exception = Assert.Throws<ArgumentNullException>(() =>
                 new TasksController(null, _mockLogger.Object));
             Assert.Equal("taskService", exception.ParamName);
         }
@@ -41,7 +44,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => 
+            var exception = Assert.Throws<ArgumentNullException>(() =>
                 new TasksController(_mockTaskService.Object, null));
             Assert.Equal("logger", exception.ParamName);
         }
@@ -95,13 +98,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
             Assert.NotNull(notFoundResult.Value);
-            
-            var errorResponse = notFoundResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
-            Assert.Equal("not_found", errorResponse.error.Type.ToString());
+
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Task not found", errorResponse.Error.Message);
+            Assert.Equal("not_found_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -112,17 +114,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
-            // Act
-            var result = await _controller.GetTaskStatus(taskId);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, objectResult.StatusCode);
-            
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while retrieving the task", errorResponse.error.Message.ToString());
-            Assert.Equal("server_error", errorResponse.error.Type.ToString());
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.GetTaskStatus(taskId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Service error");
         }
 
         #endregion
@@ -141,7 +135,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
             _mockTaskService.Verify(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -157,11 +151,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = notFoundResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
-            Assert.Equal("not_found", errorResponse.error.Type.ToString());
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Task not found", errorResponse.Error.Message);
+            Assert.Equal("not_found_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -172,17 +165,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTaskService.Setup(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
-            // Act
-            var result = await _controller.CancelTask(taskId);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, objectResult.StatusCode);
-            
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while cancelling the task", errorResponse.error.Message.ToString());
-            Assert.Equal("server_error", errorResponse.error.Type.ToString());
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.CancelTask(taskId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Service error");
         }
 
         #endregion
@@ -203,8 +188,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             _mockTaskService.Setup(x => x.PollTaskUntilCompletedAsync(
-                    taskId, 
-                    It.IsAny<TimeSpan>(), 
+                    taskId,
+                    It.IsAny<TimeSpan>(),
                     It.IsAny<TimeSpan>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedStatus);
@@ -227,7 +212,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var taskId = "task-123";
             var timeout = 700; // Above max, should be clamped to 600
             var interval = 0; // Below min, should be clamped to 1
-            
+
             _mockTaskService.Setup(x => x.PollTaskUntilCompletedAsync(
                     taskId,
                     TimeSpan.FromSeconds(1), // Clamped interval
@@ -239,7 +224,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.PollTask(taskId, timeout, interval);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
+            result.Should().BeOfType<OkObjectResult>();
             _mockTaskService.Verify(x => x.PollTaskUntilCompletedAsync(
                 taskId,
                 TimeSpan.FromSeconds(1),
@@ -263,13 +248,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.PollTask(taskId);
 
             // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
             Assert.Equal(408, objectResult.StatusCode);
-            
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Task polling timed out", errorResponse.error.Message.ToString());
-            Assert.Equal("timeout", errorResponse.error.Type.ToString());
+
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Task polling timed out", errorResponse.Error.Message);
+            Assert.Equal("timeout", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -288,10 +272,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.PollTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = notFoundResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
+            var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+            var errorResponse = notFoundResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Task not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -306,16 +289,9 @@ namespace ConduitLLM.Tests.Http.Controllers
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
-            // Act
-            var result = await _controller.PollTask(taskId);
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, objectResult.StatusCode);
-            
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while polling the task", errorResponse.error.Message.ToString());
+            // Act + Assert — error mapping is owned by OpenAIErrorMiddleware; the action propagates.
+            var act = async () => await _controller.PollTask(taskId);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Service error");
         }
 
         #endregion

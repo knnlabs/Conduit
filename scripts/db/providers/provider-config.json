@@ -16,5 +16,17 @@
     "websiteUrl": "https://sambanova.ai",
     "modelCardUrl": "https://docs.sambanova.ai/docs/en/models/sambacloud-models",
     "supportsAudio": true
+  },
+  "openrouter": {
+    "providerType": 13,
+    "websiteUrl": "https://openrouter.ai",
+    "modelCardUrl": "https://openrouter.ai/models",
+    "supportsAudio": false
+  },
+  "meta": {
+    "providerType": 14,
+    "websiteUrl": "https://ai.meta.com",
+    "modelCardUrl": "https://ai.developer.meta.com/docs/getting-started/models",
+    "supportsAudio": false
   }
 }

@@ -68,12 +68,18 @@ public partial class CostCalculationService
             return result;
         }
 
-        // Validate refund amounts don't exceed original amounts
+        // Validate refund amounts don't exceed original amounts.
+        // A refund that exceeds the original charge (or contains negative usage) is invalid, so we
+        // reject it here rather than computing a credit from the unclamped usage. RefundAmount stays
+        // at 0, which callers (RefundService) treat as a validation failure and refuse to apply.
         var validationMessages = ValidateRefundAmounts(originalUsage, refundUsage);
-        if (validationMessages.Count() > 0)
+        if (validationMessages.Any())
         {
             result.ValidationMessages.AddRange(validationMessages);
-            result.IsPartialRefund = true;
+            _logger.LogWarning(
+                "Refund rejected for model {ModelId}: refund usage exceeds original or is invalid. {ValidationMessages}",
+                modelId, string.Join("; ", validationMessages));
+            return result;
         }
 
         // Get model cost information

@@ -10,12 +10,12 @@ export function Footer() {
       <Container py="md">
         <Group justify="space-between" align="center">
           <Text size="sm" c="dimmed">
-            © 2025 KNN Labs, Inc.
+            © 2026 Nick Nassiri
           </Text>
           
           <Group gap="md">
             <Anchor
-              href="https://github.com/knnlabs/Conduit"
+              href="https://github.com/nickna/Conduit"
               target="_blank"
               size="sm"
               c="dimmed"
@@ -26,7 +26,7 @@ export function Footer() {
             </Anchor>
             
             <Anchor
-              href="https://github.com/knnlabs/Conduit/issues"
+              href="https://github.com/nickna/Conduit/issues"
               target="_blank"
               size="sm"
               c="dimmed"
@@ -37,7 +37,7 @@ export function Footer() {
             </Anchor>
             
             <Anchor
-              href="https://github.com/knnlabs/Conduit/blob/main/LICENSE"
+              href="https://github.com/nickna/Conduit/blob/master/LICENSE"
               size="sm"
               c="dimmed"
               style={{ display: 'flex', alignItems: 'center', gap: 4 }}

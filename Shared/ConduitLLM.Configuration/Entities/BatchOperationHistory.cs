@@ -1,13 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
     /// Entity for storing batch operation history
     /// </summary>
     [Table("BatchOperationHistory")]
-    public class BatchOperationHistory
+    public class BatchOperationHistory : IEntity<string>
     {
         /// <summary>
         /// Unique identifier for the batch operation
@@ -15,6 +17,17 @@ namespace ConduitLLM.Configuration.Entities
         [Key]
         [MaxLength(50)]
         public string OperationId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Implements <see cref="IEntity{TKey}.Id"/> by delegating to <see cref="OperationId"/>.
+        /// Not mapped to the database as OperationId is the actual column.
+        /// </summary>
+        [NotMapped]
+        public string Id
+        {
+            get => OperationId;
+            set => OperationId = value;
+        }
 
         /// <summary>
         /// Type of batch operation (e.g., "spend_update", "virtual_key_update", "webhook_send")

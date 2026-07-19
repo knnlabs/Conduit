@@ -1,6 +1,6 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Controllers;
@@ -13,10 +13,10 @@ namespace ConduitLLM.Gateway.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/images")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
     [RequireBalance]
     [Tags("Images")]
-    public partial class ImagesController : EventPublishingControllerBase
+    public partial class ImagesController : GatewayControllerBase
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IMediaStorageService _storageService;
@@ -26,6 +26,7 @@ namespace ConduitLLM.Gateway.Controllers
         private readonly ConduitLLM.Core.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IProviderErrorTrackingService _errorTrackingService;
 
         public ImagesController(
             ILLMClientFactory clientFactory,
@@ -33,11 +34,12 @@ namespace ConduitLLM.Gateway.Controllers
             ILogger<ImagesController> logger,
             IModelProviderMappingService modelMappingService,
             IAsyncTaskService taskService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ConduitLLM.Core.Interfaces.IVirtualKeyService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
-            IHttpClientFactory httpClientFactory)
-            : base(publishEndpoint, logger)
+            IHttpClientFactory httpClientFactory,
+            IProviderErrorTrackingService errorTrackingService)
+            : base(eventBus, logger)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
@@ -47,6 +49,7 @@ namespace ConduitLLM.Gateway.Controllers
             _virtualKeyService = virtualKeyService;
             _mediaLifecycleService = mediaLifecycleService;
             _httpClientFactory = httpClientFactory;
+            _errorTrackingService = errorTrackingService;
         }
     }
 }

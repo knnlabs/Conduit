@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Controllers;
-
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -106,7 +106,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId);
 
             // Assert
-            Assert.IsType<FileStreamResult>(result);
+            result.Should().BeOfType<FileStreamResult>();
             _mockFileRetrievalService.Verify(x => x.RetrieveFileAsync(fileId, It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -154,10 +154,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.DownloadFile(fileId);
 
             // Assert
-            var fileActionResult = Assert.IsType<FileStreamResult>(result);
-            Assert.Equal("application/octet-stream", fileActionResult.ContentType);
-            Assert.Equal("", fileActionResult.FileDownloadName); // FileStreamResult converts null to empty string
-            Assert.False(_controller.Response.Headers.ContainsKey("ETag"));
+            var fileActionResult = result.Should().BeOfType<FileStreamResult>().Subject;
+            fileActionResult.ContentType.Should().Be("application/octet-stream");
+            fileActionResult.FileDownloadName.Should().Be(""); // FileStreamResult converts null to empty string
+            _controller.Response.Headers.ContainsKey("ETag").Should().BeFalse();
         }
 
         #endregion

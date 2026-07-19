@@ -120,7 +120,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
                     changedProperties.Add($"ExpiresAt: {item.ExpiresAt.Value:yyyy-MM-dd}");
                 }
 
-                if (changedProperties.Count() > 0)
+                if (changedProperties.Any())
                 {
                     // Save changes
                     var updated = await _virtualKeyService.UpdateVirtualKeyAsync(item.VirtualKeyId, updateRequest);

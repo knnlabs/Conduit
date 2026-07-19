@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Admin.Interfaces;
@@ -8,7 +9,7 @@ using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using Microsoft.Extensions.Options;
 
 using ConduitLLM.Configuration.Interfaces;
@@ -36,15 +37,15 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     /// <param name="ipFilterRepository">The IP filter repository</param>
     /// <param name="globalSettingRepository">The global settings repository for persisting IP filter settings</param>
     /// <param name="ipFilterOptions">The IP filter options</param>
-    /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+    /// <param name="eventBus">Optional event bus (null if not configured)</param>
     /// <param name="logger">The logger</param>
     public AdminIpFilterService(
         IIpFilterRepository ipFilterRepository,
         IGlobalSettingRepository globalSettingRepository,
         IOptionsMonitor<IpFilterOptions> ipFilterOptions,
-        IPublishEndpoint? publishEndpoint,
-        ILogger<AdminIpFilterService> logger)
-        : base(publishEndpoint, logger)
+        ILogger<AdminIpFilterService> logger,
+        IEventBus? eventBus = null)
+        : base(eventBus, logger)
     {
         _ipFilterRepository = ipFilterRepository ?? throw new ArgumentNullException(nameof(ipFilterRepository));
         _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
@@ -59,10 +60,10 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting all IP filters");
+            _logger.LogDebug("Getting all IP filters");
 
-            var filters = await _ipFilterRepository.GetAllAsync();
-            return filters.Select(MapToDto);
+            var filters = await _ipFilterRepository.GetAllUnboundedAsync();
+            return filters.Select(f => f.ToDto());
         }
         catch (Exception ex)
         {
@@ -76,10 +77,10 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting enabled IP filters");
+            _logger.LogDebug("Getting enabled IP filters");
 
             var filters = await _ipFilterRepository.GetEnabledAsync();
-            return filters.Select(MapToDto);
+            return filters.Select(f => f.ToDto());
         }
         catch (Exception ex)
         {
@@ -93,10 +94,10 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting IP filter with ID: {FilterId}", id);
+            _logger.LogDebug("Getting IP filter with ID: {FilterId}", id);
 
             var filter = await _ipFilterRepository.GetByIdAsync(id);
-            return filter != null ? MapToDto(filter) : null;
+            return filter?.ToDto();
         }
         catch (Exception ex)
         {
@@ -110,7 +111,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Creating new IP filter for {IpAddress}", (LoggingSanitizer.S(createFilter.IpAddressOrCidr ?? "")));
+            _logger.LogDebug("Creating new IP filter for {IpAddress}", (LoggingSanitizer.S(createFilter.IpAddressOrCidr ?? "")));
 
             // Validate the IP address format
             if (string.IsNullOrWhiteSpace(createFilter.IpAddressOrCidr) || !IsValidIpAddressOrCidr(createFilter.IpAddressOrCidr))
@@ -148,8 +149,11 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 $"create IP filter {createdFilter.Id}",
                 new { IpAddressOrCidr = createdFilter.IpAddressOrCidr, FilterType = createdFilter.FilterType });
 
+            _logger.LogInformation("IP filter created: {FilterId} type={FilterType} target={IpAddress}",
+                createdFilter.Id, createdFilter.FilterType, LoggingSanitizer.S(createdFilter.IpAddressOrCidr));
+
             // Return the created filter
-            return (true, null, MapToDto(createdFilter));
+            return (true, null, createdFilter.ToDto());
         }
         catch (Exception ex)
         {
@@ -163,7 +167,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Updating IP filter with ID: {FilterId}", updateFilter.Id);
+            _logger.LogDebug("Updating IP filter with ID: {FilterId}", updateFilter.Id);
 
             // Check if the filter exists
             var existingFilter = await _ipFilterRepository.GetByIdAsync(updateFilter.Id);
@@ -206,7 +210,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
 
             // Only proceed if there are actual changes
-            if (changedProperties.Count() == 0)
+            if (!changedProperties.Any())
             {
                 _logger.LogDebug("No changes detected for IP filter {FilterId} - skipping update", updateFilter.Id);
                 return (true, null);
@@ -219,6 +223,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
 
             if (success)
             {
+                _logger.LogInformation("IP filter updated: {FilterId} changed=[{ChangedProperties}]",
+                    existingFilter.Id, string.Join(", ", changedProperties));
+
                 // Publish IpFilterChanged event for cache invalidation and cross-service coordination
                 await PublishEventAsync(
                     new IpFilterChanged
@@ -239,6 +246,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
             else
             {
+                _logger.LogWarning("Failed to update IP filter {FilterId} in database", updateFilter.Id);
                 return (false, "Failed to update the IP filter");
             }
         }
@@ -254,7 +262,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Deleting IP filter with ID: {FilterId}", id);
+            _logger.LogDebug("Deleting IP filter with ID: {FilterId}", id);
 
             // Check if the filter exists
             var existingFilter = await _ipFilterRepository.GetByIdAsync(id);
@@ -268,6 +276,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
 
             if (success)
             {
+                _logger.LogInformation("IP filter deleted: {FilterId} type={FilterType} target={IpAddress}",
+                    existingFilter.Id, existingFilter.FilterType, LoggingSanitizer.S(existingFilter.IpAddressOrCidr));
+
                 // Publish IpFilterChanged event for cache invalidation and cross-service coordination
                 await PublishEventAsync(
                     new IpFilterChanged
@@ -288,6 +299,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
             else
             {
+                _logger.LogWarning("Failed to delete IP filter {FilterId} from database", id);
                 return (false, "Failed to delete the IP filter");
             }
         }
@@ -303,7 +315,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting IP filter settings");
+            _logger.LogDebug("Getting IP filter settings");
 
             // Try to get settings from database first
             var enabledSetting = await _globalSettingRepository.GetByKeyAsync(SettingKeyEnabled);
@@ -360,8 +372,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             var endpoints = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json);
             return endpoints ?? new List<string> { "/api/v1/health" };
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to deserialize excluded endpoints JSON, using defaults");
             return new List<string> { "/api/v1/health" };
         }
     }
@@ -371,7 +384,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Updating IP filter settings: Enabled={Enabled}, DefaultAllow={DefaultAllow}",
+            _logger.LogDebug("Updating IP filter settings: Enabled={Enabled}, DefaultAllow={DefaultAllow}",
                 settings.IsEnabled, settings.DefaultAllow);
 
             // Validate settings
@@ -433,7 +446,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
+            _logger.LogDebug("Checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
 
             // Get current IP filter settings
             var settings = await GetIpFilterSettingsAsync();
@@ -520,27 +533,6 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 DeniedReason = "Error during IP check, allowed as a failsafe"
             };
         }
-    }
-
-    /// <summary>
-    /// Maps an IP filter entity to a DTO
-    /// </summary>
-    /// <param name="entity">The entity to map</param>
-    /// <returns>The mapped DTO</returns>
-    private static IpFilterDto MapToDto(IpFilterEntity entity)
-    {
-        return new IpFilterDto
-        {
-            Id = entity.Id,
-            FilterType = entity.FilterType,
-            IpAddressOrCidr = entity.IpAddressOrCidr,
-            Description = entity.Description,
-            IsEnabled = entity.IsEnabled,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt,
-            CreatedBy = entity.CreatedBy,
-            UpdatedBy = entity.UpdatedBy
-        };
     }
 
     /// <summary>

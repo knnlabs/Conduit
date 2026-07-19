@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -28,7 +30,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task TrackFatalErrorAsync(int keyId, ProviderErrorInfo error)
         {
-            var fatalKey = $"provider:errors:key:{keyId}:fatal";
+            var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
             
             var tasks = new List<Task>
             {
@@ -43,15 +45,18 @@ namespace ConduitLLM.Core.Services
             };
             
             // Set first_seen only if it doesn't exist
-            tasks.Add(_db.HashSetAsync(fatalKey, "first_seen", 
+            tasks.Add(_db.HashSetAsync(fatalKey, "first_seen",
                 error.OccurredAt.ToString("O"), When.NotExists));
-            
+
             await Task.WhenAll(tasks);
+
+            // Set TTL of 30 days (same as warnings) to prevent unbounded growth
+            await _db.KeyExpireAsync(fatalKey, TimeSpan.FromDays(30));
         }
 
         public async Task TrackWarningAsync(int keyId, ProviderErrorInfo error)
         {
-            var warningKey = $"provider:errors:key:{keyId}:warnings";
+            var warningKey = CacheKeys.ProviderError.WarningsByKey(keyId);
             var warningData = JsonSerializer.Serialize(new
             {
                 type = error.ErrorType.ToString(),
@@ -72,7 +77,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task UpdateProviderSummaryAsync(int providerId, bool isFatal)
         {
-            var summaryKey = $"provider:errors:provider:{providerId}:summary";
+            var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
             
             var tasks = new List<Task>
             {
@@ -94,7 +99,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task AddToGlobalFeedAsync(ProviderErrorInfo error)
         {
-            var feedKey = "provider:errors:recent";
+            var feedKey = CacheKeys.ProviderError.RecentFeed;
             var feedEntry = JsonSerializer.Serialize(new
             {
                 keyId = error.KeyCredentialId,
@@ -114,7 +119,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task<FatalErrorData?> GetFatalErrorDataAsync(int keyId)
         {
-            var fatalKey = $"provider:errors:key:{keyId}:fatal";
+            var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
             var data = await _db.HashGetAllAsync(fatalKey);
             
             if (data.Length == 0)
@@ -126,27 +131,27 @@ namespace ConduitLLM.Core.Services
             {
                 ErrorType = dict.GetValueOrDefault("error_type"),
                 Count = int.TryParse(dict.GetValueOrDefault("count"), out var count) ? count : 0,
-                FirstSeen = dict.TryGetValue("first_seen", out var firstSeen) 
-                    ? DateTime.Parse(firstSeen) : null,
-                LastSeen = dict.TryGetValue("last_seen", out var lastSeen) 
-                    ? DateTime.Parse(lastSeen) : null,
+                FirstSeen = dict.TryGetValue("first_seen", out var firstSeen)
+                    ? DateTime.Parse(firstSeen, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null,
+                LastSeen = dict.TryGetValue("last_seen", out var lastSeen)
+                    ? DateTime.Parse(lastSeen, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null,
                 LastErrorMessage = dict.GetValueOrDefault("last_error_message"),
-                LastStatusCode = int.TryParse(dict.GetValueOrDefault("last_status_code"), out var code) 
+                LastStatusCode = int.TryParse(dict.GetValueOrDefault("last_status_code"), out var code)
                     ? code : null,
-                DisabledAt = dict.TryGetValue("disabled_at", out var disabledAt) 
-                    ? DateTime.Parse(disabledAt) : null
+                DisabledAt = dict.TryGetValue("disabled_at", out var disabledAt)
+                    ? DateTime.Parse(disabledAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null
             };
         }
 
         public async Task MarkKeyDisabledAsync(int keyId, DateTime disabledAt)
         {
-            var fatalKey = $"provider:errors:key:{keyId}:fatal";
+            var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
             await _db.HashSetAsync(fatalKey, "disabled_at", disabledAt.ToString("O"));
         }
 
         public async Task MarkProviderDisabledAsync(int providerId, DateTime disabledAt, string reason)
         {
-            var summaryKey = $"provider:errors:provider:{providerId}:summary";
+            var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
             await Task.WhenAll(
                 _db.HashSetAsync(summaryKey, "provider_disabled_at", disabledAt.ToString("O")),
                 _db.HashSetAsync(summaryKey, "provider_disable_reason", reason)
@@ -155,23 +160,19 @@ namespace ConduitLLM.Core.Services
 
         public async Task AddDisabledKeyToProviderAsync(int providerId, int keyId)
         {
-            var summaryKey = $"provider:errors:provider:{providerId}:summary";
-            var disabledKeys = await _db.HashGetAsync(summaryKey, "disabled_keys");
-            var keyList = disabledKeys.HasValue 
-                ? JsonSerializer.Deserialize<List<int>>(disabledKeys.ToString()) ?? new List<int>()
-                : new List<int>();
-            
-            if (!keyList.Contains(keyId))
-            {
-                keyList.Add(keyId);
-                await _db.HashSetAsync(summaryKey, "disabled_keys", 
-                    JsonSerializer.Serialize(keyList));
-            }
+            var setKey = CacheKeys.ProviderError.DisabledKeysByProvider(providerId);
+            await _db.SetAddAsync(setKey, keyId);
+        }
+
+        public async Task RemoveDisabledKeyFromProviderAsync(int providerId, int keyId)
+        {
+            var setKey = CacheKeys.ProviderError.DisabledKeysByProvider(providerId);
+            await _db.SetRemoveAsync(setKey, keyId);
         }
 
         public async Task<IReadOnlyList<ErrorFeedEntry>> GetRecentErrorsAsync(int limit = 100)
         {
-            var feedKey = "provider:errors:recent";
+            var feedKey = CacheKeys.ProviderError.RecentFeed;
             var entries = await _db.SortedSetRangeByScoreAsync(
                 feedKey, 
                 order: Order.Descending, 
@@ -212,12 +213,12 @@ namespace ConduitLLM.Core.Services
             
             foreach (var keyId in keyIds)
             {
-                var fatalKey = $"provider:errors:key:{keyId}:fatal";
+                var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
                 var lastSeenValue = await _db.HashGetAsync(fatalKey, "last_seen");
                 
                 if (lastSeenValue.HasValue)
                 {
-                    var lastSeenTime = DateTime.Parse(lastSeenValue.ToString());
+                    var lastSeenTime = DateTime.Parse(lastSeenValue.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
                     if (lastSeenTime >= cutoff)
                     {
                         var countValue = await _db.HashGetAsync(fatalKey, "count");
@@ -236,17 +237,21 @@ namespace ConduitLLM.Core.Services
             return counts;
         }
 
-        public async Task ClearErrorsForKeyAsync(int keyId)
+        public async Task ClearErrorsForKeyAsync(int keyId, int? providerId = null)
         {
-            var keyPrefix = $"provider:errors:key:{keyId}";
-            
             // Delete error keys
             await _db.KeyDeleteAsync(new RedisKey[]
             {
-                $"{keyPrefix}:fatal",
-                $"{keyPrefix}:warnings"
+                CacheKeys.ProviderError.FatalByKey(keyId),
+                CacheKeys.ProviderError.WarningsByKey(keyId)
             });
-            
+
+            // Remove from provider's disabled keys set if providerId is known
+            if (providerId.HasValue)
+            {
+                await RemoveDisabledKeyFromProviderAsync(providerId.Value, keyId);
+            }
+
             _logger.LogInformation("Cleared errors for key {KeyId}", keyId);
         }
 
@@ -258,7 +263,7 @@ namespace ConduitLLM.Core.Services
             result.FatalError = await GetFatalErrorDataAsync(keyId);
             
             // Get recent warnings
-            var warningKey = $"provider:errors:key:{keyId}:warnings";
+            var warningKey = CacheKeys.ProviderError.WarningsByKey(keyId);
             var warnings = await _db.SortedSetRangeByScoreAsync(
                 warningKey, 
                 order: Order.Descending, 
@@ -287,26 +292,37 @@ namespace ConduitLLM.Core.Services
 
         public async Task<ProviderSummaryData?> GetProviderSummaryAsync(int providerId)
         {
-            var summaryKey = $"provider:errors:provider:{providerId}:summary";
-            var summaryData = await _db.HashGetAllAsync(summaryKey);
-            
-            if (summaryData.Length == 0)
+            var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
+            var disabledSetKey = CacheKeys.ProviderError.DisabledKeysByProvider(providerId);
+
+            var summaryTask = _db.HashGetAllAsync(summaryKey);
+            var disabledKeysTask = _db.SetMembersAsync(disabledSetKey);
+
+            await Task.WhenAll(summaryTask, disabledKeysTask);
+
+            var summaryData = await summaryTask;
+            var disabledMembers = await disabledKeysTask;
+
+            if (summaryData.Length == 0 && disabledMembers.Length == 0)
                 return null;
-            
+
             var dict = summaryData.ToDictionary(x => x.Name.ToString(), x => x.Value.ToString());
-            
+
+            var disabledKeyIds = disabledMembers
+                .Where(m => m.HasValue)
+                .Select(m => (int)m)
+                .ToList();
+
             return new ProviderSummaryData
             {
-                TotalErrors = int.Parse(dict.GetValueOrDefault("total_errors", "0")),
-                FatalErrors = int.Parse(dict.GetValueOrDefault("fatal_errors", "0")),
-                Warnings = int.Parse(dict.GetValueOrDefault("warnings", "0")),
-                DisabledKeyIds = dict.TryGetValue("disabled_keys", out var keys)
-                    ? JsonSerializer.Deserialize<List<int>>(keys) ?? new List<int>()
-                    : new List<int>(),
+                TotalErrors = int.Parse(dict.GetValueOrDefault("total_errors", "0"), CultureInfo.InvariantCulture),
+                FatalErrors = int.Parse(dict.GetValueOrDefault("fatal_errors", "0"), CultureInfo.InvariantCulture),
+                Warnings = int.Parse(dict.GetValueOrDefault("warnings", "0"), CultureInfo.InvariantCulture),
+                DisabledKeyIds = disabledKeyIds,
                 LastError = dict.TryGetValue("last_error", out var lastError)
-                    ? DateTime.Parse(lastError) : null,
+                    ? DateTime.Parse(lastError, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null,
                 ProviderDisabledAt = dict.TryGetValue("provider_disabled_at", out var disabledAt)
-                    ? DateTime.Parse(disabledAt) : null,
+                    ? DateTime.Parse(disabledAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null,
                 ProviderDisableReason = dict.GetValueOrDefault("provider_disable_reason")
             };
         }
@@ -317,7 +333,7 @@ namespace ConduitLLM.Core.Services
             var cutoff = DateTime.UtcNow - window;
             
             // Get recent errors from feed
-            var feedKey = "provider:errors:recent";
+            var feedKey = CacheKeys.ProviderError.RecentFeed;
             var entries = await _db.SortedSetRangeByScoreAsync(
                 feedKey,
                 new DateTimeOffset(cutoff).ToUnixTimeSeconds(),
@@ -329,14 +345,20 @@ namespace ConduitLLM.Core.Services
                 {
                     var data = JsonDocument.Parse(entry.ToString());
                     var errorType = data.RootElement.GetProperty("type").GetString()!;
-                    
+
                     stats.TotalErrors++;
-                    
+
                     // Count by type
                     if (!stats.ErrorsByType.ContainsKey(errorType))
                         stats.ErrorsByType[errorType] = 0;
                     stats.ErrorsByType[errorType]++;
-                    
+
+                    // Count by provider
+                    var providerId = data.RootElement.GetProperty("providerId").GetInt32();
+                    if (!stats.ErrorsByProvider.ContainsKey(providerId))
+                        stats.ErrorsByProvider[providerId] = 0;
+                    stats.ErrorsByProvider[providerId]++;
+
                     // Check if fatal
                     var errorTypeEnum = Enum.Parse<ProviderErrorType>(errorType);
                     if ((int)errorTypeEnum <= 9)

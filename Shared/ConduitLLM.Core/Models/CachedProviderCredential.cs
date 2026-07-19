@@ -30,7 +30,7 @@ namespace ConduitLLM.Core.Models
         /// <summary>
         /// Checks if the provider has any enabled keys
         /// </summary>
-        public bool HasEnabledKeys => EnabledKeys.Count() > 0;
+        public bool HasEnabledKeys => EnabledKeys.Any();
 
         /// <summary>
         /// Gets the effective API key (primary key or fallback to legacy)

@@ -31,18 +31,24 @@ namespace ConduitLLM.Tests.Integration
         private readonly Mock<ICostCalculationService> _mockCostCalculationService;
         private readonly Mock<ILogger<VirtualKeyGroupRepository>> _mockGroupLogger;
         private readonly Mock<ILogger<RefundService>> _mockRefundLogger;
+        private readonly DbContextOptions<ConduitDbContext> _dbOptions;
 
         public RefundServiceIntegrationTests()
         {
             // Setup in-memory database for integration testing
-            var options = new DbContextOptionsBuilder<ConduitDbContext>()
+            _dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
-            _concreteDbContext = new ConduitDbContext(options);
+            _concreteDbContext = new ConduitDbContext(_dbOptions);
             _dbContext = _concreteDbContext;
 
+            // Create a mock factory that returns contexts with the same database
+            var mockFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
+            mockFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => new ConduitDbContext(_dbOptions));
+
             _mockGroupLogger = new Mock<ILogger<VirtualKeyGroupRepository>>();
-            _groupRepository = new VirtualKeyGroupRepository(_concreteDbContext, _mockGroupLogger.Object);
+            _groupRepository = new VirtualKeyGroupRepository(mockFactory.Object, _mockGroupLogger.Object);
 
             _mockCostCalculationService = new Mock<ICostCalculationService>();
             _mockRefundLogger = new Mock<ILogger<RefundService>>();
@@ -225,6 +231,71 @@ namespace ConduitLLM.Tests.Integration
                     "TestAdmin",
                     null);
             });
+        }
+
+        [Fact]
+        public async Task ProcessRefund_WithDuplicateOriginalTransactionId_ShouldThrowAndNotDoubleCredit()
+        {
+            // Arrange
+            var initialBalance = 100m;
+            var refundAmount = 15.50m;
+            var group = new VirtualKeyGroup
+            {
+                GroupName = "Test Group",
+                Balance = initialBalance,
+                LifetimeCreditsAdded = initialBalance,
+                LifetimeSpent = 0
+            };
+            var groupId = await _groupRepository.CreateAsync(group);
+
+            var modelId = "openai/gpt-4o";
+            var originalUsage = new Usage { PromptTokens = 1000, CompletionTokens = 500, TotalTokens = 1500 };
+            var refundUsage = new Usage { PromptTokens = 500, CompletionTokens = 250, TotalTokens = 750 };
+            var refundReason = "Service interruption";
+            const string originalTransactionId = "txn_orig_001";
+
+            _mockCostCalculationService
+                .Setup(s => s.CalculateRefundAsync(
+                    modelId, originalUsage, refundUsage, refundReason,
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => new RefundResult
+                {
+                    ModelId = modelId,
+                    OriginalUsage = originalUsage,
+                    RefundUsage = refundUsage,
+                    RefundAmount = refundAmount,
+                    RefundReason = refundReason,
+                    OriginalTransactionId = originalTransactionId,
+                    ValidationMessages = new List<string>()
+                });
+
+            // Act - first refund succeeds
+            var firstResult = await _refundService.ProcessRefundAsync(
+                groupId, modelId, originalUsage, refundUsage, refundReason,
+                originalTransactionId, "TestAdmin", null);
+
+            // The same transaction refunded again must be rejected (idempotency)
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await _refundService.ProcessRefundAsync(
+                    groupId, modelId, originalUsage, refundUsage, refundReason,
+                    originalTransactionId, "TestAdmin", null);
+            });
+
+            // Assert - balance credited exactly once, linkage preserved, single refund transaction
+            Assert.Equal(refundAmount, firstResult.RefundAmount);
+            Assert.Equal(originalTransactionId, firstResult.OriginalTransactionId); // not overwritten
+            Assert.NotEqual(0, firstResult.RefundTransactionId);
+
+            var updatedGroup = await _groupRepository.GetByIdAsync(groupId);
+            Assert.NotNull(updatedGroup);
+            Assert.Equal(initialBalance + refundAmount, updatedGroup!.Balance);
+
+            var refundTransactions = await _dbContext.VirtualKeyGroupTransactions
+                .Where(t => t.VirtualKeyGroupId == groupId && t.TransactionType == TransactionType.Refund)
+                .ToListAsync();
+            Assert.Single(refundTransactions);
+            Assert.Equal(originalTransactionId, refundTransactions[0].ReferenceId);
         }
 
         public void Dispose()

@@ -6,6 +6,9 @@ services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Messaging backend switch (epic #909, cutover #930): Wolverine (default) or MassTransit (rollback)
+      ConduitLLM__Messaging__Backend: "${CONDUIT_MESSAGING_BACKEND:-Wolverine}"
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "true"
       # OpenTelemetry tracing configuration
       Telemetry__OtlpEndpoint: "http://jaeger:4317"
       Telemetry__TracingEnabled: "true"
@@ -37,6 +40,9 @@ services:
   admin:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Messaging backend switch (epic #909, cutover #930): Wolverine (default) or MassTransit (rollback)
+      ConduitLLM__Messaging__Backend: "${CONDUIT_MESSAGING_BACKEND:-Wolverine}"
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "true"
       # OpenTelemetry tracing configuration
       Telemetry__OtlpEndpoint: "http://jaeger:4317"
       Telemetry__TracingEnabled: "true"
@@ -100,11 +106,15 @@ services:
         echo 'Installing su-exec for user switching...'
         apk add --no-cache su-exec
         
-        echo 'Fixing directory ownership...'
-        # Fix ownership of all mounted directories
-        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/WebAdmin || true
-        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/SDKs || true
-        
+        echo 'Checking directory permissions...'
+        # Skip recursive chown on mounted volumes - it hangs on Windows and is unnecessary
+        # Windows: Docker Desktop handles permissions, chown is a no-op
+        # Linux: User ID mapping via DOCKER_USER_ID handles permissions at mount time
+
+        # Fix .next directory permissions (anonymous volume needs correct ownership)
+        mkdir -p /app/WebAdmin/.next
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/WebAdmin/.next
+
         # Check if we should skip dependency installation (fast mode)
         if [ \"\${SKIP_NPM_INSTALL:-false}\" = \"true\" ]; then
           echo 'FAST MODE: Skipping dependency installation'
@@ -115,7 +125,7 @@ services:
             su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
               cd /app/SDKs/Node/Common && npm install && npm run build
               cd /app/SDKs/Node/Admin && npm install && npm run build
-              cd /app/SDKs/Node/Core && npm install && npm run build
+              cd /app/SDKs/Node/Gateway && npm install && npm run build
               cd /app/WebAdmin && npm install
             '
           else
@@ -123,7 +133,7 @@ services:
             su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
               cd /app/SDKs/Node/Common && npm install
               cd /app/SDKs/Node/Admin && npm install
-              cd /app/SDKs/Node/Core && npm install
+              cd /app/SDKs/Node/Gateway && npm install
               cd /app/WebAdmin && npm install
             '
           fi

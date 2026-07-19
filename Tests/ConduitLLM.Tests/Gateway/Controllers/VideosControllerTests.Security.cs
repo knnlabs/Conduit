@@ -3,6 +3,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 
+using FluentAssertions;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Moq;
@@ -19,7 +21,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -47,11 +49,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
-            Assert.Equal("Task Not Found", problemDetails.Title);
-            Assert.Equal("The requested task was not found", problemDetails.Detail);
-            
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("The requested task was not found", errorResponse.Error.Message);
+
             // Verify security logging
             _mockLogger.Verify(x => x.Log(
                 Microsoft.Extensions.Logging.LogLevel.Warning,
@@ -67,7 +69,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -95,9 +97,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
-            Assert.Equal("Task Not Found", problemDetails.Title);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("The requested task was not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -119,10 +122,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetTaskStatus(taskId);
 
             // Assert
-            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(unauthorizedResult.Value);
-            Assert.Equal("Unauthorized", problemDetails.Title);
-            Assert.Equal("Virtual key not found in request context", problemDetails.Detail);
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(401, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("Virtual key not found in request context", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -131,7 +134,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -159,11 +162,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
-            Assert.Equal("Task Not Found", problemDetails.Title);
-            Assert.Equal("The requested task was not found", problemDetails.Detail);
-            
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("The requested task was not found", errorResponse.Error.Message);
+
             // Verify security logging
             _mockLogger.Verify(x => x.Log(
                 Microsoft.Extensions.Logging.LogLevel.Warning,
@@ -179,7 +182,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -204,11 +207,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
-            Assert.Equal("Task Not Found", problemDetails.Title);
-            Assert.Equal("The requested task was not found", problemDetails.Detail);
-            
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            Assert.Equal(404, objectResult.StatusCode);
+            var errorResponse = objectResult.Value.Should().BeOfType<OpenAIErrorResponse>().Subject;
+            Assert.Equal("The requested task was not found", errorResponse.Error.Message);
+
             // Verify security logging
             _mockLogger.Verify(x => x.Log(
                 Microsoft.Extensions.Logging.LogLevel.Warning,
@@ -224,7 +227,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var failedTaskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -277,8 +280,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.RetryTask(taskId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<VideoGenerationTaskStatus>(okResult.Value);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<VideoGenerationTaskStatus>().Subject;
             Assert.Equal(taskId, response.TaskId);
             Assert.Equal(TaskStateConstants.Pending, response.Status);
         }
@@ -289,7 +292,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var taskId = "task-video-123";
             var virtualKey = "condt_test_key_123456";
-            
+
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
@@ -304,9 +307,6 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             _mockTaskRegistry.Setup(x => x.TryCancel(taskId))
                 .Returns(true);
-
-            _mockVideoService.Setup(x => x.CancelVideoGenerationAsync(taskId, virtualKey, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
 
             _mockTaskService.Setup(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
@@ -323,9 +323,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CancelTask(taskId);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            result.Should().BeOfType<NoContentResult>();
             _mockTaskRegistry.Verify(x => x.TryCancel(taskId), Times.Once);
-            _mockVideoService.Verify(x => x.CancelVideoGenerationAsync(taskId, virtualKey, It.IsAny<CancellationToken>()), Times.Once);
             _mockTaskService.Verify(x => x.CancelTaskAsync(taskId, It.IsAny<CancellationToken>()), Times.Once);
         }
 

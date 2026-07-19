@@ -1,6 +1,6 @@
+using ConduitLLM.Core.Constants;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
-using System.Text.Json;
 
 namespace ConduitLLM.Core.Services
 {
@@ -61,46 +61,15 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisVirtualKeyRateLimitService> _logger;
-        
-        private const string KEY_PREFIX = "rate:vk:";
-        private const string LIMITS_SUFFIX = ":limits";
-        private const string RPM_SUFFIX = ":rpm";
-        private const string RPD_SUFFIX = ":rpd";
-        
-        // Lua script for atomic sliding window rate limit check and increment
-        private const string SLIDING_WINDOW_SCRIPT = @"
-            local key = KEYS[1]
-            local now = tonumber(ARGV[1])
-            local window = tonumber(ARGV[2])
-            local limit = tonumber(ARGV[3])
-            
-            -- Remove old entries outside the window
-            redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
-            
-            -- Count current entries in window
-            local current = redis.call('ZCARD', key)
-            
-            -- Check if limit would be exceeded
-            if current >= limit then
-                return {0, current, limit}
-            end
-            
-            -- Add new entry with current timestamp
-            redis.call('ZADD', key, now, now .. ':' .. redis.call('INCR', key .. ':counter'))
-            
-            -- Set expiry to window size + buffer
-            redis.call('EXPIRE', key, window + 60)
-            
-            -- Return allowed, current count + 1, limit
-            return {1, current + 1, limit}
-        ";
-        
+        private readonly SlidingWindowRateLimiter _slidingWindow;
+
         public RedisVirtualKeyRateLimitService(
             IConnectionMultiplexer redis,
             ILogger<RedisVirtualKeyRateLimitService> logger)
         {
             _redis = redis ?? throw new ArgumentNullException(nameof(redis));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _slidingWindow = new SlidingWindowRateLimiter(redis, logger);
         }
         
         public async Task<RateLimitCheckResult> CheckRateLimitAsync(string virtualKeyHash, int? rpmLimit, int? rpdLimit)
@@ -108,17 +77,16 @@ namespace ConduitLLM.Core.Services
             if (string.IsNullOrEmpty(virtualKeyHash))
                 throw new ArgumentException("Virtual key hash cannot be null or empty", nameof(virtualKeyHash));
             
-            var db = _redis.GetDatabase();
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            
+
             SlidingWindowResult? rpmResult = null;
             SlidingWindowResult? rpdResult = null;
-            
+
             // Check RPM limit first (more restrictive)
             if (rpmLimit.HasValue && rpmLimit.Value > 0)
             {
-                var rpmKey = $"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}";
-                rpmResult = await CheckSlidingWindowAsync(db, rpmKey, now, 60000, rpmLimit.Value); // 60 seconds in ms
+                var rpmKey = RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash);
+                rpmResult = await _slidingWindow.CheckAsync(rpmKey, now, 60000, rpmLimit.Value); // 60 seconds in ms
                 
                 if (!rpmResult.IsAllowed)
                 {
@@ -139,8 +107,8 @@ namespace ConduitLLM.Core.Services
             // Check RPD limit if configured (even if RPM was checked)
             if (rpdLimit.HasValue && rpdLimit.Value > 0)
             {
-                var rpdKey = $"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}";
-                rpdResult = await CheckSlidingWindowAsync(db, rpdKey, now, 86400000, rpdLimit.Value); // 24 hours in ms
+                var rpdKey = RedisKeys.RateLimit.VirtualKeyRpd(virtualKeyHash);
+                rpdResult = await _slidingWindow.CheckAsync(rpdKey, now, 86400000, rpdLimit.Value); // 24 hours in ms
                 
                 if (!rpdResult.IsAllowed)
                 {
@@ -193,32 +161,6 @@ namespace ConduitLLM.Core.Services
             };
         }
         
-        private async Task<SlidingWindowResult> CheckSlidingWindowAsync(IDatabase db, string key, long now, int windowMs, int limit)
-        {
-            try
-            {
-                var result = await db.ScriptEvaluateAsync(
-                    SLIDING_WINDOW_SCRIPT,
-                    new RedisKey[] { key },
-                    new RedisValue[] { now, windowMs, limit });
-                
-                var array = (RedisValue[])result!;
-                return new SlidingWindowResult
-                {
-                    IsAllowed = (int)array[0] == 1,
-                    Current = (int)array[1],
-                    Limit = (int)array[2]
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error executing sliding window script for key {Key}", key);
-                // On Redis error, allow the request but log the issue
-                // This prevents total service failure if Redis is down
-                return new SlidingWindowResult { IsAllowed = true, Current = 0, Limit = limit };
-            }
-        }
-        
         public async Task<RateLimitUsage> GetUsageAsync(string virtualKeyHash)
         {
             if (string.IsNullOrEmpty(virtualKeyHash))
@@ -234,12 +176,12 @@ namespace ConduitLLM.Core.Services
             };
             
             // Get RPM usage
-            var rpmKey = $"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}";
+            var rpmKey = RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash);
             await db.SortedSetRemoveRangeByScoreAsync(rpmKey, 0, now - 60000);
             usage.RequestsThisMinute = (int)await db.SortedSetLengthAsync(rpmKey);
-            
+
             // Get RPD usage
-            var rpdKey = $"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}";
+            var rpdKey = RedisKeys.RateLimit.VirtualKeyRpd(virtualKeyHash);
             await db.SortedSetRemoveRangeByScoreAsync(rpdKey, 0, now - 86400000);
             usage.RequestsToday = (int)await db.SortedSetLengthAsync(rpdKey);
             
@@ -252,7 +194,7 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Virtual key hash cannot be null or empty", nameof(virtualKeyHash));
             
             var db = _redis.GetDatabase();
-            var limitsKey = $"{KEY_PREFIX}{virtualKeyHash}{LIMITS_SUFFIX}";
+            var limitsKey = RedisKeys.RateLimit.VirtualKeyLimits(virtualKeyHash);
             
             var transaction = db.CreateTransaction();
             
@@ -283,22 +225,16 @@ namespace ConduitLLM.Core.Services
             var db = _redis.GetDatabase();
             
             var transaction = db.CreateTransaction();
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{LIMITS_SUFFIX}");
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}");
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}");
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}:counter");
-            _ = transaction.KeyDeleteAsync($"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}:counter");
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyLimits(virtualKeyHash));
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash));
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpd(virtualKeyHash));
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpmSeq(virtualKeyHash));
+            _ = transaction.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpdSeq(virtualKeyHash));
             
             await transaction.ExecuteAsync();
             
             _logger.LogDebug("Removed all rate limit data for virtual key {KeyHash}", virtualKeyHash);
         }
         
-        private class SlidingWindowResult
-        {
-            public bool IsAllowed { get; set; }
-            public int Current { get; set; }
-            public int Limit { get; set; }
-        }
     }
 }

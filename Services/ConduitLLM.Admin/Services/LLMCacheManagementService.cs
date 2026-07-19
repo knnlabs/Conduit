@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.DTOs.Cache;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Configuration.Messaging;
 using MassTransit;
 using System.Text.Json;
 
@@ -13,7 +14,7 @@ namespace ConduitLLM.Admin.Services
     public class LLMCacheManagementService : ILLMCacheManagementService
     {
         private readonly IGlobalSettingRepository _globalSettingRepository;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<LLMCacheManagementService> _logger;
 
         private const string LLM_CACHE_SETTING_KEY = "LLM.Caching.Enabled";
@@ -22,15 +23,15 @@ namespace ConduitLLM.Admin.Services
         /// Initializes a new instance of the <see cref="LLMCacheManagementService"/> class.
         /// </summary>
         /// <param name="globalSettingRepository">Repository for managing global settings.</param>
-        /// <param name="publishEndpoint">MassTransit publish endpoint for broadcasting cache configuration changes.</param>
+        /// <param name="eventBus">event bus for broadcasting cache configuration changes.</param>
         /// <param name="logger">Logger instance for diagnostics and monitoring.</param>
         public LLMCacheManagementService(
             IGlobalSettingRepository globalSettingRepository,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<LLMCacheManagementService> logger)
         {
             _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -122,7 +123,7 @@ namespace ConduitLLM.Admin.Services
 
                 // Publish GlobalSettingChanged event for cache invalidation across all instances
                 // This uses the existing event infrastructure that GlobalSettingCacheInvalidationHandler consumes
-                await _publishEndpoint.Publish(new GlobalSettingChanged
+                await _eventBus.PublishAsync(new GlobalSettingChanged
                 {
                     SettingId = settingId,
                     SettingKey = LLM_CACHE_SETTING_KEY,

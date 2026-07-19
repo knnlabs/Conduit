@@ -10,7 +10,6 @@ import {
   IconDatabase,
   IconBugOff,
   IconShield,
-  IconShieldCheck,
   IconPhoto,
   IconVideo,
   IconMessage,
@@ -22,7 +21,8 @@ import {
   IconTool,
   IconSettings,
   IconActivity,
-  IconListDetails
+  IconListDetails,
+  IconBolt
 } from '@tabler/icons-react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -44,6 +44,7 @@ const navigationSections = [
       { id: 'llm-providers', label: 'LLM Providers', href: '/llm-providers', icon: IconServer },
       { id: 'model-mappings', label: 'Model Mappings', href: '/model-mappings', icon: IconRoute },
       { id: 'provider-tools', label: 'Provider Tools', href: '/provider-tools', icon: IconTool },
+      { id: 'prompt-caching', label: 'Prompt Caching', href: '/prompt-caching', icon: IconBolt },
     ]
   },
   {
@@ -58,7 +59,6 @@ const navigationSections = [
   {
     title: 'Security & Monitoring',
     items: [
-      { id: 'security', label: 'Security Dashboard', href: '/security', icon: IconShieldCheck },
       { id: 'ip-filtering', label: 'IP Filtering', href: '/ip-filtering', icon: IconShield },
       { id: 'system-info', label: 'System Info', href: '/system-info', icon: IconInfoCircle },
       { id: 'virtualkeys-discovery-preview', label: 'Discovery Preview', href: '/virtualkeys/discovery-preview', icon: IconEye },

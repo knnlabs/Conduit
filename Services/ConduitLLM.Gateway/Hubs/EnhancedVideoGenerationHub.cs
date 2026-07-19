@@ -73,6 +73,9 @@ namespace ConduitLLM.Gateway.Hubs
         /// </summary>
         public async Task SendTaskProgressWithAck(string taskId, int progress, string status)
         {
+            _logger.LogDebug("Sending acknowledged progress for video task {TaskId}: {Progress}% - {Status}",
+                taskId, progress, status);
+
             var message = new TaskProgressMessage
             {
                 TaskId = taskId,
@@ -94,6 +97,16 @@ namespace ConduitLLM.Gateway.Hubs
         /// </summary>
         public async Task SendTaskCompletedWithAck(string taskId, bool success, object? result, string? error)
         {
+            if (success)
+            {
+                _logger.LogInformation("Sending acknowledged completion for video task {TaskId}: succeeded", taskId);
+            }
+            else
+            {
+                _logger.LogWarning("Sending acknowledged completion for video task {TaskId}: failed - {Error}",
+                    taskId, error);
+            }
+
             var message = new TaskCompletedMessage
             {
                 TaskId = taskId,

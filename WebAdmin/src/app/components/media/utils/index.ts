@@ -15,17 +15,17 @@ export type {
   DownloadResult
 } from './download';
 
-// Metadata utilities
+// Metadata utilities (single source of truth in ../MediaMetadata)
 export {
   ImageMetadataExtractor,
   VideoMetadataExtractor,
   MetadataCache,
   normalizeBackendVideoResponse
-} from './metadata';
+} from '../MediaMetadata';
 export type {
   MetadataExtractor,
   BackendVideoResponse
-} from './metadata';
+} from '../MediaMetadata';
 
 // Type guards
 export {

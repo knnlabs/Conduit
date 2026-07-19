@@ -68,6 +68,13 @@ Conduit implements comprehensive monitoring and observability for production dep
 - **Aggregation latency**: `conduit_cache_statistics_aggregation_latency_ms`
 - **Statistics drift**: `conduit_cache_statistics_max_drift_percentage`
 
+### 3b. Prompt Caching Metrics
+- **Request cache status**: `conduit_prompt_caching_requests_total` (labels: model, provider, cache_status=hit|miss|disabled)
+- **Cost savings**: `conduit_prompt_caching_savings_dollars` (labels: model, provider)
+- **Injection results**: `conduit_prompt_caching_injections_total` (labels: model, result=success|error)
+- **Cached token counts**: `conduit_model_tokens_total{token_type="cached_input"}` and `{token_type="cached_write"}`
+- **Grafana dashboard**: "Prompt Caching Analytics" (uid: conduit-prompt-caching)
+
 ### 4. SignalR Metrics
 - **Active connections**: `conduit_signalr_connections_active`
 - **Messages sent/received**: `conduit_signalr_messages_total`

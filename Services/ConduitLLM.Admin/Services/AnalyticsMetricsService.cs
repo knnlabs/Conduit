@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Metrics;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -33,7 +34,8 @@ namespace ConduitLLM.Admin.Services
         {
             var key = NormalizeCacheKey(cacheKey);
             _cacheHits.AddOrUpdate(key, 1, (k, v) => v + 1);
-            
+            AdminCacheMetrics.RecordHit(key);
+
             // Log every 100 hits for monitoring
             if (_cacheHits[key] % 100 == 0)
             {
@@ -45,7 +47,14 @@ namespace ConduitLLM.Admin.Services
         public void RecordCacheMiss(string cacheKey)
         {
             var key = NormalizeCacheKey(cacheKey);
-            _cacheMisses.AddOrUpdate(key, 1, (k, v) => v + 1);
+            var newCount = _cacheMisses.AddOrUpdate(key, 1, (k, v) => v + 1);
+            AdminCacheMetrics.RecordMiss(key);
+
+            // Log every 100 misses for monitoring
+            if (newCount % 100 == 0)
+            {
+                _logger.LogDebug("Cache key {CacheKey} has {MissCount} misses", key, newCount);
+            }
         }
 
         /// <inheritdoc/>
@@ -89,6 +98,13 @@ namespace ConduitLLM.Admin.Services
                     }
                     return list;
                 });
+
+            // Log slow fetches
+            if (durationMs > 2000)
+            {
+                _logger.LogWarning("Slow data fetch from {DataSource} took {Duration}ms",
+                    dataSource, durationMs);
+            }
         }
 
         /// <inheritdoc/>
@@ -108,7 +124,8 @@ namespace ConduitLLM.Admin.Services
         public void RecordCacheInvalidation(string reason, int keysInvalidated)
         {
             Interlocked.Increment(ref _totalCacheInvalidations);
-            _logger.LogInformation("Cache invalidated: {Reason}, {KeyCount} keys cleared", 
+            AdminCacheMetrics.RecordInvalidation("analytics", reason);
+            _logger.LogInformation("Cache invalidated: {Reason}, {KeyCount} keys cleared",
                 reason, keysInvalidated);
         }
 

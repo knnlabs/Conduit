@@ -177,4 +177,116 @@ namespace ConduitLLM.Core.Providers.Metadata
         }
     }
 
+    /// <summary>
+    /// Provider metadata for OpenRouter.
+    /// </summary>
+    public class OpenRouterProviderMetadata : BaseProviderMetadata
+    {
+        public override ProviderType ProviderType => ProviderType.OpenRouter;
+        public override string DisplayName => "OpenRouter";
+        public override string DefaultBaseUrl => "https://openrouter.ai/api/v1";
+
+        public OpenRouterProviderMetadata()
+        {
+            // OpenRouter supports chat completions with features dependent on routed model
+            Capabilities.Features.Streaming = true;
+            Capabilities.Features.VisionInput = true;
+
+            // Chat parameters support (dependent on routed model)
+            Capabilities.ChatParameters.Tools = true;
+            Capabilities.ChatParameters.ResponseFormat = true;
+            Capabilities.ChatParameters.Seed = true;
+
+            ConfigurationHints.DocumentationUrl = "https://openrouter.ai/docs";
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Multi-Provider Router",
+                Description = "OpenRouter routes requests to 100+ models from providers like OpenAI, Anthropic, Google, and Meta through a single API",
+                Severity = TipSeverity.Info
+            });
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Model Naming",
+                Description = "OpenRouter models use provider/model-name format (e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet)",
+                Severity = TipSeverity.Info
+            });
+        }
+    }
+
+    /// <summary>
+    /// Provider metadata for Cloudflare Workers AI.
+    /// </summary>
+    public class CloudflareProviderMetadata : BaseProviderMetadata
+    {
+        public override ProviderType ProviderType => ProviderType.Cloudflare;
+        public override string DisplayName => "Cloudflare Workers AI";
+        public override string DefaultBaseUrl => "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1";
+
+        public CloudflareProviderMetadata()
+        {
+            // Cloudflare Workers AI supports OpenAI-compatible features
+            Capabilities.Features.Streaming = true;
+            Capabilities.Features.Embeddings = true;
+            Capabilities.Features.ImageGeneration = true;
+
+            // Chat parameters support
+            Capabilities.ChatParameters.Tools = true;
+            Capabilities.ChatParameters.ResponseFormat = true;
+
+            AuthRequirements.CustomFields = new List<AuthField>
+            {
+                CreateUrlField("baseUrl", "API Base URL (must include account ID)", true,
+                    "Format: https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1")
+            };
+
+            ConfigurationHints.DocumentationUrl = "https://developers.cloudflare.com/workers-ai/";
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Account ID Required",
+                Description = "The base URL must include your Cloudflare account ID. Find it in the Cloudflare dashboard.",
+                Severity = TipSeverity.Warning
+            });
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Model Naming",
+                Description = "Cloudflare models use the @cf/provider/model-name format (e.g., @cf/meta/llama-3.3-70b-instruct-fp8-fast)",
+                Severity = TipSeverity.Info
+            });
+        }
+    }
+
+    /// <summary>
+    /// Provider metadata for Meta AI (Meta Model API).
+    /// </summary>
+    public class MetaProviderMetadata : BaseProviderMetadata
+    {
+        public override ProviderType ProviderType => ProviderType.Meta;
+        public override string DisplayName => "Meta AI";
+        public override string DefaultBaseUrl => "https://api.meta.ai/v1";
+
+        public MetaProviderMetadata()
+        {
+            // Meta Model API is OpenAI-compatible with multimodal input support
+            Capabilities.Features.Streaming = true;
+            Capabilities.Features.VisionInput = true;
+
+            // Chat parameters support
+            Capabilities.ChatParameters.Tools = true;
+            Capabilities.ChatParameters.ResponseFormat = true;
+
+            ConfigurationHints.DocumentationUrl = "https://ai.developer.meta.com/docs";
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Massive Context Window",
+                Description = "Muse Spark models support a 1M-token context window with image, video, and PDF input",
+                Severity = TipSeverity.Info
+            });
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Public Preview",
+                Description = "The Meta Model API is in public preview and currently US-only",
+                Severity = TipSeverity.Info
+            });
+        }
+    }
 }

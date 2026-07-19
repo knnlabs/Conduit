@@ -300,6 +300,6 @@ When adding new tests:
 ## Support
 
 For questions, issues, or contributions:
-- Open an issue on the [GitHub repository](https://github.com/knnlabs/Conduit/issues)
+- Open an issue on the [GitHub repository](https://github.com/nickna/Conduit/issues)
 - Review existing documentation in the `docs/` directory
 - Check project-specific README files for detailed information

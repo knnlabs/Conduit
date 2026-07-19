@@ -13,7 +13,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   # Quick validation that everything builds
@@ -59,7 +59,7 @@ jobs:
           cache-dependency-path: |
             SDKs/Node/package-lock.json
             SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Core/package-lock.json
+            SDKs/Node/Gateway/package-lock.json
             SDKs/Node/Common/package-lock.json
             WebAdmin/package-lock.json
       
@@ -72,7 +72,33 @@ jobs:
         env:
           TEST_REDIS_CONNECTION: localhost:6379
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
-      
+
+      # Wolverine build-ahead codegen check (#961): compiles the handler chain for EVERY
+      # registered event type up front via JasperFx's `codegen preview`, so codegen /
+      # service-location incompatibilities (the class of defect behind W2 in the #929 S1
+      # smoke, which only surfaced at first message delivery) fail the build instead.
+      - name: Wolverine codegen check
+        run: |
+          check_codegen() {
+            local log="/tmp/codegen-$2.log"
+            if dotnet run --project "$1" --no-build -- codegen preview > "$log" 2>&1; then
+              echo "$2 codegen OK ($(grep -c '// START:' "$log") generated types)"
+            else
+              echo "$2 codegen FAILED:"
+              cat "$log"
+              return 1
+            fi
+          }
+          check_codegen Services/ConduitLLM.Gateway gateway
+          check_codegen Services/ConduitLLM.Admin admin
+        env:
+          ConduitLLM__Messaging__Backend: Wolverine
+          ConduitLLM__Messaging__Wolverine__Transport: Postgresql
+          CONDUIT_MIGRATION_MODE: Skip
+          ASPNETCORE_ENVIRONMENT: Production
+          DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+          REDIS_URL: redis://localhost:6379
+
       - name: NPM Build
         run: |
           cd SDKs/Node
@@ -106,6 +132,58 @@ jobs:
           npm run lint
           npm run type-check
 
+  # Two-host Wolverine listener assertion (#961): boots the REAL Gateway + Admin hosts
+  # against real Postgres with ConduitLLM:Messaging:Backend=Wolverine and asserts that
+  # each service forms its own node cluster (per-service durability schema) and that the
+  # Gateway starts listeners for all five queues, including the exclusive strict-ordered
+  # spend-update-events / image-generation-events. Guards against W1 from the #929 S1
+  # smoke (shared agent cluster => financial queue dead), which only exists with two
+  # real hosts on real Postgres and is invisible to the in-memory dual-backend tests.
+  wolverine-two-host:
+    name: Wolverine Two-Host Smoke
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduitpass
+          POSTGRES_DB: conduitdb
+        options: >-
+          --health-cmd "pg_isready -U conduit -d conduitdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build services
+        run: |
+          dotnet build Services/ConduitLLM.Gateway
+          dotnet build Services/ConduitLLM.Admin
+
+      - name: Two-host listener assertion
+        run: pwsh ./scripts/test/wolverine-two-host-smoke.ps1 -NoBuild
+        env:
+          DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+          REDIS_URL: redis://localhost:6379
+
   # Build Docker images (push only from master)
   docker:
     name: Docker - ${{ matrix.service }}
@@ -134,11 +212,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/knnlabs/conduit-${{ matrix.service }}
+          images: ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,enable=${{ github.event_name != 'pull_request' }}
+            type=sha,prefix=pr-${{ github.event.pull_request.number }}-,enable=${{ github.event_name == 'pull_request' }}
             type=raw,value=latest,enable={{is_default_branch}}
       
       - name: Set up Docker Buildx
@@ -182,9 +261,9 @@ jobs:
           cache-dependency-path: |
             SDKs/Node/package-lock.json
             SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Core/package-lock.json
+            SDKs/Node/Gateway/package-lock.json
             SDKs/Node/Common/package-lock.json
-      
+
       - name: Build and Publish
         run: |
           cd SDKs/Node
@@ -206,8 +285,8 @@ jobs:
           npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
           npm publish --tag next --access public
           
-          # Update version and publish Core
-          cd ../Core
+          # Update version and publish Gateway
+          cd ../Gateway
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
           npm publish --tag next --access public

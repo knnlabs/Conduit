@@ -266,10 +266,10 @@ export class FetchModelService {
   }
 
   /**
-   * Get models with their provider mapping status and details
-   * This is a helper method that checks which models have provider mappings
+   * Get models with their provider mapping status and details.
+   * Uses identifiers already included in the model response (single API call).
    */
-  async listWithMappingStatus(config?: RequestConfig): Promise<Array<ModelDto & { 
+  async listWithMappingStatus(config?: RequestConfig): Promise<Array<ModelDto & {
     hasProviderMappings: boolean;
     providerCount: number;
     providers: Array<{
@@ -281,42 +281,113 @@ export class FetchModelService {
       providerName: string | null;
     }>;
   }>> {
-    // Get all models
     const models = await this.list(config);
-    
-    // Check each model for provider mappings in parallel
-    const modelsWithStatus = await Promise.all(
-      models.map(async (model) => {
-        if (!model.id) {
-          return { 
-            ...model, 
-            hasProviderMappings: false,
-            providerCount: 0,
-            providers: []
-          };
-        }
-        
-        try {
-          const identifiers = await this.getIdentifiers(model.id, config);
-          return { 
-            ...model, 
-            hasProviderMappings: identifiers.length > 0,
-            providerCount: identifiers.length,
-            providers: identifiers
-          };
-        } catch {
-          // If there's an error getting identifiers, assume no mappings
-          return { 
-            ...model, 
-            hasProviderMappings: false,
-            providerCount: 0,
-            providers: []
-          };
-        }
-      })
-    );
-    
-    return modelsWithStatus;
+
+    return models.map(model => {
+      const identifiers = model.identifiers ?? [];
+
+      const providers = identifiers.map(i => {
+        const normalizedProvider = i.provider ? i.provider as ProviderType : null;
+        return {
+          id: i.id ?? 0,
+          identifier: i.identifier ?? '',
+          provider: i.provider ?? null,
+          isPrimary: i.isPrimary ?? false,
+          normalizedProvider: normalizedProvider ?? null,
+          providerName: normalizedProvider ? getProviderTypeName(normalizedProvider) : null
+        };
+      });
+
+      return {
+        ...model,
+        hasProviderMappings: providers.length > 0,
+        providerCount: providers.length,
+        providers
+      };
+    });
+  }
+
+  /**
+   * Get models with server-side pagination, search, and filtering.
+   * Returns a paginated result with total count for UI pagination.
+   */
+  async listPaginated(options: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    capability?: string;
+    hasProviders?: boolean;
+  } = {}, config?: RequestConfig): Promise<{
+    items: Array<ModelDto & {
+      hasProviderMappings: boolean;
+      providerCount: number;
+      providers: Array<{
+        id: number;
+        identifier: string;
+        provider: number | null;
+        isPrimary: boolean;
+        normalizedProvider: ProviderType | null;
+        providerName: string | null;
+      }>;
+    }>;
+    totalCount: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    const params = new URLSearchParams();
+    if (options.page !== undefined) params.set('page', String(options.page));
+    if (options.pageSize !== undefined) params.set('pageSize', String(options.pageSize));
+    if (options.search) params.set('search', options.search);
+    if (options.capability) params.set('capability', options.capability);
+    if (options.hasProviders !== undefined) params.set('hasProviders', String(options.hasProviders));
+
+    const queryString = params.toString();
+    const url = queryString ? `${ENDPOINTS.MODELS.BASE}?${queryString}` : ENDPOINTS.MODELS.BASE;
+
+    const response = await this.client['get']<{
+      items: ModelDto[];
+      totalCount: number;
+      currentPage: number;
+      pageSize: number;
+      totalPages: number;
+    }>(url, {
+      signal: config?.signal,
+      timeout: config?.timeout,
+      headers: config?.headers,
+    });
+
+    // Enrich items with provider mapping status from included identifiers
+    const items = response.items.map(model => {
+      const identifiers = model.identifiers ?? [];
+
+      const providers = identifiers.map(i => {
+        const normalizedProvider = i.provider ? i.provider as ProviderType : null;
+        return {
+          id: i.id ?? 0,
+          identifier: i.identifier ?? '',
+          provider: i.provider ?? null,
+          isPrimary: i.isPrimary ?? false,
+          normalizedProvider: normalizedProvider ?? null,
+          providerName: normalizedProvider ? getProviderTypeName(normalizedProvider) : null
+        };
+      });
+
+      return {
+        ...model,
+        hasProviderMappings: providers.length > 0,
+        providerCount: providers.length,
+        providers
+      };
+    });
+
+    return {
+      items,
+      totalCount: response.totalCount,
+      currentPage: response.currentPage,
+      pageSize: response.pageSize,
+      totalPages: response.totalPages
+    };
   }
 
   /**

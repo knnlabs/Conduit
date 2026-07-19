@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Stack, Group, Button, Select, Text } from '@mantine/core';
 import { IconRefresh, IconTrash } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useMediaAssets } from '../hooks/useMediaAssets';
@@ -48,21 +48,17 @@ export default function MediaAssetsContent() {
     const fetchKeyGroups = async () => {
       try {
         setLoadingKeyGroups(true);
-        const result = await withAdminClient(client => 
+        const result = await withAdminClient(client =>
           client.virtualKeyGroups.list()
         );
-        const groups = result.map((group) => ({
+        const groups = result.items.map((group) => ({
           id: group.id,
           name: group.groupName
         }));
         setKeyGroups(groups);
       } catch (error) {
         console.error('Failed to fetch key groups:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load key groups',
-          color: 'red',
-        });
+        notify.error('Failed to load key groups');
       } finally {
         setLoadingKeyGroups(false);
       }
@@ -103,11 +99,7 @@ export default function MediaAssetsContent() {
         }
       } catch (error) {
         console.error('Failed to fetch virtual keys:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load virtual keys',
-          color: 'red',
-        });
+        notify.error('Failed to load virtual keys');
       } finally {
         setLoadingVirtualKeys(false);
       }
@@ -146,17 +138,27 @@ export default function MediaAssetsContent() {
       onConfirm: () => {
         void (async () => {
           const selectedMedia = getSelectedMedia();
-          
+          let successCount = 0;
+          let failCount = 0;
+
           for (const media of selectedMedia) {
-            await deleteMedia(media.id);
+            const success = await deleteMedia(media.id, false);
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
           }
-          
+
           deselectAll();
-          notifications.show({
-            title: 'Success',
-            message: `Deleted ${count} media items`,
-            color: 'green',
-          });
+
+          if (failCount === 0) {
+            notify.success(`Deleted ${successCount} media items`);
+          } else if (successCount === 0) {
+            notify.error(`Failed to delete ${failCount} media items`);
+          } else {
+            notify.warning(`Deleted ${successCount} of ${count} items. ${failCount} failed.`, 'Partial Success');
+          }
         })();
       },
     });
@@ -179,11 +181,7 @@ export default function MediaAssetsContent() {
       }
     }
     
-    notifications.show({
-      title: 'Success',
-      message: `Downloaded ${selectedCount} files`,
-      color: 'green',
-    });
+    notify.success(`Downloaded ${selectedCount} files`);
   };
 
   // Get unique providers from media
