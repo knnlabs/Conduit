@@ -53,6 +53,9 @@ public interface IVirtualKeyGroupRepository : IRepositoryBase<VirtualKeyGroup, i
     /// <returns>The new balance after adjustment</returns>
     Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId = null);
 
+    /// <summary>Adjusts a balance and attributes the debit to a reconciliation window.</summary>
+    Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId, DateTime billingWindowStartUtc);
+
     /// <summary>
     /// Adjusts the balance of a virtual key group exactly once per idempotency key.
     /// The key is stored on the transaction ledger row in the same atomic save as the
@@ -75,6 +78,17 @@ public interface IVirtualKeyGroupRepository : IRepositoryBase<VirtualKeyGroup, i
         string? initiatedBy,
         ReferenceType referenceType,
         string? referenceId = null);
+
+    /// <summary>Applies an idempotent adjustment attributed to a reconciliation window.</summary>
+    Task<BalanceAdjustmentResult> AdjustBalanceIdempotentAsync(
+        int groupId,
+        decimal amount,
+        string idempotencyKey,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId,
+        DateTime billingWindowStartUtc);
 
     /// <summary>
     /// Gets groups with low balance (below threshold) with pagination

@@ -107,7 +107,8 @@ namespace ConduitLLM.Gateway.EventHandlers
                         description,
                         "System",
                         ReferenceType.VirtualKey,
-                        request.KeyId.ToString());
+                        request.KeyId.ToString(),
+                        new DateTime(request.Timestamp.Year, request.Timestamp.Month, request.Timestamp.Day, request.Timestamp.Hour, 0, 0, DateTimeKind.Utc));
                 }
                 else
                 {
@@ -117,7 +118,8 @@ namespace ConduitLLM.Gateway.EventHandlers
                         description,
                         "System",
                         ReferenceType.VirtualKey,
-                        request.KeyId.ToString());
+                        request.KeyId.ToString(),
+                        new DateTime(request.Timestamp.Year, request.Timestamp.Month, request.Timestamp.Day, request.Timestamp.Hour, 0, 0, DateTimeKind.Utc));
                     result = new BalanceAdjustmentResult(balance, group.LifetimeSpent + request.Amount, Applied: true);
                 }
 

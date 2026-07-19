@@ -103,6 +103,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                         modelName: message.Model,
                         durationSeconds: message.Duration,
                         resolution: message.Resolution,
+                        billedAtUtc: message.CompletedAt,
                         cancellationToken: context.CancellationToken);
 
                     if (updated)

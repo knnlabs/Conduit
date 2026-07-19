@@ -19,7 +19,7 @@ namespace ConduitLLM.Configuration.Interfaces
         /// Queues a spend update to Redis for batch processing.
         /// Throws on failure so the caller can fall back to alternative paths.
         /// </summary>
-        Task QueueSpendUpdateAsync(int virtualKeyId, decimal cost);
+        Task QueueSpendUpdateAsync(int virtualKeyId, decimal cost, DateTime? billedAtUtc = null);
 
         /// <summary>
         /// Gets spend that has not yet been reflected in the group's database balance,
@@ -42,6 +42,6 @@ namespace ConduitLLM.Configuration.Interfaces
         /// Used as a last resort when both Redis and direct DB writes fail.
         /// Updates are drained on the next successful flush cycle.
         /// </summary>
-        void QueueFallbackUpdate(int virtualKeyId, decimal cost);
+        void QueueFallbackUpdate(int virtualKeyId, decimal cost, DateTime? billedAtUtc = null);
     }
 }

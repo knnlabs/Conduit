@@ -174,6 +174,7 @@ namespace ConduitLLM.Configuration.Interfaces
             string? modelName = null,
             double? durationSeconds = null,
             string? resolution = null,
+            DateTime? billedAtUtc = null,
             CancellationToken cancellationToken = default);
     }
 }

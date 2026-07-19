@@ -89,6 +89,7 @@ namespace ConduitLLM.Gateway.Middleware
         {
             try
             {
+                var billedAtUtc = GetBillingTimestamp(context);
                 var requestType = UsageExtractor.DetermineRequestType(context.Request.Path);
 
                 // Extract provider info from HttpContext.Items (set by controllers)
@@ -122,6 +123,11 @@ namespace ConduitLLM.Gateway.Middleware
                         ? ConduitLLM.Configuration.Enums.RequestBillingMethod.ProviderReportedCost
                         : ConduitLLM.Configuration.Enums.RequestBillingMethod.ModelCost,
                     ProviderReportedCostUsd = billedFromProviderCost ? usage.ProviderReportedCostUsd : null,
+                    ProviderCostMarkupMultiplier = billedFromProviderCost
+                        ? (usage.ProviderCostPolicy!.MarkupMultiplier > 0m ? usage.ProviderCostPolicy.MarkupMultiplier : 1m)
+                        : null,
+                    BilledAtUtc = cost > 0 ? billedAtUtc : null,
+                    Timestamp = billedAtUtc,
                     ResponseTimeMs = UsageExtractor.GetResponseTime(context),
                     UserId = context.User?.Identity?.Name,
                     ClientIp = context.Connection.RemoteIpAddress?.ToString(),
@@ -141,6 +147,17 @@ namespace ConduitLLM.Gateway.Middleware
                 _logger.LogError(ex, "Failed to log request for VirtualKey {VirtualKeyId}", virtualKeyId);
                 // Don't throw - logging failure shouldn't break the request
             }
+        }
+
+        private static DateTime GetBillingTimestamp(HttpContext context)
+        {
+            const string key = "Conduit.BillingOccurredAtUtc";
+            if (context.Items.TryGetValue(key, out var existing) && existing is DateTime timestamp)
+                return timestamp;
+
+            var now = DateTime.UtcNow;
+            context.Items[key] = now;
+            return now;
         }
 
         #region Billing Audit Logging

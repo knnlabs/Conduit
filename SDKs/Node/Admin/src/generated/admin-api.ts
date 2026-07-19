@@ -12845,6 +12845,11 @@ export interface components {
        * @description Virtual key ID if applicable
        */
       virtualKeyId?: null | number;
+      /**
+       * Format: int32
+       * @description Virtual key group ID for group-level events.
+       */
+      virtualKeyGroupId?: null | number;
       /** @description Virtual key name for display */
       virtualKeyName?: null | string;
       /** @description Model name */
@@ -12893,6 +12898,11 @@ export interface components {
        * @description Optional virtual key ID filter
        */
       virtualKeyId?: null | number;
+      /**
+       * Format: int32
+       * @description Optional virtual key group ID filter.
+       */
+      virtualKeyGroupId?: null | number;
       eventType?: null | components["schemas"]["BillingAuditEventType"];
     };
     /** @description Request DTO for querying billing audit events */
@@ -12913,6 +12923,11 @@ export interface components {
        * @description Optional virtual key ID filter
        */
       virtualKeyId?: null | number;
+      /**
+       * Format: int32
+       * @description Optional virtual key group ID filter.
+       */
+      virtualKeyGroupId?: null | number;
       /**
        * Format: int32
        * @description Page number (1-based)
@@ -14053,6 +14068,10 @@ export interface components {
       billingMethod?: null | components["schemas"]["RequestBillingMethod"];
       /** Format: double */
       providerReportedCostUsd?: null | number;
+      /** Format: double */
+      providerCostMarkupMultiplier?: null | number;
+      /** Format: date-time */
+      billedAtUtc?: null | string;
       /** Format: double */
       responseTimeMs?: number;
       userId?: null | string;
@@ -15380,6 +15399,10 @@ export interface components {
       /** Format: double */
       providerReportedCostUsd?: null | number;
       /** Format: double */
+      providerCostMarkupMultiplier?: null | number;
+      /** Format: date-time */
+      billedAtUtc?: null | string;
+      /** Format: double */
       responseTimeMs?: number;
       /** Format: date-time */
       timestamp?: string;
@@ -16402,6 +16425,8 @@ export interface components {
       initiatedBy?: string;
       initiatedByUserId?: null | string;
       idempotencyKey?: null | string;
+      /** Format: date-time */
+      billingWindowStartUtc?: null | string;
       /** Format: date-time */
       createdAt?: string;
       isDeleted?: boolean;

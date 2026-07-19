@@ -261,6 +261,7 @@ namespace ConduitLLM.Gateway.Services
             decimal newBalance;
             if (idempotencyKey != null)
             {
+                var billingTimestamp = DateTime.UtcNow;
                 var result = await GroupRepository.AdjustBalanceIdempotentAsync(
                     group.Id,
                     -cost,
@@ -268,7 +269,8 @@ namespace ConduitLLM.Gateway.Services
                     $"API usage by virtual key #{keyId}",
                     "System",
                     ReferenceType.VirtualKey,
-                    keyId.ToString());
+                    keyId.ToString(),
+                    billingTimestamp.Date.AddHours(billingTimestamp.Hour));
                 newBalance = result.NewBalance;
             }
             else

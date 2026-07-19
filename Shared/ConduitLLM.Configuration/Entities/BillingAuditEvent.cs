@@ -31,6 +31,11 @@ namespace ConduitLLM.Configuration.Entities
         public int? VirtualKeyId { get; set; }
 
         /// <summary>
+        /// ID of the virtual key group associated with a group-level billing event.
+        /// </summary>
+        public int? VirtualKeyGroupId { get; set; }
+
+        /// <summary>
         /// Model name used in the request
         /// </summary>
         [MaxLength(100)]
@@ -180,6 +185,11 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Model cost calculation failed; the request was retained for reconciliation.
         /// </summary>
-        PricingCalculationFailed = 14
+        PricingCalculationFailed = 14,
+
+        /// <summary>
+        /// Request-log, ledger, or provider-cost totals diverged during reconciliation.
+        /// </summary>
+        BillingReconciliationMismatch = 15
     }
 }

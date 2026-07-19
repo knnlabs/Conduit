@@ -313,7 +313,7 @@ namespace ConduitLLM.Tests.Http.Services
             _groupRepositoryMock
                 .Setup(g => g.AdjustBalanceIdempotentAsync(
                     1, -5m, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                    ConduitLLM.Configuration.Enums.ReferenceType.VirtualKey, "1"))
+                    ConduitLLM.Configuration.Enums.ReferenceType.VirtualKey, "1", It.IsAny<DateTime>()))
                 .ReturnsAsync(new BalanceAdjustmentResult(95m, 105m, Applied: true));
 
             // Act
@@ -324,7 +324,7 @@ namespace ConduitLLM.Tests.Http.Services
             Assert.True(result);
             _groupRepositoryMock.Verify(g => g.AdjustBalanceIdempotentAsync(
                 1, -5m, It.Is<string>(k => k.StartsWith("spend:")), It.IsAny<string>(), "System",
-                ConduitLLM.Configuration.Enums.ReferenceType.VirtualKey, "1"), Times.Once);
+                ConduitLLM.Configuration.Enums.ReferenceType.VirtualKey, "1", It.IsAny<DateTime>()), Times.Once);
             _cacheMock.Verify(c => c.InvalidateVirtualKeyAsync(virtualKey.KeyHash), Times.Once);
         }
 

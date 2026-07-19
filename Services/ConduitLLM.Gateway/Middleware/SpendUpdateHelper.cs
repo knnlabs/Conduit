@@ -22,14 +22,15 @@ namespace ConduitLLM.Gateway.Middleware
             decimal cost,
             IBatchSpendUpdateService batchSpendService,
             IVirtualKeyService virtualKeyService,
-            ILogger logger)
+            ILogger logger,
+            DateTime? billedAtUtc = null)
         {
             // Tier 1: Try Redis batch queue (primary path)
             if (batchSpendService.IsHealthy)
             {
                 try
                 {
-                    await batchSpendService.QueueSpendUpdateAsync(virtualKeyId, cost);
+                    await batchSpendService.QueueSpendUpdateAsync(virtualKeyId, cost, billedAtUtc);
                     return;
                 }
                 catch (Exception ex)
@@ -71,7 +72,7 @@ namespace ConduitLLM.Gateway.Middleware
             }
 
             // Tier 3: In-memory fallback queue (drained on next successful flush cycle)
-            batchSpendService.QueueFallbackUpdate(virtualKeyId, cost);
+            batchSpendService.QueueFallbackUpdate(virtualKeyId, cost, billedAtUtc);
             BillingMetrics.RecordPotentialRevenueLoss(cost, "fallback_queue");
 
             // The in-memory queue is recoverable during this process lifetime, but it is

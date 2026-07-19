@@ -98,6 +98,13 @@ services:
       BatchSpending__MinimumIntervalSeconds: "1"
       BatchSpending__MaximumIntervalSeconds: "21600"  # 6 hours
       BatchSpending__RedisTtlHours: "24"
+      # Continuous billing reconciliation (#1031)
+      BillingReconciliation__Enabled: "true"
+      BillingReconciliation__WindowHours: "1"
+      BillingReconciliation__GracePeriodMinutes: "15"
+      BillingReconciliation__RelativeThreshold: "0.01"
+      BillingReconciliation__AbsoluteThresholdUsd: "0.01"
+      BillingReconciliation__MaxCatchUpWindowsPerRun: "24"
       # Health monitoring configuration - API endpoint checks
       HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health

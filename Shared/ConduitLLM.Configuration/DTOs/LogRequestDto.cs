@@ -72,6 +72,16 @@ namespace ConduitLLM.Configuration.DTOs
         public decimal? ProviderReportedCostUsd { get; set; }
 
         /// <summary>
+        /// Provider-cost markup multiplier applied to the reported cost.
+        /// </summary>
+        public decimal? ProviderCostMarkupMultiplier { get; set; }
+
+        /// <summary>
+        /// Timestamp of the billable event. Null for zero-cost/unbilled rows.
+        /// </summary>
+        public DateTime? BilledAtUtc { get; set; }
+
+        /// <summary>
         /// Response time in milliseconds
         /// </summary>
         public double ResponseTimeMs { get; set; }

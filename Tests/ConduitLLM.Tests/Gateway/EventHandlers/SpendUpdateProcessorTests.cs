@@ -113,7 +113,8 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     ReferenceType.VirtualKey,
-                    It.IsAny<string>()))
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()))
                 .Returns(Task.FromResult(new BalanceAdjustmentResult(50m, 150m, Applied: true)));
 
             var @event = new SpendUpdateRequested
@@ -137,7 +138,8 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                 "API usage by virtual key #123",
                 "System",
                 ReferenceType.VirtualKey,
-                "123"), Times.Once);
+                "123",
+                It.IsAny<DateTime>()), Times.Once);
 
             _eventBusMock.Verify(p => p.PublishAsync(It.Is<SpendUpdated>(su =>
                 su.KeyId == 123 &&
@@ -266,7 +268,8 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     ReferenceType.VirtualKey,
-                    It.IsAny<string>()))
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()))
                 .Returns(Task.FromResult(new BalanceAdjustmentResult(-10m, 130m, Applied: true)));
 
             var @event = new SpendUpdateRequested
@@ -310,7 +313,8 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     ReferenceType.VirtualKey,
-                    It.IsAny<string>()))
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()))
                 .Returns(Task.FromResult(new BalanceAdjustmentResult(-10m, 130m, Applied: false)));
 
             var @event = new SpendUpdateRequested
@@ -348,7 +352,8 @@ namespace ConduitLLM.Tests.Http.EventHandlers
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     ReferenceType.VirtualKey,
-                    It.IsAny<string>()))
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()))
                 .Returns(Task.FromResult(50m));
 
             var @event = new SpendUpdateRequested
@@ -364,11 +369,11 @@ namespace ConduitLLM.Tests.Http.EventHandlers
 
             // Assert
             _groupRepositoryMock.Verify(r => r.AdjustBalanceAsync(
-                1, -50m, It.IsAny<string>(), It.IsAny<string>(), ReferenceType.VirtualKey, It.IsAny<string>()),
+                1, -50m, It.IsAny<string>(), It.IsAny<string>(), ReferenceType.VirtualKey, It.IsAny<string>(), It.IsAny<DateTime>()),
                 Times.Once);
             _groupRepositoryMock.Verify(r => r.AdjustBalanceIdempotentAsync(
                 It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<string>(), It.IsAny<ReferenceType>(), It.IsAny<string>()),
+                It.IsAny<string>(), It.IsAny<ReferenceType>(), It.IsAny<string>(), It.IsAny<DateTime>()),
                 Times.Never);
 
             _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<SpendUpdated>(),

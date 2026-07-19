@@ -31,6 +31,9 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </summary>
         DbSet<RequestLog> RequestLogs { get; }
 
+        /// <summary>Database set for billing reconciliation checkpoints.</summary>
+        DbSet<BillingReconciliationCheckpoint> BillingReconciliationCheckpoints { get; }
+
         /// <summary>
         /// Database set for virtual key spend history
         /// </summary>

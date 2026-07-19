@@ -419,7 +419,7 @@ namespace ConduitLLM.Gateway.Middleware
                 // Update spend using batch service only if there's a cost
                 if (totalCost > 0)
                 {
-                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, totalCost, batchSpendService, virtualKeyService, _logger);
+                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, totalCost, batchSpendService, virtualKeyService, _logger, GetBillingTimestamp(context));
                     LogSuccessfulBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
                 }
                 else if (!pricingResult.Failed)

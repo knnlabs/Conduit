@@ -44,7 +44,7 @@ namespace ConduitLLM.Gateway.Middleware
                 {
                     var functionVirtualKeyId = (int)context.Items[HttpContextKeys.VirtualKeyId]!;
                     await SpendUpdateHelper.UpdateSpendAsync(
-                        functionVirtualKeyId, functionCost, batchSpendService, virtualKeyService, _logger);
+                        functionVirtualKeyId, functionCost, batchSpendService, virtualKeyService, _logger, GetBillingTimestamp(context));
 
                     _logger.LogInformation(
                         "Billed known streaming function cost for VirtualKey {VirtualKeyId} despite missing token usage: {Cost:C}",
@@ -207,7 +207,7 @@ namespace ConduitLLM.Gateway.Middleware
             // Update spend only if there's a cost
             if (cost > 0)
             {
-                await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
+                await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger, GetBillingTimestamp(context));
                 LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, toolUsageJson, toolCost);
             }
             else if (!pricingResult.Failed)

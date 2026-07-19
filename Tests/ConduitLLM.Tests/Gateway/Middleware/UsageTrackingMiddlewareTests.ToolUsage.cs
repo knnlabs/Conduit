@@ -98,7 +98,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Assert
             Fixture.BatchSpendService.Verify(
-                service => service.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
+                service => service.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<DateTime?>()),
                 Times.Never);
         }
 

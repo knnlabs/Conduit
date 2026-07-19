@@ -158,7 +158,9 @@ namespace ConduitLLM.Gateway.Services
             }
 
             // Generate alert fingerprint for deduplication
-            var fingerprint = GenerateAlertFingerprint(alert);
+            var fingerprint = string.IsNullOrWhiteSpace(alert.Fingerprint)
+                ? GenerateAlertFingerprint(alert)
+                : alert.Fingerprint;
             var lockKey = $"{AlertLockPrefix}:{fingerprint}";
 
             // Use distributed lock to prevent duplicate alerts from multiple instances

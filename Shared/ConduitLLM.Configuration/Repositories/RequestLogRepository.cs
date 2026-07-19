@@ -451,6 +451,7 @@ namespace ConduitLLM.Configuration.Repositories
             string? modelName = null,
             double? durationSeconds = null,
             string? resolution = null,
+            DateTime? billedAtUtc = null,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(taskId))
@@ -476,6 +477,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 // Update the cost
                 requestLog.Cost = cost;
+                requestLog.BilledAtUtc = cost > 0 ? billedAtUtc ?? DateTime.UtcNow : null;
 
                 // Update model name if provided and different
                 if (!string.IsNullOrEmpty(modelName) && modelName != "unknown")

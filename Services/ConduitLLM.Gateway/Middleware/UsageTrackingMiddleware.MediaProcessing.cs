@@ -96,7 +96,7 @@ namespace ConduitLLM.Gateway.Middleware
             if (cost > 0)
             {
                 await SpendUpdateHelper.UpdateSpendAsync(media.VirtualKeyId, cost,
-                    batchSpendService, virtualKeyService, _logger);
+                    batchSpendService, virtualKeyService, _logger, GetBillingTimestamp(context));
                 LogSuccessfulBilling(context, media.Model, media.Usage, cost,
                     media.ProviderType, billingAuditService);
             }
@@ -204,7 +204,7 @@ namespace ConduitLLM.Gateway.Middleware
                 // Update spend if there's a cost
                 if (cost > 0)
                 {
-                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
+                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger, GetBillingTimestamp(context));
                 }
 
                 // Create a Usage object with zero tokens (functions don't use tokens)

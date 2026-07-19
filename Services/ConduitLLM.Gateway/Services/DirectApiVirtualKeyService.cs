@@ -123,13 +123,15 @@ namespace ConduitLLM.Gateway.Services
                 }
 
                 // Update the group balance
+                var billingTimestamp = DateTime.UtcNow;
                 var newBalance = await GroupRepository.AdjustBalanceAsync(
                     group.Id,
                     -cost,
                     $"API usage by virtual key #{keyId}",
                     "System",
                     ReferenceType.VirtualKey,
-                    keyId.ToString());
+                    keyId.ToString(),
+                    billingTimestamp.Date.AddHours(billingTimestamp.Hour));
 
                 // Update virtual key timestamp
                 virtualKey.UpdatedAt = DateTime.UtcNow;

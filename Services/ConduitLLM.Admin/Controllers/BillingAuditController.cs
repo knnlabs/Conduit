@@ -91,7 +91,8 @@ namespace ConduitLLM.Admin.Controllers
                 request.EventType,
                 request.VirtualKeyId,
                 request.PageNumber,
-                request.PageSize);
+                request.PageSize,
+                request.VirtualKeyGroupId);
 
             var response = new BillingAuditResponse
             {
@@ -219,7 +220,8 @@ namespace ConduitLLM.Admin.Controllers
                 request.EventType,
                 request.VirtualKeyId,
                 pageNumber: 1,
-                pageSize: int.MaxValue);
+                pageSize: int.MaxValue,
+                virtualKeyGroupId: request.VirtualKeyGroupId);
 
             Logger.LogInformation("Exporting {EventCount} billing audit events as {Format} for period {From:O} to {To:O}",
                 events.Count, request.Format, request.From, request.To);
@@ -273,6 +275,7 @@ namespace ConduitLLM.Admin.Controllers
                 Timestamp = entity.Timestamp,
                 EventType = entity.EventType.ToString(),
                 VirtualKeyId = entity.VirtualKeyId,
+                VirtualKeyGroupId = entity.VirtualKeyGroupId,
                 VirtualKeyName = entity.VirtualKey?.KeyName,
                 Model = entity.Model,
                 RequestId = entity.RequestId,
@@ -330,11 +333,11 @@ namespace ConduitLLM.Admin.Controllers
         private IActionResult ExportAsCsv(List<BillingAuditEvent> events)
         {
             var csv = new StringBuilder();
-            csv.AppendLine("Id,Timestamp,EventType,VirtualKeyId,Model,RequestId,CalculatedCost,FailureReason,ProviderType,HttpStatusCode,RequestPath,IsEstimated");
+            csv.AppendLine("Id,Timestamp,EventType,VirtualKeyId,VirtualKeyGroupId,Model,RequestId,CalculatedCost,FailureReason,ProviderType,HttpStatusCode,RequestPath,IsEstimated");
 
             foreach (var e in events)
             {
-                csv.AppendLine($"{e.Id},{e.Timestamp:yyyy-MM-dd HH:mm:ss},{e.EventType},{e.VirtualKeyId},{e.Model},{e.RequestId},{e.CalculatedCost},{EscapeCsv(e.FailureReason)},{e.ProviderType},{e.HttpStatusCode},{e.RequestPath},{e.IsEstimated}");
+                csv.AppendLine($"{e.Id},{e.Timestamp:yyyy-MM-dd HH:mm:ss},{e.EventType},{e.VirtualKeyId},{e.VirtualKeyGroupId},{e.Model},{e.RequestId},{e.CalculatedCost},{EscapeCsv(e.FailureReason)},{e.ProviderType},{e.HttpStatusCode},{e.RequestPath},{e.IsEstimated}");
             }
 
             return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"billing-audit-{DateTime.UtcNow:yyyyMMddHHmmss}.csv");
@@ -368,6 +371,7 @@ namespace ConduitLLM.Admin.Controllers
                 BillingAuditEventType.NoVirtualKey => "No virtual key found for request",
                 BillingAuditEventType.JsonParseError => "JSON parsing error prevented tracking",
                 BillingAuditEventType.UnexpectedError => "Unexpected error during tracking",
+                BillingAuditEventType.BillingReconciliationMismatch => "Request logs, ledger debits, or provider costs diverged",
                 _ => "Unknown event type"
             };
         }

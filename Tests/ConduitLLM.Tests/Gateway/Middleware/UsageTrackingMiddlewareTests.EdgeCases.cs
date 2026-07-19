@@ -204,7 +204,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Assert - Should use direct update instead of batch
             Fixture.BatchSpendService.Verify(
-                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<DateTime?>()),
                 Times.Never);
             UsageTrackingAssertions.VerifyDirectSpendUpdate(
                 Fixture.VirtualKeyService,
@@ -223,7 +223,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             Fixture.SetupCostForModel("gpt-3.5-turbo", 0.0001m);
             Fixture.BatchSpendService
-                .Setup(x => x.QueueSpendUpdateAsync(988, 0.0001m))
+                .Setup(x => x.QueueSpendUpdateAsync(988, 0.0001m, It.IsAny<DateTime?>()))
                 .ThrowsAsync(new InvalidOperationException("Redis unavailable"));
             Fixture.VirtualKeyService
                 .Setup(x => x.UpdateSpendAsync(988, 0.0001m))
@@ -244,7 +244,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             Assert.Contains(Fixture.CapturedBillingEvents,
                 e => e.EventType == BillingAuditEventType.UnexpectedError);
             Fixture.BatchSpendService.Verify(
-                x => x.QueueFallbackUpdate(988, 0.0001m),
+                x => x.QueueFallbackUpdate(988, 0.0001m, It.IsAny<DateTime?>()),
                 Times.Once);
         }
 
@@ -289,7 +289,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
             Fixture.BatchSpendService.Verify(
-                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<DateTime?>()),
                 Times.Never);
         }
 
@@ -311,7 +311,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert - No cost calculation or spend update should occur
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
             Fixture.BatchSpendService.Verify(
-                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<DateTime?>()),
                 Times.Never);
 
             // Assert - Debug log should indicate billing was skipped due to error response
@@ -344,7 +344,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert - No billing should occur for any error status
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
             Fixture.BatchSpendService.Verify(
-                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>()),
+                x => x.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<DateTime?>()),
                 Times.Never);
 
             // Assert - Appropriate debug logging

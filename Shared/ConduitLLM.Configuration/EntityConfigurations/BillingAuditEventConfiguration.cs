@@ -25,6 +25,9 @@ namespace ConduitLLM.Configuration.EntityConfigurations
             builder.HasIndex(e => e.VirtualKeyId)
                 .HasDatabaseName("IX_BillingAuditEvents_VirtualKeyId");
 
+            builder.HasIndex(e => e.VirtualKeyGroupId)
+                .HasDatabaseName("IX_BillingAuditEvents_VirtualKeyGroupId");
+
             builder.HasIndex(e => e.EventType)
                 .HasDatabaseName("IX_BillingAuditEvents_EventType");
 
@@ -33,6 +36,11 @@ namespace ConduitLLM.Configuration.EntityConfigurations
 
             builder.HasIndex(e => e.RequestId)
                 .HasDatabaseName("IX_BillingAuditEvents_RequestId");
+
+            builder.HasIndex(e => new { e.EventType, e.RequestId })
+                .HasDatabaseName("UX_BillingAuditEvents_ReconciliationRequestId")
+                .IsUnique()
+                .HasFilter("\"EventType\" = 15");
 
             // Composite index for common queries
             builder.HasIndex(e => new { e.EventType, e.Timestamp })

@@ -84,6 +84,12 @@ namespace ConduitLLM.Configuration.Entities
         public string? IdempotencyKey { get; set; }
 
         /// <summary>
+        /// Start of the UTC hour in which the underlying usage was billed. Null for manual,
+        /// historical, and other non-usage transactions.
+        /// </summary>
+        public DateTime? BillingWindowStartUtc { get; set; }
+
+        /// <summary>
         /// When this transaction was created
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

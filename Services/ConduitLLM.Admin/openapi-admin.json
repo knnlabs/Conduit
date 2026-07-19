@@ -14594,6 +14594,14 @@
             "description": "Virtual key ID if applicable",
             "format": "int32"
           },
+          "virtualKeyGroupId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Virtual key group ID for group-level events.",
+            "format": "int32"
+          },
           "virtualKeyName": {
             "type": [
               "null",
@@ -14705,6 +14713,14 @@
             "description": "Optional virtual key ID filter",
             "format": "int32"
           },
+          "virtualKeyGroupId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Optional virtual key group ID filter.",
+            "format": "int32"
+          },
           "eventType": {
             "oneOf": [
               {
@@ -14749,6 +14765,14 @@
               "integer"
             ],
             "description": "Optional virtual key ID filter",
+            "format": "int32"
+          },
+          "virtualKeyGroupId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Optional virtual key group ID filter.",
             "format": "int32"
           },
           "pageNumber": {
@@ -17243,6 +17267,20 @@
             ],
             "format": "double"
           },
+          "providerCostMarkupMultiplier": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "billedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
           "responseTimeMs": {
             "type": "number",
             "format": "double"
@@ -19503,10 +19541,10 @@
         }
       },
       "ProcessRefundRequestDto": {
-        "type": "object",
         "required": [
           "originalTransactionId"
         ],
+        "type": "object",
         "properties": {
           "modelId": {
             "type": "string"
@@ -20136,6 +20174,20 @@
               "number"
             ],
             "format": "double"
+          },
+          "providerCostMarkupMultiplier": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "billedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "responseTimeMs": {
             "type": "number",
@@ -22520,6 +22572,13 @@
               "null",
               "string"
             ]
+          },
+          "billingWindowStartUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "createdAt": {
             "type": "string",

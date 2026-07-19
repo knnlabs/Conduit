@@ -279,6 +279,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             var virtualKeyId = 1;
             var groupId = 1;
             var cost = 0.12345678m;
+            var billedAt = new DateTime(2026, 7, 19, 22, 42, 0, DateTimeKind.Utc);
             const long expectedUnits = 12_345_678;
             
             // Setup virtual key in database
@@ -292,27 +293,26 @@ namespace ConduitLLM.Tests.Configuration.Services
             await _dbContext.SaveChangesAsync();
             
             // Setup Redis mocks
-            _mockRedisDb.Setup(x => x.StringIncrementAsync(
-                It.Is<RedisKey>(k => k == $"pending_spend_units:group:{groupId}"),
-                expectedUnits,
-                It.IsAny<CommandFlags>()))
-                .ReturnsAsync(expectedUnits);
-            
-            _mockRedisDb.Setup(x => x.StringIncrementAsync(
-                It.Is<RedisKey>(k => k == $"key_usage_units:group:{groupId}:key:{virtualKeyId}"),
-                expectedUnits,
-                It.IsAny<CommandFlags>()))
-                .ReturnsAsync(expectedUnits);
+            _mockRedisDb.Setup(x => x.ScriptEvaluateAsync(
+                    It.IsAny<string>(),
+                    It.Is<RedisKey[]>(keys =>
+                        keys.Length == 3 &&
+                        keys[0] == $"pending_spend_window_units:group:{groupId}:window:2026071922" &&
+                        keys[1] == $"pending_spend_window_total_units:group:{groupId}" &&
+                        keys[2] == $"key_usage_window_units:group:{groupId}:window:2026071922:key:{virtualKeyId}"),
+                    It.Is<RedisValue[]>(values => values.Length == 1 && values[0] == expectedUnits),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(RedisResult.Create((RedisValue)1));
             
             // Act
-            await _service.QueueSpendUpdateAsync(virtualKeyId, cost);
+            await _service.QueueSpendUpdateAsync(virtualKeyId, cost, billedAt);
             
             // Assert
-            _mockRedisDb.Verify(x => x.StringIncrementAsync(
-                It.Is<RedisKey>(k => k == $"pending_spend_units:group:{groupId}"),
-                expectedUnits,
-                It.IsAny<CommandFlags>()), 
-                Times.Once);
+            _mockRedisDb.Verify(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()), Times.Once);
 
             _mockRedisDb.Verify(x => x.KeyExpireAsync(
                 It.IsAny<RedisKey>(),
@@ -320,11 +320,68 @@ namespace ConduitLLM.Tests.Configuration.Services
                 It.IsAny<ExpireWhen>(),
                 It.IsAny<CommandFlags>()), Times.Never);
             
-            _mockRedisDb.Verify(x => x.StringIncrementAsync(
-                It.Is<RedisKey>(k => k == $"key_usage_units:group:{groupId}:key:{virtualKeyId}"),
-                expectedUnits,
-                It.IsAny<CommandFlags>()), 
-                Times.Once);
+        }
+
+        [Fact]
+        public async Task FlushPendingUpdates_WithWindowedClaim_ShouldPersistWindowAndAcknowledgeAtomically()
+        {
+            // Arrange
+            const int groupId = 3;
+            const decimal usageCost = 1.25m;
+            const long usageUnits = 125_000_000;
+            var billingWindow = new DateTime(2026, 7, 19, 22, 0, 0, DateTimeKind.Utc);
+            RedisKey pendingKey = $"pending_spend_window_units:group:{groupId}:window:2026071922";
+
+            SetupServerKeys("processing_spend_window_units:group:*:window:*:claim:*", Array.Empty<RedisKey>());
+            SetupServerKeys("pending_spend_window_units:group:*:window:*", new[] { pendingKey });
+            SetupServerKeys(
+                $"key_usage_window_units:group:{groupId}:window:2026071922:key:*",
+                Array.Empty<RedisKey>());
+
+            _mockRedisDb.Setup(x => x.KeyRenameAsync(
+                    pendingKey,
+                    It.Is<RedisKey>(key => key.ToString().StartsWith(
+                        $"processing_spend_window_units:group:{groupId}:window:2026071922:claim:")),
+                    When.NotExists,
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
+            _mockRedisDb.Setup(x => x.StringGetAsync(
+                    It.Is<RedisKey>(key => key.ToString().StartsWith(
+                        $"processing_spend_window_units:group:{groupId}:window:2026071922:claim:")),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(new RedisValue(usageUnits.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            _mockRedisDb.Setup(x => x.ScriptEvaluateAsync(
+                    It.IsAny<string>(),
+                    It.Is<RedisKey[]>(keys =>
+                        keys.Any(key => key.ToString().StartsWith(
+                            $"processing_spend_window_units:group:{groupId}:window:2026071922:claim:")) &&
+                        keys[keys.Length - 1] == $"pending_spend_window_total_units:group:{groupId}"),
+                    It.Is<RedisValue[]>(values => values.Length == 1 && values[0] == usageUnits),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(RedisResult.Create((RedisValue)1));
+
+            _mockGroupRepository.Setup(x => x.AdjustBalanceIdempotentAsync(
+                    groupId,
+                    -usageCost,
+                    It.Is<string>(key => key.StartsWith("batch-spend:")),
+                    "API usage",
+                    "System",
+                    ReferenceType.System,
+                    It.IsAny<string>(),
+                    billingWindow))
+                .ReturnsAsync(new BalanceAdjustmentResult(98.75m, usageCost, Applied: true));
+
+            // Act
+            var result = await _service.FlushPendingUpdatesAsync();
+
+            // Assert
+            Assert.Equal(1, result);
+            _mockGroupRepository.VerifyAll();
+            _mockRedisDb.Verify(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()), Times.Once);
         }
 
         [Fact]
@@ -367,12 +424,13 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             _mockRedisDb.Setup(x => x.StringGetAsync(
                     It.Is<RedisKey[]>(keys =>
-                        keys.Length == 3 &&
+                        keys.Length == 4 &&
                         keys[0] == $"pending_spend:group:{groupId}" &&
                         keys[1] == $"pending_spend_units:group:{groupId}" &&
-                        keys[2] == $"reserved_spend:group:{groupId}"),
+                        keys[2] == $"reserved_spend:group:{groupId}" &&
+                        keys[3] == $"pending_spend_window_total_units:group:{groupId}"),
                     It.IsAny<CommandFlags>()))
-                .ReturnsAsync(new RedisValue[] { "3.25", "125000000", "1.75" });
+                .ReturnsAsync(new RedisValue[] { "3.25", "125000000", "1.75", "0" });
 
             // Act
             var pendingSpend = await _service.GetPendingSpendAsync(virtualKeyId);
@@ -409,7 +467,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                         keys[1] == $"reserved_spend:group:{groupId}" &&
                         keys[2] == $"spend_reservations:group:{groupId}" &&
                         keys[3] == $"spend_reservation_expiry:group:{groupId}" &&
-                        keys[4] == $"pending_spend_units:group:{groupId}"),
+                        keys[4] == $"pending_spend_units:group:{groupId}" &&
+                        keys[5] == $"pending_spend_window_total_units:group:{groupId}"),
                     It.Is<RedisValue[]>(values =>
                         values[0] == "10" && values[1] == "4.5" && values[2] == "request-123"),
                     It.IsAny<CommandFlags>()))

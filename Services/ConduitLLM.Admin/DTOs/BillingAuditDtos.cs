@@ -27,6 +27,9 @@ namespace ConduitLLM.Admin.DTOs
         /// </summary>
         public int? VirtualKeyId { get; set; }
 
+        /// <summary>Optional virtual key group ID filter.</summary>
+        public int? VirtualKeyGroupId { get; set; }
+
         /// <summary>
         /// Page number (1-based)
         /// </summary>
@@ -93,6 +96,9 @@ namespace ConduitLLM.Admin.DTOs
         /// Virtual key ID if applicable
         /// </summary>
         public int? VirtualKeyId { get; set; }
+
+        /// <summary>Virtual key group ID for group-level events.</summary>
+        public int? VirtualKeyGroupId { get; set; }
 
         /// <summary>
         /// Virtual key name for display
@@ -200,6 +206,9 @@ namespace ConduitLLM.Admin.DTOs
         /// Optional virtual key ID filter
         /// </summary>
         public int? VirtualKeyId { get; set; }
+
+        /// <summary>Optional virtual key group ID filter.</summary>
+        public int? VirtualKeyGroupId { get; set; }
 
         /// <summary>
         /// Optional event type filter

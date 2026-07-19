@@ -161,14 +161,21 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
     }
 
     /// <inheritdoc />
-    public async Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId = null)
+    public Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId = null)
+        => AdjustBalanceInternalAsync(groupId, amount, description, initiatedBy, referenceType, referenceId, null);
+
+    /// <inheritdoc />
+    public Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId, DateTime billingWindowStartUtc)
+        => AdjustBalanceInternalAsync(groupId, amount, description, initiatedBy, referenceType, referenceId, billingWindowStartUtc);
+
+    private async Task<decimal> AdjustBalanceInternalAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId, DateTime? billingWindowStartUtc)
     {
         try
         {
             return await ExecuteAsync(async context =>
             {
                 var group = await ApplyBalanceAdjustmentAsync(
-                    context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey: null);
+                    context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey: null, billingWindowStartUtc);
                 return group.Balance;
             });
         }
@@ -184,7 +191,7 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
     }
 
     /// <inheritdoc />
-    public async Task<BalanceAdjustmentResult> AdjustBalanceIdempotentAsync(
+    public Task<BalanceAdjustmentResult> AdjustBalanceIdempotentAsync(
         int groupId,
         decimal amount,
         string idempotencyKey,
@@ -192,6 +199,29 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         string? initiatedBy,
         ReferenceType referenceType,
         string? referenceId = null)
+        => AdjustBalanceIdempotentInternalAsync(groupId, amount, idempotencyKey, description, initiatedBy, referenceType, referenceId, null);
+
+    /// <inheritdoc />
+    public Task<BalanceAdjustmentResult> AdjustBalanceIdempotentAsync(
+        int groupId,
+        decimal amount,
+        string idempotencyKey,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId,
+        DateTime billingWindowStartUtc)
+        => AdjustBalanceIdempotentInternalAsync(groupId, amount, idempotencyKey, description, initiatedBy, referenceType, referenceId, billingWindowStartUtc);
+
+    private async Task<BalanceAdjustmentResult> AdjustBalanceIdempotentInternalAsync(
+        int groupId,
+        decimal amount,
+        string idempotencyKey,
+        string? description,
+        string? initiatedBy,
+        ReferenceType referenceType,
+        string? referenceId,
+        DateTime? billingWindowStartUtc)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
 
@@ -215,7 +245,7 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
                 }
 
                 var group = await ApplyBalanceAdjustmentAsync(
-                    context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey);
+                    context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey, billingWindowStartUtc);
                 return new BalanceAdjustmentResult(group.Balance, group.LifetimeSpent, Applied: true);
             });
         }
@@ -252,12 +282,13 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         string? initiatedBy,
         ReferenceType referenceType,
         string? referenceId,
-        string? idempotencyKey)
+        string? idempotencyKey,
+        DateTime? billingWindowStartUtc)
     {
         if (context.Database.IsRelational())
         {
             return await ApplyRelationalBalanceAdjustmentAsync(
-                context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey);
+                context, groupId, amount, description, initiatedBy, referenceType, referenceId, idempotencyKey, billingWindowStartUtc);
         }
 
         // The in-memory provider does not support ExecuteUpdate. Keep the tracked
@@ -294,6 +325,7 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
             initiatedBy ?? "System"
         );
         transaction.IdempotencyKey = idempotencyKey;
+        transaction.BillingWindowStartUtc = billingWindowStartUtc;
 
         context.VirtualKeyGroupTransactions.Add(transaction);
 
@@ -318,7 +350,8 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         string? initiatedBy,
         ReferenceType referenceType,
         string? referenceId,
-        string? idempotencyKey)
+        string? idempotencyKey,
+        DateTime? billingWindowStartUtc)
     {
         var strategy = context.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
@@ -362,6 +395,7 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
                 referenceId,
                 initiatedBy ?? "System");
             transaction.IdempotencyKey = idempotencyKey;
+            transaction.BillingWindowStartUtc = billingWindowStartUtc;
 
             context.VirtualKeyGroupTransactions.Add(transaction);
             await context.SaveChangesAsync();

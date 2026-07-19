@@ -36,10 +36,15 @@ namespace ConduitLLM.Configuration.Services
         private readonly string _keyUsageUnitsPrefix = "key_usage_units:group:";
         private readonly string _processingKeyUsagePrefix = "processing_key_usage:group:";
         private readonly string _processingKeyUsageUnitsPrefix = "processing_key_usage_units:group:";
+        private readonly string _windowedSpendUnitsPrefix = "pending_spend_window_units:group:";
+        private readonly string _windowedPendingTotalUnitsPrefix = "pending_spend_window_total_units:group:";
+        private readonly string _windowedProcessingUnitsPrefix = "processing_spend_window_units:group:";
+        private readonly string _windowedKeyUsageUnitsPrefix = "key_usage_window_units:group:";
+        private readonly string _windowedProcessingKeyUsageUnitsPrefix = "processing_key_usage_window_units:group:";
         private readonly string _reservedSpendPrefix = "reserved_spend:group:";
         private readonly string _reservationPrefix = "spend_reservations:group:";
         private readonly string _reservationExpiryPrefix = "spend_reservation_expiry:group:";
-        private readonly ConcurrentQueue<(int VirtualKeyId, decimal Cost)> _fallbackQueue = new();
+        private readonly ConcurrentQueue<(int VirtualKeyId, decimal Cost, DateTime BillingWindowStartUtc)> _fallbackQueue = new();
         private const decimal SpendUnitScale = 100_000_000m;
 
         /// <summary>
@@ -103,7 +108,7 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         /// <param name="virtualKeyId">Virtual Key ID to update</param>
         /// <param name="cost">Cost to add to the current spend</param>
-        public async Task QueueSpendUpdateAsync(int virtualKeyId, decimal cost)
+        public async Task QueueSpendUpdateAsync(int virtualKeyId, decimal cost, DateTime? billedAtUtc = null)
         {
             // Check circuit breaker if available
             if (_circuitBreaker?.IsOpen == true)
@@ -135,12 +140,12 @@ namespace ConduitLLM.Configuration.Services
             {
                 await _circuitBreaker.ExecuteAsync(async () =>
                 {
-                    await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+                    await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost, GetBillingWindow(billedAtUtc));
                 });
             }
             else
             {
-                await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+                await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost, GetBillingWindow(billedAtUtc));
             }
 
             _logger.LogDebug("Queued spend update to Redis for Virtual Key {VirtualKeyId} (Group {GroupId}): {Cost:C}",
@@ -148,27 +153,34 @@ namespace ConduitLLM.Configuration.Services
         }
 
         /// <inheritdoc />
-        public void QueueFallbackUpdate(int virtualKeyId, decimal cost)
+        public void QueueFallbackUpdate(int virtualKeyId, decimal cost, DateTime? billedAtUtc = null)
         {
-            _fallbackQueue.Enqueue((virtualKeyId, cost));
+            _fallbackQueue.Enqueue((virtualKeyId, cost, GetBillingWindow(billedAtUtc)));
             _logger.LogWarning(
                 "Spend update for Virtual Key {VirtualKeyId} ({Cost:C}) queued to in-memory fallback. Will be flushed on next cycle.",
                 virtualKeyId, cost);
         }
 
-        private async Task PerformRedisUpdate(int virtualKeyId, int groupId, decimal cost)
+        private async Task PerformRedisUpdate(int virtualKeyId, int groupId, decimal cost, DateTime billingWindowStartUtc)
         {
             var redis = await _redisConnectionFactory.GetConnectionAsync();
             var db = redis.GetDatabase();
             
             // Use group ID for accumulation
             var costUnits = ToSpendUnits(cost);
-            var key = $"{_redisUnitsKeyPrefix}{groupId}";
-            await db.StringIncrementAsync(key, costUnits);
-            
-            // Also track which key was used (for transaction history)
-            var keyUsageKey = $"{_keyUsageUnitsPrefix}{groupId}:key:{virtualKeyId}";
-            await db.StringIncrementAsync(keyUsageKey, costUnits);
+            var windowToken = billingWindowStartUtc.ToString("yyyyMMddHH", CultureInfo.InvariantCulture);
+            var key = $"{_windowedSpendUnitsPrefix}{groupId}:window:{windowToken}";
+            var keyUsageKey = $"{_windowedKeyUsageUnitsPrefix}{groupId}:window:{windowToken}:key:{virtualKeyId}";
+            const string script = """
+                redis.call('INCRBY', KEYS[1], ARGV[1])
+                redis.call('INCRBY', KEYS[2], ARGV[1])
+                redis.call('INCRBY', KEYS[3], ARGV[1])
+                return 1
+                """;
+            await db.ScriptEvaluateAsync(
+                script,
+                new RedisKey[] { key, $"{_windowedPendingTotalUnitsPrefix}{groupId}", keyUsageKey },
+                new RedisValue[] { costUnits });
             
             // Billing data must never have a TTL. It is acknowledged only after the
             // corresponding database debit commits; expiry would silently lose revenue
@@ -193,21 +205,29 @@ namespace ConduitLLM.Configuration.Services
 
                 var redis = await _redisConnectionFactory.GetConnectionAsync();
                 var db = redis.GetDatabase();
-
                 var values = await db.StringGetAsync(new RedisKey[]
                 {
                     $"{_redisKeyPrefix}{groupId.Value}",
                     $"{_redisUnitsKeyPrefix}{groupId.Value}",
-                    $"{_reservedSpendPrefix}{groupId.Value}"
+                    $"{_reservedSpendPrefix}{groupId.Value}",
+                    $"{_windowedPendingTotalUnitsPrefix}{groupId.Value}"
                 });
 
-                return ParseRedisDecimal(values[0]) + ParseRedisUnits(values[1]) + ParseRedisDecimal(values[2]);
+                return ParseRedisDecimal(values[0]) + ParseRedisUnits(values[1]) +
+                    ParseRedisDecimal(values[2]) + ParseRedisUnits(values[3]);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get pending spend from Redis for Virtual Key {VirtualKeyId}", virtualKeyId);
                 return 0;
             }
+        }
+
+        private static DateTime GetBillingWindow(DateTime? billedAtUtc)
+        {
+            var value = billedAtUtc ?? DateTime.UtcNow;
+            value = value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
+            return new DateTime(value.Year, value.Month, value.Day, value.Hour, 0, 0, DateTimeKind.Utc);
         }
 
         /// <inheritdoc />
@@ -246,6 +266,7 @@ namespace ConduitLLM.Configuration.Services
             var reservedTotalKey = $"{_reservedSpendPrefix}{keyAndBalance.GroupId}";
             var pendingKey = $"{_redisKeyPrefix}{keyAndBalance.GroupId}";
             var pendingUnitsKey = $"{_redisUnitsKeyPrefix}{keyAndBalance.GroupId}";
+            var windowedPendingTotalUnitsKey = $"{_windowedPendingTotalUnitsPrefix}{keyAndBalance.GroupId}";
 
             const string script = """
                 local expired = redis.call('ZRANGEBYSCORE', KEYS[4], '-inf', ARGV[4])
@@ -262,6 +283,7 @@ namespace ConduitLLM.Configuration.Services
                 end
                 local pending = tonumber(redis.call('GET', KEYS[1]) or '0')
                     + (tonumber(redis.call('GET', KEYS[5]) or '0') / tonumber(ARGV[7]))
+                    + (tonumber(redis.call('GET', KEYS[6]) or '0') / tonumber(ARGV[7]))
                 local reserved = tonumber(redis.call('GET', KEYS[2]) or '0')
                 if reserved < 0 then
                     redis.call('DEL', KEYS[2])
@@ -286,7 +308,7 @@ namespace ConduitLLM.Configuration.Services
 
             var result = await db.ScriptEvaluateAsync(
                 script,
-                new RedisKey[] { pendingKey, reservedTotalKey, reservationsKey, reservationExpiryKey, pendingUnitsKey },
+                new RedisKey[] { pendingKey, reservedTotalKey, reservationsKey, reservationExpiryKey, pendingUnitsKey, windowedPendingTotalUnitsKey },
                 new RedisValue[]
                 {
                     keyAndBalance.Balance.ToString(CultureInfo.InvariantCulture),
@@ -420,14 +442,14 @@ namespace ConduitLLM.Configuration.Services
                     // the debit. If the process dies after the DB commit but before deleting
                     // the Redis claim, recovery observes Applied=false and only acknowledges
                     // the already-recorded claim.
-                    var result = await groupRepository.AdjustBalanceIdempotentAsync(
-                        claim.GroupId,
-                        -claim.TotalCost,
-                        $"batch-spend:{claim.ClaimId}",
-                        description,
-                        "System",
-                        ReferenceType.System,
-                        claim.ClaimId);
+                    var result = claim.BillingWindowStartUtc.HasValue
+                        ? await groupRepository.AdjustBalanceIdempotentAsync(
+                            claim.GroupId, -claim.TotalCost, $"batch-spend:{claim.ClaimId}",
+                            description, "System", ReferenceType.System, claim.ClaimId,
+                            claim.BillingWindowStartUtc.Value)
+                        : await groupRepository.AdjustBalanceIdempotentAsync(
+                            claim.GroupId, -claim.TotalCost, $"batch-spend:{claim.ClaimId}",
+                            description, "System", ReferenceType.System, claim.ClaimId);
 
                     // Acknowledge only after the database commit (or idempotent duplicate
                     // confirmation). Until this delete succeeds, the claim remains durable
@@ -476,7 +498,10 @@ namespace ConduitLLM.Configuration.Services
                                 fallbackKey.VirtualKeyGroupId,
                                 -fallbackItem.Cost,
                                 $"API usage by virtual key #{fallbackItem.VirtualKeyId} (recovered from fallback queue)",
-                                "System");
+                                "System",
+                                ReferenceType.System,
+                                fallbackItem.VirtualKeyId.ToString(CultureInfo.InvariantCulture),
+                                fallbackItem.BillingWindowStartUtc);
                             updatedKeyHashes.Add(fallbackKey.KeyHash);
                             fallbackCount++;
                         }
@@ -529,12 +554,142 @@ namespace ConduitLLM.Configuration.Services
         private async Task<List<SpendClaim>> ClaimPendingSpendAsync(IServer server, IDatabase db)
         {
             var claims = new List<SpendClaim>();
+            claims.AddRange(await ClaimWindowedPendingSpendAsync(server, db));
             claims.AddRange(await ClaimPendingSpendAsync(
                 server, db, _redisKeyPrefix, _processingKeyPrefix, _keyUsagePrefix, _processingKeyUsagePrefix, false));
             claims.AddRange(await ClaimPendingSpendAsync(
                 server, db, _redisUnitsKeyPrefix, _processingUnitsKeyPrefix, _keyUsageUnitsPrefix, _processingKeyUsageUnitsPrefix, true));
             return claims;
         }
+
+        private async Task<List<SpendClaim>> ClaimWindowedPendingSpendAsync(IServer server, IDatabase db)
+        {
+            var claims = new List<SpendClaim>();
+            foreach (var pendingKey in server.Keys(pattern: $"{_windowedSpendUnitsPrefix}*:window:*").ToList())
+            {
+                if (!TryParseWindowedKey(pendingKey.ToString(), _windowedSpendUnitsPrefix, out var groupId, out var window, out _))
+                    continue;
+
+                var token = window.ToString("yyyyMMddHH", CultureInfo.InvariantCulture);
+                var claimId = Guid.NewGuid().ToString("N");
+                var processingKey = $"{_windowedProcessingUnitsPrefix}{groupId}:window:{token}:claim:{claimId}";
+                bool claimed;
+                try
+                {
+                    claimed = await db.KeyRenameAsync(pendingKey, processingKey, When.NotExists);
+                }
+                catch (RedisServerException ex) when (ex.Message.Contains("no such key", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!claimed) continue;
+
+                var usageKeys = new List<RedisKey>();
+                foreach (var usageKey in server.Keys(pattern: $"{_windowedKeyUsageUnitsPrefix}{groupId}:window:{token}:key:*").ToList())
+                {
+                    if (!TryParseWindowedKey(usageKey.ToString(), _windowedKeyUsageUnitsPrefix, out _, out _, out var keyId) || !keyId.HasValue)
+                        continue;
+
+                    var processingUsageKey = $"{_windowedProcessingKeyUsageUnitsPrefix}{groupId}:window:{token}:key:{keyId.Value}:claim:{claimId}";
+                    try
+                    {
+                        if (await db.KeyRenameAsync(usageKey, processingUsageKey, When.NotExists))
+                            usageKeys.Add(processingUsageKey);
+                    }
+                    catch (RedisServerException ex) when (ex.Message.Contains("no such key", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Another flusher claimed it.
+                    }
+                }
+
+                var claim = await ReadWindowedClaimAsync(db, processingKey, groupId, claimId, window, usageKeys);
+                if (claim != null) claims.Add(claim);
+            }
+
+            return claims;
+        }
+
+        private async Task<List<SpendClaim>> GetWindowedProcessingClaimsAsync(IServer server, IDatabase db)
+        {
+            var claims = new List<SpendClaim>();
+            foreach (var processingKey in server.Keys(pattern: $"{_windowedProcessingUnitsPrefix}*:window:*:claim:*").ToList())
+            {
+                if (!TryParseWindowedKey(processingKey.ToString(), _windowedProcessingUnitsPrefix, out var groupId, out var window, out _, out var claimId))
+                    continue;
+
+                var token = window.ToString("yyyyMMddHH", CultureInfo.InvariantCulture);
+                var usageKeys = server.Keys(pattern: $"{_windowedProcessingKeyUsageUnitsPrefix}{groupId}:window:{token}:key:*:claim:{claimId}").ToList();
+                var claim = await ReadWindowedClaimAsync(db, processingKey, groupId, claimId!, window, usageKeys);
+                if (claim != null) claims.Add(claim);
+            }
+
+            return claims;
+        }
+
+        private async Task<SpendClaim?> ReadWindowedClaimAsync(
+            IDatabase db,
+            RedisKey processingKey,
+            int groupId,
+            string claimId,
+            DateTime window,
+            List<RedisKey> usageKeys)
+        {
+            if (!TryParseRedisAmount(await db.StringGetAsync(processingKey), true, out var totalCost))
+                return null;
+
+            var usage = new Dictionary<int, decimal>();
+            foreach (var usageKey in usageKeys)
+            {
+                if (TryParseWindowedKey(usageKey.ToString(), _windowedProcessingKeyUsageUnitsPrefix, out _, out _, out var keyId, out _) &&
+                    keyId.HasValue &&
+                    TryParseRedisAmount(await db.StringGetAsync(usageKey), true, out var cost))
+                {
+                    usage[keyId.Value] = cost;
+                }
+            }
+
+            return new SpendClaim(groupId, claimId, processingKey, totalCost, usage, usageKeys, window);
+        }
+
+        private static bool TryParseWindowedKey(
+            string key,
+            string prefix,
+            out int groupId,
+            out DateTime window,
+            out int? keyId,
+            out string? claimId)
+        {
+            groupId = default;
+            window = default;
+            keyId = null;
+            claimId = null;
+            if (!key.StartsWith(prefix, StringComparison.Ordinal)) return false;
+
+            var parts = key[prefix.Length..].Split(':', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3 || parts[1] != "window" ||
+                !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out groupId) ||
+                !DateTime.TryParseExact(parts[2], "yyyyMMddHH", CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out window))
+                return false;
+
+            for (var index = 3; index + 1 < parts.Length; index += 2)
+            {
+                if (parts[index] == "key" && int.TryParse(parts[index + 1], NumberStyles.None, CultureInfo.InvariantCulture, out var parsedKey))
+                    keyId = parsedKey;
+                else if (parts[index] == "claim")
+                    claimId = parts[index + 1];
+            }
+
+            return true;
+        }
+
+        private static bool TryParseWindowedKey(
+            string key,
+            string prefix,
+            out int groupId,
+            out DateTime window,
+            out int? keyId) => TryParseWindowedKey(key, prefix, out groupId, out window, out keyId, out _);
 
         private async Task<List<SpendClaim>> ClaimPendingSpendAsync(
             IServer server,
@@ -587,6 +742,7 @@ namespace ConduitLLM.Configuration.Services
         private async Task<List<SpendClaim>> GetProcessingClaimsAsync(IServer server, IDatabase db)
         {
             var claims = new List<SpendClaim>();
+            claims.AddRange(await GetWindowedProcessingClaimsAsync(server, db));
             claims.AddRange(await GetProcessingClaimsAsync(
                 server, db, _processingKeyPrefix, _processingKeyUsagePrefix, false));
             claims.AddRange(await GetProcessingClaimsAsync(
@@ -689,15 +845,41 @@ namespace ConduitLLM.Configuration.Services
                 keyUsageByKeyId[keyId] = cost;
             }
 
-            return new SpendClaim(groupId, claimId, processingKey, totalCost, keyUsageByKeyId, usageKeys);
+            return new SpendClaim(groupId, claimId, processingKey, totalCost, keyUsageByKeyId, usageKeys, null);
         }
 
-        private static async Task DeleteClaimAsync(IDatabase db, SpendClaim claim)
+        private async Task DeleteClaimAsync(IDatabase db, SpendClaim claim)
         {
             var keys = claim.ProcessingKeyUsageKeys
                 .Append(claim.ProcessingSpendKey)
-                .ToArray();
-            await db.KeyDeleteAsync(keys);
+                .ToList();
+            if (!claim.BillingWindowStartUtc.HasValue)
+            {
+                await db.KeyDeleteAsync(keys.ToArray());
+                return;
+            }
+
+            // Acknowledge the durable claim and reduce the reservation-facing total
+            // atomically. On retry, the total can only be reduced while the processing
+            // claim exists, so a crash after the database commit cannot double-decrement.
+            const string script = """
+                if redis.call('EXISTS', KEYS[#KEYS - 1]) == 0 then
+                    return 0
+                end
+                for index = 1, #KEYS - 1 do
+                    redis.call('DEL', KEYS[index])
+                end
+                local remaining = redis.call('INCRBY', KEYS[#KEYS], -tonumber(ARGV[1]))
+                if remaining <= 0 then
+                    redis.call('DEL', KEYS[#KEYS])
+                end
+                return 1
+                """;
+            keys.Add($"{_windowedPendingTotalUnitsPrefix}{claim.GroupId}");
+            await db.ScriptEvaluateAsync(
+                script,
+                keys.ToArray(),
+                new RedisValue[] { ToSpendUnits(claim.TotalCost) });
         }
 
         private static bool TryParseProcessingSpendKey(
@@ -759,7 +941,8 @@ namespace ConduitLLM.Configuration.Services
             RedisKey ProcessingSpendKey,
             decimal TotalCost,
             Dictionary<int, decimal> KeyUsageByKeyId,
-            List<RedisKey> ProcessingKeyUsageKeys);
+            List<RedisKey> ProcessingKeyUsageKeys,
+            DateTime? BillingWindowStartUtc);
 
         /// <summary>
         /// Builds a human-readable description of API usage for a given group,

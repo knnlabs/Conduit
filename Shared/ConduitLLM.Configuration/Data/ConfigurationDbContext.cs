@@ -46,6 +46,9 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<BillingAuditEvent> BillingAuditEvents { get; set; } = null!;
 
+        /// <summary>Durable cursor for the billing reconciliation job.</summary>
+        public virtual DbSet<BillingReconciliationCheckpoint> BillingReconciliationCheckpoints { get; set; } = null!;
+
         /// <summary>
         /// Database set for pricing audit events (rules-based pricing)
         /// </summary>
@@ -260,6 +263,8 @@ namespace ConduitLLM.Configuration
                       .WithMany(e => e.RequestLogs)
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => new { e.BilledAtUtc, e.VirtualKeyId });
             });
 
             // Configure ModelCost entity
@@ -405,6 +410,7 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => new { e.IsDeleted, e.CreatedAt });
                 entity.HasIndex(e => e.ReferenceType);
                 entity.HasIndex(e => e.TransactionType);
+                entity.HasIndex(e => new { e.BillingWindowStartUtc, e.VirtualKeyGroupId });
 
                 // Idempotency for at-least-once spend processing (#927): one ledger row
                 // per idempotency key. Filtered so the many rows without a key are exempt.
@@ -448,6 +454,12 @@ namespace ConduitLLM.Configuration
 
             // Apply BillingAuditEvent configuration
             modelBuilder.ApplyConfiguration(new EntityConfigurations.BillingAuditEventConfiguration());
+
+            modelBuilder.Entity<BillingReconciliationCheckpoint>(entity =>
+            {
+                entity.ToTable("BillingReconciliationCheckpoints");
+                entity.HasKey(e => e.Id);
+            });
 
             // Apply PricingAuditEvent configuration (rules-based pricing)
             modelBuilder.ApplyConfiguration(new EntityConfigurations.PricingAuditEventConfiguration());

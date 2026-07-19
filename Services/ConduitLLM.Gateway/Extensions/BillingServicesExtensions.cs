@@ -51,6 +51,15 @@ public static class BillingServicesExtensions
             provider => (BillingAuditService)provider.GetRequiredService<IBillingAuditService>(),
             "BillingAuditService");
 
+        services.AddOptions<ConduitLLM.Configuration.Options.BillingReconciliationOptions>()
+            .BindConfiguration(ConduitLLM.Configuration.Options.BillingReconciliationOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<BillingReconciliationService>();
+        services.AddLeaderElectedHostedService<BillingReconciliationService>(
+            provider => provider.GetRequiredService<BillingReconciliationService>(),
+            "BillingReconciliationService");
+
         // Pricing rules engine services for flexible rules-based pricing
         services.AddScoped<IPricingRulesEvaluator, PricingRulesEvaluator>();
         services.AddScoped<IPricingRulesValidator, PricingRulesValidator>();

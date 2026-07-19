@@ -58,7 +58,8 @@ public class BillingAuditService : BatchAuditServiceBase<BillingAuditEvent>, IBi
         BillingAuditEventType? eventType = null,
         int? virtualKeyId = null,
         int pageNumber = 1,
-        int pageSize = 100)
+        int pageSize = 100,
+        int? virtualKeyGroupId = null)
     {
         return await GetPagedEventsAsync(from, to, pageNumber, pageSize, query =>
         {
@@ -66,6 +67,8 @@ public class BillingAuditService : BatchAuditServiceBase<BillingAuditEvent>, IBi
                 query = query.Where(e => e.EventType == eventType.Value);
             if (virtualKeyId.HasValue)
                 query = query.Where(e => e.VirtualKeyId == virtualKeyId.Value);
+            if (virtualKeyGroupId.HasValue)
+                query = query.Where(e => e.VirtualKeyGroupId == virtualKeyGroupId.Value);
             return query;
         });
     }

@@ -96,6 +96,19 @@ public class RequestLog : IEntity<int>, IAuditEvent
     public decimal? ProviderReportedCostUsd { get; set; }
 
     /// <summary>
+    /// The provider-cost markup multiplier applied to <see cref="ProviderReportedCostUsd"/>.
+    /// Snapshotted at billing time so later provider configuration changes do not alter reconciliation.
+    /// </summary>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? ProviderCostMarkupMultiplier { get; set; }
+
+    /// <summary>
+    /// When the charge represented by this row occurred. Unlike <see cref="Timestamp"/>, this is
+    /// updated when an asynchronous operation is billed on completion and is null for unbilled rows.
+    /// </summary>
+    public DateTime? BilledAtUtc { get; set; }
+
+    /// <summary>
     /// Response time in milliseconds
     /// </summary>
     public double ResponseTimeMs { get; set; }

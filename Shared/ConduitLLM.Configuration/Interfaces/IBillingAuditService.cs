@@ -36,7 +36,8 @@ namespace ConduitLLM.Configuration.Interfaces
             BillingAuditEventType? eventType = null,
             int? virtualKeyId = null,
             int pageNumber = 1,
-            int pageSize = 100);
+            int pageSize = 100,
+            int? virtualKeyGroupId = null);
 
         /// <summary>
         /// Gets a summary of audit events for a time period

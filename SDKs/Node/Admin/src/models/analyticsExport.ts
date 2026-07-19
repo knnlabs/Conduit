@@ -353,6 +353,8 @@ export interface RequestLog {
   /** Wire references the RequestBillingMethod schema; typed loosely on the client. */
   billingMethod?: unknown;
   providerReportedCostUsd?: number | null;
+  providerCostMarkupMultiplier?: number | null;
+  billedAtUtc?: string | null;
   responseTimeMs?: number;
   timestamp?: string;
   userId?: string | null;
