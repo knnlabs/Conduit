@@ -29,6 +29,8 @@ namespace ConduitLLM.Tests.Providers
         private readonly List<(string Method, string Path, string Body)> _capturedRequests = new();
         private string _modelsJson = "{\"data\":[]}";
         private string _imagesJson = "{\"created\":0,\"data\":[]}";
+        private string _videoSubmitJson = "{\"id\":\"vid_1\"}";
+        private string _videoStatusJson = "{\"status\":\"completed\",\"unsigned_urls\":[\"https://openrouter.ai/videos/vid_1.mp4\"]}";
 
         public OpenRouterClientTests(ITestOutputHelper output) : base(output)
         {
@@ -56,6 +58,8 @@ namespace ConduitLLM.Tests.Providers
                     string responseBody;
                     if (path.EndsWith("/key")) responseBody = "{\"data\":{}}";
                     else if (path.EndsWith("/images")) responseBody = _imagesJson;
+                    else if (path.Contains("/videos/")) responseBody = _videoStatusJson;  // GET status
+                    else if (path.EndsWith("/videos")) responseBody = _videoSubmitJson;    // POST submit
                     else responseBody = _modelsJson;
 
                     return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -208,6 +212,53 @@ namespace ConduitLLM.Tests.Providers
             result.Usage!.ProviderReportedCostUsd.Should().Be(0.003m);
             result.Usage.ImageCount.Should().Be(1);
             result.Usage.ImageResolution.Should().Be("1024x1024");
+        }
+
+        [Fact]
+        public async Task CreateVideoAsync_SubmitsThenPolls_ReturnsUnsignedUrlAndCost()
+        {
+            // Arrange — job completes on first poll with an unsigned URL + cost
+            _videoStatusJson = "{\"status\":\"completed\",\"unsigned_urls\":[\"https://openrouter.ai/videos/out.mp4\"],\"usage\":{\"cost\":0.5,\"is_byok\":false}}";
+            var client = CreateClient();
+            var request = new VideoGenerationRequest { Prompt = "a dog running", Model = "some/video-model", Duration = 5 };
+
+            // Act
+            var result = await client.CreateVideoAsync(request);
+
+            // Assert
+            result.Data.Should().ContainSingle();
+            result.Data[0].Url.Should().Be("https://openrouter.ai/videos/out.mp4");
+            result.Data[0].Metadata!.Format.Should().Be("mp4");
+            result.Usage.Should().NotBeNull();
+            result.Usage!.EstimatedCost.Should().Be(0.5m);
+            result.Usage.VideosGenerated.Should().Be(1);
+            result.Usage.TotalDurationSeconds.Should().Be(5);
+        }
+
+        [Fact]
+        public async Task CreateVideoAsync_FailedJob_ThrowsLLMCommunicationException()
+        {
+            // Arrange
+            _videoStatusJson = "{\"status\":\"failed\"}";
+            var client = CreateClient();
+            var request = new VideoGenerationRequest { Prompt = "a dog running", Model = "some/video-model", Duration = 5 };
+
+            // Act
+            var act = () => client.CreateVideoAsync(request);
+
+            // Assert
+            await act.Should().ThrowAsync<ConduitLLM.Core.Exceptions.LLMCommunicationException>();
+        }
+
+        [Fact]
+        public void CreateVideoAsync_SignatureMatchesOrchestratorReflectionContract()
+        {
+            // The video orchestrator discovers video support by looking for a 3-parameter
+            // method named "CreateVideoAsync"; guard that contract.
+            var hasContract = typeof(OpenRouterClient).GetMethods()
+                .Any(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+
+            hasContract.Should().BeTrue();
         }
     }
 }
