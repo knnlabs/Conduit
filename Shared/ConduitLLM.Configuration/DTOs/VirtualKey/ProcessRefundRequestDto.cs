@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ConduitLLM.Configuration.DTOs.VirtualKey
 {
     /// <summary>
@@ -26,9 +28,10 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         public string RefundReason { get; set; } = string.Empty;
 
         /// <summary>
-        /// Optional original transaction ID for audit trail
+        /// ID of the original debit transaction being refunded
         /// </summary>
-        public string? OriginalTransactionId { get; set; }
+        [Required]
+        public string OriginalTransactionId { get; set; } = string.Empty;
 
         /// <summary>
         /// Optional ID of the original request log being refunded. When supplied and that request was

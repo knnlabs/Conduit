@@ -14720,7 +14720,7 @@ export interface components {
       originalUsage?: components["schemas"]["UsageDto"];
       refundUsage?: components["schemas"]["UsageDto"];
       refundReason?: string;
-      originalTransactionId?: null | string;
+      originalTransactionId: string;
     };
     PromptCachingConfigDto: {
       autoInjectEnabled?: boolean;

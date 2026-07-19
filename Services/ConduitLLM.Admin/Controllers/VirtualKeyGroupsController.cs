@@ -371,6 +371,11 @@ namespace ConduitLLM.Admin.Controllers
                 return BadRequest(new { message = "Refund reason is required" });
             }
 
+            if (string.IsNullOrWhiteSpace(request.OriginalTransactionId))
+            {
+                return BadRequest(new { message = "Original transaction ID is required" });
+            }
+
             // Get user info for audit trail
             var initiatedBy = User.Identity?.Name ?? "System";
             var initiatedByUserId = User.FindFirst("sub")?.Value; // Clerk user ID from JWT

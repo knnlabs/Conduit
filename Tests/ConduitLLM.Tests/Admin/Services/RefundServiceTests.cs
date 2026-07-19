@@ -1,19 +1,22 @@
+using ConduitLLM.Configuration;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Services;
 
-public class RefundServiceTests
+public class RefundServiceTests : IDisposable
 {
     private readonly Mock<ICostCalculationService> _mockCostCalculationService;
     private readonly Mock<IVirtualKeyGroupRepository> _mockGroupRepository;
-    private readonly Mock<IConfigurationDbContext> _mockContext;
+    private readonly ConduitDbContext _context;
     private readonly Mock<ILogger<RefundService>> _mockLogger;
     private readonly RefundService _service;
 
@@ -21,13 +24,16 @@ public class RefundServiceTests
     {
         _mockCostCalculationService = new Mock<ICostCalculationService>();
         _mockGroupRepository = new Mock<IVirtualKeyGroupRepository>();
-        _mockContext = new Mock<IConfigurationDbContext>();
+        var options = new DbContextOptionsBuilder<ConduitDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _context = new ConduitDbContext(options);
         _mockLogger = new Mock<ILogger<RefundService>>();
 
         _service = new RefundService(
             _mockCostCalculationService.Object,
             _mockGroupRepository.Object,
-            _mockContext.Object,
+            _context,
             _mockLogger.Object);
     }
 
@@ -51,18 +57,18 @@ public class RefundServiceTests
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
+        var originalTransactionId = await AddDebitAsync(groupId, 1m);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
-                modelId, originalUsage, refundUsage, "Incorrect response", null,
+                modelId, originalUsage, refundUsage, "Incorrect response", originalTransactionId,
                 It.IsAny<ProviderCostRefundContext?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(refundResult);
-        _mockContext.Setup(x => x.VirtualKeyGroups).Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<VirtualKeyGroup>>());
-        _mockContext.Setup(x => x.VirtualKeyGroupTransactions).Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<VirtualKeyGroupTransaction>>());
-        _mockContext.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _context.VirtualKeyGroups.Add(group);
+        await _context.SaveChangesAsync();
 
         // Act
         var result = await _service.ProcessRefundAsync(
             groupId, modelId, originalUsage, refundUsage,
-            "Incorrect response", null, "admin", null);
+            "Incorrect response", originalTransactionId, "admin", null);
 
         // Assert
         result.Should().NotBeNull();
@@ -82,7 +88,7 @@ public class RefundServiceTests
             999, "gpt-4",
             new Usage { PromptTokens = 100, TotalTokens = 100 },
             new Usage { PromptTokens = 100, TotalTokens = 100 },
-            "reason", null, "admin", null);
+            "reason", "1", "admin", null);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -102,6 +108,7 @@ public class RefundServiceTests
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
+        var originalTransactionId = await AddDebitAsync(1, 1m);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
                 It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<Usage>(),
                 It.IsAny<string>(), It.IsAny<string?>(),
@@ -113,7 +120,7 @@ public class RefundServiceTests
             1, "unknown-model",
             new Usage { PromptTokens = 100, TotalTokens = 100 },
             new Usage { PromptTokens = 100, TotalTokens = 100 },
-            "reason", null, "admin", null);
+            "reason", originalTransactionId, "admin", null);
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
@@ -135,6 +142,7 @@ public class RefundServiceTests
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
+        var originalTransactionId = await AddDebitAsync(1, 1m);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
                 It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<Usage>(),
                 It.IsAny<string>(), It.IsAny<string?>(),
@@ -145,12 +153,58 @@ public class RefundServiceTests
             1, "gpt-4",
             new Usage { PromptTokens = 1000, TotalTokens = 1000 },
             new Usage { PromptTokens = 1500, TotalTokens = 1500 },
-            "partial", null, "admin", null);
+            "partial", originalTransactionId, "admin", null);
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Refund prompt tokens cannot exceed original*");
         group.Balance.Should().Be(10.00m);
-        _mockContext.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        (await _context.VirtualKeyGroupTransactions.CountAsync(
+            t => t.TransactionType == TransactionType.Refund)).Should().Be(0);
     }
+
+    [Fact]
+    public async Task ProcessRefundAsync_WithoutOriginalTransactionId_ShouldRejectRequest()
+    {
+        var act = () => _service.ProcessRefundAsync(
+            1, "gpt-4", new Usage(), new Usage(), "reason", null!, "admin", null);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*original debit transaction ID is required*");
+    }
+
+    [Fact]
+    public async Task ProcessRefundAsync_WithUnknownOriginalTransaction_ShouldRejectBeforeCalculation()
+    {
+        var group = new VirtualKeyGroup { Id = 1, Balance = 10m };
+        _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        var act = () => _service.ProcessRefundAsync(
+            1, "gpt-4", new Usage(), new Usage(), "reason", "999", "admin", null);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*transaction 999 was not found*");
+        _mockCostCalculationService.Verify(x => x.CalculateRefundAsync(
+            It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<Usage>(), It.IsAny<string>(),
+            It.IsAny<string?>(), It.IsAny<ProviderCostRefundContext?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    private async Task<string> AddDebitAsync(int groupId, decimal amount)
+    {
+        var transaction = new VirtualKeyGroupTransaction
+        {
+            VirtualKeyGroupId = groupId,
+            TransactionType = TransactionType.Debit,
+            Amount = amount,
+            BalanceAfter = 0,
+            ReferenceType = ReferenceType.System
+        };
+        _context.VirtualKeyGroupTransactions.Add(transaction);
+        await _context.SaveChangesAsync();
+        return transaction.Id.ToString();
+    }
+
+    public void Dispose() => _context.Dispose();
 }

@@ -1,3 +1,7 @@
+using System.Data;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
@@ -44,7 +48,7 @@ public class RefundService : IRefundService
         Usage originalUsage,
         Usage refundUsage,
         string refundReason,
-        string? originalTransactionId,
+        string originalTransactionId,
         string initiatedBy,
         string? initiatedByUserId,
         int? requestLogId = null,
@@ -54,6 +58,17 @@ public class RefundService : IRefundService
             "Processing refund for group {GroupId}, model {ModelId}, initiated by {InitiatedBy}",
             virtualKeyGroupId, modelId, initiatedBy);
 
+        if (!long.TryParse(originalTransactionId?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture,
+                out var originalTransactionKey) || originalTransactionKey <= 0)
+        {
+            throw new ArgumentException(
+                "A valid original debit transaction ID is required.", nameof(originalTransactionId));
+        }
+
+        // Store and compare the canonical representation so alternate numeric formatting cannot
+        // bypass cumulative-refund checks.
+        originalTransactionId = originalTransactionKey.ToString(CultureInfo.InvariantCulture);
+
         // Validate group exists
         var group = await _groupRepository.GetByIdAsync(virtualKeyGroupId);
         if (group == null)
@@ -62,37 +77,23 @@ public class RefundService : IRefundService
             throw new InvalidOperationException($"Virtual key group {virtualKeyGroupId} not found");
         }
 
-        // Idempotency: when an original transaction is referenced, refuse to refund it more than once.
-        // This prevents client retries / double-clicks from crediting the balance repeatedly. The
-        // reference is only enforceable when the caller supplies originalTransactionId; without it we
-        // cannot deduplicate, so we warn.
-        // NOTE: this pre-check is not atomic against two simultaneous refunds of the same transaction;
-        // a filtered unique index on (VirtualKeyGroupId, ReferenceId) WHERE TransactionType = Refund is
-        // the durable guard and is tracked as a follow-up (issue #990).
-        if (!string.IsNullOrEmpty(originalTransactionId))
-        {
-            var alreadyRefunded = await _context.VirtualKeyGroupTransactions
-                .AnyAsync(
-                    t => t.VirtualKeyGroupId == virtualKeyGroupId
-                        && t.TransactionType == TransactionType.Refund
-                        && t.ReferenceId == originalTransactionId,
-                    cancellationToken);
+        var originalTransaction = await _context.VirtualKeyGroupTransactions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(t => t.Id == originalTransactionKey, cancellationToken);
 
-            if (alreadyRefunded)
-            {
-                _logger.LogWarning(
-                    "Refund rejected: transaction {OriginalTransactionId} for group {GroupId} has already been refunded",
-                    originalTransactionId, virtualKeyGroupId);
-                throw new InvalidOperationException(
-                    $"Transaction {originalTransactionId} has already been refunded for group {virtualKeyGroupId}");
-            }
-        }
-        else
+        if (originalTransaction == null)
         {
-            _logger.LogWarning(
-                "Refund for group {GroupId} was submitted without an original transaction id; " +
-                "duplicate-refund protection cannot be enforced for this request",
-                virtualKeyGroupId);
+            throw new ArgumentException(
+                $"Original transaction {originalTransactionId} was not found.", nameof(originalTransactionId));
+        }
+
+        if (originalTransaction.VirtualKeyGroupId != virtualKeyGroupId ||
+            originalTransaction.TransactionType != TransactionType.Debit)
+        {
+            throw new ArgumentException(
+                $"Transaction {originalTransactionId} is not a debit for virtual key group {virtualKeyGroupId}.",
+                nameof(originalTransactionId));
         }
 
         // If the original request was billed from a trusted provider-reported cost, it has no per-unit
@@ -133,47 +134,146 @@ public class RefundService : IRefundService
             throw new ArgumentException($"Refund validation failed: {errorMessage}");
         }
 
-        // Update group balance
-        var previousBalance = group.Balance;
-        group.Balance += refundResult.RefundAmount; // Refunds are always positive, so we add
-        group.UpdatedAt = DateTime.UtcNow;
+        // Do not trust calculator implementations to echo this field correctly. It is the durable
+        // link from the refund result and ledger entry back to the charge.
+        refundResult.OriginalTransactionId = originalTransactionId;
 
-        // Create transaction record with Refund type
-        var transaction = new VirtualKeyGroupTransaction
+        var idempotencyKey = CreateIdempotencyKey(
+            virtualKeyGroupId, originalTransactionId, modelId, refundUsage);
+
+        await ExecuteRefundTransactionAsync(async ct =>
         {
-            VirtualKeyGroupId = virtualKeyGroupId,
-            TransactionType = TransactionType.Refund,
-            Amount = refundResult.RefundAmount, // Always positive
-            BalanceAfter = group.Balance,
-            ReferenceType = ReferenceType.Manual, // Refunds are manual administrative actions
-            ReferenceId = originalTransactionId,
-            Description = $"Refund: {refundReason} (Model: {modelId})",
-            InitiatedBy = initiatedBy,
-            InitiatedByUserId = initiatedByUserId,
-            CreatedAt = DateTime.UtcNow
-        };
+            // Re-read all mutable state inside the serializable transaction. This makes the aggregate
+            // check safe when two admins refund the same charge concurrently.
+            var trackedGroup = await _context.VirtualKeyGroups
+                .SingleOrDefaultAsync(g => g.Id == virtualKeyGroupId, ct)
+                ?? throw new InvalidOperationException($"Virtual key group {virtualKeyGroupId} not found");
 
-        // Attach and update the group entity (it was fetched with AsNoTracking)
-        _context.VirtualKeyGroups.Update(group);
-        _context.VirtualKeyGroupTransactions.Add(transaction);
-        await _context.SaveChangesAsync(cancellationToken);
+            var chargeAmount = await _context.VirtualKeyGroupTransactions
+                .IgnoreQueryFilters()
+                .Where(t => t.Id == originalTransactionKey
+                    && t.VirtualKeyGroupId == virtualKeyGroupId
+                    && t.TransactionType == TransactionType.Debit)
+                .Select(t => (decimal?)t.Amount)
+                .SingleOrDefaultAsync(ct)
+                ?? throw new ArgumentException(
+                    $"Transaction {originalTransactionId} is not a debit for virtual key group {virtualKeyGroupId}.",
+                    nameof(originalTransactionId));
 
-        // Record the id of the refund transaction we just created. We deliberately do NOT overwrite
-        // OriginalTransactionId here — that field preserves the caller-supplied linkage to the charge
-        // being refunded, which is what makes the idempotency check above possible.
-        // Note: The transaction ID is generated by the database after SaveChangesAsync.
-        refundResult.RefundTransactionId = transaction.Id;
+            var duplicateRequest = await _context.VirtualKeyGroupTransactions
+                .IgnoreQueryFilters()
+                .AnyAsync(t => t.IdempotencyKey == idempotencyKey, ct);
+            if (duplicateRequest)
+            {
+                throw new InvalidOperationException(
+                    $"This refund request for transaction {originalTransactionId} has already been processed.");
+            }
 
-        _logger.LogInformation(
-            "Processed refund for group {GroupId}: {RefundAmount:C}. Model: {ModelId}, Reason: {RefundReason}, Previous Balance: {PreviousBalance:C}, New Balance: {NewBalance:C}, Transaction ID: {TransactionId}",
-            virtualKeyGroupId,
-            refundResult.RefundAmount,
-            modelId,
-            refundReason,
-            previousBalance,
-            group.Balance,
-            transaction.Id);
+            var refundedAmount = await _context.VirtualKeyGroupTransactions
+                .IgnoreQueryFilters()
+                .Where(t => t.VirtualKeyGroupId == virtualKeyGroupId
+                    && t.TransactionType == TransactionType.Refund
+                    && t.ReferenceId == originalTransactionId)
+                .SumAsync(t => t.Amount, ct);
+
+            if (refundResult.RefundAmount <= 0)
+            {
+                throw new ArgumentException("Refund amount must be greater than zero.");
+            }
+
+            if (refundedAmount + refundResult.RefundAmount > chargeAmount)
+            {
+                throw new InvalidOperationException(
+                    $"Refund would exceed original transaction {originalTransactionId}: " +
+                    $"charged {chargeAmount}, already refunded {refundedAmount}, requested {refundResult.RefundAmount}.");
+            }
+
+            // Update group balance
+            var previousBalance = trackedGroup.Balance;
+            trackedGroup.Balance += refundResult.RefundAmount; // Refunds are always positive, so we add
+            trackedGroup.UpdatedAt = DateTime.UtcNow;
+
+            // Create transaction record with Refund type
+            var transaction = new VirtualKeyGroupTransaction
+            {
+                VirtualKeyGroupId = virtualKeyGroupId,
+                TransactionType = TransactionType.Refund,
+                Amount = refundResult.RefundAmount, // Always positive
+                BalanceAfter = trackedGroup.Balance,
+                ReferenceType = ReferenceType.Manual, // Refunds are manual administrative actions
+                ReferenceId = originalTransactionId,
+                IdempotencyKey = idempotencyKey,
+                Description = $"Refund: {refundReason} (Model: {modelId})",
+                InitiatedBy = initiatedBy,
+                InitiatedByUserId = initiatedByUserId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.VirtualKeyGroupTransactions.Add(transaction);
+            await _context.SaveChangesAsync(ct);
+
+            refundResult.RefundTransactionId = transaction.Id;
+
+            _logger.LogInformation(
+                "Processed refund for group {GroupId}: {RefundAmount:C}. Model: {ModelId}, Reason: {RefundReason}, Previous Balance: {PreviousBalance:C}, New Balance: {NewBalance:C}, Transaction ID: {TransactionId}",
+                virtualKeyGroupId,
+                refundResult.RefundAmount,
+                modelId,
+                refundReason,
+                previousBalance,
+                trackedGroup.Balance,
+                transaction.Id);
+        }, cancellationToken);
 
         return refundResult;
+    }
+
+    private async Task ExecuteRefundTransactionAsync(
+        Func<CancellationToken, Task> work,
+        CancellationToken cancellationToken)
+    {
+        if (_context is not DbContext dbContext || !dbContext.Database.IsRelational())
+        {
+            await work(cancellationToken);
+            return;
+        }
+
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async ct =>
+        {
+            dbContext.ChangeTracker.Clear();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable, ct);
+            await work(ct);
+            await transaction.CommitAsync(ct);
+        }, cancellationToken);
+    }
+
+    private static string CreateIdempotencyKey(
+        int groupId,
+        string originalTransactionId,
+        string modelId,
+        Usage refundUsage)
+    {
+        var request = string.Join('|',
+            groupId.ToString(CultureInfo.InvariantCulture),
+            originalTransactionId,
+            modelId,
+            refundUsage.PromptTokens,
+            refundUsage.CompletionTokens,
+            refundUsage.TotalTokens,
+            refundUsage.CachedInputTokens,
+            refundUsage.CachedWriteTokens,
+            refundUsage.ReasoningTokens,
+            refundUsage.ImageCount,
+            refundUsage.ImageQuality,
+            refundUsage.ImageResolution,
+            refundUsage.VideoDurationSeconds?.ToString("R", CultureInfo.InvariantCulture),
+            refundUsage.VideoResolution,
+            refundUsage.SearchUnits,
+            refundUsage.InferenceSteps,
+            refundUsage.IsBatch);
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request)));
+        return $"refund:{groupId}:{originalTransactionId}:{hash[..32]}";
     }
 }
