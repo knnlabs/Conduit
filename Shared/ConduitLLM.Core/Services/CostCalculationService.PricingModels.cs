@@ -199,16 +199,15 @@ public partial class CostCalculationService
             throw new InvalidOperationException($"No tiered tokens pricing configuration for model {modelId}");
         }
 
-        var inputTokens = usage.PromptTokens ?? 0;
-        var outputTokens = usage.CompletionTokens ?? 0;
-
-        // Find the appropriate tier based on total context length
-        var totalTokens = inputTokens + outputTokens;
+        var inputTokens = usage.PromptTokens.GetValueOrDefault();
+        var orderedTiers = config.Tiers.OrderBy(t => t.MaxContext ?? int.MaxValue).ToList();
         TokenPricingTier? tier = null;
 
-        foreach (var t in config.Tiers.OrderBy(t => t.MaxContext ?? int.MaxValue))
+        // Context-priced providers select the tier from the prompt/context presented to
+        // the model. Generated output does not move a request into a higher input tier.
+        foreach (var t in orderedTiers)
         {
-            if (!t.MaxContext.HasValue || totalTokens <= t.MaxContext.Value)
+            if (!t.MaxContext.HasValue || inputTokens <= t.MaxContext.Value)
             {
                 tier = t;
                 break;
@@ -217,17 +216,46 @@ public partial class CostCalculationService
 
         if (tier == null)
         {
-            tier = config.Tiers.Last(); // Use highest tier if none match
+            tier = orderedTiers.Last(); // Use the highest configured tier if none match
         }
 
-        var inputCost = (inputTokens * tier.InputCost) / 1_000_000m;
-        var outputCost = (outputTokens * tier.OutputCost) / 1_000_000m;
+        decimal calculatedCost = 0m;
+        var regularInputTokens = inputTokens;
 
-        _logger.LogDebug("Tiered tokens cost for model {ModelId}: Context {TotalTokens}, Tier ≤{MaxContext}, " +
-            "Input: {InputTokens} × ${InputRate} + Output: {OutputTokens} × ${OutputRate} = ${TotalCost}",
-            modelId, totalTokens, tier.MaxContext, inputTokens, tier.InputCost, outputTokens, tier.OutputCost, inputCost + outputCost);
+        if (usage.CachedInputTokens is > 0 && modelCost.CachedInputCostPerMillionTokens.HasValue)
+        {
+            if (usage.CachedInputTokensIncludedInPrompt)
+                regularInputTokens -= usage.CachedInputTokens.Value;
 
-        return Task.FromResult(inputCost + outputCost);
+            calculatedCost += usage.CachedInputTokens.Value * modelCost.CachedInputCostPerMillionTokens.Value / 1_000_000m;
+        }
+
+        if (usage.CachedWriteTokens is > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
+        {
+            calculatedCost += usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value / 1_000_000m;
+        }
+
+        if (regularInputTokens > 0)
+            calculatedCost += regularInputTokens * tier.InputCost / 1_000_000m;
+
+        var reasoningTokens = usage.ReasoningTokens.GetValueOrDefault();
+        var regularOutputTokens = Math.Max(0, usage.CompletionTokens.GetValueOrDefault() - reasoningTokens);
+        calculatedCost += regularOutputTokens * tier.OutputCost / 1_000_000m;
+
+        if (reasoningTokens > 0)
+        {
+            var reasoningRate = modelCost.ReasoningCostPerMillionTokens ?? tier.OutputCost;
+            calculatedCost += reasoningTokens * reasoningRate / 1_000_000m;
+        }
+
+        if (usage.SearchUnits is > 0 && modelCost.CostPerSearchUnit.HasValue)
+            calculatedCost += usage.SearchUnits.Value * modelCost.CostPerSearchUnit.Value / 1000m;
+
+        _logger.LogDebug("Tiered tokens cost for model {ModelId}: Input context {InputTokens}, Tier ≤{MaxContext}, " +
+            "Input rate ${InputRate}, Output rate ${OutputRate}, Total cost ${TotalCost}",
+            modelId, inputTokens, tier.MaxContext, tier.InputCost, tier.OutputCost, calculatedCost);
+
+        return Task.FromResult(calculatedCost);
     }
 
     private Task<decimal> CalculatePerImageCostAsync(string modelId, ModelCost modelCost, Usage usage)

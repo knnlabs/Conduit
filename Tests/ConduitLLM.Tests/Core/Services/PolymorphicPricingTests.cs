@@ -272,7 +272,7 @@ namespace ConduitLLM.Tests.Core.Services
             var cost = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Total context: 180000 (under 200K)
+            // Prompt context: 150000 (under 200K)
             // Input: 150000 * 400 / 1000000 = 60
             // Output: 30000 * 2200 / 1000000 = 66
             Assert.Equal(126m, cost);
@@ -312,10 +312,98 @@ namespace ConduitLLM.Tests.Core.Services
             var cost = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Total context: 300000 (over 200K, use higher tier)
+            // Prompt context: 250000 (over 200K, use higher tier)
             // Input: 250000 * 1300 / 1000000 = 325
             // Output: 50000 * 2200 / 1000000 = 110
             Assert.Equal(435m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_TieredTokens_SelectsTierFromPromptTokensOnly()
+        {
+            var modelId = "tiered/prompt-context";
+            var usage = new Usage { PromptTokens = 190000, CompletionTokens = 50000 };
+            var config = new TieredTokensPricingConfig
+            {
+                Tiers =
+                [
+                    new TokenPricingTier { MaxContext = 200000, InputCost = 1m, OutputCost = 2m },
+                    new TokenPricingTier { MaxContext = null, InputCost = 10m, OutputCost = 20m }
+                ]
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.TieredTokens,
+                PricingConfiguration = JsonSerializer.Serialize(config)
+            };
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default)).ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.29m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_TieredTokens_UsesSortedHighestTierForOverLimitPrompt()
+        {
+            var modelId = "tiered/over-limit";
+            var usage = new Usage { PromptTokens = 300000, CompletionTokens = 10000 };
+            var config = new TieredTokensPricingConfig
+            {
+                Tiers =
+                [
+                    new TokenPricingTier { MaxContext = 200000, InputCost = 10m, OutputCost = 20m },
+                    new TokenPricingTier { MaxContext = 100000, InputCost = 1m, OutputCost = 2m }
+                ]
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.TieredTokens,
+                PricingConfiguration = JsonSerializer.Serialize(config)
+            };
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default)).ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(3.2m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_TieredTokens_PricesCachedReasoningAndSearchUsage()
+        {
+            var modelId = "tiered/additional-usage";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                CachedInputTokens = 400,
+                CachedWriteTokens = 200,
+                ReasoningTokens = 300,
+                SearchUnits = 10
+            };
+            var config = new TieredTokensPricingConfig
+            {
+                Tiers = [new TokenPricingTier { MaxContext = null, InputCost = 10m, OutputCost = 20m }]
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.TieredTokens,
+                PricingConfiguration = JsonSerializer.Serialize(config),
+                CachedInputCostPerMillionTokens = 2m,
+                CachedInputWriteCostPerMillionTokens = 15m,
+                ReasoningCostPerMillionTokens = 30m,
+                CostPerSearchUnit = 1m
+            };
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default)).ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            // regular input .006 + cache read .0008 + cache write .003
+            // regular output .004 + reasoning .009 + search .01
+            Assert.Equal(0.0328m, cost);
         }
 
         [Fact]
