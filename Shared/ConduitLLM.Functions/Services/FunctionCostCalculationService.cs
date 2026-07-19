@@ -29,6 +29,9 @@ namespace ConduitLLM.Functions.Services;
 /// </remarks>
 public partial class FunctionCostCalculationService : IFunctionCostCalculationService
 {
+    private const decimal ProviderCostDriftWarningThreshold = 0.05m;
+    private const decimal ProviderCostDriftMinimumUsd = 0.000001m;
+
     private readonly IFunctionCostService _functionCostService;
     private readonly ILogger<FunctionCostCalculationService> _logger;
 
@@ -82,6 +85,14 @@ public partial class FunctionCostCalculationService : IFunctionCostCalculationSe
 
         if (functionCost == null)
         {
+            if (usage.ProviderReportedCost is >= 0m)
+            {
+                _logger.LogWarning(
+                    "Cost information not found for function configuration {ConfigId}. Billing authoritative provider-reported cost {ProviderReportedCost}.",
+                    functionConfigurationId, usage.ProviderReportedCost.Value);
+                return usage.ProviderReportedCost.Value;
+            }
+
             _logger.LogWarning("Cost information not found for function configuration {ConfigId}. Returning 0 cost.", functionConfigurationId);
             return 0m;
         }
@@ -125,6 +136,29 @@ public partial class FunctionCostCalculationService : IFunctionCostCalculationSe
         _logger.LogDebug("Calculated cost for function configuration {ConfigId} using pricing model {PricingModel} is {CalculatedCost}",
             functionConfigurationId, functionCost.PricingModel, calculatedCost);
 
-        return calculatedCost;
+        return ReconcileProviderReportedCost(functionConfigurationId, calculatedCost, usage.ProviderReportedCost);
+    }
+
+    private decimal ReconcileProviderReportedCost(
+        int functionConfigurationId,
+        decimal calculatedCost,
+        decimal? providerReportedCost)
+    {
+        if (providerReportedCost is not >= 0m)
+            return calculatedCost;
+
+        var difference = Math.Abs(calculatedCost - providerReportedCost.Value);
+        var comparisonBase = Math.Max(Math.Abs(calculatedCost), Math.Abs(providerReportedCost.Value));
+        var driftRatio = comparisonBase == 0m ? 0m : difference / comparisonBase;
+
+        if (difference > ProviderCostDriftMinimumUsd && driftRatio > ProviderCostDriftWarningThreshold)
+        {
+            _logger.LogWarning(
+                "Function cost drift detected for configuration {ConfigId}: configured cost {CalculatedCost}, " +
+                "provider-reported cost {ProviderReportedCost}, drift {DriftPercentage:P2}. Billing provider-reported cost.",
+                functionConfigurationId, calculatedCost, providerReportedCost.Value, driftRatio);
+        }
+
+        return providerReportedCost.Value;
     }
 }

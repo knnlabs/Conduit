@@ -141,11 +141,11 @@ public class FunctionExecutionUsage
     public Dictionary<string, object>? Metadata { get; set; }
 
     /// <summary>
-    /// Provider-reported cost (if available) for comparison with Conduit's calculation.
+    /// Provider-reported cost (if available) used as the authoritative execution cost.
     /// </summary>
     /// <remarks>
     /// Some providers (like Exa) return their own cost calculation in the response.
-    /// This field stores that value for reconciliation and audit purposes.
+    /// This field stores that value for billing, reconciliation, and audit purposes.
     /// Stored in USD.
     /// </remarks>
     [JsonPropertyName("provider_reported_cost")]

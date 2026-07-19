@@ -3,6 +3,7 @@ using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Models;
 using ConduitLLM.Functions.Services;
+using ConduitLLM.Tests.TestHelpers;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -34,6 +35,56 @@ public class FunctionCostCalculationServiceHybridTests
         {
             ResultCount = 0,
             SearchType = "keyword"
+        };
+
+        var cost = await service.CalculateCostAsync(42, usage);
+
+        Assert.Equal(0.0025m, cost);
+    }
+
+    [Fact]
+    public async Task CalculateCostAsync_ProviderReportedCost_OverridesConfiguredCost()
+    {
+        var logger = new Mock<ILogger<FunctionCostCalculationService>>();
+        var service = CreateService(CreateExaCost(), logger.Object);
+        var usage = new FunctionExecutionUsage
+        {
+            ResultCount = 10,
+            SearchType = "keyword",
+            ProviderReportedCost = 0.004m
+        };
+
+        var cost = await service.CalculateCostAsync(42, usage);
+
+        Assert.Equal(0.004m, cost);
+        logger.VerifyLog(LogLevel.Warning, "Function cost drift detected", Times.Once());
+    }
+
+    [Fact]
+    public async Task CalculateCostAsync_ZeroProviderReportedCost_OverridesConfiguredCost()
+    {
+        var service = CreateService(CreateExaCost());
+        var usage = new FunctionExecutionUsage
+        {
+            ResultCount = 10,
+            SearchType = "keyword",
+            ProviderReportedCost = 0m
+        };
+
+        var cost = await service.CalculateCostAsync(42, usage);
+
+        Assert.Equal(0m, cost);
+    }
+
+    [Fact]
+    public async Task CalculateCostAsync_NegativeProviderReportedCost_IsIgnored()
+    {
+        var service = CreateService(CreateExaCost());
+        var usage = new FunctionExecutionUsage
+        {
+            ResultCount = 10,
+            SearchType = "keyword",
+            ProviderReportedCost = -1m
         };
 
         var cost = await service.CalculateCostAsync(42, usage);
@@ -101,7 +152,9 @@ public class FunctionCostCalculationServiceHybridTests
         Assert.Contains("Invalid Perplexity hybrid pricing configuration", exception.Message);
     }
 
-    private static FunctionCostCalculationService CreateService(FunctionCost cost)
+    private static FunctionCostCalculationService CreateService(
+        FunctionCost cost,
+        ILogger<FunctionCostCalculationService>? logger = null)
     {
         var costService = new Mock<IFunctionCostService>();
         costService
@@ -110,7 +163,7 @@ public class FunctionCostCalculationServiceHybridTests
 
         return new FunctionCostCalculationService(
             costService.Object,
-            Mock.Of<ILogger<FunctionCostCalculationService>>());
+            logger ?? Mock.Of<ILogger<FunctionCostCalculationService>>());
     }
 
     private static FunctionCost CreatePerplexityCost() => new()
