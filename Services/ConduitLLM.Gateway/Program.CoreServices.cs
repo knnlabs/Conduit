@@ -52,7 +52,6 @@ public partial class Program
 
         builder.Services.AddHttpClient();
         // Provider named clients + resilience pipeline are registered by AddProviderServices()
-        builder.Services.AddVideoGenerationHttpClients();
         builder.Services.AddHttpClientServices(builder.Configuration);
 
         // Register operation timeout provider for operation-aware timeout policies
