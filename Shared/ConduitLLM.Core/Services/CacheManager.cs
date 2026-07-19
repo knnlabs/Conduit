@@ -88,7 +88,27 @@ namespace ConduitLLM.Core.Services
                         if (config.UseMemoryCache && value != null)
                         {
                             var ttl = config.DefaultTTL ?? TimeSpan.FromMinutes(5);
-                            _memoryCache.Set(fullKey, value, ttl);
+                            var memoryCacheOptions = new MemoryCacheEntryOptions
+                            {
+                                AbsoluteExpirationRelativeToNow = ttl,
+                                Priority = GetCachePriority(config.Priority),
+                                PostEvictionCallbacks =
+                                {
+                                    new PostEvictionCallbackRegistration
+                                    {
+                                        EvictionCallback = OnMemoryCacheEviction,
+                                        State = (key, region)
+                                    }
+                                }
+                            };
+
+                            _memoryCache.Set(fullKey, value, memoryCacheOptions);
+
+                            // Distributed hits populate L1 without going through SetAsync.
+                            // Track them so ClearRegionAsync can evict this instance's copy
+                            // and the corresponding shared L2 entry.
+                            var regionKeys = _regionKeys.GetOrAdd(region, _ => new ConcurrentDictionary<string, byte>());
+                            regionKeys.TryAdd(key, 0);
                         }
                     }
                 }

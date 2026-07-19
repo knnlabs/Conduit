@@ -2,6 +2,8 @@ using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
+using ConfigurationModelCostService = ConduitLLM.Configuration.Interfaces.IModelCostService;
+
 
 namespace ConduitLLM.Gateway.Consumers
 {
@@ -11,24 +13,24 @@ namespace ConduitLLM.Gateway.Consumers
     /// </summary>
     public class ModelCostCacheInvalidationHandler : IEventHandler<ModelCostChanged>
     {
-        private readonly IModelCostCache? _modelCostCache;
+        private readonly ConfigurationModelCostService _modelCostService;
         private readonly ICachedPricingRulesService? _pricingRulesCache;
         private readonly ILogger<ModelCostCacheInvalidationHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ModelCostCacheInvalidationHandler
         /// </summary>
-        /// <param name="modelCostCache">Optional model cost cache</param>
+        /// <param name="modelCostService">The model cost service used by the billing path</param>
         /// <param name="pricingRulesCache">Optional pricing rules cache</param>
         /// <param name="logger">Logger for diagnostics</param>
         public ModelCostCacheInvalidationHandler(
-            IModelCostCache? modelCostCache,
+            ConfigurationModelCostService modelCostService,
             ICachedPricingRulesService? pricingRulesCache,
             ILogger<ModelCostCacheInvalidationHandler> logger)
         {
-            _modelCostCache = modelCostCache;
+            _modelCostService = modelCostService ?? throw new ArgumentNullException(nameof(modelCostService));
             _pricingRulesCache = pricingRulesCache;
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -64,27 +66,17 @@ namespace ConduitLLM.Gateway.Consumers
                     @event.CostName);
             }
 
-            // Invalidate model cost cache if available — use targeted invalidation to avoid cache miss avalanche
-            if (_modelCostCache != null)
+            // Clear the cache used by CostCalculationService. ModelCostChanged only contains
+            // the database cost ID, while lookups are also cached by provider model identifier,
+            // so the whole region must be invalidated to cover every affected mapping.
+            try
             {
-                try
-                {
-                    if (@event.ModelCostId > 0)
-                    {
-                        await _modelCostCache.InvalidateModelCostAsync(@event.ModelCostId);
-                        _logger.LogInformation("Model cost cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
-                    }
-                    else
-                    {
-                        // Fallback to full clear only when we don't have a specific ID
-                        await _modelCostCache.ClearAllModelCostsAsync();
-                        _logger.LogInformation("Model cost cache fully cleared (no specific ModelCostId in event)");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error invalidating model cost cache");
-                }
+                await _modelCostService.ClearCacheAsync(context.CancellationToken);
+                _logger.LogInformation("Billing model cost cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invalidating billing model cost cache");
             }
 
             // Invalidate pricing rules cache if available
