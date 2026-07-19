@@ -11,6 +11,37 @@ namespace ConduitLLM.Tests.Functions.Services;
 public class FunctionCostCalculationServiceHybridTests
 {
     [Fact]
+    public async Task CalculateCostAsync_ExaContents_BillsRetrievalAndExtractionWithoutSearch()
+    {
+        var service = CreateService(CreateExaCost());
+        var usage = new FunctionExecutionUsage
+        {
+            ResultCount = 10,
+            TextPagesExtracted = 10,
+            Metadata = new Dictionary<string, object> { ["operation"] = "contents" }
+        };
+
+        var cost = await service.CalculateCostAsync(42, usage);
+
+        Assert.Equal(0.020m, cost);
+    }
+
+    [Fact]
+    public async Task CalculateCostAsync_ExaSearchWithNoResults_BillsRequestFee()
+    {
+        var service = CreateService(CreateExaCost());
+        var usage = new FunctionExecutionUsage
+        {
+            ResultCount = 0,
+            SearchType = "keyword"
+        };
+
+        var cost = await service.CalculateCostAsync(42, usage);
+
+        Assert.Equal(0.0025m, cost);
+    }
+
+    [Fact]
     public async Task CalculateCostAsync_PerplexityConfig_BillsBaseAndTypedTokens()
     {
         var service = CreateService(CreatePerplexityCost());
@@ -92,6 +123,31 @@ public class FunctionCostCalculationServiceHybridTests
               "baseRequestCost": 0.005,
               "inputTokenCostPerMillion": 1.33,
               "outputTokenCostPerMillion": 1.33
+            }
+            """
+    };
+
+    private static FunctionCost CreateExaCost() => new()
+    {
+        CostName = "Exa Hybrid",
+        ProviderType = FunctionProviderType.Exa,
+        PricingModel = FunctionPricingModel.Hybrid,
+        PricingConfiguration = """
+            {
+              "searchCosts": {
+                "neural": {
+                  "tier1": { "maxResults": 25, "cost": 0.005 },
+                  "tier2": { "maxResults": null, "cost": 0.025 }
+                },
+                "keyword": { "cost": 0.0025 },
+                "auto": { "fallbackToKeyword": true }
+              },
+              "contentRetrievalCosts": { "costPer1000Pages": 1.0 },
+              "contentExtractionCosts": {
+                "text": 0.001,
+                "highlights": 0.001,
+                "summary": 0.001
+              }
             }
             """
     };

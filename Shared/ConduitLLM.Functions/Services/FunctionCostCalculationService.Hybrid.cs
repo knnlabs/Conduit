@@ -123,18 +123,21 @@ public partial class FunctionCostCalculationService
     /// </remarks>
     private decimal CalculateExaHybridCost(ExaHybridPricingConfig config, FunctionExecutionUsage usage)
     {
-        decimal totalCost = 0m;
+        var isContentRetrieval = usage.Metadata?.TryGetValue("operation", out var operation) == true
+            && string.Equals(operation?.ToString(), "contents", StringComparison.OrdinalIgnoreCase);
 
-        // 1. Calculate search cost
-        decimal searchCost = CalculateExaSearchCost(config, usage);
-        totalCost += searchCost;
+        // Search and get-contents are distinct billable operations. A contents response
+        // has no resolved search type because no search request was made.
+        decimal requestCost = isContentRetrieval
+            ? CalculateExaContentRetrievalCost(config, usage)
+            : CalculateExaSearchCost(config, usage);
 
-        // 2. Calculate content extraction costs
+        // Both operations may also request text, highlights, or summaries.
         decimal contentCost = CalculateExaContentExtractionCost(config, usage);
-        totalCost += contentCost;
+        decimal totalCost = requestCost + contentCost;
 
-        _logger.LogDebug("Exa hybrid cost breakdown: Search=${SearchCost}, Content=${ContentCost}, Total=${TotalCost}",
-            searchCost, contentCost, totalCost);
+        _logger.LogDebug("Exa hybrid cost breakdown: Request=${RequestCost}, Content=${ContentCost}, Total=${TotalCost}",
+            requestCost, contentCost, totalCost);
 
         return totalCost;
     }
@@ -146,12 +149,6 @@ public partial class FunctionCostCalculationService
     {
         var searchType = usage.SearchType?.ToLowerInvariant() ?? "auto";
         var resultCount = usage.ResultCount ?? 0;
-
-        if (resultCount == 0)
-        {
-            _logger.LogDebug("No results returned, search cost = 0");
-            return 0m;
-        }
 
         decimal searchCost;
 
@@ -200,6 +197,21 @@ public partial class FunctionCostCalculationService
         }
 
         return searchCost;
+    }
+
+    /// <summary>
+    /// Calculates Exa get-contents cost based on the number of returned pages.
+    /// </summary>
+    private decimal CalculateExaContentRetrievalCost(ExaHybridPricingConfig config, FunctionExecutionUsage usage)
+    {
+        var pages = Math.Max(usage.ResultCount ?? 0, 0);
+        var costPer1000Pages = config.ContentRetrievalCosts?.CostPer1000Pages ?? 0m;
+        var retrievalCost = pages * costPer1000Pages / 1_000m;
+
+        _logger.LogDebug("Content retrieval: {Pages} pages × ${CostPer1000Pages}/1000 = ${Cost}",
+            pages, costPer1000Pages, retrievalCost);
+
+        return retrievalCost;
     }
 
     /// <summary>
