@@ -94,6 +94,16 @@ namespace ConduitLLM.Gateway.Controllers
                 Model = model,
                 AudioDurationSeconds = result.DurationSeconds
             });
+            var transcriptionUsage = new ConduitLLM.Core.Models.Usage
+            {
+                AudioDurationSeconds = result.DurationSeconds
+            };
+            var transcriptionAccounting = HttpContext.GetOrCreateRequestAccountingContext();
+            transcriptionAccounting.SetOperation(RequestOperation.Audio, CurrentVirtualKeyId, model);
+            transcriptionAccounting.RecordProviderUsage(
+                transcriptionUsage,
+                model,
+                UsageEvidenceSource.Provider);
 
             if (string.Equals(responseFormat, "text", StringComparison.OrdinalIgnoreCase))
                 return Content(result.Text, "text/plain");
@@ -139,6 +149,16 @@ namespace ConduitLLM.Gateway.Controllers
                 Model = alias,
                 TtsCharacters = characterCount
             });
+            var speechUsage = new ConduitLLM.Core.Models.Usage
+            {
+                TtsCharacters = characterCount
+            };
+            var speechAccounting = HttpContext.GetOrCreateRequestAccountingContext();
+            speechAccounting.SetOperation(RequestOperation.Audio, CurrentVirtualKeyId, alias);
+            speechAccounting.RecordProviderUsage(
+                speechUsage,
+                alias,
+                UsageEvidenceSource.Estimated);
 
             return File(result.AudioData, result.ContentType);
         }

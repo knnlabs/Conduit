@@ -42,6 +42,11 @@ namespace ConduitLLM.Providers.Streaming
                     chunk.OriginalModelAlias = modelId;
                 }
 
+                if (chunk is not null)
+                {
+                    chunk.ProviderToolUsage = ExtractHostedToolUsage(providerChunk);
+                }
+
                 return chunk;
             }
             catch (JsonException)
@@ -124,6 +129,41 @@ namespace ConduitLLM.Providers.Streaming
         {
             return chunk.TryGetProperty("x_groq", out var xGroq) &&
                    xGroq.TryGetProperty("usage", out _);
+        }
+
+        private static ProviderToolUsage? ExtractHostedToolUsage(JsonElement chunk)
+        {
+            if (!chunk.TryGetProperty("x_groq", out var xGroq) ||
+                !xGroq.TryGetProperty("usage", out var usage))
+            {
+                return null;
+            }
+
+            var tools = new List<ProviderToolUsageItem>();
+            foreach (var toolName in new[] { "code_interpreter", "browser_search", "python" })
+            {
+                if (!usage.TryGetProperty(toolName, out var countElement) ||
+                    !countElement.TryGetInt32(out var count) || count <= 0)
+                {
+                    continue;
+                }
+
+                decimal? durationSeconds = null;
+                if (usage.TryGetProperty($"{toolName}_duration_seconds", out var durationElement) &&
+                    durationElement.TryGetDecimal(out var duration))
+                {
+                    durationSeconds = duration;
+                }
+
+                tools.Add(new ProviderToolUsageItem
+                {
+                    ToolName = toolName == "python" ? "code_interpreter" : toolName,
+                    Count = count,
+                    DurationSeconds = durationSeconds
+                });
+            }
+
+            return tools.Count == 0 ? null : new ProviderToolUsage { Tools = tools };
         }
     }
 }

@@ -7,6 +7,7 @@ using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.Utilities;
+using ConduitLLM.Gateway.UsageTracking;
 
 namespace ConduitLLM.Gateway.Middleware
 {
@@ -21,9 +22,7 @@ namespace ConduitLLM.Gateway.Middleware
         {
             try
             {
-                var providerCalls = context.Items.TryGetValue(HttpContextKeys.ChatProviderCalls, out var providerCallsObj)
-                    ? providerCallsObj as List<ProviderCallUsage>
-                    : null;
+                var providerCalls = context.GetRequestAccountingSnapshot()?.ProviderCalls.ToList();
 
                 async Task<decimal> CalculateCallAsync(Usage callUsage)
                 {

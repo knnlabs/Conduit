@@ -5,6 +5,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
 using Moq;
@@ -80,7 +81,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
-        public async Task ProcessResponseAsync_WithMissingToolConfig_FailsClosed()
+        public async Task TypedAccounting_WithMissingToolConfig_MarksRequestIndeterminate()
         {
             // Arrange - No tool configuration in database
             var context = new HttpContextBuilder()
@@ -93,14 +94,17 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0m); // Zero base cost to trigger zero cost path
 
             // Act
-            await Assert.ThrowsAsync<ToolCostCalculationException>(() => Invoker
+            await Invoker
                 .WithTestResponseBodyDelegate()
-                .InvokeWithRealToolServiceAsync(context));
+                .InvokeWithRealToolServiceAsync(context);
 
             // Assert
             Fixture.BatchSpendService.Verify(
                 service => service.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<DateTime?>()),
                 Times.Never);
+            Assert.True(context.GetRequestAccountingSnapshot()!.IsIndeterminate);
+            Assert.Contains(Fixture.CapturedBillingEvents,
+                billingEvent => billingEvent.EventType == BillingAuditEventType.UnexpectedError);
         }
 
         [Fact]
@@ -191,7 +195,7 @@ namespace ConduitLLM.Tests.Http.Middleware
                 .ForChatCompletions()
                 .WithVirtualKey(123)
                 .AsGroq()
-                .WithItem(HttpContextKeys.ChatProviderCalls, providerCalls)
+                .WithItem("ChatProviderCalls", providerCalls)
                 .WithTestResponseBody(CreateGroqResponseWithoutToolUsage())
                 .Build();
 

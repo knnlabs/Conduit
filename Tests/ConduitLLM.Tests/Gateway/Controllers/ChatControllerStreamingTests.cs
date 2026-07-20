@@ -81,16 +81,15 @@ public class ChatControllerStreamingTests
         });
 
         Assert.IsType<EmptyResult>(result);
-        var usage = Assert.IsType<Usage>(controller.HttpContext.Items["StreamingUsage"]);
-        Assert.Equal(8, usage.TotalTokens);
-        Assert.Equal("test-model", controller.HttpContext.Items["StreamingModel"]);
-        Assert.Equal(true, controller.HttpContext.Items["UsageIsEstimated"]);
+        var snapshot = controller.HttpContext.GetRequestAccountingSnapshot();
+        var providerUsage = Assert.IsType<ProviderUsageEvidence>(snapshot!.ProviderUsage);
+        Assert.Equal(8, providerUsage.Usage.TotalTokens);
+        Assert.Equal("test-model", providerUsage.Model);
+        Assert.Equal(UsageEvidenceSource.Estimated, providerUsage.Source);
         var responseText = System.Text.Encoding.UTF8.GetString(
             ((MemoryStream)controller.HttpContext.Response.Body).ToArray());
         Assert.Contains("event: error", responseText);
         Assert.DoesNotContain("data: [DONE]", responseText);
-        var snapshot = controller.HttpContext.GetRequestAccountingSnapshot();
-        Assert.Equal(UsageEvidenceSource.Estimated, snapshot!.ProviderUsage!.Source);
         Assert.Equal(StreamTransportOutcome.ProviderFailed, snapshot.Transport!.Outcome);
         Assert.True(snapshot.Transport.BytesWritten > 0);
         estimator.VerifyAll();
@@ -119,8 +118,10 @@ public class ChatControllerStreamingTests
         var controller = CreateController(new Conduit(clientFactory.Object, Mock.Of<ILogger<Conduit>>()), estimator.Object);
         await controller.CreateChatCompletion(CreateRequest());
 
-        Assert.Equal(true, controller.HttpContext.Items["UsageIsEstimated"]);
-        Assert.Equal(7, Assert.IsType<Usage>(controller.HttpContext.Items["StreamingUsage"]).TotalTokens);
+        var snapshot = controller.HttpContext.GetRequestAccountingSnapshot();
+        var providerUsage = Assert.IsType<ProviderUsageEvidence>(snapshot!.ProviderUsage);
+        Assert.Equal(UsageEvidenceSource.Estimated, providerUsage.Source);
+        Assert.Equal(7, providerUsage.Usage.TotalTokens);
         estimator.VerifyAll();
     }
 

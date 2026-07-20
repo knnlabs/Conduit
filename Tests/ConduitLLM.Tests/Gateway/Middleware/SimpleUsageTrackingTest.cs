@@ -8,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.UsageTracking;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Http.Middleware
@@ -51,7 +52,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
         
         [Fact]
-        public async Task Test_Response_Body_Interception()
+        public async Task Test_Typed_Usage_Is_Billed_Without_Response_Body_Interception()
         {
             // Arrange
             var responseData = new
@@ -71,6 +72,12 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             RequestDelegate next = async (HttpContext ctx) => 
             {
+                var accounting = ctx.GetOrCreateRequestAccountingContext();
+                accounting.SetOperation(RequestOperation.ChatCompletion, 123, "gpt-4");
+                accounting.RecordProviderUsage(
+                    new Usage { PromptTokens = 10, CompletionTokens = 20, TotalTokens = 30 },
+                    "gpt-4",
+                    UsageEvidenceSource.Provider);
                 // Write response
                 await ctx.Response.Body.WriteAsync(bytes);
                 ctx.Response.ContentType = "application/json";
@@ -104,6 +111,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             // Assert
             mockCostService.Verify(x => x.CalculateCostAsync("gpt-4", It.IsAny<Usage>(), default), Times.Once);
+            Assert.Equal(json, Encoding.UTF8.GetString(((MemoryStream)context.Response.Body).ToArray()));
         }
     }
 }

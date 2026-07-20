@@ -80,5 +80,50 @@ namespace ConduitLLM.Gateway.Middleware
                 {
                     LabelNames = new[] { "model", "reason" }
                 });
+
+        public static readonly Gauge StreamsActive = Prometheus.Metrics
+            .CreateGauge("conduit_streams_active", "Number of active client-visible streams");
+
+        public static readonly Counter StreamsTotal = Prometheus.Metrics
+            .CreateCounter("conduit_streams_total", "Total streams by terminal outcome",
+                new CounterConfiguration { LabelNames = new[] { "outcome" } });
+
+        public static readonly Histogram StreamTimeToProviderFirstChunk = Prometheus.Metrics
+            .CreateHistogram(
+                "conduit_stream_time_to_provider_first_chunk_seconds",
+                "Time from stream admission to the first provider chunk",
+                new HistogramConfiguration { Buckets = Histogram.ExponentialBuckets(0.005, 2, 14) });
+
+        public static readonly Histogram StreamTimeToClientFirstFlush = Prometheus.Metrics
+            .CreateHistogram(
+                "conduit_stream_time_to_client_first_flush_seconds",
+                "Time from stream admission to the first completed client flush",
+                new HistogramConfiguration { Buckets = Histogram.ExponentialBuckets(0.005, 2, 14) });
+
+        public static readonly Counter StreamChunks = Prometheus.Metrics
+            .CreateCounter("conduit_stream_chunks_total", "Provider chunks observed by provider type",
+                new CounterConfiguration { LabelNames = new[] { "provider" } });
+
+        public static readonly Counter StreamBytes = Prometheus.Metrics
+            .CreateCounter("conduit_stream_bytes_total", "SSE bytes flushed by provider type",
+                new CounterConfiguration { LabelNames = new[] { "provider" } });
+
+        public static readonly Counter StreamClientDisconnects = Prometheus.Metrics
+            .CreateCounter("conduit_stream_client_disconnects_total", "Client disconnects by stream phase",
+                new CounterConfiguration { LabelNames = new[] { "phase" } });
+
+        public static readonly Histogram StreamAccountingFinalizationDuration = Prometheus.Metrics
+            .CreateHistogram(
+                "conduit_stream_accounting_finalization_seconds",
+                "Time spent finalizing stream accounting",
+                new HistogramConfiguration
+                {
+                    LabelNames = new[] { "outcome" },
+                    Buckets = Histogram.ExponentialBuckets(0.001, 2, 14)
+                });
+
+        public static readonly Counter StreamUsageEvidence = Prometheus.Metrics
+            .CreateCounter("conduit_stream_usage_evidence_total", "Streaming usage evidence by source",
+                new CounterConfiguration { LabelNames = new[] { "source" } });
     }
 }

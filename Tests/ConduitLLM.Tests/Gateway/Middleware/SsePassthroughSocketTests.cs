@@ -25,24 +25,6 @@ public class SsePassthroughSocketTests
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
         await using var app = builder.Build();
 
-        app.Use(async (context, next) =>
-        {
-            var originalBody = context.Response.Body;
-            await using var adaptiveBody = new ConditionalResponseCaptureStream(
-                context.Response,
-                originalBody,
-                1024);
-            context.Response.Body = adaptiveBody;
-            try
-            {
-                await next(context);
-            }
-            finally
-            {
-                context.Response.Body = originalBody;
-            }
-        });
-
         app.MapGet("/stream", async context =>
         {
             var writer = context.Response.CreateEnhancedSSEWriter();

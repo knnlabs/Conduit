@@ -347,7 +347,7 @@ namespace ConduitLLM.Gateway.Middleware
                 RequestId = context.TraceIdentifier,
                 RequestPath = context.Request.Path.ToString(),
                 HttpStatusCode = context.Response.StatusCode,
-                FailureReason = "No StreamingUsage in HttpContext.Items - estimation service may not be configured",
+                FailureReason = "No provider usage in the typed request accounting snapshot",
                 ProviderType = providerType
             });
             

@@ -6,9 +6,6 @@ namespace ConduitLLM.Gateway.Constants;
 /// </summary>
 public static class HttpContextKeys
 {
-    /// <summary>Authoritative provider usage for non-streaming chat responses.</summary>
-    public const string NonStreamingUsage = "NonStreamingUsage";
-
     public const string PromptCachingEligible = "PromptCachingEligible";
     public const string ModelProviderMappingId = "ModelProviderMappingId";
     public const string PromptCachingPolicyApplied = "PromptCachingPolicyApplied";
@@ -22,30 +19,6 @@ public static class HttpContextKeys
     /// Key for storing the virtual key ID extracted from authentication.
     /// </summary>
     public const string VirtualKeyId = "VirtualKeyId";
-
-    /// <summary>
-    /// Key for storing accumulated function call summaries from agentic chat completions.
-    /// Value type: List&lt;FunctionCallSummary&gt;
-    /// </summary>
-    public const string ChatFunctionCalls = "ChatFunctionCalls";
-
-    /// <summary>
-    /// Key for storing the total function cost from agentic chat completions.
-    /// Value type: decimal
-    /// </summary>
-    public const string ChatFunctionCost = "ChatFunctionCost";
-
-    /// <summary>
-    /// Key for storing the total iteration count from agentic chat completions.
-    /// Value type: int
-    /// </summary>
-    public const string ChatAgenticIterations = "ChatAgenticIterations";
-
-    /// <summary>
-    /// Key for server-only per-provider-call usage from an agentic chat request.
-    /// Value type: List&lt;ProviderCallUsage&gt;
-    /// </summary>
-    public const string ChatProviderCalls = "ChatProviderCalls";
 
     /// <summary>
     /// Key for storing function configuration ID (used by FunctionsController).

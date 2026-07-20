@@ -295,7 +295,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             try
             {
                 // Map the strongly-typed response
-                return new CoreModels.ChatCompletionResponse
+                var mapped = new CoreModels.ChatCompletionResponse
                 {
                     Id = response.Id ?? Guid.NewGuid().ToString(),
                     Object = response.Object ?? "chat.completion",
@@ -326,12 +326,52 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     Seed = response.Seed,
                     OriginalModelAlias = originalModelAlias
                 };
+                mapped.ProviderToolUsage = MapGroqHostedToolUsage(response.GroqExtension);
+                return mapped;
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error mapping OpenAI response: {Message}", ex.Message);
                 return CreateEmptyResponse(originalModelAlias);
             }
+        }
+
+        private static CoreModels.ProviderToolUsage? MapGroqHostedToolUsage(
+            System.Text.Json.JsonElement? groqExtension)
+        {
+            if (groqExtension is not { ValueKind: System.Text.Json.JsonValueKind.Object } extension ||
+                !extension.TryGetProperty("usage", out var usage) ||
+                usage.ValueKind != System.Text.Json.JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var tools = new List<CoreModels.ProviderToolUsageItem>();
+            foreach (var toolName in new[] { "code_interpreter", "browser_search", "python" })
+            {
+                if (!usage.TryGetProperty(toolName, out var countElement) ||
+                    !countElement.TryGetInt32(out var count) || count <= 0)
+                {
+                    continue;
+                }
+
+                decimal? durationSeconds = null;
+                var durationName = $"{toolName}_duration_seconds";
+                if (usage.TryGetProperty(durationName, out var durationElement) &&
+                    durationElement.TryGetDecimal(out var duration))
+                {
+                    durationSeconds = duration;
+                }
+
+                tools.Add(new CoreModels.ProviderToolUsageItem
+                {
+                    ToolName = toolName == "python" ? "code_interpreter" : toolName,
+                    Count = count,
+                    DurationSeconds = durationSeconds
+                });
+            }
+
+            return tools.Count == 0 ? null : new CoreModels.ProviderToolUsage { Tools = tools };
         }
 
         /// <summary>

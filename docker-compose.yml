@@ -98,6 +98,10 @@ services:
       BatchSpending__MinimumIntervalSeconds: "1"
       BatchSpending__MaximumIntervalSeconds: "21600"  # 6 hours
       BatchSpending__RedisTtlHours: "24"
+      # Reserve maximum chat spend before provider invocation and settle actual usage atomically.
+      BillingAdmission__Mode: "Enforce"
+      UsageTracking__AccountingFinalizationTimeoutSeconds: "10"
+      UsageTracking__GracefulShutdownSeconds: "45"
       # Continuous billing reconciliation (#1031)
       BillingReconciliation__Enabled: "true"
       BillingReconciliation__WindowHours: "1"
@@ -113,6 +117,7 @@ services:
     ports:
       - "5000:8080"
     restart: on-failure
+    stop_grace_period: 60s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
       interval: 60s

@@ -51,6 +51,12 @@ public sealed record SpendReservationEvidence(
     bool InvocationStarted,
     bool Closed);
 
+public sealed record DirectCostEvidence(
+    string OperationName,
+    decimal ActualCost,
+    string? ExecutionId,
+    string? MetadataJson);
+
 public sealed record RequestAccountingSnapshot(
     string BillingRequestId,
     RequestOperation Operation,
@@ -61,7 +67,10 @@ public sealed record RequestAccountingSnapshot(
     IReadOnlyList<FunctionExecutionResultForLogging> FunctionExecutions,
     decimal FunctionExecutionCost,
     IReadOnlyList<ToolCall> StreamingToolCalls,
+    ProviderToolUsage? ProviderToolUsage,
     StreamTransportEvidence? Transport,
+    DirectCostEvidence? DirectCost,
+    string? MetadataJson,
     SpendReservationEvidence? Reservation,
     bool IsIndeterminate,
     string? IndeterminateReason);
@@ -82,7 +91,13 @@ public interface IRequestAccountingContext
 
     void RecordStreamingToolCalls(IEnumerable<ToolCall> toolCalls);
 
+    void RecordProviderToolUsage(ProviderToolUsage toolUsage);
+
     void RecordTransport(StreamTransportEvidence transport);
+
+    void RecordDirectCost(DirectCostEvidence directCost);
+
+    void RecordMetadata(string metadataJson);
 
     void RecordReservation(decimal reservedAmount);
 
@@ -106,7 +121,10 @@ public sealed class RequestAccountingContext : IRequestAccountingContext
     private List<FunctionExecutionResultForLogging> _functionExecutions = [];
     private decimal _functionExecutionCost;
     private List<ToolCall> _streamingToolCalls = [];
+    private ProviderToolUsage? _providerToolUsage;
     private StreamTransportEvidence? _transport;
+    private DirectCostEvidence? _directCost;
+    private string? _metadataJson;
     private SpendReservationEvidence? _reservation;
     private bool _isIndeterminate;
     private string? _indeterminateReason;
@@ -168,11 +186,43 @@ public sealed class RequestAccountingContext : IRequestAccountingContext
         }
     }
 
+    public void RecordProviderToolUsage(ProviderToolUsage toolUsage)
+    {
+        ArgumentNullException.ThrowIfNull(toolUsage);
+        lock (_sync)
+        {
+            _providerToolUsage = toolUsage;
+        }
+    }
+
     public void RecordTransport(StreamTransportEvidence transport)
     {
         lock (_sync)
         {
             _transport = transport;
+        }
+    }
+
+    public void RecordDirectCost(DirectCostEvidence directCost)
+    {
+        ArgumentNullException.ThrowIfNull(directCost);
+        if (directCost.ActualCost < 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(directCost), "Actual cost cannot be negative.");
+        }
+
+        lock (_sync)
+        {
+            _directCost = directCost;
+        }
+    }
+
+    public void RecordMetadata(string metadataJson)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(metadataJson);
+        lock (_sync)
+        {
+            _metadataJson = metadataJson;
         }
     }
 
@@ -235,7 +285,10 @@ public sealed class RequestAccountingContext : IRequestAccountingContext
                 _functionExecutions.ToArray(),
                 _functionExecutionCost,
                 _streamingToolCalls.ToArray(),
+                _providerToolUsage,
                 _transport,
+                _directCost,
+                _metadataJson,
                 _reservation,
                 _isIndeterminate,
                 _indeterminateReason);
@@ -256,7 +309,8 @@ public static class RequestAccountingContextExtensions
             return accountingContext;
         }
 
-        accountingContext = new RequestAccountingContext();
+        accountingContext = context.RequestServices?.GetService<IRequestAccountingContext>() ??
+                            new RequestAccountingContext();
         context.Items[Key] = accountingContext;
         return accountingContext;
     }

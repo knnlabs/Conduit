@@ -7,6 +7,7 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.UsageTracking;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
@@ -17,8 +18,6 @@ namespace ConduitLLM.Gateway.Controllers
 {
     public partial class ChatController
     {
-        private static readonly TimeSpan StreamingAccountingTimeout = TimeSpan.FromSeconds(10);
-
         private async Task<IActionResult> HandleNonStreamingRequestAsync(
             ChatCompletionRequest request,
             int? virtualKeyId,
@@ -31,11 +30,23 @@ namespace ConduitLLM.Gateway.Controllers
 
             if (response.Usage is not null)
             {
-                HttpContext.Items[HttpContextKeys.NonStreamingUsage] = response.Usage;
                 HttpContext.GetOrCreateRequestAccountingContext().RecordProviderUsage(
                     response.Usage,
                     response.Model ?? request.Model,
                     UsageEvidenceSource.Provider);
+            }
+            var responseToolCalls = response.Choices
+                .SelectMany(choice => choice.Message?.ToolCalls ?? [])
+                .ToList();
+            if (responseToolCalls.Count > 0)
+            {
+                HttpContext.GetOrCreateRequestAccountingContext()
+                    .RecordStreamingToolCalls(responseToolCalls);
+            }
+            if (response.ProviderToolUsage is not null)
+            {
+                HttpContext.GetOrCreateRequestAccountingContext()
+                    .RecordProviderToolUsage(response.ProviderToolUsage);
             }
             HttpContext.Items[HttpContextKeys.PromptCachingEligible] =
                 request.PromptCachingIntent is not null ||
@@ -47,7 +58,8 @@ namespace ConduitLLM.Gateway.Controllers
             }
             if (response.AgenticMetrics?.ProviderCalls.Count > 0)
             {
-                HttpContext.Items[HttpContextKeys.ChatProviderCalls] = response.AgenticMetrics.ProviderCalls;
+                HttpContext.GetOrCreateRequestAccountingContext()
+                    .RecordProviderCalls(response.AgenticMetrics.ProviderCalls);
             }
 
             // Stash the provider-reported cost via the side channel so the middleware can bill from it.
@@ -76,8 +88,6 @@ namespace ConduitLLM.Gateway.Controllers
                 })
                 .ToList();
 
-            HttpContext.Items[HttpContextKeys.ChatFunctionCalls] = functionExecutionResults;
-            HttpContext.Items[HttpContextKeys.ChatFunctionCost] = agenticMetrics.TotalFunctionCost;
             HttpContext.GetOrCreateRequestAccountingContext().RecordFunctionExecutions(
                 functionExecutionResults,
                 agenticMetrics.TotalFunctionCost);
@@ -114,6 +124,7 @@ namespace ConduitLLM.Gateway.Controllers
                 GetCompletionAccumulatorLimit(request),
                 _usageTrackingOptions.MaximumStreamingToolCallCharacters,
                 _usageTrackingOptions.MaximumStreamingToolCalls);
+            UsageMetrics.StreamsActive.Inc();
             var firstChunkTime = DateTime.UtcNow;
 
             try
@@ -207,8 +218,36 @@ namespace ConduitLLM.Gateway.Controllers
                 // Billing data must survive provider failures and client disconnects. Do not use the
                 // request token here: it is normally cancelled precisely when this fallback is needed.
                 // The server-owned budget prevents a failed client transport from pinning the request forever.
-                using var accountingTimeout = new CancellationTokenSource(StreamingAccountingTimeout);
-                await StoreStreamingResultsAsync(request, state, accountingTimeout.Token);
+                using var accountingTimeout = new CancellationTokenSource(
+                    TimeSpan.FromSeconds(_usageTrackingOptions.AccountingFinalizationTimeoutSeconds));
+                try
+                {
+                    await StoreStreamingResultsAsync(request, state, accountingTimeout.Token);
+                }
+                finally
+                {
+                    var providerLabel = modelMapping?.Provider?.ProviderType.ToString().ToLowerInvariant() ?? "unknown";
+                    UsageMetrics.StreamsTotal.WithLabels(transportOutcome.ToString().ToLowerInvariant()).Inc();
+                    UsageMetrics.StreamChunks.WithLabels(providerLabel).Inc(state.ChunkCount);
+                    UsageMetrics.StreamBytes.WithLabels(providerLabel).Inc(sseWriter.BytesWritten);
+                    if (state.ProviderFirstChunkAt is { } providerFirstChunkAt)
+                    {
+                        UsageMetrics.StreamTimeToProviderFirstChunk.Observe(
+                            (providerFirstChunkAt - state.StartedAt).TotalSeconds);
+                    }
+                    if (sseWriter.FirstClientFlushAt is { } clientFirstFlushAt)
+                    {
+                        UsageMetrics.StreamTimeToClientFirstFlush.Observe(
+                            (clientFirstFlushAt - state.StartedAt).TotalSeconds);
+                    }
+                    if (transportOutcome == StreamTransportOutcome.ClientDisconnected)
+                    {
+                        UsageMetrics.StreamClientDisconnects
+                            .WithLabels(state.ChunkCount == 0 ? "before_first_chunk" : "after_first_chunk")
+                            .Inc();
+                    }
+                    UsageMetrics.StreamsActive.Dec();
+                }
             }
         }
 
@@ -294,6 +333,10 @@ namespace ConduitLLM.Gateway.Controllers
                 state.StreamingUsage = chunk.Usage;
                 state.StreamingModel = chunk.Model ?? request.Model;
             }
+            if (chunk.ProviderToolUsage is not null)
+            {
+                state.ProviderToolUsage = chunk.ProviderToolUsage;
+            }
         }
 
         private async Task WriteChunkToStream(
@@ -354,9 +397,6 @@ namespace ConduitLLM.Gateway.Controllers
             // Store usage data for middleware
             if (state.StreamingUsage != null)
             {
-                HttpContext.Items["StreamingUsage"] = state.StreamingUsage;
-                HttpContext.Items["StreamingModel"] = state.StreamingModel;
-                HttpContext.Items["UsageIsEstimated"] = false;
                 HttpContext.GetOrCreateRequestAccountingContext().RecordProviderUsage(
                     state.StreamingUsage,
                     state.StreamingModel ?? request.Model,
@@ -389,21 +429,22 @@ namespace ConduitLLM.Gateway.Controllers
 
             if (state.ProviderCalls.Count > 0)
             {
-                HttpContext.Items[HttpContextKeys.ChatProviderCalls] = state.ProviderCalls
-                    .OrderBy(entry => entry.Key)
-                    .Select(entry => new ProviderCallUsage { Iteration = entry.Key, Usage = entry.Value })
-                    .ToList();
                 HttpContext.GetOrCreateRequestAccountingContext().RecordProviderCalls(
                     state.ProviderCalls
                         .OrderBy(entry => entry.Key)
                         .Select(entry => new ProviderCallUsage { Iteration = entry.Key, Usage = entry.Value }));
             }
 
+            if (state.ProviderToolUsage is not null)
+            {
+                HttpContext.GetOrCreateRequestAccountingContext()
+                    .RecordProviderToolUsage(state.ProviderToolUsage);
+            }
+
             // Store tool calls for request logging
             if (state.AccumulatedToolCalls.Count > 0)
             {
                 var toolCalls = state.MaterializeToolCalls();
-                HttpContext.Items["StreamingChatToolCalls"] = toolCalls;
                 HttpContext.GetOrCreateRequestAccountingContext().RecordStreamingToolCalls(toolCalls);
                 _logger.LogDebug("Stored {Count} accumulated tool calls for request logging", state.AccumulatedToolCalls.Count);
             }
@@ -411,8 +452,6 @@ namespace ConduitLLM.Gateway.Controllers
             // Store function execution results
             if (state.FunctionExecutionResults.Count > 0)
             {
-                HttpContext.Items[HttpContextKeys.ChatFunctionCalls] = state.FunctionExecutionResults;
-                HttpContext.Items[HttpContextKeys.ChatFunctionCost] = state.TotalFunctionCost;
                 HttpContext.GetOrCreateRequestAccountingContext().RecordFunctionExecutions(
                     state.FunctionExecutionResults,
                     state.TotalFunctionCost);
@@ -464,9 +503,6 @@ namespace ConduitLLM.Gateway.Controllers
                     completionOutput,
                     cancellationToken);
 
-                HttpContext.Items["StreamingUsage"] = estimatedUsage;
-                HttpContext.Items["StreamingModel"] = state.StreamingModel ?? request.Model;
-                HttpContext.Items["UsageIsEstimated"] = true;
                 HttpContext.GetOrCreateRequestAccountingContext().RecordProviderUsage(
                     estimatedUsage,
                     state.StreamingModel ?? request.Model,
@@ -514,6 +550,7 @@ namespace ConduitLLM.Gateway.Controllers
             }
 
             public int ChunkCount { get; set; }
+            public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
             public StreamTransportOutcome Outcome { get; set; }
             public DateTimeOffset? ProviderFirstChunkAt { get; set; }
             public Usage? StreamingUsage { get; set; }
@@ -523,6 +560,7 @@ namespace ConduitLLM.Gateway.Controllers
             public List<FunctionExecutionResultForLogging> FunctionExecutionResults { get; } = new();
             public decimal TotalFunctionCost { get; set; }
             public Dictionary<int, Usage> ProviderCalls { get; } = new();
+            public ProviderToolUsage? ProviderToolUsage { get; set; }
             public int MaximumToolCalls { get; }
             public bool ToolEvidenceLimitExceeded { get; set; }
             public bool EvidenceLimitExceeded => ContentAccumulator.LimitExceeded || ToolEvidenceLimitExceeded;

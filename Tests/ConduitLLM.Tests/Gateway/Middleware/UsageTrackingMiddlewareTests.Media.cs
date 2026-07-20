@@ -3,6 +3,8 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Constants;
+using ConduitLLM.Gateway.UsageTracking;
+using System.Text.Json;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
 using Microsoft.AspNetCore.Http;
@@ -160,6 +162,19 @@ namespace ConduitLLM.Tests.Http.Middleware
             await Invoker
                 .WithNextDelegate(async responseContext =>
                 {
+                    var accounting = responseContext.GetOrCreateRequestAccountingContext();
+                    accounting.SetOperation(RequestOperation.Video, 983, "test-video-model");
+                    accounting.RecordProviderUsage(new Usage
+                    {
+                        VideoDurationSeconds = 10,
+                        VideoResolution = "1280x720"
+                    }, "test-video-model", UsageEvidenceSource.Estimated);
+                    accounting.RecordMetadata(JsonSerializer.Serialize(new
+                    {
+                        type = "video",
+                        taskId = "task_video_983",
+                        status = "pending"
+                    }));
                     responseContext.Response.StatusCode = StatusCodes.Status202Accepted;
                     await responseContext.Response.WriteAsJsonAsync(submissionResponse);
                 })
@@ -218,8 +233,8 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Theory]
-        [InlineData("/v1/images/generations", BillingAuditEventType.JsonParseError)]
-        [InlineData("/v1/videos/generations", BillingAuditEventType.JsonParseError)]
+        [InlineData("/v1/images/generations", BillingAuditEventType.MissingUsageData)]
+        [InlineData("/v1/videos/generations", BillingAuditEventType.MissingUsageData)]
         public async Task MediaResponse_MalformedJson_EmitsRevenueLossAudit(
             string path,
             BillingAuditEventType expectedEventType)
@@ -276,9 +291,9 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             UsageTrackingAssertions.VerifyNoSpendUpdate(Fixture.BatchSpendService, Fixture.VirtualKeyService);
             Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
-                billingEvent.EventType == BillingAuditEventType.JsonParseError &&
+                billingEvent.EventType == BillingAuditEventType.MissingUsageData &&
                 billingEvent.VirtualKeyId == 1026 &&
-                billingEvent.FailureReason!.Contains("actualCost"));
+                billingEvent.FailureReason!.Contains("direct-cost evidence"));
         }
     }
 }

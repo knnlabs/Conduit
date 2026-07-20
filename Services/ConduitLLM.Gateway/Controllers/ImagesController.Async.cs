@@ -5,6 +5,8 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Gateway.Constants;
+using ConduitLLM.Gateway.UsageTracking;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -69,6 +71,10 @@ namespace ConduitLLM.Gateway.Controllers
                     supportsImageGen = mapping.ModelProviderTypeAssociation?.Model?.SupportsImageGeneration ?? false;
                     _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}",
                         LoggingSanitizer.S(modelName), supportsImageGen);
+                    HttpContext.Items["ProviderId"] = mapping.ProviderId;
+                    HttpContext.Items["ProviderType"] = mapping.Provider?.ProviderType;
+                    if (mapping.ModelProviderTypeAssociation?.ModelCostId is int modelCostId)
+                        HttpContext.Items[HttpContextKeys.ModelCostId] = modelCostId;
                 }
                 else
                 {
@@ -98,6 +104,22 @@ namespace ConduitLLM.Gateway.Controllers
                     return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
                 }
                 var virtualKeyId = CurrentVirtualKeyId.Value;
+                HttpContext.SetUsageContext(new ImageUsageContext
+                {
+                    Model = modelName,
+                    Quality = request.Quality,
+                    Size = request.Size,
+                    N = request.N,
+                    Style = request.Style
+                });
+                var accounting = HttpContext.GetOrCreateRequestAccountingContext();
+                accounting.SetOperation(RequestOperation.Image, virtualKeyId, modelName);
+                accounting.RecordProviderUsage(new Usage
+                {
+                    ImageCount = request.N,
+                    ImageQuality = request.Quality,
+                    ImageResolution = request.Size
+                }, modelName, UsageEvidenceSource.Estimated);
 
                 // Get virtual key information from service
                 var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
@@ -176,6 +198,16 @@ namespace ConduitLLM.Gateway.Controllers
                     CheckStatusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
                     CreatedAt = DateTime.UtcNow
                 };
+                accounting.RecordMetadata(System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    type = "image",
+                    taskId,
+                    status = TaskStateConstants.Queued,
+                    imageCount = request.N,
+                    quality = request.Quality,
+                    size = request.Size,
+                    style = request.Style
+                }));
 
                 GatewayOpsMetrics.RecordMediaOperation("generate", "image_async", "queued");
                 return Accepted(response);

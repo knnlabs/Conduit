@@ -122,6 +122,9 @@ namespace ConduitLLM.Providers.OpenAI
 
         [JsonPropertyName("seed")]
         public int? Seed { get; init; }
+
+        [JsonPropertyName("x_groq")]
+        public System.Text.Json.JsonElement? GroqExtension { get; init; }
     }
 
     internal record OpenAIChoice

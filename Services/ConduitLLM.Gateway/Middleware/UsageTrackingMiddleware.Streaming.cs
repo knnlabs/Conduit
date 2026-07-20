@@ -11,6 +11,7 @@ using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Gateway.Utilities;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
+using Prometheus;
 
 namespace ConduitLLM.Gateway.Middleware
 {
@@ -27,19 +28,18 @@ namespace ConduitLLM.Gateway.Middleware
         {
             var endpointType = UsageExtractor.DetermineRequestType(context.Request.Path);
             var accountingSnapshot = context.GetRequestAccountingSnapshot();
+            var finalizationOutcome = accountingSnapshot?.Transport?.Outcome.ToString().ToLowerInvariant() ?? "unknown";
+            using var finalizationTimer = UsageMetrics.StreamAccountingFinalizationDuration
+                .WithLabels(finalizationOutcome)
+                .NewTimer();
+            UsageMetrics.StreamUsageEvidence
+                .WithLabels(accountingSnapshot?.ProviderUsage?.Source.ToString().ToLowerInvariant() ?? "none")
+                .Inc();
 
             // Check if usage was estimated
-            var isEstimated = accountingSnapshot?.ProviderUsage?.Source == UsageEvidenceSource.Estimated ||
-                              (context.Items.TryGetValue("UsageIsEstimated", out var estimatedObj) &&
-                               estimatedObj is bool estimated && estimated);
+            var isEstimated = accountingSnapshot?.ProviderUsage?.Source == UsageEvidenceSource.Estimated;
 
             var usage = accountingSnapshot?.ProviderUsage?.Usage;
-            if (usage is null &&
-                context.Items.TryGetValue("StreamingUsage", out var usageObj) &&
-                usageObj is Usage legacyUsage)
-            {
-                usage = legacyUsage;
-            }
 
             if (usage is null)
             {
@@ -47,12 +47,6 @@ namespace ConduitLLM.Gateway.Middleware
                 // may omit its final usage chunk (or the client may disconnect after functions ran),
                 // so preserve that charge before returning from the token-usage path.
                 var functionCost = accountingSnapshot?.FunctionExecutionCost ?? 0m;
-                if (functionCost <= 0m &&
-                    context.Items.TryGetValue(HttpContextKeys.ChatFunctionCost, out var functionCostObj) &&
-                    functionCostObj is decimal legacyFunctionCost)
-                {
-                    functionCost = legacyFunctionCost;
-                }
 
                 if (endpointType == "chat" && functionCost > 0m)
                 {
@@ -76,12 +70,6 @@ namespace ConduitLLM.Gateway.Middleware
             }
 
             var model = accountingSnapshot?.ProviderUsage?.Model;
-            if (string.IsNullOrWhiteSpace(model) &&
-                context.Items.TryGetValue("StreamingModel", out var modelObj) &&
-                modelObj is string legacyModel)
-            {
-                model = legacyModel;
-            }
 
             if (string.IsNullOrWhiteSpace(model))
             {
@@ -107,8 +95,16 @@ namespace ConduitLLM.Gateway.Middleware
                 : ProviderType.OpenAI;
 
             // Extract tool usage from streaming context if available (provider-hosted tools)
-            var toolUsageData = context.Items.TryGetValue("StreamingToolUsage", out var toolObj)
-                ? toolObj as ToolUsageData
+            var toolUsageData = accountingSnapshot?.ProviderToolUsage is { } typedToolUsage
+                ? new ToolUsageData
+                {
+                    Tools = typedToolUsage.Tools.Select(tool => new ToolUsageItem
+                    {
+                        ToolName = tool.ToolName,
+                        Count = tool.Count,
+                        DurationSeconds = tool.DurationSeconds
+                    }).ToList()
+                }
                 : null;
 
             decimal? toolCost = null;
@@ -155,12 +151,6 @@ namespace ConduitLLM.Gateway.Middleware
             decimal functionExecutionCost = 0m;
 
             var functionResults = accountingSnapshot?.FunctionExecutions.ToList() ?? [];
-            if (functionResults.Count == 0 &&
-                context.Items.TryGetValue(HttpContextKeys.ChatFunctionCalls, out var functionResultsObj) &&
-                functionResultsObj is List<FunctionExecutionResultForLogging> legacyFunctionResults)
-            {
-                functionResults = legacyFunctionResults;
-            }
 
             if (endpointType == "chat" && functionResults.Count > 0)
             {
@@ -168,15 +158,7 @@ namespace ConduitLLM.Gateway.Middleware
                 chatToolCallsJson = FunctionExecutionSerializer.SerializeFunctionExecutionResults(functionResults);
 
                 // Get total function cost from HttpContext
-                if (accountingSnapshot is not null)
-                {
-                    functionExecutionCost = accountingSnapshot.FunctionExecutionCost;
-                }
-                else if (context.Items.TryGetValue(HttpContextKeys.ChatFunctionCost, out var funcCostObj)
-                    && funcCostObj is decimal funcCost)
-                {
-                    functionExecutionCost = funcCost;
-                }
+                functionExecutionCost = accountingSnapshot?.FunctionExecutionCost ?? 0m;
 
                 _logger.LogDebug("Streaming function executions detected: {Count} functions, total cost: {Cost:C}",
                     functionResults.Count, functionExecutionCost);
@@ -186,12 +168,6 @@ namespace ConduitLLM.Gateway.Middleware
             {
                 IReadOnlyList<ConduitLLM.Core.Models.ToolCall> streamingToolCalls =
                     accountingSnapshot?.StreamingToolCalls ?? [];
-                if (streamingToolCalls.Count == 0 &&
-                    context.Items.TryGetValue("StreamingChatToolCalls", out var streamingToolCallsObj) &&
-                    streamingToolCallsObj is List<ConduitLLM.Core.Models.ToolCall> legacyStreamingToolCalls)
-                {
-                    streamingToolCalls = legacyStreamingToolCalls;
-                }
 
                 if (endpointType == "chat" && streamingToolCalls.Count > 0)
                 {

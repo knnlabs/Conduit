@@ -5,6 +5,7 @@ using ConduitLLM.Functions.Enums;
 using ConduitLLM.Gateway.Authorization;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Gateway.Filters;
+using ConduitLLM.Gateway.UsageTracking;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -114,6 +115,8 @@ public class FunctionsController : GatewayControllerBase
             HttpContext.Items["ProviderType"] = configuration.ProviderType;
             HttpContext.Items["FunctionConfigurationId"] = configuration.Id;
             HttpContext.Items["FunctionConfigurationName"] = configuration.ConfigurationName;
+            var accounting = HttpContext.GetOrCreateRequestAccountingContext();
+            accounting.SetOperation(RequestOperation.Function, keyId, configuration.ConfigurationName);
 
             _logger.LogInformation(
                 "Executing function {FunctionName} (config {ConfigId}) for virtual key {VirtualKeyId}",
@@ -134,6 +137,17 @@ public class FunctionsController : GatewayControllerBase
             HttpContext.Items["FunctionExecutionId"] = execution.Id;
             HttpContext.Items["EstimatedCost"] = execution.EstimatedCost;
             HttpContext.Items["ActualCost"] = execution.ActualCost;
+            var actualCost = execution.ActualCost ?? execution.EstimatedCost ?? 0m;
+            accounting.RecordDirectCost(new DirectCostEvidence(
+                configuration.ConfigurationName,
+                actualCost,
+                execution.Id.ToString(),
+                JsonSerializer.Serialize(new
+                {
+                    functionConfigurationId = configuration.Id,
+                    executionId = execution.Id,
+                    state = execution.State.ToString()
+                })));
 
             // Return execution result
             var response = new FunctionExecutionResponse

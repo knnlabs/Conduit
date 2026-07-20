@@ -347,12 +347,22 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
             if (_isStreaming)
             {
                 _context.Items["IsStreamingRequest"] = true;
-                if (_streamingUsage != null)
-                    _context.Items["StreamingUsage"] = _streamingUsage;
-                if (_streamingModel != null)
-                    _context.Items["StreamingModel"] = _streamingModel;
+                var accounting = _context.GetOrCreateRequestAccountingContext();
+                accounting.SetOperation(RequestOperation.ChatCompletion, _virtualKeyId, _streamingModel);
+                if (_streamingUsage != null && !string.IsNullOrWhiteSpace(_streamingModel))
+                    accounting.RecordProviderUsage(_streamingUsage, _streamingModel, UsageEvidenceSource.Provider);
                 if (_streamingToolUsage != null)
-                    _context.Items["StreamingToolUsage"] = _streamingToolUsage;
+                {
+                    accounting.RecordProviderToolUsage(new ProviderToolUsage
+                    {
+                        Tools = _streamingToolUsage.Tools.Select(tool => new ProviderToolUsageItem
+                        {
+                            ToolName = tool.ToolName,
+                            Count = tool.Count,
+                            DurationSeconds = tool.DurationSeconds
+                        }).ToList()
+                    });
+                }
             }
 
             if (_requestStartTime.HasValue)

@@ -21,6 +21,9 @@ services:
       BatchSpending__MinimumIntervalSeconds: "1"
       BatchSpending__MaximumIntervalSeconds: "3600"   # 1 hour max for dev
       BatchSpending__RedisTtlHours: "24"
+      BillingAdmission__Mode: "Shadow"
+      UsageTracking__AccountingFinalizationTimeoutSeconds: "10"
+      UsageTracking__GracefulShutdownSeconds: "45"
       # Health monitoring configuration - API endpoint checks
       HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health

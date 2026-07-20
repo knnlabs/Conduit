@@ -35,7 +35,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             var audit = Assert.Single(Fixture.CapturedBillingEvents);
             Assert.Equal(BillingAuditEventType.MissingUsageData, audit.EventType);
-            Assert.Equal("Response did not contain a model", audit.FailureReason);
+            Assert.Equal("Controller did not publish provider usage evidence", audit.FailureReason);
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
         }
 
@@ -49,7 +49,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             var audit = Assert.Single(Fixture.CapturedBillingEvents);
             Assert.Equal(BillingAuditEventType.MissingUsageData, audit.EventType);
             Assert.Equal("gpt-test", audit.Model);
-            Assert.Equal("Response usage could not be extracted", audit.FailureReason);
+            Assert.Equal("Controller did not publish provider usage evidence", audit.FailureReason);
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
         }
 
@@ -260,8 +260,9 @@ namespace ConduitLLM.Tests.Http.Middleware
                 .WithVirtualKey(656)
                 .AsOpenAI()
                 .AsStreaming()
-                .WithItem(HttpContextKeys.ChatFunctionCost, 0.05m)
                 .Build();
+            context.GetOrCreateRequestAccountingContext()
+                .RecordFunctionExecutions([], 0.05m);
 
             await Invoker
                 .AsStreamingResponse()

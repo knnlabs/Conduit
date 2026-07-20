@@ -79,4 +79,8 @@ public class ChatCompletionResponse
     [JsonPropertyName("agentic_metrics")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AgenticExecutionMetrics? AgenticMetrics { get; set; }
+
+    /// <summary>Server-only evidence for provider-hosted tools such as browser search.</summary>
+    [JsonIgnore]
+    public ProviderToolUsage? ProviderToolUsage { get; set; }
 }

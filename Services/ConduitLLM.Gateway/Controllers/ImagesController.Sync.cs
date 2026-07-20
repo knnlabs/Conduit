@@ -61,6 +61,8 @@ namespace ConduitLLM.Gateway.Controllers
                 }
                 
                 var modelName = request.Model;
+                var accounting = HttpContext.GetOrCreateRequestAccountingContext();
+                accounting.SetOperation(RequestOperation.Image, CurrentVirtualKeyId, modelName);
 
                 // Store image request details for usage tracking.
                 // Set before mapping lookup since request.Model may be updated to the provider model ID later.
@@ -133,6 +135,14 @@ namespace ConduitLLM.Gateway.Controllers
                 
                 // Generate images
                 var response = await client.CreateImageAsync(request, cancellationToken: cancellationToken);
+                var imageUsage = response.Usage ?? new Usage();
+                imageUsage.ImageCount ??= response.Data.Count;
+                imageUsage.ImageQuality ??= request.Quality;
+                imageUsage.ImageResolution ??= request.Size;
+                accounting.RecordProviderUsage(
+                    imageUsage,
+                    modelName,
+                    response.Usage is null ? UsageEvidenceSource.Estimated : UsageEvidenceSource.Provider);
 
                 // Store generated images if they're base64 or external URLs
                 for (int i = 0; i < response.Data.Count; i++)

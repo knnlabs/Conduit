@@ -90,6 +90,18 @@ namespace ConduitLLM.Gateway.Controllers
 
             // Store video request parameters for usage tracking and pricing
             StoreVideoRequestParameters(request);
+            var accounting = HttpContext.GetOrCreateRequestAccountingContext();
+            accounting.SetOperation(RequestOperation.Video, virtualKeyId, request.Model);
+            var submissionUsage = new Usage
+            {
+                VideoDurationSeconds = request.Duration,
+                VideoResolution = request.Size,
+                PricingParameters = (HttpContext.GetUsageContext() as VideoUsageContext)?.PricingParameters
+            };
+            accounting.RecordProviderUsage(
+                submissionUsage,
+                request.Model,
+                UsageEvidenceSource.Estimated);
 
             // Get provider info for usage tracking
             try
@@ -174,6 +186,16 @@ namespace ConduitLLM.Gateway.Controllers
                 EstimatedCompletionTime = DateTimeOffset.UtcNow.AddSeconds(60),
                 CheckStatusUrl = $"/v1/videos/generations/tasks/{taskId}"
             };
+            accounting.RecordMetadata(JsonSerializer.Serialize(new
+            {
+                type = "video",
+                taskId,
+                status = TaskStateConstants.Pending,
+                durationSeconds = request.Duration,
+                resolution = request.Size,
+                fps = request.Fps,
+                style = request.Style
+            }));
 
             return Accepted(taskResponse);
         }

@@ -32,6 +32,12 @@ public partial class Program
             .Bind(builder.Configuration.GetSection("UsageTracking"))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+        builder.Services.Configure<HostOptions>(options =>
+        {
+            var shutdownSeconds = builder.Configuration.GetValue<int?>(
+                "UsageTracking:GracefulShutdownSeconds") ?? 45;
+            options.ShutdownTimeout = TimeSpan.FromSeconds(shutdownSeconds);
+        });
 
         builder.Services.AddOptions<BillingAdmissionOptions>()
             .Bind(builder.Configuration.GetSection(BillingAdmissionOptions.SectionName))

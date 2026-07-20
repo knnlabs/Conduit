@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Gateway.Authorization;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Filters;
+using ConduitLLM.Gateway.UsageTracking;
 
 namespace ConduitLLM.Gateway.Controllers
 {
@@ -69,6 +70,11 @@ namespace ConduitLLM.Gateway.Controllers
 
             using var activity = GatewayRequestMetrics.StartEmbeddingsActivity(request.Model);
             var sw = Stopwatch.StartNew();
+            var virtualKeyId = HttpContext.Items.TryGetValue("VirtualKeyId", out var keyValue) && keyValue is int keyId
+                ? keyId
+                : (int?)null;
+            var accounting = HttpContext.GetOrCreateRequestAccountingContext();
+            accounting.SetOperation(RequestOperation.Embedding, virtualKeyId, request.Model);
 
             Logger.LogInformation("Processing embeddings request for model: {Model}", LoggingSanitizer.S(request.Model));
 
@@ -96,6 +102,7 @@ namespace ConduitLLM.Gateway.Controllers
             // Get the client for the specified model and create embeddings
             var client = await _conduit.GetClientAsync(request.Model, cancellationToken);
             var result = await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
+            accounting.RecordProviderUsage(result.Usage, request.Model, UsageEvidenceSource.Provider);
             GatewayOpsMetrics.RecordLlmOperation("embedding", request.Model, "success", sw.Elapsed.TotalSeconds);
             return Ok(result);
         }
