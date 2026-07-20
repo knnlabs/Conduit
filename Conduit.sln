@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Tests", "Tests\C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.BillingInvariantTests", "Tests\ConduitLLM.BillingInvariantTests\ConduitLLM.BillingInvariantTests.csproj", "{03E936E2-7A10-4B55-8E2C-DB3E5E9B2C32}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.FaultInjectionTests", "Tests\ConduitLLM.FaultInjectionTests\ConduitLLM.FaultInjectionTests.csproj", "{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Admin", "Services\ConduitLLM.Admin\ConduitLLM.Admin.csproj", "{A54C7B18-2E33-41D9-8BC0-5F93B95C64CA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Security", "Shared\ConduitLLM.Security\ConduitLLM.Security.csproj", "{159C66C3-96A6-42AA-BE61-087482810F76}"
@@ -29,6 +31,18 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Debug|x64.Build.0 = Debug|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Debug|x86.Build.0 = Debug|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Release|x64.ActiveCfg = Release|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Release|x64.Build.0 = Release|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Release|x86.ActiveCfg = Release|Any CPU
+		{61D4EF4A-3C4B-46D4-BF8D-1034F17A1070}.Release|x86.Build.0 = Release|Any CPU
 		{03E936E2-7A10-4B55-8E2C-DB3E5E9B2C32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{03E936E2-7A10-4B55-8E2C-DB3E5E9B2C32}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{03E936E2-7A10-4B55-8E2C-DB3E5E9B2C32}.Debug|x64.ActiveCfg = Debug|Any CPU

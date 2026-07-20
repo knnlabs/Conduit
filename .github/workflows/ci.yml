@@ -16,6 +16,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  billing-fault-injection:
+    name: Billing fault injection
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Run billing durability fault tests
+        run: dotnet test Tests/ConduitLLM.FaultInjectionTests/ConduitLLM.FaultInjectionTests.csproj --configuration Release --verbosity normal
+
   billing-invariants:
     name: Billing invariants
     runs-on: ubuntu-latest
