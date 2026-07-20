@@ -218,7 +218,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 changedProperties.Add(nameof(existingFilter.IpAddressOrCidr));
             }
 
-            if (existingFilter.Name != updateFilter.Name)
+            // Normalize null vs empty so a null-named legacy row and an unset ("") DTO field are not
+            // treated as a change (which would break the no-op-skip path).
+            if ((existingFilter.Name ?? string.Empty) != updateFilter.Name)
             {
                 existingFilter.Name = updateFilter.Name;
                 changedProperties.Add(nameof(existingFilter.Name));
