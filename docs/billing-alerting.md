@@ -11,11 +11,14 @@ Set these environment variables on the Admin and Grafana services:
 ```text
 BillingCostCanary__Enabled=true
 BillingCostCanary__IntervalMinutes=5
+# Optional: enables outbound Grafana notifications when set
 CONDUIT_ALERT_WEBHOOK_URL=https://your-alert-receiver.example/conduit
 ```
 
-`CONDUIT_ALERT_WEBHOOK_URL` is required by Docker Compose. This deliberately prevents Grafana from
-starting with alert rules that have nowhere to deliver notifications.
+`CONDUIT_ALERT_WEBHOOK_URL` is optional. Grafana always provisions and evaluates the supplied alert
+rules. When the variable is set, Grafana also provisions the `conduit-oncall` webhook contact point
+and notification policy. When it is unset or empty, outbound webhook notifications are disabled and
+firing alerts remain visible in Grafana.
 
 The supplied Grafana rule treats a canary older than 15 minutes as stale. If the interval is increased,
 update the stale threshold in `grafana/provisioning/alerting/billing-alerting-rules.yml` as well.

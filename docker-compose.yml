@@ -283,6 +283,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     restart: always
+    entrypoint: ["/bin/sh", "/etc/grafana/conduit-entrypoint.sh"]
     ports:
       - "3001:3000"
     environment:
@@ -290,12 +291,13 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=conduitadmin
       - GF_INSTALL_PLUGINS=
       - GF_USERS_ALLOW_SIGN_UP=false
-      - CONDUIT_ALERT_WEBHOOK_URL=${CONDUIT_ALERT_WEBHOOK_URL:?Set CONDUIT_ALERT_WEBHOOK_URL to the on-call receiver}
+      - CONDUIT_ALERT_WEBHOOK_URL=${CONDUIT_ALERT_WEBHOOK_URL:-}
       # Enable unified alerting
       - GF_UNIFIED_ALERTING_ENABLED=true
       - GF_ALERTING_ENABLED=false
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./grafana/conduit-entrypoint.sh:/etc/grafana/conduit-entrypoint.sh:ro
       - ./grafana/provisioning/datasources/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
       - ./grafana/provisioning/dashboards/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
       - ./grafana/provisioning/dashboards/grafana-conduit-overview-dashboard.json:/var/lib/grafana/dashboards/conduit-overview.json:ro
