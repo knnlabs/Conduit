@@ -36,6 +36,9 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         public long RefundTransactionId { get; set; }
 
+        /// <summary>Balance immediately after the refund was committed.</summary>
+        public decimal BalanceAfter { get; set; }
+
         /// <summary>
         /// Gets or sets the reason for the refund.
         /// </summary>

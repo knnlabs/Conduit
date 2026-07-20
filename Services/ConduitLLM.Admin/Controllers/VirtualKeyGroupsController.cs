@@ -353,12 +353,17 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <param name="id">The virtual key group ID</param>
         /// <param name="request">The refund request details</param>
+        /// <param name="idempotencyKey">Unique identifier for this refund operation</param>
         /// <returns>The refund result with transaction details</returns>
         [HttpPost("{id}/refund")]
         [ProducesResponseType(typeof(RefundResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ProcessRefund(int id, [FromBody] ProcessRefundRequestDto request)
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> ProcessRefund(
+            int id,
+            [FromBody] ProcessRefundRequestDto request,
+            [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
         {
             // Validate request
             if (string.IsNullOrEmpty(request.ModelId))
@@ -376,6 +381,11 @@ namespace ConduitLLM.Admin.Controllers
                 return BadRequest(new { message = "Original transaction ID is required" });
             }
 
+            if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Trim().Length > 100)
+            {
+                return BadRequest(new { message = "Idempotency-Key header is required and must be at most 100 characters" });
+            }
+
             // Get user info for audit trail
             var initiatedBy = User.Identity?.Name ?? "System";
             var initiatedByUserId = User.FindFirst("sub")?.Value; // Clerk user ID from JWT
@@ -385,16 +395,25 @@ namespace ConduitLLM.Admin.Controllers
             var refundUsage = MapToUsage(request.RefundUsage);
 
             // Process the refund
-            var refundResult = await _refundService.ProcessRefundAsync(
-                id,
-                request.ModelId,
-                originalUsage,
-                refundUsage,
-                request.RefundReason,
-                request.OriginalTransactionId,
-                initiatedBy,
-                initiatedByUserId,
-                request.RequestLogId);
+            RefundResult refundResult;
+            try
+            {
+                refundResult = await _refundService.ProcessRefundAsync(
+                    id,
+                    request.ModelId,
+                    originalUsage,
+                    refundUsage,
+                    request.RefundReason,
+                    request.OriginalTransactionId,
+                    idempotencyKey.Trim(),
+                    initiatedBy,
+                    initiatedByUserId,
+                    request.RequestLogId);
+            }
+            catch (Configuration.Exceptions.IdempotencyConflictException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
 
             // Get updated group info for balance
             var group = await _groupRepository.GetByIdAsync(id);
@@ -402,7 +421,7 @@ namespace ConduitLLM.Admin.Controllers
                 throw new KeyNotFoundException();
 
             // Map to response DTO
-            var responseDto = MapToRefundResultDto(refundResult, group.Balance);
+            var responseDto = MapToRefundResultDto(refundResult, refundResult.BalanceAfter);
 
             LogAdminAudit("Refunded", "VirtualKeyGroup", id,
                 $"Amount: {refundResult.RefundAmount:C}, Model: {request.ModelId}, Reason: {request.RefundReason}, TransactionId: {refundResult.RefundTransactionId}, OriginalTransactionId: {refundResult.OriginalTransactionId ?? "none"}");

@@ -7,6 +7,7 @@ using ConduitLLM.Configuration.Entities;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
 using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
@@ -137,6 +138,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                     Metadata = taskMetadata
                 });
 
+            TaskServiceMock.Setup(x => x.TryClaimTaskAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(AsyncTaskClaimResult.Claimed);
+            TaskServiceMock.Setup(x => x.MarkProviderInvocationStartedAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+            TaskServiceMock.Setup(x => x.MarkProviderInvocationCompletedAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
             TaskServiceMock.Setup(x => x.UpdateTaskStatusAsync(
                 It.IsAny<string>(),
                 It.IsAny<TaskState>(),
@@ -206,12 +217,10 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             await Orchestrator.HandleAsync(request, context);
 
             // Assert
-            TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+            TaskServiceMock.Verify(x => x.TryClaimTaskAsync(
                 GetRequestId(request),
-                TaskState.Processing,
-                It.IsAny<int?>(),
-                It.IsAny<object?>(),
-                It.IsAny<string?>(),
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
                 It.IsAny<CancellationToken>()), Times.Once);
 
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -246,7 +255,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task HandleAsync_WhenGenerationFails_ShouldUpdateTaskAsFailed()
+        public async Task HandleAsync_WhenProviderOutcomeIsUnknown_ShouldBecomeIndeterminate()
         {
             // Arrange
             var request = CreateTestEventRequest();
@@ -258,13 +267,13 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             // Act - Should handle failure gracefully
             await Orchestrator.HandleAsync(request, context);
 
-            // Assert - Should update task status to Failed with error message
+            // Assert - provider may have accepted the request, so blind retry is unsafe
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
                 GetRequestId(request),
-                TaskState.Failed,
+                TaskState.Indeterminate,
                 It.IsAny<int?>(),
                 It.IsAny<object?>(),
-                exception.Message,
+                It.Is<string?>(message => message != null && message.Contains(exception.Message)),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -438,6 +447,51 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             EventBusMock.Verify(x => x.PublishAsync(
                 It.IsAny<SpendUpdateRequested>(),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_SequentialReplay_InvokesProviderExactlyOnce()
+        {
+            var request = CreateTestEventRequest();
+            var response = CreateTestResponse();
+            SetupSuccessfulGeneration(response);
+            TaskServiceMock.SetupSequence(x => x.TryClaimTaskAsync(
+                    GetRequestId(request), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(AsyncTaskClaimResult.Claimed)
+                .ReturnsAsync(AsyncTaskClaimResult.Terminal)
+                .ReturnsAsync(AsyncTaskClaimResult.Terminal);
+
+            await Orchestrator.HandleAsync(request, CreateEventContext());
+            await Orchestrator.HandleAsync(request, CreateEventContext());
+            await Orchestrator.HandleAsync(request, CreateEventContext());
+
+            ClientFactoryMock.Verify(x => x.GetClientByProviderIdAsync(
+                It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+            TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                GetRequestId(request), TaskState.Completed, It.IsAny<int?>(), It.IsAny<object?>(),
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_ConcurrentReplay_InvokesProviderExactlyOnce()
+        {
+            var request = CreateTestEventRequest();
+            var response = CreateTestResponse();
+            SetupSuccessfulGeneration(response);
+            var claims = 0;
+            TaskServiceMock.Setup(x => x.TryClaimTaskAsync(
+                    GetRequestId(request), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => Interlocked.Increment(ref claims) == 1
+                    ? AsyncTaskClaimResult.Claimed
+                    : AsyncTaskClaimResult.AlreadyClaimed);
+
+            await Task.WhenAll(
+                Orchestrator.HandleAsync(request, CreateEventContext()),
+                Orchestrator.HandleAsync(request, CreateEventContext()),
+                Orchestrator.HandleAsync(request, CreateEventContext()));
+
+            ClientFactoryMock.Verify(x => x.GetClientByProviderIdAsync(
+                It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

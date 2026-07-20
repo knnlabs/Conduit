@@ -102,8 +102,11 @@ namespace ConduitLLM.Core.Services.Abstractions
             GenerationModelInfo? modelInfo = null;
             var reservationCreated = false;
             var reservationHandedOff = false;
+            var providerInvocationStarted = false;
+            var providerInvocationCompleted = false;
             var reservationId = GetRequestId(request);
             var reservationVirtualKeyId = 0;
+            var workerId = $"{Environment.MachineName}:{Guid.NewGuid():N}";
 
             // Check if request should be processed
             if (!ShouldProcessRequest(request))
@@ -111,6 +114,26 @@ namespace ConduitLLM.Core.Services.Abstractions
                 _logger.LogDebug("Skipping request {RequestId} - processing criteria not met", GetRequestId(request));
                 return;
             }
+
+            var claimResult = await _taskService.TryClaimTaskAsync(
+                GetRequestId(request), workerId, TimeSpan.FromMinutes(15), context.CancellationToken);
+            if (claimResult != ConduitLLM.Configuration.Interfaces.AsyncTaskClaimResult.Claimed)
+            {
+                if (claimResult == ConduitLLM.Configuration.Interfaces.AsyncTaskClaimResult.Missing)
+                {
+                    throw new InvalidOperationException(
+                        $"Media generation task {GetRequestId(request)} does not exist.");
+                }
+
+                _logger.LogInformation(
+                    "Skipping duplicate media request {RequestId}; claim result was {ClaimResult}",
+                    GetRequestId(request), claimResult);
+                return;
+            }
+
+            using var leaseHeartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+            var leaseHeartbeat = MaintainTaskLeaseAsync(
+                GetRequestId(request), workerId, leaseHeartbeatCts.Token);
 
             // Start distributed tracing span for the entire generation pipeline
             using var activity = MediaGenerationMetrics.StartGenerationActivity(
@@ -132,10 +155,7 @@ namespace ConduitLLM.Core.Services.Abstractions
                 _logger.LogInformation("Processing {MediaType} generation task {RequestId} for model {Model}",
                     GetMediaType(), GetRequestId(request), GetModel(request));
 
-                // 1. Update task status to processing
-                await UpdateTaskStatusAsync(GetRequestId(request), TaskState.Processing, taskCts.Token);
-
-                // 2. Publish started event
+                // The durable claim already moved the task to Processing.
                 await PublishStartedEventAsync(request);
 
                 // 3. Get and validate model information
@@ -205,7 +225,19 @@ namespace ConduitLLM.Core.Services.Abstractions
                 LogGenerationDetails(request, modelInfo, generationRequest);
 
                 // 8. Execute the actual generation
+                if (!await _taskService.MarkProviderInvocationStartedAsync(
+                        GetRequestId(request), workerId, taskCts.Token))
+                {
+                    throw new InvalidOperationException("Media task claim was lost before provider invocation.");
+                }
+                providerInvocationStarted = true;
                 var response = await ExecuteGenerationAsync(generationRequest, modelInfo, virtualKey, taskCts.Token);
+                providerInvocationCompleted = await _taskService.MarkProviderInvocationCompletedAsync(
+                    GetRequestId(request), workerId, cancellationToken: taskCts.Token);
+                if (!providerInvocationCompleted)
+                {
+                    throw new InvalidOperationException("Media task claim was lost after provider completion.");
+                }
 
                 // 9. Calculate cost as soon as the provider has completed generation. Media
                 // download/storage remains cancellable, but the provider work is no longer
@@ -244,17 +276,46 @@ namespace ConduitLLM.Core.Services.Abstractions
             {
                 activity?.SetStatus(ActivityStatusCode.Error, "Cancelled");
                 activity?.SetTag("media.outcome", "cancelled");
-                await HandleCancellationAsync(request, stopwatch, modelInfo);
+                if (providerInvocationStarted && !providerInvocationCompleted)
+                {
+                    await _taskService.UpdateTaskStatusAsync(
+                        GetRequestId(request),
+                        TaskState.Indeterminate,
+                        error: "Provider outcome is unknown after cancellation; automatic retry is disabled.");
+                    _logger.LogCritical(
+                        "Media generation task {RequestId} was cancelled with an indeterminate provider outcome",
+                        GetRequestId(request));
+                }
+                else
+                {
+                    await HandleCancellationAsync(request, stopwatch, modelInfo);
+                }
             }
             catch (Exception ex)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 activity?.SetTag("media.outcome", "failed");
                 activity?.SetTag("media.error_type", ex.GetType().Name);
-                await HandleFailureAsync(request, ex, stopwatch, modelInfo);
+                if (providerInvocationStarted && !providerInvocationCompleted)
+                {
+                    await _taskService.UpdateTaskStatusAsync(
+                        GetRequestId(request),
+                        TaskState.Indeterminate,
+                        error: $"Provider outcome is unknown; automatic retry is disabled. {ex.Message}");
+                    _logger.LogCritical(ex,
+                        "Media generation task {RequestId} has an indeterminate provider outcome",
+                        GetRequestId(request));
+                }
+                else
+                {
+                    await HandleFailureAsync(request, ex, stopwatch, modelInfo);
+                }
             }
             finally
             {
+                leaseHeartbeatCts.Cancel();
+                await leaseHeartbeat;
+
                 if (reservationCreated && !reservationHandedOff && _batchSpendService != null)
                 {
                     try
@@ -274,6 +335,30 @@ namespace ConduitLLM.Core.Services.Abstractions
 
                 // Always unregister the task from the cancellation registry
                 _taskRegistry.UnregisterTask(GetRequestId(request));
+            }
+        }
+
+        private async Task MaintainTaskLeaseAsync(
+            string taskId,
+            string workerId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+                    if (!await _taskService.ExtendTaskLeaseAsync(
+                            taskId, workerId, TimeSpan.FromMinutes(15), cancellationToken))
+                    {
+                        _logger.LogWarning("Lost media task lease for {RequestId}", taskId);
+                        return;
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Normal completion path.
             }
         }
 

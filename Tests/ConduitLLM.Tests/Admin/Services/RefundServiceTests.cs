@@ -69,7 +69,7 @@ public class RefundServiceTests : IDisposable
         // Act
         var result = await _service.ProcessRefundAsync(
             groupId, modelId, originalUsage, refundUsage,
-            "Incorrect response", originalTransactionId, "admin", null);
+            "Incorrect response", originalTransactionId, "test-refund", "admin", null);
 
         // Assert
         result.Should().NotBeNull();
@@ -89,7 +89,7 @@ public class RefundServiceTests : IDisposable
             999, "gpt-4",
             new Usage { PromptTokens = 100, TotalTokens = 100 },
             new Usage { PromptTokens = 100, TotalTokens = 100 },
-            "reason", "1", "admin", null);
+            "reason", "1", "test-refund", "admin", null);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -121,7 +121,7 @@ public class RefundServiceTests : IDisposable
             1, "unknown-model",
             new Usage { PromptTokens = 100, TotalTokens = 100 },
             new Usage { PromptTokens = 100, TotalTokens = 100 },
-            "reason", originalTransactionId, "admin", null);
+            "reason", originalTransactionId, "test-refund", "admin", null);
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
@@ -154,7 +154,7 @@ public class RefundServiceTests : IDisposable
             1, "gpt-4",
             new Usage { PromptTokens = 1000, TotalTokens = 1000 },
             new Usage { PromptTokens = 1500, TotalTokens = 1500 },
-            "partial", originalTransactionId, "admin", null);
+            "partial", originalTransactionId, "test-refund", "admin", null);
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
@@ -168,7 +168,7 @@ public class RefundServiceTests : IDisposable
     public async Task ProcessRefundAsync_WithoutOriginalTransactionId_ShouldRejectRequest()
     {
         var act = () => _service.ProcessRefundAsync(
-            1, "gpt-4", new Usage(), new Usage(), "reason", null!, "admin", null);
+            1, "gpt-4", new Usage(), new Usage(), "reason", null!, "test-refund", "admin", null);
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*original debit transaction ID is required*");
@@ -182,7 +182,7 @@ public class RefundServiceTests : IDisposable
             .ReturnsAsync(group);
 
         var act = () => _service.ProcessRefundAsync(
-            1, "gpt-4", new Usage(), new Usage(), "reason", "999", "admin", null);
+            1, "gpt-4", new Usage(), new Usage(), "reason", "999", "test-refund", "admin", null);
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*transaction 999 was not found*");

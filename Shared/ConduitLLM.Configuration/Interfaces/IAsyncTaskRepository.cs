@@ -103,5 +103,47 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>True if updated successfully, false if version mismatch.</returns>
         Task<bool> UpdateWithVersionCheckAsync(AsyncTask task, int expectedVersion, CancellationToken cancellationToken = default);
+
+        /// <summary>Atomically claims a specific pending task for one media consumer.</summary>
+        Task<AsyncTaskClaimResult> TryClaimTaskAsync(
+            string taskId,
+            string workerId,
+            TimeSpan leaseDuration,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Records that the external provider may now have accepted work.</summary>
+        Task<bool> MarkProviderInvocationStartedAsync(
+            string taskId,
+            string workerId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Records that the provider returned a definitive result.</summary>
+        Task<bool> MarkProviderInvocationCompletedAsync(
+            string taskId,
+            string workerId,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> ResolveIndeterminateTaskAsync(
+            string taskId,
+            int targetState,
+            bool isRetryable,
+            string reason,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        Task<ExpiredTaskRecoveryResult> RecoverExpiredMediaTasksAsync(
+            CancellationToken cancellationToken = default);
     }
+
+    public enum AsyncTaskClaimResult
+    {
+        Claimed = 0,
+        AlreadyClaimed = 1,
+        Terminal = 2,
+        Missing = 3,
+        Indeterminate = 4
+    }
+
+    public sealed record ExpiredTaskRecoveryResult(int ResetToPending, int MarkedIndeterminate);
 }

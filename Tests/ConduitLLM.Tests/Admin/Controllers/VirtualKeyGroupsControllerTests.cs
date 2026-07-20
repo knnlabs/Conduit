@@ -4,9 +4,11 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Models;
 
 using FluentAssertions;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -217,5 +219,47 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Verify the correct repository method was called
             _mockGroupRepository.Verify(r => r.GetByIdWithKeysAsync(groupId), Times.Once);
         }
+
+        [Fact]
+        public async Task ProcessRefund_WithoutIdempotencyKey_ReturnsBadRequest()
+        {
+            var request = ValidRefundRequest();
+
+            var result = await _controller.ProcessRefund(1, request, null);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _mockRefundService.Verify(s => s.ProcessRefundAsync(
+                It.IsAny<int>(), It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<Usage>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ProcessRefund_WhenIdempotencyKeyConflicts_ReturnsConflict()
+        {
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
+            _mockRefundService.Setup(s => s.ProcessRefundAsync(
+                    1, "openai/gpt-4o", It.IsAny<Usage>(), It.IsAny<Usage>(),
+                    "duplicate", "42", "refund-op", It.IsAny<string>(), It.IsAny<string?>(),
+                    null, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ConduitLLM.Configuration.Exceptions.IdempotencyConflictException(
+                    "Idempotency key was reused with different refund data."));
+
+            var result = await _controller.ProcessRefund(1, ValidRefundRequest(), "refund-op");
+
+            result.Should().BeOfType<ConflictObjectResult>();
+        }
+
+        private static ProcessRefundRequestDto ValidRefundRequest() => new()
+        {
+            ModelId = "openai/gpt-4o",
+            RefundReason = "duplicate",
+            OriginalTransactionId = "42",
+            OriginalUsage = new UsageDto { TotalTokens = 100 },
+            RefundUsage = new UsageDto { TotalTokens = 100 }
+        };
     }
 }

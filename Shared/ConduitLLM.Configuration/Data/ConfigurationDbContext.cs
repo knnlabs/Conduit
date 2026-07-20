@@ -36,6 +36,8 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<VirtualKeyGroupTransaction> VirtualKeyGroupTransactions { get; set; } = null!;
 
+        public virtual DbSet<RefundIdempotencyRecord> RefundIdempotencyRecords { get; set; } = null!;
+
         /// <summary>
         /// Database set for request logs
         /// </summary>
@@ -459,6 +461,13 @@ namespace ConduitLLM.Configuration
             {
                 entity.ToTable("BillingReconciliationCheckpoints");
                 entity.HasKey(e => e.Id);
+            });
+
+            modelBuilder.Entity<RefundIdempotencyRecord>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.VirtualKeyGroupId, e.OperationId }).IsUnique();
+                entity.Property(e => e.ResponseJson).IsRequired();
             });
 
             // Apply PricingAuditEvent configuration (rules-based pricing)

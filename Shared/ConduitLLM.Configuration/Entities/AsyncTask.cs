@@ -110,6 +110,16 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         public DateTime? LeaseExpiryTime { get; set; }
 
+        /// <summary>When the external provider invocation began.</summary>
+        public DateTime? ProviderInvocationStartedAt { get; set; }
+
+        /// <summary>When the external provider returned a definitive successful result.</summary>
+        public DateTime? ProviderInvocationCompletedAt { get; set; }
+
+        /// <summary>Provider operation identifier captured for reconciliation.</summary>
+        [MaxLength(200)]
+        public string? ProviderOperationId { get; set; }
+
         /// <summary>
         /// Gets or sets the version number for optimistic concurrency control.
         /// </summary>

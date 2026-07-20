@@ -44,6 +44,13 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <param name="context">Delivery context</param>
         public async Task HandleAsync(SpendUpdateRequested request, IEventContext context)
         {
+            if (string.IsNullOrWhiteSpace(request.RequestId))
+            {
+                throw new ArgumentException(
+                    "Spend update requests require a non-empty RequestId for idempotent processing.",
+                    nameof(request));
+            }
+
             if (request.Amount <= 0)
             {
                 _logger.LogDebug("Spend update request for key {KeyId} has zero or negative amount {Amount} - skipping", 
@@ -98,37 +105,22 @@ namespace ConduitLLM.Gateway.EventHandlers
                 // rides the ledger row inside the same atomic save as the balance change,
                 // so an at-least-once redelivery cannot double-charge.
                 BalanceAdjustmentResult result;
-                if (!string.IsNullOrWhiteSpace(request.RequestId))
-                {
-                    result = await groupRepository.AdjustBalanceIdempotentAsync(
-                        group.Id,
-                        -request.Amount,
-                        SpendIdempotency.KeyFor(request.RequestId),
-                        description,
-                        "System",
-                        ReferenceType.VirtualKey,
-                        request.KeyId.ToString(),
-                        new DateTime(request.Timestamp.Year, request.Timestamp.Month, request.Timestamp.Day, request.Timestamp.Hour, 0, 0, DateTimeKind.Utc));
-                }
-                else
-                {
-                    var balance = await groupRepository.AdjustBalanceAsync(
-                        group.Id,
-                        -request.Amount,
-                        description,
-                        "System",
-                        ReferenceType.VirtualKey,
-                        request.KeyId.ToString(),
-                        new DateTime(request.Timestamp.Year, request.Timestamp.Month, request.Timestamp.Day, request.Timestamp.Hour, 0, 0, DateTimeKind.Utc));
-                    result = new BalanceAdjustmentResult(balance, group.LifetimeSpent + request.Amount, Applied: true);
-                }
+                result = await groupRepository.AdjustBalanceIdempotentAsync(
+                    group.Id,
+                    -request.Amount,
+                    SpendIdempotency.KeyFor(request.RequestId),
+                    description,
+                    "System",
+                    ReferenceType.VirtualKey,
+                    request.KeyId.ToString(),
+                    new DateTime(request.Timestamp.Year, request.Timestamp.Month, request.Timestamp.Day, request.Timestamp.Hour, 0, 0, DateTimeKind.Utc));
 
                 var newBalance = result.NewBalance;
                 var newSpend = result.LifetimeSpent;
 
                 // Keep the reservation in place until the durable database debit has
                 // completed. Releasing by RequestId is idempotent for event retries.
-                if (_batchSpendService != null && !string.IsNullOrWhiteSpace(request.RequestId))
+                if (_batchSpendService != null)
                 {
                     await _batchSpendService.ReleaseSpendReservationAsync(request.KeyId, request.RequestId);
                 }

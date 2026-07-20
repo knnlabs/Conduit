@@ -121,6 +121,7 @@ namespace ConduitLLM.Tests.Integration
                 refundUsage,
                 refundReason,
                 originalTransactionId,
+                "valid-refund",
                 "TestAdmin",
                 "test-user-123");
 
@@ -174,6 +175,7 @@ namespace ConduitLLM.Tests.Integration
                     refundUsage,
                     refundReason,
                     "1",
+                    "invalid-group-refund",
                     "TestAdmin",
                     null);
             });
@@ -232,13 +234,14 @@ namespace ConduitLLM.Tests.Integration
                     refundUsage,
                     refundReason,
                     originalTransactionId,
+                    "validation-refund",
                     "TestAdmin",
                     null);
             });
         }
 
         [Fact]
-        public async Task ProcessRefund_WithDuplicateOriginalTransactionId_ShouldThrowAndNotDoubleCredit()
+        public async Task ProcessRefund_WithDuplicateOperation_ShouldReplayAndNotDoubleCredit()
         {
             // Arrange
             var initialBalance = 100m;
@@ -276,18 +279,25 @@ namespace ConduitLLM.Tests.Integration
             // Act - first refund succeeds
             var firstResult = await _refundService.ProcessRefundAsync(
                 groupId, modelId, originalUsage, refundUsage, refundReason,
-                originalTransactionId, "TestAdmin", null);
+                originalTransactionId, idempotencyKey: "refund-operation-1",
+                initiatedBy: "TestAdmin", initiatedByUserId: null);
 
-            // The same transaction refunded again must be rejected (idempotency)
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                await _refundService.ProcessRefundAsync(
-                    groupId, modelId, originalUsage, refundUsage, refundReason,
-                    originalTransactionId, "TestAdmin", null);
-            });
+            // The same operation is a successful replay, not a second credit.
+            var replayResult = await _refundService.ProcessRefundAsync(
+                groupId, modelId, originalUsage, refundUsage, refundReason,
+                originalTransactionId, idempotencyKey: "refund-operation-1",
+                initiatedBy: "TestAdmin", initiatedByUserId: null);
+
+            await Assert.ThrowsAsync<ConduitLLM.Configuration.Exceptions.IdempotencyConflictException>(() =>
+                _refundService.ProcessRefundAsync(
+                    groupId, modelId, originalUsage, refundUsage, "changed reason",
+                    originalTransactionId, idempotencyKey: "refund-operation-1",
+                    initiatedBy: "TestAdmin", initiatedByUserId: null));
 
             // Assert - balance credited exactly once, linkage preserved, single refund transaction
             Assert.Equal(refundAmount, firstResult.RefundAmount);
+            Assert.Equal(firstResult.RefundTransactionId, replayResult.RefundTransactionId);
+            Assert.Equal(firstResult.BalanceAfter, replayResult.BalanceAfter);
             Assert.Equal(originalTransactionId, firstResult.OriginalTransactionId); // not overwritten
             Assert.NotEqual(0, firstResult.RefundTransactionId);
 
@@ -330,11 +340,11 @@ namespace ConduitLLM.Tests.Integration
 
             await _refundService.ProcessRefundAsync(
                 groupId, "openai/gpt-4o", originalUsage, firstUsage, "first partial",
-                originalTransactionId, "TestAdmin", null);
+                originalTransactionId, "first-partial-refund", "TestAdmin", null);
 
             var act = () => _refundService.ProcessRefundAsync(
                 groupId, "openai/gpt-4o", originalUsage, secondUsage, "second partial",
-                originalTransactionId, "TestAdmin", null);
+                originalTransactionId, "second-partial-refund", "TestAdmin", null);
 
             await Assert.ThrowsAsync<InvalidOperationException>(act);
             var updatedGroup = await _groupRepository.GetByIdAsync(groupId);
@@ -362,7 +372,7 @@ namespace ConduitLLM.Tests.Integration
 
             var act = () => _refundService.ProcessRefundAsync(
                 groupId, "openai/gpt-4o", new Usage(), new Usage(), "invalid original",
-                credit.Id.ToString(), "TestAdmin", null);
+                credit.Id.ToString(), "invalid-original-refund", "TestAdmin", null);
 
             await Assert.ThrowsAsync<ArgumentException>(act);
             _mockCostCalculationService.Verify(s => s.CalculateRefundAsync(

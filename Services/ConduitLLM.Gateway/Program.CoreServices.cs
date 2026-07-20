@@ -128,6 +128,7 @@ public partial class Program
                 ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, eventBus, logger)
                 : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
         });
+        builder.Services.AddHostedService<MediaTaskLeaseRecoveryService>();
 
         // ========== Conduit Service ==========
 

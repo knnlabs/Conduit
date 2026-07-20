@@ -2,9 +2,11 @@ using System.Data;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
+using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -49,11 +51,19 @@ public class RefundService : IRefundService
         Usage refundUsage,
         string refundReason,
         string originalTransactionId,
+        string idempotencyKey,
         string initiatedBy,
         string? initiatedByUserId,
         int? requestLogId = null,
         CancellationToken cancellationToken = default)
     {
+        idempotencyKey = idempotencyKey?.Trim() ?? string.Empty;
+        if (idempotencyKey.Length is < 1 or > 100)
+        {
+            throw new ArgumentException(
+                "Idempotency key must contain between 1 and 100 characters.", nameof(idempotencyKey));
+        }
+
         _logger.LogInformation(
             "Processing refund for group {GroupId}, model {ModelId}, initiated by {InitiatedBy}",
             virtualKeyGroupId, modelId, initiatedBy);
@@ -68,6 +78,15 @@ public class RefundService : IRefundService
         // Store and compare the canonical representation so alternate numeric formatting cannot
         // bypass cumulative-refund checks.
         originalTransactionId = originalTransactionKey.ToString(CultureInfo.InvariantCulture);
+        var requestHash = CreateRequestHash(
+            virtualKeyGroupId, originalTransactionId, modelId, originalUsage,
+            refundUsage, refundReason, requestLogId);
+        var existingReplay = await LoadReplayAsync(
+            virtualKeyGroupId, idempotencyKey, requestHash, cancellationToken);
+        if (existingReplay != null)
+        {
+            return existingReplay;
+        }
 
         // Validate group exists
         var group = await _groupRepository.GetByIdAsync(virtualKeyGroupId);
@@ -128,11 +147,12 @@ public class RefundService : IRefundService
         // link from the refund result and ledger entry back to the charge.
         refundResult.OriginalTransactionId = originalTransactionId;
 
-        var idempotencyKey = CreateIdempotencyKey(
-            virtualKeyGroupId, originalTransactionId, modelId, refundUsage);
+        var ledgerIdempotencyKey = CreateLedgerIdempotencyKey(virtualKeyGroupId, idempotencyKey);
 
-        await ExecuteRefundTransactionAsync(async ct =>
+        try
         {
+            await ExecuteRefundTransactionAsync(async ct =>
+            {
             // Re-read all mutable state inside the serializable transaction. This makes the aggregate
             // check safe when two admins refund the same charge concurrently.
             var chargeAmount = await _context.VirtualKeyGroupTransactions
@@ -146,13 +166,14 @@ public class RefundService : IRefundService
                     $"Transaction {originalTransactionId} is not a debit for virtual key group {virtualKeyGroupId}.",
                     nameof(originalTransactionId));
 
-            var duplicateRequest = await _context.VirtualKeyGroupTransactions
-                .IgnoreQueryFilters()
-                .AnyAsync(t => t.IdempotencyKey == idempotencyKey, ct);
-            if (duplicateRequest)
+            var duplicateRequest = await _context.RefundIdempotencyRecords
+                .AsNoTracking()
+                .SingleOrDefaultAsync(t => t.VirtualKeyGroupId == virtualKeyGroupId
+                    && t.OperationId == idempotencyKey, ct);
+            if (duplicateRequest != null)
             {
                 throw new InvalidOperationException(
-                    $"This refund request for transaction {originalTransactionId} has already been processed.");
+                    "The refund operation was committed concurrently.");
             }
 
             var refundedAmount = await _context.VirtualKeyGroupTransactions
@@ -221,7 +242,7 @@ public class RefundService : IRefundService
                 BalanceAfter = newBalance,
                 ReferenceType = ReferenceType.Manual, // Refunds are manual administrative actions
                 ReferenceId = originalTransactionId,
-                IdempotencyKey = idempotencyKey,
+                IdempotencyKey = ledgerIdempotencyKey,
                 Description = $"Refund: {refundReason} (Model: {modelId})",
                 InitiatedBy = initiatedBy,
                 InitiatedByUserId = initiatedByUserId,
@@ -232,6 +253,18 @@ public class RefundService : IRefundService
             await _context.SaveChangesAsync(ct);
 
             refundResult.RefundTransactionId = transaction.Id;
+            refundResult.BalanceAfter = newBalance;
+
+            _context.RefundIdempotencyRecords.Add(new RefundIdempotencyRecord
+            {
+                VirtualKeyGroupId = virtualKeyGroupId,
+                OperationId = idempotencyKey,
+                RequestHash = requestHash,
+                RefundTransactionId = transaction.Id,
+                ResponseJson = JsonSerializer.Serialize(refundResult),
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync(ct);
 
             _logger.LogInformation(
                 "Processed refund for group {GroupId}: {RefundAmount:C}. Model: {ModelId}, Reason: {RefundReason}, Previous Balance: {PreviousBalance:C}, New Balance: {NewBalance:C}, Transaction ID: {TransactionId}",
@@ -242,7 +275,24 @@ public class RefundService : IRefundService
                 previousBalance,
                 newBalance,
                 transaction.Id);
-        }, cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception)
+        {
+            if (_context is DbContext dbContext)
+            {
+                dbContext.ChangeTracker.Clear();
+            }
+
+            var replay = await LoadReplayAsync(
+                virtualKeyGroupId, idempotencyKey, requestHash, cancellationToken);
+            if (replay != null)
+            {
+                return replay;
+            }
+
+            throw;
+        }
 
         return refundResult;
     }
@@ -268,31 +318,57 @@ public class RefundService : IRefundService
         }, cancellationToken);
     }
 
-    private static string CreateIdempotencyKey(
+    private async Task<RefundResult?> LoadReplayAsync(
+        int groupId,
+        string operationId,
+        string requestHash,
+        CancellationToken cancellationToken)
+    {
+        var record = await _context.RefundIdempotencyRecords
+            .AsNoTracking()
+            .SingleOrDefaultAsync(r => r.VirtualKeyGroupId == groupId
+                && r.OperationId == operationId, cancellationToken);
+        if (record == null)
+        {
+            return null;
+        }
+
+        if (!CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(record.RequestHash), Convert.FromHexString(requestHash)))
+        {
+            throw new IdempotencyConflictException(
+                $"Idempotency key '{operationId}' was reused with different refund data.");
+        }
+
+        return JsonSerializer.Deserialize<RefundResult>(record.ResponseJson)
+            ?? throw new InvalidOperationException("Stored refund replay response is invalid.");
+    }
+
+    private static string CreateLedgerIdempotencyKey(int groupId, string operationId)
+    {
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(operationId)));
+        return $"refund:{groupId}:{hash[..32]}";
+    }
+
+    private static string CreateRequestHash(
         int groupId,
         string originalTransactionId,
         string modelId,
-        Usage refundUsage)
+        Usage originalUsage,
+        Usage refundUsage,
+        string refundReason,
+        int? requestLogId)
     {
-        var request = string.Join('|',
-            groupId.ToString(CultureInfo.InvariantCulture),
-            originalTransactionId,
-            modelId,
-            refundUsage.PromptTokens,
-            refundUsage.CompletionTokens,
-            refundUsage.TotalTokens,
-            refundUsage.CachedInputTokens,
-            refundUsage.CachedWriteTokens,
-            refundUsage.ReasoningTokens,
-            refundUsage.ImageCount,
-            refundUsage.ImageQuality,
-            refundUsage.ImageResolution,
-            refundUsage.VideoDurationSeconds?.ToString("R", CultureInfo.InvariantCulture),
-            refundUsage.VideoResolution,
-            refundUsage.SearchUnits,
-            refundUsage.InferenceSteps,
-            refundUsage.IsBatch);
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request)));
-        return $"refund:{groupId}:{originalTransactionId}:{hash[..32]}";
+        static string UsageKey(Usage usage) => string.Join(',',
+            usage.PromptTokens, usage.CompletionTokens, usage.TotalTokens,
+            usage.CachedInputTokens, usage.CachedInputTokensIncludedInPrompt,
+            usage.CachedWriteTokens, usage.ReasoningTokens, usage.ImageCount,
+            usage.ImageQuality, usage.ImageResolution,
+            usage.VideoDurationSeconds?.ToString("R", CultureInfo.InvariantCulture),
+            usage.VideoResolution, usage.SearchUnits, usage.InferenceSteps, usage.IsBatch);
+
+        var canonical = string.Join('|', groupId, originalTransactionId, modelId,
+            UsageKey(originalUsage), UsageKey(refundUsage), refundReason, requestLogId);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
     }
 }

@@ -136,7 +136,8 @@ namespace ConduitLLM.Core.Services
             return state == TaskState.Completed || 
                    state == TaskState.Failed || 
                    state == TaskState.Cancelled ||
-                   state == TaskState.TimedOut;
+                   state == TaskState.TimedOut ||
+                   state == TaskState.Indeterminate;
         }
 
         private static string GetTaskKey(string taskId) => $"{TASK_KEY_PREFIX}{taskId}";

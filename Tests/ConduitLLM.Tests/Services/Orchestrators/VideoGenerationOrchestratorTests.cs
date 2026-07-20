@@ -201,13 +201,13 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             // Act - Should handle timeout gracefully
             await Orchestrator.HandleAsync(request, context);
 
-            // Assert - Verify that task failed with timeout error
+            // Assert - a timeout after invocation has an unknown provider outcome
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
                 request.RequestId,
-                TaskState.Failed,
+                TaskState.Indeterminate,
                 It.IsAny<int?>(),
                 It.IsAny<object?>(),
-                exception.Message,
+                It.Is<string?>(message => message != null && message.Contains(exception.Message)),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -357,7 +357,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task PublishFailedEvent_WithRetryableError_ShouldIncludeRetryInfo()
+        public async Task ProviderTimeout_ShouldNotPublishRetryableFailure()
         {
             // Arrange
             var request = CreateTestEventRequest();
@@ -369,13 +369,10 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             // Act - Should handle failure gracefully
             await Orchestrator.HandleAsync(request, context);
 
-            // Assert - Should publish failed event with retry information
+            // Assert - retrying an unknown provider outcome could duplicate generation
             EventBusMock.Verify(x => x.PublishAsync(
-                It.Is<VideoGenerationFailed>(e =>
-                    e.RequestId == request.RequestId &&
-                    e.IsRetryable == true &&
-                    e.CorrelationId == request.CorrelationId),
-                It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<VideoGenerationFailed>(),
+                It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

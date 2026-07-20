@@ -297,6 +297,8 @@ namespace ConduitLLM.Core.Services
             if (IsTaskCompleted(status))
             {
                 dbTask.CompletedAt = DateTime.UtcNow;
+                dbTask.LeasedBy = null;
+                dbTask.LeaseExpiryTime = null;
             }
 
             // Save to database

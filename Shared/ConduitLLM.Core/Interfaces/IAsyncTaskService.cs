@@ -89,6 +89,36 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of pending tasks</returns>
         Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default);
+
+        Task<ConduitLLM.Configuration.Interfaces.AsyncTaskClaimResult> TryClaimTaskAsync(
+            string taskId,
+            string workerId,
+            TimeSpan leaseDuration,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> MarkProviderInvocationStartedAsync(
+            string taskId,
+            string workerId,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> MarkProviderInvocationCompletedAsync(
+            string taskId,
+            string workerId,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> ExtendTaskLeaseAsync(
+            string taskId,
+            string workerId,
+            TimeSpan extension,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> ResolveIndeterminateTaskAsync(
+            string taskId,
+            IndeterminateTaskResolution resolution,
+            string reason,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -205,6 +235,16 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Task timed out.
         /// </summary>
-        TimedOut
+        TimedOut,
+
+        /// <summary>The provider may have accepted work; automatic retry is unsafe.</summary>
+        Indeterminate
+    }
+
+    public enum IndeterminateTaskResolution
+    {
+        SafeToRetry,
+        Failed,
+        Completed
     }
 }

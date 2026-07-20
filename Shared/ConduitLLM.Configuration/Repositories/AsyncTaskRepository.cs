@@ -544,5 +544,246 @@ namespace ConduitLLM.Configuration.Repositories
                 throw;
             }
         }
+
+        /// <inheritdoc/>
+        public async Task<AsyncTaskClaimResult> TryClaimTaskAsync(
+            string taskId,
+            string workerId,
+            TimeSpan leaseDuration,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(taskId);
+            ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+
+            return await ExecuteAsync(async context =>
+            {
+                var now = DateTime.UtcNow;
+                if (context.Database.IsRelational())
+                {
+                    var affected = await context.AsyncTasks
+                        .Where(t => t.Id == taskId && !t.IsArchived &&
+                            (t.State == 0 || (t.State == 1 &&
+                                t.ProviderInvocationStartedAt == null &&
+                                t.LeaseExpiryTime < now)))
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(t => t.State, 1)
+                            .SetProperty(t => t.LeasedBy, workerId)
+                            .SetProperty(t => t.LeaseExpiryTime, now.Add(leaseDuration))
+                            .SetProperty(t => t.UpdatedAt, now)
+                            .SetProperty(t => t.Version, t => t.Version + 1), cancellationToken);
+                    if (affected == 1)
+                    {
+                        return AsyncTaskClaimResult.Claimed;
+                    }
+                }
+                else
+                {
+                    var pending = await context.AsyncTasks.SingleOrDefaultAsync(
+                        t => t.Id == taskId && !t.IsArchived &&
+                            (t.State == 0 || (t.State == 1 &&
+                                t.ProviderInvocationStartedAt == null &&
+                                t.LeaseExpiryTime < now)), cancellationToken);
+                    if (pending != null)
+                    {
+                        pending.State = 1;
+                        pending.LeasedBy = workerId;
+                        pending.LeaseExpiryTime = now.Add(leaseDuration);
+                        pending.UpdatedAt = now;
+                        pending.Version++;
+                        await context.SaveChangesAsync(cancellationToken);
+                        return AsyncTaskClaimResult.Claimed;
+                    }
+                }
+
+                var uncertain = await context.AsyncTasks.SingleOrDefaultAsync(t =>
+                    t.Id == taskId && t.State == 1 &&
+                    t.ProviderInvocationStartedAt != null && t.LeaseExpiryTime < now,
+                    cancellationToken);
+                if (uncertain != null)
+                {
+                    uncertain.State = 6;
+                    uncertain.IsRetryable = false;
+                    uncertain.Error = "Provider outcome is unknown after the processing lease expired.";
+                    uncertain.LeasedBy = null;
+                    uncertain.LeaseExpiryTime = null;
+                    uncertain.CompletedAt = now;
+                    uncertain.UpdatedAt = now;
+                    uncertain.Version++;
+                    await context.SaveChangesAsync(cancellationToken);
+                    return AsyncTaskClaimResult.Indeterminate;
+                }
+
+                var current = await context.AsyncTasks.AsNoTracking()
+                    .Where(t => t.Id == taskId)
+                    .Select(t => (int?)t.State)
+                    .SingleOrDefaultAsync(cancellationToken);
+                return current switch
+                {
+                    null => AsyncTaskClaimResult.Missing,
+                    6 => AsyncTaskClaimResult.Indeterminate,
+                    2 or 3 or 4 or 5 => AsyncTaskClaimResult.Terminal,
+                    _ => AsyncTaskClaimResult.AlreadyClaimed
+                };
+            }, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<bool> MarkProviderInvocationStartedAsync(
+            string taskId,
+            string workerId,
+            CancellationToken cancellationToken = default)
+            => UpdateProviderPhaseAsync(taskId, workerId, completed: false, null, cancellationToken);
+
+        /// <inheritdoc/>
+        public Task<bool> MarkProviderInvocationCompletedAsync(
+            string taskId,
+            string workerId,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default)
+            => UpdateProviderPhaseAsync(taskId, workerId, completed: true, providerOperationId, cancellationToken);
+
+        private async Task<bool> UpdateProviderPhaseAsync(
+            string taskId,
+            string workerId,
+            bool completed,
+            string? providerOperationId,
+            CancellationToken cancellationToken)
+        {
+            return await ExecuteAsync(async context =>
+            {
+                var now = DateTime.UtcNow;
+                var query = context.AsyncTasks.Where(t => t.Id == taskId
+                    && t.State == 1 && t.LeasedBy == workerId);
+                if (context.Database.IsRelational())
+                {
+                    var affected = completed
+                        ? await query.ExecuteUpdateAsync(setters => setters
+                            .SetProperty(t => t.ProviderInvocationCompletedAt, now)
+                            .SetProperty(t => t.ProviderOperationId, providerOperationId)
+                            .SetProperty(t => t.UpdatedAt, now), cancellationToken)
+                        : await query.ExecuteUpdateAsync(setters => setters
+                            .SetProperty(t => t.ProviderInvocationStartedAt, now)
+                            .SetProperty(t => t.UpdatedAt, now), cancellationToken);
+                    return affected == 1;
+                }
+
+                var task = await query.SingleOrDefaultAsync(cancellationToken);
+                if (task == null) return false;
+                if (completed)
+                {
+                    task.ProviderInvocationCompletedAt = now;
+                    task.ProviderOperationId = providerOperationId;
+                }
+                else
+                {
+                    task.ProviderInvocationStartedAt = now;
+                }
+                task.UpdatedAt = now;
+                return await context.SaveChangesAsync(cancellationToken) == 1;
+            }, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> ResolveIndeterminateTaskAsync(
+            string taskId,
+            int targetState,
+            bool isRetryable,
+            string reason,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default)
+        {
+            return await ExecuteAsync(async context =>
+            {
+                var task = await context.AsyncTasks.SingleOrDefaultAsync(
+                    t => t.Id == taskId && t.State == 6, cancellationToken);
+                if (task == null) return false;
+
+                task.State = targetState;
+                task.IsRetryable = isRetryable;
+                task.Error = reason;
+                task.ProviderOperationId = providerOperationId ?? task.ProviderOperationId;
+                task.LeasedBy = null;
+                task.LeaseExpiryTime = null;
+                task.UpdatedAt = DateTime.UtcNow;
+                task.Version++;
+                if (targetState == 0)
+                {
+                    task.ProviderInvocationStartedAt = null;
+                    task.ProviderInvocationCompletedAt = null;
+                    task.CompletedAt = null;
+                    task.NextRetryAt = null;
+                    task.RetryCount++;
+                }
+                else
+                {
+                    task.CompletedAt = DateTime.UtcNow;
+                }
+
+                return await context.SaveChangesAsync(cancellationToken) == 1;
+            }, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public async Task<ExpiredTaskRecoveryResult> RecoverExpiredMediaTasksAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return await ExecuteAsync(async context =>
+            {
+                var now = DateTime.UtcNow;
+                var mediaTypes = new[] { "image_generation", "video_generation" };
+                if (context.Database.IsRelational())
+                {
+                    var reset = await context.AsyncTasks
+                        .Where(t => t.State == 1 && mediaTypes.Contains(t.Type) &&
+                            t.LeaseExpiryTime < now && t.ProviderInvocationStartedAt == null)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(t => t.State, 0)
+                            .SetProperty(t => t.LeasedBy, (string?)null)
+                            .SetProperty(t => t.LeaseExpiryTime, (DateTime?)null)
+                            .SetProperty(t => t.UpdatedAt, now)
+                            .SetProperty(t => t.Version, t => t.Version + 1), cancellationToken);
+                    var uncertain = await context.AsyncTasks
+                        .Where(t => t.State == 1 && mediaTypes.Contains(t.Type) &&
+                            t.LeaseExpiryTime < now && t.ProviderInvocationStartedAt != null)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(t => t.State, 6)
+                            .SetProperty(t => t.IsRetryable, false)
+                            .SetProperty(t => t.Error, "Provider outcome is unknown after the processing lease expired.")
+                            .SetProperty(t => t.LeasedBy, (string?)null)
+                            .SetProperty(t => t.LeaseExpiryTime, (DateTime?)null)
+                            .SetProperty(t => t.CompletedAt, now)
+                            .SetProperty(t => t.UpdatedAt, now)
+                            .SetProperty(t => t.Version, t => t.Version + 1), cancellationToken);
+                    return new ExpiredTaskRecoveryResult(reset, uncertain);
+                }
+
+                var expired = await context.AsyncTasks.Where(t => t.State == 1 &&
+                    mediaTypes.Contains(t.Type) && t.LeaseExpiryTime < now).ToListAsync(cancellationToken);
+                var resetCount = 0;
+                var uncertainCount = 0;
+                foreach (var task in expired)
+                {
+                    task.LeasedBy = null;
+                    task.LeaseExpiryTime = null;
+                    task.UpdatedAt = now;
+                    task.Version++;
+                    if (task.ProviderInvocationStartedAt == null)
+                    {
+                        task.State = 0;
+                        resetCount++;
+                    }
+                    else
+                    {
+                        task.State = 6;
+                        task.IsRetryable = false;
+                        task.Error = "Provider outcome is unknown after the processing lease expired.";
+                        task.CompletedAt = now;
+                        uncertainCount++;
+                    }
+                }
+                await context.SaveChangesAsync(cancellationToken);
+                return new ExpiredTaskRecoveryResult(resetCount, uncertainCount);
+            }, cancellationToken);
+        }
     }
 }

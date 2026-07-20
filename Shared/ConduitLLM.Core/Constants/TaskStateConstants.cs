@@ -43,6 +43,8 @@ public static class TaskStateConstants
     /// Corresponds to TaskState.TimedOut.
     /// </summary>
     public const string TimedOut = "timedout";
+
+    public const string Indeterminate = "indeterminate";
     
     /// <summary>
     /// Initial status returned by some endpoints when task is first created.
@@ -72,6 +74,7 @@ public static class TaskStateConstants
             Failed => TaskState.Failed,
             Cancelled => TaskState.Cancelled,
             TimedOut => TaskState.TimedOut,
+            Indeterminate => TaskState.Indeterminate,
             Queued => TaskState.Pending, // Map queued to pending
             _ => null
         };

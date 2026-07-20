@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
+using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.EntityFrameworkCore;
@@ -234,10 +235,22 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
                 var duplicate = await context.VirtualKeyGroupTransactions
                     .IgnoreQueryFilters()
                     .AsNoTracking()
-                    .AnyAsync(t => t.IdempotencyKey == idempotencyKey);
+                    .SingleOrDefaultAsync(t => t.IdempotencyKey == idempotencyKey);
 
-                if (duplicate)
+                if (duplicate != null)
                 {
+                    var expectedType = amount > 0 ? TransactionType.Credit : TransactionType.Debit;
+                    if (duplicate.VirtualKeyGroupId != groupId ||
+                        duplicate.TransactionType != expectedType ||
+                        duplicate.Amount != Math.Abs(amount) ||
+                        duplicate.ReferenceType != referenceType ||
+                        duplicate.ReferenceId != referenceId ||
+                        duplicate.BillingWindowStartUtc != billingWindowStartUtc)
+                    {
+                        throw new IdempotencyConflictException(
+                            $"Idempotency key '{idempotencyKey}' was reused with different balance-adjustment data.");
+                    }
+
                     Logger.LogWarning(
                         "Duplicate balance adjustment for group {GroupId} with idempotency key {IdempotencyKey} - skipping",
                         groupId, idempotencyKey);
@@ -256,7 +269,26 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
             Logger.LogWarning(
                 "Concurrent duplicate balance adjustment for group {GroupId} with idempotency key {IdempotencyKey} - skipping",
                 groupId, idempotencyKey);
-            return await ExecuteAsync(context => GetCurrentStateAsync(context, groupId, applied: false));
+            return await ExecuteAsync(async context =>
+            {
+                var winner = await context.VirtualKeyGroupTransactions
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .SingleAsync(t => t.IdempotencyKey == idempotencyKey);
+                var expectedType = amount > 0 ? TransactionType.Credit : TransactionType.Debit;
+                if (winner.VirtualKeyGroupId != groupId ||
+                    winner.TransactionType != expectedType ||
+                    winner.Amount != Math.Abs(amount) ||
+                    winner.ReferenceType != referenceType ||
+                    winner.ReferenceId != referenceId ||
+                    winner.BillingWindowStartUtc != billingWindowStartUtc)
+                {
+                    throw new IdempotencyConflictException(
+                        $"Idempotency key '{idempotencyKey}' was reused concurrently with different balance-adjustment data.");
+                }
+
+                return await GetCurrentStateAsync(context, groupId, applied: false);
+            });
         }
         catch (InvalidOperationException)
         {

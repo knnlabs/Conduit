@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Core.Interfaces;
 
 using FluentAssertions;
@@ -56,13 +57,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            Assert.NotNull(okResult.Value);
-
-            var response = okResult.Value.GetType().GetProperty("cleaned_up")?.GetValue(okResult.Value);
-            var hours = okResult.Value.GetType().GetProperty("older_than_hours")?.GetValue(okResult.Value);
-            
-            Assert.Equal(42, response);
-            Assert.Equal(24, hours);
+            var response = okResult.Value.Should().BeOfType<TaskCleanupResponseDto>().Subject;
+            Assert.Equal(42, response.CleanedUp);
+            Assert.Equal(24, response.OlderThanHours);
 
             _mockTaskService.Verify(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(24), It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -124,6 +121,41 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             Assert.NotNull(authorizeAttribute);
             Assert.Equal("MasterKeyPolicy", authorizeAttribute.Policy);
+        }
+
+        [Fact]
+        public async Task ResolveIndeterminateTask_SafeToRetry_UsesGuardedServiceTransition()
+        {
+            _mockTaskService.Setup(x => x.ResolveIndeterminateTaskAsync(
+                    "task-1", IndeterminateTaskResolution.SafeToRetry, "provider confirmed absent",
+                    "provider-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            var result = await _controller.ResolveIndeterminateTask(
+                "task-1",
+                new ResolveIndeterminateTaskDto
+                {
+                    Resolution = "safe_to_retry",
+                    Reason = "provider confirmed absent",
+                    ProviderOperationId = "provider-1"
+                },
+                CancellationToken.None);
+
+            result.Should().BeOfType<NoContentResult>();
+        }
+
+        [Fact]
+        public async Task ResolveIndeterminateTask_InvalidResolution_ReturnsBadRequest()
+        {
+            var result = await _controller.ResolveIndeterminateTask(
+                "task-1",
+                new ResolveIndeterminateTaskDto { Resolution = "retry_now", Reason = "unsafe" },
+                CancellationToken.None);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _mockTaskService.Verify(x => x.ResolveIndeterminateTaskAsync(
+                It.IsAny<string>(), It.IsAny<IndeterminateTaskResolution>(), It.IsAny<string>(),
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

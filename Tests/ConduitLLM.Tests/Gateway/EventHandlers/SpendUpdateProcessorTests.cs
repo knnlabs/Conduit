@@ -340,7 +340,7 @@ namespace ConduitLLM.Tests.Http.EventHandlers
         }
 
         [Fact]
-        public async Task HandleAsync_WithoutRequestId_FallsBackToNonIdempotentAdjustment()
+        public async Task HandleAsync_WithoutRequestId_RejectsUnsafeDebit()
         {
             // Arrange
             SetupRepositories(keyId: 444, keyHash: "test-hash-444", groupBalance: 100m, groupLifetimeSpent: 100m);
@@ -365,19 +365,52 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             };
 
             // Act
-            await _processor.HandleAsync(@event, new TestEventContext());
+            var act = () => _processor.HandleAsync(@event, new TestEventContext());
 
             // Assert
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("*non-empty RequestId*");
             _groupRepositoryMock.Verify(r => r.AdjustBalanceAsync(
                 1, -50m, It.IsAny<string>(), It.IsAny<string>(), ReferenceType.VirtualKey, It.IsAny<string>(), It.IsAny<DateTime>()),
-                Times.Once);
+                Times.Never);
             _groupRepositoryMock.Verify(r => r.AdjustBalanceIdempotentAsync(
                 It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<string>(), It.IsAny<ReferenceType>(), It.IsAny<string>(), It.IsAny<DateTime>()),
                 Times.Never);
 
             _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<SpendUpdated>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleAsync_SequentialReplay_DebitsAndCrossesThresholdOnce()
+        {
+            SetupRepositories(keyId: 555, keyHash: "test-hash-555", groupBalance: 100m, groupLifetimeSpent: 0m);
+            _groupRepositoryMock.SetupSequence(r => r.AdjustBalanceIdempotentAsync(
+                    1, -150m, "spend:replay-555", It.IsAny<string>(), It.IsAny<string>(),
+                    ReferenceType.VirtualKey, "555", It.IsAny<DateTime>()))
+                .ReturnsAsync(new BalanceAdjustmentResult(-50m, 150m, true))
+                .ReturnsAsync(new BalanceAdjustmentResult(-50m, 150m, false))
+                .ReturnsAsync(new BalanceAdjustmentResult(-50m, 150m, false));
+            var message = new SpendUpdateRequested
+            {
+                KeyId = 555,
+                Amount = 150m,
+                RequestId = "replay-555",
+                Timestamp = DateTime.UtcNow
+            };
+
+            await _processor.HandleAsync(message, new TestEventContext());
+            await _processor.HandleAsync(message, new TestEventContext());
+            await _processor.HandleAsync(message, new TestEventContext());
+
+            _groupRepositoryMock.Verify(r => r.AdjustBalanceIdempotentAsync(
+                1, -150m, "spend:replay-555", It.IsAny<string>(), It.IsAny<string>(),
+                ReferenceType.VirtualKey, "555", It.IsAny<DateTime>()), Times.Exactly(3));
+            _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<SpendThresholdExceeded>(),
                 It.IsAny<CancellationToken>()), Times.Once);
+            _eventBusMock.Verify(p => p.PublishAsync(It.IsAny<SpendUpdated>(),
+                It.IsAny<CancellationToken>()), Times.Exactly(3));
         }
 
         private void SetupRepositories(int keyId, string keyHash, decimal groupBalance, decimal groupLifetimeSpent)

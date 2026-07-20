@@ -50,5 +50,33 @@ namespace ConduitLLM.Admin.Controllers
 
             return Ok(new TaskCleanupResponseDto { CleanedUp = count, OlderThanHours = olderThanHours });
         }
+
+        /// <summary>Resolves a media task whose provider outcome required reconciliation.</summary>
+        [HttpPost("{taskId}/resolve")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ResolveIndeterminateTask(
+            string taskId,
+            [FromBody] ResolveIndeterminateTaskDto request,
+            CancellationToken cancellationToken)
+        {
+            if (!Enum.TryParse<IndeterminateTaskResolution>(
+                    request.Resolution.Replace("_", string.Empty), true, out var resolution))
+            {
+                return BadRequest(new { message = "Resolution must be safe_to_retry, failed, or completed" });
+            }
+
+            var updated = await _taskService.ResolveIndeterminateTaskAsync(
+                taskId, resolution, request.Reason, request.ProviderOperationId, cancellationToken);
+            if (!updated)
+            {
+                return NotFound(new { message = "Indeterminate task was not found" });
+            }
+
+            LogAdminAudit("Resolved", "AsyncTask", detail:
+                $"TaskId: {taskId}, Resolution: {resolution}, Reason: {request.Reason}");
+            return NoContent();
+        }
     }
 }

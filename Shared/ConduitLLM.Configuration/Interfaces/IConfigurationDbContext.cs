@@ -26,6 +26,8 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </summary>
         DbSet<VirtualKeyGroupTransaction> VirtualKeyGroupTransactions { get; }
 
+        DbSet<RefundIdempotencyRecord> RefundIdempotencyRecords { get; }
+
         /// <summary>
         /// Database set for request logs
         /// </summary>
