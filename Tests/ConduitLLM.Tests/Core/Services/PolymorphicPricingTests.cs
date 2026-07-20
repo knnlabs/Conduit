@@ -64,6 +64,30 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task CalculateCost_PerVideo_CamelCaseJson_ReturnsConfiguredRate()
+        {
+            var modelId = "minimax/hailuo-camel-case";
+            var usage = new Usage
+            {
+                VideoDurationSeconds = 6,
+                VideoResolution = "768p"
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerVideo,
+                PricingConfiguration = "{\"rates\":{\"768p_6\":0.28}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.28m, cost);
+        }
+
+        [Fact]
         public async Task CalculateCost_PerVideo_MissingExactKey_UsesHighestConfiguredRateAndMarksFallback()
         {
             var modelId = "video/measured-duration";
@@ -265,6 +289,26 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task CalculateCost_InferenceSteps_CamelCaseJson_UsesConfiguredValues()
+        {
+            var modelId = "fireworks/sdxl-camel-case";
+            var usage = new Usage { ImageCount = 1 };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.InferenceSteps,
+                PricingConfiguration = "{\"costPerStep\":0.00013,\"defaultSteps\":30}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.0039m, cost);
+        }
+
+        [Fact]
         public async Task CalculateCost_TieredTokens_MiniMaxM1_Under200K()
         {
             // Arrange
@@ -342,6 +386,31 @@ namespace ConduitLLM.Tests.Core.Services
             // Input: 250000 * 1300 / 1000000 = 325
             // Output: 50000 * 2200 / 1000000 = 110
             Assert.Equal(435m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_TieredTokens_CamelCaseJson_UsesConfiguredTier()
+        {
+            var modelId = "minimax/m1-camel-case";
+            var usage = new Usage
+            {
+                PromptTokens = 1_000,
+                CompletionTokens = 500
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.TieredTokens,
+                PricingConfiguration =
+                    "{\"tiers\":[{\"maxContext\":200000,\"inputCost\":10,\"outputCost\":20}]}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.02m, cost);
         }
 
         [Fact]
