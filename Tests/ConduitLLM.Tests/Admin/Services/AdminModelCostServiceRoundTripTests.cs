@@ -15,6 +15,8 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using System.Text.Json;
+
 namespace ConduitLLM.Tests.Admin.Services
 {
     /// <summary>
@@ -92,32 +94,21 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         /// <summary>
-        /// Builds the UpdateModelCostDto exactly as an unmodified GET→PUT round-trip would:
-        /// the GET body carries associatedModelAliases (strings), not association IDs, so
-        /// ModelProviderTypeAssociationIds stays at its deserialization default.
+        /// Builds the UpdateModelCostDto through the same JSON contract as an unmodified
+        /// GET→PUT round-trip. The GET body carries associatedModelAliases (strings), not
+        /// association IDs, so ModelProviderTypeAssociationIds stays null when the payload is
+        /// deserialized as an update request.
         /// </summary>
         private static UpdateModelCostDto ToRoundTripUpdateDto(ModelCostDto dto)
         {
-            return new UpdateModelCostDto
-            {
-                Id = dto.Id,
-                CostName = dto.CostName,
-                PricingModel = dto.PricingModel,
-                PricingConfiguration = dto.PricingConfiguration,
-                ModelType = dto.ModelType,
-                Priority = dto.Priority,
-                Description = dto.Description,
-                IsActive = dto.IsActive,
-                InputCostPerMillionTokens = dto.InputCostPerMillionTokens,
-                OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens,
-                EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens,
-                BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
-                SupportsBatchProcessing = dto.SupportsBatchProcessing,
-                CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens,
-                CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens,
-                CostPerSearchUnit = dto.CostPerSearchUnit
-                // ModelProviderTypeAssociationIds intentionally not set — absent in a GET→PUT body
-            };
+            var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            var payload = JsonSerializer.Serialize(dto, options);
+            var update = JsonSerializer.Deserialize<UpdateModelCostDto>(payload, options);
+
+            update.Should().NotBeNull();
+            update!.ModelProviderTypeAssociationIds.Should().BeNull(
+                "associatedModelAliases is read-only response data and must not be mapped as association IDs");
+            return update;
         }
 
         #endregion
