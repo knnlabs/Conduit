@@ -124,7 +124,7 @@ namespace ConduitLLM.Gateway.Controllers
                 GetCompletionAccumulatorLimit(request),
                 _usageTrackingOptions.MaximumStreamingToolCallCharacters,
                 _usageTrackingOptions.MaximumStreamingToolCalls);
-            UsageMetrics.StreamsActive.Inc();
+            SseTransportMetrics.ActiveStreams.Add(1);
             var firstChunkTime = DateTime.UtcNow;
 
             try
@@ -227,26 +227,36 @@ namespace ConduitLLM.Gateway.Controllers
                 finally
                 {
                     var providerLabel = modelMapping?.Provider?.ProviderType.ToString().ToLowerInvariant() ?? "unknown";
-                    UsageMetrics.StreamsTotal.WithLabels(transportOutcome.ToString().ToLowerInvariant()).Inc();
-                    UsageMetrics.StreamChunks.WithLabels(providerLabel).Inc(state.ChunkCount);
-                    UsageMetrics.StreamBytes.WithLabels(providerLabel).Inc(sseWriter.BytesWritten);
+                    SseTransportMetrics.Streams.Add(
+                        1,
+                        new KeyValuePair<string, object?>(
+                            "outcome",
+                            transportOutcome.ToString().ToLowerInvariant()));
+                    SseTransportMetrics.Chunks.Add(
+                        state.ChunkCount,
+                        new KeyValuePair<string, object?>("provider", providerLabel));
+                    SseTransportMetrics.Bytes.Add(
+                        sseWriter.BytesWritten,
+                        new KeyValuePair<string, object?>("provider", providerLabel));
                     if (state.ProviderFirstChunkAt is { } providerFirstChunkAt)
                     {
-                        UsageMetrics.StreamTimeToProviderFirstChunk.Observe(
+                        SseTransportMetrics.TimeToProviderFirstChunk.Record(
                             (providerFirstChunkAt - state.StartedAt).TotalSeconds);
                     }
                     if (sseWriter.FirstClientFlushAt is { } clientFirstFlushAt)
                     {
-                        UsageMetrics.StreamTimeToClientFirstFlush.Observe(
+                        SseTransportMetrics.TimeToClientFirstFlush.Record(
                             (clientFirstFlushAt - state.StartedAt).TotalSeconds);
                     }
                     if (transportOutcome == StreamTransportOutcome.ClientDisconnected)
                     {
-                        UsageMetrics.StreamClientDisconnects
-                            .WithLabels(state.ChunkCount == 0 ? "before_first_chunk" : "after_first_chunk")
-                            .Inc();
+                        SseTransportMetrics.ClientDisconnects.Add(
+                            1,
+                            new KeyValuePair<string, object?>(
+                                "phase",
+                                state.ChunkCount == 0 ? "before_first_chunk" : "after_first_chunk"));
                     }
-                    UsageMetrics.StreamsActive.Dec();
+                    SseTransportMetrics.ActiveStreams.Add(-1);
                 }
             }
         }
