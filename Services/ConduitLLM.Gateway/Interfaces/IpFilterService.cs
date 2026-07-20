@@ -15,6 +15,13 @@ namespace ConduitLLM.Gateway.Interfaces
         /// Checks if an IP address is allowed based on filter rules
         /// </summary>
         Task<bool> IsIpAllowedAsync(string ipAddress);
+
+        /// <summary>
+        /// Invalidates the in-memory filter-rules cache so the next check reloads from the database.
+        /// Called by the IpFilterChanged event handler on each replica when rules change, so updates
+        /// take effect immediately instead of waiting for the cache TTL.
+        /// </summary>
+        void InvalidateCache();
     }
 
     /// <summary>
@@ -94,6 +101,12 @@ namespace ConduitLLM.Gateway.Interfaces
                     ipAddress, defaultAllow);
                 return defaultAllow;
             }
+        }
+
+        /// <inheritdoc/>
+        public void InvalidateCache()
+        {
+            _cache.Remove(CACHE_KEY);
         }
 
         private async Task<bool> GetDefaultAllowAsync()
