@@ -23,6 +23,9 @@
 .PARAMETER Logs
     Show container logs.
 
+.PARAMETER SeedModelCatalog
+    Re-import checked-in provider model catalogs after startup.
+
 .PARAMETER LogService
     Specific service to show logs for (api|core|admin|webadmin).
 
@@ -56,6 +59,9 @@ param(
 
     [Parameter()]
     [switch]$Logs,
+
+    [Parameter()]
+    [switch]$SeedModelCatalog,
 
     [Parameter()]
     [ValidateSet('api', 'core', 'admin', 'webadmin', '')]
@@ -223,6 +229,7 @@ Options:
   -Rebuild         Full rebuild with --no-cache (slower, use when -Build fails)
   -WebAdmin        Rebuild WebAdmin container (fixes Next.js issues)
   -Logs            Show container logs
+  -SeedModelCatalog Re-import checked-in provider model catalogs
   -LogService      Specific service for logs (api|core|admin|webadmin)
   -Help            Show this help
 
@@ -451,6 +458,20 @@ function Start-Development {
         $missingServices = @($expectedServices | Where-Object { $_ -notin $runningServices })
         if ($missingServices.Count -gt 0) {
             throw "Services did not reach running state: $($missingServices -join ', ')"
+        }
+
+        # Seed a new local database with every checked-in provider catalog. The
+        # script skips databases that already have identifiers unless explicitly
+        # asked to refresh them.
+        $seedScript = Join-Path $scriptDir 'dev' 'seed-model-catalog.ps1'
+        if ($SeedModelCatalog) {
+            & $seedScript -Force
+        }
+        else {
+            & $seedScript
+        }
+        if ($LASTEXITCODE -ne 0) {
+            throw "Model catalog seeding failed"
         }
 
         Write-Info "Development environment started!"
