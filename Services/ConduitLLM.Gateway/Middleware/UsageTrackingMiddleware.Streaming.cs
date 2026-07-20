@@ -11,7 +11,6 @@ using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Gateway.Utilities;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
-using Prometheus;
 
 namespace ConduitLLM.Gateway.Middleware
 {
@@ -29,12 +28,12 @@ namespace ConduitLLM.Gateway.Middleware
             var endpointType = UsageExtractor.DetermineRequestType(context.Request.Path);
             var accountingSnapshot = context.GetRequestAccountingSnapshot();
             var finalizationOutcome = accountingSnapshot?.Transport?.Outcome.ToString().ToLowerInvariant() ?? "unknown";
-            using var finalizationTimer = UsageMetrics.StreamAccountingFinalizationDuration
-                .WithLabels(finalizationOutcome)
-                .NewTimer();
-            UsageMetrics.StreamUsageEvidence
-                .WithLabels(accountingSnapshot?.ProviderUsage?.Source.ToString().ToLowerInvariant() ?? "none")
-                .Inc();
+            using var finalizationTimer = SseTransportMetrics.MeasureAccountingFinalization(finalizationOutcome);
+            SseTransportMetrics.UsageEvidence.Add(
+                1,
+                new KeyValuePair<string, object?>(
+                    "source",
+                    accountingSnapshot?.ProviderUsage?.Source.ToString().ToLowerInvariant() ?? "none"));
 
             // Check if usage was estimated
             var isEstimated = accountingSnapshot?.ProviderUsage?.Source == UsageEvidenceSource.Estimated;

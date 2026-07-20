@@ -31,6 +31,25 @@ public static class ObservabilityExtensions
                     .AddMeter("ConduitLLM.SignalR")
                     .AddMeter("ConduitLLM.MediaGeneration")
                     .AddMeter("ConduitLLM.Gateway.Requests")
+                    .AddMeter(ConduitLLM.Gateway.Metrics.SseTransportMetrics.MeterName)
+                    .AddView(
+                        "conduit.stream.time_to_provider_first_chunk",
+                        new ExplicitBucketHistogramConfiguration
+                        {
+                            Boundaries = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 15]
+                        })
+                    .AddView(
+                        "conduit.stream.time_to_client_first_flush",
+                        new ExplicitBucketHistogramConfiguration
+                        {
+                            Boundaries = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 15]
+                        })
+                    .AddView(
+                        "conduit.stream.accounting_finalization",
+                        new ExplicitBucketHistogramConfiguration
+                        {
+                            Boundaries = [0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+                        })
                     .AddMeter("ConduitLLM.Providers")
                     // Bus metrics (#931). Wolverine's meter is "Wolverine:{ServiceName}",
                     // so the wildcard is required; it emits sent/succeeded/failure

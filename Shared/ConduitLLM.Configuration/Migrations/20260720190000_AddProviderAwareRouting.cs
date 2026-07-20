@@ -28,7 +28,16 @@ public partial class AddProviderAwareRouting : Migration
                 CreatedAt = table.Column<DateTime>(nullable: false),
                 UpdatedAt = table.Column<DateTime>(nullable: false)
             },
-            constraints: table => table.PrimaryKey("PK_ModelRoutePolicies", x => x.Id));
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_ModelRoutePolicies", x => x.Id);
+                table.CheckConstraint(
+                    "CK_ModelRoutePolicy_Affinity",
+                    "\"AffinityTtlSeconds\" > 0 AND \"MaxAffinityScorePenalty\" >= 0");
+                table.CheckConstraint(
+                    "CK_ModelRoutePolicy_Weights",
+                    "\"CostWeight\" >= 0 AND \"SpeedWeight\" >= 0 AND \"QualityWeight\" >= 0");
+            });
         migrationBuilder.CreateIndex("IX_ModelRoutePolicies_ModelAlias", "ModelRoutePolicies", "ModelAlias", unique: true);
         migrationBuilder.Sql("""
             INSERT INTO "ModelRoutePolicies" ("ModelAlias", "Strategy", "CostWeight", "SpeedWeight", "QualityWeight", "CacheAffinityEnabled", "AffinityTtlSeconds", "MaxAffinityScorePenalty", "IsEnabled", "CreatedAt", "UpdatedAt")
