@@ -81,9 +81,7 @@ public partial class Program
         // Parameter validation service for minimal, provider-agnostic validation
         builder.Services.AddScoped<ConduitLLM.Core.Validation.MinimalParameterValidator>();
 
-        // Register token counter service for context management
-        builder.Services.AddScoped<ITokenCounter, TiktokenCounter>();
-        builder.Services.AddScoped<IContextManager, ContextManager>();
+        ConfigureContextManagementServices(builder);
 
         // ========== Repositories ==========
 
@@ -162,5 +160,15 @@ public partial class Program
         // ========== Media Generation Services ==========
 
         builder.Services.AddMediaGenerationServices(builder.Configuration, builder.Environment);
+    }
+
+    /// <summary>
+    /// Registers the complete context-management dependency graph used by chat requests.
+    /// Kept as a separate method so controller activation can be covered without booting
+    /// infrastructure such as PostgreSQL, Redis, and Wolverine.
+    /// </summary>
+    public static void ConfigureContextManagementServices(WebApplicationBuilder builder)
+    {
+        builder.Services.AddConduitContextManagement(builder.Configuration);
     }
 }

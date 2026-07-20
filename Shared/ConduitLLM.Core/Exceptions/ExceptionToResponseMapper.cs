@@ -88,6 +88,10 @@ public static class ExceptionToResponseMapper
                 => new(400, "Invalid parameter value", "invalid_parameter", LogLevel.Warning,
                     "Argument error", false, "invalid_request_error", argEx.ParamName),
 
+            InvalidOperationException invalidOp when IsDependencyResolutionFailure(invalidOp)
+                => new(500, "A server dependency could not be resolved", "dependency_resolution_error", LogLevel.Error,
+                    "Dependency resolution error", false, "server_error"),
+
             InvalidOperationException
                 => new(400, "The requested operation is not valid", "invalid_operation", LogLevel.Warning,
                     "Invalid operation", false, "invalid_request_error"),
@@ -116,6 +120,13 @@ public static class ExceptionToResponseMapper
             _ => new(500, "An unexpected error occurred", "internal_error", LogLevel.Error,
                     "Unexpected error", false, "server_error")
         };
+    }
+
+    private static bool IsDependencyResolutionFailure(InvalidOperationException exception)
+    {
+        return exception.Message.StartsWith("Unable to resolve service for type", StringComparison.Ordinal)
+            || (exception.Message.StartsWith("No service for type", StringComparison.Ordinal)
+                && exception.Message.EndsWith("has been registered.", StringComparison.Ordinal));
     }
 
     /// <summary>

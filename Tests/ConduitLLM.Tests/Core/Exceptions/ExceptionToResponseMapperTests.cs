@@ -78,6 +78,23 @@ public class ExceptionToResponseMapperTests
     }
 
     [Fact]
+    public void Map_DependencyResolutionException_Returns500WithServerError()
+    {
+        var exception = new InvalidOperationException(
+            "Unable to resolve service for type 'IRequiredService' while attempting to activate 'ChatController'.");
+
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        result.StatusCode.Should().Be(500);
+        result.ErrorCode.Should().Be("dependency_resolution_error");
+        result.ResponseMessage.Should().Be("A server dependency could not be resolved");
+        result.LogLevel.Should().Be(LogLevel.Error);
+        result.LogPrefix.Should().Be("Dependency resolution error");
+        result.IncludeExceptionMessageInLog.Should().BeFalse();
+        result.OpenAIErrorType.Should().Be("server_error");
+    }
+
+    [Fact]
     public void Map_KeyNotFoundException_Returns404WithNotFound()
     {
         // Arrange
