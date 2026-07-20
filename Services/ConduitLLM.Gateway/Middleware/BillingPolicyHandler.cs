@@ -170,7 +170,11 @@ namespace ConduitLLM.Gateway.Middleware
             // Determine if this is a missing tool cost config scenario
             var eventType = toolUsageJson != null && (!toolCost.HasValue || toolCost.Value == 0)
                 ? BillingAuditEventType.ToolUsageMissingCostConfig
-                : BillingAuditEventType.ZeroCostSkipped;
+                : IsTrustedConfiguredZero(usage)
+                    ? BillingAuditEventType.ConfiguredZeroCost
+                    : HasPositiveConsumption(usage)
+                        ? BillingAuditEventType.UnpricedUsage
+                        : BillingAuditEventType.ZeroCostSkipped;
 
             // Get ModelCostId from context if available
             var modelCostIdInfo = context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var mcIdObj) && mcIdObj is int mcId
@@ -178,9 +182,14 @@ namespace ConduitLLM.Gateway.Middleware
                 : "(not found in context)";
 
             // Log detailed information to help troubleshoot zero cost issues
-            var failureReason = eventType == BillingAuditEventType.ToolUsageMissingCostConfig
-                ? "Tool usage detected but no cost configuration found"
-                : $"Zero cost calculated - potential billing issue. ModelCostId={modelCostIdInfo}";
+            var failureReason = eventType switch
+            {
+                BillingAuditEventType.ToolUsageMissingCostConfig => "Tool usage detected but no cost configuration found",
+                BillingAuditEventType.ConfiguredZeroCost => "Trusted provider explicitly reported zero cost",
+                BillingAuditEventType.UnpricedUsage =>
+                    $"Positive usage produced zero cost - reconciliation required. ModelCostId={modelCostIdInfo}",
+                _ => $"No billable usage produced zero cost. ModelCostId={modelCostIdInfo}"
+            };
 
             // Log at Information level for visibility in production
             logger?.LogInformation(
@@ -212,15 +221,27 @@ namespace ConduitLLM.Gateway.Middleware
             // Increment metrics
             UsageMetrics.BillingAuditEvents.WithLabels(eventType.ToString(), providerType ?? "unknown").Inc();
 
-            if (eventType == BillingAuditEventType.ToolUsageMissingCostConfig)
+            if (eventType is BillingAuditEventType.ToolUsageMissingCostConfig or BillingAuditEventType.UnpricedUsage)
             {
-                UsageMetrics.BillingRevenueLoss.WithLabels("ToolUsageMissingCostConfig", "missing_tool_config").Inc();
+                UsageMetrics.BillingRevenueLoss.WithLabels(eventType.ToString(), "unpriced_usage").Inc();
             }
             else
             {
                 UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "calculated_zero").Inc();
             }
         }
+
+        private static bool IsTrustedConfiguredZero(Usage usage) =>
+            usage.ProviderCostPolicy?.TrustProviderReportedCost == true &&
+            usage.ProviderReportedCostUsd == 0m;
+
+        private static bool HasPositiveConsumption(Usage usage) =>
+            usage.PromptTokens is > 0 || usage.CompletionTokens is > 0 ||
+            usage.CachedInputTokens is > 0 || usage.CachedWriteTokens is > 0 ||
+            usage.ReasoningTokens is > 0 || usage.ImageCount is > 0 ||
+            usage.VideoDurationSeconds is > 0 || usage.SearchUnits is > 0 ||
+            usage.InferenceSteps is > 0 || usage.AudioDurationSeconds is > 0 ||
+            usage.TtsCharacters is > 0;
 
         /// <summary>
         /// Logs billing event for missing usage data.

@@ -8,6 +8,13 @@ namespace ConduitLLM.Core.Models;
 public class ChatCompletionChunk
 {
     /// <summary>
+    /// Server-only marker for the provider call that produced this usage-bearing chunk.
+    /// Repeated provider usage chunks for one iteration intentionally use the same iteration.
+    /// </summary>
+    [JsonIgnore]
+    public ProviderCallUsage? ProviderCallUsage { get; set; }
+
+    /// <summary>
     /// A unique identifier for the chat completion chunk.
     /// </summary>
     [JsonPropertyName("id")]

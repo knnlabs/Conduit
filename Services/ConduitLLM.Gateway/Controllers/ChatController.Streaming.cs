@@ -29,6 +29,10 @@ namespace ConduitLLM.Gateway.Controllers
             {
                 StoreFunctionExecutionResults(response.AgenticMetrics);
             }
+            if (response.AgenticMetrics?.ProviderCalls.Count > 0)
+            {
+                HttpContext.Items[HttpContextKeys.ChatProviderCalls] = response.AgenticMetrics.ProviderCalls;
+            }
 
             // Stash the provider-reported cost via the side channel so the middleware can bill from it.
             // It is intentionally not serialized into the response body (server-only), so the middleware
@@ -212,6 +216,10 @@ namespace ConduitLLM.Gateway.Controllers
 
         private static void CaptureUsageData(ChatCompletionChunk chunk, ChatCompletionRequest request, StreamingAccumulatorState state)
         {
+            if (chunk.ProviderCallUsage != null)
+            {
+                state.ProviderCalls[chunk.ProviderCallUsage.Iteration] = chunk.ProviderCallUsage.Usage;
+            }
             if (chunk.Usage != null)
             {
                 state.StreamingUsage = chunk.Usage;
@@ -275,6 +283,7 @@ namespace ConduitLLM.Gateway.Controllers
                 HttpContext.Items["StreamingModel"] = state.StreamingModel;
                 HttpContext.Items["UsageIsEstimated"] = false;
             }
+
             else if (state.ContentAccumulator.Length > 0 || state.AccumulatedToolCalls.Count > 0)
             {
                 _logger.LogWarning("No usage data received from provider for streaming response, estimating usage for model {Model}", LoggingSanitizer.S(request.Model));
@@ -283,6 +292,14 @@ namespace ConduitLLM.Gateway.Controllers
             else
             {
                 _logger.LogWarning("No output accumulated from streaming response, cannot estimate usage");
+            }
+
+            if (state.ProviderCalls.Count > 0)
+            {
+                HttpContext.Items[HttpContextKeys.ChatProviderCalls] = state.ProviderCalls
+                    .OrderBy(entry => entry.Key)
+                    .Select(entry => new ProviderCallUsage { Iteration = entry.Key, Usage = entry.Value })
+                    .ToList();
             }
 
             // Store tool calls for request logging
@@ -373,6 +390,7 @@ namespace ConduitLLM.Gateway.Controllers
             public Dictionary<int, ConduitLLM.Core.Models.ToolCall> AccumulatedToolCalls { get; } = new();
             public List<FunctionExecutionResultForLogging> FunctionExecutionResults { get; } = new();
             public decimal TotalFunctionCost { get; set; }
+            public Dictionary<int, Usage> ProviderCalls { get; } = new();
         }
     }
 }

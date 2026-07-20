@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.Utilities;
 
 namespace ConduitLLM.Gateway.Middleware
@@ -20,14 +21,33 @@ namespace ConduitLLM.Gateway.Middleware
         {
             try
             {
-                var cost = context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
-                    modelCostIdObj is int modelCostId
-                        ? await costCalculationService.CalculateCostByIdAsync(modelCostId, usage)
-                        : await costCalculationService.CalculateCostAsync(model, usage);
+                var providerCalls = context.Items.TryGetValue(HttpContextKeys.ChatProviderCalls, out var providerCallsObj)
+                    ? providerCallsObj as List<ProviderCallUsage>
+                    : null;
 
-                if (!string.IsNullOrEmpty(usage.PricingFallbackReason))
+                async Task<decimal> CalculateCallAsync(Usage callUsage)
                 {
-                    LogPricingAuditEvent(context, model, usage, cost, usage.PricingFallbackReason,
+                    ApplyProviderBillingPolicy(context, callUsage);
+                    return context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var callCostIdObj) &&
+                        callCostIdObj is int callCostId
+                            ? await costCalculationService.CalculateCostByIdAsync(callCostId, callUsage)
+                            : await costCalculationService.CalculateCostAsync(model, callUsage);
+                }
+
+                var cost = await BillingCostComposition.CalculateProviderCostAsync(
+                    providerCalls, usage, CalculateCallAsync);
+
+                var fallbackReason = usage.PricingFallbackReason;
+                if (string.IsNullOrEmpty(fallbackReason) && providerCalls is { Count: > 0 })
+                {
+                    fallbackReason = string.Join("; ", providerCalls
+                        .Where(call => !string.IsNullOrEmpty(call.Usage.PricingFallbackReason))
+                        .Select(call => $"iteration {call.Iteration}: {call.Usage.PricingFallbackReason}"));
+                }
+
+                if (!string.IsNullOrEmpty(fallbackReason))
+                {
+                    LogPricingAuditEvent(context, model, usage, cost, fallbackReason,
                         Configuration.Entities.BillingAuditEventType.UsageEstimated, billingAuditService);
                 }
 

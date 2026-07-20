@@ -37,6 +37,7 @@ public static class ModelPricingConfigurationValidator
                     {
                         throw new ArgumentException("Per-video pricing must contain at least one named rate greater than zero.");
                     }
+                    ValidatePerVideoMonotonicity(perVideo);
                     break;
 
                 case PricingModel.PerSecondVideo:
@@ -62,6 +63,7 @@ public static class ModelPricingConfigurationValidator
                     {
                         throw new ArgumentException("Tiered-token pricing requires at least one valid, non-negative tier.");
                     }
+                    ValidateTierMonotonicity(tiered);
                     break;
 
                 case PricingModel.PerImage:
@@ -98,5 +100,57 @@ public static class ModelPricingConfigurationValidator
     {
         return JsonSerializer.Deserialize<T>(json, JsonOptions)
             ?? throw new ArgumentException($"Pricing configuration could not be parsed as {typeof(T).Name}.");
+    }
+
+    private static void ValidateTierMonotonicity(TieredTokensPricingConfig config)
+    {
+        var ordered = config.Tiers.OrderBy(tier => tier.MaxContext ?? int.MaxValue).ToList();
+        if (ordered.Count(tier => tier.MaxContext == null) > 1 ||
+            ordered.Take(Math.Max(0, ordered.Count - 1)).Any(tier => tier.MaxContext == null) ||
+            ordered.Where(tier => tier.MaxContext.HasValue)
+                .Select(tier => tier.MaxContext!.Value)
+                .Distinct().Count() != ordered.Count(tier => tier.MaxContext.HasValue))
+        {
+            throw new ArgumentException("Tiered-token boundaries must be unique, with at most one unlimited final tier.");
+        }
+
+        for (var index = 1; index < ordered.Count; index++)
+        {
+            if (ordered[index].InputCost < ordered[index - 1].InputCost ||
+                ordered[index].OutputCost < ordered[index - 1].OutputCost)
+            {
+                throw new ArgumentException("Tiered-token input and output rates must not decrease at higher context tiers.");
+            }
+        }
+    }
+
+    private static void ValidatePerVideoMonotonicity(PerVideoPricingConfig config)
+    {
+        var parsedRates = config.Rates.Select(rate =>
+        {
+            var separator = rate.Key.LastIndexOf('_');
+            if (separator <= 0 || separator == rate.Key.Length - 1 ||
+                !int.TryParse(rate.Key[(separator + 1)..], out var duration) || duration <= 0)
+            {
+                throw new ArgumentException(
+                    $"Per-video rate key '{rate.Key}' must use '<resolution>_<positive duration seconds>'.");
+            }
+
+            return new { Resolution = rate.Key[..separator], Duration = duration, rate.Value };
+        });
+
+        foreach (var resolutionRates in parsedRates.GroupBy(rate => rate.Resolution, StringComparer.OrdinalIgnoreCase))
+        {
+            decimal? previous = null;
+            foreach (var rate in resolutionRates.OrderBy(rate => rate.Duration))
+            {
+                if (previous.HasValue && rate.Value < previous.Value)
+                {
+                    throw new ArgumentException(
+                        $"Per-video rates for resolution '{resolutionRates.Key}' must not decrease as duration increases.");
+                }
+                previous = rate.Value;
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Tests.Http.Middleware.Builders;
@@ -176,6 +177,36 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert
             var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
             Assert.Equal(0.10m, billingEvent.CalculatedCost);
+        }
+
+        [Fact]
+        public async Task ProcessResponseAsync_AgenticChat_PricesEachProviderCallSeparately()
+        {
+            var providerCalls = new List<ProviderCallUsage>
+            {
+                new() { Iteration = 1, Usage = new Usage { PromptTokens = 100 } },
+                new() { Iteration = 2, Usage = new Usage { PromptTokens = 250 } }
+            };
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(123)
+                .AsGroq()
+                .WithItem(HttpContextKeys.ChatProviderCalls, providerCalls)
+                .WithTestResponseBody(CreateGroqResponseWithoutToolUsage())
+                .Build();
+
+            Fixture.CostService
+                .Setup(service => service.CalculateCostAsync(
+                    It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string _, Usage usage, CancellationToken _) =>
+                    usage.PromptTokens.GetValueOrDefault() / 1000m);
+
+            await Invoker.WithTestResponseBodyDelegate().InvokeWithRealToolServiceAsync(context);
+
+            var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
+            Assert.Equal(0.35m, billingEvent.CalculatedCost);
+            Fixture.CostService.Verify(service => service.CalculateCostAsync(
+                It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]

@@ -30,6 +30,12 @@ public static class HttpContextKeys
     public const string ChatAgenticIterations = "ChatAgenticIterations";
 
     /// <summary>
+    /// Key for server-only per-provider-call usage from an agentic chat request.
+    /// Value type: List&lt;ProviderCallUsage&gt;
+    /// </summary>
+    public const string ChatProviderCalls = "ChatProviderCalls";
+
+    /// <summary>
     /// Key for storing function configuration ID (used by FunctionsController).
     /// </summary>
     public const string FunctionConfigurationId = "FunctionConfigurationId";

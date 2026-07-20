@@ -206,6 +206,7 @@ namespace ConduitLLM.Core
 
                 // Call LLM
                 response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+                CaptureProviderCall(agenticMetrics, iteration, response.Usage);
                 accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
 
                 // Check if LLM wants to call functions
@@ -236,6 +237,7 @@ namespace ConduitLLM.Core
 
                     // Make one more call to get a proper response
                     response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+                    CaptureProviderCall(agenticMetrics, iteration + 1, response.Usage);
                     accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
                     break;
                 }
@@ -291,6 +293,7 @@ namespace ConduitLLM.Core
 
                 // Make one final call to get a response
                 response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+                CaptureProviderCall(agenticMetrics, iteration + 1, response.Usage);
                 accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
             }
 
@@ -376,6 +379,7 @@ namespace ConduitLLM.Core
                         // Providers may repeat usage in multiple chunks. Keep the latest usage for
                         // this provider call, while exposing the running total across prior calls.
                         iterationUsage = chunk.Usage;
+                        chunk.ProviderCallUsage = new ProviderCallUsage { Iteration = iteration, Usage = iterationUsage };
                         chunk.Usage = AggregateUsage(accumulatedUsage, iterationUsage);
                     }
 
@@ -466,6 +470,7 @@ namespace ConduitLLM.Core
                         if (chunk.Usage != null)
                         {
                             finalCallUsage = chunk.Usage;
+                            chunk.ProviderCallUsage = new ProviderCallUsage { Iteration = iteration + 1, Usage = finalCallUsage };
                             chunk.Usage = AggregateUsage(accumulatedUsage, finalCallUsage);
                         }
 
@@ -599,7 +604,9 @@ namespace ConduitLLM.Core
                 {
                     if (chunk.Usage != null)
                     {
-                        chunk.Usage = AggregateUsage(accumulatedUsage, chunk.Usage);
+                        var finalUsage = chunk.Usage;
+                        chunk.ProviderCallUsage = new ProviderCallUsage { Iteration = iteration + 1, Usage = finalUsage };
+                        chunk.Usage = AggregateUsage(accumulatedUsage, finalUsage);
                     }
 
                     yield return chunk;
@@ -644,6 +651,14 @@ namespace ConduitLLM.Core
                 ProviderCostPolicy = current.ProviderCostPolicy ?? accumulated?.ProviderCostPolicy,
                 ExtensionData = current.ExtensionData ?? accumulated?.ExtensionData
             };
+        }
+
+        private static void CaptureProviderCall(AgenticExecutionMetrics metrics, int iteration, Usage? usage)
+        {
+            if (usage != null)
+            {
+                metrics.ProviderCalls.Add(new ProviderCallUsage { Iteration = iteration, Usage = usage });
+            }
         }
 
         private static int? Sum(int? left, int? right) =>

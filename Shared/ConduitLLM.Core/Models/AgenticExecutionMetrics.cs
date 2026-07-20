@@ -9,6 +9,13 @@ namespace ConduitLLM.Core.Models;
 public class AgenticExecutionMetrics
 {
     /// <summary>
+    /// Individual provider calls made by the agentic loop. This is server-only billing data;
+    /// clients continue to receive the aggregate Usage object on the response.
+    /// </summary>
+    [JsonIgnore]
+    public List<ProviderCallUsage> ProviderCalls { get; set; } = new();
+
+    /// <summary>
     /// Total number of iterations (LLM call → function execution → LLM call cycles) that occurred
     /// </summary>
     [JsonPropertyName("total_iterations")]
@@ -43,6 +50,15 @@ public class AgenticExecutionMetrics
     /// </summary>
     [JsonPropertyName("function_calls")]
     public List<FunctionCallSummary> FunctionCalls { get; set; } = new();
+}
+
+/// <summary>
+/// Server-only usage captured for one provider call in an agentic request.
+/// </summary>
+public sealed class ProviderCallUsage
+{
+    public int Iteration { get; set; }
+    public Usage Usage { get; set; } = new();
 }
 
 /// <summary>

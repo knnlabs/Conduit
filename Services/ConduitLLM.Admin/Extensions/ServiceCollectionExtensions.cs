@@ -142,6 +142,7 @@ public static class ServiceCollectionExtensions
             provider => provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService
             ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"),
             "BillingAuditService");
+        services.AddHostedService<ConduitLLM.Admin.Services.PricingConfigurationAuditHostedService>();
 
         // Register pricing rules engine services
         services.AddScoped<ConduitLLM.Core.Services.IPricingRulesEvaluator, ConduitLLM.Core.Services.PricingRulesEvaluator>();

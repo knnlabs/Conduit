@@ -164,7 +164,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
-        public async Task Middleware_ShouldLogZeroCostSkippedEvent_ForZeroCost()
+        public async Task Middleware_ShouldLogUnpricedUsageEvent_ForPositiveUsageWithZeroCost()
         {
             // Arrange
             var context = CreateHttpContext("/v1/chat/completions");
@@ -215,7 +215,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
             var auditEvent = await dbContext.BillingAuditEvents
-                .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.ZeroCostSkipped);
+                .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.UnpricedUsage);
             
             Assert.NotNull(auditEvent);
             Assert.Equal(456, auditEvent.VirtualKeyId);

@@ -49,6 +49,9 @@ public class ConduitAgenticUsageTests
         Assert.Equal(10, response.Usage.ReasoningTokens);
         Assert.Equal(0.03m, response.Usage.ProviderReportedCostUsd);
         Assert.Equal(2, response.AgenticMetrics?.TotalIterations);
+        Assert.Equal(2, response.AgenticMetrics?.ProviderCalls.Count);
+        Assert.Equal(100, response.AgenticMetrics?.ProviderCalls[0].Usage.PromptTokens);
+        Assert.Equal(150, response.AgenticMetrics?.ProviderCalls[1].Usage.PromptTokens);
     }
 
     [Fact]
@@ -83,12 +86,17 @@ public class ConduitAgenticUsageTests
 
         var conduit = CreateConduit(client.Object);
         var usageChunks = new List<Usage>();
+        var providerCalls = new Dictionary<int, Usage>();
 
         await foreach (var chunk in conduit.StreamChatCompletionAsync(CreateRequest(), virtualKeyId: 42))
         {
             if (chunk.Usage != null)
             {
                 usageChunks.Add(chunk.Usage);
+            }
+            if (chunk.ProviderCallUsage != null)
+            {
+                providerCalls[chunk.ProviderCallUsage.Iteration] = chunk.ProviderCallUsage.Usage;
             }
         }
 
@@ -99,6 +107,9 @@ public class ConduitAgenticUsageTests
         Assert.Equal(250, usageChunks[2].PromptTokens);
         Assert.Equal(30, usageChunks[2].CompletionTokens);
         Assert.Equal(0.03m, usageChunks[2].ProviderReportedCostUsd);
+        Assert.Equal(2, providerCalls.Count);
+        Assert.Equal(100, providerCalls[1].PromptTokens);
+        Assert.Equal(150, providerCalls[2].PromptTokens);
     }
 
     [Fact]

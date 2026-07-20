@@ -16,6 +16,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  billing-invariants:
+    name: Billing invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Run required billing invariant gate
+        run: dotnet test Tests/ConduitLLM.BillingInvariantTests/ConduitLLM.BillingInvariantTests.csproj --configuration Release --verbosity normal
+
   # Quick validation that everything builds
   validate:
     name: Validate

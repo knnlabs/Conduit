@@ -190,6 +190,21 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Request-log, ledger, or provider-cost totals diverged during reconciliation.
         /// </summary>
-        BillingReconciliationMismatch = 15
+        BillingReconciliationMismatch = 15,
+
+        /// <summary>
+        /// A persisted pricing configuration violates current billing invariants.
+        /// </summary>
+        InvalidPricingConfiguration = 16,
+
+        /// <summary>
+        /// Positive usage was intentionally priced at zero by an active configuration.
+        /// </summary>
+        ConfiguredZeroCost = 17,
+
+        /// <summary>
+        /// Positive usage was observed without an applicable price.
+        /// </summary>
+        UnpricedUsage = 18
     }
 }
