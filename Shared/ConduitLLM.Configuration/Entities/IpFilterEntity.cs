@@ -33,6 +33,12 @@ public class IpFilterEntity : IEntity<int>, IAuditableEntity
     public string IpAddressOrCidr { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional display name for the filter rule.
+    /// </summary>
+    [MaxLength(100)]
+    public string? Name { get; set; }
+
+    /// <summary>
     /// Optional description of the filter
     /// </summary>
     [MaxLength(500)]

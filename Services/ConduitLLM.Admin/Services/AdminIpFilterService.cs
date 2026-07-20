@@ -143,6 +143,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             {
                 FilterType = createFilter.FilterType,
                 IpAddressOrCidr = createFilter.IpAddressOrCidr,
+                Name = createFilter.Name,
                 Description = createFilter.Description,
                 IsEnabled = createFilter.IsEnabled,
                 VirtualKeyId = createFilter.VirtualKeyId,
@@ -215,6 +216,12 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             {
                 existingFilter.IpAddressOrCidr = updateFilter.IpAddressOrCidr;
                 changedProperties.Add(nameof(existingFilter.IpAddressOrCidr));
+            }
+
+            if (existingFilter.Name != updateFilter.Name)
+            {
+                existingFilter.Name = updateFilter.Name;
+                changedProperties.Add(nameof(existingFilter.Name));
             }
 
             if (existingFilter.Description != updateFilter.Description)

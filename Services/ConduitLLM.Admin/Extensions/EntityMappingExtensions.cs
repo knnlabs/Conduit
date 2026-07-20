@@ -23,6 +23,7 @@ namespace ConduitLLM.Admin.Extensions
                 Id = entity.Id,
                 FilterType = entity.FilterType,
                 IpAddressOrCidr = entity.IpAddressOrCidr,
+                Name = entity.Name ?? string.Empty,
                 Description = entity.Description,
                 IsEnabled = entity.IsEnabled,
                 CreatedAt = entity.CreatedAt,
