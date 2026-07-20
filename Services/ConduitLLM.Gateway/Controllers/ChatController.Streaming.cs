@@ -8,6 +8,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.UsageTracking;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +32,10 @@ namespace ConduitLLM.Gateway.Controllers
             if (response.Usage is not null)
             {
                 HttpContext.Items[HttpContextKeys.NonStreamingUsage] = response.Usage;
+                HttpContext.GetOrCreateRequestAccountingContext().RecordProviderUsage(
+                    response.Usage,
+                    response.Model ?? request.Model,
+                    UsageEvidenceSource.Provider);
             }
             HttpContext.Items[HttpContextKeys.PromptCachingEligible] =
                 request.PromptCachingIntent is not null ||
@@ -73,6 +78,9 @@ namespace ConduitLLM.Gateway.Controllers
 
             HttpContext.Items[HttpContextKeys.ChatFunctionCalls] = functionExecutionResults;
             HttpContext.Items[HttpContextKeys.ChatFunctionCost] = agenticMetrics.TotalFunctionCost;
+            HttpContext.GetOrCreateRequestAccountingContext().RecordFunctionExecutions(
+                functionExecutionResults,
+                agenticMetrics.TotalFunctionCost);
             _logger.LogDebug(
                 "Stored {Count} function execution results for non-streaming request logging, total cost: {Cost:C}",
                 functionExecutionResults.Count, agenticMetrics.TotalFunctionCost);
@@ -93,7 +101,8 @@ namespace ConduitLLM.Gateway.Controllers
             var response = HttpContext.Response;
             var sseWriter = response.CreateEnhancedSSEWriter(_jsonSerializerOptions);
 
-            var requestId = Guid.NewGuid().ToString();
+            var accountingContext = HttpContext.GetOrCreateRequestAccountingContext();
+            var requestId = accountingContext.BillingRequestId;
             response.Headers["X-Request-ID"] = requestId;
 
             var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
@@ -101,7 +110,10 @@ namespace ConduitLLM.Gateway.Controllers
 
             _logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", LoggingSanitizer.S(request.Model), providerId);
             var metricsCollector = new StreamingMetricsCollector(requestId, request.Model, providerId);
-            var state = new StreamingAccumulatorState();
+            var state = new StreamingAccumulatorState(
+                GetCompletionAccumulatorLimit(request),
+                _usageTrackingOptions.MaximumStreamingToolCallCharacters,
+                _usageTrackingOptions.MaximumStreamingToolCalls);
             var firstChunkTime = DateTime.UtcNow;
 
             try
@@ -114,6 +126,7 @@ namespace ConduitLLM.Gateway.Controllers
                     state.ChunkCount++;
                     if (state.ChunkCount == 1)
                     {
+                        state.ProviderFirstChunkAt = DateTimeOffset.UtcNow;
                         _logger.LogInformation("First chunk received at {Time}ms", (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
                     }
 
@@ -121,12 +134,12 @@ namespace ConduitLLM.Gateway.Controllers
                     AccumulateToolCalls(chunk, state);
                     CaptureUsageData(chunk, request, state);
                     await WriteChunkToStream(chunk, sseWriter, metricsCollector, cancellationToken);
-                    state.Outcome = StreamingOutcome.Emitting;
+                    state.Outcome = StreamTransportOutcome.Emitting;
                     await EmitPeriodicMetrics(chunk, sseWriter, metricsCollector, cancellationToken);
                 }
 
                 await WriteStreamingCompletionEventsAsync(state, metricsCollector, sseWriter, cancellationToken);
-                state.Outcome = StreamingOutcome.Completed;
+                state.Outcome = StreamTransportOutcome.Completed;
 
                 _logger.LogInformation("Streaming completed: {ChunkCount} chunks over {Duration}ms",
                     state.ChunkCount, (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
@@ -135,14 +148,14 @@ namespace ConduitLLM.Gateway.Controllers
             }
             catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
             {
-                state.Outcome = StreamingOutcome.ClientDisconnected;
+                state.Outcome = StreamTransportOutcome.ClientDisconnected;
                 _logger.LogInformation("Streaming request was aborted by the client after {ChunkCount} chunks", state.ChunkCount);
                 GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "cancelled", operationStopwatch.Elapsed.TotalSeconds);
                 GatewayOpsMetrics.RecordStreamingRequest(request.Model, "client_disconnected");
             }
             catch (Exception streamEx)
             {
-                state.Outcome = StreamingOutcome.ProviderFailed;
+                state.Outcome = StreamTransportOutcome.ProviderFailed;
                 _logger.LogError(streamEx, "Error in stream processing");
 
                 if (!sseWriter.HasStarted)
@@ -160,7 +173,7 @@ namespace ConduitLLM.Gateway.Controllers
                     }
                     catch (Exception writeEx) when (writeEx is IOException or OperationCanceledException)
                     {
-                        state.Outcome = StreamingOutcome.ClientDisconnected;
+                        state.Outcome = StreamTransportOutcome.ClientDisconnected;
                         _logger.LogDebug(writeEx, "Client disconnected before the streaming error event could be written");
                     }
                 }
@@ -170,6 +183,18 @@ namespace ConduitLLM.Gateway.Controllers
             }
             finally
             {
+                var transportOutcome = state.EvidenceLimitExceeded && state.StreamingUsage is null
+                    ? StreamTransportOutcome.AccountingIndeterminate
+                    : state.Outcome;
+                accountingContext.RecordTransport(new StreamTransportEvidence(
+                    transportOutcome,
+                    state.ChunkCount,
+                    sseWriter.EventsWritten,
+                    sseWriter.BytesWritten,
+                    state.ProviderFirstChunkAt,
+                    sseWriter.FirstClientFlushAt,
+                    state.EvidenceLimitExceeded));
+
                 try
                 {
                     await CaptureSelectedRouteAsync(request);
@@ -194,7 +219,7 @@ namespace ConduitLLM.Gateway.Controllers
             return async (toolEvent, ct) =>
             {
                 await sseWriter.WriteToolExecutingEventAsync(toolEvent, ct);
-                state.Outcome = StreamingOutcome.Emitting;
+                state.Outcome = StreamTransportOutcome.Emitting;
 
                 if (toolEvent.Status == "completed" || toolEvent.Status == "failed")
                 {
@@ -238,31 +263,22 @@ namespace ConduitLLM.Gateway.Controllers
 
                 foreach (var toolCallChunk in toolCallDeltas)
                 {
-                    if (!state.AccumulatedToolCalls.ContainsKey(toolCallChunk.Index))
+                    if (!state.AccumulatedToolCalls.TryGetValue(toolCallChunk.Index, out var existing))
                     {
-                        state.AccumulatedToolCalls[toolCallChunk.Index] = new ConduitLLM.Core.Models.ToolCall
+                        if (state.AccumulatedToolCalls.Count >= state.MaximumToolCalls)
                         {
-                            Id = toolCallChunk.Id ?? string.Empty,
-                            Type = toolCallChunk.Type ?? "function",
-                            Function = new ConduitLLM.Core.Models.FunctionCall
-                            {
-                                Name = toolCallChunk.Function?.Name ?? string.Empty,
-                                Arguments = toolCallChunk.Function?.Arguments ?? string.Empty
-                            }
-                        };
-                    }
-                    else
-                    {
-                        var existing = state.AccumulatedToolCalls[toolCallChunk.Index];
-                        if (!string.IsNullOrEmpty(toolCallChunk.Function?.Arguments) && existing.Function != null)
-                        {
-                            existing.Function.Arguments += toolCallChunk.Function.Arguments;
+                            state.ToolEvidenceLimitExceeded = true;
+                            continue;
                         }
-                        if (!string.IsNullOrEmpty(toolCallChunk.Function?.Name) && existing.Function != null)
-                        {
-                            existing.Function.Name = toolCallChunk.Function.Name;
-                        }
+
+                        existing = new StreamingToolCallAccumulator();
+                        state.AccumulatedToolCalls[toolCallChunk.Index] = existing;
                     }
+
+                    existing.AppendId(state.RetainToolFragment(toolCallChunk.Id));
+                    existing.AppendType(state.RetainToolFragment(toolCallChunk.Type));
+                    existing.AppendName(state.RetainToolFragment(toolCallChunk.Function?.Name));
+                    existing.AppendArguments(state.RetainToolFragment(toolCallChunk.Function?.Arguments));
                 }
             }
         }
@@ -341,8 +357,19 @@ namespace ConduitLLM.Gateway.Controllers
                 HttpContext.Items["StreamingUsage"] = state.StreamingUsage;
                 HttpContext.Items["StreamingModel"] = state.StreamingModel;
                 HttpContext.Items["UsageIsEstimated"] = false;
+                HttpContext.GetOrCreateRequestAccountingContext().RecordProviderUsage(
+                    state.StreamingUsage,
+                    state.StreamingModel ?? request.Model,
+                    UsageEvidenceSource.Provider);
             }
 
+            else if (state.EvidenceLimitExceeded)
+            {
+                const string reason = "Streaming usage evidence exceeded configured accumulator bounds";
+                _logger.LogError("{Reason} for model {Model}; accounting is indeterminate", reason, LoggingSanitizer.S(request.Model));
+                HttpContext.GetOrCreateRequestAccountingContext().MarkIndeterminate(reason);
+                state.Outcome = StreamTransportOutcome.AccountingIndeterminate;
+            }
             else if (state.ContentAccumulator.Length > 0 || state.AccumulatedToolCalls.Count > 0)
             {
                 _logger.LogWarning("No usage data received from provider for streaming response, estimating usage for model {Model}", LoggingSanitizer.S(request.Model));
@@ -359,15 +386,18 @@ namespace ConduitLLM.Gateway.Controllers
                     .OrderBy(entry => entry.Key)
                     .Select(entry => new ProviderCallUsage { Iteration = entry.Key, Usage = entry.Value })
                     .ToList();
+                HttpContext.GetOrCreateRequestAccountingContext().RecordProviderCalls(
+                    state.ProviderCalls
+                        .OrderBy(entry => entry.Key)
+                        .Select(entry => new ProviderCallUsage { Iteration = entry.Key, Usage = entry.Value }));
             }
 
             // Store tool calls for request logging
             if (state.AccumulatedToolCalls.Count > 0)
             {
-                HttpContext.Items["StreamingChatToolCalls"] = state.AccumulatedToolCalls
-                    .OrderBy(kv => kv.Key)
-                    .Select(kv => kv.Value)
-                    .ToList();
+                var toolCalls = state.MaterializeToolCalls();
+                HttpContext.Items["StreamingChatToolCalls"] = toolCalls;
+                HttpContext.GetOrCreateRequestAccountingContext().RecordStreamingToolCalls(toolCalls);
                 _logger.LogDebug("Stored {Count} accumulated tool calls for request logging", state.AccumulatedToolCalls.Count);
             }
 
@@ -376,6 +406,9 @@ namespace ConduitLLM.Gateway.Controllers
             {
                 HttpContext.Items[HttpContextKeys.ChatFunctionCalls] = state.FunctionExecutionResults;
                 HttpContext.Items[HttpContextKeys.ChatFunctionCost] = state.TotalFunctionCost;
+                HttpContext.GetOrCreateRequestAccountingContext().RecordFunctionExecutions(
+                    state.FunctionExecutionResults,
+                    state.TotalFunctionCost);
                 _logger.LogDebug(
                     "Stored {Count} function execution results for request logging, total cost: {Cost:C}",
                     state.FunctionExecutionResults.Count, state.TotalFunctionCost);
@@ -414,7 +447,7 @@ namespace ConduitLLM.Gateway.Controllers
                 if (state.AccumulatedToolCalls.Count > 0)
                 {
                     completionOutput += JsonSerializer.Serialize(
-                        state.AccumulatedToolCalls.OrderBy(entry => entry.Key).Select(entry => entry.Value),
+                        state.MaterializeToolCalls(),
                         _jsonSerializerOptions);
                 }
 
@@ -427,6 +460,10 @@ namespace ConduitLLM.Gateway.Controllers
                 HttpContext.Items["StreamingUsage"] = estimatedUsage;
                 HttpContext.Items["StreamingModel"] = state.StreamingModel ?? request.Model;
                 HttpContext.Items["UsageIsEstimated"] = true;
+                HttpContext.GetOrCreateRequestAccountingContext().RecordProviderUsage(
+                    estimatedUsage,
+                    state.StreamingModel ?? request.Model,
+                    UsageEvidenceSource.Estimated);
 
                 _logger.LogInformation(
                     "Successfully estimated usage for streaming response: Prompt={PromptTokens}, Completion={CompletionTokens}, Total={TotalTokens}",
@@ -441,26 +478,106 @@ namespace ConduitLLM.Gateway.Controllers
         /// <summary>
         /// Mutable state accumulated during streaming chunk processing.
         /// </summary>
+        private int GetCompletionAccumulatorLimit(ChatCompletionRequest request)
+        {
+            if (request.MaxTokens is not > 0)
+            {
+                return _usageTrackingOptions.MaximumStreamingCompletionCharacters;
+            }
+
+            var requestDerivedLimit = Math.Max(1024L, request.MaxTokens.Value * 8L);
+            return (int)Math.Min(
+                _usageTrackingOptions.MaximumStreamingCompletionCharacters,
+                requestDerivedLimit);
+        }
+
         private sealed class StreamingAccumulatorState
         {
+            private readonly int _maximumToolCharacters;
+            private int _retainedToolCharacters;
+
+            public StreamingAccumulatorState(
+                int maximumCompletionCharacters,
+                int maximumToolCharacters,
+                int maximumToolCalls)
+            {
+                ContentAccumulator = new BoundedStringAccumulator(maximumCompletionCharacters);
+                _maximumToolCharacters = maximumToolCharacters;
+                MaximumToolCalls = maximumToolCalls;
+            }
+
             public int ChunkCount { get; set; }
-            public StreamingOutcome Outcome { get; set; }
+            public StreamTransportOutcome Outcome { get; set; }
+            public DateTimeOffset? ProviderFirstChunkAt { get; set; }
             public Usage? StreamingUsage { get; set; }
             public string? StreamingModel { get; set; }
-            public StringBuilder ContentAccumulator { get; } = new();
-            public Dictionary<int, ConduitLLM.Core.Models.ToolCall> AccumulatedToolCalls { get; } = new();
+            public BoundedStringAccumulator ContentAccumulator { get; }
+            public Dictionary<int, StreamingToolCallAccumulator> AccumulatedToolCalls { get; } = new();
             public List<FunctionExecutionResultForLogging> FunctionExecutionResults { get; } = new();
             public decimal TotalFunctionCost { get; set; }
             public Dictionary<int, Usage> ProviderCalls { get; } = new();
+            public int MaximumToolCalls { get; }
+            public bool ToolEvidenceLimitExceeded { get; set; }
+            public bool EvidenceLimitExceeded => ContentAccumulator.LimitExceeded || ToolEvidenceLimitExceeded;
+
+            public string RetainToolFragment(string? fragment)
+            {
+                if (string.IsNullOrEmpty(fragment))
+                {
+                    return string.Empty;
+                }
+
+                var remaining = _maximumToolCharacters - _retainedToolCharacters;
+                if (remaining <= 0)
+                {
+                    ToolEvidenceLimitExceeded = true;
+                    return string.Empty;
+                }
+
+                var retainedLength = Math.Min(remaining, fragment.Length);
+                _retainedToolCharacters += retainedLength;
+                if (retainedLength != fragment.Length)
+                {
+                    ToolEvidenceLimitExceeded = true;
+                }
+
+                return fragment[..retainedLength];
+            }
+
+            public List<ToolCall> MaterializeToolCalls() => AccumulatedToolCalls
+                .OrderBy(entry => entry.Key)
+                .Select(entry => entry.Value.ToToolCall())
+                .ToList();
         }
 
-        private enum StreamingOutcome
+        private sealed class StreamingToolCallAccumulator
         {
-            NotStarted,
-            Emitting,
-            Completed,
-            ProviderFailed,
-            ClientDisconnected
+            private readonly StringBuilder _id = new();
+            private readonly StringBuilder _type = new();
+            private readonly StringBuilder _name = new();
+            private readonly StringBuilder _arguments = new();
+
+            public void AppendId(string value) => _id.Append(value);
+            public void AppendType(string value)
+            {
+                if (_type.Length == 0)
+                {
+                    _type.Append(value);
+                }
+            }
+            public void AppendName(string value) => _name.Append(value);
+            public void AppendArguments(string value) => _arguments.Append(value);
+
+            public ToolCall ToToolCall() => new()
+            {
+                Id = _id.ToString(),
+                Type = _type.Length > 0 ? _type.ToString() : "function",
+                Function = new FunctionCall
+                {
+                    Name = _name.ToString(),
+                    Arguments = _arguments.ToString()
+                }
+            };
         }
     }
 }

@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
 using Microsoft.AspNetCore.Http;
@@ -96,6 +97,28 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Assert
             UsageTrackingAssertions.VerifyCostCalculated(Fixture.CostService, "gpt-4", 50, 150);
             UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 654, 0.006m);
+        }
+
+        [Fact]
+        public async Task Streaming_Response_UsesTypedAccountingWithoutLegacyUsageKeys()
+        {
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(658)
+                .AsOpenAI()
+                .Build();
+            var usage = new Usage { PromptTokens = 11, CompletionTokens = 13, TotalTokens = 24 };
+            var accounting = context.GetOrCreateRequestAccountingContext();
+            accounting.SetOperation(RequestOperation.ChatCompletion, 658, "requested-model");
+            accounting.RecordProviderUsage(usage, "resolved-model", UsageEvidenceSource.Provider);
+            Fixture.SetupCostForModel("resolved-model", 0.003m);
+
+            await Invoker.AsStreamingResponse().InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifyCostCalculated(Fixture.CostService, "resolved-model", 11, 13);
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 658, 0.003m);
+            Assert.False(context.Items.ContainsKey("StreamingUsage"));
+            Assert.False(context.Items.ContainsKey("StreamingModel"));
         }
 
         [Fact]

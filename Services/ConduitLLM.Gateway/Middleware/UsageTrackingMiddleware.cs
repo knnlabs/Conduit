@@ -11,6 +11,7 @@ using ConduitLLM.Gateway.Controllers;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Gateway.Utilities;
 using Microsoft.Extensions.Options;
 using Prometheus;
@@ -266,23 +267,32 @@ namespace ConduitLLM.Gateway.Middleware
                 using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
                 var root = jsonDocument.RootElement;
 
-                // Extract usage data if present
-                if (!root.TryGetProperty("usage", out var usageElement))
+                var accountingSnapshot = context.GetRequestAccountingSnapshot();
+                var typedUsageEvidence = accountingSnapshot?.ProviderUsage;
+
+                // Extract usage data if typed controller evidence is not available.
+                var hasSerializedUsage = root.TryGetProperty("usage", out var usageElement);
+                if (typedUsageEvidence is null && !hasSerializedUsage)
                 {
                     _logger.LogDebug("No usage data found in response for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                     LogMissingUsageData(context, billingAuditService);
                     return;
                 }
 
-                // Extract model name
-                if (!root.TryGetProperty("model", out var modelElement))
+                // Extract model name, preferring typed provider evidence.
+                var model = typedUsageEvidence?.Model;
+                var hasSerializedModel = root.TryGetProperty("model", out var modelElement);
+                if (string.IsNullOrWhiteSpace(model) && !hasSerializedModel)
                 {
                     _logger.LogWarning("No model found in response for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                     LogMissingUsageData(context, billingAuditService, "Response did not contain a model", "missing_model");
                     return;
                 }
 
-                var model = modelElement.GetString();
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    model = modelElement.GetString();
+                }
                 if (string.IsNullOrEmpty(model))
                 {
                     _logger.LogWarning("Empty model name in response for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
@@ -291,10 +301,14 @@ namespace ConduitLLM.Gateway.Middleware
                 }
 
                 // Build Usage object
-                var usage = context.Items.TryGetValue(HttpContextKeys.NonStreamingUsage, out var normalizedUsage) &&
-                            normalizedUsage is Usage providerUsage
-                    ? providerUsage
-                    : UsageExtractor.ExtractUsage(usageElement, _logger);
+                var usage = typedUsageEvidence?.Usage;
+                if (usage is null &&
+                    context.Items.TryGetValue(HttpContextKeys.NonStreamingUsage, out var normalizedUsage) &&
+                    normalizedUsage is Usage providerUsage)
+                {
+                    usage = providerUsage;
+                }
+                usage ??= hasSerializedUsage ? UsageExtractor.ExtractUsage(usageElement, _logger) : null;
                 if (usage == null)
                 {
                     _logger.LogWarning("Failed to extract usage data for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));

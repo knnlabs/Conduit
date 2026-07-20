@@ -9,12 +9,15 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Gateway.Options;
+using ConduitLLM.Gateway.UsageTracking;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using ConduitLLM.Gateway.Authorization;
 
 namespace ConduitLLM.Gateway.Controllers
@@ -36,6 +39,7 @@ namespace ConduitLLM.Gateway.Controllers
         private readonly ConduitLLM.Core.Interfaces.IUsageEstimationService _usageEstimationService;
         private readonly ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? _functionConfigRepository;
         private readonly ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService _globalSettingsCacheService;
+        private readonly UsageTrackingOptions _usageTrackingOptions;
 
         public ChatController(
             Conduit conduit,
@@ -45,7 +49,8 @@ namespace ConduitLLM.Gateway.Controllers
             IEventBus eventBus,
             ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService globalSettingsCacheService,
             ConduitLLM.Core.Interfaces.IUsageEstimationService usageEstimationService,
-            ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null) : base(eventBus, logger)
+            ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null,
+            IOptions<UsageTrackingOptions>? usageTrackingOptions = null) : base(eventBus, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -54,6 +59,7 @@ namespace ConduitLLM.Gateway.Controllers
             _globalSettingsCacheService = globalSettingsCacheService ?? throw new ArgumentNullException(nameof(globalSettingsCacheService));
             _usageEstimationService = usageEstimationService ?? throw new ArgumentNullException(nameof(usageEstimationService));
             _functionConfigRepository = functionConfigRepository;
+            _usageTrackingOptions = usageTrackingOptions?.Value ?? new UsageTrackingOptions();
         }
 
         /// <summary>
@@ -91,6 +97,9 @@ namespace ConduitLLM.Gateway.Controllers
             try
             {
                 var virtualKeyId = CurrentVirtualKeyId;
+                var accountingContext = HttpContext.GetOrCreateRequestAccountingContext();
+                accountingContext.SetOperation(RequestOperation.ChatCompletion, virtualKeyId, request.Model);
+                Response.Headers["X-Request-ID"] = accountingContext.BillingRequestId;
 
                 if (request.Stream != true)
                 {

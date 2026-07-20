@@ -7,10 +7,13 @@ using ConduitLLM.Core;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
+using ConduitLLM.Gateway.Options;
+using ConduitLLM.Gateway.UsageTracking;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -85,6 +88,10 @@ public class ChatControllerStreamingTests
             ((MemoryStream)controller.HttpContext.Response.Body).ToArray());
         Assert.Contains("event: error", responseText);
         Assert.DoesNotContain("data: [DONE]", responseText);
+        var snapshot = controller.HttpContext.GetRequestAccountingSnapshot();
+        Assert.Equal(UsageEvidenceSource.Estimated, snapshot!.ProviderUsage!.Source);
+        Assert.Equal(StreamTransportOutcome.ProviderFailed, snapshot.Transport!.Outcome);
+        Assert.True(snapshot.Transport.BytesWritten > 0);
         estimator.VerifyAll();
     }
 
@@ -140,7 +147,42 @@ public class ChatControllerStreamingTests
         estimator.VerifyNoOtherCalls();
     }
 
-    private static ChatController CreateController(Conduit conduit, IUsageEstimationService estimator)
+    [Fact]
+    public async Task MissingProviderUsageBeyondAccumulatorLimit_IsMarkedIndeterminate()
+    {
+        var client = new Mock<ILLMClient>();
+        client.Setup(x => x.StreamChatCompletionAsync(
+                It.IsAny<ChatCompletionRequest>(), null, It.IsAny<CancellationToken>()))
+            .Returns(ContentOnlyStream("content beyond the configured limit"));
+        var clientFactory = new Mock<ILLMClientFactory>();
+        clientFactory.Setup(x => x.GetClientAsync("test-model", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client.Object);
+        var estimator = new Mock<IUsageEstimationService>(MockBehavior.Strict);
+        var controller = CreateController(
+            new Conduit(clientFactory.Object, Mock.Of<ILogger<Conduit>>()),
+            estimator.Object,
+            Options.Create(new UsageTrackingOptions
+            {
+                MaximumStreamingCompletionCharacters = 5,
+                MaximumStreamingToolCallCharacters = 5,
+                MaximumStreamingToolCalls = 2
+            }));
+
+        var result = await controller.CreateChatCompletion(CreateRequest());
+
+        Assert.IsType<EmptyResult>(result);
+        Assert.False(controller.HttpContext.Items.ContainsKey("StreamingUsage"));
+        var snapshot = controller.HttpContext.GetRequestAccountingSnapshot();
+        Assert.True(snapshot!.IsIndeterminate);
+        Assert.Equal(StreamTransportOutcome.AccountingIndeterminate, snapshot.Transport!.Outcome);
+        Assert.True(snapshot.Transport.EvidenceTruncated);
+        estimator.VerifyNoOtherCalls();
+    }
+
+    private static ChatController CreateController(
+        Conduit conduit,
+        IUsageEstimationService estimator,
+        IOptions<UsageTrackingOptions>? usageOptions = null)
     {
         var controller = new ChatController(
             conduit,
@@ -149,7 +191,8 @@ public class ChatControllerStreamingTests
             new JsonSerializerOptions(),
             Mock.Of<IEventBus>(),
             Mock.Of<IGlobalSettingsCacheService>(),
-            estimator)
+            estimator,
+            usageTrackingOptions: usageOptions)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -225,5 +268,22 @@ public class ChatControllerStreamingTests
         }
 
         throw new InvalidOperationException("Provider failed before streaming");
+    }
+
+    private static async IAsyncEnumerable<ChatCompletionChunk> ContentOnlyStream(string content)
+    {
+        yield return new ChatCompletionChunk
+        {
+            Model = "test-model",
+            Choices =
+            [
+                new StreamingChoice
+                {
+                    Index = 0,
+                    Delta = new DeltaContent { Content = content }
+                }
+            ]
+        };
+        await Task.Yield();
     }
 }

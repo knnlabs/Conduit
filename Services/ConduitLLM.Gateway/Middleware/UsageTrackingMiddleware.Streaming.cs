@@ -8,6 +8,7 @@ using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Controllers;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Gateway.Utilities;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
@@ -25,22 +26,35 @@ namespace ConduitLLM.Gateway.Middleware
             IToolCostCalculationService toolCostCalculationService)
         {
             var endpointType = UsageExtractor.DetermineRequestType(context.Request.Path);
+            var accountingSnapshot = context.GetRequestAccountingSnapshot();
 
             // Check if usage was estimated
-            var isEstimated = context.Items.TryGetValue("UsageIsEstimated", out var estimatedObj) &&
-                              estimatedObj is bool estimated && estimated;
+            var isEstimated = accountingSnapshot?.ProviderUsage?.Source == UsageEvidenceSource.Estimated ||
+                              (context.Items.TryGetValue("UsageIsEstimated", out var estimatedObj) &&
+                               estimatedObj is bool estimated && estimated);
 
-            // For streaming responses, we need to rely on the SSE writer
-            // to have stored the usage data in HttpContext.Items
-            if (!context.Items.TryGetValue("StreamingUsage", out var usageObj) ||
-                usageObj is not Usage usage)
+            var usage = accountingSnapshot?.ProviderUsage?.Usage;
+            if (usage is null &&
+                context.Items.TryGetValue("StreamingUsage", out var usageObj) &&
+                usageObj is Usage legacyUsage)
+            {
+                usage = legacyUsage;
+            }
+
+            if (usage is null)
             {
                 // Function execution cost is known independently of provider token usage. A provider
                 // may omit its final usage chunk (or the client may disconnect after functions ran),
                 // so preserve that charge before returning from the token-usage path.
-                if (endpointType == "chat" &&
+                var functionCost = accountingSnapshot?.FunctionExecutionCost ?? 0m;
+                if (functionCost <= 0m &&
                     context.Items.TryGetValue(HttpContextKeys.ChatFunctionCost, out var functionCostObj) &&
-                    functionCostObj is decimal functionCost && functionCost > 0m)
+                    functionCostObj is decimal legacyFunctionCost)
+                {
+                    functionCost = legacyFunctionCost;
+                }
+
+                if (endpointType == "chat" && functionCost > 0m)
                 {
                     var functionVirtualKeyId = (int)context.Items[HttpContextKeys.VirtualKeyId]!;
                     await SpendUpdateHelper.UpdateSpendAsync(
@@ -57,8 +71,15 @@ namespace ConduitLLM.Gateway.Middleware
                 return;
             }
 
-            if (!context.Items.TryGetValue("StreamingModel", out var modelObj) ||
-                modelObj is not string model)
+            var model = accountingSnapshot?.ProviderUsage?.Model;
+            if (string.IsNullOrWhiteSpace(model) &&
+                context.Items.TryGetValue("StreamingModel", out var modelObj) &&
+                modelObj is string legacyModel)
+            {
+                model = legacyModel;
+            }
+
+            if (string.IsNullOrWhiteSpace(model))
             {
                 _logger.LogWarning("No streaming model found for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
                 UsageMetrics.UsageTrackingFailures.WithLabels("no_streaming_model", endpointType).Inc();
@@ -129,15 +150,25 @@ namespace ConduitLLM.Gateway.Middleware
             string? chatToolCallsJson = null;
             decimal functionExecutionCost = 0m;
 
-            if (endpointType == "chat" && context.Items.TryGetValue(HttpContextKeys.ChatFunctionCalls, out var functionResultsObj)
-                && functionResultsObj is List<FunctionExecutionResultForLogging> functionResults
-                && functionResults.Count > 0)
+            var functionResults = accountingSnapshot?.FunctionExecutions.ToList() ?? [];
+            if (functionResults.Count == 0 &&
+                context.Items.TryGetValue(HttpContextKeys.ChatFunctionCalls, out var functionResultsObj) &&
+                functionResultsObj is List<FunctionExecutionResultForLogging> legacyFunctionResults)
+            {
+                functionResults = legacyFunctionResults;
+            }
+
+            if (endpointType == "chat" && functionResults.Count > 0)
             {
                 // Use richer function execution data (includes status, cost, execution ID)
                 chatToolCallsJson = FunctionExecutionSerializer.SerializeFunctionExecutionResults(functionResults);
 
                 // Get total function cost from HttpContext
-                if (context.Items.TryGetValue(HttpContextKeys.ChatFunctionCost, out var funcCostObj)
+                if (accountingSnapshot is not null)
+                {
+                    functionExecutionCost = accountingSnapshot.FunctionExecutionCost;
+                }
+                else if (context.Items.TryGetValue(HttpContextKeys.ChatFunctionCost, out var funcCostObj)
                     && funcCostObj is decimal funcCost)
                 {
                     functionExecutionCost = funcCost;
@@ -147,23 +178,33 @@ namespace ConduitLLM.Gateway.Middleware
                     functionResults.Count, functionExecutionCost);
             }
             // Fallback to basic tool call info if no execution results available
-            else if (endpointType == "chat" && context.Items.TryGetValue("StreamingChatToolCalls", out var streamingToolCallsObj)
-                && streamingToolCallsObj is List<ConduitLLM.Core.Models.ToolCall> streamingToolCalls
-                && streamingToolCalls.Count > 0)
+            else
             {
-                // Convert to ChatToolCallData format (basic info only - no execution results)
-                var chatToolCallData = new ChatToolCallData
+                IReadOnlyList<ConduitLLM.Core.Models.ToolCall> streamingToolCalls =
+                    accountingSnapshot?.StreamingToolCalls ?? [];
+                if (streamingToolCalls.Count == 0 &&
+                    context.Items.TryGetValue("StreamingChatToolCalls", out var streamingToolCallsObj) &&
+                    streamingToolCallsObj is List<ConduitLLM.Core.Models.ToolCall> legacyStreamingToolCalls)
                 {
-                    ToolCalls = streamingToolCalls.Select(tc => new ChatToolCallItem
+                    streamingToolCalls = legacyStreamingToolCalls;
+                }
+
+                if (endpointType == "chat" && streamingToolCalls.Count > 0)
+                {
+                    // Convert to ChatToolCallData format (basic info only - no execution results)
+                    var chatToolCallData = new ChatToolCallData
                     {
-                        Id = tc.Id,
-                        Type = tc.Type,
-                        FunctionName = tc.Function?.Name,
-                        HasArguments = !string.IsNullOrEmpty(tc.Function?.Arguments)
-                    }).ToList()
-                };
-                chatToolCallsJson = UsageExtractor.SerializeChatToolCalls(chatToolCallData);
-                _logger.LogDebug("Streaming chat tool calls detected (basic): {ChatToolCallsJson}", chatToolCallsJson);
+                        ToolCalls = streamingToolCalls.Select(tc => new ChatToolCallItem
+                        {
+                            Id = tc.Id,
+                            Type = tc.Type,
+                            FunctionName = tc.Function?.Name,
+                            HasArguments = !string.IsNullOrEmpty(tc.Function?.Arguments)
+                        }).ToList()
+                    };
+                    chatToolCallsJson = UsageExtractor.SerializeChatToolCalls(chatToolCallData);
+                    _logger.LogDebug("Streaming chat tool calls detected (basic): {ChatToolCallsJson}", chatToolCallsJson);
+                }
             }
 
             // Calculate base cost and add tool cost (both provider tools and function executions)

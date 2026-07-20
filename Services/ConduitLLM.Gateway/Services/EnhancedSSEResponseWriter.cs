@@ -12,8 +12,17 @@ namespace ConduitLLM.Gateway.Services
         private readonly JsonSerializerOptions _jsonOptions;
         private bool _headersWritten;
         private int _doneWritten;
+        private long _eventsWritten;
+        private long _bytesWritten;
+        private DateTimeOffset? _firstClientFlushAt;
 
         public bool HasStarted => _headersWritten || _response.HasStarted;
+
+        public long EventsWritten => Interlocked.Read(ref _eventsWritten);
+
+        public long BytesWritten => Interlocked.Read(ref _bytesWritten);
+
+        public DateTimeOffset? FirstClientFlushAt => _firstClientFlushAt;
 
         public EnhancedSSEResponseWriter(HttpResponse response, JsonSerializerOptions? jsonOptions = null)
         {
@@ -57,6 +66,7 @@ namespace ConduitLLM.Gateway.Services
             var bytes = Encoding.UTF8.GetBytes(eventData);
             await _response.Body.WriteAsync(bytes, cancellationToken);
             await _response.Body.FlushAsync(cancellationToken);
+            RecordSuccessfulEvent(bytes.Length);
         }
 
         /// <summary>
@@ -137,6 +147,7 @@ namespace ConduitLLM.Gateway.Services
             var bytes = Encoding.UTF8.GetBytes(eventData.ToString());
             await _response.Body.WriteAsync(bytes, cancellationToken);
             await _response.Body.FlushAsync(cancellationToken);
+            RecordSuccessfulEvent(bytes.Length);
         }
 
         /// <summary>
@@ -157,6 +168,7 @@ namespace ConduitLLM.Gateway.Services
             var doneData = Encoding.UTF8.GetBytes("data: [DONE]\n\n");
             await _response.Body.WriteAsync(doneData, cancellationToken);
             await _response.Body.FlushAsync(cancellationToken);
+            RecordSuccessfulEvent(doneData.Length);
         }
 
         /// <summary>
@@ -171,6 +183,14 @@ namespace ConduitLLM.Gateway.Services
             var keepAlive = Encoding.UTF8.GetBytes(": keep-alive\n\n");
             await _response.Body.WriteAsync(keepAlive, cancellationToken);
             await _response.Body.FlushAsync(cancellationToken);
+            RecordSuccessfulEvent(keepAlive.Length);
+        }
+
+        private void RecordSuccessfulEvent(int byteCount)
+        {
+            Interlocked.Increment(ref _eventsWritten);
+            Interlocked.Add(ref _bytesWritten, byteCount);
+            _firstClientFlushAt ??= DateTimeOffset.UtcNow;
         }
     }
 

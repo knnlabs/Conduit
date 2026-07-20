@@ -27,5 +27,8 @@ public class EnhancedSSEResponseWriterTests
         Assert.False(context.Response.Headers.ContainsKey("Connection"));
         Assert.False(context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"));
         Assert.Equal("data: [DONE]\n\n", Encoding.UTF8.GetString(responseBody.ToArray()));
+        Assert.Equal(1, writer.EventsWritten);
+        Assert.Equal(responseBody.Length, writer.BytesWritten);
+        Assert.NotNull(writer.FirstClientFlushAt);
     }
 }
