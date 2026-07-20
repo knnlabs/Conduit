@@ -1,6 +1,5 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import type { LLMCacheControlDto, ToggleLLMCacheRequest } from '../models/cache-types';
 import type { PromptCachingCapabilityDto, PromptCachingConfigDto, UpdatePromptCachingConfigDto } from '../models/promptCaching';
 import { ENDPOINTS } from '../constants';
 
@@ -137,40 +136,6 @@ export class FetchConfigurationService {
   // Also provide the original name
   async clearCacheRegion(cacheId: string, config?: RequestConfig): Promise<unknown> {
     return this.clearCacheByRegion(cacheId, config);
-  }
-
-  /**
-   * Get the current LLM caching status
-   * @param config Optional request configuration
-   * @returns LLM cache control status
-   */
-  async getLLMCacheStatus(config?: RequestConfig): Promise<LLMCacheControlDto> {
-    return this.client['get']<LLMCacheControlDto>(
-      ENDPOINTS.CONFIG.CACHING.LLM_STATUS,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Toggle LLM caching on or off for all instances
-   * @param request Toggle request with enabled state and optional reason
-   * @param config Optional request configuration
-   * @returns Updated LLM cache control status
-   */
-  async toggleLLMCache(request: ToggleLLMCacheRequest, config?: RequestConfig): Promise<LLMCacheControlDto> {
-    return this.client['post']<LLMCacheControlDto>(
-      ENDPOINTS.CONFIG.CACHING.LLM_TOGGLE,
-      request,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
   }
 
   async getPromptCachingConfig(config?: RequestConfig): Promise<PromptCachingConfigDto> {

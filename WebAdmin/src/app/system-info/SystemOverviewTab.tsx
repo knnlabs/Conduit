@@ -9,24 +9,20 @@ import {
   Text,
   Badge,
   Progress,
-  Switch,
 } from '@mantine/core';
 import {
   IconCircleCheck,
   IconAlertTriangle,
 } from '@tabler/icons-react';
-import { SystemInfoDto, LLMCacheControlDto } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
 import { generateSystemMetrics, getStatusColor } from './helpers';
 
 interface SystemOverviewTabProps {
   systemInfo: SystemInfoDto | null;
-  cacheStatus: LLMCacheControlDto | null;
-  onCacheToggle: (newValue: boolean) => void;
-  isTogglingCache: boolean;
 }
 
-export function SystemOverviewTab({ systemInfo, cacheStatus, onCacheToggle, isTogglingCache }: SystemOverviewTabProps) {
-  const systemMetrics = generateSystemMetrics(systemInfo, cacheStatus);
+export function SystemOverviewTab({ systemInfo }: SystemOverviewTabProps) {
+  const systemMetrics = generateSystemMetrics(systemInfo);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -57,28 +53,16 @@ export function SystemOverviewTab({ systemInfo, cacheStatus, onCacheToggle, isTo
                 )}
               </div>
               <Group gap="xs">
-                {!metric.isToggleable && (
-                  <Badge
-                    leftSection={getStatusIcon(metric.status)}
-                    color={getStatusColor(metric.status)}
-                    variant="light"
-                  >
-                    {metric.status}
-                  </Badge>
-                )}
-                {metric.isToggleable ? (
-                  <Switch
-                    checked={metric.toggleValue ?? false}
-                    onChange={(event) => onCacheToggle(event.currentTarget.checked)}
-                    disabled={isTogglingCache}
-                    label={metric.toggleValue ? 'Enabled' : 'Disabled'}
-                    color="green"
-                  />
-                ) : (
-                  <Text fw={600}>
-                    {String(metric.value)}{metric.unit ?? ''}
-                  </Text>
-                )}
+                <Badge
+                  leftSection={getStatusIcon(metric.status)}
+                  color={getStatusColor(metric.status)}
+                  variant="light"
+                >
+                  {metric.status}
+                </Badge>
+                <Text fw={600}>
+                  {String(metric.value)}{metric.unit ?? ''}
+                </Text>
               </Group>
             </Group>
             {typeof metric.value === 'number' && metric.unit === '%' && (

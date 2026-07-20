@@ -1781,93 +1781,6 @@
         }
       }
     },
-    "/api/config/caching/llm-status": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Gets the current LLM caching status.",
-        "responses": {
-          "200": {
-            "description": "LLM cache control status.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto."
-          }
-        }
-      }
-    },
-    "/api/config/caching/llm-toggle": {
-      "post": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Toggles LLM caching for all instances.",
-        "requestBody": {
-          "description": "Cancellation token.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ToggleLLMCacheRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ToggleLLMCacheRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ToggleLLMCacheRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Updated LLM cache control status.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto."
-          }
-        }
-      }
-    },
     "/api/FunctionConfigurations": {
       "get": {
         "tags": [
@@ -10154,7 +10067,7 @@
         "summary": "Gets the current prompt caching configuration.",
         "responses": {
           "200": {
-            "description": "The current prompt caching configuration, or defaults if not set.",
+            "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10174,9 +10087,19 @@
             }
           },
           "409": {
-            "description": "Stored prompt caching configuration is invalid or uses an unsupported schema version.",
+            "description": "Conflict",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -10263,19 +10186,41 @@
     },
     "/api/prompt-caching/capabilities": {
       "get": {
-        "tags": ["PromptCaching"],
-        "summary": "Gets provider and model prompt caching capabilities.",
+        "tags": [
+          "PromptCaching"
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PromptCachingCapabilityDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/PromptCachingCapabilityDto" }
+                  "items": {
+                    "$ref": "#/components/schemas/PromptCachingCapabilityDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PromptCachingCapabilityDto"
+                  }
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
         }
       }
@@ -17329,40 +17274,6 @@
         },
         "description": "DTO for detailed key error information"
       },
-      "LLMCacheControlDto": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "lastChangedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "lastChangedBy": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "lastChangeReason": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "activeInstances": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          }
-        }
-      },
       "LoadBalancerDto": {
         "type": "object",
         "properties": {
@@ -19802,6 +19713,43 @@
           }
         }
       },
+      "PromptCachingCapabilityDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "modelPattern": {
+            "type": "string"
+          },
+          "strategies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ttls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "minimumTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxBreakpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerManaged": {
+            "type": "boolean"
+          }
+        }
+      },
       "PromptCachingConfigDto": {
         "type": "object",
         "properties": {
@@ -19821,32 +19769,44 @@
         }
       },
       "PromptCachingRuleDto": {
-        "required": ["modelPattern", "name", "provider", "strategy"],
+        "required": [
+          "name",
+          "provider",
+          "modelPattern",
+          "strategy"
+        ],
         "type": "object",
         "properties": {
-          "name": { "maxLength": 100, "type": "string" },
-          "enabled": { "type": "boolean" },
-          "provider": { "type": "string" },
-          "modelPattern": { "maxLength": 200, "type": "string" },
-          "strategy": { "type": "string" },
-          "ttl": { "type": ["null", "string"] },
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "modelPattern": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "ttl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "injectionPoints": {
             "maxItems": 4,
             "type": "array",
-            "items": { "$ref": "#/components/schemas/CacheInjectionPointDto" }
+            "items": {
+              "$ref": "#/components/schemas/CacheInjectionPointDto"
+            }
           }
-        }
-      },
-      "PromptCachingCapabilityDto": {
-        "type": "object",
-        "properties": {
-          "provider": { "type": "string" },
-          "modelPattern": { "type": "string" },
-          "strategies": { "type": "array", "items": { "type": "string" } },
-          "ttls": { "type": "array", "items": { "type": "string" } },
-          "minimumTokens": { "type": ["null", "integer"], "format": "int32" },
-          "maxBreakpoints": { "type": "integer", "format": "int32" },
-          "providerManaged": { "type": "boolean" }
         }
       },
       "Provider": {
@@ -21287,20 +21247,6 @@
           }
         },
         "description": "Time range covered by a monitoring response."
-      },
-      "ToggleLLMCacheRequest": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "reason": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
       },
       "TokenizerType": {
         "type": "integer"

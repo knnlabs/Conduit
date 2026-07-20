@@ -228,8 +228,6 @@ export const ENDPOINTS = {
       ENTRIES: (regionId: string) => `/api/config/caching/${regionId}/entries`,
       REFRESH: (regionId: string) => `/api/config/caching/${regionId}/refresh`,
       POLICY: (regionId: string) => `/api/config/caching/${regionId}/policy`,
-      LLM_STATUS: '/api/config/caching/llm-status',
-      LLM_TOGGLE: '/api/config/caching/llm-toggle',
     },
   },
 

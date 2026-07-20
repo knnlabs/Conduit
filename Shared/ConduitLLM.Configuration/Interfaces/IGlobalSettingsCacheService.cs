@@ -37,16 +37,6 @@ public interface IGlobalSettingsCacheService
     Task<bool> GetDefaultAgenticModeEnabledAsync();
 
     /// <summary>
-    /// Gets whether LLM response caching is enabled.
-    /// This setting can be toggled at runtime via the Admin API.
-    /// </summary>
-    /// <returns>
-    /// The configured LLM caching enabled state from GlobalSettings,
-    /// or the default value of false (disabled) if the setting doesn't exist.
-    /// </returns>
-    Task<bool> GetLLMCachingEnabledAsync();
-
-    /// <summary>
     /// Gets a raw setting value by key from the cache.
     /// Returns null if the key does not exist.
     /// </summary>

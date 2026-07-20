@@ -28,7 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { notify } from '@/lib/notifications';
-import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { SystemOverviewTab } from './SystemOverviewTab';
 import { SystemServicesTab } from './SystemServicesTab';
@@ -44,8 +44,6 @@ export default function SystemInfoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [systemInfo, setSystemInfo] = useState<SystemInfoDto | null>(null);
-  const [cacheStatus, setCacheStatus] = useState<LLMCacheControlDto | null>(null);
-  const [isTogglingCache, setIsTogglingCache] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('overview');
   const [error, setError] = useState<string | null>(null);
   const [globalSettings, setGlobalSettings] = useState<GlobalSettingDto[]>([]);
@@ -60,15 +58,6 @@ export default function SystemInfoPage() {
       // Fetch system info (required)
       const systemData = await withAdminClient(client => client.system.getSystemInfo());
       setSystemInfo(systemData);
-
-      // Fetch cache status separately (optional, non-blocking)
-      withAdminClient(client => client.configuration.getLLMCacheStatus())
-        .then(setCacheStatus)
-        .catch((err) => {
-          // Silently fail for cache status - it's optional
-          console.warn('Failed to fetch LLM cache status:', err);
-          setCacheStatus(null);
-        });
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -134,51 +123,6 @@ export default function SystemInfoPage() {
     URL.revokeObjectURL(url);
 
     notify.success('System information exported successfully', 'Exported');
-  };
-
-  const handleCacheToggle = (newValue: boolean) => {
-    const action = newValue ? 'enable' : 'disable';
-
-    modals.openConfirmModal({
-      title: `${action === 'enable' ? 'Enable' : 'Disable'} LLM Cache`,
-      children: (
-        <Text size="sm">
-          Are you sure you want to {action} LLM response caching?
-          {!newValue && (
-            <>
-              <br /><br />
-              This will:
-              <br />• Increase latency for repeated requests
-              <br />• Increase provider API costs
-              <br />• Apply to all Gateway API instances immediately
-            </>
-          )}
-        </Text>
-      ),
-      labels: { confirm: 'Confirm', cancel: 'Cancel' },
-      confirmProps: { color: newValue ? 'green' : 'red' },
-      onConfirm: () => {
-        void (async () => {
-          setIsTogglingCache(true);
-          try {
-            const updatedStatus = await withAdminClient(client =>
-              client.configuration.toggleLLMCache({ enabled: newValue })
-            );
-
-            setCacheStatus(updatedStatus);
-
-          notify.success(`LLM cache ${newValue ? 'enabled' : 'disabled'} successfully`);
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error('Error toggling cache:', errorMessage);
-
-          notify.error(new Error(`Failed to ${action} cache: ${errorMessage}`));
-        } finally {
-          setIsTogglingCache(false);
-        }
-        })();
-      },
-    });
   };
 
   const handleUpdateSetting = async (id: number, value: string, description?: string) => {
@@ -441,12 +385,7 @@ export default function SystemInfoPage() {
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="md">
-          <SystemOverviewTab
-            systemInfo={systemInfo}
-            cacheStatus={cacheStatus}
-            onCacheToggle={handleCacheToggle}
-            isTogglingCache={isTogglingCache}
-          />
+          <SystemOverviewTab systemInfo={systemInfo} />
         </Tabs.Panel>
 
         <Tabs.Panel value="services" pt="md">

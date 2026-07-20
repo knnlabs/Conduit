@@ -1,4 +1,3 @@
-using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
 
@@ -20,9 +19,6 @@ namespace ConduitLLM.Core.Caching
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddLLMCaching(this IServiceCollection services)
         {
-            // Add the cache metrics service as a singleton to track metrics across requests
-            services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
-
             // Register the decorator for ILLMClientFactory
             // Use a decorator pattern to wrap the existing factory
             var descriptor = new ServiceDescriptor(
@@ -51,8 +47,6 @@ namespace ConduitLLM.Core.Caching
 
                     // Get the required services for the caching factory
                     var cacheManager = provider.GetRequiredService<ICacheManager>();
-                    var metricsService = provider.GetRequiredService<ICacheMetricsService>();
-                    var globalSettingsCache = provider.GetRequiredService<IGlobalSettingsCacheService>();
                     var cacheOptions = provider.GetRequiredService<IOptionsMonitor<CacheOptions>>();
                     var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
 
@@ -60,8 +54,6 @@ namespace ConduitLLM.Core.Caching
                     return new CachingLLMClientFactory(
                         originalFactory,
                         cacheManager,
-                        metricsService,
-                        globalSettingsCache,
                         cacheOptions,
                         loggerFactory);
                 },
@@ -91,8 +83,6 @@ namespace ConduitLLM.Core.Caching
     {
         private readonly ILLMClientFactory _innerFactory;
         private readonly ICacheManager _cacheManager;
-        private readonly ICacheMetricsService _metricsService;
-        private readonly IGlobalSettingsCacheService _globalSettingsCache;
         private readonly IOptionsMonitor<CacheOptions> _cacheOptions;
         private readonly ILoggerFactory _loggerFactory;
 
@@ -102,15 +92,11 @@ namespace ConduitLLM.Core.Caching
         public CachingLLMClientFactory(
             ILLMClientFactory innerFactory,
             ICacheManager cacheManager,
-            ICacheMetricsService metricsService,
-            IGlobalSettingsCacheService globalSettingsCache,
             IOptionsMonitor<CacheOptions> cacheOptions,
             ILoggerFactory loggerFactory)
         {
             _innerFactory = innerFactory ?? throw new ArgumentNullException(nameof(innerFactory));
             _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
-            _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
-            _globalSettingsCache = globalSettingsCache ?? throw new ArgumentNullException(nameof(globalSettingsCache));
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         }
@@ -136,16 +122,12 @@ namespace ConduitLLM.Core.Caching
             // Get the original client from the inner factory
             var client = await _innerFactory.GetClientAsync(modelAlias, cancellationToken);
 
-            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
             if (_cacheOptions.CurrentValue.IsEnabled)
             {
                 var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
                 return new CachingLLMClient(
                     client,
                     _cacheManager,
-                    _metricsService,
-                    _globalSettingsCache,
-                    _cacheOptions,
                     logger);
             }
 
@@ -158,16 +140,12 @@ namespace ConduitLLM.Core.Caching
             // Get the original client from the inner factory
             var client = await _innerFactory.GetClientByProviderIdAsync(providerId, cancellationToken);
 
-            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
             if (_cacheOptions.CurrentValue.IsEnabled)
             {
                 var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
                 return new CachingLLMClient(
                     client,
                     _cacheManager,
-                    _metricsService,
-                    _globalSettingsCache,
-                    _cacheOptions,
                     logger);
             }
 
@@ -180,16 +158,12 @@ namespace ConduitLLM.Core.Caching
             // Get the original client from the inner factory
             var client = await _innerFactory.GetClientByProviderIdAsync(providerId, providerModelId, cancellationToken);
 
-            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
             if (_cacheOptions.CurrentValue.IsEnabled)
             {
                 var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
                 return new CachingLLMClient(
                     client,
                     _cacheManager,
-                    _metricsService,
-                    _globalSettingsCache,
-                    _cacheOptions,
                     logger);
             }
 
@@ -202,16 +176,12 @@ namespace ConduitLLM.Core.Caching
             // Get the original client from the inner factory
             var client = await _innerFactory.GetClientByProviderTypeAsync(providerType, cancellationToken);
 
-            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
             if (_cacheOptions.CurrentValue.IsEnabled)
             {
                 var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
                 return new CachingLLMClient(
                     client,
                     _cacheManager,
-                    _metricsService,
-                    _globalSettingsCache,
-                    _cacheOptions,
                     logger);
             }
 

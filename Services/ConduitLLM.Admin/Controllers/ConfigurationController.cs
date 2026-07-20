@@ -1,5 +1,4 @@
 using ConduitLLM.Configuration;
-using ConduitLLM.Core.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +7,6 @@ using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Services;
-using ConduitLLM.Configuration.DTOs.Cache;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -24,7 +22,6 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
-        private readonly ILLMCacheManagementService _llmCacheManagementService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ConfigurationController"/> class.
@@ -33,19 +30,16 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
         /// <param name="configuration">Application configuration.</param>
-        /// <param name="llmCacheManagementService">Service for LLM cache toggle operations.</param>
         public ConfigurationController(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ConfigurationController> logger,
             IMemoryCache cache,
-            IConfiguration configuration,
-            ILLMCacheManagementService llmCacheManagementService)
+            IConfiguration configuration)
             : base(logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _llmCacheManagementService = llmCacheManagementService ?? throw new ArgumentNullException(nameof(llmCacheManagementService));
         }
 
         /// <summary>
@@ -155,39 +149,6 @@ namespace ConduitLLM.Admin.Controllers
                 TotalRequests = stats.Sum(s => s.RequestCount),
                 ProviderDistribution = stats
             };
-        }
-
-        /// <summary>
-        /// Gets the current LLM caching status.
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>LLM cache control status.</returns>
-        [HttpGet("caching/llm-status")]
-        [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
-        public async Task<IActionResult> GetLLMCacheStatus(CancellationToken cancellationToken = default)
-        {
-            var status = await _llmCacheManagementService.GetLLMCacheStatusAsync(cancellationToken);
-            return Ok(status);
-        }
-
-        /// <summary>
-        /// Toggles LLM caching for all instances.
-        /// </summary>
-        /// <param name="request">Toggle request with enabled state and reason.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Updated LLM cache control status.</returns>
-        [HttpPost("caching/llm-toggle")]
-        [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
-        public async Task<IActionResult> ToggleLLMCache([FromBody] ToggleLLMCacheRequest request, CancellationToken cancellationToken = default)
-        {
-            var userName = User?.Identity?.Name ?? "Unknown";
-            var result = await _llmCacheManagementService.ToggleLLMCacheAsync(
-                request.Enabled,
-                userName,
-                request.Reason,
-                cancellationToken);
-            LogAdminAudit("Toggled", "LLMCache", detail: $"Enabled: {request.Enabled}, Reason: {LoggingSanitizer.S(request.Reason)}");
-            return Ok(result);
         }
 
     }
