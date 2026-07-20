@@ -102,7 +102,7 @@ function Test-PathReferences {
     }
 
     # Check for correct SDK paths
-    if ($content -match 'SDKs/Node/(Admin|Core|Common)') {
+    if ($content -match 'SDKs/Node/(Admin|Gateway|Common)') {
         Write-Status 'success' "Using correct SDK paths"
     }
 }
@@ -191,7 +191,7 @@ function Test-ScriptReferences {
     param([string]$FilePath)
 
     $content = Get-Content $FilePath -Raw
-    $matches = [regex]::Matches($content, '(?:\./)?scripts/([^\s]+\.sh)')
+    $matches = [regex]::Matches($content, '(?:\./)?scripts/([^\s''"`]+\.(?:ps1|sh))')
 
     foreach ($match in $matches) {
         $scriptPath = $match.Groups[1].Value

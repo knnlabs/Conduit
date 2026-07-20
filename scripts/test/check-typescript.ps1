@@ -371,7 +371,7 @@ function Write-Report {
         Write-Host ("{0,-20} | {1,-10} | {2,-10} | {3,-15}" -f "Project", "Errors", "Warnings", "Build Status")
         Write-Host ("{0} | {1} | {2} | {3}" -f ("-" * 20), ("-" * 10), ("-" * 10), ("-" * 15))
 
-        foreach ($project in @("WebAdmin", "Admin SDK", "Core SDK", "Common SDK")) {
+        foreach ($project in @("WebAdmin", "Admin SDK", "Gateway SDK", "Common SDK")) {
             if ($script:projectErrors.ContainsKey($project)) {
                 $errors = $script:projectErrors[$project]
                 $warnings = if ($script:projectWarnings[$project]) { $script:projectWarnings[$project] } else { 0 }
@@ -421,7 +421,7 @@ function Write-Report {
             }
 
             if (($script:projectErrors["Admin SDK"] -and $script:projectErrors["Admin SDK"] -gt 0) -or
-                ($script:projectErrors["Core SDK"] -and $script:projectErrors["Core SDK"] -gt 0)) {
+                ($script:projectErrors["Gateway SDK"] -and $script:projectErrors["Gateway SDK"] -gt 0)) {
                 Write-Host "SDK fixes:"
                 Write-Host "  ./scripts/dev/fix-sdk-errors.ps1"
                 Write-Host ""

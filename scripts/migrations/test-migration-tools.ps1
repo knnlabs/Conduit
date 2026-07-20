@@ -57,7 +57,7 @@ function Write-TestResult {
 function Test-WrapperNoDatabaseUrl {
     Write-TestHeader "EF Wrapper - No DATABASE_URL"
 
-    $configPath = Join-Path $projectRoot 'ConduitLLM.Configuration'
+    $configPath = Join-Path $projectRoot 'Shared' 'ConduitLLM.Configuration'
     Push-Location $configPath
 
     try {
@@ -85,7 +85,7 @@ function Test-WrapperNoDatabaseUrl {
 function Test-WrapperInvalidDatabaseUrl {
     Write-TestHeader "EF Wrapper - Invalid DATABASE_URL Format"
 
-    $configPath = Join-Path $projectRoot 'ConduitLLM.Configuration'
+    $configPath = Join-Path $projectRoot 'Shared' 'ConduitLLM.Configuration'
     Push-Location $configPath
 
     try {
@@ -133,7 +133,7 @@ function Test-WrapperWrongDirectory {
 function Test-ValidateMigrationsBasic {
     Write-TestHeader "Validate Migrations - Basic Run"
 
-    $configPath = Join-Path $projectRoot 'ConduitLLM.Configuration'
+    $configPath = Join-Path $projectRoot 'Shared' 'ConduitLLM.Configuration'
     Push-Location $configPath
 
     try {
@@ -222,12 +222,12 @@ function Test-ScriptsExist {
 function Test-WrapperErrorMessages {
     Write-TestHeader "EF Wrapper - Enhanced Error Messages"
 
-    $configPath = Join-Path $projectRoot 'ConduitLLM.Configuration'
+    $configPath = Join-Path $projectRoot 'Shared' 'ConduitLLM.Configuration'
     Push-Location $configPath
 
     try {
-        # Test with a command that will provide structured output
-        $output = & "$scriptDir/ef-wrapper.ps1" migrations add TestMigration --no-build 2>&1 | Out-String
+        # Use a read-only EF command. This test suite must never create a migration.
+        $output = & "$scriptDir/ef-wrapper.ps1" migrations list --no-build 2>&1 | Out-String
 
         # Check if wrapper provides helpful context
         if ($output -match 'Validating environment' -and $output -match 'EF Core Command Wrapper') {

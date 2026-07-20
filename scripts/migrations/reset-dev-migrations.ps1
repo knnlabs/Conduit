@@ -63,7 +63,8 @@ try {
     # Step 1: Stop all containers and remove volumes
     Write-Host ""
     Write-Host "Step 1: Stopping Docker containers and removing volumes..." -ForegroundColor Yellow
-    docker-compose down -v 2>$null
+    $composeExitCode = Invoke-DockerCompose -WorkingDirectory $projectRoot -UseDev -Arguments @('down', '--volumes', '--remove-orphans')
+    if ($composeExitCode -ne 0) { throw 'Failed to stop the development stack.' }
 
     # Step 2: Clean all build artifacts
     Write-Host ""
@@ -89,14 +90,15 @@ try {
 
     if ($removeMigrationConfirm -eq 'yes') {
         Write-Host "Removing existing migrations..."
-        $migrationsPath = Join-Path $projectRoot 'ConduitLLM.Configuration' 'Migrations'
+        $configurationProject = Join-Path $projectRoot 'Shared' 'ConduitLLM.Configuration'
+        $migrationsPath = Join-Path $configurationProject 'Migrations'
         if (Test-Path $migrationsPath) {
             Get-ChildItem -Path $migrationsPath -File | Remove-Item -Force
         }
 
         Write-Host ""
         Write-Host "Creating new consolidated migration..."
-        Push-Location (Join-Path $projectRoot 'ConduitLLM.Configuration')
+        Push-Location $configurationProject
         try {
             dotnet ef migrations add InitialCreate
         } finally {
@@ -112,17 +114,22 @@ try {
     # Step 6: Build Docker images
     Write-Host ""
     Write-Host "Step 6: Building Docker images..." -ForegroundColor Yellow
-    docker-compose build --no-cache
+    $composeExitCode = Invoke-DockerCompose -WorkingDirectory $projectRoot -UseDev -Arguments @('build', '--no-cache')
+    if ($composeExitCode -ne 0) { throw 'Failed to rebuild the development images.' }
 
     # Step 7: Start services
     Write-Host ""
     Write-Host "Step 7: Starting services..." -ForegroundColor Yellow
-    docker-compose up -d
+    $composeExitCode = Invoke-DockerCompose -WorkingDirectory $projectRoot -UseDev -Arguments @('up', '-d', '--wait', '--wait-timeout', '600')
+    if ($composeExitCode -ne 0) { throw 'Failed to start the development stack.' }
 
     # Wait for services to be healthy
     Write-Host ""
     Write-Host "Waiting for services to be healthy..."
-    Start-Sleep -Seconds 30
+    & (Join-Path $projectRoot 'scripts' 'setup' 'wait-for-services.ps1')
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Services did not become healthy after the migration reset.'
+    }
 
     # Step 8: Check migration status
     Write-Host ""
@@ -147,7 +154,7 @@ try {
     Write-Host "  - Admin: http://localhost:5002"
     Write-Host "  - WebAdmin: http://localhost:3000"
     Write-Host ""
-    Write-Host "Check logs with: docker-compose logs -f"
+    Write-Host "Check logs with: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f"
 } finally {
     Pop-Location
 }

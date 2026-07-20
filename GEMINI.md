@@ -22,7 +22,7 @@ This file provides guidance to Gemini Code Assist when working with code in this
 **These commands break the development container and force a 5+ minute restart:**
 - `npm run build` (anywhere in WebAdmin directory)
 - `cd WebAdmin && npm run build`
-- `./scripts/dev/dev-workflow.sh build-webadmin` (production testing only)
+- `./scripts/dev/dev-workflow.ps1 build-webadmin` (production testing only)
 
 **Why?** The development container uses an isolated `.next` directory. Running `npm run build` on the host corrupts the container's build state.
 
@@ -33,7 +33,7 @@ Use these commands instead to verify WebAdmin changes:
 - Hot reloading automatically validates code changes as you save files.
 
 ### ❌ FORBIDDEN DEVELOPMENT COMMANDS
-- `docker compose up` for development (always use `./scripts/dev/start-dev.sh`)
+- `docker compose up` for development (always use `./scripts/dev.ps1`)
 
 **If you run forbidden commands, you will:**
 1. Break the development environment.
@@ -48,29 +48,29 @@ Use these commands instead to verify WebAdmin changes:
 
 **⚠️ CANONICAL DEVELOPMENT STARTUP:**
 ```bash
-./scripts/dev/start-dev.sh
+./scripts/dev.ps1
 ```
 
 ### Available Flags
 ```bash
-./scripts/dev/start-dev.sh              # Standard startup
-./scripts/dev/start-dev.sh --webadmin   # Rebuild WebAdmin container
-./scripts/dev/start-dev.sh --clean      # Complete reset (removes all volumes)
-./scripts/dev/start-dev.sh --build      # Force rebuild with --no-cache
-./scripts/dev/start-dev.sh --help       # Show usage
+./scripts/dev.ps1              # Standard startup
+./scripts/dev.ps1 -WebAdmin    # Rebuild WebAdmin container
+./scripts/dev.ps1 -Clean       # Complete reset (removes all volumes)
+./scripts/dev.ps1 -Build       # Force rebuild with cache
+./scripts/dev.ps1 -Rebuild     # Full rebuild with --no-cache
 ```
 
 **Flag Details:**
-- `--webadmin`: Restarts the WebAdmin container, which is useful for fixing Next.js issues or after adding new packages.
-- `--clean`: Removes containers, volumes, `node_modules`, and build artifacts for a complete reset.
-- `--build`: Rebuilds containers using the `--no-cache` flag.
+- `-WebAdmin`: Rebuilds the WebAdmin container.
+- `-Clean`: Removes containers, volumes, and local development state for a complete reset.
+- `-Build`: Rebuilds containers using normal Docker caching.
+- `-Rebuild`: Rebuilds containers with `--no-cache`.
 
 ## Available Services
 After startup, these services are available:
 - 🌐 **WebAdmin**: http://localhost:3000 (Next.js with hot reloading)
-- 📚 **Gateway API Swagger**: http://localhost:5000/swagger
-- 🔧 **Admin API Swagger**: http://localhost:5002/swagger
-- 🐰 **RabbitMQ Management**: http://localhost:15672 (user: `conduit`, pass: `conduitpass`)
+- 📚 **Gateway API**: http://localhost:5000/scalar/v1
+- 🔧 **Admin API**: http://localhost:5002/scalar/v1
 
 ## Quick Verification
 ```bash
@@ -93,7 +93,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 ### Development vs Production
 
-| Aspect | Development (`start-dev.sh`) | Production (`docker compose up`) |
+| Aspect | Development (`dev.ps1`) | Production (`docker compose up`) |
 |--------|------------------------------|----------------------------------|
 | WebAdmin Container | `node:22-alpine` with mounted source | Built Next.js app in container |
 | Hot Reloading | ✅ Enabled via volume mounts | ❌ Static build |
@@ -102,14 +102,14 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 ## Helper Commands
 
-### dev-workflow.sh
+### dev-workflow.ps1
 This script simplifies interaction with the development containers.
 ```bash
-./scripts/dev/dev-workflow.sh logs                 # View WebAdmin logs in real-time
-./scripts/dev/dev-workflow.sh shell                # Open a shell inside the WebAdmin container
-./scripts/dev/dev-workflow.sh lint-fix-webadmin    # Run ESLint with --fix
-./scripts/dev/dev-workflow.sh build-sdks           # Build all SDKs
-./scripts/dev/dev-workflow.sh exec [command]       # Execute a custom command in the container
+./scripts/dev/dev-workflow.ps1 logs                 # View WebAdmin logs in real-time
+./scripts/dev/dev-workflow.ps1 shell                # Open a shell inside the WebAdmin container
+./scripts/dev/dev-workflow.ps1 lint-fix-webadmin    # Run ESLint with --fix
+./scripts/dev/dev-workflow.ps1 build-sdks           # Build all SDKs
+./scripts/dev/dev-workflow.ps1 exec [command]       # Execute a custom command in the container
 ```
 
 ---

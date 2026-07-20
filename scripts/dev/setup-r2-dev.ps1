@@ -116,7 +116,7 @@ Write-Host ""
 # Start with R2 configuration
 Push-Location $projectRoot
 try {
-    docker compose -f docker-compose.dev.yml up -d
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait --wait-timeout 600
     if ($LASTEXITCODE -ne 0) {
         Write-Err "Failed to start development environment"
         exit 1
@@ -131,8 +131,8 @@ Write-Success "Development environment started with Cloudflare R2!"
 Write-Host ""
 Write-Host "Services:" -ForegroundColor Cyan
 Write-Host "   - WebAdmin: http://localhost:3000"
-Write-Host "   - Gateway API: http://localhost:5000/swagger"
-Write-Host "   - Admin API: http://localhost:5002/swagger"
+Write-Host "   - Gateway API: http://localhost:5000/scalar/v1"
+Write-Host "   - Admin API: http://localhost:5002/scalar/v1"
 Write-Host "   - Media Storage: Cloudflare R2"
 Write-Host ""
 Write-Host "Generated images will be stored in R2 and served from:" -ForegroundColor Cyan

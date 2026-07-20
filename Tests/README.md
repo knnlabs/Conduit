@@ -159,7 +159,7 @@ Tests/
 
 ### For ConduitLLM.IntegrationTests
 - .NET 10.0 SDK or later
-- Docker environment running (`./scripts/start-dev.sh`)
+- Docker environment running (`./scripts/dev.ps1`)
 - All services healthy:
   - Gateway API (http://localhost:5000)
   - Admin API (http://localhost:5002)
@@ -263,7 +263,7 @@ chmod +x Tests/ConduitLLM.IntegrationTests/*.sh
 ### Database Issues (Integration Tests)
 ```bash
 # Restart development environment
-./scripts/start-dev.sh --clean
+./scripts/dev.ps1 -Clean
 ```
 
 ### Clean Test Data (Integration Tests)

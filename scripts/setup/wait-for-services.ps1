@@ -40,8 +40,15 @@ if (Test-Path $commonModule) {
 
 Write-Host "Waiting for services to be healthy..." -ForegroundColor Yellow
 
-# Service configuration
+# Service configuration. Compose service names are stable; generated container
+# names are not, so never construct them from a project-name assumption.
 $services = @('postgres', 'redis', 'api', 'admin', 'webadmin')
+$projectRoot = if (Get-Command Get-ProjectRoot -ErrorAction SilentlyContinue) {
+    Get-ProjectRoot -FromPath $PSScriptRoot
+} else {
+    Split-Path $PSScriptRoot -Parent | Split-Path -Parent
+}
+$composeArgs = @('-f', 'docker-compose.yml', '-f', 'docker-compose.dev.yml')
 
 function Test-ServiceHealthy {
     param(
@@ -49,19 +56,23 @@ function Test-ServiceHealthy {
         [string]$Service
     )
 
-    $containerName = "conduit-$Service-1"
+    Push-Location $projectRoot
+    try {
+        $containerId = docker compose @composeArgs ps -q $Service 2>$null
+    }
+    finally {
+        Pop-Location
+    }
 
-    # Check if container exists and is running
-    $containerInfo = docker ps --format "{{.Names}}" --filter "name=$containerName" 2>$null
-    if (-not $containerInfo -or $containerInfo.Trim() -ne $containerName) {
+    if ([string]::IsNullOrWhiteSpace($containerId)) {
         return $false
     }
 
     # Check health status
-    $health = docker inspect --format='{{.State.Health.Status}}' $containerName 2>$null
+    $health = docker inspect --format='{{.State.Health.Status}}' $containerId.Trim() 2>$null
     if ($LASTEXITCODE -ne 0) {
         # Container might not have health check defined, consider it healthy if running
-        $state = docker inspect --format='{{.State.Status}}' $containerName 2>$null
+        $state = docker inspect --format='{{.State.Status}}' $containerId.Trim() 2>$null
         return $state -eq 'running'
     }
 

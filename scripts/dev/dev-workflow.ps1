@@ -51,8 +51,8 @@ Usage: $scriptName <command> [options]
 
 Development Commands (Container):
   build-webadmin          - Build the WebAdmin application
-  build-sdks              - Build all SDK packages (Common, Admin, Core)
-  build-sdk <name>        - Build specific SDK (common|admin|core)
+  build-sdks              - Build all SDK packages (Common, Admin, Gateway)
+  build-sdk <name>        - Build specific SDK (common|admin|gateway)
   lint-webadmin           - Run ESLint on WebAdmin
   lint-fix-webadmin       - Run ESLint with --fix on WebAdmin
   type-check-webadmin     - Run TypeScript type checking on WebAdmin
@@ -156,10 +156,10 @@ function Build-Sdk {
     $sdkPath = switch ($SdkName.ToLower()) {
         'common' { 'Common' }
         'admin' { 'Admin' }
-        'core' { 'Core' }
+        'gateway' { 'Gateway' }
         default {
             Write-Err "Invalid SDK name: $SdkName"
-            Write-Info "Valid options: common, admin, core"
+            Write-Info "Valid options: common, admin, gateway"
             exit 1
         }
     }
@@ -294,8 +294,8 @@ function Clear-BuildArtifacts {
         (Join-Path $projectRoot 'SDKs' 'Node' 'Common' 'dist'),
         (Join-Path $projectRoot 'SDKs' 'Node' 'Admin' 'node_modules'),
         (Join-Path $projectRoot 'SDKs' 'Node' 'Admin' 'dist'),
-        (Join-Path $projectRoot 'SDKs' 'Node' 'Core' 'node_modules'),
-        (Join-Path $projectRoot 'SDKs' 'Node' 'Core' 'dist')
+        (Join-Path $projectRoot 'SDKs' 'Node' 'Gateway' 'node_modules'),
+        (Join-Path $projectRoot 'SDKs' 'Node' 'Gateway' 'dist')
     )
 
     foreach ($path in $pathsToRemove) {
@@ -318,9 +318,9 @@ function Install-LocalDeps {
     Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Common')
     try { npm install } finally { Pop-Location }
 
-    # Install Core SDK dependencies (depends on Common)
-    Write-Task "Installing Core SDK dependencies..."
-    Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Core')
+    # Install Gateway SDK dependencies (depends on Common)
+    Write-Task "Installing Gateway SDK dependencies..."
+    Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Gateway')
     try { npm install } finally { Pop-Location }
 
     # Install Admin SDK dependencies (depends on Common)
@@ -346,9 +346,9 @@ function Build-LocalProjects {
     Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Common')
     try { npm run build } finally { Pop-Location }
 
-    # Build Core SDK (depends on Common)
-    Write-Task "Building Core SDK..."
-    Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Core')
+    # Build Gateway SDK (depends on Common)
+    Write-Task "Building Gateway SDK..."
+    Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Gateway')
     try { npm run build } finally { Pop-Location }
 
     # Build Admin SDK (depends on Common)
@@ -397,7 +397,7 @@ switch ($Command.ToLower()) {
     'build-sdk' {
         if (-not $Arguments -or $Arguments.Count -eq 0) {
             Write-Err "SDK name required"
-            Write-Info "Usage: dev-workflow.ps1 build-sdk <common|admin|core>"
+            Write-Info "Usage: dev-workflow.ps1 build-sdk <common|admin|gateway>"
             exit 1
         }
         Test-Containers

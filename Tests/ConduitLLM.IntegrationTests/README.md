@@ -15,7 +15,7 @@ These integration tests verify the complete functionality of Conduit by:
 
 1. **Docker Environment Running**: Start the development environment:
    ```bash
-   ./scripts/start-dev.sh
+   ./scripts/dev.ps1
    ```
 
 2. **Services Health**: The tests will automatically wait for all services to be healthy:

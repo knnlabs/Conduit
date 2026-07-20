@@ -109,9 +109,9 @@ ensure_services_running() {
     log "${BLUE}🚀 Starting development environment...${NC}"
     cd "$PROJECT_ROOT"
     
-    if [[ -x "./scripts/start-dev.sh" ]]; then
-        log "${YELLOW}   Running ./scripts/start-dev.sh${NC}"
-        ./scripts/start-dev.sh > /dev/null 2>&1 &
+    if command -v pwsh &> /dev/null && [[ -f "./scripts/dev.ps1" ]]; then
+        log "${YELLOW}   Running pwsh ./scripts/dev.ps1${NC}"
+        pwsh -NoProfile -File ./scripts/dev.ps1 > /dev/null 2>&1 &
         local start_pid=$!
         
         # Wait for services to become ready
@@ -137,7 +137,7 @@ ensure_services_running() {
         log "${GREEN}✅ All services are ready!${NC}"
         return 0
     else
-        log "${RED}❌ ./scripts/start-dev.sh not found or not executable${NC}"
+        log "${RED}❌ pwsh or ./scripts/dev.ps1 not found; start the development stack first${NC}"
         return 1
     fi
 }

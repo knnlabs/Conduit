@@ -33,7 +33,7 @@ Use these instead:
 - Hot reloading automatically validates code changes
 
 ### ❌ FORBIDDEN DEVELOPMENT COMMANDS
-- `docker compose up` for development (always use `./scripts/dev/start-dev.ps1`)
+- `docker compose up` for development (always use `./scripts/dev.ps1`)
 
 **If you run forbidden commands, you will:**
 1. Break the development environment
@@ -48,17 +48,17 @@ Use these instead:
 
 **⚠️ CANONICAL DEVELOPMENT STARTUP:**
 ```powershell
-./scripts/dev/start-dev.ps1
+./scripts/dev.ps1
 ```
 
 ### Available Flags
 ```powershell
-./scripts/dev/start-dev.ps1              # Standard startup
-./scripts/dev/start-dev.ps1 -WebAdmin    # Rebuild WebAdmin container
-./scripts/dev/start-dev.ps1 -Clean       # Complete reset (removes all volumes)
-./scripts/dev/start-dev.ps1 -Build       # Force rebuild (uses cache where possible)
-./scripts/dev/start-dev.ps1 -Rebuild     # Full rebuild with --no-cache (nuclear option)
-./scripts/dev/start-dev.ps1 -Logs -LogService webadmin  # Show container logs
+./scripts/dev.ps1              # Standard startup
+./scripts/dev.ps1 -WebAdmin    # Rebuild WebAdmin container
+./scripts/dev.ps1 -Clean       # Complete reset (removes all volumes)
+./scripts/dev.ps1 -Build       # Force rebuild (uses cache where possible)
+./scripts/dev.ps1 -Rebuild     # Full rebuild with --no-cache (nuclear option)
+./scripts/dev.ps1 -Logs -LogService webadmin  # Show container logs
 ```
 
 **Flag Details:**
@@ -71,9 +71,8 @@ Use these instead:
 ## Available Services
 After startup, these services are available:
 - 🌐 **WebAdmin**: http://localhost:3000 (Next.js with hot reloading)
-- 📚 **Gateway API Swagger**: http://localhost:5000/swagger
-- 🔧 **Admin API Swagger**: http://localhost:5002/swagger
-- 🐰 **RabbitMQ Management**: http://localhost:15672 (conduit/conduitpass)
+- 📚 **Gateway API**: http://localhost:5000/scalar/v1
+- 🔧 **Admin API**: http://localhost:5002/scalar/v1
 
 ## Quick Verification
 ```bash
@@ -96,7 +95,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 ### Development vs Production
 
-| Aspect | Development (`start-dev.ps1`) | Production (`docker compose up`) |
+| Aspect | Development (`dev.ps1`) | Production (`docker compose up`) |
 |--------|------------------------------|----------------------------------|
 | WebAdmin Container | `node:22-alpine` with mounted source | Built Next.js app in container |
 | Hot Reloading | ✅ Enabled via volume mounts | ❌ Static build |
@@ -129,7 +128,7 @@ export DOCKER_GROUP_ID=$(id -g)
 # Build Commands
 ./scripts/dev/dev-workflow.ps1 build-webadmin       # Build WebAdmin application
 ./scripts/dev/dev-workflow.ps1 build-sdks           # Build all SDK packages
-./scripts/dev/dev-workflow.ps1 build-sdk <name>     # Build specific SDK (common|admin|core)
+./scripts/dev/dev-workflow.ps1 build-sdk <name>     # Build specific SDK (common|admin|gateway)
 
 # Lint/Type Commands
 ./scripts/dev/dev-workflow.ps1 lint-webadmin        # Run ESLint on WebAdmin
@@ -159,35 +158,35 @@ export DOCKER_GROUP_ID=$(id -g)
   - `-BuildOnly` - Run build only (skip linting)
   - `-CheckOnly` - Check environment and permissions only
 - `scripts/dev/fix-sdk-errors.ps1` - SDK TypeScript compilation fixes
-- `scripts/dev/create-webadmin-key.ps1` - Create virtual keys for testing
+- `scripts/dev/create-test-virtual-key.ps1` - Create virtual keys for testing
 - `scripts/dev/setup-r2-dev.ps1` - Setup Cloudflare R2 development environment
-- `scripts/test/validate-eslint.sh` - Validate ESLint configuration
-- `scripts/test/validate-eslint-strict.sh` - Strict ESLint validation (CI/CD)
-- `scripts/migrations/validate-migrations.sh` - Validate EF Core migrations
+- `scripts/test/validate-eslint.ps1` - Validate ESLint configuration
+- `scripts/test/validate-eslint-strict.ps1` - Strict ESLint validation (CI/CD)
+- `scripts/migrations/validate-migrations.ps1` - Validate EF Core migrations
 
 ## Troubleshooting
 
 ### Permission Denied Errors
 ```powershell
 # Symptom: npm EACCES errors, cannot write to node_modules
-./scripts/dev/start-dev.ps1 -Clean
+./scripts/dev.ps1 -Clean
 ```
 
 ### After Adding New Packages
 ```powershell
-./scripts/dev/start-dev.ps1 -WebAdmin
+./scripts/dev.ps1 -WebAdmin
 ```
 
 ### Container Conflicts
 ```powershell
 # Symptom: Containers already exist or port conflicts
 docker compose down --volumes --remove-orphans
-./scripts/dev/start-dev.ps1 -Clean
+./scripts/dev.ps1 -Clean
 ```
 
 ### Next.js Build Issues / Stale Builds
 ```powershell
-./scripts/dev/start-dev.ps1 -WebAdmin
+./scripts/dev.ps1 -WebAdmin
 ```
 
 ### WebAdmin Not Starting
@@ -208,7 +207,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webadmin ls 
 
 # Clean host build artifacts (container has isolated .next)
 Remove-Item -Recurse -Force WebAdmin/.next
-./scripts/dev/start-dev.ps1 -WebAdmin
+./scripts/dev.ps1 -WebAdmin
 ```
 
 ---
