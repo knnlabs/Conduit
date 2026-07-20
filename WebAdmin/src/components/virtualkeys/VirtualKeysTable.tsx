@@ -18,6 +18,7 @@ import {
   IconEdit,
   IconTrash,
   IconDotsVertical,
+  IconShieldLock,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
@@ -144,6 +145,12 @@ export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: Vir
                   onClick={() => onEdit?.(key)}
                 >
                   Edit
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconShieldLock style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={() => router.push(`/virtualkeys/${key.id}/ip-filters`)}
+                >
+                  IP Filters
                 </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item

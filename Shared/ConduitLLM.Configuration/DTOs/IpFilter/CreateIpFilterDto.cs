@@ -40,4 +40,10 @@ public class CreateIpFilterDto
     /// Whether the filter is currently active
     /// </summary>
     public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Optional virtual key to scope this filter to. When null the filter is global; when set it
+    /// applies only to requests authenticated with that virtual key.
+    /// </summary>
+    public int? VirtualKeyId { get; set; }
 }

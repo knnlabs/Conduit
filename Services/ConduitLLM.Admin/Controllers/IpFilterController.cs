@@ -58,6 +58,19 @@ public class IpFilterController : AdminControllerBase
     }
 
     /// <summary>
+    /// Gets the IP filters scoped to a specific virtual key
+    /// </summary>
+    /// <param name="virtualKeyId">The virtual key ID</param>
+    /// <returns>List of the virtual key's IP filters</returns>
+    [HttpGet("by-virtual-key/{virtualKeyId}")]
+    [ProducesResponseType(typeof(IEnumerable<IpFilterDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFiltersByVirtualKey(int virtualKeyId)
+    {
+        var filters = await _ipFilterService.GetFiltersByVirtualKeyIdAsync(virtualKeyId);
+        return Ok(filters);
+    }
+
+    /// <summary>
     /// Gets an IP filter by ID
     /// </summary>
     /// <param name="id">The ID of the filter to get</param>

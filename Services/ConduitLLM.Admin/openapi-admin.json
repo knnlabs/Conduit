@@ -4048,6 +4048,60 @@
         }
       }
     },
+    "/api/IpFilter/by-virtual-key/{virtualKeyId}": {
+      "get": {
+        "tags": [
+          "IpFilter"
+        ],
+        "summary": "Gets the IP filters scoped to a specific virtual key",
+        "parameters": [
+          {
+            "name": "virtualKeyId",
+            "in": "path",
+            "description": "The virtual key ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of the virtual key's IP filters",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IpFilterDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IpFilterDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IpFilterDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
     "/api/IpFilter/{id}": {
       "get": {
         "tags": [
@@ -15806,6 +15860,13 @@
           },
           "isEnabled": {
             "type": "boolean"
+          },
+          "virtualKeyId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -17447,6 +17508,87 @@
               "null",
               "string"
             ]
+          },
+          "virtualKeyId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "IpFilterEntity": {
+        "required": [
+          "filterType",
+          "ipAddressOrCidr"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "filterType": {
+            "maxLength": 10,
+            "type": "string"
+          },
+          "ipAddressOrCidr": {
+            "maxLength": 50,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "maxLength": 500,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "maxLength": 100,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "updatedBy": {
+            "maxLength": 100,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "virtualKeyId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rowVersion": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "byte"
           }
         }
       },
@@ -23024,6 +23166,15 @@
             ],
             "items": {
               "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "ipFilters": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/IpFilterEntity"
             }
           },
           "rowVersion": {

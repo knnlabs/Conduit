@@ -23,12 +23,14 @@ namespace ConduitLLM.Admin.Extensions
                 Id = entity.Id,
                 FilterType = entity.FilterType,
                 IpAddressOrCidr = entity.IpAddressOrCidr,
+                Name = entity.Name ?? string.Empty,
                 Description = entity.Description,
                 IsEnabled = entity.IsEnabled,
                 CreatedAt = entity.CreatedAt,
                 UpdatedAt = entity.UpdatedAt,
                 CreatedBy = entity.CreatedBy,
-                UpdatedBy = entity.UpdatedBy
+                UpdatedBy = entity.UpdatedBy,
+                VirtualKeyId = entity.VirtualKeyId
             };
         }
 
