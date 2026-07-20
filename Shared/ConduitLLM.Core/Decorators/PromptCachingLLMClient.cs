@@ -73,9 +73,48 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
     public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
         => _innerClient.CreateImageAsync(request, apiKey, cancellationToken);
 
+    /// <summary>
+    /// Generates video by forwarding the optional provider capability through this decorator.
+    /// </summary>
+    public Task<VideoGenerationResponse> CreateVideoAsync(
+        VideoGenerationRequest request,
+        string? apiKey = null,
+        CancellationToken cancellationToken = default)
+        => InvokeVideoGenerationAsync(request, apiKey, cancellationToken);
+
     /// <inheritdoc />
     public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
         => _innerClient.GetCapabilitiesAsync(modelId);
+
+    private async Task<VideoGenerationResponse> InvokeVideoGenerationAsync(
+        VideoGenerationRequest request,
+        string? apiKey,
+        CancellationToken cancellationToken)
+    {
+        object target = _innerClient.UnwrapInnermost();
+        System.Reflection.MethodInfo? method = null;
+        for (ILLMClient? current = _innerClient; current != null;
+             current = (current as ILLMClientDecorator)?.InnerClient)
+        {
+            method = current.GetType().GetMethod(
+                nameof(CreateVideoAsync),
+                new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
+            if (method != null)
+            {
+                target = current;
+                break;
+            }
+        }
+
+        if (method?.Invoke(target, new object?[] { request, apiKey, cancellationToken })
+            is not Task<VideoGenerationResponse> task)
+        {
+            throw new NotSupportedException(
+                $"The underlying client {target.GetType().Name} does not support video generation");
+        }
+
+        return await task;
+    }
 
     /// <summary>
     /// Verifies authentication by delegating to the inner client if it supports

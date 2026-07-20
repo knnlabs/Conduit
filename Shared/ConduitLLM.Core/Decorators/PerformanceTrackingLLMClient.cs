@@ -216,6 +216,39 @@ namespace ConduitLLM.Core.Decorators
         }
 
         /// <summary>
+        /// Generates video by forwarding the optional provider capability through this decorator.
+        /// </summary>
+        public async Task<VideoGenerationResponse> CreateVideoAsync(
+            VideoGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            object target = _innerClient.UnwrapInnermost();
+            System.Reflection.MethodInfo? method = null;
+            for (ILLMClient? current = _innerClient; current != null;
+                 current = (current as ILLMClientDecorator)?.InnerClient)
+            {
+                method = current.GetType().GetMethod(
+                    nameof(CreateVideoAsync),
+                    new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
+                if (method != null)
+                {
+                    target = current;
+                    break;
+                }
+            }
+
+            if (method?.Invoke(target, new object?[] { request, apiKey, cancellationToken })
+                is not Task<VideoGenerationResponse> task)
+            {
+                throw new NotSupportedException(
+                    $"The underlying client {target.GetType().Name} does not support video generation");
+            }
+
+            return await task;
+        }
+
+        /// <summary>
         /// Lists available models.
         /// </summary>
         public Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)

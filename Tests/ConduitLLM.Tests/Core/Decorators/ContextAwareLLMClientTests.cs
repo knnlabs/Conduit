@@ -164,6 +164,30 @@ public class ContextAwareLLMClientTests
     }
 
     [Fact]
+    public async Task CreateVideoAsync_PromptCachingDecoratorDirectly_ForwardsToProvider()
+    {
+        var expectedResponse = CreateVideoResponse();
+        var providerClient = new FakeVideoCapableProviderClient(expectedResponse);
+        var sut = WrapInPromptCaching(providerClient);
+
+        var result = await sut.CreateVideoAsync(CreateVideoRequest());
+
+        result.Should().BeSameAs(expectedResponse);
+    }
+
+    [Fact]
+    public async Task CreateVideoAsync_PerformanceTrackingDecoratorDirectly_ForwardsToProvider()
+    {
+        var expectedResponse = CreateVideoResponse();
+        var providerClient = new FakeVideoCapableProviderClient(expectedResponse);
+        var sut = WrapInPerformanceTracking(WrapInPromptCaching(providerClient));
+
+        var result = await sut.CreateVideoAsync(CreateVideoRequest());
+
+        result.Should().BeSameAs(expectedResponse);
+    }
+
+    [Fact]
     public async Task CreateVideoAsync_InnermostClientLacksVideoSupport_ThrowsNotSupportedException()
     {
         // Arrange — innermost client has no CreateVideoAsync method
