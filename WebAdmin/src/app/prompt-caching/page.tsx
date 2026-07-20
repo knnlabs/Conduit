@@ -143,7 +143,7 @@ export default function PromptCachingPage() {
               <div><Text size="xs" c="dimmed">Hit rate</Text><Text fw={700}>{analytics && analytics.readEvents + analytics.eligibleMisses > 0 ? `${(100 * analytics.readEvents / (analytics.readEvents + analytics.eligibleMisses)).toFixed(1)}%` : '—'}</Text></div>
               <div><Text size="xs" c="dimmed">Cached tokens</Text><Text fw={700}>{(analytics?.cachedTokens ?? 0).toLocaleString()}</Text></div>
               <div><Text size="xs" c="dimmed">Write premium</Text><Text fw={700}>${(analytics?.writePremium ?? 0).toFixed(4)}</Text></div>
-              <div><Text size="xs" c="dimmed">Latency delta</Text><Text fw={700}>{analytics?.hitLatencyMs != null && analytics?.missLatencyMs != null ? `${(analytics.missLatencyMs - analytics.hitLatencyMs).toFixed(0)} ms` : '—'}</Text></div>
+              <div><Text size="xs" c="dimmed">Latency delta</Text><Text fw={700}>{analytics && typeof analytics.hitLatencyMs === 'number' && typeof analytics.missLatencyMs === 'number' ? `${(analytics.missLatencyMs - analytics.hitLatencyMs).toFixed(0)} ms` : '—'}</Text></div>
               <div><Text size="xs" c="dimmed">Affinity reuse</Text><Text fw={700}>{analytics?.affinityReuse ?? 0}</Text></div>
               <div><Text size="xs" c="dimmed">Failovers</Text><Text fw={700}>{analytics?.failovers ?? 0}</Text></div>
               <div><Text size="xs" c="dimmed">Requests</Text><Text fw={700}>{analytics?.requests ?? 0}</Text></div>
