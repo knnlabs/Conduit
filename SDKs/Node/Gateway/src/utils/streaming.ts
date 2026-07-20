@@ -1,4 +1,4 @@
-import type { SSEMessage, StreamEvent, StreamingResponse, StreamOptions, ProgressEvent, BaseStreamChunk } from '../models/streaming';
+import type { SSEMessage, StreamEvent, StreamingResponse, StreamOptions, ProgressEvent } from '../models/streaming';
 import type { ChatCompletionChunk } from '../models/chat';
 import { StreamError } from './errors';
 import { StreamingHelpers } from '../constants';

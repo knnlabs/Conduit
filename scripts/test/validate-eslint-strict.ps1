@@ -17,3 +17,4 @@ $scriptDir = $PSScriptRoot
 
 # Call the unified validation script with -Strict flag
 & "$scriptDir/validate-eslint.ps1" -Strict @args
+exit $LASTEXITCODE

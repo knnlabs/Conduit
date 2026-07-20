@@ -1,5 +1,5 @@
 import type { RequestOptions } from '../client/types';
-import type { StreamingResponse, BaseStreamChunk } from '../models/streaming';
+import type { StreamingResponse } from '../models/streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
 import { createWebStream } from '../utils/web-streaming';

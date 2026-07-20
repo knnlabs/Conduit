@@ -1,4 +1,4 @@
-import type { BaseStreamChunk, StreamingResponse } from '../models/streaming';
+import type { StreamingResponse } from '../models/streaming';
 
 /**
  * Creates a type-safe streaming response wrapper

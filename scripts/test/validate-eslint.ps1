@@ -99,18 +99,19 @@ function Test-EsLintDirectory {
         $errorCount = 0
         $warningCount = 0
 
-        # Extract error count
-        $errorMatch = [regex]::Match($lintOutput, '(\d+)\s+error')
-        if ($errorMatch.Success) {
-            $errorCount = [int]$errorMatch.Groups[1].Value
+        # Extract counts from ESLint's parenthesized summary. Anchoring the
+        # match here avoids treating a diagnostic column (for example 1:34)
+        # as the number of errors.
+        $summaryMatch = [regex]::Match(
+            $lintOutput,
+            '\((\d+)\s+errors?,\s+(\d+)\s+warnings?\)'
+        )
+        if ($summaryMatch.Success) {
+            $errorCount = [int]$summaryMatch.Groups[1].Value
+            $warningCount = [int]$summaryMatch.Groups[2].Value
         }
-        $script:totalErrors += $errorCount
 
-        # Extract warning count
-        $warningMatch = [regex]::Match($lintOutput, '(\d+)\s+warning')
-        if ($warningMatch.Success) {
-            $warningCount = [int]$warningMatch.Groups[1].Value
-        }
+        $script:totalErrors += $errorCount
         $script:totalWarnings += $warningCount
 
         if ($errorCount -gt 0) {
@@ -138,8 +139,9 @@ function Test-EsLintDirectory {
             Write-Host "[!] Found $warningCount warning(s) (non-blocking)" -ForegroundColor Yellow
         }
 
-        # In normal mode, only fail if ESLint couldn't run at all
-        if (-not $Strict -and $lintExitCode -ne 0 -and $errorCount -eq 0) {
+        # A non-zero exit without a diagnostic summary generally means ESLint
+        # itself could not run (for example, an invalid configuration).
+        if ($lintExitCode -ne 0 -and $errorCount -eq 0) {
             Write-Host "X ESLint execution failed" -ForegroundColor Red
             $script:failed = 1
         }
@@ -184,7 +186,7 @@ if ($script:failed -eq 0) {
         Write-Host "Your push/build WILL FAIL if you don't fix these errors."
         Write-Host ""
         Write-Host "To fix:"
-        Write-Host "1. Run './scripts/dev/fix-lint-errors.ps1' to auto-fix what's possible"
+        Write-Host "1. Run './scripts/dev/fix-sdk-errors.ps1' or './scripts/dev/fix-webadmin-errors.ps1' as appropriate"
         Write-Host "2. Manually fix any remaining errors"
         Write-Host "3. Re-run this script to verify"
     } else {

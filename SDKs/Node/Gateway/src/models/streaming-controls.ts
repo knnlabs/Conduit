@@ -1,4 +1,4 @@
-import type { StreamingResponse, BaseStreamChunk } from './streaming';
+import type { StreamingResponse } from './streaming';
 import type { ChatCompletionChunk } from './chat';
 
 export interface StreamControlOptions {

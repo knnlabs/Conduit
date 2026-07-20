@@ -1,4 +1,4 @@
-import type { StreamingResponse, StreamOptions, BaseStreamChunk } from '../models/streaming';
+import type { StreamingResponse, StreamOptions } from '../models/streaming';
 import { StreamError } from './errors';
 import { createStreamingResponse } from './stream-response';
 
