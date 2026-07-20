@@ -11,6 +11,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.UsageTracking;
+using ConduitLLM.Gateway.Billing;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
 using ConduitLLM.Configuration.Messaging;
@@ -40,6 +41,9 @@ namespace ConduitLLM.Gateway.Controllers
         private readonly ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? _functionConfigRepository;
         private readonly ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService _globalSettingsCacheService;
         private readonly UsageTrackingOptions _usageTrackingOptions;
+        private readonly IChatSpendEstimator? _chatSpendEstimator;
+        private readonly ISpendReservationService? _spendReservationService;
+        private readonly BillingAdmissionOptions _billingAdmissionOptions;
 
         public ChatController(
             Conduit conduit,
@@ -50,7 +54,10 @@ namespace ConduitLLM.Gateway.Controllers
             ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService globalSettingsCacheService,
             ConduitLLM.Core.Interfaces.IUsageEstimationService usageEstimationService,
             ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null,
-            IOptions<UsageTrackingOptions>? usageTrackingOptions = null) : base(eventBus, logger)
+            IOptions<UsageTrackingOptions>? usageTrackingOptions = null,
+            IChatSpendEstimator? chatSpendEstimator = null,
+            ISpendReservationService? spendReservationService = null,
+            IOptions<BillingAdmissionOptions>? billingAdmissionOptions = null) : base(eventBus, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -60,6 +67,9 @@ namespace ConduitLLM.Gateway.Controllers
             _usageEstimationService = usageEstimationService ?? throw new ArgumentNullException(nameof(usageEstimationService));
             _functionConfigRepository = functionConfigRepository;
             _usageTrackingOptions = usageTrackingOptions?.Value ?? new UsageTrackingOptions();
+            _chatSpendEstimator = chatSpendEstimator;
+            _spendReservationService = spendReservationService;
+            _billingAdmissionOptions = billingAdmissionOptions?.Value ?? new BillingAdmissionOptions();
         }
 
         /// <summary>
@@ -100,6 +110,24 @@ namespace ConduitLLM.Gateway.Controllers
                 var accountingContext = HttpContext.GetOrCreateRequestAccountingContext();
                 accountingContext.SetOperation(RequestOperation.ChatCompletion, virtualKeyId, request.Model);
                 Response.Headers["X-Request-ID"] = accountingContext.BillingRequestId;
+
+                var admissionError = await ReserveChatSpendAsync(
+                    request,
+                    virtualKeyId,
+                    accountingContext,
+                    cancellationToken);
+                if (admissionError is not null)
+                {
+                    return admissionError;
+                }
+
+                var invocationError = await MarkChatInvocationStartedAsync(
+                    virtualKeyId,
+                    accountingContext);
+                if (invocationError is not null)
+                {
+                    return invocationError;
+                }
 
                 if (request.Stream != true)
                 {
@@ -223,6 +251,124 @@ namespace ConduitLLM.Gateway.Controllers
                 request.EnableAgenticMode = await _globalSettingsCacheService.GetDefaultAgenticModeEnabledAsync();
             }
         }
+
+        private async Task<IActionResult?> ReserveChatSpendAsync(
+            ChatCompletionRequest request,
+            int? virtualKeyId,
+            IRequestAccountingContext accountingContext,
+            CancellationToken cancellationToken)
+        {
+            if (_billingAdmissionOptions.Mode == BillingAdmissionMode.Off)
+            {
+                return null;
+            }
+
+            if (!virtualKeyId.HasValue || _chatSpendEstimator is null || _spendReservationService is null)
+            {
+                return _billingAdmissionOptions.Mode == BillingAdmissionMode.Enforce
+                    ? AdmissionFailure(
+                        StatusCodes.Status503ServiceUnavailable,
+                        "Billing admission is unavailable.",
+                        "billing_unavailable")
+                    : null;
+            }
+
+            ChatSpendEstimate estimate;
+            try
+            {
+                estimate = await _chatSpendEstimator.EstimateMaximumCostAsync(request, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to estimate maximum chat spend");
+                estimate = new ChatSpendEstimate(false, 0m, 0, 0, null, ex.Message);
+            }
+
+            if (!estimate.Succeeded)
+            {
+                _logger.LogError(
+                    "Chat billing estimate failed in {Mode} mode: {FailureReason}",
+                    _billingAdmissionOptions.Mode,
+                    estimate.FailureReason);
+                return _billingAdmissionOptions.Mode == BillingAdmissionMode.Enforce
+                    ? AdmissionFailure(
+                        StatusCodes.Status503ServiceUnavailable,
+                        "Pricing is unavailable for this request.",
+                        "pricing_unavailable")
+                    : null;
+            }
+
+            var reservation = await _spendReservationService.ReserveAsync(
+                virtualKeyId.Value,
+                accountingContext.BillingRequestId,
+                estimate.Amount);
+            if (reservation.Outcome == SpendReservationOutcome.Reserved)
+            {
+                accountingContext.RecordReservation(estimate.Amount);
+                return null;
+            }
+
+            _logger.LogWarning(
+                "Chat spend reservation failed in {Mode} mode with outcome {Outcome}",
+                _billingAdmissionOptions.Mode,
+                reservation.Outcome);
+            if (_billingAdmissionOptions.Mode != BillingAdmissionMode.Enforce)
+            {
+                return null;
+            }
+
+            return reservation.Outcome == SpendReservationOutcome.InsufficientBalance
+                ? AdmissionFailure(
+                    StatusCodes.Status402PaymentRequired,
+                    "Insufficient balance for the requested maximum usage.",
+                    "insufficient_balance")
+                : AdmissionFailure(
+                    StatusCodes.Status503ServiceUnavailable,
+                    "Billing admission is temporarily unavailable.",
+                    "billing_unavailable");
+        }
+
+        private async Task<IActionResult?> MarkChatInvocationStartedAsync(
+            int? virtualKeyId,
+            IRequestAccountingContext accountingContext)
+        {
+            var snapshot = accountingContext.Snapshot();
+            if (snapshot.Reservation is null || !virtualKeyId.HasValue || _spendReservationService is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                if (await _spendReservationService.MarkInvocationStartedAsync(
+                        virtualKeyId.Value,
+                        accountingContext.BillingRequestId))
+                {
+                    accountingContext.MarkInvocationStarted();
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to persist chat provider invocation start");
+            }
+
+            if (_billingAdmissionOptions.Mode == BillingAdmissionMode.Enforce)
+            {
+                return AdmissionFailure(
+                    StatusCodes.Status503ServiceUnavailable,
+                    "Billing admission is temporarily unavailable.",
+                    "billing_unavailable");
+            }
+
+            accountingContext.MarkInvocationStarted();
+            accountingContext.MarkIndeterminate(
+                "Provider invocation proceeded in shadow mode without a durable invocation-start transition");
+            return null;
+        }
+
+        private IActionResult AdmissionFailure(int statusCode, string message, string code) =>
+            OpenAIError(statusCode, message, code, "billing_error");
 
     }
 

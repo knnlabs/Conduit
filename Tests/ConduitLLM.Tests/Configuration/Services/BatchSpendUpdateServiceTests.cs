@@ -468,7 +468,9 @@ namespace ConduitLLM.Tests.Configuration.Services
                         keys[2] == $"spend_reservations:group:{groupId}" &&
                         keys[3] == $"spend_reservation_expiry:group:{groupId}" &&
                         keys[4] == $"pending_spend_units:group:{groupId}" &&
-                        keys[5] == $"pending_spend_window_total_units:group:{groupId}"),
+                        keys[5] == $"pending_spend_window_total_units:group:{groupId}" &&
+                        keys[6] == $"spend_reservations_started:group:{groupId}" &&
+                        keys[7] == $"spend_reservations_settled:group:{groupId}"),
                     It.Is<RedisValue[]>(values =>
                         values[0] == "10" && values[1] == "4.5" && values[2] == "request-123"),
                     It.IsAny<CommandFlags>()))
@@ -479,6 +481,85 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Assert
             Assert.True(reserved);
+        }
+
+        [Fact]
+        public async Task MarkReservationStarted_MovesReservationToNonExpiringState()
+        {
+            const int virtualKeyId = 17;
+            const int groupId = 18;
+            _dbContext.VirtualKeyGroups.Add(new VirtualKeyGroup
+            {
+                Id = groupId,
+                GroupName = "Started Reservation Test",
+                Balance = 10m
+            });
+            _dbContext.VirtualKeys.Add(new VirtualKey
+            {
+                Id = virtualKeyId,
+                VirtualKeyGroupId = groupId,
+                KeyHash = "started-reservation-test"
+            });
+            await _dbContext.SaveChangesAsync();
+            _mockRedisDb.Setup(x => x.ScriptEvaluateAsync(
+                    It.IsAny<string>(),
+                    It.Is<RedisKey[]>(keys =>
+                        keys[0] == $"spend_reservations:group:{groupId}" &&
+                        keys[1] == $"spend_reservation_expiry:group:{groupId}" &&
+                        keys[2] == $"spend_reservations_started:group:{groupId}" &&
+                        keys[3] == $"spend_reservations_settled:group:{groupId}"),
+                    It.Is<RedisValue[]>(values => values[0] == "request-started"),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(RedisResult.Create((RedisValue)1));
+
+            var started = await _service.MarkSpendReservationInvocationStartedAsync(
+                virtualKeyId,
+                "request-started");
+
+            Assert.True(started);
+        }
+
+        [Fact]
+        public async Task SettleReservation_AtomicallyQueuesActualSpendAndReportsOverEstimate()
+        {
+            const int virtualKeyId = 27;
+            const int groupId = 28;
+            _dbContext.VirtualKeyGroups.Add(new VirtualKeyGroup
+            {
+                Id = groupId,
+                GroupName = "Settlement Test",
+                Balance = 10m
+            });
+            _dbContext.VirtualKeys.Add(new VirtualKey
+            {
+                Id = virtualKeyId,
+                VirtualKeyGroupId = groupId,
+                KeyHash = "settlement-test"
+            });
+            await _dbContext.SaveChangesAsync();
+            _mockRedisDb.Setup(x => x.ScriptEvaluateAsync(
+                    It.IsAny<string>(),
+                    It.Is<RedisKey[]>(keys =>
+                        keys[0] == $"spend_reservations:group:{groupId}" &&
+                        keys[2] == $"spend_reservations_started:group:{groupId}" &&
+                        keys[3] == $"spend_reservations_settled:group:{groupId}" &&
+                        keys[4] == $"reserved_spend:group:{groupId}" &&
+                        keys[6] == $"pending_spend_window_total_units:group:{groupId}" &&
+                        keys[7].ToString().Contains($"key:{virtualKeyId}")),
+                    It.Is<RedisValue[]>(values =>
+                        values[0] == "request-settle" &&
+                        values[1] == 250000000 &&
+                        values[2] == "2.5"),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync(RedisResult.Create((RedisValue)3));
+
+            var result = await _service.SettleSpendReservationAsync(
+                virtualKeyId,
+                "request-settle",
+                2.5m);
+
+            Assert.Equal(SpendReservationSettlementStatus.SettledOverEstimate, result.Status);
+            Assert.Equal(2.5m, result.ActualAmount);
         }
 
         [Fact]

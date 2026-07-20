@@ -144,6 +144,18 @@ namespace ConduitLLM.Gateway.Middleware
             }
             finally
             {
+                try
+                {
+                    await FinalizeOpenReservationAsync(context);
+                }
+                catch (Exception reservationFinalizationEx)
+                {
+                    _logger.LogCritical(
+                        reservationFinalizationEx,
+                        "Failed to finalize the request spend reservation for {Path}",
+                        LoggingSanitizer.S(context.Request.Path.ToString()));
+                }
+
                 context.Response.Body = originalBodyStream;
             }
         }
@@ -461,11 +473,27 @@ namespace ConduitLLM.Gateway.Middleware
                 // Update spend using batch service only if there's a cost
                 if (totalCost > 0)
                 {
-                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, totalCost, batchSpendService, virtualKeyService, _logger, GetBillingTimestamp(context));
-                    LogSuccessfulBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
+                    if (await RecordSpendOrSettleReservationAsync(
+                            context,
+                            virtualKeyId,
+                            totalCost,
+                            batchSpendService,
+                            virtualKeyService))
+                    {
+                        LogSuccessfulBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
+                    }
                 }
                 else if (!pricingResult.Failed)
                 {
+                    if (context.GetRequestAccountingSnapshot()?.Reservation is not null)
+                    {
+                        await RecordSpendOrSettleReservationAsync(
+                            context,
+                            virtualKeyId,
+                            0m,
+                            batchSpendService,
+                            virtualKeyService);
+                    }
                     _logger.LogDebug("Zero total cost calculated for {Model} with usage {Usage}, tool cost: ${ToolCost}",
                         model, JsonSerializer.Serialize(usage), toolCost);
                     UsageMetrics.ZeroCostEvents.WithLabels(model, "zero_cost").Inc();

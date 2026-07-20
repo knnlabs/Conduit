@@ -44,6 +44,8 @@ namespace ConduitLLM.Configuration.Services
         private readonly string _reservedSpendPrefix = "reserved_spend:group:";
         private readonly string _reservationPrefix = "spend_reservations:group:";
         private readonly string _reservationExpiryPrefix = "spend_reservation_expiry:group:";
+        private readonly string _startedReservationPrefix = "spend_reservations_started:group:";
+        private readonly string _settledReservationPrefix = "spend_reservations_settled:group:";
         private readonly ConcurrentQueue<(int VirtualKeyId, decimal Cost, DateTime BillingWindowStartUtc)> _fallbackQueue = new();
         private const decimal SpendUnitScale = 100_000_000m;
 
@@ -267,6 +269,8 @@ namespace ConduitLLM.Configuration.Services
             var pendingKey = $"{_redisKeyPrefix}{keyAndBalance.GroupId}";
             var pendingUnitsKey = $"{_redisUnitsKeyPrefix}{keyAndBalance.GroupId}";
             var windowedPendingTotalUnitsKey = $"{_windowedPendingTotalUnitsPrefix}{keyAndBalance.GroupId}";
+            var startedReservationsKey = $"{_startedReservationPrefix}{keyAndBalance.GroupId}";
+            var settledReservationsKey = $"{_settledReservationPrefix}{keyAndBalance.GroupId}";
 
             const string script = """
                 local expired = redis.call('ZRANGEBYSCORE', KEYS[4], '-inf', ARGV[4])
@@ -279,6 +283,9 @@ namespace ConduitLLM.Configuration.Services
                     redis.call('ZREM', KEYS[4], id)
                 end
                 if redis.call('HEXISTS', KEYS[3], ARGV[3]) == 1 then
+                    return 1
+                end
+                if redis.call('HEXISTS', KEYS[7], ARGV[3]) == 1 or redis.call('HEXISTS', KEYS[8], ARGV[3]) == 1 then
                     return 1
                 end
                 local pending = tonumber(redis.call('GET', KEYS[1]) or '0')
@@ -297,9 +304,6 @@ namespace ConduitLLM.Configuration.Services
                 redis.call('INCRBYFLOAT', KEYS[2], amount)
                 redis.call('HSET', KEYS[3], ARGV[3], amount)
                 redis.call('ZADD', KEYS[4], ARGV[5], ARGV[3])
-                redis.call('PEXPIRE', KEYS[2], ARGV[6])
-                redis.call('PEXPIRE', KEYS[3], ARGV[6])
-                redis.call('PEXPIRE', KEYS[4], ARGV[6])
                 return 1
                 """;
 
@@ -308,7 +312,17 @@ namespace ConduitLLM.Configuration.Services
 
             var result = await db.ScriptEvaluateAsync(
                 script,
-                new RedisKey[] { pendingKey, reservedTotalKey, reservationsKey, reservationExpiryKey, pendingUnitsKey, windowedPendingTotalUnitsKey },
+                new RedisKey[]
+                {
+                    pendingKey,
+                    reservedTotalKey,
+                    reservationsKey,
+                    reservationExpiryKey,
+                    pendingUnitsKey,
+                    windowedPendingTotalUnitsKey,
+                    startedReservationsKey,
+                    settledReservationsKey
+                },
                 new RedisValue[]
                 {
                     keyAndBalance.Balance.ToString(CultureInfo.InvariantCulture),
@@ -321,6 +335,141 @@ namespace ConduitLLM.Configuration.Services
                 });
 
             return (long)result == 1;
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> MarkSpendReservationInvocationStartedAsync(int virtualKeyId, string reservationId)
+        {
+            if (string.IsNullOrWhiteSpace(reservationId))
+            {
+                return false;
+            }
+
+            var groupId = await GetGroupIdAsync(virtualKeyId);
+            if (!groupId.HasValue)
+            {
+                return false;
+            }
+
+            var redis = await _redisConnectionFactory.GetConnectionAsync();
+            var db = redis.GetDatabase();
+            const string script = """
+                if redis.call('HEXISTS', KEYS[4], ARGV[1]) == 1 then
+                    return 1
+                end
+                if redis.call('HEXISTS', KEYS[3], ARGV[1]) == 1 then
+                    return 1
+                end
+                local amount = redis.call('HGET', KEYS[1], ARGV[1])
+                if not amount then
+                    return 0
+                end
+                redis.call('HDEL', KEYS[1], ARGV[1])
+                redis.call('ZREM', KEYS[2], ARGV[1])
+                redis.call('HSET', KEYS[3], ARGV[1], amount)
+                return 1
+                """;
+            var result = await db.ScriptEvaluateAsync(
+                script,
+                new RedisKey[]
+                {
+                    $"{_reservationPrefix}{groupId.Value}",
+                    $"{_reservationExpiryPrefix}{groupId.Value}",
+                    $"{_startedReservationPrefix}{groupId.Value}",
+                    $"{_settledReservationPrefix}{groupId.Value}"
+                },
+                new RedisValue[] { reservationId });
+
+            return (long)result == 1;
+        }
+
+        /// <inheritdoc />
+        public async Task<SpendReservationSettlementResult> SettleSpendReservationAsync(
+            int virtualKeyId,
+            string reservationId,
+            decimal actualAmount,
+            DateTime? billedAtUtc = null)
+        {
+            if (string.IsNullOrWhiteSpace(reservationId) || actualAmount < 0m)
+            {
+                return new SpendReservationSettlementResult(SpendReservationSettlementStatus.Conflict, actualAmount);
+            }
+
+            var groupId = await GetGroupIdAsync(virtualKeyId);
+            if (!groupId.HasValue)
+            {
+                return new SpendReservationSettlementResult(SpendReservationSettlementStatus.Missing, actualAmount);
+            }
+
+            var billingWindow = GetBillingWindow(billedAtUtc);
+            var windowToken = billingWindow.ToString("yyyyMMddHH", CultureInfo.InvariantCulture);
+            var actualUnits = ToSpendUnits(actualAmount);
+            var redis = await _redisConnectionFactory.GetConnectionAsync();
+            var db = redis.GetDatabase();
+            const string script = """
+                local settledAmount = redis.call('HGET', KEYS[4], ARGV[1])
+                if settledAmount then
+                    if tonumber(settledAmount) == tonumber(ARGV[2]) then
+                        return 2
+                    end
+                    return -1
+                end
+
+                local reservedAmount = redis.call('HGET', KEYS[3], ARGV[1])
+                if not reservedAmount then
+                    reservedAmount = redis.call('HGET', KEYS[1], ARGV[1])
+                end
+                if not reservedAmount then
+                    return 0
+                end
+
+                redis.call('HDEL', KEYS[1], ARGV[1])
+                redis.call('HDEL', KEYS[3], ARGV[1])
+                redis.call('ZREM', KEYS[2], ARGV[1])
+                redis.call('INCRBY', KEYS[6], ARGV[2])
+                redis.call('INCRBY', KEYS[7], ARGV[2])
+                redis.call('INCRBY', KEYS[8], ARGV[2])
+                redis.call('HSET', KEYS[4], ARGV[1], ARGV[2])
+
+                local remaining = tonumber(redis.call('INCRBYFLOAT', KEYS[5], -tonumber(reservedAmount)))
+                if remaining <= 0 then
+                    redis.call('DEL', KEYS[5])
+                end
+
+                if tonumber(ARGV[3]) > tonumber(reservedAmount) then
+                    return 3
+                end
+                return 1
+                """;
+            var result = (long)await db.ScriptEvaluateAsync(
+                script,
+                new RedisKey[]
+                {
+                    $"{_reservationPrefix}{groupId.Value}",
+                    $"{_reservationExpiryPrefix}{groupId.Value}",
+                    $"{_startedReservationPrefix}{groupId.Value}",
+                    $"{_settledReservationPrefix}{groupId.Value}",
+                    $"{_reservedSpendPrefix}{groupId.Value}",
+                    $"{_windowedSpendUnitsPrefix}{groupId.Value}:window:{windowToken}",
+                    $"{_windowedPendingTotalUnitsPrefix}{groupId.Value}",
+                    $"{_windowedKeyUsageUnitsPrefix}{groupId.Value}:window:{windowToken}:key:{virtualKeyId}"
+                },
+                new RedisValue[]
+                {
+                    reservationId,
+                    actualUnits,
+                    actualAmount.ToString(CultureInfo.InvariantCulture)
+                });
+
+            var status = result switch
+            {
+                1 => SpendReservationSettlementStatus.Settled,
+                2 => SpendReservationSettlementStatus.AlreadySettled,
+                3 => SpendReservationSettlementStatus.SettledOverEstimate,
+                -1 => SpendReservationSettlementStatus.Conflict,
+                _ => SpendReservationSettlementStatus.Missing
+            };
+            return new SpendReservationSettlementResult(status, actualAmount);
         }
 
         /// <inheritdoc />

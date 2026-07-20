@@ -46,6 +46,11 @@ public sealed record StreamTransportEvidence(
     DateTimeOffset? ClientFirstFlushAt,
     bool EvidenceTruncated);
 
+public sealed record SpendReservationEvidence(
+    decimal ReservedAmount,
+    bool InvocationStarted,
+    bool Closed);
+
 public sealed record RequestAccountingSnapshot(
     string BillingRequestId,
     RequestOperation Operation,
@@ -57,6 +62,7 @@ public sealed record RequestAccountingSnapshot(
     decimal FunctionExecutionCost,
     IReadOnlyList<ToolCall> StreamingToolCalls,
     StreamTransportEvidence? Transport,
+    SpendReservationEvidence? Reservation,
     bool IsIndeterminate,
     string? IndeterminateReason);
 
@@ -78,6 +84,12 @@ public interface IRequestAccountingContext
 
     void RecordTransport(StreamTransportEvidence transport);
 
+    void RecordReservation(decimal reservedAmount);
+
+    void MarkInvocationStarted();
+
+    void CloseReservation();
+
     void MarkIndeterminate(string reason);
 
     RequestAccountingSnapshot Snapshot();
@@ -95,6 +107,7 @@ public sealed class RequestAccountingContext : IRequestAccountingContext
     private decimal _functionExecutionCost;
     private List<ToolCall> _streamingToolCalls = [];
     private StreamTransportEvidence? _transport;
+    private SpendReservationEvidence? _reservation;
     private bool _isIndeterminate;
     private string? _indeterminateReason;
 
@@ -163,6 +176,41 @@ public sealed class RequestAccountingContext : IRequestAccountingContext
         }
     }
 
+    public void RecordReservation(decimal reservedAmount)
+    {
+        if (reservedAmount < 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(reservedAmount));
+        }
+
+        lock (_sync)
+        {
+            _reservation = new SpendReservationEvidence(reservedAmount, false, false);
+        }
+    }
+
+    public void MarkInvocationStarted()
+    {
+        lock (_sync)
+        {
+            if (_reservation is not null)
+            {
+                _reservation = _reservation with { InvocationStarted = true };
+            }
+        }
+    }
+
+    public void CloseReservation()
+    {
+        lock (_sync)
+        {
+            if (_reservation is not null)
+            {
+                _reservation = _reservation with { Closed = true };
+            }
+        }
+    }
+
     public void MarkIndeterminate(string reason)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
@@ -188,6 +236,7 @@ public sealed class RequestAccountingContext : IRequestAccountingContext
                 _functionExecutionCost,
                 _streamingToolCalls.ToArray(),
                 _transport,
+                _reservation,
                 _isIndeterminate,
                 _indeterminateReason);
         }

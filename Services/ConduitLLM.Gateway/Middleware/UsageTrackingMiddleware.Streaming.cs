@@ -57,8 +57,12 @@ namespace ConduitLLM.Gateway.Middleware
                 if (endpointType == "chat" && functionCost > 0m)
                 {
                     var functionVirtualKeyId = (int)context.Items[HttpContextKeys.VirtualKeyId]!;
-                    await SpendUpdateHelper.UpdateSpendAsync(
-                        functionVirtualKeyId, functionCost, batchSpendService, virtualKeyService, _logger, GetBillingTimestamp(context));
+                    await RecordSpendOrSettleReservationAsync(
+                        context,
+                        functionVirtualKeyId,
+                        functionCost,
+                        batchSpendService,
+                        virtualKeyService);
 
                     _logger.LogInformation(
                         "Billed known streaming function cost for VirtualKey {VirtualKeyId} despite missing token usage: {Cost:C}",
@@ -248,11 +252,27 @@ namespace ConduitLLM.Gateway.Middleware
             // Update spend only if there's a cost
             if (cost > 0)
             {
-                await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger, GetBillingTimestamp(context));
-                LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, toolUsageJson, toolCost);
+                if (await RecordSpendOrSettleReservationAsync(
+                        context,
+                        virtualKeyId,
+                        cost,
+                        batchSpendService,
+                        virtualKeyService))
+                {
+                    LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, toolUsageJson, toolCost);
+                }
             }
             else if (!pricingResult.Failed)
             {
+                if (accountingSnapshot?.Reservation is not null)
+                {
+                    await RecordSpendOrSettleReservationAsync(
+                        context,
+                        virtualKeyId,
+                        0m,
+                        batchSpendService,
+                        virtualKeyService);
+                }
                 UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "streaming_zero").Inc();
                 LogZeroCostBilling(context, model ?? "unknown", usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);
             }

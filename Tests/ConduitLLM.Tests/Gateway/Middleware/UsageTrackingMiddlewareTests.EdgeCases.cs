@@ -1,13 +1,16 @@
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.UsageTracking;
+using ConduitLLM.Gateway.Billing;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
 
@@ -119,6 +122,106 @@ namespace ConduitLLM.Tests.Http.Middleware
             UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 658, 0.003m);
             Assert.False(context.Items.ContainsKey("StreamingUsage"));
             Assert.False(context.Items.ContainsKey("StreamingModel"));
+        }
+
+        [Fact]
+        public async Task Streaming_Response_WithReservation_UsesAtomicSettlementInsteadOfQueueingAgain()
+        {
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(659)
+                .AsOpenAI()
+                .Build();
+            var usage = new Usage { PromptTokens = 3, CompletionTokens = 4, TotalTokens = 7 };
+            var accounting = context.GetOrCreateRequestAccountingContext();
+            accounting.SetOperation(RequestOperation.ChatCompletion, 659, "model");
+            accounting.RecordProviderUsage(usage, "model", UsageEvidenceSource.Provider);
+            accounting.RecordReservation(0.01m);
+            accounting.MarkInvocationStarted();
+            var reservationService = new Mock<ISpendReservationService>();
+            reservationService.Setup(x => x.SettleAsync(
+                    659,
+                    accounting.BillingRequestId,
+                    0.004m,
+                    It.IsAny<DateTime?>()))
+                .ReturnsAsync(new SpendReservationSettlementResult(
+                    SpendReservationSettlementStatus.Settled,
+                    0.004m));
+            context.RequestServices = new ServiceCollection()
+                .AddSingleton(reservationService.Object)
+                .BuildServiceProvider();
+            Fixture.SetupCostForModel("model", 0.004m);
+
+            await Invoker.AsStreamingResponse().InvokeAsync(context);
+
+            reservationService.VerifyAll();
+            Fixture.BatchSpendService.Verify(x => x.QueueSpendUpdateAsync(
+                It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<DateTime?>()), Times.Never);
+            Assert.True(accounting.Snapshot().Reservation!.Closed);
+        }
+
+        [Fact]
+        public async Task Reservation_IsReleased_WhenRequestEndsBeforeProviderInvocation()
+        {
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(660)
+                .Build();
+            var accounting = context.GetOrCreateRequestAccountingContext();
+            accounting.SetOperation(RequestOperation.ChatCompletion, 660, "model");
+            accounting.RecordReservation(0.02m);
+            var reservationService = new Mock<ISpendReservationService>();
+            reservationService.Setup(x => x.ReleaseAsync(660, accounting.BillingRequestId))
+                .Returns(Task.CompletedTask);
+            context.RequestServices = new ServiceCollection()
+                .AddSingleton(reservationService.Object)
+                .BuildServiceProvider();
+
+            await Invoker.WithNextDelegate(ctx =>
+            {
+                ctx.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return Task.CompletedTask;
+            }).InvokeAsync(context);
+
+            reservationService.VerifyAll();
+            reservationService.Verify(x => x.MarkIndeterminateAsync(
+                It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            Assert.True(accounting.Snapshot().Reservation!.Closed);
+        }
+
+        [Fact]
+        public async Task Reservation_IsRetained_WhenProviderInvocationStartedWithoutUsage()
+        {
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(661)
+                .Build();
+            var accounting = context.GetOrCreateRequestAccountingContext();
+            accounting.SetOperation(RequestOperation.ChatCompletion, 661, "model");
+            accounting.RecordReservation(0.02m);
+            accounting.MarkInvocationStarted();
+            var reservationService = new Mock<ISpendReservationService>();
+            reservationService.Setup(x => x.MarkIndeterminateAsync(
+                    661,
+                    accounting.BillingRequestId,
+                    It.Is<string>(reason => reason.Contains("without durable settlement"))))
+                .Returns(Task.CompletedTask);
+            context.RequestServices = new ServiceCollection()
+                .AddSingleton(reservationService.Object)
+                .BuildServiceProvider();
+
+            await Invoker.WithNextDelegate(ctx =>
+            {
+                ctx.Response.StatusCode = StatusCodes.Status502BadGateway;
+                return Task.CompletedTask;
+            }).InvokeAsync(context);
+
+            reservationService.VerifyAll();
+            reservationService.Verify(x => x.ReleaseAsync(
+                It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+            var snapshot = accounting.Snapshot();
+            Assert.False(snapshot.Reservation!.Closed);
+            Assert.True(snapshot.IsIndeterminate);
         }
 
         [Fact]

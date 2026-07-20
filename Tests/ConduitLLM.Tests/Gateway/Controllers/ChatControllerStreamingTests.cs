@@ -9,6 +9,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Controllers;
 using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.UsageTracking;
+using ConduitLLM.Gateway.Billing;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -177,6 +178,52 @@ public class ChatControllerStreamingTests
         Assert.Equal(StreamTransportOutcome.AccountingIndeterminate, snapshot.Transport!.Outcome);
         Assert.True(snapshot.Transport.EvidenceTruncated);
         estimator.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task EnforcedAdmissionRejectsInsufficientBalanceBeforeProviderInvocation()
+    {
+        var clientFactory = new Mock<ILLMClientFactory>(MockBehavior.Strict);
+        var spendEstimator = new Mock<IChatSpendEstimator>();
+        spendEstimator.Setup(x => x.EstimateMaximumCostAsync(
+                It.IsAny<ChatCompletionRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatSpendEstimate(true, 1m, 10, 100, 5));
+        var reservationService = new Mock<ISpendReservationService>();
+        reservationService.Setup(x => x.ReserveAsync(
+                77,
+                It.IsAny<string>(),
+                1m))
+            .ReturnsAsync(new SpendReservationResult(
+                SpendReservationOutcome.InsufficientBalance,
+                1m));
+        var controller = new ChatController(
+            new Conduit(clientFactory.Object, Mock.Of<ILogger<Conduit>>()),
+            Mock.Of<ILogger<ChatController>>(),
+            Mock.Of<IModelProviderMappingService>(),
+            new JsonSerializerOptions(),
+            Mock.Of<IEventBus>(),
+            Mock.Of<IGlobalSettingsCacheService>(),
+            Mock.Of<IUsageEstimationService>(),
+            chatSpendEstimator: spendEstimator.Object,
+            spendReservationService: reservationService.Object,
+            billingAdmissionOptions: Options.Create(new BillingAdmissionOptions
+            {
+                Mode = BillingAdmissionMode.Enforce
+            }))
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+        controller.HttpContext.Items["VirtualKeyId"] = 77;
+        controller.HttpContext.Response.Body = new MemoryStream();
+
+        var result = await controller.CreateChatCompletion(CreateRequest());
+
+        var error = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status402PaymentRequired, error.StatusCode);
+        spendEstimator.VerifyAll();
+        reservationService.VerifyAll();
+        clientFactory.VerifyNoOtherCalls();
     }
 
     private static ChatController CreateController(

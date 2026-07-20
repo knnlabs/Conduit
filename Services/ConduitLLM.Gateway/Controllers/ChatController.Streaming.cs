@@ -378,6 +378,13 @@ namespace ConduitLLM.Gateway.Controllers
             else
             {
                 _logger.LogWarning("No output accumulated from streaming response, cannot estimate usage");
+                var accountingContext = HttpContext.GetOrCreateRequestAccountingContext();
+                if (accountingContext.Snapshot().Reservation?.InvocationStarted == true)
+                {
+                    accountingContext.MarkIndeterminate(
+                        "Provider invocation ended without usage or bounded output evidence");
+                    state.Outcome = StreamTransportOutcome.AccountingIndeterminate;
+                }
             }
 
             if (state.ProviderCalls.Count > 0)

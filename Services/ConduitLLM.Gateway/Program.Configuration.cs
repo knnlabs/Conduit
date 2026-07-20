@@ -33,5 +33,10 @@ public partial class Program
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        builder.Services.AddOptions<BillingAdmissionOptions>()
+            .Bind(builder.Configuration.GetSection(BillingAdmissionOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
     }
 }

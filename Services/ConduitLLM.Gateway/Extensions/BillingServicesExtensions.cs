@@ -5,6 +5,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.Billing;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Gateway.Extensions;
@@ -31,6 +32,8 @@ public static class BillingServicesExtensions
 
         // Cost calculation service
         services.AddScoped<ICostCalculationService, CostCalculationService>();
+        services.AddScoped<IChatSpendEstimator, ChatSpendEstimator>();
+        services.AddScoped<ISpendReservationService, SpendReservationService>();
 
         // Tool cost calculation service for provider tool billing
         // Singleton: uses IDbContextFactory for database access and optional IProviderToolCache
