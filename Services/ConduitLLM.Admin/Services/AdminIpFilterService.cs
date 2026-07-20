@@ -432,6 +432,24 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 "update IP filter settings",
                 new { IsEnabled = settings.IsEnabled, DefaultAllow = settings.DefaultAllow });
 
+            // Also publish GlobalSettingChanged so GlobalSettingsCacheService (used by the Gateway
+            // enforcement gate and the DefaultAllow policy) invalidates these keys live. Without this
+            // the WebAdmin toggle would not take effect until the process restarts.
+            foreach (var settingKey in new[] { SettingKeyEnabled, SettingKeyDefaultAllow })
+            {
+                await PublishEventAsync(
+                    new GlobalSettingChanged
+                    {
+                        SettingId = 0,
+                        SettingKey = settingKey,
+                        ChangeType = "Updated",
+                        ChangedProperties = Array.Empty<string>(),
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"invalidate global setting {settingKey}",
+                    new { SettingKey = settingKey });
+            }
+
             return (true, null);
         }
         catch (Exception ex)
@@ -444,93 +462,62 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     /// <inheritdoc/>
     public async Task<IpCheckResult> CheckIpAddressAsync(string ipAddress)
     {
+        // GetIpFilterSettingsAsync has its own error handling and returns safe defaults on failure,
+        // so it will not throw; keep it outside the try below so DefaultAllow is available to the
+        // fail posture in the catch.
+        var settings = await GetIpFilterSettingsAsync();
+
+        // If IP filtering is disabled, allow all
+        if (!settings.IsEnabled)
+        {
+            return new IpCheckResult { IsAllowed = true };
+        }
+
+        // Validate the IP format
+        if (!System.Net.IPAddress.TryParse(ipAddress, out _))
+        {
+            return new IpCheckResult
+            {
+                IsAllowed = false,
+                DeniedReason = "Invalid IP address format"
+            };
+        }
+
         try
         {
             _logger.LogDebug("Checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
 
-            // Get current IP filter settings
-            var settings = await GetIpFilterSettingsAsync();
+            // Load enabled rules as entities and evaluate with the shared precedence model, so the
+            // Admin control plane and the Gateway data plane decide identically.
+            var filters = (await _ipFilterRepository.GetEnabledAsync()).ToList();
+            var whitelist = filters.Where(f => f.FilterType == IpFilterConstants.WHITELIST).ToList();
+            var blacklist = filters.Where(f => f.FilterType == IpFilterConstants.BLACKLIST).ToList();
 
-            // If IP filtering is disabled, allow all
-            if (!settings.IsEnabled)
+            var decision = IpFilterEvaluator.Evaluate(ipAddress, whitelist, blacklist, settings.DefaultAllow);
+
+            if (!decision.IsAllowed)
             {
-                return new IpCheckResult { IsAllowed = true };
+                _logger.LogWarning("IP {IpAddress} denied: {Reason}",
+                    LoggingSanitizer.S(ipAddress), decision.Reason);
             }
 
-            // Validate the IP format
-            if (!System.Net.IPAddress.TryParse(ipAddress, out _))
-            {
-                return new IpCheckResult
-                {
-                    IsAllowed = false,
-                    DeniedReason = "Invalid IP address format"
-                };
-            }
-
-            // Get all enabled IP filters
-            var filters = await GetEnabledFiltersAsync();
-            var filtersList = filters.ToList();
-
-            var hasWhitelist = filtersList.Any(f => f.FilterType == IpFilterConstants.WHITELIST);
-            var hasBlacklist = filtersList.Any(f => f.FilterType == IpFilterConstants.BLACKLIST);
-
-            // Check blacklist FIRST - if IP is blacklisted, deny immediately
-            // This is the correct order: blacklist takes precedence
-            if (hasBlacklist)
-            {
-                foreach (var filter in filtersList.Where(f => f.FilterType == IpFilterConstants.BLACKLIST))
-                {
-                    if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
-                    {
-                        _logger.LogWarning("IP {IpAddress} is blacklisted by rule {Rule}",
-                            LoggingSanitizer.S(ipAddress), LoggingSanitizer.S(filter.IpAddressOrCidr));
-                        return new IpCheckResult
-                        {
-                            IsAllowed = false,
-                            DeniedReason = $"IP address matched deny filter: {filter.Description ?? filter.IpAddressOrCidr}"
-                        };
-                    }
-                }
-            }
-
-            // Check whitelist - if there's a whitelist, IP must be in it
-            if (hasWhitelist)
-            {
-                foreach (var filter in filtersList.Where(f => f.FilterType == IpFilterConstants.WHITELIST))
-                {
-                    if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
-                    {
-                        _logger.LogDebug("IP {IpAddress} is whitelisted by rule {Rule}",
-                            LoggingSanitizer.S(ipAddress), LoggingSanitizer.S(filter.IpAddressOrCidr));
-                        return new IpCheckResult { IsAllowed = true };
-                    }
-                }
-
-                // Has whitelist but IP not in it
-                _logger.LogWarning("IP {IpAddress} is not in whitelist", LoggingSanitizer.S(ipAddress));
-                return new IpCheckResult
-                {
-                    IsAllowed = false,
-                    DeniedReason = "IP address did not match any allow filters"
-                };
-            }
-
-            // No whitelist and not blacklisted - use default policy
             return new IpCheckResult
             {
-                IsAllowed = settings.DefaultAllow,
-                DeniedReason = settings.DefaultAllow ? null : "IP address did not match any allow filters (default deny)"
+                IsAllowed = decision.IsAllowed,
+                DeniedReason = decision.IsAllowed ? null : decision.Reason
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
 
-            // On error, default to allowing the request (safer than potentially blocking all traffic)
+            // Nuanced fail posture: apply the default-allow policy. Fails OPEN when permissive
+            // (DefaultAllow=true) and CLOSED when restrictive (DefaultAllow=false), so a DB blip
+            // cannot silently disable an allowlist.
             return new IpCheckResult
             {
-                IsAllowed = true,
-                DeniedReason = "Error during IP check, allowed as a failsafe"
+                IsAllowed = settings.DefaultAllow,
+                DeniedReason = settings.DefaultAllow ? null : "Error during IP check; denied by default-deny policy"
             };
         }
     }

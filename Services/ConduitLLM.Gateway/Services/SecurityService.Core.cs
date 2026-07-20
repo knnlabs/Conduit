@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Security.Interfaces;
 using ConduitLLM.Security.Models;
 using ConduitLLM.Security.Options;
@@ -97,8 +98,9 @@ namespace ConduitLLM.Gateway.Services
                 }
             }
 
-            // Check IP filtering
-            if (_options.IpFiltering.Enabled && !IsPathExcluded(path, _options.IpFiltering.ExcludedPaths))
+            // Check IP filtering. The DB-persisted "IpFilter:Enabled" toggle (managed from the WebAdmin
+            // UI) is authoritative when present; the env-bound option is the bootstrap fallback.
+            if (await IsIpFilteringEnabledAsync() && !IsPathExcluded(path, _options.IpFiltering.ExcludedPaths))
             {
                 var ipFilterResult = await CheckIpFilterAsync(clientIp);
                 if (!ipFilterResult.IsAllowed)
@@ -134,6 +136,27 @@ namespace ConduitLLM.Gateway.Services
             }
 
             return SecurityCheckResult.Allowed();
+        }
+
+        /// <summary>
+        /// Whether IP filtering is enabled. The DB-persisted "IpFilter:Enabled" setting (managed via the
+        /// WebAdmin UI, cached in-memory by GlobalSettingsCacheService and invalidated on change) is
+        /// authoritative when present; otherwise falls back to the env-bound option. This makes the UI
+        /// toggle actually govern the Gateway data plane without a restart.
+        /// </summary>
+        private async Task<bool> IsIpFilteringEnabledAsync()
+        {
+            var globalSettings = _serviceProvider.GetService<IGlobalSettingsCacheService>();
+            if (globalSettings != null)
+            {
+                var value = await globalSettings.GetSettingValueAsync("IpFilter:Enabled");
+                if (value != null && bool.TryParse(value, out var enabled))
+                {
+                    return enabled;
+                }
+            }
+
+            return _options.IpFiltering.Enabled;
         }
     }
 }
