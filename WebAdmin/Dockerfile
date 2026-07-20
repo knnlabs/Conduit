@@ -1,78 +1,79 @@
-# Optimized multi-stage Dockerfile for WebAdmin
-# Features: Multi-stage build, standalone output, Alpine base, non-root user, health checks
+# syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS builder
+# Shared Node/npm configuration for development and production builds.
+FROM node:22-alpine AS node-base
 WORKDIR /app
-
-# IMPORTANT: This is a monorepo where packages depend on each other via file: references
-# The WebAdmin package.json contains:
-#   "@knn_labs/conduit-admin-client": "file:../SDKs/Node/Admin"
-#   "@knn_labs/conduit-gateway-client": "file:../SDKs/Node/Gateway"
-# Therefore, we MUST copy the entire monorepo structure before running npm install
-# Otherwise npm will timeout trying to fetch these packages from the registry
-COPY . .
-
-# Configure npm for ARM64 compatibility (increase timeouts for slower I/O)
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm config set fetch-timeout 600000 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set registry https://registry.npmjs.org/
 
-# Build Common package first (base dependency for other packages)
-WORKDIR /app/SDKs/Node/Common
-RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>/dev/null && exit 1)
+# Install the SDK workspace from its lockfile. Package manifests are copied
+# separately so source-only changes reuse this dependency layer.
+FROM node-base AS sdk-deps
+RUN mkdir -p /app/SDKs/Node && chown -R node:node /app/SDKs
+COPY --chown=node:node SDKs/Node/package.json SDKs/Node/package-lock.json ./SDKs/Node/
+COPY --chown=node:node SDKs/Node/Common/package.json ./SDKs/Node/Common/package.json
+COPY --chown=node:node SDKs/Node/Admin/package.json ./SDKs/Node/Admin/package.json
+COPY --chown=node:node SDKs/Node/Gateway/package.json ./SDKs/Node/Gateway/package.json
+WORKDIR /app/SDKs/Node
+USER node
+RUN --mount=type=cache,target=/home/node/.npm,uid=1000,gid=1000 npm ci --no-audit --no-fund
+
+# Build the local SDK packages consumed by WebAdmin.
+FROM sdk-deps AS sdk-builder
+COPY --chown=node:node SDKs/Node/Common ./Common
+COPY --chown=node:node SDKs/Node/Admin ./Admin
+COPY --chown=node:node SDKs/Node/Gateway ./Gateway
 RUN npm run build
 
-# Build Admin SDK next (depends on Common package)
-WORKDIR /app/SDKs/Node/Admin
-RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>/dev/null && exit 1)
-RUN npm run build
-
-# Build Gateway SDK next (depends on Common package)
-WORKDIR /app/SDKs/Node/Gateway
-RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>/dev/null && exit 1)
-RUN npm run build
-
-# Build WebAdmin last (depends on Admin and Gateway SDKs via file: references)
+# Install WebAdmin dependencies after the local file: SDK dependencies exist.
+FROM node-base AS webadmin-deps
+RUN mkdir -p /app/SDKs /app/WebAdmin && chown -R node:node /app/SDKs /app/WebAdmin
+COPY --chown=node:node --from=sdk-builder /app/SDKs /app/SDKs
+COPY --chown=node:node WebAdmin/package.json WebAdmin/package-lock.json ./WebAdmin/
 WORKDIR /app/WebAdmin
-# Create public directory if it doesn't exist (Next.js 16 doesn't require it)
-RUN mkdir -p public
-# npm install here will resolve file: dependencies to the already-built SDKs above
-RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>/dev/null && exit 1)
-RUN npm run build
+ENV HUSKY=0
+USER node
+RUN --mount=type=cache,target=/home/node/.npm,uid=1000,gid=1000 npm ci --no-audit --no-fund
 
-# Production stage - minimal image using standalone output
-# next.config.js has output: 'standalone' which bundles only needed dependencies
+# Development image: dependencies and initial source are baked into the image.
+# Compose Watch synchronizes later source edits without exposing node_modules to
+# the Windows host filesystem.
+FROM webadmin-deps AS dev
+COPY --chown=node:node WebAdmin /app/WebAdmin
+COPY --chown=node:node --from=sdk-builder /app/SDKs /app/SDKs
+RUN mkdir -p /app/WebAdmin/.next
+WORKDIR /app/WebAdmin
+ENV NODE_ENV=development
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=15s --start-period=90s --retries=5 \
+  CMD node -e "require('http').get('http://localhost:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+CMD ["npm", "run", "dev:docker"]
+
+# Production build reuses the locked dependency and SDK layers.
+FROM webadmin-deps AS builder
+COPY --chown=node:node WebAdmin /app/WebAdmin
+WORKDIR /app/WebAdmin
+RUN mkdir -p public && npm run build
+
+# Production stage - minimal image using Next.js standalone output.
 FROM node:22-alpine AS runner
 WORKDIR /app
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
-
-# Set production environment
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# Copy standalone output — self-contained server with all dependencies bundled
-# No need for node_modules or SDK symlinks; standalone includes everything
-# outputFileTracingRoot is set to repo root, so standalone preserves monorepo structure:
-#   .next/standalone/WebAdmin/server.js, .next/standalone/SDKs/Node/...
 COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next/static ./WebAdmin/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/public ./WebAdmin/public
-
-# Switch to non-root user
 USER nextjs
-
 EXPOSE 3000
-
-# Health check for container orchestration
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -q -O /dev/null http://localhost:3000/api/health || exit 1
-
-# Start using the standalone server directly (faster startup than npm start)
-# server.js is nested under WebAdmin/ due to outputFileTracingRoot preserving monorepo structure
 CMD ["node", "WebAdmin/server.js"]

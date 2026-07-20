@@ -294,7 +294,7 @@ For more details, see the per-service README files.
    - **Local WebAdmin**: `http://localhost:3000`
    - **Local API Docs**: `http://localhost:5000/swagger` (Development Mode)
    
-   *Note: When running locally via `./scripts/dev/start-dev.ps1`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
+   *Note: When running locally via `./scripts/dev.ps1`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
 
 ### Docker Installation
 

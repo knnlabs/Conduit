@@ -16,12 +16,12 @@ Scripts are organized into the following subdirectories:
 
 ### 🚀 Development & Build (`dev/`)
 
-- **`start-dev.sh`** - **PRIMARY**: Start development environment with hot reloading and proper user permissions
+- **`dev.ps1`** - **PRIMARY**: Build the three Conduit images, start the environment, and run Compose Watch
   ```bash
-  ./scripts/dev/start-dev.sh              # Standard startup
-  ./scripts/dev/start-dev.sh --clean      # Clean restart
-  ./scripts/dev/start-dev.sh --build      # Force rebuild
-  ./scripts/dev/start-dev.sh --webadmin      # Rebuild WebAdmin container
+  ./scripts/dev.ps1                       # Standard startup and foreground watch
+  ./scripts/dev.ps1 -Clean                # Clean restart
+  ./scripts/dev.ps1 -Build                # Force rebuild
+  ./scripts/dev.ps1 -WebAdmin             # Rebuild WebAdmin and resume watch
   ```
 - **`dev-workflow.sh`** - Advanced development workflow commands (logs, shell, build-webadmin, lint-fix-webadmin)
 - **`fix-sdk-errors.sh`** - **CONSOLIDATED**: Fix ESLint errors and build SDK clients
@@ -90,20 +90,23 @@ Scripts are organized into the following subdirectories:
 
 ### Development Workflow
 
-**Always use `start-dev.sh` for development:**
+**Always use `dev.ps1` for development:**
 ```bash
 # Start development environment
-./scripts/dev/start-dev.sh
+./scripts/dev.ps1
 
 # Clean restart if issues
-./scripts/dev/start-dev.sh --clean
+./scripts/dev.ps1 -Clean
 
 # Force rebuild
-./scripts/dev/start-dev.sh --build
+./scripts/dev.ps1 -Build
 
 # Rebuild WebAdmin container only
-./scripts/dev/start-dev.sh --webadmin
+./scripts/dev.ps1 -WebAdmin
 ```
+
+After startup, the script remains attached to Compose Watch. Press Ctrl+C to stop watching; the
+containers remain running.
 
 ### Code Quality Checks
 

@@ -72,13 +72,12 @@ Import-Module (Join-Path $scriptDir 'dev' 'lib' 'Common.psm1') -Force
 $projectRoot = Get-ProjectRoot -FromPath $scriptDir
 
 function Invoke-CleanupOnError {
-    Write-Err "Startup failed. Cleaning up partial state..."
+    Write-Err "Startup failed. Containers have been left in place for diagnosis."
     Push-Location $projectRoot
     try {
-        docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warn "Automatic cleanup did not complete. Run 'docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans' manually."
-        }
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml ps -a
+        Write-Info "Inspect logs with: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 200"
+        Write-Info "Clean up with: docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans"
     }
     finally {
         Pop-Location
@@ -232,7 +231,7 @@ Default behavior:
   - Checks for port conflicts (offers to stop conflicting containers)
   - Build local Docker containers
   - Start from docker-compose.dev.yml
-  - Mount WebAdmin directory for rapid development
+  - Watch and synchronize WebAdmin and Node SDK source files
 
 Services available after startup:
   - WebAdmin:         http://localhost:3000
@@ -258,6 +257,13 @@ function Test-Prerequisites {
     # Check if Docker is running
     if (-not (Test-DockerRunning)) {
         Write-Err "Docker is not running. Please start Docker."
+        exit 1
+    }
+
+    # Compose Watch is required for the containerized WebAdmin development loop.
+    $null = docker compose watch --help 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "Docker Compose Watch is unavailable. Install Docker Compose 2.22 or newer."
         exit 1
     }
 
@@ -318,11 +324,6 @@ function Build-Containers {
 
     Write-Info "Building containers..."
 
-    # Set user mapping for volume permissions
-    $userIds = Get-DockerUserIds
-    $env:DOCKER_USER_ID = $userIds.UserId
-    $env:DOCKER_GROUP_ID = $userIds.GroupId
-
     # Generate timestamp to force .NET rebuild while keeping OS layers cached
     $cachebust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     Write-Info "Using CACHEBUST: $cachebust (forces .NET code rebuild, keeps OS layers cached)"
@@ -340,7 +341,7 @@ function Build-Containers {
             $buildArgs += '--no-cache'
         }
 
-        $buildArgs += @('api', 'admin')
+        $buildArgs += @('api', 'admin', 'webadmin')
 
         docker compose @buildArgs
 
@@ -355,106 +356,40 @@ function Build-Containers {
     }
 }
 
-function Build-Sdks {
-    Write-Info "Building SDK packages for WebAdmin..."
-
-    $commonDist = Join-Path $projectRoot 'SDKs' 'Node' 'Common' 'dist'
-    $coreDist = Join-Path $projectRoot 'SDKs' 'Node' 'Core' 'dist'
-    $adminDist = Join-Path $projectRoot 'SDKs' 'Node' 'Admin' 'dist'
-
-    # Check if SDKs need building
-    if ((Test-Path $commonDist) -and (Test-Path $coreDist) -and (Test-Path $adminDist)) {
-        Write-Info "SDK packages already built, skipping..."
-        return
-    }
-
-    Write-Info "SDK packages not built, building now..."
-
-    # Build Common SDK first (dependency for others)
-    $commonPath = Join-Path $projectRoot 'SDKs' 'Node' 'Common'
-    if (Test-Path $commonPath) {
-        Write-Info "Building Common SDK..."
-        Push-Location $commonPath
-        try {
-            npm install
-            npm run build
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to build Common SDK"
-            }
-        }
-        finally {
-            Pop-Location
-        }
-    }
-
-    # Build Core SDK
-    $corePath = Join-Path $projectRoot 'SDKs' 'Node' 'Core'
-    if (Test-Path $corePath) {
-        Write-Info "Building Core SDK..."
-        Push-Location $corePath
-        try {
-            npm install
-            npm run build
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to build Core SDK"
-            }
-        }
-        finally {
-            Pop-Location
-        }
-    }
-
-    # Build Admin SDK
-    $adminPath = Join-Path $projectRoot 'SDKs' 'Node' 'Admin'
-    if (Test-Path $adminPath) {
-        Write-Info "Building Admin SDK..."
-        Push-Location $adminPath
-        try {
-            npm install
-            npm run build
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to build Admin SDK"
-            }
-        }
-        finally {
-            Pop-Location
-        }
-    }
-
-    Write-Info "SDK packages built successfully"
-}
-
 function Invoke-RebuildWebAdmin {
-    Write-Info "Restarting WebAdmin container to fix Next.js issues..."
-
-    # Ensure SDKs are built (WebAdmin depends on them)
-    Build-Sdks
+    Write-Info "Rebuilding the WebAdmin development image..."
 
     Push-Location $projectRoot
     try {
-        # Stop and remove WebAdmin container
-        docker compose -f docker-compose.yml -f docker-compose.dev.yml stop webadmin 2>$null
-        docker compose -f docker-compose.yml -f docker-compose.dev.yml rm -f webadmin 2>$null
-
-        # Clean host's Next.js build artifacts (container has its own isolated .next)
-        $nextPath = Join-Path $projectRoot 'WebAdmin' '.next'
-        if (Test-Path $nextPath) {
-            Remove-Item -Path $nextPath -Recurse -Force -ErrorAction SilentlyContinue
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml build webadmin
+        if ($LASTEXITCODE -ne 0) {
+            throw "WebAdmin image build failed"
         }
 
-        # Set user mapping
-        $userIds = Get-DockerUserIds
-        $env:DOCKER_USER_ID = $userIds.UserId
-        $env:DOCKER_GROUP_ID = $userIds.GroupId
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait --wait-timeout 180 webadmin
+        if ($LASTEXITCODE -ne 0) {
+            throw "WebAdmin failed to reach a healthy state"
+        }
 
-        # Start WebAdmin (no build needed - uses node:22-alpine with volume mounts)
-        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d webadmin
-
-        Write-Info "WebAdmin container restarted"
+        Write-Info "WebAdmin image rebuilt and container is healthy"
         Write-Info "WebAdmin available at: http://localhost:3000"
+        Start-WebAdminWatch
     }
     finally {
         Pop-Location
+    }
+}
+
+function Start-WebAdminWatch {
+    Write-Host ""
+    Write-Info "Watching WebAdmin and Node SDK sources for changes..."
+    Write-Info "Press Ctrl+C to stop watching; containers will remain running."
+
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml watch --no-up webadmin
+    $watchExitCode = $LASTEXITCODE
+
+    if ($watchExitCode -notin @(0, 130)) {
+        throw "Docker Compose Watch exited with code $watchExitCode"
     }
 }
 
@@ -495,15 +430,10 @@ function Show-ContainerLogs {
 function Start-Development {
     Write-Info "Starting development environment..."
 
-    # Set user mapping for volume permissions
-    $userIds = Get-DockerUserIds
-    $env:DOCKER_USER_ID = $userIds.UserId
-    $env:DOCKER_GROUP_ID = $userIds.GroupId
-
     Push-Location $projectRoot
     try {
         # Start all services and wait until services with health checks are healthy.
-        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait --wait-timeout 300
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait --wait-timeout 600
         if ($LASTEXITCODE -ne 0) {
             throw "Docker Compose failed to start the development environment"
         }
@@ -531,8 +461,7 @@ function Start-Development {
         Write-Info "  Admin API:        http://localhost:5002/scalar/v1"
         Write-Info "  Media Storage:    Cloudflare R2"
         Write-Host ""
-        Write-Info "The WebAdmin directory is mounted for rapid development."
-        Write-Info "Changes to files will be reflected automatically."
+        Start-WebAdminWatch
     }
     finally {
         Pop-Location
@@ -571,9 +500,6 @@ try {
 
     # Build containers
     Build-Containers -NoCache:$Rebuild
-
-    # Build SDKs (required for WebAdmin)
-    Build-Sdks
 
     # Start development environment
     Start-Development
