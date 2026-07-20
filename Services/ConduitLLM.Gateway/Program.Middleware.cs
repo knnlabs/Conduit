@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Middleware;
+using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Security.Middleware;
 using Scalar.AspNetCore;
@@ -24,6 +25,10 @@ public partial class Program
 
         // Run database migrations
         await app.RunDatabaseMigrationAsync();
+
+        // Resolve the real client IP via trusted proxies (must run before ANY middleware that reads
+        // the client IP — correlation, auth, security). No-op unless CONDUIT_TRUSTED_PROXY_ENABLED=true.
+        app.UseTrustedProxyForwardedHeaders();
 
         // Add correlation ID middleware (earliest — establishes correlation context for all downstream middleware)
         app.UseCorrelationId();

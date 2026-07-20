@@ -255,26 +255,9 @@ namespace ConduitLLM.Gateway.Authentication
         /// </summary>
         private string GetClientIpAddress(Microsoft.AspNetCore.Http.HttpContext context)
         {
-            // Check X-Forwarded-For header first (for reverse proxies)
-            var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(forwardedFor))
-            {
-                var ip = SpanHelper.ExtractFirstSegment(forwardedFor);
-                if (System.Net.IPAddress.TryParse(ip, out _))
-                {
-                    return ip;
-                }
-            }
-
-            // Check X-Real-IP header
-            var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(realIp) && System.Net.IPAddress.TryParse(realIp, out _))
-            {
-                return realIp;
-            }
-
-            // Fall back to direct connection IP
-            return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            // Client IP comes from the trusted-proxy-vetted connection (ForwardedHeadersMiddleware).
+            // Forwarded headers are NOT read here — they are client-controlled and spoofable.
+            return IpAddressHelper.GetClientIpAddress(context);
         }
     }
 }
