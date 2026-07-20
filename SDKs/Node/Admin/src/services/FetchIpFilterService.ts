@@ -165,6 +165,21 @@ export class FetchIpFilterService {
     );
   }
 
+  /**
+   * Lists the IP filters scoped to a specific virtual key (per-key allow/deny rules).
+   */
+  async listByVirtualKey(virtualKeyId: number): Promise<IpFilterDto[]> {
+    const cacheKey = this.client['getCacheKey']('ip-filters-by-vkey', virtualKeyId);
+    return this.client['withCache'](
+      cacheKey,
+      () =>
+        this.client['get']<IpFilterDto[]>(
+          ENDPOINTS.IP_FILTERS.BY_VIRTUAL_KEY(virtualKeyId)
+        ),
+      CACHE_TTL.SHORT
+    );
+  }
+
   async update(id: number, request: UpdateIpFilterDto): Promise<void> {
     // Ensure the ID in the request matches the URL parameter
     request.id = id;
