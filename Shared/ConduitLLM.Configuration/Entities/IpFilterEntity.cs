@@ -66,6 +66,13 @@ public class IpFilterEntity : IEntity<int>, IAuditableEntity
     public string? UpdatedBy { get; set; }
 
     /// <summary>
+    /// Optional virtual key this filter is scoped to. When <c>null</c> the filter is GLOBAL (applies to
+    /// all requests). When set, the filter applies only to requests authenticated with that virtual key,
+    /// further restricting it on top of any global rules.
+    /// </summary>
+    public int? VirtualKeyId { get; set; }
+
+    /// <summary>
     /// Concurrency token for optimistic concurrency control
     /// </summary>
     [Timestamp]

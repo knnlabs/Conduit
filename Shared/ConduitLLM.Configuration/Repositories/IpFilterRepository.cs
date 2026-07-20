@@ -43,11 +43,40 @@ public class IpFilterRepository : RepositoryBase<IpFilterEntity, int>, IIpFilter
         {
             return await GetDbSet(context)
                 .AsNoTracking()
-                .Where(f => f.IsEnabled)
+                .Where(f => f.IsEnabled && f.VirtualKeyId == null)
                 .OrderBy(f => f.FilterType)
                 .ThenBy(f => f.IpAddressOrCidr)
                 .ToListAsync(cancellationToken);
-        }, cancellationToken, "getting enabled filters");
+        }, cancellationToken, "getting enabled global filters");
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<IpFilterEntity>> GetEnabledPerKeyAsync(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .Where(f => f.IsEnabled && f.VirtualKeyId != null)
+                .OrderBy(f => f.VirtualKeyId)
+                .ThenBy(f => f.FilterType)
+                .ThenBy(f => f.IpAddressOrCidr)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, "getting enabled per-key filters");
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<IpFilterEntity>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .Where(f => f.VirtualKeyId == virtualKeyId)
+                .OrderBy(f => f.FilterType)
+                .ThenBy(f => f.IpAddressOrCidr)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, "getting filters for virtual key");
     }
 
     /// <inheritdoc/>

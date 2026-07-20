@@ -17,6 +17,12 @@ namespace ConduitLLM.Gateway.Interfaces
         Task<bool> IsIpAllowedAsync(string ipAddress);
 
         /// <summary>
+        /// Checks whether an IP address is allowed for a specific virtual key by that key's own per-key
+        /// IP filters (applied in addition to the global rules). A key with no per-key rules is unrestricted.
+        /// </summary>
+        Task<bool> IsIpAllowedForVirtualKeyAsync(string ipAddress, int virtualKeyId);
+
+        /// <summary>
         /// Invalidates the in-memory filter-rules cache so the next check reloads from the database.
         /// Called by the IpFilterChanged event handler on each replica when rules change, so updates
         /// take effect immediately instead of waiting for the cache TTL.
@@ -36,6 +42,7 @@ namespace ConduitLLM.Gateway.Interfaces
         private readonly IMemoryCache _cache;
         private readonly ILogger<IpFilterService> _logger;
         private const string CACHE_KEY = "ip_filters_enabled";
+        private const string PER_KEY_CACHE_KEY = "ip_filters_per_key";
         private const string DEFAULT_ALLOW_SETTING_KEY = "IpFilter:DefaultAllow";
         private const int CACHE_DURATION_MINUTES = 5;
 
@@ -104,9 +111,61 @@ namespace ConduitLLM.Gateway.Interfaces
         }
 
         /// <inheritdoc/>
+        public async Task<bool> IsIpAllowedForVirtualKeyAsync(string ipAddress, int virtualKeyId)
+        {
+            try
+            {
+                // Load all enabled per-key filters once, grouped by virtual key. One cache entry for
+                // all keys keeps invalidation simple (cleared wholesale with the global cache on change).
+                var perKey = await _cache.GetOrCreateAsync(PER_KEY_CACHE_KEY, async entry =>
+                {
+                    entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CACHE_DURATION_MINUTES);
+                    var enabled = await _repository.GetEnabledPerKeyAsync();
+                    return enabled
+                        .GroupBy(f => f.VirtualKeyId!.Value)
+                        .ToDictionary(
+                            g => g.Key,
+                            g => new PartitionedFilters(
+                                g.Where(f => f.FilterType == IpFilterConstants.WHITELIST).ToList(),
+                                g.Where(f => f.FilterType == IpFilterConstants.BLACKLIST).ToList()));
+                });
+
+                if (perKey == null || !perKey.TryGetValue(virtualKeyId, out var filters))
+                {
+                    // No per-key rules for this key — not restricted at the per-key level.
+                    return true;
+                }
+
+                // defaultAllow = true: a key with only a per-key blacklist denies just those IPs, while a
+                // per-key whitelist makes the key restrictive (only listed IPs may use it).
+                var decision = IpFilterEvaluator.Evaluate(
+                    ipAddress, filters.Whitelist, filters.Blacklist, defaultAllow: true);
+
+                if (!decision.IsAllowed)
+                {
+                    _logger.LogWarning(
+                        "IP {IpAddress} denied for virtual key {VirtualKeyId} by per-key IP filter: {Reason}",
+                        ipAddress, virtualKeyId, decision.Reason);
+                }
+
+                return decision.IsAllowed;
+            }
+            catch (Exception ex)
+            {
+                // Fail-open for per-key filtering: an error loading a key's rules should not break the
+                // key's access (global filtering still applies separately).
+                _logger.LogError(ex,
+                    "Error checking per-key IP filter for {IpAddress} / key {VirtualKeyId}; allowing (fail-open)",
+                    ipAddress, virtualKeyId);
+                return true;
+            }
+        }
+
+        /// <inheritdoc/>
         public void InvalidateCache()
         {
             _cache.Remove(CACHE_KEY);
+            _cache.Remove(PER_KEY_CACHE_KEY);
         }
 
         private async Task<bool> GetDefaultAllowAsync()

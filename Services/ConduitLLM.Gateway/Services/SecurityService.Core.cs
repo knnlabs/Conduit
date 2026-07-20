@@ -107,6 +107,17 @@ namespace ConduitLLM.Gateway.Services
                 {
                     return ipFilterResult;
                 }
+
+                // Per-virtual-key IP filtering: the key's own allow/deny list further restricts access.
+                // The authenticated key entity is stashed in context by VirtualKeyAuthenticationMiddleware.
+                if (context.Items.TryGetValue("VirtualKeyEntity", out var vkObj) && vkObj is VirtualKey virtualKey)
+                {
+                    var perKeyResult = await CheckVirtualKeyIpFilterAsync(clientIp, virtualKey.Id);
+                    if (!perKeyResult.IsAllowed)
+                    {
+                        return perKeyResult;
+                    }
+                }
             }
 
             // Note: Virtual Key rate limits (RPM/RPD) are enforced by
@@ -133,6 +144,25 @@ namespace ConduitLLM.Gateway.Services
             {
                 Logger.LogWarning("IP {IpAddress} blocked by database IP filter", ipAddress);
                 return SecurityCheckResult.Denied("IP address not allowed");
+            }
+
+            return SecurityCheckResult.Allowed();
+        }
+
+        /// <summary>
+        /// Applies the given virtual key's per-key IP allow/deny rules (in addition to global filtering).
+        /// </summary>
+        private async Task<SecurityCheckResult> CheckVirtualKeyIpFilterAsync(string ipAddress, int virtualKeyId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var ipFilterService = scope.ServiceProvider.GetRequiredService<Interfaces.IIpFilterService>();
+            var isAllowed = await ipFilterService.IsIpAllowedForVirtualKeyAsync(ipAddress, virtualKeyId);
+
+            if (!isAllowed)
+            {
+                Logger.LogWarning("IP {IpAddress} blocked by per-key IP filter for key {VirtualKeyId}",
+                    ipAddress, virtualKeyId);
+                return SecurityCheckResult.Denied("IP address not allowed for this key");
             }
 
             return SecurityCheckResult.Allowed();
