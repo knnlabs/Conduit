@@ -62,8 +62,10 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
         {
             _logger.LogDebug("Getting all IP filters");
 
+            // Global IP filtering surface: return only global filters (VirtualKeyId == null). Per-key
+            // filters are managed via GetFiltersByVirtualKeyIdAsync.
             var filters = await _ipFilterRepository.GetAllUnboundedAsync();
-            return filters.Select(f => f.ToDto());
+            return filters.Where(f => f.VirtualKeyId == null).Select(f => f.ToDto());
         }
         catch (Exception ex)
         {
@@ -107,6 +109,23 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     }
 
     /// <inheritdoc/>
+    public async Task<IEnumerable<IpFilterDto>> GetFiltersByVirtualKeyIdAsync(int virtualKeyId)
+    {
+        try
+        {
+            _logger.LogDebug("Getting IP filters for virtual key {VirtualKeyId}", virtualKeyId);
+
+            var filters = await _ipFilterRepository.GetByVirtualKeyIdAsync(virtualKeyId);
+            return filters.Select(f => f.ToDto());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting IP filters for virtual key {VirtualKeyId}", virtualKeyId);
+            return Enumerable.Empty<IpFilterDto>();
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<(bool Success, string? ErrorMessage, IpFilterDto? Filter)> CreateFilterAsync(CreateIpFilterDto createFilter)
     {
         try
@@ -126,6 +145,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 IpAddressOrCidr = createFilter.IpAddressOrCidr,
                 Description = createFilter.Description,
                 IsEnabled = createFilter.IsEnabled,
+                VirtualKeyId = createFilter.VirtualKeyId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

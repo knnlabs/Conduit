@@ -28,7 +28,8 @@ namespace ConduitLLM.Admin.Extensions
                 CreatedAt = entity.CreatedAt,
                 UpdatedAt = entity.UpdatedAt,
                 CreatedBy = entity.CreatedBy,
-                UpdatedBy = entity.UpdatedBy
+                UpdatedBy = entity.UpdatedBy,
+                VirtualKeyId = entity.VirtualKeyId
             };
         }
 
