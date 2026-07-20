@@ -83,15 +83,13 @@ services:
       CONDUIT_API_EXTERNAL_URL: http://localhost:5000
       CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
       # Clerk authentication (using the test keys from docker-compose.yml)
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
-      CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
       # Development authentication bypass
       CLERK_AUTH_ENABLED: "false"
       # Official Next.js Docker configuration from docs
       HOSTNAME: "0.0.0.0"
     working_dir: /app/WebAdmin
-    ports:
-      - "3000:3000"
     healthcheck:
       # Allow Next.js and its first health route compilation to initialize.
       start_period: 90s

@@ -218,12 +218,12 @@ services:
       # If set, users without proper permissions will be redirected to this URL
       # instead of seeing the access denied page
       # Example: ACCESS_DENIED_REDIRECT: "https://your-main-site.com"
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
-      CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
       # Disable Clerk authentication for development
       CLERK_AUTH_ENABLED: "false"
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     restart: on-failure
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
@@ -281,16 +281,25 @@ services:
 
   # Grafana for visualization
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.1
     restart: always
     entrypoint: ["/bin/sh", "/etc/grafana/conduit-entrypoint.sh"]
-    ports:
-      - "3001:3000"
+    expose:
+      - "3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=conduitadmin
+      - GF_SECURITY_ADMIN_PASSWORD=${CONDUIT_GRAFANA_ADMIN_PASSWORD:?Set CONDUIT_GRAFANA_ADMIN_PASSWORD in .env}
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SERVER_ROOT_URL=${CONDUIT_GRAFANA_ROOT_URL:-http://localhost:3000/grafana/}
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_INSTALL_PLUGINS=
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_VIEWERS_CAN_EDIT=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_AUTH_ANONYMOUS_HIDE_VERSION=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
       - CONDUIT_ALERT_WEBHOOK_URL=${CONDUIT_ALERT_WEBHOOK_URL:-}
       # Enable unified alerting
       - GF_UNIFIED_ALERTING_ENABLED=true
@@ -304,6 +313,7 @@ services:
       - ./grafana/provisioning/dashboards/grafana-provider-performance-dashboard.json:/var/lib/grafana/dashboards/provider-performance.json:ro
       - ./grafana/provisioning/dashboards/grafana-virtual-key-analytics-dashboard.json:/var/lib/grafana/dashboards/virtual-key-analytics.json:ro
       - ./grafana/provisioning/dashboards/grafana-request-pipeline-dashboard.json:/var/lib/grafana/dashboards/request-pipeline.json:ro
+      - ./grafana/provisioning/dashboards/grafana-prompt-caching-dashboard.json:/var/lib/grafana/dashboards/prompt-caching.json:ro
       - ./grafana/provisioning/dashboards/grafana-infrastructure-dashboard.json:/var/lib/grafana/dashboards/infrastructure.json:ro
       - ./grafana/provisioning/dashboards/grafana-postgresql-dashboard.json:/var/lib/grafana/dashboards/postgresql.json:ro
       - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
@@ -314,6 +324,25 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Single browser-facing entry point for WebAdmin and its embedded Grafana UI.
+  webadmin-proxy:
+    image: nginx:1.28-alpine
+    restart: always
+    ports:
+      - "3000:8080"
+    volumes:
+      - ./nginx/webadmin.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      webadmin:
+        condition: service_healthy
+      grafana:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5

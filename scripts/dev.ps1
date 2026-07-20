@@ -242,6 +242,7 @@ Default behavior:
 
 Services available after startup:
   - WebAdmin:         http://localhost:3000
+  - Grafana:          http://localhost:3000/grafana/
   - Gateway API:      http://localhost:5000/scalar/v1
   - Admin API:        http://localhost:5002/scalar/v1
   - Media Storage:    Cloudflare R2 (configured via .env)
@@ -373,13 +374,14 @@ function Invoke-RebuildWebAdmin {
             throw "WebAdmin image build failed"
         }
 
-        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait --wait-timeout 180 webadmin
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait --wait-timeout 300 webadmin grafana webadmin-proxy
         if ($LASTEXITCODE -ne 0) {
-            throw "WebAdmin failed to reach a healthy state"
+            throw "WebAdmin and its Grafana proxy failed to reach a healthy state"
         }
 
         Write-Info "WebAdmin image rebuilt and container is healthy"
         Write-Info "WebAdmin available at: http://localhost:3000"
+        Write-Info "Grafana available through WebAdmin at: http://localhost:3000/grafana/"
         Start-WebAdminWatch
     }
     finally {

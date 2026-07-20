@@ -256,8 +256,10 @@ The following environment variables are configured in docker-compose.yml:
 - `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`: Master key for Admin API authentication
 - `SESSION_SECRET`: Secret key for session encryption
 - `REDIS_URL`: Redis connection string for session storage
+- `CONDUIT_GRAFANA_ADMIN_PASSWORD`: Required private Grafana bootstrap secret
+- `CONDUIT_GRAFANA_ROOT_URL`: Public Grafana subpath URL (defaults to `http://localhost:3000/grafana/`)
 
-The application runs on port 3000 in the Docker environment.
+The Compose Nginx edge service runs on port 3000 and routes `/grafana/` to the private, read-only Grafana service. The WebAdmin and Grafana containers are not published directly. Grafana access follows the same Clerk `siteadmin` check as WebAdmin, with the same development authentication bypass.
 
 ## Contributing
 

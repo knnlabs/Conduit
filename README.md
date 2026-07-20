@@ -279,6 +279,7 @@ For more details, see the per-service README files.
    ```
 
 2. **Configure LLM Providers**
+   - Copy `.env.example` to `.env` and set `CONDUIT_GRAFANA_ADMIN_PASSWORD` to a long random value.
    - Add your provider API keys via:
      - Environment variables (see [Documentation](docs/README.md))
      - Edit `appsettings.json`
@@ -292,6 +293,7 @@ For more details, see the per-service README files.
 4. **Access ConduitLLM**
    - **Local API**: `http://localhost:5000`
    - **Local WebAdmin**: `http://localhost:3000`
+   - **Usage Analytics / Grafana**: `http://localhost:3000/usage-analytics`
    - **Local API Docs**: `http://localhost:5000/swagger` (Development Mode)
    
    *Note: When running locally via `./scripts/dev.ps1`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
@@ -312,7 +314,7 @@ Or use with Docker Compose:
 docker compose up -d
 ```
 
-*Note: The default Docker configuration assumes ConduitLLM runs behind a reverse proxy that handles HTTPS termination. The containers expose HTTP ports only.*
+*Note: The default Docker configuration uses an Nginx edge service for WebAdmin and its embedded Grafana dashboards. Production deployments should terminate HTTPS in front of this service and set `CONDUIT_GRAFANA_ROOT_URL` to the public `/grafana/` URL.*
 
 ### Environment Variables
 

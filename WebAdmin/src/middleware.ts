@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 // Public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/access-denied',
+  '/api/auth/grafana', // Returns explicit status codes for the Nginx auth subrequest
   '/api/model-mappings(.*)',  // Allow all model-mappings API routes including PUT
   '/api/discovery/models'
 ]);
