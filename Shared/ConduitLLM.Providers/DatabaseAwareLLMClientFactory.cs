@@ -8,7 +8,10 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace ConduitLLM.Providers
 {
@@ -34,6 +37,8 @@ namespace ConduitLLM.Providers
         private readonly IPerformanceMetricsService? _performanceMetricsService;
         private readonly IModelCapabilityService? _capabilityService;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IDbContextFactory<ConduitDbContext>? _dbContextFactory;
+        private readonly IDistributedCache? _distributedCache;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabaseAwareLLMClientFactory"/> class.
@@ -46,7 +51,9 @@ namespace ConduitLLM.Providers
             ILogger<DatabaseAwareLLMClientFactory> logger,
             IServiceProvider serviceProvider,
             IPerformanceMetricsService? performanceMetricsService = null,
-            IModelCapabilityService? capabilityService = null)
+            IModelCapabilityService? capabilityService = null,
+            IDbContextFactory<ConduitDbContext>? dbContextFactory = null,
+            IDistributedCache? distributedCache = null)
         {
             _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
@@ -56,6 +63,91 @@ namespace ConduitLLM.Providers
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _performanceMetricsService = performanceMetricsService;
             _capabilityService = capabilityService;
+            _dbContextFactory = dbContextFactory;
+            _distributedCache = distributedCache;
+        }
+
+        public async Task<ILLMClient> GetClientForChatAsync(
+            ConduitLLM.Core.Models.ChatCompletionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var mappings = await _mappingService.GetMappingsByModelAliasAsync(request.Model);
+            if (mappings.Count == 0)
+                throw new ModelNotFoundException(request.Model, $"Model '{request.Model}' not found. Please check your model configuration.");
+
+            var settings = _serviceProvider.GetService<IGlobalSettingsCacheService>();
+            var switchValue = settings is null ? null : await settings.GetSettingValueAsync("Routing.Chat.Enabled");
+            var routingEnabled = !bool.TryParse(switchValue, out var enabled) || enabled;
+            var policy = await GetRoutePolicyAsync(request.Model, cancellationToken);
+            var scored = routingEnabled ? BalancedRouteScorer.Score(mappings, policy) :
+                mappings.OrderBy(mapping => mapping.Id).Take(1).Select(mapping => new ScoredRoute(mapping, 0.5m)).ToArray();
+            if (scored.Count == 0)
+                throw new ServiceUnavailableException($"No healthy provider route for model '{request.Model}'.", "Routing");
+
+            var ordered = scored.ToList();
+            if (routingEnabled && policy.CacheAffinityEnabled && _distributedCache is not null &&
+                !string.IsNullOrWhiteSpace(request.RoutingAffinityKey))
+            {
+                var cachedId = await _distributedCache.GetStringAsync(
+                    RoutedChatClient.AffinityCacheKey(request.Model, request.RoutingAffinityKey), cancellationToken);
+                if (int.TryParse(cachedId, out var affinityId))
+                {
+                    var affinity = ordered.FirstOrDefault(route => route.Mapping.Id == affinityId);
+                    if (affinity is not null && ordered[0].Score - affinity.Score <= policy.MaxAffinityScorePenalty)
+                    {
+                        ordered.Remove(affinity); ordered.Insert(0, affinity);
+                        request.RoutingAffinityUsed = true;
+                        request.RoutingDecisionReason = "affinity_reuse";
+                    }
+                }
+            }
+            request.RoutingDecisionReason ??= routingEnabled ? "balanced_score" : "routing_disabled";
+
+            var routes = new List<(ModelProviderMapping, ILLMClient)>();
+            foreach (var route in ordered)
+            {
+                var provider = await _credentialService.GetProviderByIdAsync(route.Mapping.ProviderId);
+                if (provider is null || !provider.IsEnabled) continue;
+                var credential = await ValidateProviderAndGetCredentialAsync(provider);
+                routes.Add((route.Mapping, CreateClientForProvider(provider, credential,
+                    route.Mapping.ProviderModelId, route.Mapping.ProviderOptions)));
+            }
+            if (routes.Count == 0)
+                throw new ServiceUnavailableException($"No configured provider credential for model '{request.Model}'.", "Routing");
+            request.SelectedMappingId = routes[0].Item1.Id;
+            return new RoutedChatClient(routes, request, _distributedCache, policy);
+        }
+
+        private async Task<ModelRoutePolicy> GetRoutePolicyAsync(string alias, CancellationToken cancellationToken)
+        {
+            if (_dbContextFactory is not null)
+            {
+                await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                var persisted = await context.ModelRoutePolicies.AsNoTracking()
+                    .SingleOrDefaultAsync(policy => policy.ModelAlias == alias, cancellationToken);
+                if (persisted is not null && persisted.IsEnabled) return persisted;
+            }
+            var result = new ModelRoutePolicy { ModelAlias = alias };
+            var settings = _serviceProvider.GetService<IGlobalSettingsCacheService>();
+            var json = settings is null ? null : await settings.GetSettingValueAsync("Routing.Defaults");
+            if (string.IsNullOrWhiteSpace(json)) return result;
+
+            try
+            {
+                using var document = JsonDocument.Parse(json);
+                var root = document.RootElement;
+                if (root.TryGetProperty("costWeight", out var cost)) result.CostWeight = cost.GetDecimal();
+                if (root.TryGetProperty("speedWeight", out var speed)) result.SpeedWeight = speed.GetDecimal();
+                if (root.TryGetProperty("qualityWeight", out var quality)) result.QualityWeight = quality.GetDecimal();
+                if (root.TryGetProperty("cacheAffinityEnabled", out var affinity)) result.CacheAffinityEnabled = affinity.GetBoolean();
+                if (root.TryGetProperty("affinityTtlSeconds", out var ttl)) result.AffinityTtlSeconds = ttl.GetInt32();
+                if (root.TryGetProperty("maxAffinityScorePenalty", out var penalty)) result.MaxAffinityScorePenalty = penalty.GetDecimal();
+            }
+            catch (JsonException exception)
+            {
+                _logger.LogError(exception, "Invalid Routing.Defaults configuration; using built-in defaults");
+            }
+            return result;
         }
 
         /// <inheritdoc />

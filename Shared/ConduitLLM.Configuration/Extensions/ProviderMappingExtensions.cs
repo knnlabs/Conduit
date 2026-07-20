@@ -35,7 +35,8 @@ namespace ConduitLLM.Configuration.Extensions
                 ProviderId = mapping.ProviderId,
                 Provider = mapping.Provider?.ToReferenceDto(),
                 ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
-                Priority = 0, // Entity doesn't have Priority
+                Priority = mapping.RoutingPriority,
+                Weight = mapping.RoutingWeight,
                 IsEnabled = mapping.IsEnabled,
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
@@ -67,8 +68,10 @@ namespace ConduitLLM.Configuration.Extensions
             mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId;
             mapping.IsEnabled = dto.IsEnabled;
             mapping.ProviderOptions = dto.ProviderOptions;
+            mapping.RoutingPriority = dto.Priority;
+            mapping.RoutingWeight = dto.Weight;
             mapping.UpdatedAt = System.DateTime.UtcNow;
-            // Note: Priority and Notes are DTO-only properties
+            // Notes remains DTO-only.
         }
 
         /// <summary>

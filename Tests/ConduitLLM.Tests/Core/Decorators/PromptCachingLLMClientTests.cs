@@ -38,9 +38,9 @@ public class PromptCachingLLMClientTests
     {
         Configure(new PromptCachingConfig
         {
-            SchemaVersion = 2,
+            SchemaVersion = 3,
             Enabled = true,
-            Rules = [new PromptCachingRule { Name = "Claude", Provider = "OpenRouter", ModelPattern = "anthropic/*", Strategy = PromptCachingStrategy.OpenRouterAutomatic }]
+            Rules = [new PromptCachingRule { Name = "Claude", Provider = "OpenRouter", ModelPattern = "anthropic/*", Strategy = PromptCachingStrategy.Automatic }]
         });
         var request = Request();
         _inner.Setup(c => c.CreateChatCompletionAsync(request, null, default)).ReturnsAsync(Response());
@@ -56,9 +56,9 @@ public class PromptCachingLLMClientTests
     {
         Configure(new PromptCachingConfig
         {
-            SchemaVersion = 2,
+            SchemaVersion = 3,
             Enabled = true,
-            Rules = [new PromptCachingRule { Name = "Claude", Provider = "OpenRouter", ModelPattern = "anthropic/*", Strategy = PromptCachingStrategy.OpenRouterAutomatic }]
+            Rules = [new PromptCachingRule { Name = "Claude", Provider = "OpenRouter", ModelPattern = "anthropic/*", Strategy = PromptCachingStrategy.Automatic }]
         });
         var request = Request();
         _inner.Setup(c => c.CreateChatCompletionAsync(request, null, default)).ReturnsAsync(Response());

@@ -36,6 +36,8 @@ namespace ConduitLLM.Configuration.Repositories
             return query
                 .Include(m => m.Provider)
                 .Include(m => m.ModelProviderTypeAssociation)
+                    .ThenInclude(a => a.ModelCost)
+                .Include(m => m.ModelProviderTypeAssociation)
                     .ThenInclude(a => a.Model)
                         .ThenInclude(m => m.Series);
         }
@@ -63,6 +65,27 @@ namespace ConduitLLM.Configuration.Repositories
                 return await query.FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
             }, cancellationToken, $"getting by model name {LoggingSanitizer.S(modelName)}");
         }
+
+        public async Task<List<ModelProviderMapping>> GetAllByModelNameAsync(
+            string modelName,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(modelName))
+                throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
+            return await ExecuteAsync(async context =>
+            {
+                var query = ApplyDefaultIncludes(GetDbSet(context).AsNoTracking());
+                return await query.Where(mapping => mapping.ModelAlias == modelName)
+                    .OrderBy(mapping => mapping.RoutingPriority).ThenBy(mapping => mapping.Id)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting all mappings by model name {LoggingSanitizer.S(modelName)}");
+        }
+
+        public async Task<int?> GetCanonicalModelIdForAssociationAsync(int associationId, CancellationToken cancellationToken = default) =>
+            await ExecuteAsync(async context => await context.ModelProviderTypeAssociations.AsNoTracking()
+                .Where(association => association.Id == associationId)
+                .Select(association => (int?)association.ModelId)
+                .SingleOrDefaultAsync(cancellationToken), cancellationToken, $"getting canonical model for association {associationId}");
 
         /// <inheritdoc/>
         [Obsolete("Use GetByProviderPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
@@ -148,6 +171,9 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.ProviderId = modelProviderMapping.ProviderId;
                 existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
                 existingEntity.ModelProviderTypeAssociationId = modelProviderMapping.ModelProviderTypeAssociationId;
+                existingEntity.ProviderOptions = modelProviderMapping.ProviderOptions;
+                existingEntity.RoutingPriority = modelProviderMapping.RoutingPriority;
+                existingEntity.RoutingWeight = modelProviderMapping.RoutingWeight;
 
                 existingEntity.UpdatedAt = DateTime.UtcNow;
 

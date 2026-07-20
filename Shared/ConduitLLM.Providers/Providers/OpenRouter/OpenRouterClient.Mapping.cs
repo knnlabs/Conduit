@@ -32,6 +32,14 @@ namespace ConduitLLM.Providers.OpenRouter
 
             ApplyPromptCachingIntent(dict, request);
 
+            // Caller session IDs are forwarded verbatim. Inferred affinity is already an opaque
+            // HMAC and therefore does not disclose prompt content to OpenRouter.
+            if (!dict.ContainsKey("session_id"))
+            {
+                var sessionId = request.SessionId ?? request.RoutingAffinityKey;
+                if (!string.IsNullOrWhiteSpace(sessionId)) dict["session_id"] = sessionId;
+            }
+
             if (_mappingOptions is not null)
             {
                 foreach (var (key, value) in _mappingOptions)
@@ -56,7 +64,7 @@ namespace ConduitLLM.Providers.OpenRouter
             var directive = new Dictionary<string, object?> { ["type"] = "ephemeral" };
             if (!string.IsNullOrWhiteSpace(intent.Ttl)) directive["ttl"] = intent.Ttl;
 
-            if (intent.Strategy == CoreModels.PromptCachingStrategy.OpenRouterAutomatic)
+            if (intent.Strategy == CoreModels.PromptCachingStrategy.Automatic)
             {
                 if (mapped.TryGetValue("messages", out var automaticMessages) &&
                     automaticMessages is List<OpenAIMessage> existingMessages &&

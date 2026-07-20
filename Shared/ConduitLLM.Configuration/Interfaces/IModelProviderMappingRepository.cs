@@ -31,6 +31,8 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model provider mapping entity or null if not found</returns>
         Task<Entities.ModelProviderMapping?> GetByModelNameAsync(string modelName, CancellationToken cancellationToken = default);
+        Task<List<Entities.ModelProviderMapping>> GetAllByModelNameAsync(string modelName, CancellationToken cancellationToken = default);
+        Task<int?> GetCanonicalModelIdForAssociationAsync(int associationId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets all model provider mappings for a specific provider

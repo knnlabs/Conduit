@@ -106,7 +106,7 @@ namespace ConduitLLM.Tests.Providers
                 Messages = [new Message { Role = "system", Content = "Original" }],
                 PromptCachingIntent = new PromptCachingIntent
                 {
-                    Strategy = PromptCachingStrategy.OpenRouterAutomatic,
+                    Strategy = PromptCachingStrategy.Automatic,
                     Ttl = "1h"
                 }
             };
@@ -128,7 +128,7 @@ namespace ConduitLLM.Tests.Providers
                 Messages = [new Message { Role = "system", Content = "Stable prefix" }],
                 PromptCachingIntent = new PromptCachingIntent
                 {
-                    Strategy = PromptCachingStrategy.OpenRouterExplicit,
+                    Strategy = PromptCachingStrategy.Explicit,
                     Ttl = "5m",
                     InjectionPoints =
                     [

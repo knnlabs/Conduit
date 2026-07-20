@@ -162,6 +162,7 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
             var config = await GetPromptCachingConfigAsync();
             if (config is not null)
             {
+                config = PromptCachingPolicyResolver.Migrate(config);
                 var errors = PromptCachingPolicyResolver.Validate(config);
                 if (errors.Count != 0)
                 {
@@ -170,7 +171,8 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
                     return;
                 }
 
-                request.PromptCachingIntent = PromptCachingPolicyResolver.Resolve(config, _provider, _providerModelId);
+                request.PromptCachingIntent = PromptCachingPolicyResolver.Resolve(
+                    config, _provider, _providerModelId, request.RoutingAffinityKey);
                 if (request.PromptCachingIntent is not null)
                 {
                     PromptCachingInjectionMetrics.RecordSuccess(request.Model ?? "unknown");

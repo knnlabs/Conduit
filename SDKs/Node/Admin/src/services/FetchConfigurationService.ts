@@ -1,6 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import type { PromptCachingCapabilityDto, PromptCachingConfigDto, UpdatePromptCachingConfigDto } from '../models/promptCaching';
+import type { PromptCachingAnalyticsDto, PromptCachingCapabilityDto, PromptCachingConfigDto, UpdatePromptCachingConfigDto } from '../models/promptCaching';
 import { ENDPOINTS } from '../constants';
 
 /**
@@ -164,6 +164,30 @@ export class FetchConfigurationService {
     );
   }
 
+  async getRoutingDefaults(config?: RequestConfig): Promise<unknown> {
+    return this.client['get']<unknown>(ENDPOINTS.CONFIG.ROUTING_DEFAULTS, {
+      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
+    });
+  }
+
+  async updateRoutingDefaults(data: unknown, config?: RequestConfig): Promise<unknown> {
+    return this.client['put']<unknown>(ENDPOINTS.CONFIG.ROUTING_DEFAULTS, data, {
+      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
+    });
+  }
+
+  async getAliasRouting(alias: string, config?: RequestConfig): Promise<unknown> {
+    return this.client['get']<unknown>(ENDPOINTS.CONFIG.ROUTING_ALIAS(alias), {
+      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
+    });
+  }
+
+  async updateAliasRouting(alias: string, data: unknown, config?: RequestConfig): Promise<unknown> {
+    return this.client['put']<unknown>(ENDPOINTS.CONFIG.ROUTING_ALIAS(alias), data, {
+      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
+    });
+  }
+
   async getPromptCachingCapabilities(config?: RequestConfig): Promise<PromptCachingCapabilityDto[]> {
     return this.client['get']<PromptCachingCapabilityDto[]>(
       ENDPOINTS.PROMPT_CACHING.CAPABILITIES,
@@ -172,6 +196,18 @@ export class FetchConfigurationService {
         timeout: config?.timeout,
         headers: config?.headers,
       }
+    );
+  }
+
+  async getPromptCachingAnalytics(
+    filters: { from?: string; to?: string; alias?: string; provider?: string; mappingId?: number } = {},
+    config?: RequestConfig
+  ): Promise<PromptCachingAnalyticsDto> {
+    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined && value !== '')
+      .map(([key, value]) => [key, String(value)]));
+    return this.client['get']<PromptCachingAnalyticsDto>(
+      `${ENDPOINTS.PROMPT_CACHING.ANALYTICS}${query.size ? `?${query}` : ''}`,
+      { signal: config?.signal, timeout: config?.timeout, headers: config?.headers }
     );
   }
 

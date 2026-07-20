@@ -344,6 +344,15 @@ export interface RequestLog {
   modelName: string;
   providerId?: number | null;
   providerType?: string | null;
+  modelProviderMappingId?: number | null;
+  promptCachingEligible?: boolean;
+  promptCachingPolicyApplied?: boolean;
+  cachedReadSavings?: number;
+  cacheWritePremium?: number;
+  promptCachingNetSavings?: number;
+  routingAffinityUsed?: boolean;
+  routingDecisionReason?: string | null;
+  routingFailoverCount?: number;
   requestType: string;
   inputTokens?: number;
   outputTokens?: number;

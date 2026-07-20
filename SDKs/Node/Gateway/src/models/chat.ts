@@ -79,6 +79,8 @@ export interface ChatCompletionRequest {
   tools?: Tool[];
   tool_choice?: 'none' | 'auto' | { type: 'function'; function: { name: string } };
   user?: string;
+  /** Stable conversation affinity ID. Body value takes precedence over X-Conduit-Session-Id. */
+  session_id?: string;
   /**
    * @deprecated Use 'tools' instead. Functions are converted to tools internally.
    */

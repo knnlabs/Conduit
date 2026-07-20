@@ -27,14 +27,14 @@ public class PromptCachingControllerTests
     }
 
     [Fact]
-    public async Task GetConfig_Missing_ReturnsDisabledV2()
+    public async Task GetConfig_Missing_ReturnsDisabledV3()
     {
         _cache.Setup(x => x.GetSettingValueAsync("PromptCaching.Config")).ReturnsAsync((string?)null);
 
         var result = await _controller.GetConfig();
 
         var dto = result.Should().BeOfType<OkObjectResult>().Subject.Value.Should().BeOfType<PromptCachingConfigDto>().Subject;
-        dto.SchemaVersion.Should().Be(2);
+        dto.SchemaVersion.Should().Be(3);
         dto.Enabled.Should().BeFalse();
     }
 
@@ -48,7 +48,7 @@ public class PromptCachingControllerTests
     }
 
     [Fact]
-    public async Task UpdateConfig_ValidRule_PersistsV2()
+    public async Task UpdateConfig_ValidRule_PersistsV3()
     {
         _settings.Setup(x => x.GetSettingByKeyAsync("PromptCaching.Config"))
             .ReturnsAsync(new GlobalSettingDto { Id = 1, Key = "PromptCaching.Config", Value = "{}" });
@@ -60,7 +60,7 @@ public class PromptCachingControllerTests
                 Name = "Claude",
                 Provider = "OpenRouter",
                 ModelPattern = "anthropic/*",
-                Strategy = "OpenRouterAutomatic",
+                Strategy = "Automatic",
                 Ttl = "5m"
             }]
         };
@@ -84,7 +84,7 @@ public class PromptCachingControllerTests
                 Name = "Unsafe",
                 Provider = "Replicate",
                 ModelPattern = "*",
-                Strategy = "OpenRouterAutomatic"
+                Strategy = "Automatic"
             }]
         };
 

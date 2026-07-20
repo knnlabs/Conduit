@@ -29,6 +29,14 @@ namespace ConduitLLM.Configuration.DTOs
         /// Type of the provider that processed the request (e.g., "OpenAI", "Anthropic").
         /// </summary>
         public string? ProviderType { get; set; }
+        public int? ModelProviderMappingId { get; set; }
+        public bool PromptCachingEligible { get; set; }
+        public bool PromptCachingPolicyApplied { get; set; }
+        public decimal CachedReadSavings { get; set; }
+        public decimal CacheWritePremium { get; set; }
+        public bool RoutingAffinityUsed { get; set; }
+        public string? RoutingDecisionReason { get; set; }
+        public int RoutingFailoverCount { get; set; }
 
         /// <summary>
         /// Type of the request (chat, completion, embedding, etc.)

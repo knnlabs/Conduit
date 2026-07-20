@@ -2452,6 +2452,12 @@
             "type": "string",
             "nullable": true
           },
+          "session_id": {
+            "maxLength": 256,
+            "type": "string",
+            "nullable": true,
+            "description": "Stable conversation affinity identifier. The request body takes precedence over X-Conduit-Session-Id."
+          },
           "tools": {
             "type": "array",
             "items": {

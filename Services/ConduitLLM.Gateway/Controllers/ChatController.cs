@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Core;
@@ -73,6 +75,8 @@ namespace ConduitLLM.Gateway.Controllers
 
             HttpContext.Items["IsStreamingRequest"] = request.Stream == true;
 
+            ApplySessionAffinity(request);
+
             await PopulateProviderMetadataAsync(request, activity);
 
             if (request.FunctionConfigurationIds != null && request.FunctionConfigurationIds.Count > 0)
@@ -106,6 +110,36 @@ namespace ConduitLLM.Gateway.Controllers
                 GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "error", operationStopwatch.Elapsed.TotalSeconds);
                 return OpenAIError(500, ex.Message, "internal_error", "server_error");
             }
+        }
+
+        private void ApplySessionAffinity(ChatCompletionRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.SessionId) &&
+                Request.Headers.TryGetValue("X-Conduit-Session-Id", out var headerSession))
+            {
+                request.SessionId = headerSession.FirstOrDefault();
+            }
+
+            if (request.SessionId?.Length > 256)
+                throw new ArgumentException("session_id must not exceed 256 characters.", nameof(request.SessionId));
+
+            if (HttpContext.Items["VirtualKey.KeyHash"] is not string virtualKeyHash ||
+                string.IsNullOrWhiteSpace(virtualKeyHash)) return;
+
+            var affinitySource = request.SessionId;
+            if (string.IsNullOrWhiteSpace(affinitySource))
+            {
+                var firstSystem = request.Messages.FirstOrDefault(message =>
+                    message.Role.Equals("system", StringComparison.OrdinalIgnoreCase) ||
+                    message.Role.Equals("developer", StringComparison.OrdinalIgnoreCase));
+                var firstUser = request.Messages.FirstOrDefault(message =>
+                    message.Role.Equals("user", StringComparison.OrdinalIgnoreCase));
+                affinitySource = JsonSerializer.Serialize(new[] { firstSystem?.Content, firstUser?.Content });
+            }
+
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(virtualKeyHash));
+            request.RoutingAffinityKey = Convert.ToHexString(
+                hmac.ComputeHash(Encoding.UTF8.GetBytes(affinitySource ?? string.Empty))).ToLowerInvariant();
         }
 
         private async Task PopulateProviderMetadataAsync(ChatCompletionRequest request, Activity? activity)
@@ -146,6 +180,27 @@ namespace ConduitLLM.Gateway.Controllers
             {
                 _logger.LogWarning(ex, "Failed to get provider info for model {Model}", LoggingSanitizer.S(request.Model));
             }
+        }
+
+        private async Task CaptureSelectedRouteAsync(ChatCompletionRequest request)
+        {
+            if (request.SelectedMappingId is not int mappingId) return;
+            var mapping = await _modelMappingService.GetMappingByIdAsync(mappingId);
+            if (mapping is null) return;
+            HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.ModelProviderMappingId] = mappingId;
+            HttpContext.Items["ProviderId"] = mapping.ProviderId;
+            HttpContext.Items["ProviderType"] = mapping.Provider?.ProviderType;
+            if (mapping.Provider is not null)
+                HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.PromptCachingEligible] =
+                    PromptCachingCapabilityCatalog.IsEligible(mapping.Provider.ProviderType.ToString(), mapping.ProviderModelId);
+            HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.RoutingAffinityUsed] = request.RoutingAffinityUsed;
+            HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.RoutingDecisionReason] = request.RoutingDecisionReason;
+            HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.RoutingFailoverCount] = request.RoutingFailoverCount;
+            HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.PromptCachingPolicyApplied] = request.PromptCachingIntent is not null;
+            if (mapping.ModelProviderTypeAssociation?.ModelCostId is int modelCostId)
+                HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.ModelCostId] = modelCostId;
+            PromptCachingMetrics.RecordRouting(request.Model, mapping.Provider?.ProviderType.ToString() ?? "unknown",
+                mappingId, request.RoutingDecisionReason ?? "unknown", request.RoutingFailoverCount);
         }
 
         private async Task ApplyAgenticDefaultsAsync(ChatCompletionRequest request)

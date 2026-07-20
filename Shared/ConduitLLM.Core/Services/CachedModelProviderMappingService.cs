@@ -114,6 +114,30 @@ namespace ConduitLLM.Core.Services
             }
         }
 
+        public async Task<List<ModelProviderMapping>> GetMappingsByModelAliasAsync(string modelAlias)
+        {
+            if (string.IsNullOrWhiteSpace(modelAlias))
+                throw new ArgumentException("Model alias cannot be null or empty", nameof(modelAlias));
+            var cacheKey = CacheKeys.ModelMapping.ByAlias(modelAlias) + ":all";
+            try
+            {
+                var cached = await _cacheManager.GetOrCreateAsync(cacheKey,
+                    () => _innerService.GetMappingsByModelAliasAsync(modelAlias), Region, CacheTtl);
+                if (cached is null || cached.Any(IsMissingNavigationGraph))
+                {
+                    var fresh = await _innerService.GetMappingsByModelAliasAsync(modelAlias);
+                    await _cacheManager.SetAsync(cacheKey, fresh, Region, CacheTtl);
+                    return fresh;
+                }
+                return cached;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache operation failed for mappings alias '{ModelAlias}'", modelAlias);
+                return await _innerService.GetMappingsByModelAliasAsync(modelAlias);
+            }
+        }
+
         /// <summary>
         /// Gets all mappings with caching.
         /// </summary>
@@ -324,6 +348,7 @@ namespace ConduitLLM.Core.Services
                 if (!string.IsNullOrEmpty(modelAlias))
                 {
                     keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(modelAlias));
+                    keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(modelAlias) + ":all");
                 }
 
                 // Invalidate the "all mappings" cache

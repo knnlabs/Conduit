@@ -30,6 +30,18 @@ namespace ConduitLLM.Gateway.Metrics
                     LabelNames = new[] { "model", "provider" }
                 });
 
+        public static readonly Counter EventsTotal = Prometheus.Metrics
+            .CreateCounter("conduit_prompt_cache_events_total", "Independent prompt cache events",
+                new CounterConfiguration { LabelNames = new[] { "alias", "provider", "mapping", "event" } });
+
+        public static readonly Counter RoutingDecisionsTotal = Prometheus.Metrics
+            .CreateCounter("conduit_chat_routing_decisions_total", "Chat routing decisions",
+                new CounterConfiguration { LabelNames = new[] { "alias", "provider", "mapping", "reason" } });
+
+        public static readonly Counter RoutingFailoversTotal = Prometheus.Metrics
+            .CreateCounter("conduit_chat_routing_failovers_total", "Chat provider route failovers",
+                new CounterConfiguration { LabelNames = new[] { "alias", "provider", "mapping" } });
+
         public static readonly Counter WritePremiumDollarsTotal = Prometheus.Metrics
             .CreateCounter("conduit_prompt_caching_write_premium_dollars", "Additional prompt cache write cost in dollars",
                 new CounterConfiguration { LabelNames = new[] { "model", "provider" } });
@@ -39,23 +51,30 @@ namespace ConduitLLM.Gateway.Metrics
         /// <summary>
         /// Record a request where cached tokens were returned by the provider.
         /// </summary>
-        public static void RecordCacheHit(string model, string provider)
-            => RequestsTotal.WithLabels(model, provider, "hit").Inc();
+        public static void RecordCacheHit(string model, string provider, string mapping = "unknown")
+        { RequestsTotal.WithLabels(model, provider, "hit").Inc(); EventsTotal.WithLabels(model, provider, mapping, "read").Inc(); }
 
         /// <summary>
         /// Record a request where no cached tokens were returned.
         /// </summary>
-        public static void RecordCacheMiss(string model, string provider)
-            => RequestsTotal.WithLabels(model, provider, "miss").Inc();
+        public static void RecordCacheMiss(string model, string provider, string mapping = "unknown")
+        { RequestsTotal.WithLabels(model, provider, "miss").Inc(); EventsTotal.WithLabels(model, provider, mapping, "eligible_miss").Inc(); }
 
-        public static void RecordCacheWrite(string model, string provider)
-            => RequestsTotal.WithLabels(model, provider, "write").Inc();
+        public static void RecordCacheWrite(string model, string provider, string mapping = "unknown")
+        { RequestsTotal.WithLabels(model, provider, "write").Inc(); EventsTotal.WithLabels(model, provider, mapping, "write").Inc(); }
 
-        public static void RecordCacheUnknown(string model, string provider)
-            => RequestsTotal.WithLabels(model, provider, "unknown").Inc();
+        public static void RecordCacheUnknown(string model, string provider, string mapping = "unknown")
+        { RequestsTotal.WithLabels(model, provider, "unknown").Inc(); EventsTotal.WithLabels(model, provider, mapping, "unknown").Inc(); }
 
-        public static void RecordCacheUnsupported(string model, string provider)
-            => RequestsTotal.WithLabels(model, provider, "unsupported").Inc();
+        public static void RecordCacheUnsupported(string model, string provider, string mapping = "unknown")
+        { RequestsTotal.WithLabels(model, provider, "unsupported").Inc(); EventsTotal.WithLabels(model, provider, mapping, "unsupported").Inc(); }
+
+        public static void RecordRouting(string alias, string provider, int mappingId, string reason, int failovers)
+        {
+            var mapping = mappingId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            RoutingDecisionsTotal.WithLabels(alias, provider, mapping, reason).Inc();
+            if (failovers > 0) RoutingFailoversTotal.WithLabels(alias, provider, mapping).Inc(failovers);
+        }
 
         /// <summary>
         /// Record a request where prompt caching was not active (disabled or not configured).

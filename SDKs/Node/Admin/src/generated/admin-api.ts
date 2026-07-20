@@ -1661,6 +1661,166 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/config/routing/defaults": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["RoutingDefaultsDto"];
+            "application/json": components["schemas"]["RoutingDefaultsDto"];
+            "text/json": components["schemas"]["RoutingDefaultsDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["RoutingDefaultsDto"];
+          "text/json": components["schemas"]["RoutingDefaultsDto"];
+          "application/*+json": components["schemas"]["RoutingDefaultsDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["RoutingDefaultsDto"];
+            "application/json": components["schemas"]["RoutingDefaultsDto"];
+            "text/json": components["schemas"]["RoutingDefaultsDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/config/routing/aliases/{alias}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          alias: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["RoutePolicyDto"];
+            "application/json": components["schemas"]["RoutePolicyDto"];
+            "text/json": components["schemas"]["RoutePolicyDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          alias: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["RoutePolicyDto"];
+          "text/json": components["schemas"]["RoutePolicyDto"];
+          "application/*+json": components["schemas"]["RoutePolicyDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["RoutePolicyDto"];
+            "application/json": components["schemas"]["RoutePolicyDto"];
+            "text/json": components["schemas"]["RoutePolicyDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/FunctionConfigurations": {
     parameters: {
       query?: never;
@@ -9123,6 +9283,56 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/prompt-caching/analytics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: {
+          from?: string;
+          to?: string;
+          alias?: string;
+          provider?: string;
+          mappingId?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PromptCachingAnalyticsDto"];
+            "application/json": components["schemas"]["PromptCachingAnalyticsDto"];
+            "text/json": components["schemas"]["PromptCachingAnalyticsDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/ProviderCredentials/{providerId}/keys": {
     parameters: {
       query?: never;
@@ -14155,6 +14365,18 @@ export interface components {
       /** Format: int32 */
       providerId?: null | number;
       providerType?: null | string;
+      /** Format: int32 */
+      modelProviderMappingId?: null | number;
+      promptCachingEligible?: boolean;
+      promptCachingPolicyApplied?: boolean;
+      /** Format: double */
+      cachedReadSavings?: number;
+      /** Format: double */
+      cacheWritePremium?: number;
+      routingAffinityUsed?: boolean;
+      routingDecisionReason?: null | string;
+      /** Format: int32 */
+      routingFailoverCount?: number;
       requestType?: string;
       /** Format: int32 */
       inputTokens?: number;
@@ -14689,6 +14911,8 @@ export interface components {
       modelProviderTypeAssociationId: number;
       /** Format: int32 */
       priority?: number;
+      /** Format: double */
+      weight?: number;
       isEnabled?: boolean;
       /** Format: date-time */
       createdAt?: string;
@@ -15245,6 +15469,39 @@ export interface components {
       /** Format: int32 */
       requestLogId?: null | number;
     };
+    PromptCachingAnalyticsDto: {
+      /** Format: date-time */
+      from?: string;
+      /** Format: date-time */
+      to?: string;
+      /** Format: int32 */
+      requests?: number;
+      /** Format: int32 */
+      eligibleMisses?: number;
+      /** Format: int32 */
+      readEvents?: number;
+      /** Format: int32 */
+      writeEvents?: number;
+      /** Format: int32 */
+      unknownOutcomes?: number;
+      /** Format: int64 */
+      cachedTokens?: number;
+      /** Format: double */
+      grossSavings?: number;
+      /** Format: double */
+      writePremium?: number;
+      /** Format: double */
+      netSavings?: number;
+      /** Format: double */
+      hitLatencyMs?: null | number;
+      /** Format: double */
+      missLatencyMs?: null | number;
+      /** Format: int32 */
+      affinityReuse?: number;
+      /** Format: int32 */
+      failovers?: number;
+      providerDistribution?: components["schemas"]["PromptCachingProviderDistributionDto"][];
+    };
     PromptCachingCapabilityDto: {
       provider?: string;
       modelPattern?: string;
@@ -15261,6 +15518,13 @@ export interface components {
       schemaVersion?: number;
       enabled?: boolean;
       rules?: components["schemas"]["PromptCachingRuleDto"][];
+    };
+    PromptCachingProviderDistributionDto: {
+      provider?: string;
+      /** Format: int32 */
+      mappingId?: null | number;
+      /** Format: int32 */
+      requests?: number;
     };
     PromptCachingRuleDto: {
       name: string;
@@ -15517,6 +15781,20 @@ export interface components {
       /** Format: int32 */
       providerId?: null | number;
       providerType?: null | string;
+      /** Format: int32 */
+      modelProviderMappingId?: null | number;
+      promptCachingEligible?: boolean;
+      promptCachingPolicyApplied?: boolean;
+      /** Format: double */
+      cachedReadSavings?: number;
+      /** Format: double */
+      cacheWritePremium?: number;
+      /** Format: double */
+      promptCachingNetSavings?: number;
+      routingAffinityUsed?: boolean;
+      routingDecisionReason?: null | string;
+      /** Format: int32 */
+      routingFailoverCount?: number;
       requestType: string;
       /** Format: int32 */
       inputTokens?: number;
@@ -15571,6 +15849,22 @@ export interface components {
        */
       negativeBalanceRetentionDays?: number;
     };
+    RoutePolicyDto: {
+      modelAlias?: string;
+      strategy?: string;
+      /** Format: double */
+      costWeight?: number;
+      /** Format: double */
+      speedWeight?: number;
+      /** Format: double */
+      qualityWeight?: number;
+      cacheAffinityEnabled?: boolean;
+      /** Format: int32 */
+      affinityTtlSeconds?: number;
+      /** Format: double */
+      maxAffinityScorePenalty?: number;
+      isEnabled?: boolean;
+    };
     /** @description Response DTO for the routing configuration endpoint. */
     RoutingConfigurationDto: {
       /**
@@ -15586,6 +15880,28 @@ export interface components {
       statistics?: components["schemas"]["RoutingStatisticsDto"];
       /** @description General routing configuration settings. */
       configuration?: components["schemas"]["RoutingSettingsDto"];
+      aliasPolicies?: components["schemas"]["RoutePolicyDto"][];
+    };
+    RoutingDefaultsDto: {
+      chatRoutingEnabled?: boolean;
+      /** Format: int32 */
+      mappingPriority?: number;
+      /** Format: double */
+      mappingWeight?: number;
+      modelAlias?: string;
+      strategy?: string;
+      /** Format: double */
+      costWeight?: number;
+      /** Format: double */
+      speedWeight?: number;
+      /** Format: double */
+      qualityWeight?: number;
+      cacheAffinityEnabled?: boolean;
+      /** Format: int32 */
+      affinityTtlSeconds?: number;
+      /** Format: double */
+      maxAffinityScorePenalty?: number;
+      isEnabled?: boolean;
     };
     /** @description A single model-to-provider routing rule. */
     RoutingRuleDto: {
@@ -15600,6 +15916,10 @@ export interface components {
       providerModelId?: string;
       /** @description Whether the mapping is enabled. */
       isEnabled?: boolean;
+      /** Format: int32 */
+      priority?: number;
+      /** Format: double */
+      weight?: number;
       /** @description The provider that serves this rule. */
       provider?: components["schemas"]["RoutingRuleProviderDto"];
     };

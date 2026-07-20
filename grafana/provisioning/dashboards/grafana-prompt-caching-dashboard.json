@@ -17,7 +17,7 @@
         "name": "provider",
         "type": "query",
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "query": "label_values(conduit_prompt_caching_requests_total, provider)",
+        "query": "label_values(conduit_prompt_cache_events_total, provider)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -30,7 +30,7 @@
         "name": "model",
         "type": "query",
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "query": "label_values(conduit_prompt_caching_requests_total{provider=~\"$provider\"}, model)",
+        "query": "label_values(conduit_prompt_cache_events_total{provider=~\"$provider\"}, alias)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -95,7 +95,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"hit\"}[5m])) / sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss|write\"}[5m])) * 100",
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"read\"}[5m])) / sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=~\"read|eligible_miss\"}[5m])) * 100",
           "refId": "A"
         }
       ],
@@ -307,7 +307,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"hit\"}[5m])) / sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss|write\"}[5m])) * 100",
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"read\"}[5m])) / sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=~\"read|eligible_miss\"}[5m])) * 100",
           "legendFormat": "Hit Rate %",
           "refId": "A"
         }
@@ -428,7 +428,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(increase(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"hit\"}[24h])) by (model)",
+          "expr": "sum(increase(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"read\"}[24h])) by (alias)",
           "legendFormat": "{{model}}",
           "refId": "hits",
           "instant": true,
@@ -436,7 +436,7 @@
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(increase(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss|write\"}[24h])) by (model)",
+          "expr": "sum(increase(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=~\"read|eligible_miss\"}[24h])) by (alias)",
           "legendFormat": "{{model}}",
           "refId": "total",
           "instant": true,
@@ -533,25 +533,25 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"hit\"}[5m]))",
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"read\"}[5m]))",
           "legendFormat": "Hit",
           "refId": "A"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"miss\"}[5m]))",
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"eligible_miss\"}[5m]))",
           "legendFormat": "Eligible miss",
           "refId": "B"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"write\"}[5m]))",
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"write\"}[5m]))",
           "legendFormat": "Cache write",
           "refId": "C"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"unknown|unsupported\"}[5m]))",
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=~\"unknown|unsupported\"}[5m]))",
           "legendFormat": "Unknown / unsupported",
           "refId": "D"
         }

@@ -24,6 +24,7 @@ namespace ConduitLLM.Gateway.Controllers
         {
             _logger.LogInformation("Handling non-streaming request.");
             var response = await _conduit.CreateChatCompletionAsync(request, null, virtualKeyId, cancellationToken);
+            await CaptureSelectedRouteAsync(request);
 
             if (response.Usage is not null)
             {
@@ -137,6 +138,7 @@ namespace ConduitLLM.Gateway.Controllers
             }
             finally
             {
+                await CaptureSelectedRouteAsync(request);
                 // Billing data must survive provider failures and client disconnects. Do not use the
                 // request token here: it is normally cancelled precisely when this fallback is needed.
                 await StoreStreamingResultsAsync(request, state, CancellationToken.None);

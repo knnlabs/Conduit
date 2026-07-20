@@ -10,6 +10,7 @@ export interface ModelProviderMappingDto {
   modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
   isEnabled: boolean;
   priority: number;
+  weight: number;
   createdAt: string;
   updatedAt: string;
   notes?: string;
@@ -41,6 +42,7 @@ export interface CreateModelProviderMappingDto {
   modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
   isEnabled?: boolean;
   priority?: number;
+  weight?: number;
   notes?: string;
   providerOptions?: string;
 }
@@ -57,6 +59,7 @@ export interface UpdateModelProviderMappingDto {
   modelProviderTypeAssociationId?: number;  // Links to provider-specific model metadata
   isEnabled?: boolean;
   priority?: number;
+  weight?: number;
   notes?: string;
   providerOptions?: string;
 }

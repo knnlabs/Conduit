@@ -86,6 +86,7 @@ namespace ConduitLLM.Configuration
         /// Database set for model provider mappings
         /// </summary>
         public virtual DbSet<ModelProviderMappingEntity> ModelProviderMappings { get; set; } = null!;
+        public virtual DbSet<ModelRoutePolicy> ModelRoutePolicies { get; set; } = null!;
         
         /// <summary>
         /// Database set for models
@@ -267,6 +268,7 @@ namespace ConduitLLM.Configuration
                       .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasIndex(e => new { e.BilledAtUtc, e.VirtualKeyId });
+                entity.HasIndex(e => new { e.ModelProviderMappingId, e.Timestamp });
             });
 
             // Configure ModelCost entity

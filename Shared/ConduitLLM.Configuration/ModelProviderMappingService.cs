@@ -131,6 +131,13 @@ namespace ConduitLLM.Configuration
             }
         }
 
+        public async Task<List<Entities.ModelProviderMapping>> GetMappingsByModelAliasAsync(string modelAlias)
+        {
+            if (string.IsNullOrWhiteSpace(modelAlias))
+                throw new ArgumentException("Model alias cannot be null or empty", nameof(modelAlias));
+            return await _repository.GetAllByModelNameAsync(modelAlias);
+        }
+
         public async Task UpdateMappingAsync(Entities.ModelProviderMapping mapping)
         {
             if (mapping == null)
@@ -143,7 +150,8 @@ namespace ConduitLLM.Configuration
                 _logger.LogInformation("Updating mapping: {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
 
                 // Get the existing entity
-                var existingEntity = await _repository.GetByModelNameAsync(mapping.ModelAlias);
+                // An alias may have several provider candidates; update the exact row.
+                var existingEntity = await _repository.GetByIdAsync(mapping.Id);
                 if (existingEntity == null)
                 {
                     _logger.LogWarning("Mapping not found for model alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
@@ -176,6 +184,9 @@ namespace ConduitLLM.Configuration
                 existingEntity.ProviderId = credential.Id;
                 existingEntity.IsEnabled = mapping.IsEnabled;
                 existingEntity.ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId;
+                existingEntity.ProviderOptions = mapping.ProviderOptions;
+                existingEntity.RoutingPriority = mapping.RoutingPriority;
+                existingEntity.RoutingWeight = mapping.RoutingWeight;
 
                 await _repository.UpdateAsync(existingEntity);
             }
@@ -215,19 +226,26 @@ namespace ConduitLLM.Configuration
                     return (false, "ProviderId is required for model provider mapping", null);
                 }
 
-                // Check if a mapping with the same alias already exists
-                var existingMapping = await GetMappingByModelAliasAsync(mapping.ModelAlias);
-                if (existingMapping != null)
+                var aliasMappings = await GetMappingsByModelAliasAsync(mapping.ModelAlias);
+                if (aliasMappings.Any(existing => existing.ProviderId == mapping.ProviderId))
                 {
-                    _logger.LogWarning("Mapping already exists for model alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
-                    return (false, $"A mapping for this model alias already exists: {mapping.ModelAlias}", null);
+                    return (false, $"A mapping for alias '{mapping.ModelAlias}' and provider {mapping.ProviderId} already exists.", null);
+                }
+                if (mapping.RoutingWeight is < 0.1m or > 2.0m)
+                    return (false, "RoutingWeight must be between 0.1 and 2.0.", null);
+                if (aliasMappings.Count > 0 && aliasMappings[0].ModelProviderTypeAssociation?.ModelId is int canonicalModelId)
+                {
+                    var candidateModelId = await _repository.GetCanonicalModelIdForAssociationAsync(
+                        mapping.ModelProviderTypeAssociationId);
+                    if (candidateModelId != canonicalModelId)
+                        return (false, "All mappings for an alias must reference the same canonical model.", null);
                 }
 
                 // Create the mapping
                 await AddMappingAsync(mapping);
 
                 // Return the created mapping
-                var createdMapping = await GetMappingByModelAliasAsync(mapping.ModelAlias);
+                var createdMapping = await GetMappingByIdAsync(mapping.Id);
                 return (true, null, createdMapping);
             }
             catch (Exception ex)
@@ -269,6 +287,17 @@ namespace ConduitLLM.Configuration
                     _logger.LogWarning("ProviderId is required for model provider mapping");
                     return (false, "ProviderId is required for model provider mapping");
                 }
+
+                if (mapping.RoutingWeight is < 0.1m or > 2.0m)
+                    return (false, "RoutingWeight must be between 0.1 and 2.0.");
+                var aliasMappings = await GetMappingsByModelAliasAsync(mapping.ModelAlias);
+                if (aliasMappings.Any(other => other.Id != id && other.ProviderId == mapping.ProviderId))
+                    return (false, $"A mapping for alias '{mapping.ModelAlias}' and provider {mapping.ProviderId} already exists.");
+                var canonicalIds = aliasMappings.Where(other => other.Id != id)
+                    .Select(other => other.ModelProviderTypeAssociation?.ModelId).Where(modelId => modelId.HasValue).Distinct().ToList();
+                if (canonicalIds.Count > 0 && await _repository.GetCanonicalModelIdForAssociationAsync(
+                    mapping.ModelProviderTypeAssociationId) != canonicalIds[0])
+                    return (false, "All mappings for an alias must reference the same canonical model.");
 
                 // Update the mapping
                 await UpdateMappingAsync(mapping);

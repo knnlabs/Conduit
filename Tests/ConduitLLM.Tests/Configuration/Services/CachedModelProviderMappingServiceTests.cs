@@ -242,7 +242,7 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             _mockCacheManager
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, default))
-                .ReturnsAsync(3);
+                .ReturnsAsync(4);
 
             // Act
             await _cachedService.UpdateMappingAsync(mapping);
@@ -252,7 +252,7 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Verify cache invalidation
             _mockCacheManager.Verify(x => x.RemoveManyAsync(
-                It.Is<IEnumerable<string>>(keys => keys.Count() == 3),
+                It.Is<IEnumerable<string>>(keys => keys.Count() == 4),
                 CacheRegion.ModelMetadata,
                 default), Times.Once);
         }

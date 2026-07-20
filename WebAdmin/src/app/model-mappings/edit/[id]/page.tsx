@@ -76,6 +76,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
   const [modelAlias, setModelAlias] = useState<string>('');
   const [providerId, setProviderId] = useState<string>('');
   const [priority, setPriority] = useState<number>(100);
+  const [weight, setWeight] = useState<number>(1);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [notes, setNotes] = useState<string>('');
   
@@ -155,6 +156,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       setModelAlias(mappingData.modelAlias);
       setProviderId(mappingData.providerId.toString());
       setPriority(mappingData.priority ?? 100);
+      setWeight(mappingData.weight ?? 1);
       setIsEnabled(mappingData.isEnabled);
       setNotes(mappingData.notes ?? '');
 
@@ -173,11 +175,11 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
     }
     
     const duplicate = existingMappings.find(m => 
-      m.modelAlias === value && m.id !== mappingId
+      m.modelAlias === value && m.providerId.toString() === providerId && m.id !== mappingId
     );
     
     if (duplicate) {
-      setModelAliasError('Model alias already exists');
+      setModelAliasError('This alias/provider candidate already exists');
       return false;
     }
     
@@ -216,6 +218,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
         providerModelId: associationDetails?.identifier ?? currentMapping?.providerModelId ?? '',
         modelProviderTypeAssociationId: currentMapping?.modelProviderTypeAssociationId,
         priority,
+        weight,
         isEnabled,
         notes: notes || undefined,
       };
@@ -393,6 +396,17 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
               max={1000}
               value={priority}
               onChange={(val) => setPriority(Number(val) || 100)}
+            />
+
+            <NumberInput
+              label="Balanced score weight"
+              description="Multiplier applied after cost, speed, and quality scoring (0.1–2.0)"
+              min={0.1}
+              max={2}
+              step={0.1}
+              decimalScale={2}
+              value={weight}
+              onChange={(val) => setWeight(Number(val) || 1)}
             />
 
             <Textarea

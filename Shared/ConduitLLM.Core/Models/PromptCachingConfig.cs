@@ -4,7 +4,7 @@ namespace ConduitLLM.Core.Models;
 
 public static class PromptCachingConstants
 {
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = 3;
     public const string SettingsKey = "PromptCaching.Config";
     public const int MaxExplicitBreakpoints = 4;
 }
@@ -50,8 +50,12 @@ public sealed class PromptCachingRule
 
 public enum PromptCachingStrategy
 {
-    OpenRouterAutomatic,
-    OpenRouterExplicit
+    Automatic,
+    Explicit,
+    [Obsolete("Migrated to Automatic in schema v3.")]
+    OpenRouterAutomatic = Automatic,
+    [Obsolete("Migrated to Explicit in schema v3.")]
+    OpenRouterExplicit = Explicit
 }
 
 public sealed class CacheInjectionPoint
@@ -71,6 +75,7 @@ public sealed class PromptCachingIntent
     public required PromptCachingStrategy Strategy { get; init; }
     public string? Ttl { get; init; }
     public IReadOnlyList<CacheInjectionPoint> InjectionPoints { get; init; } = Array.Empty<CacheInjectionPoint>();
+    public string? PromptCacheKey { get; init; }
 }
 
 public sealed record PromptCachingCapability(

@@ -86,8 +86,8 @@ namespace ConduitLLM.Core
                 return await CreateChatCompletionWithFunctionsAsync(request, apiKey, virtualKeyId ?? 0, cancellationToken);
             }
 
-            // Get the appropriate client from the factory based on the model alias in the request
-            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
+            // Get a chat-routed client; non-chat APIs continue to use deterministic alias mapping.
+            ILLMClient client = await GetChatClientAsync(request, cancellationToken);
 
             // Call the client's method, passing the optional apiKey
             // Exceptions specific to providers (like communication errors) are expected to bubble up from the client.
@@ -139,7 +139,7 @@ namespace ConduitLLM.Core
             else
             {
                 // Standard streaming without function calling
-                ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
+                ILLMClient client = await GetChatClientAsync(request, cancellationToken);
                 await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                 {
                     yield return chunk;
@@ -193,7 +193,7 @@ namespace ConduitLLM.Core
             var maxIterations = request.MaxAgenticIterations ?? 20;
             var agenticModeEnabled = request.EnableAgenticMode ?? true;
 
-            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
+            ILLMClient client = await GetChatClientAsync(request, cancellationToken);
             ChatCompletionResponse? response = null;
             Usage? accumulatedUsage = null;
 
@@ -354,7 +354,7 @@ namespace ConduitLLM.Core
             var agenticModeEnabled = request.EnableAgenticMode ?? true;
             var maxIterations = request.MaxAgenticIterations ?? 5;
 
-            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
+            ILLMClient client = await GetChatClientAsync(request, cancellationToken);
             var iteration = 0;
             Usage? accumulatedUsage = null;
 
@@ -733,6 +733,18 @@ namespace ConduitLLM.Core
             }
 
             return request;
+        }
+
+        private async Task<ILLMClient> GetChatClientAsync(
+            ChatCompletionRequest request,
+            CancellationToken cancellationToken)
+        {
+            // Some third-party and test factories compiled against the legacy
+            // interface return null for an unconfigured default-interface call.
+            // Preserve single-route compatibility while provider-aware factories
+            // override GetClientForChatAsync.
+            return await _clientFactory.GetClientForChatAsync(request, cancellationToken)
+                ?? await _clientFactory.GetClientAsync(request.Model, cancellationToken);
         }
 
         /// <summary>

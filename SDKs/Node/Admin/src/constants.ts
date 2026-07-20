@@ -215,11 +215,14 @@ export const ENDPOINTS = {
   PROMPT_CACHING: {
     CONFIG: '/api/prompt-caching/config',
     CAPABILITIES: '/api/prompt-caching/capabilities',
+    ANALYTICS: '/api/prompt-caching/analytics',
   },
 
   // Configuration endpoints
   CONFIG: {
     ROUTING: '/api/config/routing',
+    ROUTING_DEFAULTS: '/api/config/routing/defaults',
+    ROUTING_ALIAS: (alias: string) => `/api/config/routing/aliases/${encodeURIComponent(alias)}`,
     CACHING: {
       BASE: '/api/config/caching',
       CLEAR: (cacheId: string) => `/api/config/caching/${cacheId}/clear`,

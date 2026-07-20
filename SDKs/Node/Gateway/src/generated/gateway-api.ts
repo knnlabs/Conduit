@@ -2446,6 +2446,8 @@ export interface components {
       stream?: boolean | null;
       stop?: string[] | null;
       user?: string | null;
+      /** @description Stable conversation affinity identifier. The body takes precedence over X-Conduit-Session-Id. */
+      session_id?: string | null;
       tools?: components["schemas"]["Tool"][] | null;
       tool_choice?: components["schemas"]["ToolChoice"];
       response_format?: components["schemas"]["ResponseFormat"];

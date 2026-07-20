@@ -56,7 +56,10 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// The priority of this mapping (lower values have higher priority)
         /// </summary>
-        public int Priority { get; set; } = 1;
+        public int Priority { get; set; } = 100;
+
+        [Range(0.1, 2.0)]
+        public decimal Weight { get; set; } = 1.0m;
 
         /// <summary>
         /// Whether this mapping is currently enabled

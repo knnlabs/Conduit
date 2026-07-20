@@ -786,6 +786,12 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<string>("ProviderOptions")
                         .HasColumnType("text");
 
+                    b.Property<int>("RoutingPriority")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("RoutingWeight")
+                        .HasColumnType("decimal(4, 2)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -869,6 +875,64 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasDatabaseName("IX_ModelIdentifier_Provider_Identifier_Unique");
 
                     b.ToTable("ModelIdentifiers", (string)null);
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelRoutePolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AffinityTtlSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("CacheAffinityEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("CostWeight")
+                        .HasColumnType("decimal(4, 3)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MaxAffinityScorePenalty")
+                        .HasColumnType("decimal(4, 3)");
+
+                    b.Property<string>("ModelAlias")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("QualityWeight")
+                        .HasColumnType("decimal(4, 3)");
+
+                    b.Property<decimal>("SpeedWeight")
+                        .HasColumnType("decimal(4, 3)");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModelAlias")
+                        .IsUnique();
+
+                    b.ToTable("ModelRoutePolicies", t =>
+                        {
+                            t.HasCheckConstraint("CK_ModelRoutePolicy_Affinity", "\"AffinityTtlSeconds\" > 0 AND \"MaxAffinityScorePenalty\" >= 0");
+
+                            t.HasCheckConstraint("CK_ModelRoutePolicy_Weights", "\"CostWeight\" >= 0 AND \"SpeedWeight\" >= 0 AND \"QualityWeight\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelSeries", b =>
@@ -1351,8 +1415,14 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int?>("BillingMethod")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("CacheWritePremium")
+                        .HasColumnType("decimal(18, 8)");
+
                     b.Property<int?>("CachedInputTokens")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("CachedReadSavings")
+                        .HasColumnType("decimal(18, 8)");
 
                     b.Property<int?>("CachedWriteTokens")
                         .HasColumnType("integer");
@@ -1375,8 +1445,17 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int?>("ModelProviderMappingId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("OutputTokens")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("PromptCachingEligible")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("PromptCachingPolicyApplied")
+                        .HasColumnType("boolean");
 
                     b.Property<decimal?>("ProviderCostMarkupMultiplier")
                         .HasColumnType("decimal(18, 8)");
@@ -1403,6 +1482,16 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<double>("ResponseTimeMs")
                         .HasColumnType("double precision");
 
+                    b.Property<bool>("RoutingAffinityUsed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RoutingDecisionReason")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("RoutingFailoverCount")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("StatusCode")
                         .HasColumnType("integer");
 
@@ -1421,6 +1510,8 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("VirtualKeyId");
 
                     b.HasIndex("BilledAtUtc", "VirtualKeyId");
+
+                    b.HasIndex("ModelProviderMappingId", "Timestamp");
 
                     b.ToTable("RequestLogs");
                 });

@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.PromptCaching;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Models;
@@ -10,6 +11,7 @@ using ConduitLLM.Core.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Admin.Controllers;
 
@@ -27,6 +29,7 @@ public class PromptCachingController : AdminControllerBase
 
     private readonly IAdminGlobalSettingService _globalSettingService;
     private readonly IGlobalSettingsCacheService _cacheService;
+    private readonly IDbContextFactory<ConduitDbContext>? _dbContextFactory;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -39,14 +42,17 @@ public class PromptCachingController : AdminControllerBase
     /// <param name="globalSettingService">The global setting service for CRUD operations.</param>
     /// <param name="cacheService">The cache service for reading and invalidating settings.</param>
     /// <param name="logger">The logger instance.</param>
+    /// <param name="dbContextFactory">Optional context factory used for prompt-cache analytics.</param>
     public PromptCachingController(
         IAdminGlobalSettingService globalSettingService,
         IGlobalSettingsCacheService cacheService,
-        ILogger<PromptCachingController> logger)
+        ILogger<PromptCachingController> logger,
+        IDbContextFactory<ConduitDbContext>? dbContextFactory = null)
         : base(logger)
     {
         _globalSettingService = globalSettingService ?? throw new ArgumentNullException(nameof(globalSettingService));
         _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
+        _dbContextFactory = dbContextFactory;
     }
 
     /// <summary>
@@ -77,6 +83,7 @@ public class PromptCachingController : AdminControllerBase
         {
             config = null;
         }
+        if (config is not null) config = PromptCachingPolicyResolver.Migrate(config);
         var errors = config is null ? Array.Empty<string>() : PromptCachingPolicyResolver.Validate(config);
         if (config == null || errors.Count > 0)
         {
@@ -162,7 +169,7 @@ public class PromptCachingController : AdminControllerBase
 
     [HttpGet("capabilities")]
     [ProducesResponseType(typeof(IReadOnlyList<PromptCachingCapabilityDto>), StatusCodes.Status200OK)]
-    public IActionResult GetCapabilities() => Ok(PromptCachingCapabilityCatalog.All.Select(c => new PromptCachingCapabilityDto
+    public IActionResult GetCapabilities() => Ok(PromptCachingProviderAdapters.Capabilities.Select(c => new PromptCachingCapabilityDto
     {
         Provider = c.Provider,
         ModelPattern = c.ModelPattern,
@@ -172,6 +179,51 @@ public class PromptCachingController : AdminControllerBase
         MaxBreakpoints = c.MaxBreakpoints,
         ProviderManaged = c.ProviderManaged
     }).ToList());
+
+    [HttpGet("analytics")]
+    [ProducesResponseType(typeof(PromptCachingAnalyticsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAnalytics(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] string? alias = null,
+        [FromQuery] string? provider = null,
+        [FromQuery] int? mappingId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_dbContextFactory is null) return StatusCode(503, "Analytics storage is unavailable.");
+        var end = to?.ToUniversalTime() ?? DateTime.UtcNow;
+        var start = from?.ToUniversalTime() ?? end.AddHours(-24);
+        if (start > end || end - start > TimeSpan.FromDays(90))
+            return BadRequest("The analytics range must be ordered and no longer than 90 days.");
+
+        await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.RequestLogs.AsNoTracking().Where(log => log.Timestamp >= start && log.Timestamp <= end && log.RequestType == "chat");
+        if (!string.IsNullOrWhiteSpace(alias)) query = query.Where(log => log.ModelName == alias);
+        if (!string.IsNullOrWhiteSpace(provider)) query = query.Where(log => log.ProviderType == provider);
+        if (mappingId.HasValue) query = query.Where(log => log.ModelProviderMappingId == mappingId);
+        var rows = await query.Select(log => new
+        {
+            log.ProviderType, log.ModelProviderMappingId, log.PromptCachingEligible, log.CachedInputTokens,
+            log.CachedWriteTokens, log.CachedReadSavings, log.CacheWritePremium, log.ResponseTimeMs,
+            log.RoutingAffinityUsed, log.RoutingFailoverCount
+        }).ToListAsync(cancellationToken);
+        var hits = rows.Where(row => row.CachedInputTokens is > 0).ToList();
+        var misses = rows.Where(row => row.PromptCachingEligible && row.CachedInputTokens is not > 0).ToList();
+        return Ok(new PromptCachingAnalyticsDto
+        {
+            From = start, To = end, Requests = rows.Count, EligibleMisses = misses.Count,
+            ReadEvents = hits.Count, WriteEvents = rows.Count(row => row.CachedWriteTokens is > 0),
+            UnknownOutcomes = rows.Count(row => row.PromptCachingEligible && !row.CachedInputTokens.HasValue && !row.CachedWriteTokens.HasValue),
+            CachedTokens = rows.Sum(row => (long)(row.CachedInputTokens ?? 0)),
+            GrossSavings = rows.Sum(row => row.CachedReadSavings), WritePremium = rows.Sum(row => row.CacheWritePremium),
+            HitLatencyMs = hits.Count == 0 ? null : hits.Average(row => row.ResponseTimeMs),
+            MissLatencyMs = misses.Count == 0 ? null : misses.Average(row => row.ResponseTimeMs),
+            AffinityReuse = rows.Count(row => row.RoutingAffinityUsed), Failovers = rows.Sum(row => row.RoutingFailoverCount),
+            ProviderDistribution = rows.GroupBy(row => new { Provider = row.ProviderType ?? "unknown", row.ModelProviderMappingId })
+                .Select(group => new PromptCachingProviderDistributionDto
+                { Provider = group.Key.Provider, MappingId = group.Key.ModelProviderMappingId, Requests = group.Count() }).ToList()
+        });
+    }
 
     private static PromptCachingConfigDto ToDto(PromptCachingConfig config) => new()
     {

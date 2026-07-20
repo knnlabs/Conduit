@@ -8,7 +8,7 @@ public class PromptCachingPolicyTests
 {
     private static PromptCachingConfig Config(PromptCachingRule rule) => new()
     {
-        SchemaVersion = 2,
+        SchemaVersion = 3,
         Enabled = true,
         Rules = [rule]
     };
@@ -21,14 +21,14 @@ public class PromptCachingPolicyTests
             Name = "Claude",
             Provider = "OpenRouter",
             ModelPattern = "anthropic/*",
-            Strategy = PromptCachingStrategy.OpenRouterAutomatic,
+            Strategy = PromptCachingStrategy.Automatic,
             Ttl = "1h"
         });
 
         var intent = PromptCachingPolicyResolver.Resolve(config, "OpenRouter", "anthropic/claude-sonnet-4");
 
         intent.Should().NotBeNull();
-        intent!.Strategy.Should().Be(PromptCachingStrategy.OpenRouterAutomatic);
+        intent!.Strategy.Should().Be(PromptCachingStrategy.Automatic);
         intent.Ttl.Should().Be("1h");
     }
 
@@ -40,7 +40,7 @@ public class PromptCachingPolicyTests
             Name = "Claude",
             Provider = "OpenRouter",
             ModelPattern = "anthropic/*",
-            Strategy = PromptCachingStrategy.OpenRouterAutomatic
+            Strategy = PromptCachingStrategy.Automatic
         });
 
         PromptCachingPolicyResolver.Resolve(config, "Replicate", "anthropic/claude-sonnet-4").Should().BeNull();
@@ -54,7 +54,7 @@ public class PromptCachingPolicyTests
             Name = "Qwen",
             Provider = "OpenRouter",
             ModelPattern = "qwen/*",
-            Strategy = PromptCachingStrategy.OpenRouterExplicit,
+            Strategy = PromptCachingStrategy.Explicit,
             InjectionPoints = [new CacheInjectionPoint { Role = "system", Index = 0 }]
         });
 
@@ -66,12 +66,12 @@ public class PromptCachingPolicyTests
     {
         var config = new PromptCachingConfig
         {
-            SchemaVersion = 2,
+            SchemaVersion = 3,
             Enabled = true,
             Rules =
             [
-                new PromptCachingRule { Name = "First", Provider = "OpenRouter", ModelPattern = "anthropic/*", Strategy = PromptCachingStrategy.OpenRouterAutomatic, Ttl = "5m" },
-                new PromptCachingRule { Name = "Second", Provider = "OpenRouter", ModelPattern = "anthropic/*", Strategy = PromptCachingStrategy.OpenRouterAutomatic, Ttl = "1h" }
+                new PromptCachingRule { Name = "First", Provider = "OpenRouter", ModelPattern = "anthropic/*", Strategy = PromptCachingStrategy.Automatic, Ttl = "5m" },
+                new PromptCachingRule { Name = "Second", Provider = "OpenRouter", ModelPattern = "anthropic/*", Strategy = PromptCachingStrategy.Automatic, Ttl = "1h" }
             ]
         };
 
