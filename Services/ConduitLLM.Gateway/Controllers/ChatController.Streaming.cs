@@ -16,6 +16,8 @@ namespace ConduitLLM.Gateway.Controllers
 {
     public partial class ChatController
     {
+        private static readonly TimeSpan StreamingAccountingTimeout = TimeSpan.FromSeconds(10);
+
         private async Task<IActionResult> HandleNonStreamingRequestAsync(
             ChatCompletionRequest request,
             int? virtualKeyId,
@@ -118,30 +120,70 @@ namespace ConduitLLM.Gateway.Controllers
                     AccumulateContent(chunk, state);
                     AccumulateToolCalls(chunk, state);
                     CaptureUsageData(chunk, request, state);
-                    await WriteChunkToStream(chunk, sseWriter, metricsCollector);
-                    await EmitPeriodicMetrics(chunk, sseWriter, metricsCollector);
+                    await WriteChunkToStream(chunk, sseWriter, metricsCollector, cancellationToken);
+                    state.Outcome = StreamingOutcome.Emitting;
+                    await EmitPeriodicMetrics(chunk, sseWriter, metricsCollector, cancellationToken);
                 }
 
-                await WriteStreamingCompletionEventsAsync(state, metricsCollector, sseWriter);
+                await WriteStreamingCompletionEventsAsync(state, metricsCollector, sseWriter, cancellationToken);
+                state.Outcome = StreamingOutcome.Completed;
 
                 _logger.LogInformation("Streaming completed: {ChunkCount} chunks over {Duration}ms",
                     state.ChunkCount, (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
                 GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "success", operationStopwatch.Elapsed.TotalSeconds);
                 GatewayOpsMetrics.RecordStreamingRequest(request.Model, "completed");
             }
+            catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                state.Outcome = StreamingOutcome.ClientDisconnected;
+                _logger.LogInformation("Streaming request was aborted by the client after {ChunkCount} chunks", state.ChunkCount);
+                GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "cancelled", operationStopwatch.Elapsed.TotalSeconds);
+                GatewayOpsMetrics.RecordStreamingRequest(request.Model, "client_disconnected");
+            }
             catch (Exception streamEx)
             {
+                state.Outcome = StreamingOutcome.ProviderFailed;
                 _logger.LogError(streamEx, "Error in stream processing");
-                await sseWriter.WriteErrorEventAsync(streamEx.Message);
+
+                if (!sseWriter.HasStarted)
+                {
+                    throw;
+                }
+
+                if (!HttpContext.RequestAborted.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await sseWriter.WriteErrorEventAsync(
+                            "The provider stream terminated before completion.",
+                            cancellationToken);
+                    }
+                    catch (Exception writeEx) when (writeEx is IOException or OperationCanceledException)
+                    {
+                        state.Outcome = StreamingOutcome.ClientDisconnected;
+                        _logger.LogDebug(writeEx, "Client disconnected before the streaming error event could be written");
+                    }
+                }
+
                 GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "error", operationStopwatch.Elapsed.TotalSeconds);
                 GatewayOpsMetrics.RecordStreamingRequest(request.Model, "error");
             }
             finally
             {
-                await CaptureSelectedRouteAsync(request);
+                try
+                {
+                    await CaptureSelectedRouteAsync(request);
+                }
+                catch (Exception routeCaptureEx)
+                {
+                    _logger.LogError(routeCaptureEx, "Failed to capture the selected streaming route for accounting");
+                }
+
                 // Billing data must survive provider failures and client disconnects. Do not use the
                 // request token here: it is normally cancelled precisely when this fallback is needed.
-                await StoreStreamingResultsAsync(request, state, CancellationToken.None);
+                // The server-owned budget prevents a failed client transport from pinning the request forever.
+                using var accountingTimeout = new CancellationTokenSource(StreamingAccountingTimeout);
+                await StoreStreamingResultsAsync(request, state, accountingTimeout.Token);
             }
         }
 
@@ -152,6 +194,7 @@ namespace ConduitLLM.Gateway.Controllers
             return async (toolEvent, ct) =>
             {
                 await sseWriter.WriteToolExecutingEventAsync(toolEvent, ct);
+                state.Outcome = StreamingOutcome.Emitting;
 
                 if (toolEvent.Status == "completed" || toolEvent.Status == "failed")
                 {
@@ -240,23 +283,25 @@ namespace ConduitLLM.Gateway.Controllers
         private async Task WriteChunkToStream(
             ChatCompletionChunk chunk,
             EnhancedSSEResponseWriter sseWriter,
-            StreamingMetricsCollector metricsCollector)
+            StreamingMetricsCollector metricsCollector,
+            CancellationToken cancellationToken)
         {
             if (chunk.Choices?.Count > 0 && !string.IsNullOrEmpty(chunk.Choices[0].Delta?.Reasoning))
             {
-                await sseWriter.WriteReasoningEventAsync(chunk.Choices[0].Delta.Reasoning!);
-                await sseWriter.WriteContentEventAsync(chunk);
+                await sseWriter.WriteReasoningEventAsync(chunk.Choices[0].Delta.Reasoning!, cancellationToken);
+                await sseWriter.WriteContentEventAsync(chunk, cancellationToken);
             }
             else
             {
-                await sseWriter.WriteContentEventAsync(chunk);
+                await sseWriter.WriteContentEventAsync(chunk, cancellationToken);
             }
         }
 
         private async Task EmitPeriodicMetrics(
             ChatCompletionChunk chunk,
             EnhancedSSEResponseWriter sseWriter,
-            StreamingMetricsCollector metricsCollector)
+            StreamingMetricsCollector metricsCollector,
+            CancellationToken cancellationToken)
         {
             if (chunk?.Choices?.Count > 0)
             {
@@ -276,7 +321,7 @@ namespace ConduitLLM.Gateway.Controllers
                 if (metricsCollector.ShouldEmitMetrics())
                 {
                     _logger.LogDebug("Emitting streaming metrics");
-                    await sseWriter.WriteMetricsEventAsync(metricsCollector.GetMetrics());
+                    await sseWriter.WriteMetricsEventAsync(metricsCollector.GetMetrics(), cancellationToken);
                 }
             }
         }
@@ -341,7 +386,8 @@ namespace ConduitLLM.Gateway.Controllers
         private async Task WriteStreamingCompletionEventsAsync(
             StreamingAccumulatorState state,
             StreamingMetricsCollector metricsCollector,
-            EnhancedSSEResponseWriter sseWriter)
+            EnhancedSSEResponseWriter sseWriter,
+            CancellationToken cancellationToken)
         {
             _logger.LogInformation("StreamingUsage before GetFinalMetrics: {Usage}",
                 state.StreamingUsage != null ?
@@ -353,8 +399,8 @@ namespace ConduitLLM.Gateway.Controllers
             _logger.LogInformation("FinalMetrics after GetFinalMetrics: PromptTokens={Prompt}, CompletionTokens={Completion}, TotalTokens={Total}",
                 finalMetrics.PromptTokens, finalMetrics.CompletionTokens, finalMetrics.TotalTokens);
 
-            await sseWriter.WriteFinalMetricsEventAsync(finalMetrics);
-            await sseWriter.WriteDoneEventAsync();
+            await sseWriter.WriteFinalMetricsEventAsync(finalMetrics, cancellationToken);
+            await sseWriter.WriteDoneEventAsync(cancellationToken);
         }
 
         private async Task EstimateStreamingUsageAsync(
@@ -398,6 +444,7 @@ namespace ConduitLLM.Gateway.Controllers
         private sealed class StreamingAccumulatorState
         {
             public int ChunkCount { get; set; }
+            public StreamingOutcome Outcome { get; set; }
             public Usage? StreamingUsage { get; set; }
             public string? StreamingModel { get; set; }
             public StringBuilder ContentAccumulator { get; } = new();
@@ -405,6 +452,15 @@ namespace ConduitLLM.Gateway.Controllers
             public List<FunctionExecutionResultForLogging> FunctionExecutionResults { get; } = new();
             public decimal TotalFunctionCost { get; set; }
             public Dictionary<int, Usage> ProviderCalls { get; } = new();
+        }
+
+        private enum StreamingOutcome
+        {
+            NotStarted,
+            Emitting,
+            Completed,
+            ProviderFailed,
+            ClientDisconnected
         }
     }
 }

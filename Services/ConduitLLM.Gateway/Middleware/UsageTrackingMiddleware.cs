@@ -9,8 +9,10 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Controllers;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.Utilities;
+using Microsoft.Extensions.Options;
 using Prometheus;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
@@ -24,13 +26,17 @@ namespace ConduitLLM.Gateway.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<UsageTrackingMiddleware> _logger;
+        private readonly long _maximumLegacyResponseCaptureBytes;
 
         public UsageTrackingMiddleware(
             RequestDelegate next,
-            ILogger<UsageTrackingMiddleware> logger)
+            ILogger<UsageTrackingMiddleware> logger,
+            IOptions<UsageTrackingOptions>? options = null)
         {
             _next = next ?? throw new ArgumentNullException(nameof(next));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _maximumLegacyResponseCaptureBytes =
+                options?.Value.MaximumLegacyResponseCaptureBytes ?? new UsageTrackingOptions().MaximumLegacyResponseCaptureBytes;
         }
 
         /// <summary>
@@ -66,12 +72,17 @@ namespace ConduitLLM.Gateway.Middleware
             using var activity = GatewayRequestMetrics.StartUsageTrackingActivity(
                 UsageExtractor.DetermineRequestType(context.Request.Path));
 
-            // For non-streaming responses, intercept the response body
+            // Legacy JSON endpoints still derive usage from the response body. The adaptive
+            // stream bypasses capture as soon as an SSE response sets its content type and
+            // performs its first write/flush.
             var originalBodyStream = context.Response.Body;
 
             try
             {
-                using var responseBody = new MemoryStream();
+                await using var responseBody = new ConditionalResponseCaptureStream(
+                    context.Response,
+                    originalBodyStream,
+                    _maximumLegacyResponseCaptureBytes);
                 context.Response.Body = responseBody;
 
                 try
@@ -94,17 +105,32 @@ namespace ConduitLLM.Gateway.Middleware
                 // by checking the Content-Type that was set by the controller
                 if (context.Response.ContentType?.Contains("text/event-stream") == true)
                 {
-                    _logger.LogDebug("Detected streaming response, skipping JSON parsing");
-                    // Usage was tracked before copying because the original client stream may be aborted.
-                    responseBody.Seek(0, SeekOrigin.Begin);
-                    await responseBody.CopyToAsync(originalBodyStream);
+                    _logger.LogDebug("Detected streaming response; response body used direct passthrough");
+                    return;
+                }
+
+                if (responseBody.CaptureLimitExceeded)
+                {
+                    _logger.LogError(
+                        "Legacy response capture exceeded {MaximumCaptureBytes} bytes for {Path}; " +
+                        "the response was passed through and usage accounting is incomplete",
+                        _maximumLegacyResponseCaptureBytes,
+                        LoggingSanitizer.S(context.Request.Path.ToString()));
+                    UsageMetrics.UsageTrackingFailures.WithLabels(
+                        "response_capture_limit",
+                        UsageExtractor.DetermineRequestType(context.Request.Path)).Inc();
+                    LogMissingUsageData(
+                        context,
+                        billingAuditService,
+                        "Response exceeded the legacy accounting capture limit",
+                        "response_capture_limit");
                     return;
                 }
 
                 // Process non-streaming response
                 await ProcessResponseAsync(
                     context,
-                    responseBody,
+                    responseBody.CapturedBody,
                     costCalculationService,
                     batchSpendService,
                     requestLogService,
@@ -113,8 +139,7 @@ namespace ConduitLLM.Gateway.Middleware
                     toolCostCalculationService);
 
                 // Copy the response body back to the original stream
-                responseBody.Seek(0, SeekOrigin.Begin);
-                await responseBody.CopyToAsync(originalBodyStream);
+                await responseBody.CopyCapturedBodyToOriginalAsync();
             }
             finally
             {

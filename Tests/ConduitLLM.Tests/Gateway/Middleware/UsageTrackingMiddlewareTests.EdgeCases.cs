@@ -99,6 +99,34 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
+        public async Task Streaming_Response_WritesDirectlyToOriginalBodyBeforeDownstreamCompletes()
+        {
+            var usage = new Usage { PromptTokens = 5, CompletionTokens = 7, TotalTokens = 12 };
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(657)
+                .AsOpenAI()
+                .AsStreaming(usage, "gpt-4")
+                .Build();
+            var originalBody = new MemoryStream();
+            context.Response.Body = originalBody;
+            var observedDuringDownstream = false;
+            Fixture.SetupCostForModel("gpt-4", 0.001m);
+
+            await Invoker.WithNextDelegate(async ctx =>
+            {
+                ctx.Response.ContentType = "text/event-stream";
+                await ctx.Response.Body.FlushAsync();
+                await ctx.Response.Body.WriteAsync("data: first\n\n"u8.ToArray());
+                await ctx.Response.Body.FlushAsync();
+                observedDuringDownstream = originalBody.Length > 0;
+            }).InvokeAsync(context);
+
+            Assert.True(observedDuringDownstream);
+            Assert.Equal("data: first\n\n", System.Text.Encoding.UTF8.GetString(originalBody.ToArray()));
+        }
+
+        [Fact]
         public async Task Streaming_Response_Without_Usage_Bills_Known_Function_Cost()
         {
             var context = new HttpContextBuilder()

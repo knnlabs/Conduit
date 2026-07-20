@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Converters;
+using ConduitLLM.Gateway.Options;
 
 public partial class Program
 {
@@ -26,6 +27,11 @@ public partial class Program
         builder.Services.AddOptions<ConduitSettings>()
             .Bind(builder.Configuration.GetSection("Conduit"))
             .ValidateDataAnnotations(); // Add validation if using DataAnnotations in settings classes
+
+        builder.Services.AddOptions<UsageTrackingOptions>()
+            .Bind(builder.Configuration.GetSection("UsageTracking"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
     }
 }

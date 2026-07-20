@@ -11,6 +11,9 @@ namespace ConduitLLM.Gateway.Services
         private readonly HttpResponse _response;
         private readonly JsonSerializerOptions _jsonOptions;
         private bool _headersWritten;
+        private int _doneWritten;
+
+        public bool HasStarted => _headersWritten || _response.HasStarted;
 
         public EnhancedSSEResponseWriter(HttpResponse response, JsonSerializerOptions? jsonOptions = null)
         {
@@ -25,25 +28,16 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Writes SSE headers if not already written.
         /// </summary>
-        private async Task EnsureHeadersWrittenAsync()
+        private async Task EnsureHeadersWrittenAsync(CancellationToken cancellationToken)
         {
             if (!_headersWritten)
             {
                 _response.ContentType = "text/event-stream";
-                _response.Headers.Append("Cache-Control", "no-cache");
-                _response.Headers.Append("Connection", "keep-alive");
+                _response.Headers["Cache-Control"] = "no-cache, no-transform";
                 _response.Headers.Append("X-Accel-Buffering", "no"); // Disable Nginx buffering
-                
-                // Add CORS headers if needed
-                if (_response.HttpContext.Request.Headers.ContainsKey("Origin"))
-                {
-                    _response.Headers.Append("Access-Control-Allow-Origin", "*");
-                    _response.Headers.Append("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-                    _response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization");
-                }
-                
+
                 _headersWritten = true;
-                await _response.Body.FlushAsync();
+                await _response.Body.FlushAsync(cancellationToken);
             }
         }
 
@@ -55,7 +49,7 @@ namespace ConduitLLM.Gateway.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            await EnsureHeadersWrittenAsync();
+            await EnsureHeadersWrittenAsync(cancellationToken);
             
             // OpenAI format uses just "data:" without event type
             var json = JsonSerializer.Serialize(data, _jsonOptions);
@@ -123,7 +117,7 @@ namespace ConduitLLM.Gateway.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            await EnsureHeadersWrittenAsync();
+            await EnsureHeadersWrittenAsync(cancellationToken);
             
             var json = JsonSerializer.Serialize(data, _jsonOptions);
             var eventData = new StringBuilder();
@@ -151,8 +145,13 @@ namespace ConduitLLM.Gateway.Services
         public async Task WriteDoneEventAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
-            await EnsureHeadersWrittenAsync();
+
+            if (Interlocked.Exchange(ref _doneWritten, 1) != 0)
+            {
+                return;
+            }
+
+            await EnsureHeadersWrittenAsync(cancellationToken);
             
             // OpenAI format requires just "data: [DONE]" without event type
             var doneData = Encoding.UTF8.GetBytes("data: [DONE]\n\n");
@@ -167,7 +166,7 @@ namespace ConduitLLM.Gateway.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            await EnsureHeadersWrittenAsync();
+            await EnsureHeadersWrittenAsync(cancellationToken);
             
             var keepAlive = Encoding.UTF8.GetBytes(": keep-alive\n\n");
             await _response.Body.WriteAsync(keepAlive, cancellationToken);

@@ -20,7 +20,7 @@ namespace ConduitLLM.FaultInjectionTests;
 public sealed class StreamingAbortFaultTests(BillingFaultFixture fixture)
 {
     [Fact(Timeout = 90_000)]
-    public async Task ClientDisconnect_BeforeUsageChunk_BillsEstimatedPartialStreamBeforeCopy()
+    public async Task ClientDisconnect_BeforeUsageChunk_BillsEstimatedPartialStreamAfterDirectWriteFailure()
     {
         const decimal expectedCost = 0.0042m;
         var account = await fixture.SeedAccountAsync();
@@ -57,7 +57,8 @@ public sealed class StreamingAbortFaultTests(BillingFaultFixture fixture)
             .ReturnsAsync(llmClient.Object);
         var estimator = new Mock<IUsageEstimationService>();
         estimator.Setup(service => service.EstimateUsageFromStreamingResponseAsync(
-                "fault-model", It.IsAny<List<Message>>(), "partial completion", CancellationToken.None))
+                "fault-model", It.IsAny<List<Message>>(), "partial completion",
+                It.Is<CancellationToken>(ct => ct.CanBeCanceled)))
             .ReturnsAsync(new Usage { PromptTokens = 20, CompletionTokens = 30, TotalTokens = 50 });
         var controller = new ChatController(
             new Conduit(clientFactory.Object, NullLogger<Conduit>.Instance),
@@ -92,7 +93,7 @@ public sealed class StreamingAbortFaultTests(BillingFaultFixture fixture)
             Mock.Of<IBillingAuditService>(),
             Mock.Of<IToolCostCalculationService>());
 
-        await act.Should().ThrowAsync<IOException>().WithMessage("client disconnected");
+        await act.Should().NotThrowAsync();
         await fixture.AssertAccountedForAsync(account.GroupId, expectedCost);
 
         (await batch.FlushPendingUpdatesAsync()).Should().Be(1);

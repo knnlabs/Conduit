@@ -51,7 +51,7 @@ public class ChatControllerStreamingTests
                 "test-model",
                 It.IsAny<List<Message>>(),
                 "visiblehidden",
-                It.Is<CancellationToken>(ct => !ct.CanBeCanceled)))
+                It.Is<CancellationToken>(ct => ct.CanBeCanceled)))
             .ReturnsAsync(new Usage { PromptTokens = 3, CompletionTokens = 5, TotalTokens = 8 });
 
         var controller = new ChatController(
@@ -81,6 +81,10 @@ public class ChatControllerStreamingTests
         Assert.Equal(8, usage.TotalTokens);
         Assert.Equal("test-model", controller.HttpContext.Items["StreamingModel"]);
         Assert.Equal(true, controller.HttpContext.Items["UsageIsEstimated"]);
+        var responseText = System.Text.Encoding.UTF8.GetString(
+            ((MemoryStream)controller.HttpContext.Response.Body).ToArray());
+        Assert.Contains("event: error", responseText);
+        Assert.DoesNotContain("data: [DONE]", responseText);
         estimator.VerifyAll();
     }
 
@@ -110,6 +114,30 @@ public class ChatControllerStreamingTests
         Assert.Equal(true, controller.HttpContext.Items["UsageIsEstimated"]);
         Assert.Equal(7, Assert.IsType<Usage>(controller.HttpContext.Items["StreamingUsage"]).TotalTokens);
         estimator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ProviderFailureBeforeFirstChunk_ReturnsJsonErrorWithoutStartingSse()
+    {
+        var client = new Mock<ILLMClient>();
+        client.Setup(x => x.StreamChatCompletionAsync(
+                It.IsAny<ChatCompletionRequest>(), null, It.IsAny<CancellationToken>()))
+            .Returns(ThrowBeforeFirstChunk());
+        var clientFactory = new Mock<ILLMClientFactory>();
+        clientFactory.Setup(x => x.GetClientAsync("test-model", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client.Object);
+        var estimator = new Mock<IUsageEstimationService>(MockBehavior.Strict);
+        var controller = CreateController(
+            new Conduit(clientFactory.Object, Mock.Of<ILogger<Conduit>>()),
+            estimator.Object);
+
+        var result = await controller.CreateChatCompletion(CreateRequest());
+
+        var error = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, error.StatusCode);
+        Assert.Null(controller.Response.ContentType);
+        Assert.Equal(0, controller.Response.Body.Length);
+        estimator.VerifyNoOtherCalls();
     }
 
     private static ChatController CreateController(Conduit conduit, IUsageEstimationService estimator)
@@ -186,5 +214,16 @@ public class ChatControllerStreamingTests
 
         await Task.Yield();
         throw new InvalidOperationException("Provider stream failed");
+    }
+
+    private static async IAsyncEnumerable<ChatCompletionChunk> ThrowBeforeFirstChunk()
+    {
+        await Task.Yield();
+        if (Environment.TickCount == int.MinValue)
+        {
+            yield return new ChatCompletionChunk();
+        }
+
+        throw new InvalidOperationException("Provider failed before streaming");
     }
 }
