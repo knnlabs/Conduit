@@ -1,6 +1,6 @@
 {
   "name": "@knn_labs/conduit-admin-client",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "TypeScript client library for Conduit Admin API",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

@@ -67,9 +67,10 @@ npm install @knn_labs/conduit-admin-client
 
 ## 📦 Versioning
 
-Conduit uses Semantic Versioning (MAJOR.MINOR.PATCH):
+Conduit uses Semantic Versioning (MAJOR.MINOR.PATCH), with two release channels cut from `master` via git tags:
 
-- **Docker Tags**: Images are tagged with semantic versions (e.g., `v1.0.0`), branch names, and the `latest` tag.
+- **Stable** (`v3.0.0`) → Docker `:3.0.0` + `:latest`, npm `@latest`.
+- **Beta** (`v3.0.0-beta.1`, or any pre-release suffix) → Docker `:3.0.0-beta.1` + `:beta`, npm `@beta`; a beta never moves `:latest`.
 - **Version Checking**: The WebAdmin displays the current version and can check for updates automatically.
 - **Configuration**: Version checking can be controlled via environment variables:
   ```

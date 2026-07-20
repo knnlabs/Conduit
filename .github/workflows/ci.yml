@@ -7,7 +7,6 @@ on:
     branches: [master]
 
 env:
-  REGISTRY: ghcr.io
   DOTNET_VERSION: '10.0.x'
   NODE_VERSION: '22'
 
@@ -81,11 +80,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+          # Workspaces monorepo: a single root SDK lockfile (no per-package locks exist).
           cache-dependency-path: |
             SDKs/Node/package-lock.json
-            SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Gateway/package-lock.json
-            SDKs/Node/Common/package-lock.json
             WebAdmin/package-lock.json
       
       - name: .NET Build & Test
@@ -209,14 +206,14 @@ jobs:
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
           REDIS_URL: redis://localhost:6379
 
-  # Build Docker images (push only from master)
+  # Build Docker images for validation only — never pushed from CI.
+  # All image publishing happens from `v*` tags in release.yml.
   docker:
     name: Docker - ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: validate
     permissions:
       contents: read
-      packages: write
     strategy:
       matrix:
         include:
@@ -229,91 +226,23 @@ jobs:
           - service: admin
             context: .
             dockerfile: Services/ConduitLLM.Admin/Dockerfile
-    
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-,enable=${{ github.event_name != 'pull_request' }}
-            type=sha,prefix=pr-${{ github.event.pull_request.number }}-,enable=${{ github.event_name == 'pull_request' }}
-            type=raw,value=latest,enable={{is_default_branch}}
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Build and push
+
+      # Build-only validation — images are never pushed from CI. This still catches
+      # Dockerfile and production-build breakage (notably WebAdmin's `next build`,
+      # which runs nowhere else in CI) before it can reach a release.
+      - name: Build (validation only, no push)
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: false
+          tags: conduit-${{ matrix.service }}:ci
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
-
-  # Publish NPM packages (only from master)
-  npm-publish:
-    name: NPM Publish
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
-          cache: npm
-          cache-dependency-path: |
-            SDKs/Node/package-lock.json
-            SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Gateway/package-lock.json
-            SDKs/Node/Common/package-lock.json
-
-      - name: Build and Publish
-        run: |
-          cd SDKs/Node
-          npm ci
-          npm run build
-          
-          # Generate unique timestamp suffix for continuous releases
-          TIMESTAMP=$(date +%s)
-          
-          # Update version and publish Common first (others depend on it)
-          cd Common
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
-          npm publish --tag next --access public
-          
-          # Update version and publish Admin
-          cd ../Admin
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
-          npm publish --tag next --access public
-          
-          # Update version and publish Gateway
-          cd ../Gateway
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
-          npm publish --tag next --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

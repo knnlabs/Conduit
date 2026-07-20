@@ -8,26 +8,35 @@ This repository uses a simplified, industry-standard CI/CD pipeline.
 **Triggers:** Push to `master` or `dev`, Pull requests to `master`
 
 **What it does:**
-- Validates code builds and tests pass
-- Builds Docker images (pushes only from `master`)
-- Publishes NPM packages with `next` tag (only from `master`)
+- Validates code builds and tests pass (.NET, SDK, WebAdmin lint/type-check)
+- Builds all three Docker images for validation only — **never pushes** (this still
+  catches Dockerfile / production-build breakage, notably WebAdmin's `next build`,
+  which runs nowhere else in CI)
 
-**Artifacts produced from `master`:**
-- Docker: `ghcr.io/nickna/conduit-{webadmin,http,admin}:latest`
-- NPM: `@conduitllm/{admin,core}@next`
+CI publishes nothing. Every Docker image and npm package is published from a `v*`
+tag by the Release workflow.
 
 ### 2. Release (`release.yml`)
-**Triggers:** Push of tags matching `v*`
+**Triggers:** Push of a tag matching `v*` (cut from `master`)
+
+Two channels, decided by the tag name — a tag is a **pre-release** iff its name
+contains a hyphen (SemVer rule):
+
+| Tag | Channel | Docker | npm | GitHub Release |
+|---|---|---|---|---|
+| `v3.0.0` | stable | `:3.0.0` + `:latest` | `3.0.0` `@latest` | Latest |
+| `v3.0.0-beta.1` | beta | `:3.0.0-beta.1` + `:beta` | `3.0.0-beta.1` `@beta` | Pre-release |
 
 **What it does:**
-- Creates GitHub Release with auto-generated notes
-- Builds and pushes versioned Docker images
-- Publishes versioned NPM packages
+- Creates a GitHub Release with auto-generated notes (pre-release for beta tags;
+  only a stable tag becomes the repo's "Latest")
+- Builds and pushes the three versioned Docker images plus the channel tag
+  (`:latest` / `:beta`)
+- Publishes the three npm packages — `@knn_labs/conduit-common`,
+  `@knn_labs/conduit-admin-client`, `@knn_labs/conduit-gateway-client` — at the tag
+  version on the channel dist-tag (`@latest` / `@beta`)
 
-**Artifacts produced:**
-- Docker: `ghcr.io/nickna/conduit-{webadmin,http,admin}:1.2.3`
-- NPM: `@conduitllm/{admin,core}@1.2.3`
-- GitHub Release with changelog
+All three artifact types share one unified product version, driven by the tag.
 
 ### 3. CodeQL (`codeql-analysis.yml`)
 **Triggers:** Push to `master` or `dev`, Weekly schedule, Manual dispatch
@@ -39,16 +48,25 @@ This repository uses a simplified, industry-standard CI/CD pipeline.
 
 ## Release Process
 
-1. **Continuous delivery from `master`:**
-   - Every merge to `master` automatically updates `:latest` Docker images
-   - NPM packages are published with `next` tag for early adopters
+Releases are cut from `master` by pushing a version tag. The whole product — .NET /
+Docker and all three npm packages — shares one version, so bump them together.
 
-2. **Stable releases:**
+1. **Bump the version** in `Directory.Build.props` and in the three SDK
+   `package.json` files (`SDKs/Node/{Common,Admin,Gateway}`) to the same number,
+   commit, and merge to `master`.
+2. **Stable release:**
    ```bash
-   git tag v1.2.3
-   git push origin v1.2.3
+   git tag v3.0.0
+   git push origin v3.0.0
    ```
-   This triggers the release workflow which creates versioned artifacts.
+   Publishes Docker `:3.0.0` + `:latest` and npm `3.0.0` `@latest`.
+3. **Beta release** — any pre-release suffix (a `-…`):
+   ```bash
+   git tag v3.0.0-beta.1
+   git push origin v3.0.0-beta.1
+   ```
+   Publishes Docker `:3.0.0-beta.1` + `:beta` and npm `3.0.0-beta.1` `@beta`.
+   A beta never moves `:latest` / `@latest`.
 
 ## Artifact Locations
 
