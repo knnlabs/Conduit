@@ -53,12 +53,12 @@
       "id": 1,
       "gridPos": {"h": 5, "w": 6, "x": 0, "y": 2},
       "type": "stat",
-      "title": "Cost Savings (24h)",
-      "description": "Estimated money saved by prompt caching in the last 24 hours",
+      "title": "Net Cache Savings (24h)",
+      "description": "Estimated cache-read savings less cache-write premiums in the last 24 hours",
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(increase(conduit_prompt_caching_savings_dollars{provider=~\"$provider\", model=~\"$model\"}[24h]))",
+          "expr": "sum(increase(conduit_prompt_caching_savings_dollars{provider=~\"$provider\", model=~\"$model\"}[24h])) - sum(increase(conduit_prompt_caching_write_premium_dollars{provider=~\"$provider\", model=~\"$model\"}[24h]))",
           "refId": "A"
         }
       ],
@@ -95,7 +95,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"hit\"}[5m])) / sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss\"}[5m])) * 100",
+          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"hit\"}[5m])) / sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss|write\"}[5m])) * 100",
           "refId": "A"
         }
       ],
@@ -307,7 +307,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"hit\"}[5m])) / sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss\"}[5m])) * 100",
+          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"hit\"}[5m])) / sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss|write\"}[5m])) * 100",
           "legendFormat": "Hit Rate %",
           "refId": "A"
         }
@@ -368,14 +368,20 @@
       "id": 7,
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
       "type": "timeseries",
-      "title": "Cost Savings Over Time",
-      "description": "Running rate of cost savings from prompt caching in dollars per minute.",
+      "title": "Cache Economics Over Time",
+      "description": "Cache-read savings and cache-write premiums in dollars per minute.",
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "expr": "sum(rate(conduit_prompt_caching_savings_dollars{provider=~\"$provider\", model=~\"$model\"}[5m])) * 60",
           "legendFormat": "Savings ($/min)",
           "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_caching_write_premium_dollars{provider=~\"$provider\", model=~\"$model\"}[5m])) * -60",
+          "legendFormat": "Write premium ($/min)",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -430,7 +436,7 @@
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(increase(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss\"}[24h])) by (model)",
+          "expr": "sum(increase(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"hit|miss|write\"}[24h])) by (model)",
           "legendFormat": "{{model}}",
           "refId": "total",
           "instant": true,
@@ -446,7 +452,7 @@
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(increase(conduit_prompt_caching_savings_dollars{provider=~\"$provider\", model=~\"$model\"}[24h])) by (model)",
+          "expr": "sum(increase(conduit_prompt_caching_savings_dollars{provider=~\"$provider\", model=~\"$model\"}[24h])) by (model) - sum(increase(conduit_prompt_caching_write_premium_dollars{provider=~\"$provider\", model=~\"$model\"}[24h])) by (model)",
           "legendFormat": "{{model}}",
           "refId": "savings",
           "instant": true,
@@ -523,7 +529,7 @@
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 29},
       "type": "timeseries",
       "title": "Cache Status by Request",
-      "description": "Request rate broken down by caching status: hit (cached tokens returned), miss (cache write only), disabled (no caching).",
+      "description": "Request rate by provider-reported hit, cache write, eligible miss, and unknown/unsupported status.",
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
@@ -534,14 +540,20 @@
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"miss\"}[5m]))",
-          "legendFormat": "Miss (write)",
+          "legendFormat": "Eligible miss",
           "refId": "B"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"disabled\"}[5m]))",
-          "legendFormat": "Disabled",
+          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=\"write\"}[5m]))",
+          "legendFormat": "Cache write",
           "refId": "C"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_caching_requests_total{provider=~\"$provider\", model=~\"$model\", cache_status=~\"unknown|unsupported\"}[5m]))",
+          "legendFormat": "Unknown / unsupported",
+          "refId": "D"
         }
       ],
       "fieldConfig": {

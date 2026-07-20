@@ -4,6 +4,7 @@ using System.Text.Json;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Metrics;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
@@ -116,6 +117,12 @@ namespace ConduitLLM.Gateway.Controllers
                 {
                     HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
                     HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                    if (modelMapping.Provider is not null)
+                    {
+                        HttpContext.Items[ConduitLLM.Gateway.Constants.HttpContextKeys.PromptCachingEligible] =
+                            PromptCachingCapabilityCatalog.IsEligible(
+                                modelMapping.Provider.ProviderType.ToString(), modelMapping.ProviderModelId);
+                    }
                     activity?.SetTag("gateway.provider_id", modelMapping.ProviderId);
                     activity?.SetTag("gateway.provider_type", modelMapping.Provider?.ProviderType.ToString());
 

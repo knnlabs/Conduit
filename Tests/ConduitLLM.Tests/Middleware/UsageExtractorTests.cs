@@ -60,6 +60,24 @@ namespace ConduitLLM.Tests.Middleware
         }
 
         [Fact]
+        public void ExtractUsage_AnthropicCacheCreation_MarksWriteTokensAsExcludedFromPrompt()
+        {
+            using var document = JsonDocument.Parse("""
+                {
+                    "input_tokens": 500,
+                    "output_tokens": 25,
+                    "cache_creation_input_tokens": 4000
+                }
+                """);
+
+            var usage = UsageExtractor.ExtractUsage(document.RootElement, _mockLogger.Object);
+
+            Assert.NotNull(usage);
+            Assert.Equal(4000, usage.CachedWriteTokens);
+            Assert.False(usage.CachedWriteTokensIncludedInPrompt);
+        }
+
+        [Fact]
         public void ExtractUsage_OpenAITokenDetails_ExtractsCachedAndReasoningSubsets()
         {
             using var document = JsonDocument.Parse("""
@@ -84,6 +102,27 @@ namespace ConduitLLM.Tests.Middleware
             Assert.Equal(800, usage.CachedInputTokens);
             Assert.True(usage.CachedInputTokensIncludedInPrompt);
             Assert.Equal(200, usage.ReasoningTokens);
+        }
+
+        [Fact]
+        public void ExtractUsage_OpenAICompatibleCacheWrite_ExtractsIncludedWriteSubset()
+        {
+            using var document = JsonDocument.Parse("""
+                {
+                    "prompt_tokens": 1200,
+                    "completion_tokens": 50,
+                    "prompt_tokens_details": {
+                        "cached_tokens": 700,
+                        "cache_write_tokens": 300
+                    }
+                }
+                """);
+
+            var usage = UsageExtractor.ExtractUsage(document.RootElement, _mockLogger.Object);
+
+            Assert.NotNull(usage);
+            Assert.Equal(300, usage.CachedWriteTokens);
+            Assert.True(usage.CachedWriteTokensIncludedInPrompt);
         }
 
         [Fact]

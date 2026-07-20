@@ -10173,6 +10173,16 @@
               }
             }
           },
+          "409": {
+            "description": "Stored prompt caching configuration is invalid or uses an unsupported schema version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error. Returns a standardized ErrorResponseDto."
           }
@@ -10247,6 +10257,25 @@
           },
           "500": {
             "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/prompt-caching/capabilities": {
+      "get": {
+        "tags": ["PromptCaching"],
+        "summary": "Gets provider and model prompt caching capabilities.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/PromptCachingCapabilityDto" }
+                }
+              }
+            }
           }
         }
       }
@@ -19776,15 +19805,48 @@
       "PromptCachingConfigDto": {
         "type": "object",
         "properties": {
-          "autoInjectEnabled": {
+          "schemaVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
             "type": "boolean"
           },
-          "injectionPoints": {
+          "rules": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CacheInjectionPointDto"
+              "$ref": "#/components/schemas/PromptCachingRuleDto"
             }
           }
+        }
+      },
+      "PromptCachingRuleDto": {
+        "required": ["modelPattern", "name", "provider", "strategy"],
+        "type": "object",
+        "properties": {
+          "name": { "maxLength": 100, "type": "string" },
+          "enabled": { "type": "boolean" },
+          "provider": { "type": "string" },
+          "modelPattern": { "maxLength": 200, "type": "string" },
+          "strategy": { "type": "string" },
+          "ttl": { "type": ["null", "string"] },
+          "injectionPoints": {
+            "maxItems": 4,
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CacheInjectionPointDto" }
+          }
+        }
+      },
+      "PromptCachingCapabilityDto": {
+        "type": "object",
+        "properties": {
+          "provider": { "type": "string" },
+          "modelPattern": { "type": "string" },
+          "strategies": { "type": "array", "items": { "type": "string" } },
+          "ttls": { "type": "array", "items": { "type": "string" } },
+          "minimumTokens": { "type": ["null", "integer"], "format": "int32" },
+          "maxBreakpoints": { "type": "integer", "format": "int32" },
+          "providerManaged": { "type": "boolean" }
         }
       },
       "Provider": {
@@ -22010,19 +22072,23 @@
       },
       "UpdatePromptCachingConfigDto": {
         "required": [
-          "autoInjectEnabled",
-          "injectionPoints"
+          "rules"
         ],
         "type": "object",
         "properties": {
-          "autoInjectEnabled": {
+          "schemaVersion": {
+            "maximum": 2,
+            "minimum": 2,
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
             "type": "boolean"
           },
-          "injectionPoints": {
-            "maxItems": 4,
+          "rules": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CacheInjectionPointDto"
+              "$ref": "#/components/schemas/PromptCachingRuleDto"
             }
           }
         }

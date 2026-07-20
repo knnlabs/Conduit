@@ -118,6 +118,10 @@ public class Usage
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? CachedWriteTokens { get; set; }
 
+    /// <summary>Whether cache-write tokens are already included in <see cref="PromptTokens"/>.</summary>
+    [JsonIgnore]
+    public bool CachedWriteTokensIncludedInPrompt { get; set; } = true;
+
     /// <summary>
     /// Number of search units consumed (for rerank operations).
     /// </summary>

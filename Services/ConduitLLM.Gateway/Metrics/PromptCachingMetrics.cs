@@ -30,6 +30,10 @@ namespace ConduitLLM.Gateway.Metrics
                     LabelNames = new[] { "model", "provider" }
                 });
 
+        public static readonly Counter WritePremiumDollarsTotal = Prometheus.Metrics
+            .CreateCounter("conduit_prompt_caching_write_premium_dollars", "Additional prompt cache write cost in dollars",
+                new CounterConfiguration { LabelNames = new[] { "model", "provider" } });
+
         // Convenience methods
 
         /// <summary>
@@ -43,6 +47,15 @@ namespace ConduitLLM.Gateway.Metrics
         /// </summary>
         public static void RecordCacheMiss(string model, string provider)
             => RequestsTotal.WithLabels(model, provider, "miss").Inc();
+
+        public static void RecordCacheWrite(string model, string provider)
+            => RequestsTotal.WithLabels(model, provider, "write").Inc();
+
+        public static void RecordCacheUnknown(string model, string provider)
+            => RequestsTotal.WithLabels(model, provider, "unknown").Inc();
+
+        public static void RecordCacheUnsupported(string model, string provider)
+            => RequestsTotal.WithLabels(model, provider, "unsupported").Inc();
 
         /// <summary>
         /// Record a request where prompt caching was not active (disabled or not configured).
@@ -59,6 +72,11 @@ namespace ConduitLLM.Gateway.Metrics
             {
                 SavingsDollarsTotal.WithLabels(model, provider).Inc(savingsDollars);
             }
+        }
+
+        public static void RecordWritePremium(string model, string provider, double premiumDollars)
+        {
+            if (premiumDollars > 0) WritePremiumDollarsTotal.WithLabels(model, provider).Inc(premiumDollars);
         }
     }
 }

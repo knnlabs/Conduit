@@ -266,7 +266,10 @@ namespace ConduitLLM.Gateway.Middleware
                 }
 
                 // Build Usage object
-                var usage = UsageExtractor.ExtractUsage(usageElement, _logger);
+                var usage = context.Items.TryGetValue(HttpContextKeys.NonStreamingUsage, out var normalizedUsage) &&
+                            normalizedUsage is Usage providerUsage
+                    ? providerUsage
+                    : UsageExtractor.ExtractUsage(usageElement, _logger);
                 if (usage == null)
                 {
                     _logger.LogWarning("Failed to extract usage data for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
@@ -413,7 +416,7 @@ namespace ConduitLLM.Gateway.Middleware
                 }
 
                 // Record prompt caching metrics
-                RecordPromptCachingMetrics(usage, model, providerType);
+                RecordPromptCachingMetrics(context, usage, model, providerType);
                 await RecordPromptCachingSavingsAsync(context, costCalculationService, model, usage);
 
                 // Update spend using batch service only if there's a cost

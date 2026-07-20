@@ -233,7 +233,7 @@ namespace ConduitLLM.Gateway.Middleware
         /// <summary>
         /// Records prompt caching request-level metrics (hit/miss/disabled).
         /// </summary>
-        private static void RecordPromptCachingMetrics(Usage usage, string model, string provider)
+        private static void RecordPromptCachingMetrics(HttpContext context, Usage usage, string model, string provider)
         {
             if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0)
             {
@@ -241,12 +241,19 @@ namespace ConduitLLM.Gateway.Middleware
             }
             else if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0)
             {
-                // Cache write but no read — first request building the cache
+                PromptCachingMetrics.RecordCacheWrite(model, provider);
+            }
+            else if (context.Items.TryGetValue(HttpContextKeys.PromptCachingEligible, out var eligible) && eligible is true)
+            {
                 PromptCachingMetrics.RecordCacheMiss(model, provider);
+            }
+            else if (provider is "Replicate" or "MiniMax")
+            {
+                PromptCachingMetrics.RecordCacheUnsupported(model, provider);
             }
             else
             {
-                PromptCachingMetrics.RecordCacheDisabled(model, provider);
+                PromptCachingMetrics.RecordCacheUnknown(model, provider);
             }
         }
 
@@ -259,27 +266,34 @@ namespace ConduitLLM.Gateway.Middleware
             string model,
             Usage usage)
         {
-            if (!usage.CachedInputTokens.HasValue || usage.CachedInputTokens.Value <= 0)
+            if (usage.CachedInputTokens is not > 0 && usage.CachedWriteTokens is not > 0)
                 return;
 
             try
             {
-                decimal savings;
+                decimal savings = 0m;
                 var providerType = context.Items.TryGetValue("ProviderType", out var pt)
                     ? pt?.ToString() ?? "unknown"
                     : "unknown";
 
-                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var mcIdObj) &&
-                    mcIdObj is int mcId)
+                if (usage.CachedInputTokens is > 0 &&
+                    context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var mcIdObj) && mcIdObj is int mcId)
                 {
                     savings = await costCalculationService.CalculateCacheSavingsByIdAsync(mcId, usage);
                 }
-                else
+                else if (usage.CachedInputTokens is > 0)
                 {
                     savings = await costCalculationService.CalculateCacheSavingsAsync(model, usage);
                 }
 
                 PromptCachingMetrics.RecordSavings(model, providerType, Convert.ToDouble(savings));
+
+                decimal writePremium;
+                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var writeMcIdObj) && writeMcIdObj is int writeMcId)
+                    writePremium = await costCalculationService.CalculateCacheWritePremiumByIdAsync(writeMcId, usage);
+                else
+                    writePremium = await costCalculationService.CalculateCacheWritePremiumAsync(model, usage);
+                PromptCachingMetrics.RecordWritePremium(model, providerType, Convert.ToDouble(writePremium));
             }
             catch
             {

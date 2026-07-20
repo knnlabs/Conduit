@@ -35,6 +35,18 @@ public partial class CostCalculationService
         return CalculateSavingsFromModelCost(modelCost, usage);
     }
 
+    public async Task<decimal> CalculateCacheWritePremiumAsync(string modelId, Usage usage, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(modelId) || usage.CachedWriteTokens is not > 0) return 0m;
+        return CalculateWritePremium(await _modelCostService.GetCostForModelAsync(modelId, cancellationToken), usage);
+    }
+
+    public async Task<decimal> CalculateCacheWritePremiumByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default)
+    {
+        if (usage.CachedWriteTokens is not > 0) return 0m;
+        return CalculateWritePremium(await _modelCostService.GetCostByIdAsync(modelCostId, cancellationToken), usage);
+    }
+
     private static bool HasCachedTokens(Usage usage)
         => usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0;
 
@@ -61,5 +73,13 @@ public partial class CostCalculationService
         }
 
         return Math.Max(0m, savings);
+    }
+
+    private static decimal CalculateWritePremium(ModelCost? modelCost, Usage usage)
+    {
+        if (modelCost?.CachedInputWriteCostPerMillionTokens is not decimal writeRate ||
+            usage.CachedWriteTokens is not > 0) return 0m;
+        var premiumRate = Math.Max(0m, writeRate - modelCost.InputCostPerMillionTokens);
+        return usage.CachedWriteTokens.Value * premiumRate / 1_000_000m;
     }
 }

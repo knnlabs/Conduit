@@ -40,12 +40,26 @@ namespace ConduitLLM.Gateway.Middleware
                 // OpenAI includes cached tokens in prompt_tokens and reasoning tokens in
                 // completion_tokens. The detail fields identify those subsets for pricing.
                 if (usageElement.TryGetProperty("prompt_tokens_details", out var promptTokenDetails) &&
-                    promptTokenDetails.ValueKind == JsonValueKind.Object &&
-                    promptTokenDetails.TryGetProperty("cached_tokens", out var cachedTokens))
+                    promptTokenDetails.ValueKind == JsonValueKind.Object)
                 {
-                    usage.CachedInputTokens = cachedTokens.GetInt32();
-                    usage.CachedInputTokensIncludedInPrompt = true;
+                    if (promptTokenDetails.TryGetProperty("cached_tokens", out var cachedTokens))
+                    {
+                        usage.CachedInputTokens = cachedTokens.GetInt32();
+                        usage.CachedInputTokensIncludedInPrompt = true;
+                    }
+                    if (promptTokenDetails.TryGetProperty("cache_write_tokens", out var nestedWriteTokens))
+                    {
+                        usage.CachedWriteTokens = nestedWriteTokens.GetInt32();
+                        usage.CachedWriteTokensIncludedInPrompt = true;
+                    }
                 }
+
+                if (usageElement.TryGetProperty("cached_input_tokens", out var normalizedCachedTokens))
+                    usage.CachedInputTokens = normalizedCachedTokens.GetInt32();
+                if (usageElement.TryGetProperty("cached_write_tokens", out var normalizedWriteTokens))
+                    usage.CachedWriteTokens = normalizedWriteTokens.GetInt32();
+                if (usageElement.TryGetProperty("prompt_cache_hit_tokens", out var deepSeekCachedTokens))
+                    usage.CachedInputTokens = deepSeekCachedTokens.GetInt32();
 
                 if (usageElement.TryGetProperty("completion_tokens_details", out var completionTokenDetails) &&
                     completionTokenDetails.ValueKind == JsonValueKind.Object &&
@@ -81,10 +95,16 @@ namespace ConduitLLM.Gateway.Middleware
 
                 // Anthropic cached tokens
                 if (usageElement.TryGetProperty("cache_creation_input_tokens", out var cacheWriteTokens))
+                {
                     usage.CachedWriteTokens = cacheWriteTokens.GetInt32();
+                    usage.CachedWriteTokensIncludedInPrompt = false;
+                }
 
                 if (usageElement.TryGetProperty("cache_read_input_tokens", out var cacheReadTokens))
+                {
                     usage.CachedInputTokens = cacheReadTokens.GetInt32();
+                    usage.CachedInputTokensIncludedInPrompt = false;
+                }
 
                 // Image generation
                 if (usageElement.TryGetProperty("images", out var imageCount))

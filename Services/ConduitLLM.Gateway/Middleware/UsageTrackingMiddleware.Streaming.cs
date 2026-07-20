@@ -201,7 +201,7 @@ namespace ConduitLLM.Gateway.Middleware
             }
 
             // Record prompt caching metrics
-            RecordPromptCachingMetrics(usage, model, providerType);
+            RecordPromptCachingMetrics(context, usage, model, providerType);
             await RecordPromptCachingSavingsAsync(context, costCalculationService, model, usage);
 
             // Update spend only if there's a cost

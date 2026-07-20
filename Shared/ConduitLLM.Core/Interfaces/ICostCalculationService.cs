@@ -46,6 +46,10 @@ public interface ICostCalculationService
     /// <returns>The estimated savings in dollars, or 0 if not applicable.</returns>
     Task<decimal> CalculateCacheSavingsByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default);
 
+    Task<decimal> CalculateCacheWritePremiumAsync(string modelId, Usage usage, CancellationToken cancellationToken = default);
+
+    Task<decimal> CalculateCacheWritePremiumByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Calculates a refund for a previous LLM operation.
     /// </summary>

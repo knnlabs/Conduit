@@ -37,7 +37,7 @@ public class UsageValidator
             }
         }
 
-        if (usage.CachedWriteTokens.HasValue && usage.PromptTokens.HasValue)
+        if (usage.CachedWriteTokensIncludedInPrompt && usage.CachedWriteTokens.HasValue && usage.PromptTokens.HasValue)
         {
             // Cache write tokens should not exceed prompt tokens
             if (usage.CachedWriteTokens.Value > usage.PromptTokens.Value)
@@ -46,7 +46,7 @@ public class UsageValidator
             }
         }
 
-        if (usage.CachedInputTokensIncludedInPrompt && usage.CachedInputTokens.HasValue && usage.CachedWriteTokens.HasValue && usage.PromptTokens.HasValue)
+        if (usage.CachedInputTokensIncludedInPrompt && usage.CachedWriteTokensIncludedInPrompt && usage.CachedInputTokens.HasValue && usage.CachedWriteTokens.HasValue && usage.PromptTokens.HasValue)
         {
             // Combined cached tokens should not exceed prompt tokens
             var totalCached = usage.CachedInputTokens.Value + usage.CachedWriteTokens.Value;

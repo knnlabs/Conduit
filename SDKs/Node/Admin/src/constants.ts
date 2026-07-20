@@ -214,6 +214,7 @@ export const ENDPOINTS = {
   // Prompt Caching
   PROMPT_CACHING: {
     CONFIG: '/api/prompt-caching/config',
+    CAPABILITIES: '/api/prompt-caching/capabilities',
   },
 
   // Configuration endpoints

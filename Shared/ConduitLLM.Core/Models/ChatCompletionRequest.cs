@@ -240,4 +240,8 @@ public class ChatCompletionRequest
     /// </remarks>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Resolved server-side prompt caching intent. Never exposed on the Gateway API.</summary>
+    [JsonIgnore]
+    public PromptCachingIntent? PromptCachingIntent { get; set; }
 }

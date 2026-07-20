@@ -231,7 +231,8 @@ namespace ConduitLLM.Providers
             if (settingsService != null)
             {
                 var cachingLogger = _loggerFactory.CreateLogger<PromptCachingLLMClient>();
-                client = new PromptCachingLLMClient(client, settingsService, cachingLogger);
+                client = new PromptCachingLLMClient(
+                    client, settingsService, cachingLogger, provider.ProviderType.ToString(), modelId);
             }
 
             // Apply context decorator to set provider key context for error tracking

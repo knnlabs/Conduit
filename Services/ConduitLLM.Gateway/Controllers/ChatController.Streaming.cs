@@ -25,6 +25,14 @@ namespace ConduitLLM.Gateway.Controllers
             _logger.LogInformation("Handling non-streaming request.");
             var response = await _conduit.CreateChatCompletionAsync(request, null, virtualKeyId, cancellationToken);
 
+            if (response.Usage is not null)
+            {
+                HttpContext.Items[HttpContextKeys.NonStreamingUsage] = response.Usage;
+            }
+            HttpContext.Items[HttpContextKeys.PromptCachingEligible] =
+                request.PromptCachingIntent is not null ||
+                (HttpContext.Items.TryGetValue(HttpContextKeys.PromptCachingEligible, out var eligible) && eligible is true);
+
             if (response.AgenticMetrics?.FunctionCalls != null && response.AgenticMetrics.FunctionCalls.Count > 0)
             {
                 StoreFunctionExecutionResults(response.AgenticMetrics);
@@ -276,6 +284,10 @@ namespace ConduitLLM.Gateway.Controllers
             StreamingAccumulatorState state,
             CancellationToken cancellationToken)
         {
+            HttpContext.Items[HttpContextKeys.PromptCachingEligible] =
+                request.PromptCachingIntent is not null ||
+                (HttpContext.Items.TryGetValue(HttpContextKeys.PromptCachingEligible, out var eligible) && eligible is true);
+
             // Store usage data for middleware
             if (state.StreamingUsage != null)
             {
