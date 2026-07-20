@@ -3993,6 +3993,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/IpFilter/by-virtual-key/{virtualKeyId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the IP filters scoped to a specific virtual key */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The virtual key ID */
+          virtualKeyId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description List of the virtual key's IP filters */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["IpFilterDto"][];
+            "application/json": components["schemas"]["IpFilterDto"][];
+            "text/json": components["schemas"]["IpFilterDto"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/IpFilter/{id}": {
     parameters: {
       query?: never;
@@ -13526,6 +13574,8 @@ export interface components {
       name?: string;
       description?: null | string;
       isEnabled?: boolean;
+      /** Format: int32 */
+      virtualKeyId?: null | number;
     };
     /** @description Request model for creating a key credential */
     CreateKeyRequest: {
@@ -14286,6 +14336,27 @@ export interface components {
       updatedAt?: string;
       createdBy?: null | string;
       updatedBy?: null | string;
+      /** Format: int32 */
+      virtualKeyId?: null | number;
+    };
+    IpFilterEntity: {
+      /** Format: int32 */
+      id?: number;
+      filterType: string;
+      ipAddressOrCidr: string;
+      name?: null | string;
+      description?: null | string;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      createdBy?: null | string;
+      updatedBy?: null | string;
+      /** Format: int32 */
+      virtualKeyId?: null | number;
+      /** Format: byte */
+      rowVersion?: null | string;
     };
     IpFilterSettingsDto: {
       isEnabled?: boolean;
@@ -16756,6 +16827,7 @@ export interface components {
       requestLogs?: null | components["schemas"]["RequestLog"][];
       spendHistory?: null | components["schemas"]["VirtualKeySpendHistory"][];
       notifications?: null | components["schemas"]["Notification"][];
+      ipFilters?: null | components["schemas"]["IpFilterEntity"][];
       /** Format: byte */
       rowVersion?: null | string;
     };

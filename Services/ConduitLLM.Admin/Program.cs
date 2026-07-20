@@ -89,6 +89,10 @@ public partial class Program
         ConfigureMessagingServices(builder, startupLogger);
         ConfigureMonitoringServices(builder, startupLogger);
 
+        // Configure trusted-proxy forwarded-header processing so the client IP is derived
+        // securely (spoof-resistant). No-op unless CONDUIT_TRUSTED_PROXY_ENABLED=true.
+        builder.Services.AddTrustedProxyForwardedHeaders(builder.Configuration);
+
         var app = builder.Build();
 
         // Log deprecation warnings and validate Redis URL
@@ -108,6 +112,11 @@ public partial class Program
         // Run database migration startup handling (CONDUIT_MIGRATION_MODE); Apply mode
         // also seeds default data under the migration lock.
         await app.RunDatabaseMigrationAsync();
+
+        // Resolve the real client IP via trusted proxies. Must run before any IP-reading middleware:
+        // HTTPS redirection honors X-Forwarded-Proto, and the /metrics gate reads the client IP.
+        // No-op unless CONDUIT_TRUSTED_PROXY_ENABLED=true.
+        app.UseTrustedProxyForwardedHeaders();
 
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())

@@ -65,4 +65,9 @@ public class IpFilterDto
     /// Username or identifier of who last updated the filter
     /// </summary>
     public string? UpdatedBy { get; set; }
+
+    /// <summary>
+    /// Virtual key this filter is scoped to, or null if it is a global filter.
+    /// </summary>
+    public int? VirtualKeyId { get; set; }
 }

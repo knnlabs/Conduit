@@ -76,6 +76,7 @@ export const ENDPOINTS = {
     BASE: '/api/IpFilter',
     BY_ID: (id: number) => `/api/IpFilter/${id}`,
     ENABLED: '/api/IpFilter/enabled',
+    BY_VIRTUAL_KEY: (virtualKeyId: number) => `/api/IpFilter/by-virtual-key/${virtualKeyId}`,
     SETTINGS: '/api/IpFilter/settings',
     CHECK: (ipAddress: string) => `/api/IpFilter/check/${ipAddress}`,
   },

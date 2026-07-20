@@ -204,9 +204,53 @@ export function useSecurityApi() {
     }
   }, []);
 
+  const getIpRulesForKey = useCallback(async (virtualKeyId: number): Promise<IpRule[]> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await withAdminClient(client =>
+        client.ipFilters.listByVirtualKey(virtualKeyId)
+      );
+      return result.map(filter => ipFilterToLegacyRule(filter));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch IP rules';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const createIpRuleForKey = useCallback(
+    async (virtualKeyId: number, rule: IpRule): Promise<IpRule> => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const createDto = { ...legacyRuleToIpFilter(rule), virtualKeyId };
+        const result = await withAdminClient(client =>
+          client.ipFilters.create(createDto)
+        );
+        notify.success('IP rule created successfully');
+        return ipFilterToLegacyRule(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to create IP rule';
+        setError(message);
+        notify.error(err);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     getIpRules,
+    getIpRulesForKey,
     createIpRule,
+    createIpRuleForKey,
     updateIpRule,
     deleteIpRule,
     getIpStats,

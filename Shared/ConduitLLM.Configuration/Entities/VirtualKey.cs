@@ -100,6 +100,12 @@ public partial class VirtualKey : IEntity<int>, IAuditableEntity
     /// </summary>
     public virtual ICollection<Notification>? Notifications { get; set; }
 
+    /// <summary>
+    /// Virtual collection of per-key IP filters (allow/deny rules scoped to this key). Deleting the key
+    /// cascades to its IP filters.
+    /// </summary>
+    public virtual ICollection<IpFilterEntity>? IpFilters { get; set; }
+
 
     /// <summary>
     /// Concurrency token for optimistic concurrency control

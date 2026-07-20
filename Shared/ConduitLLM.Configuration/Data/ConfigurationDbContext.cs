@@ -308,6 +308,13 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => new { e.FilterType, e.IpAddressOrCidr });
                 // Create an index for IsEnabled to quickly filter active rules
                 entity.HasIndex(e => e.IsEnabled);
+                // Per-key scoping: null VirtualKeyId = global filter; a set value scopes the filter to
+                // that key. Index it for the per-key enforcement query; cascade-delete with the key.
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasOne<VirtualKey>()
+                      .WithMany(vk => vk.IpFilters)
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
 

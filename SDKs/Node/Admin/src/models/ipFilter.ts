@@ -17,6 +17,8 @@ export interface IpFilterDto {
   updatedAt: string;
   createdBy?: string;
   updatedBy?: string;
+  /** Virtual key this filter is scoped to, or null/undefined if it is a global filter. */
+  virtualKeyId?: number | null;
 }
 
 export interface CreateIpFilterDto {
@@ -25,6 +27,8 @@ export interface CreateIpFilterDto {
   filterType: FilterType;
   isEnabled?: boolean;
   description?: string;
+  /** Scope this filter to a virtual key. Omit for a global filter. */
+  virtualKeyId?: number | null;
 }
 
 export interface UpdateIpFilterDto {
