@@ -57,6 +57,8 @@ export interface ChatCompletionRequest {
     content: MessageContent;
   }>;
   model: string;
+  /** Stable conversation affinity ID (maximum 256 characters). */
+  session_id?: string;
   stream?: boolean;
   temperature?: number;
   max_tokens?: number;

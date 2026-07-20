@@ -133,9 +133,6 @@ public static class ServiceCollectionExtensions
         services.AddMediaServices(configuration);
 
 
-        // Register LLM cache management service (simple database + event publishing)
-        services.AddScoped<ILLMCacheManagementService, LLMCacheManagementService>();
-
         // Register Function services
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostService, ConduitLLM.Functions.Services.FunctionCostService>();
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostCalculationService, ConduitLLM.Functions.Services.FunctionCostCalculationService>();

@@ -43,7 +43,10 @@ public partial class CostCalculationService
             // Handle cache write tokens
             if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
             {
-                // Cache writes are additional to regular input processing (cost is per million tokens)
+                if (usage.CachedWriteTokensIncludedInPrompt)
+                    regularInputTokens -= usage.CachedWriteTokens.Value;
+
+                // Apply the full cache-write rate; included writes were removed from regular input above.
                 calculatedCost += (usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value) / 1_000_000m;
                 
                 _logger.LogDebug("Applied cache write token pricing for {WriteTokens} tokens at rate {WriteRate}",

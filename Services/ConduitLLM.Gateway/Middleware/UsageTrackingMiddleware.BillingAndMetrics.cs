@@ -133,6 +133,14 @@ namespace ConduitLLM.Gateway.Middleware
                     ModelName = model,
                     ProviderId = providerId,
                     ProviderType = providerType,
+                    ModelProviderMappingId = context.Items.TryGetValue(HttpContextKeys.ModelProviderMappingId, out var mappingObj) && mappingObj is int mappingId ? mappingId : null,
+                    PromptCachingEligible = context.Items.TryGetValue(HttpContextKeys.PromptCachingEligible, out var eligibleObj) && eligibleObj is true,
+                    PromptCachingPolicyApplied = context.Items.TryGetValue(HttpContextKeys.PromptCachingPolicyApplied, out var appliedObj) && appliedObj is true,
+                    CachedReadSavings = context.Items.TryGetValue(HttpContextKeys.CachedReadSavings, out var savingsObj) && savingsObj is decimal savings ? savings : 0m,
+                    CacheWritePremium = context.Items.TryGetValue(HttpContextKeys.CacheWritePremium, out var premiumObj) && premiumObj is decimal premium ? premium : 0m,
+                    RoutingAffinityUsed = context.Items.TryGetValue(HttpContextKeys.RoutingAffinityUsed, out var affinityObj) && affinityObj is true,
+                    RoutingDecisionReason = context.Items.TryGetValue(HttpContextKeys.RoutingDecisionReason, out var reasonObj) ? reasonObj as string : null,
+                    RoutingFailoverCount = context.Items.TryGetValue(HttpContextKeys.RoutingFailoverCount, out var failoverObj) && failoverObj is int failovers ? failovers : 0,
                     RequestType = requestType,
                     InputTokens = usage.PromptTokens ?? 0,
                     OutputTokens = usage.CompletionTokens ?? 0,
@@ -233,21 +241,20 @@ namespace ConduitLLM.Gateway.Middleware
         /// <summary>
         /// Records prompt caching request-level metrics (hit/miss/disabled).
         /// </summary>
-        private static void RecordPromptCachingMetrics(Usage usage, string model, string provider)
+        private static void RecordPromptCachingMetrics(HttpContext context, Usage usage, string model, string provider)
         {
-            if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0)
-            {
-                PromptCachingMetrics.RecordCacheHit(model, provider);
-            }
-            else if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0)
-            {
-                // Cache write but no read — first request building the cache
-                PromptCachingMetrics.RecordCacheMiss(model, provider);
-            }
-            else
-            {
-                PromptCachingMetrics.RecordCacheDisabled(model, provider);
-            }
+            var read = usage.CachedInputTokens is > 0;
+            var write = usage.CachedWriteTokens is > 0;
+            var eligible = context.Items.TryGetValue(HttpContextKeys.PromptCachingEligible, out var eligibleValue) && eligibleValue is true;
+            var mapping = context.Items.TryGetValue(HttpContextKeys.ModelProviderMappingId, out var mappingValue)
+                ? Convert.ToString(mappingValue, System.Globalization.CultureInfo.InvariantCulture) ?? "unknown"
+                : "unknown";
+            if (read) PromptCachingMetrics.RecordCacheHit(model, provider, mapping);
+            if (write) PromptCachingMetrics.RecordCacheWrite(model, provider, mapping);
+            if (eligible && !read) PromptCachingMetrics.RecordCacheMiss(model, provider, mapping);
+            if (!eligible && provider is "Replicate" or "MiniMax") PromptCachingMetrics.RecordCacheUnsupported(model, provider, mapping);
+            else if (!eligible && !usage.CachedInputTokens.HasValue && !usage.CachedWriteTokens.HasValue)
+                PromptCachingMetrics.RecordCacheUnknown(model, provider, mapping);
         }
 
         /// <summary>
@@ -259,27 +266,36 @@ namespace ConduitLLM.Gateway.Middleware
             string model,
             Usage usage)
         {
-            if (!usage.CachedInputTokens.HasValue || usage.CachedInputTokens.Value <= 0)
+            if (usage.CachedInputTokens is not > 0 && usage.CachedWriteTokens is not > 0)
                 return;
 
             try
             {
-                decimal savings;
+                decimal savings = 0m;
                 var providerType = context.Items.TryGetValue("ProviderType", out var pt)
                     ? pt?.ToString() ?? "unknown"
                     : "unknown";
 
-                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var mcIdObj) &&
-                    mcIdObj is int mcId)
+                if (usage.CachedInputTokens is > 0 &&
+                    context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var mcIdObj) && mcIdObj is int mcId)
                 {
                     savings = await costCalculationService.CalculateCacheSavingsByIdAsync(mcId, usage);
                 }
-                else
+                else if (usage.CachedInputTokens is > 0)
                 {
                     savings = await costCalculationService.CalculateCacheSavingsAsync(model, usage);
                 }
 
                 PromptCachingMetrics.RecordSavings(model, providerType, Convert.ToDouble(savings));
+                context.Items[HttpContextKeys.CachedReadSavings] = savings;
+
+                decimal writePremium;
+                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var writeMcIdObj) && writeMcIdObj is int writeMcId)
+                    writePremium = await costCalculationService.CalculateCacheWritePremiumByIdAsync(writeMcId, usage);
+                else
+                    writePremium = await costCalculationService.CalculateCacheWritePremiumAsync(model, usage);
+                PromptCachingMetrics.RecordWritePremium(model, providerType, Convert.ToDouble(writePremium));
+                context.Items[HttpContextKeys.CacheWritePremium] = writePremium;
             }
             catch
             {

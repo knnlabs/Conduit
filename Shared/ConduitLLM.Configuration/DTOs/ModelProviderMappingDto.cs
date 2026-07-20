@@ -48,6 +48,10 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public int Priority { get; set; }
 
+        /// <summary>Balanced-score multiplier in the range 0.1 through 2.0.</summary>
+        [Range(0.1, 2.0)]
+        public decimal Weight { get; set; } = 1.0m;
+
         /// <summary>
         /// Whether this mapping is currently enabled
         /// </summary>

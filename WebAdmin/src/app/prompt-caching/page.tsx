@@ -1,416 +1,231 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Container,
-  Title,
-  Text,
-  Switch,
-  Button,
-  Group,
-  Stack,
-  Paper,
-  Badge,
-  ActionIcon,
-  Select,
-  NumberInput,
-  Alert,
-  Tooltip,
-  Skeleton,
+  ActionIcon, Alert, Badge, Button, Container, Group, NumberInput, Paper,
+  Select, SimpleGrid, Skeleton, Stack, Switch, Text, TextInput, Title,
 } from '@mantine/core';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
-import { IconTrash, IconPlus } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
 
-// --- Types (local to avoid SDK any-type leakage) ---
-
-interface InjectionPoint {
-  role?: string | null;
-  index?: number | null;
+type Strategy = 'Automatic' | 'Explicit';
+interface InjectionPoint { role?: 'system' | 'developer' | 'user' | 'assistant' | null; index?: number | null }
+interface Rule {
+  name: string; enabled: boolean; provider: string; modelPattern: string;
+  strategy: Strategy; ttl?: string | null; injectionPoints: InjectionPoint[];
+}
+interface Config { schemaVersion: 3; enabled: boolean; rules: Rule[] }
+interface Capability {
+  provider: string; modelPattern: string; strategies: Strategy[]; ttls: string[];
+  minimumTokens?: number | null; maxBreakpoints: number; providerManaged: boolean;
 }
 
-interface PromptCachingConfig {
-  autoInjectEnabled: boolean;
-  injectionPoints: InjectionPoint[];
-}
-
-// --- Constants ---
-
-interface Preset {
-  label: string;
-  description: string;
-  points: InjectionPoint[];
-}
-
-const PRESETS: Preset[] = [
-  {
-    label: 'System prompt only',
-    description: 'Cache the system message for reuse across turns',
-    points: [{ role: 'system', index: 0 }],
-  },
-  {
-    label: 'System + last user',
-    description: 'Cache system message and the most recent user turn',
-    points: [{ role: 'system', index: 0 }, { role: 'user', index: -1 }],
-  },
-  {
-    label: 'Last 2 user turns',
-    description: 'Cache the two most recent user messages',
-    points: [{ role: 'user', index: -1 }, { role: 'user', index: -2 }],
-  },
-  {
-    label: 'Clear all',
-    description: 'Remove all injection points',
-    points: [],
-  },
-];
-
-interface MockMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-const MOCK_MESSAGES: MockMessage[] = [
-  { role: 'system', content: 'You are a helpful assistant that answers questions clearly.' },
-  { role: 'user', content: 'Hello, can you help me?' },
-  { role: 'assistant', content: 'Of course! How can I help you today?' },
-  { role: 'user', content: 'Tell me about prompt caching.' },
-  { role: 'assistant', content: 'Prompt caching reduces costs by reusing...' },
-  { role: 'user', content: 'How do I enable it?' },
-];
-
-const ROLE_OPTIONS = [
-  { value: '', label: 'Any role' },
-  { value: 'system', label: 'system' },
-  { value: 'user', label: 'user' },
-  { value: 'assistant', label: 'assistant' },
-];
-
-const ROLE_COLORS: Record<string, string> = {
-  system: 'violet',
-  user: 'blue',
-  assistant: 'gray',
-};
-
-// --- Preview Logic ---
-
-function computeHighlightedIndices(points: InjectionPoint[]): Set<number> {
-  const highlighted = new Set<number>();
-
-  for (const point of points) {
-    // Filter messages by role (null/undefined matches all)
-    const roleFilter = point.role ?? null;
-    const matchingIndices: number[] = [];
-
-    for (let i = 0; i < MOCK_MESSAGES.length; i++) {
-      if (roleFilter === null || MOCK_MESSAGES[i].role === roleFilter) {
-        matchingIndices.push(i);
-      }
-    }
-
-    if (matchingIndices.length === 0) continue;
-
-    if (point.index === null || point.index === undefined) {
-      // null index = all matching messages
-      for (const idx of matchingIndices) {
-        highlighted.add(idx);
-      }
-    } else {
-      // Resolve index (negative = from end)
-      const resolvedIdx = point.index >= 0
-        ? point.index
-        : matchingIndices.length + point.index;
-
-      if (resolvedIdx >= 0 && resolvedIdx < matchingIndices.length) {
-        highlighted.add(matchingIndices[resolvedIdx]);
-      }
-    }
-  }
-
-  // Anthropic max 4 breakpoints
-  if (highlighted.size > 4) {
-    const arr = Array.from(highlighted);
-    return new Set(arr.slice(0, 4));
-  }
-
-  return highlighted;
-}
-
-// --- Component ---
+interface Analytics { requests: number; eligibleMisses: number; readEvents: number; writeEvents: number; cachedTokens: number; netSavings: number; writePremium: number; hitLatencyMs?: number | null; missLatencyMs?: number | null; affinityReuse: number; failovers: number }
+const emptyConfig: Config = { schemaVersion: 3, enabled: false, rules: [] };
 
 export default function PromptCachingPage() {
+  const [config, setConfig] = useState<Config>(emptyConfig);
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [snapshot, setSnapshot] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [autoInjectEnabled, setAutoInjectEnabled] = useState(false);
-  const [injectionPoints, setInjectionPoints] = useState<InjectionPoint[]>([]);
-  const [originalConfig, setOriginalConfig] = useState<string>('');
+  const [legacyError, setLegacyError] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [aliasFilter, setAliasFilter] = useState('');
+  const [providerFilter, setProviderFilter] = useState('');
 
-  const isDirty = useMemo(() => {
-    return JSON.stringify({ autoInjectEnabled, injectionPoints }) !== originalConfig;
-  }, [autoInjectEnabled, injectionPoints, originalConfig]);
+  const managedCapabilities = useMemo(() => capabilities.filter(c => !c.providerManaged), [capabilities]);
+  const providerManaged = useMemo(() => capabilities.filter(c => c.providerManaged), [capabilities]);
+  const isDirty = JSON.stringify(config) !== snapshot;
 
-  const highlightedIndices = useMemo(
-    () => computeHighlightedIndices(injectionPoints),
-    [injectionPoints]
-  );
-
-  const fetchConfig = useCallback(async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const raw = await withAdminClient(client =>
-        client.configuration.getPromptCachingConfig()
-      );
-      const config = raw as unknown as PromptCachingConfig;
-      setAutoInjectEnabled(config.autoInjectEnabled);
-      setInjectionPoints(config.injectionPoints);
-      const snapshot = JSON.stringify({
-        autoInjectEnabled: config.autoInjectEnabled,
-        injectionPoints: config.injectionPoints,
-      });
-      setOriginalConfig(snapshot);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      notify.error(`Failed to load prompt caching config: ${message}`);
+      const [rawConfig, rawCapabilities] = await Promise.all([
+        withAdminClient(client => client.configuration.getPromptCachingConfig()),
+        withAdminClient(client => {
+          const service = client.configuration as unknown as {
+            getPromptCachingCapabilities: () => Promise<Capability[]>;
+          };
+          return service.getPromptCachingCapabilities();
+        }),
+      ]);
+      const next = rawConfig as unknown as Config;
+      setConfig(next);
+      setSnapshot(JSON.stringify(next));
+      setCapabilities(rawCapabilities);
+      const analyticsResult = await withAdminClient(client => client.configuration.getPromptCachingAnalytics({ alias: aliasFilter || undefined, provider: providerFilter || undefined }));
+      setAnalytics(analyticsResult as unknown as Analytics);
+      setLegacyError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Stored configuration must be replaced.';
+      setConfig(emptyConfig);
+      setSnapshot('');
+      setLegacyError(message);
+      try {
+        const rawCapabilities = await withAdminClient(client => {
+          const service = client.configuration as unknown as {
+            getPromptCachingCapabilities: () => Promise<Capability[]>;
+          };
+          return service.getPromptCachingCapabilities();
+        });
+        setCapabilities(rawCapabilities);
+      } catch { /* retain an empty catalog and surface the configuration error */ }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [aliasFilter, providerFilter]);
 
-  useEffect(() => {
-    void fetchConfig();
-  }, [fetchConfig]);
+  useEffect(() => { void load(); }, [load]);
 
-  const handleAddPoint = useCallback(() => {
-    if (injectionPoints.length >= 4) return;
-    setInjectionPoints(prev => [...prev, { role: 'system', index: 0 } as InjectionPoint]);
-  }, [injectionPoints.length]);
+  const updateRule = (index: number, update: Partial<Rule>) => {
+    setConfig(current => ({
+      ...current,
+      rules: current.rules.map((rule, i) => i === index ? { ...rule, ...update } : rule),
+    }));
+  };
 
-  const handleRemovePoint = useCallback((idx: number) => {
-    setInjectionPoints(prev => prev.filter((point, i) => i !== idx));
-  }, []);
+  const addRule = () => {
+    const capability = managedCapabilities[0];
+    if (!capability) return;
+    const strategy = capability.strategies[0];
+    setConfig(current => ({
+      ...current,
+      enabled: true,
+      rules: [...current.rules, {
+        name: `Caching rule ${current.rules.length + 1}`,
+        enabled: true,
+        provider: capability.provider,
+        modelPattern: capability.modelPattern,
+        strategy,
+        ttl: capability.ttls[0] ?? null,
+        injectionPoints: strategy === 'Explicit' ? [{ role: 'system', index: 0 }] : [],
+      }],
+    }));
+  };
 
-  const handleUpdatePointRole = useCallback((idx: number, val: string | null) => {
-    setInjectionPoints(prev =>
-      prev.map((p, i): InjectionPoint => (i === idx ? { ...p, role: val === '' ? null : val } : p))
-    );
-  }, []);
-
-  const handleUpdatePointIndex = useCallback((idx: number, val: string | number) => {
-    setInjectionPoints(prev =>
-      prev.map((p, i): InjectionPoint =>
-        i === idx ? { ...p, index: val === '' ? null : Number(val) } : p
-      )
-    );
-  }, []);
-
-  const handleApplyPreset = useCallback((preset: Preset) => {
-    setInjectionPoints(preset.points.map((p): InjectionPoint => ({ ...p })));
-    if (preset.points.length > 0) {
-      setAutoInjectEnabled(true);
-    }
-  }, []);
-
-  const handleSave = useCallback(async () => {
+  const save = async () => {
     setSaving(true);
     try {
       const raw = await withAdminClient(client =>
-        client.configuration.updatePromptCachingConfig({
-          autoInjectEnabled,
-          injectionPoints,
-        })
-      );
-      const result = raw as unknown as PromptCachingConfig;
-      setAutoInjectEnabled(result.autoInjectEnabled);
-      setInjectionPoints(result.injectionPoints);
-      const snapshot = JSON.stringify({
-        autoInjectEnabled: result.autoInjectEnabled,
-        injectionPoints: result.injectionPoints,
-      });
-      setOriginalConfig(snapshot);
-      notify.success('Prompt caching configuration updated successfully', 'Saved');
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      notify.error(`Failed to save config: ${message}`);
+        client.configuration.updatePromptCachingConfig(config as never));
+      const next = raw as unknown as Config;
+      setConfig(next);
+      setSnapshot(JSON.stringify(next));
+      setLegacyError(null);
+      notify.success('Provider-aware prompt caching policy saved.', 'Saved');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Failed to save prompt caching policy.');
     } finally {
       setSaving(false);
     }
-  }, [autoInjectEnabled, injectionPoints]);
+  };
 
-  if (loading) {
-    return (
-      <Container size="md" py="xl">
-        <Stack gap="md">
-          <Skeleton height={40} width={250} />
-          <Skeleton height={20} width={400} />
-          <Skeleton height={50} />
-          <Skeleton height={200} />
-        </Stack>
-      </Container>
-    );
-  }
+  if (loading) return <Container size="lg" py="xl"><Skeleton height={280} /></Container>;
 
   return (
-    <Container size="md" py="xl">
+    <Container size="lg" py="xl">
       <Stack gap="lg">
-        {/* Section 1: Header + Toggle */}
         <div>
-          <Group gap="sm" mb="xs">
-            <Title order={2}>Prompt Caching</Title>
-            <Badge color={autoInjectEnabled ? 'green' : 'gray'} variant="filled">
-              {autoInjectEnabled ? 'Enabled' : 'Disabled'}
-            </Badge>
-          </Group>
-          <Text c="dimmed" size="sm" mb="md">
-            Automatically inject cache_control breakpoints into messages sent to providers
-            that support prompt caching (e.g., Anthropic). This can significantly reduce costs
-            for repeated prefixes.
+          <Group gap="sm"><Title order={2}>Prompt Caching</Title><Badge>Policy v3</Badge></Group>
+          <Text c="dimmed" size="sm">
+            Admin rules fill missing provider controls. Caller-provided cache keys, modes, lifetimes, and
+            content breakpoints always take precedence.
           </Text>
-          <Switch
-            size="lg"
-            label="Enable automatic cache injection"
-            checked={autoInjectEnabled}
-            onChange={(event) => setAutoInjectEnabled(event.currentTarget.checked)}
-          />
         </div>
 
-        {autoInjectEnabled && (
-          <>
-            {/* Section 2: Quick Presets */}
-            <div>
-              <Text fw={600} mb="xs">Quick Presets</Text>
-              <Group gap="xs">
-                {PRESETS.map((preset) => (
-                  <Tooltip key={preset.label} label={preset.description}>
-                    <Button
-                      variant="light"
-                      size="xs"
-                      onClick={() => handleApplyPreset(preset)}
-                    >
-                      {preset.label}
-                    </Button>
-                  </Tooltip>
-                ))}
-              </Group>
-            </div>
+        <Paper withBorder p="md">
+          <Stack gap="sm">
+            <Group grow><TextInput label="Alias filter" value={aliasFilter} onChange={event => setAliasFilter(event.currentTarget.value)} /><TextInput label="Provider filter" value={providerFilter} onChange={event => setProviderFilter(event.currentTarget.value)} /></Group>
+            <SimpleGrid cols={{ base: 2, md: 4 }}>
+              <div><Text size="xs" c="dimmed">Realized net savings</Text><Text fw={700}>${(analytics?.netSavings ?? 0).toFixed(4)}</Text></div>
+              <div><Text size="xs" c="dimmed">Hit rate</Text><Text fw={700}>{analytics && analytics.readEvents + analytics.eligibleMisses > 0 ? `${(100 * analytics.readEvents / (analytics.readEvents + analytics.eligibleMisses)).toFixed(1)}%` : '—'}</Text></div>
+              <div><Text size="xs" c="dimmed">Cached tokens</Text><Text fw={700}>{(analytics?.cachedTokens ?? 0).toLocaleString()}</Text></div>
+              <div><Text size="xs" c="dimmed">Write premium</Text><Text fw={700}>${(analytics?.writePremium ?? 0).toFixed(4)}</Text></div>
+              <div><Text size="xs" c="dimmed">Latency delta</Text><Text fw={700}>{analytics && typeof analytics.hitLatencyMs === 'number' && typeof analytics.missLatencyMs === 'number' ? `${(analytics.missLatencyMs - analytics.hitLatencyMs).toFixed(0)} ms` : '—'}</Text></div>
+              <div><Text size="xs" c="dimmed">Affinity reuse</Text><Text fw={700}>{analytics?.affinityReuse ?? 0}</Text></div>
+              <div><Text size="xs" c="dimmed">Failovers</Text><Text fw={700}>{analytics?.failovers ?? 0}</Text></div>
+              <div><Text size="xs" c="dimmed">Requests</Text><Text fw={700}>{analytics?.requests ?? 0}</Text></div>
+            </SimpleGrid>
+          </Stack>
+        </Paper>
 
-            {/* Section 3: Injection Points Editor */}
-            <div>
-              <Group justify="space-between" mb="xs">
-                <Text fw={600}>
-                  Injection Points{' '}
-                  <Text span c="dimmed" size="sm">
-                    {injectionPoints.length}/4 points
-                  </Text>
-                </Text>
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<IconPlus size={14} />}
-                  disabled={injectionPoints.length >= 4}
-                  onClick={handleAddPoint}
-                >
-                  Add Point
-                </Button>
-              </Group>
+        {legacyError && <Alert color="red" title="Configuration replacement required">{legacyError}</Alert>}
 
-              {injectionPoints.length === 0 ? (
-                <Alert color="yellow" variant="light">
-                  No injection points configured. Use a preset above or add points manually.
-                </Alert>
-              ) : (
-                <Stack gap="xs">
-                  {injectionPoints.map((point, idx) => (
-                    <Paper key={idx} withBorder p="sm">
-                      <Group gap="md">
-                        <Select
-                          label="Role"
-                          data={ROLE_OPTIONS}
-                          value={point.role ?? ''}
-                          onChange={(val) => handleUpdatePointRole(idx, val)}
-                          w={160}
-                          size="sm"
-                        />
-                        <NumberInput
-                          label="Index"
-                          placeholder="All"
-                          value={point.index ?? ''}
-                          onChange={(val) => handleUpdatePointIndex(idx, val)}
-                          min={-100}
-                          max={100}
-                          w={120}
-                          size="sm"
-                        />
-                        <ActionIcon
-                          color="red"
-                          variant="light"
-                          onClick={() => handleRemovePoint(idx)}
-                          mt="xl"
-                        >
-                          <IconTrash size={16} />
-                        </ActionIcon>
-                      </Group>
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </div>
+        <Switch
+          size="lg"
+          label="Enable managed prompt caching rules"
+          checked={config.enabled}
+          onChange={event => setConfig(current => ({ ...current, enabled: event.currentTarget.checked }))}
+        />
 
-            {/* Section 4: Live Preview */}
-            <div>
-              <Text fw={600} mb="xs">Live Preview</Text>
-              <Text c="dimmed" size="xs" mb="sm">
-                Messages highlighted in blue will have cache_control injected.
-              </Text>
-              <Stack gap="xs">
-                {MOCK_MESSAGES.map((msg, idx) => {
-                  const isHighlighted = highlightedIndices.has(idx);
-                  return (
-                    <Paper
-                      key={idx}
-                      withBorder
-                      p="sm"
-                      style={isHighlighted ? {
-                        borderColor: 'var(--mantine-color-blue-5)',
-                        borderWidth: 2,
-                        background: 'var(--mantine-color-blue-light)',
-                      } : undefined}
-                    >
-                      <Group gap="sm">
-                        <Badge
-                          color={ROLE_COLORS[msg.role] ?? 'gray'}
-                          variant="filled"
-                          size="sm"
-                          w={80}
-                        >
-                          {msg.role}
-                        </Badge>
-                        <Text size="sm" style={{ flex: 1 }}>
-                          {msg.content}
-                        </Text>
-                        {isHighlighted && (
-                          <Badge color="blue" variant="light" size="xs">
-                            cached
-                          </Badge>
-                        )}
-                      </Group>
-                    </Paper>
-                  );
-                })}
-              </Stack>
-            </div>
-          </>
-        )}
-
-        {/* Save Button */}
-        <Group justify="flex-end">
-          <Button
-            size="md"
-            loading={saving}
-            disabled={!isDirty}
-            onClick={() => void handleSave()}
-          >
-            Save Configuration
-          </Button>
+        <Group justify="space-between">
+          <Text fw={600}>Ordered rules (first match wins)</Text>
+          <Button leftSection={<IconPlus size={16} />} onClick={addRule} disabled={!managedCapabilities.length}>Add rule</Button>
         </Group>
+
+        {config.rules.length === 0 && <Alert color="blue">No managed rules configured. Automatic provider caching is unaffected.</Alert>}
+
+        {config.rules.map((rule, index) => {
+          const capability = managedCapabilities.find(c => c.modelPattern === rule.modelPattern && c.provider === rule.provider);
+          const explicit = rule.strategy === 'Explicit';
+          return (
+            <Paper key={`${rule.name}-${index}`} withBorder p="md">
+              <Stack gap="sm">
+                <Group justify="space-between">
+                  <Switch checked={rule.enabled} label={`Rule ${index + 1}`} onChange={event => updateRule(index, { enabled: event.currentTarget.checked })} />
+                  <ActionIcon color="red" variant="subtle" aria-label="Delete rule" onClick={() => setConfig(current => ({ ...current, rules: current.rules.filter((ruleItem, i) => ruleItem && i !== index) }))}><IconTrash size={16} /></ActionIcon>
+                </Group>
+                <TextInput label="Name" value={rule.name} onChange={event => updateRule(index, { name: event.currentTarget.value })} />
+                <Select
+                  label="Supported route"
+                  data={managedCapabilities.map(c => ({ value: `${c.provider}|${c.modelPattern}`, label: `${c.provider} · ${c.modelPattern}` }))}
+                  value={`${rule.provider}|${rule.modelPattern}`}
+                  onChange={value => {
+                    const nextCapability = managedCapabilities.find(c => `${c.provider}|${c.modelPattern}` === value);
+                    if (!nextCapability) return;
+                    const strategy = nextCapability.strategies[0];
+                    updateRule(index, {
+                      modelPattern: nextCapability.modelPattern,
+                      provider: nextCapability.provider,
+                      strategy,
+                      ttl: nextCapability.ttls[0] ?? null,
+                      injectionPoints: strategy === 'Explicit' ? [{ role: 'system', index: 0 }] : [],
+                    });
+                  }}
+                />
+                <Group grow align="end">
+                  <Select label="Strategy" data={(capability?.strategies ?? []).map(s => ({ value: s, label: s === 'Automatic' ? 'Automatic conversation caching' : 'Explicit breakpoints' }))} value={rule.strategy} onChange={value => {
+                    if (!value) return;
+                    let injectionPoints: InjectionPoint[] = [];
+                    if (value === 'Explicit') {
+                      injectionPoints = rule.injectionPoints.length > 0
+                        ? rule.injectionPoints
+                        : [{ role: 'system', index: 0 }];
+                    }
+                    updateRule(index, { strategy: value as Strategy, injectionPoints });
+                  }} />
+                  <Select label="Lifetime" data={(capability?.ttls ?? []).map(ttl => ({ value: ttl, label: ttl }))} value={rule.ttl ?? null} onChange={value => updateRule(index, { ttl: value })} disabled={!capability?.ttls.length} />
+                </Group>
+                {capability?.minimumTokens && <Text size="xs" c="dimmed">Prefixes shorter than approximately {capability.minimumTokens.toLocaleString()} tokens may not be cached.</Text>}
+                {explicit && (
+                  <Stack gap="xs">
+                    <Group justify="space-between"><Text size="sm" fw={600}>Breakpoints ({rule.injectionPoints.length}/{capability?.maxBreakpoints ?? 4})</Text><Button size="xs" variant="light" disabled={rule.injectionPoints.length >= (capability?.maxBreakpoints ?? 4)} onClick={() => updateRule(index, { injectionPoints: [...rule.injectionPoints, { role: 'user', index: -1 }] })}>Add breakpoint</Button></Group>
+                    {rule.injectionPoints.map((point, pointIndex) => <Group key={pointIndex} grow>
+                      <Select data={['system', 'developer', 'user', 'assistant']} value={point.role ?? null} onChange={value => updateRule(index, { injectionPoints: rule.injectionPoints.map((p, i) => i === pointIndex ? { ...p, role: value as InjectionPoint['role'] } : p) })} />
+                      <NumberInput value={point.index ?? ''} placeholder="All matching" allowDecimal={false} min={-100} max={100} onChange={value => updateRule(index, { injectionPoints: rule.injectionPoints.map((p, i) => i === pointIndex ? { ...p, index: value === '' ? null : Number(value) } : p) })} />
+                      <ActionIcon color="red" variant="subtle" onClick={() => updateRule(index, { injectionPoints: rule.injectionPoints.filter((pointItem, i) => pointItem && i !== pointIndex) })}><IconTrash size={16} /></ActionIcon>
+                    </Group>)}
+                  </Stack>
+                )}
+              </Stack>
+            </Paper>
+          );
+        })}
+
+        {providerManaged.length > 0 && <Alert title="Provider-managed automatic caching" color="gray">{providerManaged.map(c => `${c.provider} ${c.modelPattern}`).join(' · ')}</Alert>}
+        <Group justify="flex-end"><Button variant="default" onClick={() => void load()}>Reset</Button><Button loading={saving} disabled={!isDirty} onClick={() => void save()}>Save policy</Button></Group>
       </Stack>
     </Container>
   );

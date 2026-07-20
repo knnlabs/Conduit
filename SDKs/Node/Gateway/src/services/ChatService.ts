@@ -7,12 +7,13 @@ import type {
   ChatCompletionChunk 
 } from '../models/chat';
 import type { StreamingResponse } from '../models/streaming';
-import type { ChatStreamEvent, EnhancedStreamEvent } from '../models/enhanced-streaming';
+import { isChatCompletionChunk, type ChatStreamEvent, type EnhancedStreamEvent } from '../models/enhanced-streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import { validateChatCompletionRequest } from '../utils/validation';
 import { API_ENDPOINTS } from '../constants';
 import { ControllableChatStream, type ControllableStream, type StreamControlOptions } from '../models/streaming-controls';
 import { BaseStreamingService } from './BaseStreamingService';
+import { TypedStreamingResponse } from '../utils/stream-response';
 
 interface FetchBasedClientWithConfig {
   config: Required<Omit<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>> & 
@@ -187,7 +188,13 @@ export class ChatService extends BaseStreamingService {
       options
     );
 
-    return new ControllableChatStream(baseStream, options?.streamControl ?? {});
+    const chunks = async function* (): AsyncGenerator<ChatCompletionChunk, void, unknown> {
+      for await (const event of baseStream) {
+        if (isChatCompletionChunk(event)) yield event;
+      }
+    };
+    const chunksOnly = new TypedStreamingResponse(chunks());
+    return new ControllableChatStream(chunksOnly, options?.streamControl ?? {});
   }
 
   /**

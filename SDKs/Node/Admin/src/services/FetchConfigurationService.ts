@@ -1,7 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import type { LLMCacheControlDto, ToggleLLMCacheRequest } from '../models/cache-types';
-import type { PromptCachingConfigDto, UpdatePromptCachingConfigDto } from '../models/promptCaching';
+import type { PromptCachingAnalyticsDto, PromptCachingCapabilityDto, PromptCachingConfigDto, UpdatePromptCachingConfigDto } from '../models/promptCaching';
 import { ENDPOINTS } from '../constants';
 
 /**
@@ -139,40 +138,6 @@ export class FetchConfigurationService {
     return this.clearCacheByRegion(cacheId, config);
   }
 
-  /**
-   * Get the current LLM caching status
-   * @param config Optional request configuration
-   * @returns LLM cache control status
-   */
-  async getLLMCacheStatus(config?: RequestConfig): Promise<LLMCacheControlDto> {
-    return this.client['get']<LLMCacheControlDto>(
-      ENDPOINTS.CONFIG.CACHING.LLM_STATUS,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Toggle LLM caching on or off for all instances
-   * @param request Toggle request with enabled state and optional reason
-   * @param config Optional request configuration
-   * @returns Updated LLM cache control status
-   */
-  async toggleLLMCache(request: ToggleLLMCacheRequest, config?: RequestConfig): Promise<LLMCacheControlDto> {
-    return this.client['post']<LLMCacheControlDto>(
-      ENDPOINTS.CONFIG.CACHING.LLM_TOGGLE,
-      request,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
   async getPromptCachingConfig(config?: RequestConfig): Promise<PromptCachingConfigDto> {
     return this.client['get']<PromptCachingConfigDto>(
       ENDPOINTS.PROMPT_CACHING.CONFIG,
@@ -196,6 +161,53 @@ export class FetchConfigurationService {
         timeout: config?.timeout,
         headers: config?.headers,
       }
+    );
+  }
+
+  async getRoutingDefaults(config?: RequestConfig): Promise<unknown> {
+    return this.client['get']<unknown>(ENDPOINTS.CONFIG.ROUTING_DEFAULTS, {
+      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
+    });
+  }
+
+  async updateRoutingDefaults(data: unknown, config?: RequestConfig): Promise<unknown> {
+    return this.client['put']<unknown>(ENDPOINTS.CONFIG.ROUTING_DEFAULTS, data, {
+      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
+    });
+  }
+
+  async getAliasRouting(alias: string, config?: RequestConfig): Promise<unknown> {
+    return this.client['get']<unknown>(ENDPOINTS.CONFIG.ROUTING_ALIAS(alias), {
+      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
+    });
+  }
+
+  async updateAliasRouting(alias: string, data: unknown, config?: RequestConfig): Promise<unknown> {
+    return this.client['put']<unknown>(ENDPOINTS.CONFIG.ROUTING_ALIAS(alias), data, {
+      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
+    });
+  }
+
+  async getPromptCachingCapabilities(config?: RequestConfig): Promise<PromptCachingCapabilityDto[]> {
+    return this.client['get']<PromptCachingCapabilityDto[]>(
+      ENDPOINTS.PROMPT_CACHING.CAPABILITIES,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  async getPromptCachingAnalytics(
+    filters: { from?: string; to?: string; alias?: string; provider?: string; mappingId?: number } = {},
+    config?: RequestConfig
+  ): Promise<PromptCachingAnalyticsDto> {
+    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined && value !== '')
+      .map(([key, value]) => [key, String(value)]));
+    return this.client['get']<PromptCachingAnalyticsDto>(
+      `${ENDPOINTS.PROMPT_CACHING.ANALYTICS}${query.size ? `?${query}` : ''}`,
+      { signal: config?.signal, timeout: config?.timeout, headers: config?.headers }
     );
   }
 

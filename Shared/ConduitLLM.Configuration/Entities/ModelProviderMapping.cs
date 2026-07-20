@@ -55,6 +55,15 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         public bool IsEnabled { get; set; } = true;
 
+        /// <summary>Deterministic tie-break priority; lower values win.</summary>
+        [Range(0, int.MaxValue)]
+        public int RoutingPriority { get; set; } = 100;
+
+        /// <summary>Multiplier applied to the balanced route score.</summary>
+        [Range(0.1, 2.0)]
+        [Column(TypeName = "decimal(4, 2)")]
+        public decimal RoutingWeight { get; set; } = 1.0m;
+
         /// <summary>
         /// Optional provider-specific request options as a JSON object. For OpenRouter mappings the
         /// top-level keys (provider, plugins, transforms, models, route) are merged into every

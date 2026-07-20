@@ -144,7 +144,9 @@ public partial class CostCalculationService
             // Handle cache write token refunds
             if (refundUsage.CachedWriteTokens.HasValue && refundUsage.CachedWriteTokens.Value > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
             {
-                // Cache write refunds are additional (cost is per million tokens)
+                if (refundUsage.CachedWriteTokensIncludedInPrompt)
+                    regularInputTokens -= refundUsage.CachedWriteTokens.Value;
+
                 var cacheWriteRefund = (refundUsage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value) / 1_000_000m;
                 breakdown.InputTokenRefund = breakdown.InputTokenRefund + cacheWriteRefund;
                 totalRefund += cacheWriteRefund;

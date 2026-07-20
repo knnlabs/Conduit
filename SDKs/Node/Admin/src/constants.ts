@@ -214,11 +214,15 @@ export const ENDPOINTS = {
   // Prompt Caching
   PROMPT_CACHING: {
     CONFIG: '/api/prompt-caching/config',
+    CAPABILITIES: '/api/prompt-caching/capabilities',
+    ANALYTICS: '/api/prompt-caching/analytics',
   },
 
   // Configuration endpoints
   CONFIG: {
     ROUTING: '/api/config/routing',
+    ROUTING_DEFAULTS: '/api/config/routing/defaults',
+    ROUTING_ALIAS: (alias: string) => `/api/config/routing/aliases/${encodeURIComponent(alias)}`,
     CACHING: {
       BASE: '/api/config/caching',
       CLEAR: (cacheId: string) => `/api/config/caching/${cacheId}/clear`,
@@ -227,8 +231,6 @@ export const ENDPOINTS = {
       ENTRIES: (regionId: string) => `/api/config/caching/${regionId}/entries`,
       REFRESH: (regionId: string) => `/api/config/caching/${regionId}/refresh`,
       POLICY: (regionId: string) => `/api/config/caching/${regionId}/policy`,
-      LLM_STATUS: '/api/config/caching/llm-status',
-      LLM_TOGGLE: '/api/config/caching/llm-toggle',
     },
   },
 

@@ -1661,14 +1661,13 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/config/caching/llm-status": {
+  "/api/config/routing/defaults": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets the current LLM caching status. */
     get: {
       parameters: {
         query?: never;
@@ -1678,15 +1677,15 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description LLM cache control status. */
+        /** @description OK */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["LLMCacheControlDto"];
-            "application/json": components["schemas"]["LLMCacheControlDto"];
-            "text/json": components["schemas"]["LLMCacheControlDto"];
+            "text/plain": components["schemas"]["RoutingDefaultsDto"];
+            "application/json": components["schemas"]["RoutingDefaultsDto"];
+            "text/json": components["schemas"]["RoutingDefaultsDto"];
           };
         };
         /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -1698,7 +1697,41 @@ export interface paths {
         };
       };
     };
-    put?: never;
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["RoutingDefaultsDto"];
+          "text/json": components["schemas"]["RoutingDefaultsDto"];
+          "application/*+json": components["schemas"]["RoutingDefaultsDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["RoutingDefaultsDto"];
+            "application/json": components["schemas"]["RoutingDefaultsDto"];
+            "text/json": components["schemas"]["RoutingDefaultsDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     post?: never;
     delete?: never;
     options?: never;
@@ -1706,41 +1739,33 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/config/caching/llm-toggle": {
+  "/api/config/routing/aliases/{alias}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get?: never;
-    put?: never;
-    /** Toggles LLM caching for all instances. */
-    post: {
+    get: {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          alias: string;
+        };
         cookie?: never;
       };
-      /** @description Cancellation token. */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["ToggleLLMCacheRequest"];
-          "text/json": components["schemas"]["ToggleLLMCacheRequest"];
-          "application/*+json": components["schemas"]["ToggleLLMCacheRequest"];
-        };
-      };
+      requestBody?: never;
       responses: {
-        /** @description Updated LLM cache control status. */
+        /** @description OK */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["LLMCacheControlDto"];
-            "application/json": components["schemas"]["LLMCacheControlDto"];
-            "text/json": components["schemas"]["LLMCacheControlDto"];
+            "text/plain": components["schemas"]["RoutePolicyDto"];
+            "application/json": components["schemas"]["RoutePolicyDto"];
+            "text/json": components["schemas"]["RoutePolicyDto"];
           };
         };
         /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -1752,6 +1777,44 @@ export interface paths {
         };
       };
     };
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          alias: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["RoutePolicyDto"];
+          "text/json": components["schemas"]["RoutePolicyDto"];
+          "application/*+json": components["schemas"]["RoutePolicyDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["RoutePolicyDto"];
+            "application/json": components["schemas"]["RoutePolicyDto"];
+            "text/json": components["schemas"]["RoutePolicyDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -9090,7 +9153,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description The current prompt caching configuration, or defaults if not set. */
+        /** @description OK */
         200: {
           headers: {
             [name: string]: unknown;
@@ -9099,6 +9162,17 @@ export interface paths {
             "text/plain": components["schemas"]["PromptCachingConfigDto"];
             "application/json": components["schemas"]["PromptCachingConfigDto"];
             "text/json": components["schemas"]["PromptCachingConfigDto"];
+          };
+        };
+        /** @description Conflict */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
           };
         };
         /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -9158,6 +9232,100 @@ export interface paths {
         };
       };
     };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prompt-caching/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PromptCachingCapabilityDto"][];
+            "application/json": components["schemas"]["PromptCachingCapabilityDto"][];
+            "text/json": components["schemas"]["PromptCachingCapabilityDto"][];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prompt-caching/analytics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: {
+          from?: string;
+          to?: string;
+          alias?: string;
+          provider?: string;
+          mappingId?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["PromptCachingAnalyticsDto"];
+            "application/json": components["schemas"]["PromptCachingAnalyticsDto"];
+            "text/json": components["schemas"]["PromptCachingAnalyticsDto"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
     post?: never;
     delete?: never;
     options?: never;
@@ -14148,15 +14316,6 @@ export interface components {
       /** @description Recent warning errors */
       recentWarnings?: components["schemas"]["WarningErrorDto"][];
     };
-    LLMCacheControlDto: {
-      enabled?: boolean;
-      /** Format: date-time */
-      lastChangedAt?: null | string;
-      lastChangedBy?: null | string;
-      lastChangeReason?: null | string;
-      /** Format: int32 */
-      activeInstances?: null | number;
-    };
     /** @description Load balancer configuration details. */
     LoadBalancerDto: {
       /** @description The load balancer identifier. */
@@ -14206,6 +14365,18 @@ export interface components {
       /** Format: int32 */
       providerId?: null | number;
       providerType?: null | string;
+      /** Format: int32 */
+      modelProviderMappingId?: null | number;
+      promptCachingEligible?: boolean;
+      promptCachingPolicyApplied?: boolean;
+      /** Format: double */
+      cachedReadSavings?: number;
+      /** Format: double */
+      cacheWritePremium?: number;
+      routingAffinityUsed?: boolean;
+      routingDecisionReason?: null | string;
+      /** Format: int32 */
+      routingFailoverCount?: number;
       requestType?: string;
       /** Format: int32 */
       inputTokens?: number;
@@ -14740,6 +14911,8 @@ export interface components {
       modelProviderTypeAssociationId: number;
       /** Format: int32 */
       priority?: number;
+      /** Format: double */
+      weight?: number;
       isEnabled?: boolean;
       /** Format: date-time */
       createdAt?: string;
@@ -15296,8 +15469,70 @@ export interface components {
       /** Format: int32 */
       requestLogId?: null | number;
     };
+    PromptCachingAnalyticsDto: {
+      /** Format: date-time */
+      from?: string;
+      /** Format: date-time */
+      to?: string;
+      /** Format: int32 */
+      requests?: number;
+      /** Format: int32 */
+      eligibleMisses?: number;
+      /** Format: int32 */
+      readEvents?: number;
+      /** Format: int32 */
+      writeEvents?: number;
+      /** Format: int32 */
+      unknownOutcomes?: number;
+      /** Format: int64 */
+      cachedTokens?: number;
+      /** Format: double */
+      grossSavings?: number;
+      /** Format: double */
+      writePremium?: number;
+      /** Format: double */
+      netSavings?: number;
+      /** Format: double */
+      hitLatencyMs?: null | number;
+      /** Format: double */
+      missLatencyMs?: null | number;
+      /** Format: int32 */
+      affinityReuse?: number;
+      /** Format: int32 */
+      failovers?: number;
+      providerDistribution?: components["schemas"]["PromptCachingProviderDistributionDto"][];
+    };
+    PromptCachingCapabilityDto: {
+      provider?: string;
+      modelPattern?: string;
+      strategies?: string[];
+      ttls?: string[];
+      /** Format: int32 */
+      minimumTokens?: null | number;
+      /** Format: int32 */
+      maxBreakpoints?: number;
+      providerManaged?: boolean;
+    };
     PromptCachingConfigDto: {
-      autoInjectEnabled?: boolean;
+      /** Format: int32 */
+      schemaVersion?: number;
+      enabled?: boolean;
+      rules?: components["schemas"]["PromptCachingRuleDto"][];
+    };
+    PromptCachingProviderDistributionDto: {
+      provider?: string;
+      /** Format: int32 */
+      mappingId?: null | number;
+      /** Format: int32 */
+      requests?: number;
+    };
+    PromptCachingRuleDto: {
+      name: string;
+      enabled?: boolean;
+      provider: string;
+      modelPattern: string;
+      strategy: string;
+      ttl?: null | string;
       injectionPoints?: components["schemas"]["CacheInjectionPointDto"][];
     };
     Provider: {
@@ -15546,6 +15781,20 @@ export interface components {
       /** Format: int32 */
       providerId?: null | number;
       providerType?: null | string;
+      /** Format: int32 */
+      modelProviderMappingId?: null | number;
+      promptCachingEligible?: boolean;
+      promptCachingPolicyApplied?: boolean;
+      /** Format: double */
+      cachedReadSavings?: number;
+      /** Format: double */
+      cacheWritePremium?: number;
+      /** Format: double */
+      promptCachingNetSavings?: number;
+      routingAffinityUsed?: boolean;
+      routingDecisionReason?: null | string;
+      /** Format: int32 */
+      routingFailoverCount?: number;
       requestType: string;
       /** Format: int32 */
       inputTokens?: number;
@@ -15600,6 +15849,22 @@ export interface components {
        */
       negativeBalanceRetentionDays?: number;
     };
+    RoutePolicyDto: {
+      modelAlias?: string;
+      strategy?: string;
+      /** Format: double */
+      costWeight?: number;
+      /** Format: double */
+      speedWeight?: number;
+      /** Format: double */
+      qualityWeight?: number;
+      cacheAffinityEnabled?: boolean;
+      /** Format: int32 */
+      affinityTtlSeconds?: number;
+      /** Format: double */
+      maxAffinityScorePenalty?: number;
+      isEnabled?: boolean;
+    };
     /** @description Response DTO for the routing configuration endpoint. */
     RoutingConfigurationDto: {
       /**
@@ -15615,6 +15880,28 @@ export interface components {
       statistics?: components["schemas"]["RoutingStatisticsDto"];
       /** @description General routing configuration settings. */
       configuration?: components["schemas"]["RoutingSettingsDto"];
+      aliasPolicies?: components["schemas"]["RoutePolicyDto"][];
+    };
+    RoutingDefaultsDto: {
+      chatRoutingEnabled?: boolean;
+      /** Format: int32 */
+      mappingPriority?: number;
+      /** Format: double */
+      mappingWeight?: number;
+      modelAlias?: string;
+      strategy?: string;
+      /** Format: double */
+      costWeight?: number;
+      /** Format: double */
+      speedWeight?: number;
+      /** Format: double */
+      qualityWeight?: number;
+      cacheAffinityEnabled?: boolean;
+      /** Format: int32 */
+      affinityTtlSeconds?: number;
+      /** Format: double */
+      maxAffinityScorePenalty?: number;
+      isEnabled?: boolean;
     };
     /** @description A single model-to-provider routing rule. */
     RoutingRuleDto: {
@@ -15629,6 +15916,10 @@ export interface components {
       providerModelId?: string;
       /** @description Whether the mapping is enabled. */
       isEnabled?: boolean;
+      /** Format: int32 */
+      priority?: number;
+      /** Format: double */
+      weight?: number;
       /** @description The provider that serves this rule. */
       provider?: components["schemas"]["RoutingRuleProviderDto"];
     };
@@ -16019,10 +16310,6 @@ export interface components {
        */
       end?: string;
     };
-    ToggleLLMCacheRequest: {
-      enabled?: boolean;
-      reason?: null | string;
-    };
     TokenizerType: number;
     /** @description DTO describing a provider type that supports tools */
     ToolProviderDto: {
@@ -16319,8 +16606,10 @@ export interface components {
       message?: null | string;
     };
     UpdatePromptCachingConfigDto: {
-      autoInjectEnabled: boolean;
-      injectionPoints: components["schemas"]["CacheInjectionPointDto"][];
+      /** Format: int32 */
+      schemaVersion?: number;
+      enabled?: boolean;
+      rules: components["schemas"]["PromptCachingRuleDto"][];
     };
     /** @description Request model for updating a provider */
     UpdateProviderRequest: {

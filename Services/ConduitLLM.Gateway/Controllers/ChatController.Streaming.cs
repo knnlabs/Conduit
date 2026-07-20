@@ -24,6 +24,15 @@ namespace ConduitLLM.Gateway.Controllers
         {
             _logger.LogInformation("Handling non-streaming request.");
             var response = await _conduit.CreateChatCompletionAsync(request, null, virtualKeyId, cancellationToken);
+            await CaptureSelectedRouteAsync(request);
+
+            if (response.Usage is not null)
+            {
+                HttpContext.Items[HttpContextKeys.NonStreamingUsage] = response.Usage;
+            }
+            HttpContext.Items[HttpContextKeys.PromptCachingEligible] =
+                request.PromptCachingIntent is not null ||
+                (HttpContext.Items.TryGetValue(HttpContextKeys.PromptCachingEligible, out var eligible) && eligible is true);
 
             if (response.AgenticMetrics?.FunctionCalls != null && response.AgenticMetrics.FunctionCalls.Count > 0)
             {
@@ -129,6 +138,7 @@ namespace ConduitLLM.Gateway.Controllers
             }
             finally
             {
+                await CaptureSelectedRouteAsync(request);
                 // Billing data must survive provider failures and client disconnects. Do not use the
                 // request token here: it is normally cancelled precisely when this fallback is needed.
                 await StoreStreamingResultsAsync(request, state, CancellationToken.None);
@@ -276,6 +286,10 @@ namespace ConduitLLM.Gateway.Controllers
             StreamingAccumulatorState state,
             CancellationToken cancellationToken)
         {
+            HttpContext.Items[HttpContextKeys.PromptCachingEligible] =
+                request.PromptCachingIntent is not null ||
+                (HttpContext.Items.TryGetValue(HttpContextKeys.PromptCachingEligible, out var eligible) && eligible is true);
+
             // Store usage data for middleware
             if (state.StreamingUsage != null)
             {

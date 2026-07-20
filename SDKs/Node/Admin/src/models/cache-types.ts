@@ -77,22 +77,3 @@ export interface CacheKeyStats {
   ttlSeconds: number;
   lastAccessed: string;
 }
-
-/**
- * LLM cache control status
- */
-export interface LLMCacheControlDto {
-  enabled: boolean;
-  lastChangedAt: string | null;
-  lastChangedBy: string | null;
-  lastChangeReason: string | null;
-  activeInstances: number | null;
-}
-
-/**
- * Request to toggle LLM caching
- */
-export interface ToggleLLMCacheRequest {
-  enabled: boolean;
-  reason?: string;
-}

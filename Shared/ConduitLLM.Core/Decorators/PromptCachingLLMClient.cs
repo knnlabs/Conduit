@@ -18,20 +18,26 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
     private readonly ILLMClient _innerClient;
     private readonly IGlobalSettingsCacheService _settingsService;
     private readonly ILogger<PromptCachingLLMClient> _logger;
+    private readonly string _provider;
+    private readonly string _providerModelId;
 
     /// <summary>
     /// GlobalSettings key for the prompt caching configuration.
     /// </summary>
-    public const string SettingsKey = "PromptCaching.Config";
+    public const string SettingsKey = PromptCachingConstants.SettingsKey;
 
     public PromptCachingLLMClient(
         ILLMClient innerClient,
         IGlobalSettingsCacheService settingsService,
-        ILogger<PromptCachingLLMClient> logger)
+        ILogger<PromptCachingLLMClient> logger,
+        string provider = "unknown",
+        string providerModelId = "unknown")
     {
         _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _provider = provider;
+        _providerModelId = providerModelId;
     }
 
     /// <inheritdoc />
@@ -154,11 +160,25 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
         try
         {
             var config = await GetPromptCachingConfigAsync();
-            if (config is { AutoInjectEnabled: true })
+            if (config is not null)
             {
-                PromptCacheInjectionService.InjectCacheControl(request, config);
-                PromptCachingInjectionMetrics.RecordSuccess(request.Model ?? "unknown");
-                _logger.LogDebug("Injected cache_control directives for model {Model}", request.Model);
+                config = PromptCachingPolicyResolver.Migrate(config);
+                var errors = PromptCachingPolicyResolver.Validate(config);
+                if (errors.Count != 0)
+                {
+                    PromptCachingInjectionMetrics.RecordError(request.Model ?? "unknown");
+                    _logger.LogWarning("Ignoring invalid prompt caching configuration: {Errors}", string.Join("; ", errors));
+                    return;
+                }
+
+                request.PromptCachingIntent = PromptCachingPolicyResolver.Resolve(
+                    config, _provider, _providerModelId, request.RoutingAffinityKey);
+                if (request.PromptCachingIntent is not null)
+                {
+                    PromptCachingInjectionMetrics.RecordSuccess(request.Model ?? "unknown");
+                    _logger.LogDebug("Resolved {Strategy} prompt caching for {Provider}/{Model}",
+                        request.PromptCachingIntent.Strategy, _provider, _providerModelId);
+                }
             }
         }
         catch (Exception ex)

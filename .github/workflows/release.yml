@@ -22,20 +22,37 @@ jobs:
     
     outputs:
       version: ${{ steps.version.outputs.version }}
-    
+      channel: ${{ steps.version.outputs.channel }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Extract version
+
+      - name: Extract version and channel
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-      
+        # A tag is a pre-release iff its name contains a hyphen (SemVer rule).
+        # This single decision drives the GitHub Release flag, the Docker floating
+        # tag, and the npm dist-tag so all three channels stay consistent.
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            echo "channel=beta" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=latest" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          # Only stable releases become the repo's "Latest" (and appear in
+          # /releases/latest); betas never move the badge.
+          make_latest: ${{ steps.version.outputs.channel == 'latest' }}
 
   docker:
     name: Docker - ${{ matrix.service }}
@@ -77,9 +94,11 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
+          # Immutable version pin + the floating channel tag (:latest for stable,
+          # :beta for pre-releases). A pre-release never overwrites :latest.
           tags: |
             ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}:${{ needs.release.outputs.version }}
-            ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}:latest
+            ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}:${{ needs.release.outputs.channel }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
 
@@ -97,42 +116,35 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
           cache: npm
-          cache-dependency-path: |
-            SDKs/Node/package-lock.json
-            SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Gateway/package-lock.json
-            SDKs/Node/Common/package-lock.json
-      
+          # Workspaces monorepo: a single root lockfile (no per-package locks exist).
+          cache-dependency-path: SDKs/Node/package-lock.json
+
       - name: Update versions and publish
         run: |
-          VERSION=${{ needs.release.outputs.version }}
-          
+          VERSION="${{ needs.release.outputs.version }}"
+          CHANNEL="${{ needs.release.outputs.channel }}"
+
           cd SDKs/Node
-          
-          # Update Common version first
-          cd Common
-          npm version $VERSION --no-git-tag-version
-          cd ..
-          
-          # Update Admin and Core versions AND their Common dependency
-          cd Admin
-          npm version $VERSION --no-git-tag-version
-          # Update the Common dependency to use the new version
-          npm install @knn_labs/conduit-common@$VERSION --save-exact
-          cd ../Core
-          npm version $VERSION --no-git-tag-version
-          # Update the Common dependency to use the new version
-          npm install @knn_labs/conduit-common@$VERSION --save-exact
-          
-          # Build all packages
-          cd ..
+
+          # Install from the lockfile and build BEFORE editing any package.json,
+          # so npm ci sees a consistent, in-sync tree. tsup resolves the
+          # file:../Common workspace links during the build.
           npm ci
           npm run build
-          
-          # Publish with 'latest' tag for stable releases
-          # Publish Common first since others depend on it
-          cd Common && npm publish --tag latest --access public
-          cd ../Admin && npm publish --tag latest --access public
-          cd ../Core && npm publish --tag latest --access public
+
+          # Stamp the unified release version onto all three published packages.
+          # `npm pkg set` writes the field directly (no same-version error, no git tag).
+          npm pkg set version="$VERSION" --workspace Common --workspace Admin --workspace Gateway
+
+          # Pin the published Common dependency to the exact release version. Editing
+          # package.json directly avoids a registry fetch, so this works even though
+          # Common@$VERSION has not been published yet.
+          npm pkg set "dependencies.@knn_labs/conduit-common=$VERSION" --workspace Admin --workspace Gateway
+
+          # Publish Common first — Admin and Gateway depend on it. Channel is
+          # `latest` for stable tags, `beta` for pre-release tags.
+          npm publish --workspace Common  --tag "$CHANNEL" --access public
+          npm publish --workspace Admin   --tag "$CHANNEL" --access public
+          npm publish --workspace Gateway --tag "$CHANNEL" --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

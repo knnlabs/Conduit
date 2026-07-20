@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 
 using ConduitLLM.Configuration;
+using System.ComponentModel.DataAnnotations;
 
 namespace ConduitLLM.Admin.DTOs
 {
@@ -34,6 +35,7 @@ namespace ConduitLLM.Admin.DTOs
         /// General routing configuration settings.
         /// </summary>
         public RoutingSettingsDto Configuration { get; set; } = new();
+        public List<RoutePolicyDto> AliasPolicies { get; set; } = new();
     }
 
     /// <summary>
@@ -60,11 +62,33 @@ namespace ConduitLLM.Admin.DTOs
         /// Whether the mapping is enabled.
         /// </summary>
         public bool IsEnabled { get; set; }
+        public int Priority { get; set; }
+        public decimal Weight { get; set; }
 
         /// <summary>
         /// The provider that serves this rule.
         /// </summary>
         public RoutingRuleProviderDto Provider { get; set; } = new();
+    }
+
+    public class RoutePolicyDto
+    {
+        public string ModelAlias { get; set; } = string.Empty;
+        public string Strategy { get; set; } = "Balanced";
+        [Range(0, 1)] public decimal CostWeight { get; set; } = 0.40m;
+        [Range(0, 1)] public decimal SpeedWeight { get; set; } = 0.30m;
+        [Range(0, 1)] public decimal QualityWeight { get; set; } = 0.30m;
+        public bool CacheAffinityEnabled { get; set; } = true;
+        [Range(1, 86400)] public int AffinityTtlSeconds { get; set; } = 1800;
+        [Range(0, 1)] public decimal MaxAffinityScorePenalty { get; set; } = 0.10m;
+        public bool IsEnabled { get; set; } = true;
+    }
+
+    public sealed class RoutingDefaultsDto : RoutePolicyDto
+    {
+        public bool ChatRoutingEnabled { get; set; } = true;
+        public int MappingPriority { get; set; } = 100;
+        [Range(0.1, 2.0)] public decimal MappingWeight { get; set; } = 1.0m;
     }
 
     /// <summary>

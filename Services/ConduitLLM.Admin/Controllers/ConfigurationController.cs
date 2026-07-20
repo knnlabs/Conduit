@@ -1,5 +1,4 @@
 using ConduitLLM.Configuration;
-using ConduitLLM.Core.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +7,8 @@ using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Services;
-using ConduitLLM.Configuration.DTOs.Cache;
+using System.Text.Json;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -24,7 +24,6 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
-        private readonly ILLMCacheManagementService _llmCacheManagementService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ConfigurationController"/> class.
@@ -33,19 +32,16 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
         /// <param name="configuration">Application configuration.</param>
-        /// <param name="llmCacheManagementService">Service for LLM cache toggle operations.</param>
         public ConfigurationController(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ConfigurationController> logger,
             IMemoryCache cache,
-            IConfiguration configuration,
-            ILLMCacheManagementService llmCacheManagementService)
+            IConfiguration configuration)
             : base(logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _llmCacheManagementService = llmCacheManagementService ?? throw new ArgumentNullException(nameof(llmCacheManagementService));
         }
 
         /// <summary>
@@ -68,6 +64,8 @@ namespace ConduitLLM.Admin.Controllers
                     ModelAlias = m.ModelAlias,
                     ProviderModelId = m.ProviderModelId,
                     IsEnabled = m.IsEnabled,
+                    Priority = m.RoutingPriority,
+                    Weight = m.RoutingWeight,
                     Provider = new RoutingRuleProviderDto
                     {
                         Id = m.Provider.Id,
@@ -107,9 +105,90 @@ namespace ConduitLLM.Admin.Controllers
                     EnableLoadBalancing = _configuration.GetValue<bool>("Routing:EnableLoadBalancing", true),
                     RequestTimeout = _configuration.GetValue<int>("Routing:RequestTimeoutSeconds", 30),
                     CircuitBreakerThreshold = _configuration.GetValue<int>("Routing:CircuitBreakerThreshold", 5)
-                }
+                },
+                AliasPolicies = await dbContext.ModelRoutePolicies.AsNoTracking().Select(policy => new RoutePolicyDto
+                {
+                    ModelAlias = policy.ModelAlias, Strategy = policy.Strategy, CostWeight = policy.CostWeight,
+                    SpeedWeight = policy.SpeedWeight, QualityWeight = policy.QualityWeight,
+                    CacheAffinityEnabled = policy.CacheAffinityEnabled, AffinityTtlSeconds = policy.AffinityTtlSeconds,
+                    MaxAffinityScorePenalty = policy.MaxAffinityScorePenalty, IsEnabled = policy.IsEnabled
+                }).ToListAsync(cancellationToken)
             });
         }
+
+        [HttpGet("routing/defaults")]
+        [ProducesResponseType(typeof(RoutingDefaultsDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetRoutingDefaults(CancellationToken cancellationToken = default)
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var setting = await context.GlobalSettings.AsNoTracking()
+                .SingleOrDefaultAsync(item => item.Key == "Routing.Defaults", cancellationToken);
+            return Ok(setting is null ? new RoutingDefaultsDto() :
+                JsonSerializer.Deserialize<RoutingDefaultsDto>(setting.Value) ?? new RoutingDefaultsDto());
+        }
+
+        [HttpPut("routing/defaults")]
+        [ProducesResponseType(typeof(RoutingDefaultsDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> PutRoutingDefaults([FromBody] RoutingDefaultsDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            if (dto.CostWeight + dto.SpeedWeight + dto.QualityWeight <= 0)
+                return BadRequest("At least one route score weight must be positive.");
+            await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var setting = await context.GlobalSettings.SingleOrDefaultAsync(item => item.Key == "Routing.Defaults", cancellationToken);
+            if (setting is null)
+            {
+                setting = new GlobalSetting { Key = "Routing.Defaults", Description = "Default provider-aware chat routing policy" };
+                context.GlobalSettings.Add(setting);
+            }
+            setting.Value = JsonSerializer.Serialize(dto); setting.UpdatedAt = DateTime.UtcNow;
+            var switchSetting = await context.GlobalSettings.SingleOrDefaultAsync(item => item.Key == "Routing.Chat.Enabled", cancellationToken);
+            if (switchSetting is null)
+            {
+                switchSetting = new GlobalSetting { Key = "Routing.Chat.Enabled", Description = "Emergency provider-aware chat routing switch" };
+                context.GlobalSettings.Add(switchSetting);
+            }
+            switchSetting.Value = dto.ChatRoutingEnabled.ToString(); switchSetting.UpdatedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync(cancellationToken);
+            return Ok(dto);
+        }
+
+        [HttpGet("routing/aliases/{alias}")]
+        [ProducesResponseType(typeof(RoutePolicyDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAliasRouting(string alias, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var policy = await context.ModelRoutePolicies.AsNoTracking().SingleOrDefaultAsync(item => item.ModelAlias == alias, cancellationToken);
+            return policy is null ? NotFound() : Ok(ToRoutePolicyDto(policy));
+        }
+
+        [HttpPut("routing/aliases/{alias}")]
+        [ProducesResponseType(typeof(RoutePolicyDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> PutAliasRouting(string alias, [FromBody] RoutePolicyDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            if (!dto.Strategy.Equals("Balanced", StringComparison.OrdinalIgnoreCase) ||
+                dto.CostWeight + dto.SpeedWeight + dto.QualityWeight <= 0) return BadRequest("A valid Balanced policy is required.");
+            await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var exists = await context.ModelProviderMappings.AnyAsync(mapping => mapping.ModelAlias == alias, cancellationToken);
+            if (!exists) return NotFound();
+            var policy = await context.ModelRoutePolicies.SingleOrDefaultAsync(item => item.ModelAlias == alias, cancellationToken);
+            if (policy is null) { policy = new ModelRoutePolicy { ModelAlias = alias }; context.ModelRoutePolicies.Add(policy); }
+            policy.Strategy = "Balanced"; policy.CostWeight = dto.CostWeight; policy.SpeedWeight = dto.SpeedWeight;
+            policy.QualityWeight = dto.QualityWeight; policy.CacheAffinityEnabled = dto.CacheAffinityEnabled;
+            policy.AffinityTtlSeconds = dto.AffinityTtlSeconds; policy.MaxAffinityScorePenalty = dto.MaxAffinityScorePenalty;
+            policy.IsEnabled = dto.IsEnabled; policy.UpdatedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync(cancellationToken);
+            return Ok(ToRoutePolicyDto(policy));
+        }
+
+        private static RoutePolicyDto ToRoutePolicyDto(ModelRoutePolicy policy) => new()
+        {
+            ModelAlias = policy.ModelAlias, Strategy = policy.Strategy, CostWeight = policy.CostWeight,
+            SpeedWeight = policy.SpeedWeight, QualityWeight = policy.QualityWeight,
+            CacheAffinityEnabled = policy.CacheAffinityEnabled, AffinityTtlSeconds = policy.AffinityTtlSeconds,
+            MaxAffinityScorePenalty = policy.MaxAffinityScorePenalty, IsEnabled = policy.IsEnabled
+        };
 
         private async Task<List<LoadBalancerEndpointDto>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
@@ -155,39 +234,6 @@ namespace ConduitLLM.Admin.Controllers
                 TotalRequests = stats.Sum(s => s.RequestCount),
                 ProviderDistribution = stats
             };
-        }
-
-        /// <summary>
-        /// Gets the current LLM caching status.
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>LLM cache control status.</returns>
-        [HttpGet("caching/llm-status")]
-        [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
-        public async Task<IActionResult> GetLLMCacheStatus(CancellationToken cancellationToken = default)
-        {
-            var status = await _llmCacheManagementService.GetLLMCacheStatusAsync(cancellationToken);
-            return Ok(status);
-        }
-
-        /// <summary>
-        /// Toggles LLM caching for all instances.
-        /// </summary>
-        /// <param name="request">Toggle request with enabled state and reason.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Updated LLM cache control status.</returns>
-        [HttpPost("caching/llm-toggle")]
-        [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
-        public async Task<IActionResult> ToggleLLMCache([FromBody] ToggleLLMCacheRequest request, CancellationToken cancellationToken = default)
-        {
-            var userName = User?.Identity?.Name ?? "Unknown";
-            var result = await _llmCacheManagementService.ToggleLLMCacheAsync(
-                request.Enabled,
-                userName,
-                request.Reason,
-                cancellationToken);
-            LogAdminAudit("Toggled", "LLMCache", detail: $"Enabled: {request.Enabled}, Reason: {LoggingSanitizer.S(request.Reason)}");
-            return Ok(result);
         }
 
     }

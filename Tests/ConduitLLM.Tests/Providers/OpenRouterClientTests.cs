@@ -88,12 +88,63 @@ namespace ConduitLLM.Tests.Providers
                 });
         }
 
-        private OpenRouterClient CreateClient(string? providerOptionsJson = null)
+        private OpenRouterClient CreateClient(string? providerOptionsJson = null, string model = "openai/gpt-4o")
         {
             var provider = new Provider { Id = 1, ProviderType = ProviderType.OpenRouter };
             var keyCredential = new ProviderKeyCredential { Id = 1, ProviderId = 1, ApiKey = "test-api-key" };
             var logger = CreateLogger<OpenRouterClient>();
-            return new OpenRouterClient(provider, keyCredential, "openai/gpt-4o", logger.Object, _httpClientFactoryMock.Object, null, providerOptionsJson);
+            return new OpenRouterClient(provider, keyCredential, model, logger.Object, _httpClientFactoryMock.Object, null, providerOptionsJson);
+        }
+
+        [Fact]
+        public async Task Chat_ClaudeAutomaticCaching_AddsTopLevelDirectiveWithoutMutatingRequest()
+        {
+            var client = CreateClient(model: "anthropic/claude-sonnet-4");
+            var request = new ChatCompletionRequest
+            {
+                Model = "alias",
+                Messages = [new Message { Role = "system", Content = "Original" }],
+                PromptCachingIntent = new PromptCachingIntent
+                {
+                    Strategy = PromptCachingStrategy.Automatic,
+                    Ttl = "1h"
+                }
+            };
+
+            await client.CreateChatCompletionAsync(request);
+
+            using var json = JsonDocument.Parse(_capturedRequests.Single(r => r.Path.EndsWith("/chat/completions")).Body);
+            json.RootElement.GetProperty("cache_control").GetProperty("ttl").GetString().Should().Be("1h");
+            request.Messages[0].Content.Should().Be("Original");
+        }
+
+        [Fact]
+        public async Task Chat_QwenExplicitCaching_AddsContentBreakpointAndDeduplicatesTargets()
+        {
+            var client = CreateClient(model: "qwen/qwen3-coder-plus");
+            var request = new ChatCompletionRequest
+            {
+                Model = "alias",
+                Messages = [new Message { Role = "system", Content = "Stable prefix" }],
+                PromptCachingIntent = new PromptCachingIntent
+                {
+                    Strategy = PromptCachingStrategy.Explicit,
+                    Ttl = "5m",
+                    InjectionPoints =
+                    [
+                        new CacheInjectionPoint { Role = "system", Index = 0 },
+                        new CacheInjectionPoint { Role = "system", Index = 0 }
+                    ]
+                }
+            };
+
+            await client.CreateChatCompletionAsync(request);
+
+            using var json = JsonDocument.Parse(_capturedRequests.Single(r => r.Path.EndsWith("/chat/completions")).Body);
+            var content = json.RootElement.GetProperty("messages")[0].GetProperty("content");
+            content.GetArrayLength().Should().Be(1);
+            content[0].GetProperty("cache_control").GetProperty("type").GetString().Should().Be("ephemeral");
+            request.Messages[0].Content.Should().Be("Stable prefix");
         }
 
         [Fact]

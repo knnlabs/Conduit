@@ -1,4 +1,4 @@
-import { SystemInfoDto, LLMCacheControlDto } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
 
 export interface SystemMetric {
   name: string;
@@ -6,8 +6,6 @@ export interface SystemMetric {
   unit?: string;
   status: 'healthy' | 'warning' | 'critical';
   description?: string;
-  isToggleable?: boolean;
-  toggleValue?: boolean;
 }
 
 export interface ServiceInfo {
@@ -21,10 +19,7 @@ export interface ServiceInfo {
 }
 
 // Generate system metrics from real data
-export const generateSystemMetrics = (
-  systemInfo: SystemInfoDto | null,
-  cacheStatus: LLMCacheControlDto | null
-): SystemMetric[] => {
+export const generateSystemMetrics = (systemInfo: SystemInfoDto | null): SystemMetric[] => {
   const systemMetrics: SystemMetric[] = [];
 
   if (systemInfo?.database?.connected !== undefined) {
@@ -35,18 +30,6 @@ export const generateSystemMetrics = (
       description: `Provider: ${systemInfo.database.provider ?? 'Unknown'}`
     });
   }
-
-  // Add LLM Cache status - always show, default to disabled if not loaded
-  systemMetrics.push({
-    name: 'LLM Response Cache',
-    value: cacheStatus?.enabled ? 'Enabled' : 'Disabled',
-    status: 'healthy',
-    description: cacheStatus === null
-      ? 'Status unavailable - defaulting to disabled'
-      : 'Reduces latency and costs for repeated requests',
-    isToggleable: true,
-    toggleValue: cacheStatus?.enabled ?? false
-  });
 
   return systemMetrics;
 };

@@ -1781,29 +1781,78 @@
         }
       }
     },
-    "/api/config/caching/llm-status": {
+    "/api/config/routing/defaults": {
       "get": {
         "tags": [
           "Configuration"
         ],
-        "summary": "Gets the current LLM caching status.",
         "responses": {
           "200": {
-            "description": "LLM cache control status.",
+            "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
+                  "$ref": "#/components/schemas/RoutingDefaultsDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
+                  "$ref": "#/components/schemas/RoutingDefaultsDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
+                  "$ref": "#/components/schemas/RoutingDefaultsDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Configuration"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutingDefaultsDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutingDefaultsDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutingDefaultsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingDefaultsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingDefaultsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingDefaultsDto"
                 }
               }
             }
@@ -1814,28 +1863,76 @@
         }
       }
     },
-    "/api/config/caching/llm-toggle": {
-      "post": {
+    "/api/config/routing/aliases/{alias}": {
+      "get": {
         "tags": [
           "Configuration"
         ],
-        "summary": "Toggles LLM caching for all instances.",
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutePolicyDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutePolicyDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutePolicyDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Configuration"
+        ],
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
-          "description": "Cancellation token.",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ToggleLLMCacheRequest"
+                "$ref": "#/components/schemas/RoutePolicyDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ToggleLLMCacheRequest"
+                "$ref": "#/components/schemas/RoutePolicyDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ToggleLLMCacheRequest"
+                "$ref": "#/components/schemas/RoutePolicyDto"
               }
             }
           },
@@ -1843,21 +1940,21 @@
         },
         "responses": {
           "200": {
-            "description": "Updated LLM cache control status.",
+            "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
+                  "$ref": "#/components/schemas/RoutePolicyDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
+                  "$ref": "#/components/schemas/RoutePolicyDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LLMCacheControlDto"
+                  "$ref": "#/components/schemas/RoutePolicyDto"
                 }
               }
             }
@@ -10154,7 +10251,7 @@
         "summary": "Gets the current prompt caching configuration.",
         "responses": {
           "200": {
-            "description": "The current prompt caching configuration, or defaults if not set.",
+            "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10169,6 +10266,26 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PromptCachingConfigDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -10241,6 +10358,119 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/prompt-caching/capabilities": {
+      "get": {
+        "tags": [
+          "PromptCaching"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PromptCachingCapabilityDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PromptCachingCapabilityDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PromptCachingCapabilityDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
+    "/api/prompt-caching/analytics": {
+      "get": {
+        "tags": [
+          "PromptCaching"
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "alias",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mappingId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingAnalyticsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingAnalyticsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCachingAnalyticsDto"
                 }
               }
             }
@@ -15177,7 +15407,7 @@
         "type": "object",
         "properties": {
           "role": {
-            "pattern": "^(system|user|assistant)$",
+            "pattern": "^(system|developer|user|assistant)$",
             "type": [
               "null",
               "string"
@@ -17300,40 +17530,6 @@
         },
         "description": "DTO for detailed key error information"
       },
-      "LLMCacheControlDto": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "lastChangedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "lastChangedBy": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "lastChangeReason": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "activeInstances": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          }
-        }
-      },
       "LoadBalancerDto": {
         "type": "object",
         "properties": {
@@ -17423,6 +17619,40 @@
               "null",
               "string"
             ]
+          },
+          "modelProviderMappingId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "promptCachingEligible": {
+            "type": "boolean"
+          },
+          "promptCachingPolicyApplied": {
+            "type": "boolean"
+          },
+          "cachedReadSavings": {
+            "type": "number",
+            "format": "double"
+          },
+          "cacheWritePremium": {
+            "type": "number",
+            "format": "double"
+          },
+          "routingAffinityUsed": {
+            "type": "boolean"
+          },
+          "routingDecisionReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "routingFailoverCount": {
+            "type": "integer",
+            "format": "int32"
           },
           "requestType": {
             "type": "string"
@@ -18644,6 +18874,12 @@
             "type": "integer",
             "format": "int32"
           },
+          "weight": {
+            "maximum": 2,
+            "minimum": 0.1,
+            "type": "number",
+            "format": "double"
+          },
           "isEnabled": {
             "type": "boolean"
           },
@@ -19773,13 +20009,191 @@
           }
         }
       },
+      "PromptCachingAnalyticsDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requests": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eligibleMisses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "readEvents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "writeEvents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unknownOutcomes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cachedTokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "grossSavings": {
+            "type": "number",
+            "format": "double"
+          },
+          "writePremium": {
+            "type": "number",
+            "format": "double"
+          },
+          "netSavings": {
+            "type": "number",
+            "format": "double"
+          },
+          "hitLatencyMs": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "missLatencyMs": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "affinityReuse": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failovers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerDistribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PromptCachingProviderDistributionDto"
+            }
+          }
+        }
+      },
+      "PromptCachingCapabilityDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "modelPattern": {
+            "type": "string"
+          },
+          "strategies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ttls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "minimumTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxBreakpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerManaged": {
+            "type": "boolean"
+          }
+        }
+      },
       "PromptCachingConfigDto": {
         "type": "object",
         "properties": {
-          "autoInjectEnabled": {
+          "schemaVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
             "type": "boolean"
           },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PromptCachingRuleDto"
+            }
+          }
+        }
+      },
+      "PromptCachingProviderDistributionDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "mappingId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "requests": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PromptCachingRuleDto": {
+        "required": [
+          "name",
+          "provider",
+          "modelPattern",
+          "strategy"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "modelPattern": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "ttl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "injectionPoints": {
+            "maxItems": 4,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CacheInjectionPointDto"
@@ -20354,6 +20768,45 @@
               "string"
             ]
           },
+          "modelProviderMappingId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "promptCachingEligible": {
+            "type": "boolean"
+          },
+          "promptCachingPolicyApplied": {
+            "type": "boolean"
+          },
+          "cachedReadSavings": {
+            "type": "number",
+            "format": "double"
+          },
+          "cacheWritePremium": {
+            "type": "number",
+            "format": "double"
+          },
+          "promptCachingNetSavings": {
+            "type": "number",
+            "format": "double"
+          },
+          "routingAffinityUsed": {
+            "type": "boolean"
+          },
+          "routingDecisionReason": {
+            "maxLength": 50,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "routingFailoverCount": {
+            "type": "integer",
+            "format": "int32"
+          },
           "requestType": {
             "maxLength": 50,
             "type": "string"
@@ -20507,6 +20960,53 @@
         },
         "description": "Summary of a retention policy for display."
       },
+      "RoutePolicyDto": {
+        "type": "object",
+        "properties": {
+          "modelAlias": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "costWeight": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "speedWeight": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "qualityWeight": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "cacheAffinityEnabled": {
+            "type": "boolean"
+          },
+          "affinityTtlSeconds": {
+            "maximum": 86400,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxAffinityScorePenalty": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "RoutingConfigurationDto": {
         "type": "object",
         "properties": {
@@ -20536,9 +21036,75 @@
           "configuration": {
             "description": "General routing configuration settings.",
             "$ref": "#/components/schemas/RoutingSettingsDto"
+          },
+          "aliasPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoutePolicyDto"
+            }
           }
         },
         "description": "Response DTO for the routing configuration endpoint."
+      },
+      "RoutingDefaultsDto": {
+        "type": "object",
+        "properties": {
+          "chatRoutingEnabled": {
+            "type": "boolean"
+          },
+          "mappingPriority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mappingWeight": {
+            "maximum": 2,
+            "minimum": 0.1,
+            "type": "number",
+            "format": "double"
+          },
+          "modelAlias": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "costWeight": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "speedWeight": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "qualityWeight": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "cacheAffinityEnabled": {
+            "type": "boolean"
+          },
+          "affinityTtlSeconds": {
+            "maximum": 86400,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxAffinityScorePenalty": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          }
+        }
       },
       "RoutingRuleDto": {
         "type": "object",
@@ -20559,6 +21125,14 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Whether the mapping is enabled."
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double"
           },
           "provider": {
             "description": "The provider that serves this rule.",
@@ -21225,20 +21799,6 @@
           }
         },
         "description": "Time range covered by a monitoring response."
-      },
-      "ToggleLLMCacheRequest": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "reason": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
       },
       "TokenizerType": {
         "type": "integer"
@@ -22010,19 +22570,23 @@
       },
       "UpdatePromptCachingConfigDto": {
         "required": [
-          "autoInjectEnabled",
-          "injectionPoints"
+          "rules"
         ],
         "type": "object",
         "properties": {
-          "autoInjectEnabled": {
+          "schemaVersion": {
+            "maximum": 3,
+            "minimum": 3,
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
             "type": "boolean"
           },
-          "injectionPoints": {
-            "maxItems": 4,
+          "rules": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CacheInjectionPointDto"
+              "$ref": "#/components/schemas/PromptCachingRuleDto"
             }
           }
         }

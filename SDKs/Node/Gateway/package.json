@@ -1,6 +1,6 @@
 {
   "name": "@knn_labs/conduit-gateway-client",
-  "version": "0.2.1",
+  "version": "3.0.0",
   "description": "Official Node.js client library for Conduit Gateway API - OpenAI-compatible multi-provider LLM gateway",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

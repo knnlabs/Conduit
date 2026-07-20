@@ -79,27 +79,26 @@ interface ModelCost {
 
 ## Provider-Specific Pricing Models
 
-### Anthropic Claude - Prompt Caching
+### Provider-aware prompt caching
 
-Claude models support prompt caching for reduced costs on repeated content:
+Conduit observes automatic prefix caching from providers such as OpenAI, Groq, and DeepSeek without changing requests. Managed directives are limited to documented OpenRouter Claude and Alibaba explicit-cache routes and are configured through the Admin API:
 ```typescript
-const response = await client.chat.completions.create({
-  model: 'claude-3-opus-20240229',
-  messages: [
-    { 
-      role: 'system', 
-      content: 'You are a helpful assistant.',
-      cache_control: { type: 'ephemeral' }  // Enable caching
-    },
-    { role: 'user', content: 'Hello!' }
-  ]
+await admin.configuration.updatePromptCachingConfig({
+  schemaVersion: 2,
+  enabled: true,
+  rules: [{
+    name: 'Claude conversations',
+    enabled: true,
+    provider: 'OpenRouter',
+    modelPattern: 'anthropic/*',
+    strategy: 'OpenRouterAutomatic',
+    ttl: '5m',
+    injectionPoints: []
+  }]
 });
-
-// Usage tracking
-console.log(`Standard tokens: ${response.usage.prompt_tokens}`);
-console.log(`Cached tokens: ${response.usage.cached_input_tokens}`);
-console.log(`Cache writes: ${response.usage.cached_write_tokens}`);
 ```
+
+Rules are evaluated in order and the first enabled match wins. Explicit rules support up to four message breakpoints. Keep stable tools, instructions, and reference material at the beginning of prompts; short or changing prefixes will not produce useful cache hits.
 
 **Pricing example**:
 - Standard input: $15.00 per million tokens

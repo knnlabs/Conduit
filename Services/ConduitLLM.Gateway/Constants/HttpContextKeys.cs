@@ -6,6 +6,18 @@ namespace ConduitLLM.Gateway.Constants;
 /// </summary>
 public static class HttpContextKeys
 {
+    /// <summary>Authoritative provider usage for non-streaming chat responses.</summary>
+    public const string NonStreamingUsage = "NonStreamingUsage";
+
+    public const string PromptCachingEligible = "PromptCachingEligible";
+    public const string ModelProviderMappingId = "ModelProviderMappingId";
+    public const string PromptCachingPolicyApplied = "PromptCachingPolicyApplied";
+    public const string CachedReadSavings = "CachedReadSavings";
+    public const string CacheWritePremium = "CacheWritePremium";
+    public const string RoutingAffinityUsed = "RoutingAffinityUsed";
+    public const string RoutingDecisionReason = "RoutingDecisionReason";
+    public const string RoutingFailoverCount = "RoutingFailoverCount";
+
     /// <summary>
     /// Key for storing the virtual key ID extracted from authentication.
     /// </summary>

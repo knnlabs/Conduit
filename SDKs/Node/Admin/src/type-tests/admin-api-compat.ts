@@ -33,7 +33,6 @@ import type { components } from '../generated/admin-api';
 import type { Expect, Compatible, SameKeys } from './helpers';
 
 import type { RequestLog } from '../models/analyticsExport';
-import type { LLMCacheControlDto, ToggleLLMCacheRequest } from '../models/cache-types';
 import type { CreateFunctionCostDto, UpdateFunctionCostDto } from '../models/functions';
 import type { CreateModelCostDto, ModelCostDto, UpdateModelCostDto } from '../models/modelCost';
 import type {
@@ -110,10 +109,6 @@ import type {
 type Wire = components['schemas'];
 
 // ---- Strict: same keys, compatible property types ----
-
-// models/cache-types.ts
-export type CheckLLMCacheControlDto = Expect<Compatible<LLMCacheControlDto, Wire['LLMCacheControlDto']>>;
-export type CheckToggleLLMCacheRequest = Expect<Compatible<ToggleLLMCacheRequest, Wire['ToggleLLMCacheRequest']>>;
 
 // models/functions.ts
 export type CheckCreateFunctionCostDto = Expect<Compatible<CreateFunctionCostDto, Wire['CreateFunctionCostDto']>>;

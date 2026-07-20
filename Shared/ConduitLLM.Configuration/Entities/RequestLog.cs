@@ -48,6 +48,16 @@ public class RequestLog : IEntity<int>, IAuditEvent
     [MaxLength(50)]
     public string? ProviderType { get; set; }
 
+    public int? ModelProviderMappingId { get; set; }
+    public bool PromptCachingEligible { get; set; }
+    public bool PromptCachingPolicyApplied { get; set; }
+    [Column(TypeName = "decimal(18, 8)")] public decimal CachedReadSavings { get; set; }
+    [Column(TypeName = "decimal(18, 8)")] public decimal CacheWritePremium { get; set; }
+    [NotMapped] public decimal PromptCachingNetSavings => CachedReadSavings - CacheWritePremium;
+    public bool RoutingAffinityUsed { get; set; }
+    [MaxLength(50)] public string? RoutingDecisionReason { get; set; }
+    public int RoutingFailoverCount { get; set; }
+
     /// <summary>
     /// Type of the request (chat, completion, embedding, etc.)
     /// </summary>

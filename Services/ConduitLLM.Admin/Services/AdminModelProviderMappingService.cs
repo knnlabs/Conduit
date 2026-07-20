@@ -91,13 +91,18 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                 return false;
             }
 
-            // Check if a mapping with the same model ID already exists
-            var existingMapping = await _mappingRepository.GetByModelNameAsync(mapping.ModelAlias);
-            if (existingMapping != null)
+            var existingMappings = await _mappingRepository.GetAllByModelNameAsync(mapping.ModelAlias);
+            if (existingMappings.Any(existing => existing.ProviderId == mapping.ProviderId))
             {
-                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", LoggingSanitizer.S(mapping.ModelAlias));
+                _logger.LogWarning("An alias/provider mapping already exists: {ModelId}/{ProviderId}",
+                    LoggingSanitizer.S(mapping.ModelAlias), mapping.ProviderId);
                 return false;
             }
+            var candidateModelId = await _mappingRepository.GetCanonicalModelIdForAssociationAsync(
+                mapping.ModelProviderTypeAssociationId);
+            if (candidateModelId is null || existingMappings.Any(existing =>
+                existing.ModelProviderTypeAssociation?.ModelId != candidateModelId)) return false;
+            if (mapping.RoutingWeight is < 0.1m or > 2.0m) return false;
 
             // Set timestamps
             mapping.CreatedAt = DateTime.UtcNow;
@@ -162,6 +167,8 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             existingMapping.ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId;
             existingMapping.IsEnabled = mapping.IsEnabled;
             existingMapping.ProviderOptions = mapping.ProviderOptions;
+            existingMapping.RoutingPriority = mapping.RoutingPriority;
+            existingMapping.RoutingWeight = mapping.RoutingWeight;
 
             existingMapping.UpdatedAt = DateTime.UtcNow;
 

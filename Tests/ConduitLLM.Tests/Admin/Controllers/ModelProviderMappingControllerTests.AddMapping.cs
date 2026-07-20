@@ -77,7 +77,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Id = 100,
                 ModelAlias = "existing-model",
                 ModelProviderTypeAssociationId = 2,
-                ProviderId = 2,
+                ProviderId = 1,
                 ProviderModelId = "gpt-4-old"
             };
 
@@ -91,7 +91,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var conflictResult = actionResult.Should().BeOfType<ConflictObjectResult>().Subject;
             var errorResponse = conflictResult.Value.Should().BeOfType<ErrorResponseDto>().Subject;
-            errorResponse.error.ToString().Should().Contain("A mapping for model alias 'existing-model' already exists");
+            errorResponse.error.ToString().Should().Contain("A mapping for alias 'existing-model' and provider 1 already exists");
         }
 
         [Fact]

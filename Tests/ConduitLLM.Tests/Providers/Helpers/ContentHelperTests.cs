@@ -169,43 +169,4 @@ public class ContentHelperTests
         result.Should().BeFalse();
     }
 
-    [Fact]
-    public void InjectionThenMapping_RoundTrip_PreservesCacheControl()
-    {
-        // Arrange — simulate what PromptCacheInjectionService does to string content
-        var message = new ConduitLLM.Core.Models.Message
-        {
-            Role = "system",
-            Content = "You are a helpful assistant."
-        };
-
-        var config = new ConduitLLM.Core.Models.PromptCachingConfig
-        {
-            AutoInjectEnabled = true,
-            InjectionPoints = new List<ConduitLLM.Core.Models.CacheInjectionPoint>
-            {
-                new() { Role = "system", Index = 0 }
-            }
-        };
-
-        var request = new ConduitLLM.Core.Models.ChatCompletionRequest
-        {
-            Model = "test",
-            Messages = new List<ConduitLLM.Core.Models.Message> { message }
-        };
-
-        // Act — inject cache control
-        ConduitLLM.Core.Services.PromptCacheInjectionService.InjectCacheControl(request, config);
-
-        // Assert — ShouldPreserveAsArray must return true for the modified content
-        ContentHelper.ShouldPreserveAsArray(message.Content).Should().BeTrue();
-
-        // Verify the content is a list with cache_control
-        var contentList = message.Content.Should().BeAssignableTo<IEnumerable<object>>().Subject.ToList();
-        contentList.Should().HaveCount(1);
-        var dict = contentList[0].Should().BeAssignableTo<IDictionary<string, object>>().Subject;
-        dict.Should().ContainKey("cache_control");
-        dict["type"].Should().Be("text");
-        dict["text"].Should().Be("You are a helpful assistant.");
-    }
 }

@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using ConduitLLM.Configuration.DTOs.Cache;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,13 +22,11 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
     private const string KEY_MAX_AGENTIC_ITERATIONS = "Agentic.MaxIterations";
     private const string KEY_MIN_AGENTIC_ITERATIONS = "Agentic.MinIterations";
     private const string KEY_DEFAULT_AGENTIC_ENABLED = "Agentic.DefaultEnabled";
-    private const string KEY_LLM_CACHING_ENABLED = "LLM.Caching.Enabled";
 
     // Default values
     private const int DEFAULT_MAX_AGENTIC_ITERATIONS = 5;
     private const int DEFAULT_MIN_AGENTIC_ITERATIONS = 1;
     private const bool DEFAULT_AGENTIC_ENABLED = true;
-    private const bool DEFAULT_LLM_CACHING_ENABLED = false;
 
     // Validation constants
     private const int MIN_VALID_ITERATIONS = 1;
@@ -90,40 +87,6 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
 
     public async Task<bool> GetDefaultAgenticModeEnabledAsync()
         => await GetBoolSettingAsync(KEY_DEFAULT_AGENTIC_ENABLED, DEFAULT_AGENTIC_ENABLED, "Default agentic enabled");
-
-    public async Task<bool> GetLLMCachingEnabledAsync()
-    {
-        var value = await GetSettingAsync(KEY_LLM_CACHING_ENABLED);
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            _logger.LogDebug("LLM caching enabled setting not found, using default: {Default}", DEFAULT_LLM_CACHING_ENABLED);
-            return DEFAULT_LLM_CACHING_ENABLED;
-        }
-
-        // The value is stored as JSON metadata, try to parse it
-        try
-        {
-            var metadata = System.Text.Json.JsonSerializer.Deserialize<LLMCacheMetadata>(value);
-            if (metadata != null)
-            {
-                return metadata.Enabled;
-            }
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            // Fall back to direct boolean parsing if not JSON
-        }
-
-        if (TryParseFuzzyBool(value, out var result))
-        {
-            return result;
-        }
-
-        _logger.LogWarning("Failed to parse LLM caching enabled value '{Value}', using default: {Default}",
-            value, DEFAULT_LLM_CACHING_ENABLED);
-        return DEFAULT_LLM_CACHING_ENABLED;
-    }
 
     /// <inheritdoc />
     public Task<string?> GetSettingValueAsync(string key)

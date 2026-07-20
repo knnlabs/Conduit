@@ -34,6 +34,17 @@ namespace ConduitLLM.Configuration.Data
                     .IsRequired(false); // Nullable during transition
             });
 
+            modelBuilder.Entity<ConduitLLM.Configuration.Entities.ModelRoutePolicy>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ModelAlias).IsUnique();
+                entity.ToTable(table =>
+                {
+                    table.HasCheckConstraint("CK_ModelRoutePolicy_Weights", "\"CostWeight\" >= 0 AND \"SpeedWeight\" >= 0 AND \"QualityWeight\" >= 0");
+                    table.HasCheckConstraint("CK_ModelRoutePolicy_Affinity", "\"AffinityTtlSeconds\" > 0 AND \"MaxAffinityScorePenalty\" >= 0");
+                });
+            });
+
             // Configure Provider entity
             modelBuilder.Entity<ConduitLLM.Configuration.Entities.Provider>(entity =>
             {

@@ -104,11 +104,11 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Input: 1000 tokens * 10.00 / 1_000_000 = 0.01
+            // Regular input: 700 tokens * 10.00 / 1_000_000 = 0.007
             // Cache write: 300 tokens * 25.00 / 1_000_000 = 0.0075
             // Output: 500 tokens * 30.00 / 1_000_000 = 0.015
-            // Total: 0.01 + 0.0075 + 0.015 = 0.0325
-            result.Should().Be(0.0325m);
+            // Total: 0.007 + 0.0075 + 0.015 = 0.0295
+            result.Should().Be(0.0295m);
         }
 
         [Fact]
@@ -141,12 +141,12 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Regular input: (1000 - 400) * 10.00 / 1_000_000 = 600 * 10.00 / 1_000_000 = 0.006
+            // Regular input: (1000 - 400 - 200) * 10.00 / 1_000_000 = 0.004
             // Cached input: 400 * 1.00 / 1_000_000 = 0.0004
             // Cache write: 200 * 25.00 / 1_000_000 = 0.005
             // Output: 500 * 30.00 / 1_000_000 = 0.015
-            // Total: 0.006 + 0.0004 + 0.005 + 0.015 = 0.0264
-            result.Should().Be(0.0264m);
+            // Total: 0.004 + 0.0004 + 0.005 + 0.015 = 0.0244
+            result.Should().Be(0.0244m);
         }
 
         [Fact]
@@ -222,7 +222,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Write: 1000 * 18.75 / 1_000_000 = 0.01875
             // Total: 0.15 + 0.012 + 0.01875 = 0.18075
             // But actual is 0.06075, so let's use that
-            cost.Should().Be(0.06075m);
+            cost.Should().Be(0.04575m);
         }
 
         [Fact]
