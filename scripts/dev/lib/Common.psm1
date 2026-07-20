@@ -495,9 +495,8 @@ function Test-PortInUse {
     if (Test-IsWindows) {
         # Use Get-NetTCPConnection on Windows
         try {
-            # Filter out TIME_WAIT, CLOSE_WAIT, and other transitional states
-            # Only Listen and Established connections truly block the port
-            $blockingStates = @('Listen', 'Established', 'SynSent', 'SynReceived')
+            # Only listening sockets prevent Docker from publishing a host port.
+            $blockingStates = @('Listen')
             $connections = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
                 Where-Object { $blockingStates -contains $_.State }
             return $null -ne $connections -and @($connections).Count -gt 0

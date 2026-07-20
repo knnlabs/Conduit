@@ -76,6 +76,9 @@ function Invoke-CleanupOnError {
     Push-Location $projectRoot
     try {
         docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "Automatic cleanup did not complete. Run 'docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans' manually."
+        }
     }
     finally {
         Pop-Location
@@ -94,6 +97,9 @@ function Clear-StaleContainers {
         Push-Location $projectRoot
         try {
             docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to remove stale Conduit containers"
+            }
             Write-Info "Stale containers removed"
         }
         finally {
@@ -105,13 +111,42 @@ function Clear-StaleContainers {
 function Test-PortConflicts {
     Write-Info "Checking for port conflicts..."
 
-    $ports = @(
-        @{ Port = 6379; Name = 'Redis' },
-        @{ Port = 5432; Name = 'PostgreSQL' },
-        @{ Port = 5000; Name = 'Gateway API' },
-        @{ Port = 5002; Name = 'Admin API' },
-        @{ Port = 3000; Name = 'WebAdmin' }
-    )
+    Push-Location $projectRoot
+    try {
+        $composeJson = docker compose -f docker-compose.yml -f docker-compose.dev.yml config --format json
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to resolve Docker Compose configuration"
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    try {
+        $composeConfig = $composeJson | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        throw "Failed to parse Docker Compose configuration: $_"
+    }
+
+    # Discover published host ports from the fully merged Compose configuration so
+    # new services cannot silently bypass this check.
+    $ports = foreach ($serviceProperty in $composeConfig.services.PSObject.Properties) {
+        $serviceName = $serviceProperty.Name
+        foreach ($portMapping in @($serviceProperty.Value.ports)) {
+            if ($null -ne $portMapping.published) {
+                [PSCustomObject]@{
+                    Port = [int]$portMapping.published
+                    Name = $serviceName
+                }
+            }
+        }
+    }
+    $ports = @($ports | Sort-Object Port -Unique)
+
+    if ($ports.Count -eq 0) {
+        throw "Docker Compose configuration does not publish any host ports"
+    }
 
     $conflictsFound = $false
     $conflictingContainers = @()
@@ -467,17 +502,25 @@ function Start-Development {
 
     Push-Location $projectRoot
     try {
-        # Start all services
-        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+        # Start all services and wait until services with health checks are healthy.
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait --wait-timeout 300
+        if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose failed to start the development environment"
+        }
 
-        # Wait a moment for containers to initialize
-        Start-Sleep -Seconds 5
+        $expectedServices = @(docker compose -f docker-compose.yml -f docker-compose.dev.yml config --services)
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to determine expected Docker Compose services"
+        }
 
-        # Check if containers are running
-        $runningCount = (docker compose -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running" 2>$null | Measure-Object -Line).Lines
-        if ($runningCount -lt 4) {
-            Write-Warn "Some containers may not have started properly"
-            Write-Info "Check status with: docker compose -f docker-compose.yml -f docker-compose.dev.yml ps"
+        $runningServices = @(docker compose -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running")
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to inspect running Docker Compose services"
+        }
+
+        $missingServices = @($expectedServices | Where-Object { $_ -notin $runningServices })
+        if ($missingServices.Count -gt 0) {
+            throw "Services did not reach running state: $($missingServices -join ', ')"
         }
 
         Write-Info "Development environment started!"
