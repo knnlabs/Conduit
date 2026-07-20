@@ -1,0 +1,17 @@
+{
+  "id": "chatcmpl-golden-top-level",
+  "object": "chat.completion",
+  "model": "golden-openai-top-level",
+  "choices": [
+    {
+      "index": 0,
+      "message": { "role": "assistant", "content": "Golden response" },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1000,
+    "completion_tokens": 250,
+    "total_tokens": 1250
+  }
+}

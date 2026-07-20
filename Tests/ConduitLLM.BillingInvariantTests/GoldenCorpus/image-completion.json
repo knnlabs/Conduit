@@ -1,0 +1,14 @@
+{
+  "created": 1713833628,
+  "model": "golden-image-model",
+  "data": [
+    {
+      "url": "https://example.invalid/golden-image-1.png",
+      "revised_prompt": "Sanitized golden image response"
+    },
+    {
+      "url": "https://example.invalid/golden-image-2.png",
+      "revised_prompt": "Sanitized golden image response variant"
+    }
+  ]
+}

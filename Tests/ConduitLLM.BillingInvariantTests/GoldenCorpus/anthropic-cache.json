@@ -1,0 +1,16 @@
+{
+  "id": "msg_golden_cache",
+  "type": "message",
+  "role": "assistant",
+  "model": "golden-anthropic-cache",
+  "content": [
+    { "type": "text", "text": "Golden cached response" }
+  ],
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 500,
+    "output_tokens": 25,
+    "cache_creation_input_tokens": 2000,
+    "cache_read_input_tokens": 10000
+  }
+}
