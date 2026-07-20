@@ -1,0 +1,44 @@
+# Billing correctness alerting
+
+Conduit runs an internal cost canary for every enabled model mapping. The canary does not call a
+provider or debit a virtual key; it sends synthetic positive usage through the same model-cost lookup
+and calculation service used by request billing.
+
+## Configuration
+
+Set these environment variables on the Admin and Grafana services:
+
+```text
+BillingCostCanary__Enabled=true
+BillingCostCanary__IntervalMinutes=5
+CONDUIT_ALERT_WEBHOOK_URL=https://your-alert-receiver.example/conduit
+```
+
+`CONDUIT_ALERT_WEBHOOK_URL` is required by Docker Compose. This deliberately prevents Grafana from
+starting with alert rules that have nowhere to deliver notifications.
+
+The supplied Grafana rule treats a canary older than 15 minutes as stale. If the interval is increased,
+update the stale threshold in `grafana/provisioning/alerting/billing-alerting-rules.yml` as well.
+
+## Alerts
+
+- `Billing Revenue Loss Event` fires for any revenue-loss counter increase.
+- `Unexpected Zero-Cost Billing` fires when a request is calculated at zero cost.
+- `Model Cost Canary Failed` fires when an active mapping has no usable cost, invalid pricing JSON,
+  an expired/inactive cost, a calculation error, or a non-positive result.
+- `Model Cost Canary Stale` fires when the canary is absent or has not completed for 15 minutes.
+
+## Response
+
+1. Query `BillingAuditEvents` for `ModelCostCanaryFailed` and note the mapping ID, model-cost ID,
+   pricing model, and normalized reason in `MetadataJson`.
+2. Confirm that the mapping, provider, and provider-type association should remain enabled.
+3. Restore a positive, active ModelCost whose effective/expiry dates cover the current time and whose
+   pricing configuration passes validation.
+4. Wait for the next canary run and confirm `conduit_billing_cost_canary_status` returns to `1` and the
+   Grafana alert resolves.
+5. For production revenue-loss events, reconcile affected request logs and ledger entries before
+   closing the incident.
+
+`conduit_billing_revenue_loss_dollars_total` currently counts revenue-loss events; despite its legacy
+name, its value is not a dollar estimate.

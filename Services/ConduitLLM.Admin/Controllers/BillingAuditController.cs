@@ -372,6 +372,7 @@ namespace ConduitLLM.Admin.Controllers
                 BillingAuditEventType.JsonParseError => "JSON parsing error prevented tracking",
                 BillingAuditEventType.UnexpectedError => "Unexpected error during tracking",
                 BillingAuditEventType.BillingReconciliationMismatch => "Request logs, ledger debits, or provider costs diverged",
+                BillingAuditEventType.ModelCostCanaryFailed => "Synthetic active-model cost validation failed",
                 _ => "Unknown event type"
             };
         }

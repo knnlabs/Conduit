@@ -175,6 +175,9 @@ services:
       CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY}"
       CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
       CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
+      # Synthetic active-model cost validation (#1036)
+      BillingCostCanary__Enabled: "${BillingCostCanary__Enabled:-true}"
+      BillingCostCanary__IntervalMinutes: "${BillingCostCanary__IntervalMinutes:-5}"
       # Disable IP banning for development
       CONDUIT_ADMIN_IP_BANNING_ENABLED: "false"
     ports:
@@ -287,6 +290,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=conduitadmin
       - GF_INSTALL_PLUGINS=
       - GF_USERS_ALLOW_SIGN_UP=false
+      - CONDUIT_ALERT_WEBHOOK_URL=${CONDUIT_ALERT_WEBHOOK_URL:?Set CONDUIT_ALERT_WEBHOOK_URL to the on-call receiver}
       # Enable unified alerting
       - GF_UNIFIED_ALERTING_ENABLED=true
       - GF_ALERTING_ENABLED=false
@@ -300,8 +304,7 @@ services:
       - ./grafana/provisioning/dashboards/grafana-request-pipeline-dashboard.json:/var/lib/grafana/dashboards/request-pipeline.json:ro
       - ./grafana/provisioning/dashboards/grafana-infrastructure-dashboard.json:/var/lib/grafana/dashboards/infrastructure.json:ro
       - ./grafana/provisioning/dashboards/grafana-postgresql-dashboard.json:/var/lib/grafana/dashboards/postgresql.json:ro
-      # Alerting rules - can be enabled once basic setup is verified
-      # - ./grafana/provisioning/alerting/alerting-rules.yml:/etc/grafana/provisioning/alerting/alerting-rules.yml:ro
+      - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
     depends_on:
       prometheus:
         condition: service_healthy

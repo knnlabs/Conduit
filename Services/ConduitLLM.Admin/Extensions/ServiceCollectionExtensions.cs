@@ -97,6 +97,12 @@ public static class ServiceCollectionExtensions
         });
         services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 
+        services.AddOptions<BillingCostCanaryOptions>()
+            .BindConfiguration(BillingCostCanaryOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddLeaderElectedHostedService<ModelCostCanaryHostedService>("ModelCostCanaryHostedService");
+
         // Register refund service
         services.AddScoped<ConduitLLM.Admin.Interfaces.IRefundService, ConduitLLM.Admin.Services.RefundService>();
 

@@ -205,6 +205,11 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Positive usage was observed without an applicable price.
         /// </summary>
-        UnpricedUsage = 18
+        UnpricedUsage = 18,
+
+        /// <summary>
+        /// A synthetic active-model cost check failed or calculated a non-positive cost.
+        /// </summary>
+        ModelCostCanaryFailed = 19
     }
 }
