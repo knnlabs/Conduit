@@ -1,6 +1,12 @@
 # Provider Models SQL Generator
 
-This directory contains a unified script for generating SQL to populate provider models in the Conduit database.
+This directory contains the canonical provider model catalogs plus an optional SQL generator for offline maintenance.
+
+The JSON files and `provider-config.json` are embedded in the shared Configuration
+assembly during every release build. A clean database imports that snapshot after
+migrations, and administrators can merge missing entries from WebAdmin's Models
+page. Runtime imports preserve matched database records; generated SQL is not used
+by the Docker images.
 
 ## Overview
 
@@ -260,9 +266,9 @@ When a provider releases new models or updates specifications:
 1. **Check official documentation** for new model announcements
 2. **Read UPDATING-MODELS.md** for comprehensive update guide (LLM-friendly)
 3. **Edit {provider}-models.json** to add/update model data
-4. **Run ./generate-provider-sql.cs {provider}** to generate new SQL
-5. **Review the generated SQL**
-6. **Execute against your database**
+4. **Build the Configuration/Admin projects** to validate and embed the catalog
+5. **Optionally run ./generate-provider-sql.cs {provider}** when standalone SQL is needed
+6. **Use WebAdmin or POST /api/Model/bundled-catalog/import** to merge a rebuilt release snapshot
 
 The UPDATING-MODELS.md guide includes:
 - Data source URLs for model specs and pricing
@@ -300,9 +306,9 @@ To add a new provider to this system:
 
 2. **Create model JSON file**: `newprovider-models.json` with model specifications
 
-3. **Generate SQL**: `./generate-provider-sql.cs newprovider`
+3. **Build the release**: the wildcard embedded-resource rule includes the new JSON automatically
 
-4. **Execute**: Run generated SQL against database
+4. **Verify**: run the bundled catalog tests and import through the Admin API
 
 No code changes required - the script is fully configuration-driven!
 

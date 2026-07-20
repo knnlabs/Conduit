@@ -97,6 +97,7 @@ export const ENDPOINTS = {
   // Model Management
   MODELS: {
     BASE: '/api/Model',
+    IMPORT_BUNDLED_CATALOG: '/api/Model/bundled-catalog/import',
     BY_ID: (id: number) => `/api/Model/${id}`,
     BY_TYPE: (type: string) => `/api/Model/type/${type}`,
     BY_PROVIDER: (provider: string) => `/api/Model/provider/${provider}`,

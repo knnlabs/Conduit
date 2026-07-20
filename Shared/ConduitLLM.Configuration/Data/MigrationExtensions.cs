@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration.ModelCatalogs;
 
 namespace ConduitLLM.Configuration.Data
 {
@@ -19,6 +20,8 @@ namespace ConduitLLM.Configuration.Data
                 sp.GetRequiredService<ILoggerFactory>().CreateLogger("Conduit.MigrationStartup")));
             services.AddSingleton<MigrationReadinessState>();
             services.AddSingleton<IPendingMigrationsProbe, PendingMigrationsProbe>();
+            services.AddSingleton<BundledModelCatalog>();
+            services.AddScoped<IBundledModelCatalogImporter, BundledModelCatalogImporter>();
             services.AddScoped<SimpleMigrationService>();
             services.AddHostedService<MigrationWaitService>();
             return services;

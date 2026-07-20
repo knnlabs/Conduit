@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration.ModelCatalogs;
 
 namespace ConduitLLM.Configuration.Data
 {
@@ -47,10 +48,16 @@ namespace ConduitLLM.Configuration.Data
                 var contextOptions = new DbContextOptionsBuilder<ConduitDbContext>()
                     .UseNpgsql(connectionString)
                     .Options;
+                var contextFactory = new FixedOptionsDbContextFactory(contextOptions);
+                var catalogImporter = new BundledModelCatalogImporter(
+                    contextFactory,
+                    new BundledModelCatalog(),
+                    loggerFactory.CreateLogger<BundledModelCatalogImporter>());
                 var migrationService = new SimpleMigrationService(
-                    new FixedOptionsDbContextFactory(contextOptions),
+                    contextFactory,
                     options,
-                    loggerFactory.CreateLogger<SimpleMigrationService>());
+                    loggerFactory.CreateLogger<SimpleMigrationService>(),
+                    catalogImporter);
 
                 await migrationService.MigrateAsync(cancellationToken);
 

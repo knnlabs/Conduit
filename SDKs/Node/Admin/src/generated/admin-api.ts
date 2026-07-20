@@ -1571,6 +1571,51 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/Model/bundled-catalog/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Merges all bundled provider models while preserving every matched database record. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BundledModelCatalogImportResult"];
+            "application/json": components["schemas"]["BundledModelCatalogImportResult"];
+            "text/json": components["schemas"]["BundledModelCatalogImportResult"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/config/routing": {
     parameters: {
       query?: never;
@@ -11508,6 +11553,77 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/admin/tasks/{taskId}/resolve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Resolves a media task whose provider outcome required reconciliation. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["ResolveIndeterminateTaskDto"];
+          "text/json": components["schemas"]["ResolveIndeterminateTaskDto"];
+          "application/*+json": components["schemas"]["ResolveIndeterminateTaskDto"];
+        };
+      };
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/VirtualKeyGroups": {
     parameters: {
       query?: never;
@@ -11951,14 +12067,16 @@ export interface paths {
     post: {
       parameters: {
         query?: never;
-        header?: never;
+        header?: {
+          "Idempotency-Key"?: string;
+        };
         path: {
           /** @description The virtual key group ID */
           id: number;
         };
         cookie?: never;
       };
-      /** @description The refund request details */
+      /** @description Unique identifier for this refund operation */
       requestBody: {
         content: {
           "application/json": components["schemas"]["ProcessRefundRequestDto"];
@@ -11991,6 +12109,17 @@ export interface paths {
         };
         /** @description Not Found */
         404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Conflict */
+        409: {
           headers: {
             [name: string]: unknown;
           };
@@ -13060,10 +13189,33 @@ export interface components {
        */
       failureCount?: number;
     };
+    BundledModelCatalogImportResult: {
+      /** Format: int32 */
+      providersProcessed?: number;
+      /** Format: int32 */
+      modelsDiscovered?: number;
+      created?: components["schemas"]["CatalogImportCounts"];
+      /** Format: int32 */
+      skippedExistingIdentifiers?: number;
+      conflicts?: string[];
+      providers?: components["schemas"]["ProviderCatalogImportResult"][];
+    };
     CacheInjectionPointDto: {
       role?: null | string;
       /** Format: int32 */
       index?: null | number;
+    };
+    CatalogImportCounts: {
+      /** Format: int32 */
+      authors?: number;
+      /** Format: int32 */
+      series?: number;
+      /** Format: int32 */
+      models?: number;
+      /** Format: int32 */
+      costs?: number;
+      /** Format: int32 */
+      identifiers?: number;
     };
     /** @description Represents the result of a media cleanup operation. */
     CleanupResultDto: {
@@ -15164,6 +15316,16 @@ export interface components {
       updatedAt?: string;
       providerKeyCredentials?: components["schemas"]["ProviderKeyCredential"][];
     };
+    ProviderCatalogImportResult: {
+      provider?: string;
+      /** Format: int32 */
+      modelsDiscovered?: number;
+      created?: components["schemas"]["CatalogImportCounts"];
+      /** Format: int32 */
+      skippedExistingIdentifiers?: number;
+      /** Format: int32 */
+      conflicts?: number;
+    };
     /** @description Request distribution statistics for a single model. */
     ProviderDistributionDto: {
       /** @description The model name the requests were routed for. */
@@ -15412,6 +15574,11 @@ export interface components {
       /** Format: int32 */
       statusCode?: null | number;
       metadata?: null | string;
+    };
+    ResolveIndeterminateTaskDto: {
+      resolution: string;
+      reason: string;
+      providerOperationId?: null | string;
     };
     /** @description Summary of a retention policy for display. */
     RetentionPolicySummaryDto: {

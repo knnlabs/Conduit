@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { Container, Title, Text, Button, Group, Stack, Tabs, Tooltip } from '@mantine/core';
-import { IconPlus, IconRefresh, IconBrain, IconTags, IconUsers, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconRefresh, IconBrain, IconTags, IconUsers, IconTrash, IconDatabaseImport } from '@tabler/icons-react';
+import { modals } from '@mantine/modals';
 import { ModelsTable } from '@/components/models/ModelsTable';
 import { ModelSeriesTable } from '@/components/models/ModelSeriesTable';
 import { ModelAuthorsTable } from '@/components/models/ModelAuthorsTable';
@@ -33,6 +34,7 @@ export default function ModelsPage() {
   const [createModelOpen, setCreateModelOpen] = useState(false);
   const [createSeriesOpen, setCreateSeriesOpen] = useState(false);
   const [createAuthorOpen, setCreateAuthorOpen] = useState(false);
+  const [catalogImporting, setCatalogImporting] = useState(false);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -64,6 +66,54 @@ export default function ModelsPage() {
     }
   };
 
+  const importBundledCatalog = async () => {
+    setCatalogImporting(true);
+    notify.loading(
+      'importing-bundled-models',
+      'Merging all provider catalogs included with this Conduit release...',
+      'Importing Bundled Models'
+    );
+    try {
+      const result = await executeWithAdmin(client => client.models.importBundledCatalog());
+      const created = result.created.identifiers;
+      notify.updateLoading('importing-bundled-models', {
+        success: true,
+        title: 'Bundled Models Imported',
+        message: `Created ${created} identifiers; preserved and skipped ${result.skippedExistingIdentifiers} existing identifiers.`,
+      });
+      if (result.conflicts.length > 0) {
+        notify.warning(
+          `${result.conflicts.length} ambiguous catalog entries were skipped. Check the Admin API logs for details.`,
+          'Import Completed with Conflicts'
+        );
+      }
+      handleRefresh();
+    } catch (error) {
+      notify.updateLoading('importing-bundled-models', {
+        success: false,
+        title: 'Bundled Model Import Failed',
+        message: error instanceof Error ? error.message : 'The bundled provider catalogs could not be imported.',
+      });
+    } finally {
+      setCatalogImporting(false);
+    }
+  };
+
+  const handleImportBundledCatalog = () => {
+    modals.openConfirmModal({
+      title: 'Import Bundled Provider Models',
+      children: (
+        <Text size="sm">
+          Merge every provider model catalog bundled with this Conduit release? Existing models,
+          identifiers, capabilities, limits, relationships, and prices will not be modified.
+        </Text>
+      ),
+      labels: { confirm: 'Import All', cancel: 'Cancel' },
+      confirmProps: { loading: catalogImporting },
+      onConfirm: () => void importBundledCatalog(),
+    });
+  };
+
   return (
     <Container size="xl">
       <Stack gap="md">
@@ -75,6 +125,17 @@ export default function ModelsPage() {
             </Text>
           </div>
           <Group gap="xs">
+            <Tooltip label="Merge all model catalogs bundled with this Conduit release">
+              <Button
+                leftSection={<IconDatabaseImport size={16} />}
+                variant="light"
+                onClick={handleImportBundledCatalog}
+                loading={catalogImporting}
+                disabled={catalogImporting}
+              >
+                Import Bundled Models
+              </Button>
+            </Tooltip>
             <Tooltip label="Clear the discovery cache to force reload of model parameters">
               <Button
                 leftSection={<IconTrash size={16} />}

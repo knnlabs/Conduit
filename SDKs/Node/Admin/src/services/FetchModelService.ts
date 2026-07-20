@@ -33,6 +33,31 @@ type CreateModelDto = components['schemas']['CreateModelDto'];
 type UpdateModelDto = components['schemas']['UpdateModelDto'];
 type ModelProviderMappingDto = components['schemas']['ModelProviderMappingDto'];
 
+export interface CatalogImportCounts {
+  authors: number;
+  series: number;
+  models: number;
+  costs: number;
+  identifiers: number;
+}
+
+export interface ProviderCatalogImportResult {
+  provider: string;
+  modelsDiscovered: number;
+  created: CatalogImportCounts;
+  skippedExistingIdentifiers: number;
+  conflicts: number;
+}
+
+export interface BundledModelCatalogImportResult {
+  providersProcessed: number;
+  modelsDiscovered: number;
+  created: CatalogImportCounts;
+  skippedExistingIdentifiers: number;
+  conflicts: string[];
+  providers: ProviderCatalogImportResult[];
+}
+
 /**
  * Type-safe Model service using native fetch
  */
@@ -73,6 +98,19 @@ export class FetchModelService {
   async list(config?: RequestConfig): Promise<ModelDto[]> {
     return this.client['get']<ModelDto[]>(
       ENDPOINTS.MODELS.BASE,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /** Merge every provider model catalog bundled with the running Admin release. */
+  async importBundledCatalog(config?: RequestConfig): Promise<BundledModelCatalogImportResult> {
+    return this.client['post']<BundledModelCatalogImportResult, Record<string, never>>(
+      ENDPOINTS.MODELS.IMPORT_BUNDLED_CATALOG,
+      {},
       {
         signal: config?.signal,
         timeout: config?.timeout,

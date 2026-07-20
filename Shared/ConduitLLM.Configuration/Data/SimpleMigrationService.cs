@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.ModelCatalogs;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,7 @@ namespace ConduitLLM.Configuration.Data
         private readonly IDbContextFactory<ConduitDbContext> _contextFactory;
         private readonly MigrationStartupOptions _options;
         private readonly ILogger<SimpleMigrationService> _logger;
+        private readonly IBundledModelCatalogImporter _catalogImporter;
 
         // PostgreSQL advisory lock ID for migrations — ensures only one instance
         // migrates at a time.
@@ -30,11 +32,13 @@ namespace ConduitLLM.Configuration.Data
         public SimpleMigrationService(
             IDbContextFactory<ConduitDbContext> contextFactory,
             MigrationStartupOptions options,
-            ILogger<SimpleMigrationService> logger)
+            ILogger<SimpleMigrationService> logger,
+            IBundledModelCatalogImporter catalogImporter)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _catalogImporter = catalogImporter ?? throw new ArgumentNullException(nameof(catalogImporter));
         }
 
         /// <summary>
@@ -88,6 +92,13 @@ namespace ConduitLLM.Configuration.Data
                 }
 
                 await SeedDefaultDataAsync(context, instanceId, cancellationToken);
+
+                // A populated installation is intentionally left untouched during an
+                // upgrade. Administrators can explicitly merge the release snapshot
+                // through the Admin API. Catalog failures on a clean database are fatal.
+                await _catalogImporter.ImportAsync(
+                    onlyWhenIdentifierCatalogIsEmpty: true,
+                    cancellationToken);
             }
             finally
             {

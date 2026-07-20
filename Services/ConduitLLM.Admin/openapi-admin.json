@@ -1715,6 +1715,39 @@
         }
       }
     },
+    "/api/Model/bundled-catalog/import": {
+      "post": {
+        "tags": [
+          "BundledModelCatalog"
+        ],
+        "summary": "Merges all bundled provider models while preserving every matched database record.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BundledModelCatalogImportResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BundledModelCatalogImportResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BundledModelCatalogImportResult"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
     "/api/config/routing": {
       "get": {
         "tags": [
@@ -12759,6 +12792,92 @@
         }
       }
     },
+    "/v1/admin/tasks/{taskId}/resolve": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Resolves a media task whose provider outcome required reconciliation.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIndeterminateTaskDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIndeterminateTaskDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIndeterminateTaskDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto."
+          }
+        }
+      }
+    },
     "/api/VirtualKeyGroups": {
       "get": {
         "tags": [
@@ -13334,10 +13453,17 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
-          "description": "The refund request details",
+          "description": "Unique identifier for this refund operation",
           "content": {
             "application/json": {
               "schema": {
@@ -13400,6 +13526,26 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "text/plain": {
                 "schema": {
@@ -14995,6 +15141,38 @@
         },
         "description": "Result of a bulk update operation"
       },
+      "BundledModelCatalogImportResult": {
+        "type": "object",
+        "properties": {
+          "providersProcessed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelsDiscovered": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created": {
+            "$ref": "#/components/schemas/CatalogImportCounts"
+          },
+          "skippedExistingIdentifiers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderCatalogImportResult"
+            }
+          }
+        }
+      },
       "CacheInjectionPointDto": {
         "type": "object",
         "properties": {
@@ -15012,6 +15190,31 @@
               "null",
               "integer"
             ],
+            "format": "int32"
+          }
+        }
+      },
+      "CatalogImportCounts": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "series": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "models": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "costs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "identifiers": {
+            "type": "integer",
             "format": "int32"
           }
         }
@@ -19634,6 +19837,29 @@
           }
         }
       },
+      "ProviderCatalogImportResult": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "modelsDiscovered": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created": {
+            "$ref": "#/components/schemas/CatalogImportCounts"
+          },
+          "skippedExistingIdentifiers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflicts": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ProviderDistributionDto": {
         "type": "object",
         "properties": {
@@ -20226,6 +20452,29 @@
             "format": "int32"
           },
           "metadata": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ResolveIndeterminateTaskDto": {
+        "required": [
+          "resolution",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "providerOperationId": {
+            "maxLength": 200,
             "type": [
               "null",
               "string"
@@ -22918,6 +23167,9 @@
     },
     {
       "name": "BillingAudit"
+    },
+    {
+      "name": "BundledModelCatalog"
     },
     {
       "name": "Configuration"

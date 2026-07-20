@@ -24,8 +24,9 @@ repository root unless a command says otherwise.
 `dev.ps1` is the canonical development entry point. It always combines
 `docker-compose.yml` with `docker-compose.dev.yml`; do not invoke the
 development override file by itself. When its database has no model identifiers,
-it seeds every checked-in provider catalog automatically. Use
-`-SeedModelCatalog` to re-import them after changing catalog files.
+the release's embedded provider catalogs are seeded by the application migration
+path automatically. Use `-SeedModelCatalog` to ask the running Admin API to merge
+the embedded snapshot again after rebuilding with catalog changes.
 
 ## Optional maintenance tools
 
@@ -47,10 +48,10 @@ it seeds every checked-in provider catalog automatically. Use
 ## Database catalog tools
 
 `db/functions`, `db/providers`, and `db/replicate` contain SQL/catalog
-generators and their input data. `dev/seed-model-catalog.ps1` discovers and
-imports all checked-in provider catalogs (currently Groq, Cerebras, SambaNova,
-Meta, and the OpenRouter snapshot). OpenRouter's runtime metadata sync remains
-the preferred ongoing source for OpenRouter updates.
+generators and their input data. Provider JSON files are embedded into the shared
+Configuration assembly at build time; `dev/seed-model-catalog.ps1` invokes the
+same preserve-only Admin API importer used by WebAdmin. OpenRouter's runtime
+metadata sync remains the preferred ongoing source for OpenRouter updates.
 
 ## Removed legacy helpers
 

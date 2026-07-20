@@ -5,9 +5,8 @@
     Seeds the local development database with every checked-in provider model catalog.
 
 .DESCRIPTION
-    Catalogs are discovered from scripts/db/providers/provider-config.json and the
-    corresponding {provider}-models.json files. This uses the checked-in OpenRouter
-    snapshot; it never fetches a live catalog, so development startup is deterministic.
+    Calls the Admin API importer backed by the provider catalogs embedded in the
+    running release. It never fetches a live catalog, so startup is deterministic.
 
     By default the script does nothing when model identifiers already exist. Use -Force
     to re-import the checked-in catalogs after their model data changes.
@@ -51,56 +50,19 @@ if (-not $Force -and [int]$existingIdentifierCount -gt 0) {
     exit 0
 }
 
-$providerConfig = Get-Content $providerConfigPath -Raw | ConvertFrom-Json
-$catalogProviders = @(
-    $providerConfig.PSObject.Properties.Name |
-        Where-Object { Test-Path (Join-Path $providersDirectory "$_-models.json") }
-)
-
-if ($catalogProviders.Count -eq 0) {
-    throw "No checked-in provider model catalogs were found in $providersDirectory"
+$backendKey = [Environment]::GetEnvironmentVariable('CONDUIT_API_TO_API_BACKEND_AUTH_KEY')
+if ([string]::IsNullOrWhiteSpace($backendKey)) {
+    $backendKey = 'alpha'
 }
 
-$temporaryDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("conduit-model-catalog-" + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $temporaryDirectory | Out-Null
+Write-Info 'Importing the bundled provider model catalogs through the Admin API...'
+$result = Invoke-RestMethod `
+    -Method Post `
+    -Uri 'http://localhost:5002/api/Model/bundled-catalog/import' `
+    -Headers @{ 'X-API-Key' = $backendKey } `
+    -ContentType 'application/json' `
+    -Body '{}'
 
-try {
-    $seededCatalogs = @()
-
-    foreach ($provider in $catalogProviders) {
-        $catalogPath = Join-Path $providersDirectory "$provider-models.json"
-        $catalog = Get-Content $catalogPath -Raw | ConvertFrom-Json
-        $modelCount = @($catalog.models.PSObject.Properties).Count
-        $sqlPath = Join-Path $temporaryDirectory "$provider-models.sql"
-
-        Write-Info "Generating $provider catalog ($modelCount models)..."
-        Push-Location $providersDirectory
-        try {
-            & dotnet run .\generate-provider-sql.cs -- $provider $sqlPath
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to generate SQL for the $provider catalog"
-            }
-        }
-        finally {
-            Pop-Location
-        }
-
-        Write-Info "Importing $provider catalog..."
-        Push-Location $projectRoot
-        try {
-            Get-Content $sqlPath -Raw | & docker @composeArgs exec -T postgres psql -v 'ON_ERROR_STOP=1' -U conduit -d conduitdb
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to import the $provider catalog"
-            }
-        }
-        finally {
-            Pop-Location
-        }
-        $seededCatalogs += "$provider ($modelCount)"
-    }
-
-    Write-Success "Seeded model catalogs: $($seededCatalogs -join ', ')."
-}
-finally {
-    Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force -ErrorAction SilentlyContinue
-}
+Write-Success (
+    "Bundled catalog import complete: {0} identifiers created, {1} existing identifiers preserved, {2} conflicts." -f `
+        $result.created.identifiers, $result.skippedExistingIdentifiers, $result.conflicts.Count)

@@ -54,4 +54,14 @@
     <ProjectReference Include="..\ConduitLLM.Functions\ConduitLLM.Functions.csproj" />
   </ItemGroup>
 
+  <!-- The checked-in provider catalogs are the release artifact's deterministic
+       model seed. Embedding them puts the exact same snapshot in every host that
+       references Configuration (Admin, Gateway, and the standalone migrator). -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\scripts\db\providers\provider-config.json"
+                      LogicalName="ConduitLLM.Configuration.ModelCatalogs.provider-config.json" />
+    <EmbeddedResource Include="..\..\scripts\db\providers\*-models.json"
+                      LogicalName="ConduitLLM.Configuration.ModelCatalogs.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
