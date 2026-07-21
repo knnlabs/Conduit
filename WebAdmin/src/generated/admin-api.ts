@@ -1499,12 +1499,28 @@ export interface paths {
       cookie?: never;
     };
     /** Gets all models with their capabilities.
-     *     Supports optional server-side pagination, search, and filtering.
-     *     When page/pageSize are omitted, returns all models (backward compatible). */
+     *     Supports optional search and filtering. */
     get: operations["Model_GetAllModels"];
     put?: never;
     /** Creates a new model */
     post: operations["Model_CreateModel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Model/paged": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets a paginated page of models with optional search and filtering. */
+    get: operations["Model_GetPagedModels"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3266,7 +3282,7 @@ export interface components {
     };
     AdjustBalanceDto: {
       /** Format: double */
-      amount?: number;
+      amount: number;
       description?: null | string;
     };
     /** @description Comprehensive application metrics including database, application, and system metrics. */
@@ -3359,6 +3375,18 @@ export interface components {
       version?: string;
       /** @description The ASP.NET Core environment name. */
       environment?: string;
+    };
+    /** @description A configured provider instance that can serve a model identifier. */
+    AvailableProviderDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the provider instance ID.
+       */
+      providerId: number;
+      /** @description Gets or sets the provider instance display name. */
+      providerName: string;
+      /** @description Gets or sets the provider type name. */
+      providerType: string;
     };
     BillingAnomaly: {
       anomalyType?: string;
@@ -3538,90 +3566,98 @@ export interface components {
     /** @description Result of a bulk delete operation */
     BulkDeleteResult: {
       /** @description IDs of successfully deleted mappings */
-      deletedIds?: number[];
+      deletedIds: number[];
       /** @description Error messages for failed deletions */
-      errors?: string[];
+      errors: string[];
       /**
        * Format: int32
        * @description Total number of mappings processed
        */
-      totalProcessed?: number;
+      totalProcessed: number;
       /**
        * Format: int32
        * @description Number of successful deletions
        */
-      successCount?: number;
+      successCount: number;
       /**
        * Format: int32
        * @description Number of failed deletions
        */
-      failureCount?: number;
+      failureCount: number;
     };
     /** @description Request body for bulk apply/dismiss. */
     BulkDriftActionRequest: {
-      ids?: number[];
+      ids: number[];
+    };
+    /** @description Partial-success response for bulk apply/dismiss. */
+    BulkDriftActionResponse: {
+      /** Format: int32 */
+      succeededCount: number;
+      /** Format: int32 */
+      failedCount: number;
+      results: components["schemas"]["DriftActionResultDto"][];
     };
     BulkImportResult: {
       /** Format: int32 */
-      successCount?: number;
+      successCount: number;
       /** Format: int32 */
-      failureCount?: number;
-      errors?: string[];
+      failureCount: number;
+      errors: string[];
     };
     /** @description Result of a bulk mapping operation */
     BulkMappingResult: {
       /** @description Successfully created mappings */
-      created?: components["schemas"]["ModelProviderMappingDto"][];
+      created: components["schemas"]["ModelProviderMappingDto"][];
       /** @description Error messages for failed mappings */
-      errors?: string[];
+      errors: string[];
       /**
        * Format: int32
        * @description Total number of mappings processed
        */
-      totalProcessed?: number;
+      totalProcessed: number;
       /**
        * Format: int32
        * @description Number of successful mappings
        */
-      successCount?: number;
+      successCount: number;
       /**
        * Format: int32
        * @description Number of failed mappings
        */
-      failureCount?: number;
+      failureCount: number;
     };
     /** @description Result of a bulk update operation */
     BulkUpdateResult: {
       /** @description Successfully updated mappings */
-      updated?: components["schemas"]["ModelProviderMappingDto"][];
+      updated: components["schemas"]["ModelProviderMappingDto"][];
       /** @description Error messages for failed updates */
-      errors?: string[];
+      errors: string[];
       /**
        * Format: int32
        * @description Total number of mappings processed
        */
-      totalProcessed?: number;
+      totalProcessed: number;
       /**
        * Format: int32
        * @description Number of successful updates
        */
-      successCount?: number;
+      successCount: number;
       /**
        * Format: int32
        * @description Number of failed updates
        */
-      failureCount?: number;
+      failureCount: number;
     };
     BundledModelCatalogImportResult: {
       /** Format: int32 */
-      providersProcessed?: number;
+      providersProcessed: number;
       /** Format: int32 */
-      modelsDiscovered?: number;
-      created?: components["schemas"]["CatalogImportCounts"];
+      modelsDiscovered: number;
+      created: components["schemas"]["CatalogImportCounts"];
       /** Format: int32 */
-      skippedExistingIdentifiers?: number;
-      conflicts?: string[];
-      providers?: components["schemas"]["ProviderCatalogImportResult"][];
+      skippedExistingIdentifiers: number;
+      conflicts: string[];
+      providers: components["schemas"]["ProviderCatalogImportResult"][];
     };
     CacheInjectionPointDto: {
       role?: null | string;
@@ -3630,15 +3666,15 @@ export interface components {
     };
     CatalogImportCounts: {
       /** Format: int32 */
-      authors?: number;
+      authors: number;
       /** Format: int32 */
-      series?: number;
+      series: number;
       /** Format: int32 */
-      models?: number;
+      models: number;
       /** Format: int32 */
-      costs?: number;
+      costs: number;
       /** Format: int32 */
-      identifiers?: number;
+      identifiers: number;
     };
     /** @description Represents the result of a media cleanup operation. */
     CleanupResultDto: {
@@ -3658,23 +3694,23 @@ export interface components {
     /** @description Request DTO for clearing errors and re-enabling a key */
     ClearErrorsRequest: {
       /** @description Whether to re-enable the key */
-      reenableKey?: boolean;
+      reenableKey: boolean;
       /** @description Confirmation that the admin wants to re-enable */
-      confirmReenable?: boolean;
+      confirmReenable: boolean;
       /** @description Reason for re-enabling */
       reason?: null | string;
     };
     /** @description DTO for the result of clearing errors for a key */
     ClearKeyErrorsResponseDto: {
       /** @description Human-readable result message */
-      message?: string;
+      message: string;
       /**
        * Format: int32
        * @description ID of the key whose errors were cleared
        */
-      keyId?: number;
+      keyId: number;
       /** @description Whether the key was re-enabled as part of the operation */
-      reenabled?: boolean;
+      reenabled: boolean;
     };
     /** @description Response containing compliance metrics. */
     ComplianceMetricsResponse: {
@@ -3752,6 +3788,24 @@ export interface components {
       /** Format: date-time */
       endDate?: string;
       data?: components["schemas"]["CostTrendDataDto"][];
+    };
+    /** @description DTO returned after creating a model identifier. */
+    CreatedModelIdentifierDto: {
+      /** Format: int32 */
+      id: number;
+      identifier: string;
+      /** Format: int32 */
+      provider: null | number;
+      isPrimary: boolean;
+      /** Format: int32 */
+      maxInputTokens: null | number;
+      /** Format: int32 */
+      maxOutputTokens: null | number;
+      /** Format: double */
+      speedScore: null | number;
+      /** Format: double */
+      qualityScore: null | number;
+      providerVariation: null | string;
     };
     CreateFunctionCostDto: {
       costName: string;
@@ -3953,6 +4007,21 @@ export interface components {
       /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
       providerVariation?: null | string;
     };
+    CreateModelProviderMappingDto: {
+      modelAlias: string;
+      providerModelId: string;
+      /** Format: int32 */
+      providerId: number;
+      /** Format: int32 */
+      modelProviderTypeAssociationId: number;
+      /** Format: int32 */
+      priority?: number;
+      /** Format: double */
+      weight?: number;
+      isEnabled?: boolean;
+      notes?: null | string;
+      providerOptions?: null | string;
+    };
     /** @description Data transfer object for creating a new model series in the system. */
     CreateModelSeriesDto: {
       /**
@@ -4031,8 +4100,8 @@ export interface components {
       rateLimitRpd?: null | number;
     };
     CreateVirtualKeyResponseDto: {
-      virtualKey?: string;
-      keyInfo?: components["schemas"]["VirtualKeyDto"];
+      virtualKey: string;
+      keyInfo: components["schemas"]["VirtualKeyDto"];
     };
     /** @description Daily statistics */
     DailyStatistics: {
@@ -4182,18 +4251,52 @@ export interface components {
     /** @description DTO for the result of manually disabling a key */
     DisableKeyResponseDto: {
       /** @description Human-readable result message */
-      message?: string;
+      message: string;
       /**
        * Format: int32
        * @description ID of the key that was disabled
        */
-      keyId?: number;
+      keyId: number;
     };
     DiscoveredModelDto: {
       id?: string;
       providerType?: null | components["schemas"]["ProviderType"];
       displayName?: string;
       capabilities?: Record<string, never>;
+    };
+    /** @description Result of applying or dismissing a single drift item. */
+    DriftActionResultDto: {
+      /** Format: int32 */
+      id: number;
+      success: boolean;
+      /** @description True when the item was rejected because Conduit's current values changed since detection. */
+      stale: boolean;
+      error: null | string;
+    };
+    /** @description A drift item surfaced to the admin review UI. */
+    DriftItemDto: {
+      /** Format: int32 */
+      id: number;
+      /** Format: int32 */
+      modelProviderMappingId: number;
+      modelAlias: string;
+      /** Format: int32 */
+      providerId: number;
+      providerName: string;
+      openRouterModelId: string;
+      driftType: string;
+      status: string;
+      /** @description Conduit's current values at detection time (JSON; shape depends on DriftType). */
+      currentValuesJson: string;
+      /** @description The provider's proposed values (JSON; shape depends on DriftType). */
+      proposedValuesJson: string;
+      /** Format: date-time */
+      firstDetectedAt: string;
+      /** Format: date-time */
+      lastDetectedAt: string;
+      /** Format: date-time */
+      resolvedAt: null | string;
+      resolvedBy: null | string;
     };
     EntityTagHeaderValue: {
       tag?: components["schemas"]["StringSegment"];
@@ -4225,67 +4328,68 @@ export interface components {
        * Format: int32
        * @description Total number of errors in the time window
        */
-      totalErrors?: number;
+      totalErrors: number;
       /**
        * Format: int32
        * @description Number of fatal errors
        */
-      fatalErrors?: number;
+      fatalErrors: number;
       /**
        * Format: int32
        * @description Number of warnings
        */
-      warnings?: number;
+      warnings: number;
       /**
        * Format: int32
        * @description Number of currently disabled keys
        */
-      disabledKeys?: number;
+      disabledKeys: number;
       /** @description Errors by type */
-      errorsByType?: {
+      errorsByType: {
         [key: string]: number;
       };
       /** @description Errors by provider */
-      errorsByProvider?: {
+      errorsByProvider: {
         [key: string]: number;
       };
       /** @description Time window for the statistics */
-      timeWindow?: string;
+      timeWindow: string;
       /**
        * Format: date-time
        * @description When the statistics were generated
        */
-      generatedAt?: string;
+      generatedAt: string;
     };
     ExecutionMode: number;
+    ExecutionState: number;
     /** @description Export format options */
     ExportFormat: number;
     /** @description DTO for fatal error information */
     FatalErrorDto: {
       /** @description Type of error */
-      errorType?: string;
+      errorType: string;
       /**
        * Format: int32
        * @description Number of occurrences
        */
-      count?: number;
+      count: number;
       /**
        * Format: date-time
        * @description When first seen
        */
-      firstSeen?: string;
+      firstSeen: string;
       /**
        * Format: date-time
        * @description When last seen
        */
-      lastSeen?: string;
+      lastSeen: string;
       /** @description Last error message */
-      lastErrorMessage?: string;
+      lastErrorMessage: string;
       /**
        * Format: int32
        * @description Last HTTP status code
        */
-      lastStatusCode?: null | number;
+      lastStatusCode: null | number;
     };
     FileContentResult: {
       /** Format: byte */
@@ -4329,6 +4433,42 @@ export interface components {
       /** Format: date-time */
       updatedAt: string;
     };
+    /** @description Result returned after clearing the function-cost cache. */
+    FunctionCostCacheClearResultDto: {
+      message: string;
+    };
+    FunctionCostDto: {
+      /** Format: int32 */
+      id?: number;
+      costName: string;
+      providerType?: components["schemas"]["FunctionProviderType"];
+      purpose?: null | components["schemas"]["FunctionPurpose"];
+      description?: null | string;
+      /** Format: double */
+      baseCost?: null | number;
+      pricingModel?: components["schemas"]["FunctionPricingModel"];
+      /** Format: double */
+      costPerExecution?: null | number;
+      /** Format: double */
+      costPerResult?: null | number;
+      /** Format: double */
+      costPerToken?: null | number;
+      /** Format: double */
+      costPerMinute?: null | number;
+      tieredPricing?: null | string;
+      pricingConfiguration?: null | string;
+      isActive?: boolean;
+      /** Format: date-time */
+      effectiveDate?: string;
+      /** Format: date-time */
+      expiryDate?: null | string;
+      /** Format: int32 */
+      priority?: number;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+    };
     FunctionCredential: {
       /** Format: int32 */
       id?: number;
@@ -4346,34 +4486,88 @@ export interface components {
       /** Format: date-time */
       updatedAt: string;
     };
+    /** @description Result returned after testing a function credential. */
+    FunctionCredentialTestResultDto: {
+      success?: boolean;
+      message?: null | string;
+      details?: unknown;
+      /** Format: double */
+      durationMs?: number;
+    };
+    /** @description Result returned after cleaning up old function executions. */
+    FunctionExecutionCleanupResultDto: {
+      /** Format: int32 */
+      deletedCount?: number;
+      message: string;
+    };
+    FunctionExecutionDto: {
+      /** Format: uuid */
+      id?: string;
+      /** Format: int32 */
+      functionConfigurationId?: number;
+      /** Format: int32 */
+      virtualKeyId?: number;
+      executionMode?: components["schemas"]["ExecutionMode"];
+      state?: components["schemas"]["ExecutionState"];
+      /** Format: date-time */
+      requestedAt?: string;
+      /** Format: date-time */
+      startedAt?: null | string;
+      /** Format: date-time */
+      completedAt?: null | string;
+      /** Format: double */
+      duration?: null | number;
+      requestJson?: null | string;
+      responseJson?: null | string;
+      errorMessage?: null | string;
+      /** Format: double */
+      estimatedCost?: null | number;
+      /** Format: double */
+      actualCost?: null | number;
+      costCalculationDetails?: null | string;
+      /** Format: int32 */
+      retryCount?: number;
+      /** Format: date-time */
+      nextRetryAt?: null | string;
+      leasedBy?: null | string;
+      /** Format: date-time */
+      leaseExpiryTime?: null | string;
+      /** Format: int32 */
+      version?: number;
+      webhookUrl?: null | string;
+      webhookDelivered?: boolean;
+      /** Format: int32 */
+      progressPercentage?: null | number;
+      statusMessage?: null | string;
+    };
     FunctionPricingModel: number;
     FunctionProviderType: number;
     FunctionPurpose: number;
     GlobalSettingCacheStatsDto: {
       /** Format: int32 */
-      cacheSize?: number;
+      cacheSize: number;
       /** Format: int64 */
-      cacheHits?: number;
+      cacheHits: number;
       /** Format: int64 */
-      cacheMisses?: number;
+      cacheMisses: number;
       /** Format: int64 */
-      invalidations?: number;
+      invalidations: number;
       /** Format: double */
-      hitRate?: number;
+      hitRate: number;
       /** Format: date-time */
-      lastLoadTime?: string;
-      cachedKeys?: string[];
+      lastLoadTime: string;
+      cachedKeys: string[];
     };
     GlobalSettingDto: {
       /** Format: int32 */
-      id?: number;
+      id: number;
       key: string;
       value: string;
-      description?: null | string;
+      description: null | string;
       /** Format: date-time */
-      createdAt?: string;
+      createdAt: string;
       /** Format: date-time */
-      updatedAt?: string;
+      updatedAt: string;
     };
     /** @description Health metrics for a single time interval. */
     HealthHistoryPointDto: {
@@ -4526,21 +4720,21 @@ export interface components {
       count?: number;
     };
     IpCheckResult: {
-      isAllowed?: boolean;
+      isAllowed: boolean;
       deniedReason?: null | string;
     };
     IpFilterDto: {
       /** Format: int32 */
-      id?: number;
+      id: number;
       filterType: string;
       ipAddressOrCidr: string;
-      name?: string;
+      name: string;
       description?: null | string;
-      isEnabled?: boolean;
+      isEnabled: boolean;
       /** Format: date-time */
-      createdAt?: string;
+      createdAt: string;
       /** Format: date-time */
-      updatedAt?: string;
+      updatedAt: string;
       createdBy?: null | string;
       updatedBy?: null | string;
       /** Format: int32 */
@@ -4566,13 +4760,13 @@ export interface components {
       rowVersion?: null | string;
     };
     IpFilterSettingsDto: {
-      isEnabled?: boolean;
-      defaultAllow?: boolean;
-      bypassForAdminUi?: boolean;
-      excludedEndpoints?: string[];
-      filterMode?: string;
-      whitelistFilters?: components["schemas"]["IpFilterDto"][];
-      blacklistFilters?: components["schemas"]["IpFilterDto"][];
+      isEnabled: boolean;
+      defaultAllow: boolean;
+      bypassForAdminUi: boolean;
+      excludedEndpoints: string[];
+      filterMode: string;
+      whitelistFilters: components["schemas"]["IpFilterDto"][];
+      blacklistFilters: components["schemas"]["IpFilterDto"][];
     };
     /** @description DTO for detailed key error information */
     KeyErrorDetailsDto: {
@@ -4580,19 +4774,19 @@ export interface components {
        * Format: int32
        * @description Key ID
        */
-      keyId?: number;
+      keyId: number;
       /** @description Key name for display */
-      keyName?: string;
+      keyName: null | string;
       /** @description Whether the key is currently disabled */
-      isDisabled?: boolean;
+      isDisabled: boolean;
       /**
        * Format: date-time
        * @description When the key was disabled
        */
-      disabledAt?: null | string;
-      fatalError?: null | components["schemas"]["FatalErrorDto"];
+      disabledAt: null | string;
+      fatalError: null | components["schemas"]["FatalErrorDto"];
       /** @description Recent warning errors */
-      recentWarnings?: components["schemas"]["WarningErrorDto"][];
+      recentWarnings: components["schemas"]["WarningErrorDto"][];
     };
     /** @description Load balancer configuration details. */
     LoadBalancerDto: {
@@ -4970,20 +5164,20 @@ export interface components {
       updatedAt?: string;
     };
     ModelCapabilitiesDto: {
-      supportsVision?: boolean;
-      supportsImageGeneration?: boolean;
-      supportsVideoGeneration?: boolean;
-      supportsEmbeddings?: boolean;
-      supportsSpeechToText?: boolean;
-      supportsTextToSpeech?: boolean;
-      supportsRerank?: boolean;
-      supportsChat?: boolean;
-      supportsFunctionCalling?: boolean;
-      supportsStreaming?: boolean;
+      supportsVision: boolean;
+      supportsImageGeneration: boolean;
+      supportsVideoGeneration: boolean;
+      supportsEmbeddings: boolean;
+      supportsSpeechToText: boolean;
+      supportsTextToSpeech: boolean;
+      supportsRerank: boolean;
+      supportsChat: boolean;
+      supportsFunctionCalling: boolean;
+      supportsStreaming: boolean;
       /** Format: int32 */
-      maxInputTokens?: null | number;
+      maxInputTokens: null | number;
       /** Format: int32 */
-      maxOutputTokens?: null | number;
+      maxOutputTokens: null | number;
     };
     ModelCostBreakdownDto: {
       /** Format: date-time */
@@ -5013,54 +5207,55 @@ export interface components {
     };
     ModelCostDto: {
       /** Format: int32 */
-      id?: number;
+      id: number;
       costName: string;
       pricingModel: components["schemas"]["PricingModel"];
-      pricingConfiguration?: null | string;
-      associatedModelAliases?: string[];
+      pricingConfiguration: null | string;
+      associatedModelAliases: string[];
+      modelProviderTypeAssociationIds: number[];
       /** Format: double */
-      inputCostPerMillionTokens?: number;
+      inputCostPerMillionTokens: number;
       /** Format: double */
-      outputCostPerMillionTokens?: number;
+      outputCostPerMillionTokens: number;
       /** Format: double */
-      embeddingCostPerMillionTokens?: null | number;
+      embeddingCostPerMillionTokens: null | number;
       /** Format: date-time */
-      createdAt?: string;
+      createdAt: string;
       /** Format: date-time */
-      updatedAt?: string;
+      updatedAt: string;
       modelType: string;
-      isActive?: boolean;
+      isActive: boolean;
       /** Format: date-time */
-      effectiveDate?: string;
+      effectiveDate: string;
       /** Format: date-time */
-      expiryDate?: null | string;
-      description?: null | string;
+      expiryDate: null | string;
+      description: null | string;
       /** Format: int32 */
-      priority?: number;
+      priority: number;
       /** Format: double */
-      batchProcessingMultiplier?: null | number;
-      supportsBatchProcessing?: boolean;
+      batchProcessingMultiplier: null | number;
+      supportsBatchProcessing: boolean;
       /** Format: double */
-      cachedInputCostPerMillionTokens?: null | number;
+      cachedInputCostPerMillionTokens: null | number;
       /** Format: double */
-      cachedInputWriteCostPerMillionTokens?: null | number;
+      cachedInputWriteCostPerMillionTokens: null | number;
       /** Format: double */
-      costPerSearchUnit?: null | number;
+      costPerSearchUnit: null | number;
       /** Format: double */
-      audioCostPerMinute?: null | number;
+      audioCostPerMinute: null | number;
       /** Format: double */
-      audioCostPerThousandCharacters?: null | number;
+      audioCostPerThousandCharacters: null | number;
     };
     ModelCostOverviewDto: {
-      model?: string;
+      model: string;
       /** Format: int32 */
-      requestCount?: number;
+      requestCount: number;
       /** Format: double */
-      totalCost?: number;
+      totalCost: number;
       /** Format: int64 */
-      inputTokens?: number;
+      inputTokens: number;
       /** Format: int64 */
-      outputTokens?: number;
+      outputTokens: number;
     };
     /** @description Data transfer object representing a canonical AI model in the system. */
     ModelDto: {
@@ -5139,16 +5334,16 @@ export interface components {
        * Format: int32
        * @description Gets or sets the unique identifier for this model-provider association.
        */
-      id?: number;
+      id: number;
       /** @description Gets or sets the provider-specific model identifier string (e.g., "gpt-4-turbo" for OpenAI). */
-      identifier?: string;
+      identifier: string;
       /**
        * Format: int32
        * @description Gets or sets the provider ID that offers this model, or null if unassigned.
        */
-      provider?: null | number;
+      provider: null | number;
       /** @description Gets or sets whether this is the primary (preferred) provider for the model. */
-      isPrimary?: boolean;
+      isPrimary: boolean;
       /**
        * Format: int32
        * @description Gets or sets the maximum input token limit for this provider's offering, or null if unknown.
@@ -5177,9 +5372,50 @@ export interface components {
        */
       modelCostId?: null | number;
     };
+    /** @description A model-provider association together with the configured provider instances that can serve it. */
+    ModelProviderAvailabilityDto: {
+      /**
+       * Format: int32
+       * @description Gets or sets the model-provider association ID.
+       */
+      associationId: number;
+      /** @description Gets or sets the provider-specific model identifier. */
+      identifier: string;
+      /**
+       * Format: int32
+       * @description Gets or sets the numeric provider type, or null when unassigned.
+       */
+      provider: null | number;
+      /** @description Gets or sets the provider-specific variation label. */
+      providerVariation: null | string;
+      /**
+       * Format: int32
+       * @description Gets or sets the provider-specific maximum input token count.
+       */
+      maxInputTokens: null | number;
+      /**
+       * Format: int32
+       * @description Gets or sets the provider-specific maximum output token count.
+       */
+      maxOutputTokens: null | number;
+      /**
+       * Format: double
+       * @description Gets or sets the relative speed score.
+       */
+      speedScore: null | number;
+      /**
+       * Format: double
+       * @description Gets or sets the relative quality score.
+       */
+      qualityScore: null | number;
+      /** @description Gets or sets whether this association is primary. */
+      isPrimary: boolean;
+      /** @description Gets or sets configured provider instances matching this association. */
+      availableProviders: components["schemas"]["AvailableProviderDto"][];
+    };
     ModelProviderMappingDto: {
       /** Format: int32 */
-      id?: number;
+      id: number;
       modelAlias: string;
       providerModelId: string;
       /** Format: int32 */
@@ -5188,14 +5424,14 @@ export interface components {
       /** Format: int32 */
       modelProviderTypeAssociationId: number;
       /** Format: int32 */
-      priority?: number;
+      priority: number;
       /** Format: double */
-      weight?: number;
-      isEnabled?: boolean;
+      weight: number;
+      isEnabled: boolean;
       /** Format: date-time */
-      createdAt?: string;
+      createdAt: string;
       /** Format: date-time */
-      updatedAt?: string;
+      updatedAt: string;
       notes?: null | string;
       providerOptions?: null | string;
       capabilities?: null | components["schemas"]["ModelCapabilitiesDto"];
@@ -5411,15 +5647,15 @@ export interface components {
       };
     };
     PagedResultOfLogRequestDto: {
-      items?: components["schemas"]["LogRequestDto"][];
+      items: components["schemas"]["LogRequestDto"][];
       /** Format: int32 */
-      totalCount?: number;
+      totalCount: number;
       /** Format: int32 */
-      currentPage?: number;
+      currentPage: number;
       /** Format: int32 */
-      pageSize?: number;
+      pageSize: number;
       /** Format: int32 */
-      totalPages?: number;
+      totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
       /** Format: int32 */
@@ -5427,16 +5663,50 @@ export interface components {
       /** Format: int32 */
       totalItems?: number;
     };
-    PagedResultOfObject: {
-      items?: unknown[];
+    PagedResultOfModelCostDto: {
+      items: components["schemas"]["ModelCostDto"][];
       /** Format: int32 */
-      totalCount?: number;
+      totalCount: number;
       /** Format: int32 */
-      currentPage?: number;
+      currentPage: number;
       /** Format: int32 */
-      pageSize?: number;
+      pageSize: number;
       /** Format: int32 */
-      totalPages?: number;
+      totalPages: number;
+      hasPreviousPage: boolean;
+      hasNextPage: boolean;
+      /** Format: int32 */
+      page: number;
+      /** Format: int32 */
+      totalItems: number;
+    };
+    PagedResultOfModelDto: {
+      items: components["schemas"]["ModelDto"][];
+      /** Format: int32 */
+      totalCount: number;
+      /** Format: int32 */
+      currentPage: number;
+      /** Format: int32 */
+      pageSize: number;
+      /** Format: int32 */
+      totalPages: number;
+      hasPreviousPage?: boolean;
+      hasNextPage?: boolean;
+      /** Format: int32 */
+      page?: number;
+      /** Format: int32 */
+      totalItems?: number;
+    };
+    PagedResultOfProviderDto: {
+      items: components["schemas"]["ProviderDto"][];
+      /** Format: int32 */
+      totalCount: number;
+      /** Format: int32 */
+      currentPage: number;
+      /** Format: int32 */
+      pageSize: number;
+      /** Format: int32 */
+      totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
       /** Format: int32 */
@@ -5445,15 +5715,15 @@ export interface components {
       totalItems?: number;
     };
     PagedResultOfVirtualKeyGroupDto: {
-      items?: components["schemas"]["VirtualKeyGroupDto"][];
+      items: components["schemas"]["VirtualKeyGroupDto"][];
       /** Format: int32 */
-      totalCount?: number;
+      totalCount: number;
       /** Format: int32 */
-      currentPage?: number;
+      currentPage: number;
       /** Format: int32 */
-      pageSize?: number;
+      pageSize: number;
       /** Format: int32 */
-      totalPages?: number;
+      totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
       /** Format: int32 */
@@ -5462,15 +5732,15 @@ export interface components {
       totalItems?: number;
     };
     PagedResultOfVirtualKeyGroupTransactionDto: {
-      items?: components["schemas"]["VirtualKeyGroupTransactionDto"][];
+      items: components["schemas"]["VirtualKeyGroupTransactionDto"][];
       /** Format: int32 */
-      totalCount?: number;
+      totalCount: number;
       /** Format: int32 */
-      currentPage?: number;
+      currentPage: number;
       /** Format: int32 */
-      pageSize?: number;
+      pageSize: number;
       /** Format: int32 */
-      totalPages?: number;
+      totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
       /** Format: int32 */
@@ -5830,14 +6100,14 @@ export interface components {
       providerKeyCredentials?: components["schemas"]["ProviderKeyCredential"][];
     };
     ProviderCatalogImportResult: {
-      provider?: string;
+      provider: string;
       /** Format: int32 */
-      modelsDiscovered?: number;
-      created?: components["schemas"]["CatalogImportCounts"];
+      modelsDiscovered: number;
+      created: components["schemas"]["CatalogImportCounts"];
       /** Format: int32 */
-      skippedExistingIdentifiers?: number;
+      skippedExistingIdentifiers: number;
       /** Format: int32 */
-      conflicts?: number;
+      conflicts: number;
     };
     /** @description Request distribution statistics for a single model. */
     ProviderDistributionDto: {
@@ -5859,40 +6129,57 @@ export interface components {
        */
       avgLatency?: number;
     };
+    ProviderDto: {
+      /** Format: int32 */
+      id: number;
+      providerType: components["schemas"]["ProviderType"];
+      providerName: string;
+      baseUrl?: null | string;
+      /** Format: int32 */
+      keyCount: number;
+      trustProviderReportedCosts: boolean;
+      /** Format: double */
+      providerCostMarkupMultiplier: number;
+      isEnabled: boolean;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
     /** @description DTO for individual provider error occurrence */
     ProviderErrorDto: {
       /**
        * Format: int32
        * @description ID of the key credential that caused the error
        */
-      keyCredentialId?: number;
+      keyCredentialId: number;
       /** @description Name of the key for display */
-      keyName?: null | string;
+      keyName: null | string;
       /**
        * Format: int32
        * @description ID of the provider
        */
-      providerId?: number;
+      providerId: number;
       /** @description Name of the provider */
-      providerName?: null | string;
+      providerName: null | string;
       /** @description Type of error */
-      errorType?: string;
+      errorType: string;
       /** @description Error message */
-      errorMessage?: string;
+      errorMessage: string;
       /**
        * Format: int32
        * @description HTTP status code if applicable
        */
-      httpStatusCode?: null | number;
+      httpStatusCode: null | number;
       /**
        * Format: date-time
        * @description When the error occurred
        */
-      occurredAt?: string;
+      occurredAt: string;
       /** @description Whether this is a fatal error */
-      isFatal?: boolean;
+      isFatal: boolean;
       /** @description Model that was being used */
-      modelName?: null | string;
+      modelName: null | string;
     };
     /** @description DTO for provider-level error summary */
     ProviderErrorSummaryDto: {
@@ -5900,36 +6187,36 @@ export interface components {
        * Format: int32
        * @description Provider ID
        */
-      providerId?: number;
+      providerId: number;
       /** @description Provider name */
-      providerName?: string;
+      providerName: string;
       /**
        * Format: int32
        * @description Total number of errors
        */
-      totalErrors?: number;
+      totalErrors: number;
       /**
        * Format: int32
        * @description Number of fatal errors
        */
-      fatalErrors?: number;
+      fatalErrors: number;
       /**
        * Format: int32
        * @description Number of warnings
        */
-      warnings?: number;
+      warnings: number;
       /** @description List of disabled key IDs */
-      disabledKeyIds?: number[];
+      disabledKeyIds: number[];
       /**
        * Format: date-time
        * @description When the last error occurred
        */
-      lastError?: null | string;
+      lastError: null | string;
       /**
        * Format: int32
        * @description Number of currently disabled keys
        */
-      disabledKeyCount?: number;
+      disabledKeyCount: number;
     };
     ProviderKeyCredential: {
       /** Format: int32 */
@@ -5950,12 +6237,53 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string;
     };
+    ProviderKeyCredentialDto: {
+      /** Format: int32 */
+      id: number;
+      /** Format: int32 */
+      providerId: number;
+      /** Format: int16 */
+      providerAccountGroup: number;
+      apiKey: string;
+      baseUrl?: null | string;
+      organization?: null | string;
+      isPrimary: boolean;
+      isEnabled: boolean;
+      keyName?: null | string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
     ProviderReferenceDto: {
       /** Format: int32 */
-      id?: number;
-      providerType?: components["schemas"]["ProviderType"];
-      displayName?: string;
-      isEnabled?: boolean;
+      id: number;
+      providerType: components["schemas"]["ProviderType"];
+      displayName: string;
+      isEnabled: boolean;
+    };
+    /** @description A summary of a sync run for the run-history panel. */
+    ProviderSyncRunDto: {
+      /** Format: int32 */
+      id: number;
+      providerType: string;
+      /** Format: date-time */
+      startedAt: string;
+      /** Format: date-time */
+      completedAt: null | string;
+      status: string;
+      triggeredBy: string;
+      /** Format: int32 */
+      modelsFetched: number;
+      /** Format: int32 */
+      mappingsChecked: number;
+      /** Format: int32 */
+      itemsCreated: number;
+      /** Format: int32 */
+      itemsUpdated: number;
+      /** Format: int32 */
+      itemsAutoResolved: number;
+      errorMessage: null | string;
     };
     ProviderToolDto: {
       /** Format: int32 */
@@ -6727,8 +7055,6 @@ export interface components {
       description?: null | string;
     };
     UpdateModelCostDto: {
-      /** Format: int32 */
-      id?: number;
       costName: string;
       pricingModel: components["schemas"]["PricingModel"];
       pricingConfiguration?: null | string;
@@ -6857,6 +7183,21 @@ export interface components {
       qualityScore?: null | number;
       /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
       providerVariation?: null | string;
+    };
+    UpdateModelProviderMappingDto: {
+      modelAlias: string;
+      providerModelId: string;
+      /** Format: int32 */
+      providerId: number;
+      /** Format: int32 */
+      modelProviderTypeAssociationId: number;
+      /** Format: int32 */
+      priority: number;
+      /** Format: double */
+      weight: number;
+      isEnabled: boolean;
+      notes?: null | string;
+      providerOptions?: null | string;
     };
     /** @description Data transfer object for updating an existing model series. */
     UpdateModelSeriesDto: {
@@ -7071,19 +7412,19 @@ export interface components {
     };
     VirtualKeyDto: {
       /** Format: int32 */
-      id?: number;
+      id: number;
       keyName: string;
       keyPrefix?: null | string;
       allowedModels?: null | string;
       /** Format: int32 */
-      virtualKeyGroupId?: number;
-      isEnabled?: boolean;
+      virtualKeyGroupId: number;
+      isEnabled: boolean;
       /** Format: date-time */
       expiresAt?: null | string;
       /** Format: date-time */
-      createdAt?: string;
+      createdAt: string;
       /** Format: date-time */
-      updatedAt?: string;
+      updatedAt: string;
       metadata?: null | string;
       /** Format: int32 */
       rateLimitRpm?: null | number;
@@ -7118,21 +7459,21 @@ export interface components {
     };
     VirtualKeyGroupDto: {
       /** Format: int32 */
-      id?: number;
+      id: number;
       externalGroupId?: null | string;
-      groupName?: string;
+      groupName: string;
       /** Format: double */
-      balance?: number;
+      balance: number;
       /** Format: double */
-      lifetimeCreditsAdded?: number;
+      lifetimeCreditsAdded: number;
       /** Format: double */
-      lifetimeSpent?: number;
+      lifetimeSpent: number;
       /** Format: date-time */
-      createdAt?: string;
+      createdAt: string;
       /** Format: date-time */
-      updatedAt?: string;
+      updatedAt: string;
       /** Format: int32 */
-      virtualKeyCount?: number;
+      virtualKeyCount: number;
     };
     /** @description Summary information for a virtual key group. */
     VirtualKeyGroupSummaryDto: {
@@ -7170,21 +7511,21 @@ export interface components {
     };
     VirtualKeyGroupTransactionDto: {
       /** Format: int64 */
-      id?: number;
+      id: number;
       /** Format: int32 */
-      virtualKeyGroupId?: number;
-      transactionType?: components["schemas"]["TransactionType"];
+      virtualKeyGroupId: number;
+      transactionType: components["schemas"]["TransactionType"];
       /** Format: double */
-      amount?: number;
+      amount: number;
       /** Format: double */
-      balanceAfter?: number;
-      referenceType?: components["schemas"]["ReferenceType"];
+      balanceAfter: number;
+      referenceType: components["schemas"]["ReferenceType"];
       referenceId?: null | string;
       description?: null | string;
-      initiatedBy?: string;
+      initiatedBy: string;
       initiatedByUserId?: null | string;
       /** Format: date-time */
-      createdAt?: string;
+      createdAt: string;
     };
     VirtualKeySpendHistory: {
       /** Format: int32 */
@@ -7282,14 +7623,14 @@ export interface components {
     /** @description DTO for warning error information */
     WarningErrorDto: {
       /** @description Type of warning */
-      type?: string;
+      type: string;
       /** @description Warning message */
-      message?: string;
+      message: string;
       /**
        * Format: date-time
        * @description When the warning occurred
        */
-      timestamp?: string;
+      timestamp: string;
     };
   };
   responses: never;
@@ -8885,7 +9226,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionConfiguration"][];
+          "application/json": components["schemas"]["FunctionConfiguration"][];
+          "text/json": components["schemas"]["FunctionConfiguration"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -8925,7 +9268,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionConfiguration"];
+          "application/json": components["schemas"]["FunctionConfiguration"];
+          "text/json": components["schemas"]["FunctionConfiguration"];
         };
       };
       /** @description Bad Request */
@@ -8972,7 +9317,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionConfiguration"];
+          "application/json": components["schemas"]["FunctionConfiguration"];
+          "text/json": components["schemas"]["FunctionConfiguration"];
         };
       };
       /** @description Not Found */
@@ -9026,7 +9373,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionConfiguration"];
+          "application/json": components["schemas"]["FunctionConfiguration"];
+          "text/json": components["schemas"]["FunctionConfiguration"];
         };
       };
       /** @description Bad Request */
@@ -9129,7 +9478,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionConfiguration"][];
+          "application/json": components["schemas"]["FunctionConfiguration"][];
+          "text/json": components["schemas"]["FunctionConfiguration"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -9165,7 +9516,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionConfiguration"][];
+          "application/json": components["schemas"]["FunctionConfiguration"][];
+          "text/json": components["schemas"]["FunctionConfiguration"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -9198,7 +9551,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCostDto"][];
+          "application/json": components["schemas"]["FunctionCostDto"][];
+          "text/json": components["schemas"]["FunctionCostDto"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -9238,7 +9593,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCostDto"];
+          "application/json": components["schemas"]["FunctionCostDto"];
+          "text/json": components["schemas"]["FunctionCostDto"];
         };
       };
       /** @description Bad Request */
@@ -9285,7 +9642,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCostDto"];
+          "application/json": components["schemas"]["FunctionCostDto"];
+          "text/json": components["schemas"]["FunctionCostDto"];
         };
       };
       /** @description Not Found */
@@ -9339,7 +9698,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCostDto"];
+          "application/json": components["schemas"]["FunctionCostDto"];
+          "text/json": components["schemas"]["FunctionCostDto"];
         };
       };
       /** @description Bad Request */
@@ -9442,7 +9803,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCostDto"];
+          "application/json": components["schemas"]["FunctionCostDto"];
+          "text/json": components["schemas"]["FunctionCostDto"];
         };
       };
       /** @description Not Found */
@@ -9486,7 +9849,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCostCacheClearResultDto"];
+          "application/json": components["schemas"]["FunctionCostCacheClearResultDto"];
+          "text/json": components["schemas"]["FunctionCostCacheClearResultDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -9519,7 +9884,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCredential"][];
+          "application/json": components["schemas"]["FunctionCredential"][];
+          "text/json": components["schemas"]["FunctionCredential"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -9559,7 +9926,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCredential"];
+          "application/json": components["schemas"]["FunctionCredential"];
+          "text/json": components["schemas"]["FunctionCredential"];
         };
       };
       /** @description Bad Request */
@@ -9606,7 +9975,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCredential"][];
+          "application/json": components["schemas"]["FunctionCredential"][];
+          "text/json": components["schemas"]["FunctionCredential"][];
         };
       };
       /** @description Not Found */
@@ -9653,7 +10024,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCredential"];
+          "application/json": components["schemas"]["FunctionCredential"];
+          "text/json": components["schemas"]["FunctionCredential"];
         };
       };
       /** @description Not Found */
@@ -9707,7 +10080,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCredential"];
+          "application/json": components["schemas"]["FunctionCredential"];
+          "text/json": components["schemas"]["FunctionCredential"];
         };
       };
       /** @description Bad Request */
@@ -9814,7 +10189,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionCredentialTestResultDto"];
+          "application/json": components["schemas"]["FunctionCredentialTestResultDto"];
+          "text/json": components["schemas"]["FunctionCredentialTestResultDto"];
         };
       };
       /** @description Bad Request */
@@ -9861,7 +10238,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionExecutionDto"];
+          "application/json": components["schemas"]["FunctionExecutionDto"];
+          "text/json": components["schemas"]["FunctionExecutionDto"];
         };
       };
       /** @description Not Found */
@@ -9908,7 +10287,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "text/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -9944,7 +10325,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "text/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -9980,7 +10363,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "text/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
       /** @description Bad Request */
@@ -10024,7 +10409,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "text/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -10057,7 +10444,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "text/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -10093,7 +10482,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["FunctionExecutionCleanupResultDto"];
+          "application/json": components["schemas"]["FunctionExecutionCleanupResultDto"];
+          "text/json": components["schemas"]["FunctionExecutionCleanupResultDto"];
         };
       };
       /** @description Bad Request */
@@ -12345,10 +12736,6 @@ export interface operations {
   Model_GetAllModels: {
     parameters: {
       query?: {
-        /** @description Page number (1-based). Required together with pageSize for pagination. */
-        page?: number;
-        /** @description Items per page (max 100). Required together with page for pagination. */
-        pageSize?: number;
         /** @description Optional search term for model name (case-insensitive partial match) */
         search?: string;
         /** @description Optional capability filter: chat, vision, image, video, embeddings */
@@ -12362,7 +12749,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description List of all models, or paginated result when page/pageSize are provided */
+      /** @description List of all matching models */
       200: {
         headers: {
           [name: string]: unknown;
@@ -12435,6 +12822,52 @@ export interface operations {
           "text/plain": components["schemas"]["ProblemDetails"];
           "application/json": components["schemas"]["ProblemDetails"];
           "text/json": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            error?: unknown;
+            details?: null | string;
+            code?: null | string;
+          };
+        };
+      };
+    };
+  };
+  Model_GetPagedModels: {
+    parameters: {
+      query?: {
+        /** @description Page number (1-based). */
+        page?: number;
+        /** @description Items per page (max 100). */
+        pageSize?: number;
+        /** @description Optional search term for model name (case-insensitive partial match) */
+        search?: string;
+        /** @description Optional capability filter: chat, vision, image, video, embeddings */
+        capability?: string;
+        /** @description Optional filter: true = only models with identifiers, false = without */
+        hasProviders?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A paginated result of matching models */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": components["schemas"]["PagedResultOfModelDto"];
+          "application/json": components["schemas"]["PagedResultOfModelDto"];
+          "text/json": components["schemas"]["PagedResultOfModelDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -12740,9 +13173,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": unknown[];
-          "application/json": unknown[];
-          "text/json": unknown[];
+          "text/plain": components["schemas"]["ModelIdentifierDto"][];
+          "application/json": components["schemas"]["ModelIdentifierDto"][];
+          "text/json": components["schemas"]["ModelIdentifierDto"][];
         };
       };
       /** @description Not Found */
@@ -12796,9 +13229,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": unknown;
-          "application/json": unknown;
-          "text/json": unknown;
+          "text/plain": components["schemas"]["CreatedModelIdentifierDto"];
+          "application/json": components["schemas"]["CreatedModelIdentifierDto"];
+          "text/json": components["schemas"]["CreatedModelIdentifierDto"];
         };
       };
       /** @description Bad Request */
@@ -12867,9 +13300,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": unknown[];
-          "application/json": unknown[];
-          "text/json": unknown[];
+          "text/plain": components["schemas"]["ModelProviderAvailabilityDto"][];
+          "application/json": components["schemas"]["ModelProviderAvailabilityDto"][];
+          "text/json": components["schemas"]["ModelProviderAvailabilityDto"][];
         };
       };
       /** @description Not Found */
@@ -13269,6 +13702,8 @@ export interface operations {
         pageSize?: number;
         /** @description Optional filter by model type (chat, image, video, embedding, audio) */
         modelType?: string;
+        providerId?: number;
+        isActive?: boolean;
       };
       header?: never;
       path?: never;
@@ -13282,9 +13717,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["ModelCostDto"][];
-          "application/json": components["schemas"]["ModelCostDto"][];
-          "text/json": components["schemas"]["ModelCostDto"][];
+          "text/plain": components["schemas"]["PagedResultOfModelCostDto"];
+          "application/json": components["schemas"]["PagedResultOfModelCostDto"];
+          "text/json": components["schemas"]["PagedResultOfModelCostDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -13423,12 +13858,16 @@ export interface operations {
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "text/plain": components["schemas"]["ModelCostDto"];
+          "application/json": components["schemas"]["ModelCostDto"];
+          "text/json": components["schemas"]["ModelCostDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -13672,9 +14111,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": number;
-          "application/json": number;
-          "text/json": number;
+          "text/plain": components["schemas"]["BulkImportResult"];
+          "application/json": components["schemas"]["BulkImportResult"];
+          "text/json": components["schemas"]["BulkImportResult"];
         };
       };
       /** @description Bad Request */
@@ -14046,9 +14485,9 @@ export interface operations {
     /** @description The mapping to create */
     requestBody: {
       content: {
-        "application/json": components["schemas"]["ModelProviderMappingDto"];
-        "text/json": components["schemas"]["ModelProviderMappingDto"];
-        "application/*+json": components["schemas"]["ModelProviderMappingDto"];
+        "application/json": components["schemas"]["CreateModelProviderMappingDto"];
+        "text/json": components["schemas"]["CreateModelProviderMappingDto"];
+        "application/*+json": components["schemas"]["CreateModelProviderMappingDto"];
       };
     };
     responses: {
@@ -14162,9 +14601,9 @@ export interface operations {
     /** @description The updated mapping data */
     requestBody: {
       content: {
-        "application/json": components["schemas"]["ModelProviderMappingDto"];
-        "text/json": components["schemas"]["ModelProviderMappingDto"];
-        "application/*+json": components["schemas"]["ModelProviderMappingDto"];
+        "application/json": components["schemas"]["UpdateModelProviderMappingDto"];
+        "text/json": components["schemas"]["UpdateModelProviderMappingDto"];
+        "application/*+json": components["schemas"]["UpdateModelProviderMappingDto"];
       };
     };
     responses: {
@@ -14302,9 +14741,9 @@ export interface operations {
     /** @description The mappings to create */
     requestBody: {
       content: {
-        "application/json": components["schemas"]["ModelProviderMappingDto"][];
-        "text/json": components["schemas"]["ModelProviderMappingDto"][];
-        "application/*+json": components["schemas"]["ModelProviderMappingDto"][];
+        "application/json": components["schemas"]["CreateModelProviderMappingDto"][];
+        "text/json": components["schemas"]["CreateModelProviderMappingDto"][];
+        "application/*+json": components["schemas"]["CreateModelProviderMappingDto"][];
       };
     };
     responses: {
@@ -15748,9 +16187,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": unknown[];
-          "application/json": unknown[];
-          "text/json": unknown[];
+          "text/plain": components["schemas"]["ProviderKeyCredentialDto"][];
+          "application/json": components["schemas"]["ProviderKeyCredentialDto"][];
+          "text/json": components["schemas"]["ProviderKeyCredentialDto"][];
         };
       };
       /** @description Not Found */
@@ -15804,9 +16243,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": unknown;
-          "application/json": unknown;
-          "text/json": unknown;
+          "text/plain": components["schemas"]["ProviderKeyCredentialDto"];
+          "application/json": components["schemas"]["ProviderKeyCredentialDto"];
+          "text/json": components["schemas"]["ProviderKeyCredentialDto"];
         };
       };
       /** @description Bad Request */
@@ -15866,9 +16305,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": unknown;
-          "application/json": unknown;
-          "text/json": unknown;
+          "text/plain": components["schemas"]["ProviderKeyCredentialDto"];
+          "application/json": components["schemas"]["ProviderKeyCredentialDto"];
+          "text/json": components["schemas"]["ProviderKeyCredentialDto"];
         };
       };
       /** @description Not Found */
@@ -15918,12 +16357,16 @@ export interface operations {
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "text/plain": components["schemas"]["ProviderKeyCredentialDto"];
+          "application/json": components["schemas"]["ProviderKeyCredentialDto"];
+          "text/json": components["schemas"]["ProviderKeyCredentialDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -16087,9 +16530,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["PagedResultOfObject"];
-          "application/json": components["schemas"]["PagedResultOfObject"];
-          "text/json": components["schemas"]["PagedResultOfObject"];
+          "text/plain": components["schemas"]["PagedResultOfProviderDto"];
+          "application/json": components["schemas"]["PagedResultOfProviderDto"];
+          "text/json": components["schemas"]["PagedResultOfProviderDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16128,9 +16571,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": unknown;
-          "application/json": unknown;
-          "text/json": unknown;
+          "text/plain": components["schemas"]["ProviderDto"];
+          "application/json": components["schemas"]["ProviderDto"];
+          "text/json": components["schemas"]["ProviderDto"];
         };
       };
       /** @description Bad Request */
@@ -16177,9 +16620,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": unknown;
-          "application/json": unknown;
-          "text/json": unknown;
+          "text/plain": components["schemas"]["ProviderDto"];
+          "application/json": components["schemas"]["ProviderDto"];
+          "text/json": components["schemas"]["ProviderDto"];
         };
       };
       /** @description Not Found */
@@ -16227,12 +16670,16 @@ export interface operations {
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "text/plain": components["schemas"]["ProviderDto"];
+          "application/json": components["schemas"]["ProviderDto"];
+          "text/json": components["schemas"]["ProviderDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -16574,9 +17021,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/json": components["schemas"]["ErrorResponseDto"];
+          "text/json": components["schemas"]["ErrorResponseDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16630,9 +17077,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/json": components["schemas"]["ErrorResponseDto"];
+          "text/json": components["schemas"]["ErrorResponseDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16771,9 +17218,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/json": components["schemas"]["ErrorResponseDto"];
+          "text/json": components["schemas"]["ErrorResponseDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16812,7 +17259,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["DriftItemDto"][];
+          "application/json": components["schemas"]["DriftItemDto"][];
+          "text/json": components["schemas"]["DriftItemDto"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16847,7 +17296,20 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["DriftItemDto"];
+          "application/json": components["schemas"]["DriftItemDto"];
+          "text/json": components["schemas"]["DriftItemDto"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/json": components["schemas"]["ErrorResponseDto"];
+          "text/json": components["schemas"]["ErrorResponseDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16882,7 +17344,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["DriftActionResultDto"];
+          "application/json": components["schemas"]["DriftActionResultDto"];
+          "text/json": components["schemas"]["DriftActionResultDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16917,7 +17381,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["DriftActionResultDto"];
+          "application/json": components["schemas"]["DriftActionResultDto"];
+          "text/json": components["schemas"]["DriftActionResultDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16956,7 +17422,20 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["BulkDriftActionResponse"];
+          "application/json": components["schemas"]["BulkDriftActionResponse"];
+          "text/json": components["schemas"]["BulkDriftActionResponse"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/json": components["schemas"]["ErrorResponseDto"];
+          "text/json": components["schemas"]["ErrorResponseDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -16995,7 +17474,20 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["BulkDriftActionResponse"];
+          "application/json": components["schemas"]["BulkDriftActionResponse"];
+          "text/json": components["schemas"]["BulkDriftActionResponse"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/json": components["schemas"]["ErrorResponseDto"];
+          "text/json": components["schemas"]["ErrorResponseDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -17028,7 +17520,20 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["ProviderSyncRunDto"];
+          "application/json": components["schemas"]["ProviderSyncRunDto"];
+          "text/json": components["schemas"]["ProviderSyncRunDto"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/json": components["schemas"]["ErrorResponseDto"];
+          "text/json": components["schemas"]["ErrorResponseDto"];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */
@@ -17064,7 +17569,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "text/plain": components["schemas"]["ProviderSyncRunDto"][];
+          "application/json": components["schemas"]["ProviderSyncRunDto"][];
+          "text/json": components["schemas"]["ProviderSyncRunDto"][];
         };
       };
       /** @description Internal server error. Returns a standardized ErrorResponseDto. */

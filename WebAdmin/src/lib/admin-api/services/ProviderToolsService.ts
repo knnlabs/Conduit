@@ -1,49 +1,15 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
+import { HttpMethod } from '../client/HttpMethod';
 
-export interface ProviderTool {
-  id: number;
-  isActive: boolean;
-  updatedAt: string;
-  provider: number; // ProviderType enum value
-  toolName: string;
-  toolParameters?: string | null;
-  costPerUnit?: number | null;
-  billingUnit?: string | null;
-  costDescription?: string | null;
-  providerName?: string | null;
-}
-
-export interface CreateProviderTool {
-  provider: number;
-  toolName: string;
-  toolParameters?: string | null;
-  costPerUnit?: number | null;
-  billingUnit?: string | null;
-  costDescription?: string | null;
-  isActive?: boolean;
-}
-
-export interface UpdateProviderTool {
-  isActive: boolean;
-  toolParameters?: string | null;
-  costPerUnit?: number | null;
-  billingUnit?: string | null;
-  costDescription?: string | null;
-}
-
-export interface ProviderOption {
-  value: number;
-  name: string;
-  description: string;
-}
-
-export interface ImportResult {
-  imported: number;
-  skipped: number;
-  total: number;
-  errors?: string[] | null;
-}
+export type ProviderTool = components['schemas']['ProviderToolDto'] & Required<Pick<components['schemas']['ProviderToolDto'], 'id' | 'provider' | 'toolName' | 'isActive' | 'updatedAt'>>;
+export type CreateProviderTool = components['schemas']['CreateProviderToolDto'];
+export type UpdateProviderTool = components['schemas']['UpdateProviderToolDto'];
+export type ProviderOption = components['schemas']['ToolProviderDto'] & Required<Pick<components['schemas']['ToolProviderDto'], 'value' | 'name' | 'description'>>;
+export type ImportResult = components['schemas']['ProviderToolImportResultDto'];
+type ProviderToolWire = components['schemas']['ProviderToolDto'];
+type ProviderOptionWire = components['schemas']['ToolProviderDto'];
 
 /**
  * Service for managing provider tools and their costs
@@ -57,22 +23,13 @@ export class ProviderToolsService {
    * @param isActive Optional active status filter
    */
   async getProviderTools(provider?: number, isActive?: boolean, config?: RequestConfig): Promise<ProviderTool[]> {
+    const query = { provider, isActive };
     const params = new URLSearchParams();
-    if (provider !== undefined) {
-      params.append('provider', provider.toString());
-    }
-    if (isActive !== undefined) {
-      params.append('isActive', isActive.toString());
-    }
-
-    const queryString = params.toString();
-    const url = `/api/admin/provider-tools${queryString ? `?${queryString}` : ''}`;
-
-    return this.client['get']<ProviderTool[]>(url, {
-      signal: config?.signal,
-      timeout: config?.timeout,
-      headers: config?.headers,
-    });
+    if (provider !== undefined) params.set('provider', String(provider));
+    if (isActive !== undefined) params.set('isActive', String(isActive));
+    const resolvedPath = params.size ? `/api/admin/provider-tools?${params}` : '/api/admin/provider-tools';
+    const data = await this.client['executeContractRead']<ProviderToolWire[]>(resolvedPath, (client, options) => client.GET('/api/admin/provider-tools', { ...options, params: { query } }), config);
+    return data.map(tool => tool as ProviderTool);
   }
 
   /**
@@ -80,14 +37,7 @@ export class ProviderToolsService {
    * @param id Tool ID
    */
   async getProviderTool(id: number, config?: RequestConfig): Promise<ProviderTool> {
-    return this.client['get']<ProviderTool>(
-      `/api/admin/provider-tools/${id}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](`/api/admin/provider-tools/${id}`, (client, options) => client.GET('/api/admin/provider-tools/{id}', { ...options, params: { path: { id } } }), config) as Promise<ProviderTool>;
   }
 
   /**
@@ -95,15 +45,7 @@ export class ProviderToolsService {
    * @param tool Provider tool creation data
    */
   async createProviderTool(tool: CreateProviderTool, config?: RequestConfig): Promise<ProviderTool> {
-    return this.client['post']<ProviderTool>(
-      '/api/admin/provider-tools',
-      tool,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation']<ProviderToolWire, CreateProviderTool>('/api/admin/provider-tools', HttpMethod.POST, (client, options) => client.POST('/api/admin/provider-tools', { ...options, body: tool }), config, tool) as Promise<ProviderTool>;
   }
 
   /**
@@ -112,15 +54,7 @@ export class ProviderToolsService {
    * @param updates Updated tool data
    */
   async updateProviderTool(id: number, updates: UpdateProviderTool, config?: RequestConfig): Promise<ProviderTool> {
-    return this.client['put']<ProviderTool>(
-      `/api/admin/provider-tools/${id}`,
-      updates,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation']<ProviderToolWire, UpdateProviderTool>(`/api/admin/provider-tools/${id}`, HttpMethod.PUT, (client, options) => client.PUT('/api/admin/provider-tools/{id}', { ...options, params: { path: { id } }, body: updates }), config, updates) as Promise<ProviderTool>;
   }
 
   /**
@@ -128,42 +62,22 @@ export class ProviderToolsService {
    * @param id Tool ID
    */
   async deleteProviderTool(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      `/api/admin/provider-tools/${id}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation'](`/api/admin/provider-tools/${id}`, HttpMethod.DELETE, (client, options) => client.DELETE('/api/admin/provider-tools/{id}', { ...options, params: { path: { id } } }), config);
   }
 
   /**
    * Gets available provider types that support tools
    */
   async getToolProviders(config?: RequestConfig): Promise<ProviderOption[]> {
-    return this.client['get']<ProviderOption[]>(
-      '/api/admin/provider-tools/providers',
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const data = await this.client['executeContractRead']<ProviderOptionWire[]>('/api/admin/provider-tools/providers', (client, options) => client.GET('/api/admin/provider-tools/providers', options), config);
+    return data.map(provider => provider as ProviderOption);
   }
 
   /**
    * Gets available billing units
    */
   async getBillingUnits(config?: RequestConfig): Promise<string[]> {
-    return this.client['get']<string[]>(
-      '/api/admin/provider-tools/billing-units',
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead']('/api/admin/provider-tools/billing-units', (client, options) => client.GET('/api/admin/provider-tools/billing-units', options), config);
   }
 
   /**
@@ -171,28 +85,14 @@ export class ProviderToolsService {
    * @param tools Array of provider tools to import
    */
   async importProviderTools(tools: CreateProviderTool[], config?: RequestConfig): Promise<ImportResult> {
-    return this.client['post']<ImportResult>(
-      '/api/admin/provider-tools/import',
-      tools,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation']<ImportResult, CreateProviderTool[]>('/api/admin/provider-tools/import', HttpMethod.POST, (client, options) => client.POST('/api/admin/provider-tools/import', { ...options, body: tools }), config, tools);
   }
 
   /**
    * Exports all provider tools as JSON
    */
   async exportProviderTools(config?: RequestConfig): Promise<ProviderTool[]> {
-    return this.client['get']<ProviderTool[]>(
-      '/api/admin/provider-tools/export',
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const data = await this.client['executeContractRead']<ProviderToolWire[]>('/api/admin/provider-tools/export', (client, options) => client.GET('/api/admin/provider-tools/export', options), config);
+    return data.map(tool => tool as ProviderTool);
   }
 }

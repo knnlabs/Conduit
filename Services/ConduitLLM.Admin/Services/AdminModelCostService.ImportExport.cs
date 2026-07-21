@@ -15,7 +15,7 @@ namespace ConduitLLM.Admin.Services
     public partial class AdminModelCostService
     {
         /// <inheritdoc />
-        public async Task<int> ImportModelCostsAsync(IEnumerable<CreateModelCostDto> modelCosts)
+        public async Task<BulkImportResult> ImportModelCostsAsync(IEnumerable<CreateModelCostDto> modelCosts)
         {
             if (modelCosts == null)
             {
@@ -24,13 +24,12 @@ namespace ConduitLLM.Admin.Services
 
             if (!modelCosts.Any())
             {
-                return 0;
+                return new BulkImportResult();
             }
 
             try
             {
-                int importedCount = 0;
-                int failedCount = 0;
+                var result = new BulkImportResult();
                 var totalCount = modelCosts.Count();
 
                 // Process each model cost
@@ -49,7 +48,6 @@ namespace ConduitLLM.Admin.Services
                             // Update existing model cost
                             var updateDto = new UpdateModelCostDto
                             {
-                                Id = existingModelCost.Id,
                                 CostName = modelCost.CostName,
                                 PricingModel = modelCost.PricingModel,
                                 PricingConfiguration = modelCost.PricingConfiguration,
@@ -97,11 +95,12 @@ namespace ConduitLLM.Admin.Services
                                 "ImportModelCosts");
                         }
 
-                        importedCount++;
+                        result.SuccessCount++;
                     }
                     catch (Exception ex)
                     {
-                        failedCount++;
+                        result.FailureCount++;
+                        result.Errors.Add($"Failed to import model cost '{modelCost.CostName}': {ex.Message}");
                         _logger.LogWarning(ex,
                             "Error importing model cost with name '{CostName}'",
                             LoggingSanitizer.S(modelCost.CostName));
@@ -110,8 +109,8 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 _logger.LogInformation("Imported {Imported} model costs ({Failed} failed out of {Total})",
-                    importedCount, failedCount, totalCount);
-                return importedCount;
+                    result.SuccessCount, result.FailureCount, totalCount);
+                return result;
             }
             catch (Exception ex)
             {
@@ -185,7 +184,6 @@ namespace ConduitLLM.Admin.Services
                             // Update existing model cost
                             var updateDto = new UpdateModelCostDto
                             {
-                                Id = existingModelCost.Id,
                                 CostName = modelCost.CostName,
                                 PricingModel = modelCost.PricingModel,
                                 PricingConfiguration = modelCost.PricingConfiguration,

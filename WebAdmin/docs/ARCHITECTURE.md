@@ -3,7 +3,7 @@
 ## Overview
 
 WebAdmin owns focused TypeScript boundaries for the ConduitLLM Admin and Gateway APIs. Application
-code does not import the published Node SDK packages or source files from `SDKs/Node`.
+code uses repository-local clients backed by generated OpenAPI types.
 
 ```mermaid
 flowchart LR
@@ -28,10 +28,6 @@ flowchart LR
 - `src/generated/admin-api.ts` and `src/generated/gateway-api.ts` are generated from the committed
   OpenAPI JSON contracts. They describe wire shapes; UI-facing models may adapt those shapes.
 
-The public Common and Gateway SDK packages remain available for external consumers. They are not a
-WebAdmin runtime or build dependency. The former public Admin SDK is retired; existing registry
-versions remain available but no new versions are published.
-
 ## Authentication flow
 
 Admin operations request a fresh, single-use ephemeral master key through
@@ -50,8 +46,8 @@ upload progress events.
 
 ## Contract workflow
 
-Run `npm run generate:offline` from `SDKs/Node/scripts` to export both service contracts and
-regenerate the Admin/Gateway WebAdmin wire types plus the retained Gateway SDK wire type. CI repeats
+Run `npm run generate:offline` from `tools/openapi` to export both service contracts and
+regenerate the Admin/Gateway WebAdmin wire types. CI repeats
 generation, validates both contracts, and fails on drift.
 
 The boundary invariant is available as `npm run check:api-boundary` from `WebAdmin`.
@@ -59,5 +55,5 @@ The boundary invariant is available as `npm run check:api-boundary` from `WebAdm
 ## Docker development
 
 The WebAdmin image installs only `WebAdmin/package.json` and its lockfile. Compose Watch syncs the
-WebAdmin tree and rebuilds only for WebAdmin manifest, lockfile, or Dockerfile changes; SDK workspace
-changes no longer trigger a WebAdmin rebuild.
+WebAdmin tree and rebuilds only for WebAdmin manifest, lockfile, or Dockerfile changes; the retired
+SDK workspace is no longer part of the development loop.

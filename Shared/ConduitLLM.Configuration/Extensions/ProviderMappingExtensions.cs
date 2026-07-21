@@ -74,6 +74,19 @@ namespace ConduitLLM.Configuration.Extensions
             // Notes remains DTO-only.
         }
 
+        public static void UpdateFromDto(this ModelProviderMapping mapping, UpdateModelProviderMappingDto dto)
+        {
+            mapping.ModelAlias = dto.ModelAlias;
+            mapping.ProviderModelId = dto.ProviderModelId;
+            mapping.ProviderId = dto.ProviderId;
+            mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId;
+            mapping.IsEnabled = dto.IsEnabled;
+            mapping.ProviderOptions = dto.ProviderOptions;
+            mapping.RoutingPriority = dto.Priority;
+            mapping.RoutingWeight = dto.Weight;
+            mapping.UpdatedAt = System.DateTime.UtcNow;
+        }
+
         /// <summary>
         /// Creates a new ModelProviderMapping entity from a ModelProviderMappingDto
         /// </summary>
@@ -84,6 +97,23 @@ namespace ConduitLLM.Configuration.Extensions
             mapping.Id = 0; // Reset ID for new entities
             mapping.CreatedAt = System.DateTime.UtcNow;
             return mapping;
+        }
+
+        public static ModelProviderMapping ToEntity(this CreateModelProviderMappingDto dto)
+        {
+            return new ModelProviderMapping
+            {
+                ModelAlias = dto.ModelAlias,
+                ProviderModelId = dto.ProviderModelId,
+                ProviderId = dto.ProviderId,
+                ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId,
+                IsEnabled = dto.IsEnabled,
+                ProviderOptions = dto.ProviderOptions,
+                RoutingPriority = dto.Priority,
+                RoutingWeight = dto.Weight,
+                CreatedAt = System.DateTime.UtcNow,
+                UpdatedAt = System.DateTime.UtcNow
+            };
         }
     }
 }

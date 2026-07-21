@@ -57,7 +57,7 @@ export default function ProviderErrorsPage() {
     try {
       await withAdminClient(client =>
         client.providerErrors.clearKeyErrors(keyId, {
-          reEnableKey: reenableKey,
+          reenableKey,
           confirmReenable: reenableKey,
           reason: 'Manual clear from error dashboard',
         })

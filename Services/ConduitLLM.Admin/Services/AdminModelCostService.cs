@@ -276,7 +276,7 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> UpdateModelCostAsync(UpdateModelCostDto modelCost)
+        public async Task<ModelCostDto?> UpdateModelCostAsync(int id, UpdateModelCostDto modelCost)
         {
             if (modelCost == null)
             {
@@ -288,19 +288,19 @@ namespace ConduitLLM.Admin.Services
                 ModelPricingConfigurationValidator.Validate(modelCost.PricingModel, modelCost.PricingConfiguration);
 
                 // Get existing model cost
-                var existingModelCost = await _modelCostRepository.GetByIdAsync(modelCost.Id);
+                var existingModelCost = await _modelCostRepository.GetByIdAsync(id);
                 if (existingModelCost == null)
                 {
                     _logger.LogWarning("Model cost with ID {Id} not found",
-                modelCost.Id);
-                    return false;
+                id);
+                    return null;
                 }
 
                 // Check if the cost name is being changed and a model cost with the new name already exists
                 if (existingModelCost.CostName != modelCost.CostName)
                 {
                     var nameExists = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
-                    if (nameExists != null && nameExists.Id != modelCost.Id)
+                    if (nameExists != null && nameExists.Id != id)
                     {
                         throw new InvalidOperationException($"Another model cost with name '{modelCost.CostName}' already exists");
                     }
@@ -354,7 +354,7 @@ namespace ConduitLLM.Admin.Services
 
                     // Clear existing associations for this cost
                     var existingAssociations = await dbContext.ModelProviderTypeAssociations
-                        .Where(mpta => mpta.ModelCostId == modelCost.Id)
+                        .Where(mpta => mpta.ModelCostId == id)
                         .ToListAsync();
 
                     foreach (var association in existingAssociations)
@@ -369,7 +369,7 @@ namespace ConduitLLM.Admin.Services
 
                     foreach (var association in newAssociations)
                     {
-                        association.ModelCostId = modelCost.Id;
+                        association.ModelCostId = id;
                     }
 
                     await dbContext.SaveChangesAsync();
@@ -391,7 +391,7 @@ namespace ConduitLLM.Admin.Services
                         await PublishEventAsync(
                             new ModelCostChanged
                             {
-                                ModelCostId = modelCost.Id,
+                                ModelCostId = id,
                                 CostName = existingModelCost.CostName,
                                 ChangeType = "Updated",
                                 ChangedProperties = changedProperties.ToArray(),
@@ -401,23 +401,24 @@ namespace ConduitLLM.Admin.Services
                     }
                     
                     _logger.LogInformation("Updated model cost with ID {Id}",
-                modelCost.Id);
+                id);
                 }
                 else
                 {
                     _logger.LogWarning("Failed to update model cost with ID {Id}",
-                modelCost.Id);
+                id);
                 }
 
-                return result;
+                return result ? await GetModelCostByIdAsync(id) : null;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
                 "Error updating model cost with ID {Id}",
-                modelCost.Id);
+                id);
                 throw;
             }
         }
+
     }
 }

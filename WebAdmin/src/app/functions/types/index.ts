@@ -1,22 +1,19 @@
 /**
  * Function management types
- * Re-exported from Admin SDK for WebAdmin usage
+ * Re-exported from the local Admin API boundary for WebAdmin usage
  */
 
-// Re-export all function types from SDK
+// Re-export all function types from the local Admin API boundary
 export type {
   // Function Configuration
   FunctionConfigurationDto,
   CreateFunctionConfigurationDto,
   UpdateFunctionConfigurationDto,
-  FunctionConfigurationListResponse,
-  FunctionConfigurationFilters,
 
   // Function Credentials
   FunctionCredentialDto,
   CreateFunctionCredentialDto,
   UpdateFunctionCredentialDto,
-  FunctionCredentialListResponse,
   TestCredentialRequestDto,
   TestCredentialResponseDto,
 
@@ -24,18 +21,9 @@ export type {
   FunctionCostDto,
   CreateFunctionCostDto,
   UpdateFunctionCostDto,
-  FunctionCostListResponse,
-  FunctionCostFilters,
-
-  // Function Cost Mappings
-  FunctionCostMappingDto,
-  CreateFunctionCostMappingDto,
-  UpdateFunctionCostMappingDto,
 
   // Function Executions
   FunctionExecutionDto,
-  FunctionExecutionListResponse,
-  FunctionExecutionFilters,
 
   // Pricing Configuration Types
   BasePricingConfig,
@@ -65,7 +53,7 @@ export {
   FunctionPricingModel,
 };
 
-// Re-export function provider registry utilities from SDK
+// Re-export function provider registry utilities from the local Admin API boundary
 export {
   getAvailableFunctionProviders,
   getFunctionProviderMetadata,
@@ -77,7 +65,7 @@ export {
 export type { FunctionProviderMetadata } from '@/lib/admin-api';
 
 // Helper functions for enum display
-// Note: getProviderTypeName is now provided by SDK (getFunctionProviderTypeName)
+// Note: getProviderTypeName is provided as getFunctionProviderTypeName.
 // Re-export with original name for backwards compatibility
 export { getFunctionProviderTypeName as getProviderTypeName } from '@/lib/admin-api';
 
@@ -173,7 +161,7 @@ export interface FunctionConfigurationFormData {
   defaultExecutionMode?: FunctionExecutionMode;
   timeoutSeconds?: number;
   isEnabled?: boolean;
-  metadata?: string;
+  providerSettings?: string;
 }
 
 export interface FunctionCostFormData {

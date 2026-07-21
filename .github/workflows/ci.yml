@@ -80,10 +80,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          # Workspaces monorepo: a single root SDK lockfile (no per-package locks exist).
           cache-dependency-path: |
-            SDKs/Node/package-lock.json
-            SDKs/Node/scripts/package-lock.json
+            tools/openapi/package-lock.json
             WebAdmin/package-lock.json
       
       - name: .NET Build & Test
@@ -122,19 +120,11 @@ jobs:
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
           REDIS_URL: redis://localhost:6379
 
-      - name: NPM Build
-        run: |
-          cd SDKs/Node
-          npm ci
-          npm run build
-          npm run type-check
-          npm run test:ci
-
       - name: OpenAPI contract validation and drift check
         # Export both contracts without infrastructure, prove generation is byte-stable,
-        # regenerate SDK and WebAdmin contract types, validate the contracts, and fail on drift.
+        # regenerate WebAdmin contract types, validate the contracts, and fail on drift.
         run: |
-          cd SDKs/Node/scripts
+          cd tools/openapi
           npm ci
           npm run verify:offline
           npm run validate:openapi
@@ -142,10 +132,9 @@ jobs:
           if ! git diff --exit-code -- \
             Services/ConduitLLM.Admin/openapi-admin.json \
             Services/ConduitLLM.Gateway/openapi-gateway.json \
-            SDKs/Node/Gateway/src/generated/gateway-api.ts \
             WebAdmin/src/generated/admin-api.ts \
             WebAdmin/src/generated/gateway-api.ts; then
-            echo "::error::OpenAPI contracts or generated SDK types are out of date. Run 'npm run generate:offline' in SDKs/Node/scripts and commit the changes."
+            echo "::error::OpenAPI contracts or generated WebAdmin types are out of date. Run 'npm run generate:offline' in tools/openapi and commit the changes."
             exit 1
           fi
         env:

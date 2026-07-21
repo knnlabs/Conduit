@@ -1,39 +1,11 @@
 import { FilterOptions } from './common';
 import { ProviderConfigMetadata } from './metadata';
 import { ProviderType } from './providerType';
+import type { components } from '../generated/admin-api';
 
-// Provider DTOs - Provider ID is the canonical identifier
-export interface ProviderDto {
-  id: number;
-  providerType: ProviderType;
-  providerName: string; // User-friendly display name, can be changed
-  baseUrl?: string | null;
-  isEnabled: boolean;
-  /** When true, the provider-reported per-request cost is authoritative for billing (falls back to ModelCost). */
-  trustProviderReportedCosts: boolean;
-  /** Multiplier applied to the provider-reported cost when billing (1.0 = pass-through). */
-  providerCostMarkupMultiplier: number;
-  createdAt: string;
-  updatedAt: string;
-  // Note: apiKey and organization moved to ProviderKeyCredential
-}
-
-export interface CreateProviderDto {
-  providerType: ProviderType;
-  providerName: string;
-  baseUrl?: string | null;
-  isEnabled?: boolean;
-  trustProviderReportedCosts?: boolean;
-  providerCostMarkupMultiplier?: number;
-}
-
-export interface UpdateProviderDto {
-  providerName?: string;
-  baseUrl?: string | null;
-  isEnabled?: boolean;
-  trustProviderReportedCosts?: boolean;
-  providerCostMarkupMultiplier?: number;
-}
+export type ProviderDto = components['schemas']['ProviderDto'];
+export type CreateProviderDto = components['schemas']['CreateProviderRequest'];
+export type UpdateProviderDto = components['schemas']['UpdateProviderRequest'];
 
 
 export interface ProviderConnectionTestRequest {
@@ -85,43 +57,9 @@ export interface ProviderUsageStatistics {
 }
 
 // Provider Key Credential interfaces
-export interface ProviderKeyCredentialDto {
-  id: number;
-  providerId: number;
-  apiKey: string;
-  organization?: string;
-  keyName?: string;
-  isPrimary: boolean;
-  isEnabled: boolean;
-  providerAccountGroup?: number;
-  baseUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-  lastUsedAt?: string;
-  usageCount?: number;
-  errorCount?: number;
-  rateLimitExceededCount?: number;
-}
-
-export interface CreateProviderKeyCredentialDto {
-  apiKey: string;
-  organization?: string;
-  keyName?: string;
-  isPrimary?: boolean;
-  isEnabled?: boolean;
-  providerAccountGroup?: number;
-  baseUrl?: string;
-}
-
-export interface UpdateProviderKeyCredentialDto {
-  apiKey?: string;
-  organization?: string;
-  keyName?: string;
-  isEnabled?: boolean;
-  isPrimary?: boolean;
-  providerAccountGroup?: number;
-  baseUrl?: string;
-}
+export type ProviderKeyCredentialDto = components['schemas']['ProviderKeyCredentialDto'];
+export type CreateProviderKeyCredentialDto = components['schemas']['CreateKeyRequest'];
+export type UpdateProviderKeyCredentialDto = components['schemas']['UpdateKeyRequest'];
 
 export interface ProviderKeyRotationDto {
   newApiKey: string;
@@ -152,9 +90,4 @@ export interface StandardApiKeyTestResponse {
 }
 
 // Lightweight DTO for referencing providers without exposing sensitive data
-export interface ProviderReferenceDto {
-  id: number;
-  providerType: ProviderType;
-  displayName: string;
-  isEnabled: boolean;
-}
+export type ProviderReferenceDto = components['schemas']['ProviderReferenceDto'];

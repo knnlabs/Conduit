@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
@@ -564,6 +565,59 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
             var act = async () => await _controller.DeleteModel(modelId);
             await act.Should().ThrowAsync<Exception>();
+        }
+
+        #endregion
+
+        #region Model Identifier Tests
+
+        [Fact]
+        public async Task CreateModelIdentifier_WithValidData_ShouldReturnTypedCreatedDto()
+        {
+            var model = new Model
+            {
+                Id = 41,
+                Name = "nova-chat",
+                Identifiers = new List<ModelProviderTypeAssociation>()
+            };
+            var request = new CreateModelIdentifierDto
+            {
+                Identifier = "provider/nova-chat",
+                Provider = (int)ProviderType.Groq,
+                IsPrimary = true,
+                MaxInputTokens = 32000,
+                MaxOutputTokens = 8000,
+                SpeedScore = 0.9m,
+                QualityScore = 0.8m,
+                ProviderVariation = "fast"
+            };
+
+            _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(41)).ReturnsAsync(model);
+            _mockRepository.Setup(r => r.UpdateModelAsync(model, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() =>
+                {
+                    model.Identifiers.Single().Id = 17;
+                    return model;
+                });
+
+            var result = await _controller.CreateModelIdentifier(41, request);
+
+            var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+            created.StatusCode.Should().Be(StatusCodes.Status201Created);
+            created.ActionName.Should().Be(nameof(ModelController.GetModelIdentifiers));
+            created.RouteValues!["id"].Should().Be(41);
+            created.Value.Should().BeEquivalentTo(new CreatedModelIdentifierDto
+            {
+                Id = 17,
+                Identifier = "provider/nova-chat",
+                Provider = (int)ProviderType.Groq,
+                IsPrimary = true,
+                MaxInputTokens = 32000,
+                MaxOutputTokens = 8000,
+                SpeedScore = 0.9m,
+                QualityScore = 0.8m,
+                ProviderVariation = "fast"
+            });
         }
 
         #endregion

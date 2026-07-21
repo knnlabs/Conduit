@@ -34,7 +34,7 @@ interface ContractResult<TResponse = unknown> {
   response: Response;
 }
 
-interface ContractReadOptions {
+interface ContractOperationOptions {
   [key: string]: unknown;
   headers: Record<string, string>;
   signal: AbortSignal;
@@ -42,7 +42,7 @@ interface ContractReadOptions {
 
 type ContractOperation<TResponse> = (
   client: Client<paths>,
-  options: ContractReadOptions,
+  options: ContractOperationOptions,
 ) => Promise<ContractResult<TResponse>>;
 
 /**
@@ -293,11 +293,27 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
     operation: ContractOperation<TResponse>,
     config?: RequestConfig,
   ): Promise<TResponse> {
+    return this.executeContractOperation(resolvedPath, HttpMethod.GET, operation, config);
+  }
+
+  /**
+   * Execute a generated operation while preserving the Admin client's shared
+   * authentication, timeout, callback, retry, and error lifecycle.
+   * @internal Used by composed services as operations migrate off the URL transport.
+   */
+  protected async executeContractOperation<TResponse, TRequest = unknown>(
+    resolvedPath: string,
+    method: HttpMethod,
+    operation: ContractOperation<TResponse>,
+    config?: RequestConfig,
+    requestBody?: TRequest,
+  ): Promise<TResponse> {
     return this.executeAdminRequest(resolvedPath, {
-      method: HttpMethod.GET,
+      method,
       headers: config?.headers,
       signal: config?.signal,
       timeout: config?.timeout,
+      body: requestBody,
     }, operation);
   }
 

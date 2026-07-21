@@ -27,9 +27,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            var returnedCosts = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostDto>>().Subject;
-            returnedCosts.Should().HaveCount(2);
-            returnedCosts.First().CostName.Should().Be("GPT-4 Pricing");
+            var response = okResult.Value.Should().BeOfType<PagedResult<ModelCostDto>>().Subject;
+            response.Items.Should().HaveCount(2);
+            response.Items.First().CostName.Should().Be("GPT-4 Pricing");
         }
 
         [Fact]
@@ -52,25 +52,18 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             okResult.Value.Should().NotBeNull();
 
-            // Use reflection to access anonymous type properties
-            var responseType = okResult.Value!.GetType();
-            var totalCount = (int)responseType.GetProperty("totalCount")!.GetValue(okResult.Value)!;
-            var page = (int)responseType.GetProperty("page")!.GetValue(okResult.Value)!;
-            var pageSize = (int)responseType.GetProperty("pageSize")!.GetValue(okResult.Value)!;
-            var totalPages = (int)responseType.GetProperty("totalPages")!.GetValue(okResult.Value)!;
-            var items = responseType.GetProperty("items")!.GetValue(okResult.Value) as IEnumerable<ModelCostDto>;
+            var response = okResult.Value.Should().BeOfType<PagedResult<ModelCostDto>>().Subject;
 
             // Verify pagination metadata
-            totalCount.Should().Be(25);
-            page.Should().Be(2);
-            pageSize.Should().Be(10);
-            totalPages.Should().Be(3);
+            response.TotalCount.Should().Be(25);
+            response.CurrentPage.Should().Be(2);
+            response.PageSize.Should().Be(10);
+            response.TotalPages.Should().Be(3);
 
             // Verify items
-            items.Should().NotBeNull();
-            items!.Count().Should().Be(10);
-            items!.First().Id.Should().Be(11); // First item on page 2
-            items!.Last().Id.Should().Be(20);  // Last item on page 2
+            response.Items.Should().HaveCount(10);
+            response.Items.First().Id.Should().Be(11);
+            response.Items.Last().Id.Should().Be(20);
         }
 
         [Fact]
@@ -93,25 +86,18 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
             okResult.Value.Should().NotBeNull();
 
-            // Use reflection to access anonymous type properties
-            var responseType = okResult.Value!.GetType();
-            var totalCount = (int)responseType.GetProperty("totalCount")!.GetValue(okResult.Value)!;
-            var page = (int)responseType.GetProperty("page")!.GetValue(okResult.Value)!;
-            var pageSize = (int)responseType.GetProperty("pageSize")!.GetValue(okResult.Value)!;
-            var totalPages = (int)responseType.GetProperty("totalPages")!.GetValue(okResult.Value)!;
-            var items = responseType.GetProperty("items")!.GetValue(okResult.Value) as IEnumerable<ModelCostDto>;
+            var response = okResult.Value.Should().BeOfType<PagedResult<ModelCostDto>>().Subject;
 
             // Verify pagination metadata
-            totalCount.Should().Be(25);
-            page.Should().Be(3);
-            pageSize.Should().Be(10);
-            totalPages.Should().Be(3);
+            response.TotalCount.Should().Be(25);
+            response.CurrentPage.Should().Be(3);
+            response.PageSize.Should().Be(10);
+            response.TotalPages.Should().Be(3);
 
             // Verify items - should only have 5 items on last page
-            items.Should().NotBeNull();
-            items!.Count().Should().Be(5);
-            items!.First().Id.Should().Be(21); // First item on page 3
-            items!.Last().Id.Should().Be(25);  // Last item
+            response.Items.Should().HaveCount(5);
+            response.Items.First().Id.Should().Be(21);
+            response.Items.Last().Id.Should().Be(25);
         }
 
         [Fact]
@@ -132,8 +118,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert - Should return all items without pagination
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            var returnedCosts = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostDto>>().Subject;
-            returnedCosts.Should().HaveCount(2);
+            var response = okResult.Value.Should().BeOfType<PagedResult<ModelCostDto>>().Subject;
+            response.Items.Should().HaveCount(2);
         }
 
         [Fact]

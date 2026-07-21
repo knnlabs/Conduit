@@ -211,3 +211,191 @@ describe('contract-native model author and series reads', () => {
     expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('API Response'));
   });
 });
+
+describe('contract-native model reads', () => {
+  const cases: Array<{
+    name: string;
+    url: string;
+    payload: unknown;
+    invoke: (client: ConduitAdminClient) => Promise<unknown>;
+  }> = [
+    {
+      name: 'models.list',
+      url: 'https://admin.test/api/Model',
+      payload: [{ id: 41, name: 'nova-chat' }],
+      invoke: (client) => client.models.list({ headers: { [TEST_HEADER]: 'model-read' } }),
+    },
+    {
+      name: 'models.get',
+      url: 'https://admin.test/api/Model/41',
+      payload: { id: 41, name: 'nova-chat' },
+      invoke: (client) => client.models.get(41, { headers: { [TEST_HEADER]: 'model-read' } }),
+    },
+    {
+      name: 'models.search',
+      url: 'https://admin.test/api/Model/search?query=nova%20%26%20vision',
+      payload: [{ id: 41, name: 'nova & vision' }],
+      invoke: (client) => client.models.search('nova & vision', { headers: { [TEST_HEADER]: 'model-read' } }),
+    },
+    {
+      name: 'models.getByProvider',
+      url: 'https://admin.test/api/Model/provider/open%20ai%2Fcompatible',
+      payload: [{ id: 41, name: 'nova-chat', providerModelId: 'provider/nova-chat' }],
+      invoke: (client) => client.models.getByProvider('open ai/compatible', { headers: { [TEST_HEADER]: 'model-read' } }),
+    },
+    {
+      name: 'models.getModelProviders',
+      url: 'https://admin.test/api/Model/41/available-providers',
+      payload: [{
+        associationId: 17,
+        identifier: 'provider/nova-chat',
+        provider: 2,
+        providerVariation: null,
+        maxInputTokens: 32000,
+        maxOutputTokens: 8000,
+        speedScore: 0.9,
+        qualityScore: 0.8,
+        isPrimary: true,
+        availableProviders: [{ providerId: 9, providerName: 'Groq', providerType: 'Groq' }],
+      }],
+      invoke: (client) => client.models.getModelProviders(41, { headers: { [TEST_HEADER]: 'model-read' } }),
+    },
+    {
+      name: 'models.getProviderMappings',
+      url: 'https://admin.test/api/Model/41/provider-mappings',
+      payload: [{
+        id: 7,
+        modelAlias: 'nova',
+        providerModelId: 'provider/nova-chat',
+        providerId: 9,
+        modelProviderTypeAssociationId: 17,
+      }],
+      invoke: (client) => client.models.getProviderMappings(41, { headers: { [TEST_HEADER]: 'model-read' } }),
+    },
+  ];
+
+  it.each(cases)('$name resolves the generated request and preserves its payload', async ({ url, payload, invoke }) => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(payload));
+
+    await expect(invoke(createClient())).resolves.toEqual(payload);
+
+    const request = mockFetch.mock.calls[0]?.[0] as Request;
+    expect(request).toBeDefined();
+    expect(request.method).toBe('GET');
+    expect(request.url).toBe(url);
+    expect(request.headers.get('X-Master-Key')).toBe('master-key');
+    expect(request.headers.get(TEST_HEADER)).toBe('model-read');
+  });
+
+  it('models.getIdentifiers uses numeric path parameters and preserves identifier normalization', async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([{
+      id: 17,
+      identifier: 'provider/nova-chat',
+      provider: 2,
+      isPrimary: true,
+      maxInputTokens: 32000,
+      maxOutputTokens: 8000,
+      speedScore: 0.9,
+      qualityScore: 0.8,
+      providerVariation: 'fast',
+      modelCostId: 12,
+    }]));
+
+    await expect(createClient().models.getIdentifiers(41, {
+      headers: { [TEST_HEADER]: 'identifiers' },
+    })).resolves.toEqual([{
+      id: 17,
+      identifier: 'provider/nova-chat',
+      provider: 2,
+      isPrimary: true,
+      maxInputTokens: 32000,
+      maxOutputTokens: 8000,
+      speedScore: 0.9,
+      qualityScore: 0.8,
+      providerVariation: 'fast',
+      modelCostId: 12,
+      normalizedProvider: 2,
+      providerName: 'Groq',
+    }]);
+
+    const request = mockFetch.mock.calls[0]?.[0] as Request;
+    expect(request.url).toBe('https://admin.test/api/Model/41/identifiers');
+    expect(request.headers.get(TEST_HEADER)).toBe('identifiers');
+  });
+
+  it('models.listPaginated sends typed numeric and filter queries and preserves provider enrichment', async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      items: [{
+        id: 41,
+        name: 'nova-chat',
+        identifiers: [{
+          id: 17,
+          identifier: 'provider/nova-chat',
+          provider: 2,
+          isPrimary: true,
+        }],
+      }],
+      totalCount: 51,
+      currentPage: 2,
+      pageSize: 25,
+      totalPages: 3,
+      hasPreviousPage: true,
+      hasNextPage: true,
+    }));
+
+    await expect(createClient().models.listPaginated({
+      page: 2,
+      pageSize: 25,
+      search: 'nova & vision',
+      capability: 'vision',
+      hasProviders: true,
+    }, { headers: { [TEST_HEADER]: 'paged' } })).resolves.toEqual({
+      items: [{
+        id: 41,
+        name: 'nova-chat',
+        identifiers: [{
+          id: 17,
+          identifier: 'provider/nova-chat',
+          provider: 2,
+          isPrimary: true,
+        }],
+        hasProviderMappings: true,
+        providerCount: 1,
+        providers: [{
+          id: 17,
+          identifier: 'provider/nova-chat',
+          provider: 2,
+          isPrimary: true,
+          normalizedProvider: 2,
+          providerName: 'Groq',
+        }],
+      }],
+      totalCount: 51,
+      currentPage: 2,
+      pageSize: 25,
+      totalPages: 3,
+    });
+
+    const request = mockFetch.mock.calls[0]?.[0] as Request;
+    expect(request.url).toBe(
+      'https://admin.test/api/Model/paged?page=2&pageSize=25&search=nova%20%26%20vision&capability=vision&hasProviders=true',
+    );
+    expect(request.headers.get(TEST_HEADER)).toBe('paged');
+  });
+
+  it('normalizes structured errors from model reads', async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      error: 'Model missing',
+      details: 'No model has ID 404',
+      code: 'MODEL_NOT_FOUND',
+    }, 404));
+
+    const failedRead = createClient().models.get(404);
+    await expect(failedRead).rejects.toEqual(expect.objectContaining({
+      message: 'Model missing',
+      statusCode: 404,
+      code: 'NOT_FOUND',
+    }));
+    await expect(failedRead).rejects.toBeInstanceOf(NotFoundError);
+  });
+});

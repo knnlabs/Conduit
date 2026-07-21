@@ -121,6 +121,204 @@ public sealed class AuthoritativeContractTests : IDisposable
         properties.TryGetProperty("code", out _).Should().BeTrue();
     }
 
+    [Fact]
+    public void Admin_ModelReadsPublishTypedResponseContracts()
+    {
+        var flatOperation = Operation(_admin, "/api/Model", "get");
+        var flatSchema = flatOperation.GetProperty("responses").GetProperty("200")
+            .GetProperty("content").GetProperty("application/json").GetProperty("schema");
+        flatSchema.GetProperty("type").GetString().Should().Be("array");
+        flatSchema.GetProperty("items").GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/ModelDto");
+        flatOperation.GetProperty("parameters").EnumerateArray()
+            .Select(parameter => parameter.GetProperty("name").GetString())
+            .Should().NotContain(["page", "pageSize"]);
+
+        ResponseSchema(_admin, "/api/Model/paged")
+            .GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/PagedResultOfModelDto");
+        ResponseSchema(_admin, "/api/Model/{id}/identifiers")
+            .GetProperty("items").GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/ModelIdentifierDto");
+        ResponseSchema(_admin, "/api/Model/{id}/available-providers")
+            .GetProperty("items").GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/ModelProviderAvailabilityDto");
+    }
+
+    [Fact]
+    public void Admin_ModelIdentifierCreationPublishesTypedResponseContract()
+    {
+        Operation(_admin, "/api/Model/{id}/identifiers", "post")
+            .GetProperty("responses").GetProperty("201")
+            .GetProperty("content").GetProperty("application/json")
+            .GetProperty("schema").GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/CreatedModelIdentifierDto");
+    }
+
+    [Theory]
+    [InlineData("/api/ModelAuthor", "post", "CreateModelAuthorDto", "201", "ModelAuthorDto")]
+    [InlineData("/api/ModelAuthor/{id}", "put", "UpdateModelAuthorDto", "204", null)]
+    [InlineData("/api/ModelAuthor/{id}", "delete", null, "204", null)]
+    [InlineData("/api/ModelSeries", "post", "CreateModelSeriesDto", "201", "ModelSeriesDto")]
+    [InlineData("/api/ModelSeries/{id}", "put", "UpdateModelSeriesDto", "204", null)]
+    [InlineData("/api/ModelSeries/{id}", "delete", null, "204", null)]
+    [InlineData("/api/Model", "post", "CreateModelDto", "201", "ModelDto")]
+    [InlineData("/api/Model/{id}", "put", "UpdateModelDto", "200", "ModelDto")]
+    [InlineData("/api/Model/{id}", "delete", null, "204", null)]
+    [InlineData("/api/Model/{id}/identifiers", "post", "CreateModelIdentifierDto", "201", "CreatedModelIdentifierDto")]
+    [InlineData("/api/Model/{id}/identifiers/{identifierId}", "put", "UpdateModelIdentifierDto", "204", null)]
+    [InlineData("/api/Model/{id}/identifiers/{identifierId}", "delete", null, "204", null)]
+    [InlineData("/api/Model/{id}/provider-mappings", "post", "ModelProviderMappingDto", "201", "ModelProviderMappingDto")]
+    [InlineData("/api/Model/{id}/provider-mappings/{mappingId}", "put", "ModelProviderMappingDto", "204", null)]
+    [InlineData("/api/Model/{id}/provider-mappings/{mappingId}", "delete", null, "204", null)]
+    [InlineData("/api/Model/bundled-catalog/import", "post", null, "200", "BundledModelCatalogImportResult")]
+    public void Admin_ModelFamilyMutationsPublishConcreteContracts(
+        string path,
+        string method,
+        string? requestSchema,
+        string responseStatus,
+        string? responseSchema)
+    {
+        var operation = Operation(_admin, path, method);
+
+        if (requestSchema is null)
+        {
+            operation.TryGetProperty("requestBody", out _).Should().BeFalse();
+        }
+        else
+        {
+            operation.GetProperty("requestBody").GetProperty("content")
+                .GetProperty("application/json").GetProperty("schema")
+                .GetProperty("$ref").GetString()
+                .Should().Be($"#/components/schemas/{requestSchema}");
+        }
+
+        var response = operation.GetProperty("responses").GetProperty(responseStatus);
+        if (responseSchema is null)
+        {
+            response.TryGetProperty("content", out _).Should().BeFalse();
+        }
+        else
+        {
+            response.GetProperty("content").GetProperty("application/json")
+                .GetProperty("schema").GetProperty("$ref").GetString()
+                .Should().Be($"#/components/schemas/{responseSchema}");
+        }
+    }
+
+    [Fact]
+    public void Admin_TopLevelModelMappingsPublishConcreteContracts()
+    {
+        ResponseSchema(_admin, "/api/ModelProviderMapping")
+            .GetProperty("items").GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/ModelProviderMappingDto");
+        ResponseSchema(_admin, "/api/ModelProviderMapping/{id}")
+            .GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/ModelProviderMappingDto");
+
+        RequestSchema(_admin, "/api/ModelProviderMapping", "post")
+            .GetProperty("$ref").GetString().Should().Be("#/components/schemas/CreateModelProviderMappingDto");
+        RequestSchema(_admin, "/api/ModelProviderMapping/{id}", "put")
+            .GetProperty("$ref").GetString().Should().Be("#/components/schemas/UpdateModelProviderMappingDto");
+        RequestSchema(_admin, "/api/ModelProviderMapping/bulk", "post")
+            .GetProperty("items").GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/CreateModelProviderMappingDto");
+
+        foreach (var (path, responseSchema) in new[]
+        {
+            ("/api/ModelProviderMapping/bulk", "BulkMappingResult"),
+            ("/api/ModelProviderMapping/bulk/delete", "BulkDeleteResult"),
+            ("/api/ModelProviderMapping/bulk/enable", "BulkUpdateResult"),
+            ("/api/ModelProviderMapping/bulk/disable", "BulkUpdateResult")
+        })
+        {
+            Operation(_admin, path, "post").GetProperty("responses").GetProperty("200")
+                .GetProperty("content").GetProperty("application/json").GetProperty("schema")
+                .GetProperty("$ref").GetString().Should().Be($"#/components/schemas/{responseSchema}");
+        }
+
+        foreach (var method in new[] { "put", "delete" })
+        {
+            Operation(_admin, "/api/ModelProviderMapping/{id}", method)
+                .GetProperty("responses").GetProperty("204")
+                .TryGetProperty("content", out _).Should().BeFalse();
+        }
+
+        Operation(_admin, "/api/ModelProviderMapping/{id}", "get").GetProperty("parameters")[0]
+            .GetProperty("schema").GetProperty("format").GetString().Should().Be("int32");
+    }
+
+    [Theory]
+    [InlineData("ModelProviderMappingDto", "id", "modelAlias", "providerModelId", "providerId", "modelProviderTypeAssociationId", "priority", "weight", "isEnabled", "createdAt", "updatedAt")]
+    [InlineData("ProviderReferenceDto", "id", "providerType", "displayName", "isEnabled")]
+    [InlineData("ModelCapabilitiesDto", "supportsVision", "supportsImageGeneration", "supportsVideoGeneration", "supportsEmbeddings", "supportsSpeechToText", "supportsTextToSpeech", "supportsRerank", "supportsChat", "supportsFunctionCalling", "supportsStreaming", "maxInputTokens", "maxOutputTokens")]
+    [InlineData("BulkMappingResult", "created", "errors", "totalProcessed", "successCount", "failureCount")]
+    [InlineData("BulkDeleteResult", "deletedIds", "errors", "totalProcessed", "successCount", "failureCount")]
+    [InlineData("BulkUpdateResult", "updated", "errors", "totalProcessed", "successCount", "failureCount")]
+    public void Admin_ModelMappingResponsesRequireAlwaysEmittedProperties(string schema, params string[] properties)
+    {
+        var required = _admin.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty(schema).GetProperty("required").EnumerateArray()
+            .Select(item => item.GetString()).ToList();
+        required.Should().Contain(properties);
+    }
+
+    [Theory]
+    [InlineData("GlobalSettingDto", "id", "key", "value", "description", "createdAt", "updatedAt")]
+    [InlineData("GlobalSettingCacheStatsDto", "cacheSize", "cacheHits", "cacheMisses", "invalidations", "hitRate", "lastLoadTime", "cachedKeys")]
+    public void Admin_GlobalSettingsResponsesRequireAlwaysEmittedProperties(string schema, params string[] properties)
+    {
+        var required = _admin.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty(schema).GetProperty("required").EnumerateArray()
+            .Select(item => item.GetString()).ToList();
+        required.Should().Contain(properties);
+    }
+
+    [Theory]
+    [InlineData("IpFilterDto", "id", "filterType", "ipAddressOrCidr", "name", "isEnabled", "createdAt", "updatedAt")]
+    [InlineData("IpFilterSettingsDto", "isEnabled", "defaultAllow", "bypassForAdminUi", "excludedEndpoints", "filterMode", "whitelistFilters", "blacklistFilters")]
+    [InlineData("IpCheckResult", "isAllowed")]
+    public void Admin_IpFilterResponsesRequireAlwaysEmittedProperties(string schema, params string[] properties)
+    {
+        var required = _admin.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty(schema).GetProperty("required").EnumerateArray()
+            .Select(item => item.GetString()).ToList();
+        required.Should().Contain(properties);
+    }
+
+    [Theory]
+    [InlineData("/api/FunctionConfigurations", "FunctionConfiguration")]
+    [InlineData("/api/FunctionCredentials", "FunctionCredential")]
+    [InlineData("/api/FunctionCosts", "FunctionCostDto")]
+    [InlineData("/api/FunctionExecutions/expired-leases", "FunctionExecutionDto")]
+    public void Admin_FunctionListsPublishTypedItems(string path, string schema)
+    {
+        ResponseSchema(_admin, path).GetProperty("items").GetProperty("$ref").GetString()
+            .Should().Be($"#/components/schemas/{schema}");
+    }
+
+    [Theory]
+    [InlineData("/api/FunctionConfigurations/{id}", "FunctionConfiguration")]
+    [InlineData("/api/FunctionCredentials/{id}", "FunctionCredential")]
+    [InlineData("/api/FunctionCosts/{id}", "FunctionCostDto")]
+    [InlineData("/api/FunctionExecutions/{id}", "FunctionExecutionDto")]
+    public void Admin_FunctionEntityReadsPublishTypedResponses(string path, string schema)
+    {
+        ResponseSchema(_admin, path).GetProperty("$ref").GetString()
+            .Should().Be($"#/components/schemas/{schema}");
+    }
+
+    [Theory]
+    [InlineData("/api/FunctionCredentials/test", "post", "FunctionCredentialTestResultDto")]
+    [InlineData("/api/FunctionCosts/cache/clear", "post", "FunctionCostCacheClearResultDto")]
+    [InlineData("/api/FunctionExecutions/cleanup", "delete", "FunctionExecutionCleanupResultDto")]
+    public void Admin_FunctionAnonymousResultsUseNamedSchemas(string path, string method, string schema)
+    {
+        Operation(_admin, path, method).GetProperty("responses").GetProperty("200")
+            .GetProperty("content").GetProperty("application/json").GetProperty("schema")
+            .GetProperty("$ref").GetString().Should().Be($"#/components/schemas/{schema}");
+    }
+
     public void Dispose()
     {
         _admin.Dispose();
@@ -140,6 +338,14 @@ public sealed class AuthoritativeContractTests : IDisposable
 
     private static JsonElement Scheme(JsonDocument document, string name) =>
         document.RootElement.GetProperty("components").GetProperty("securitySchemes").GetProperty(name);
+
+    private static JsonElement ResponseSchema(JsonDocument document, string path) =>
+        Operation(document, path, "get").GetProperty("responses").GetProperty("200")
+            .GetProperty("content").GetProperty("application/json").GetProperty("schema");
+
+    private static JsonElement RequestSchema(JsonDocument document, string path, string method) =>
+        Operation(document, path, method).GetProperty("requestBody").GetProperty("content")
+            .GetProperty("application/json").GetProperty("schema");
 
     private static JsonDocument LoadContract(params string[] relativeSegments)
     {

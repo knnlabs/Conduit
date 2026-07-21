@@ -73,7 +73,6 @@ namespace ConduitLLM.Tests.Admin.Integration
             // Prepare two concurrent updates
             var update1 = new UpdateModelCostDto
             {
-                Id = createdCost.Id,
                 CostName = "Update 1",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m
@@ -81,7 +80,6 @@ namespace ConduitLLM.Tests.Admin.Integration
 
             var update2 = new UpdateModelCostDto
             {
-                Id = createdCost.Id,
                 CostName = "Update 2",
                 InputCostPerMillionTokens = 20.00m,
                 OutputCostPerMillionTokens = 30.00m

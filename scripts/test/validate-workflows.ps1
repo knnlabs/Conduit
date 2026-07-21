@@ -95,15 +95,10 @@ function Test-PathReferences {
     $content = Get-Content $FilePath -Raw
     $filename = Split-Path $FilePath -Leaf
 
-    # Check for old client paths (should be SDKs)
-    if ($content -match 'NodeClients/|Clients/Node/') {
-        Write-Status 'error' "Found outdated client paths (should be SDKs/Node/*):"
+    # SDK packages were retired; workflow references would be broken coupling.
+    if ($content -match 'SDKs/|@knn_labs/conduit-(admin|gateway|common)') {
+        Write-Status 'error' "Found retired SDK references"
         $script:totalErrors++
-    }
-
-    # Check for correct SDK paths
-    if ($content -match 'SDKs/Node/(Admin|Gateway|Common)') {
-        Write-Status 'success' "Using correct SDK paths"
     }
 }
 

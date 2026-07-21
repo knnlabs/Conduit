@@ -1,9 +1,8 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
+import { HttpMethod } from '../client/HttpMethod';
 import {
-  ProviderTypeAssociation,
   ProviderTypeAssociationInput,
   NormalizedProviderTypeAssociation,
   ValidationResult
@@ -32,31 +31,15 @@ type ModelDto = components['schemas']['ModelDto'];
 type CreateModelDto = components['schemas']['CreateModelDto'];
 type UpdateModelDto = components['schemas']['UpdateModelDto'];
 type ModelProviderMappingDto = components['schemas']['ModelProviderMappingDto'];
+type ModelIdentifierDto = components['schemas']['ModelIdentifierDto'];
+type ModelProviderAvailabilityDto = components['schemas']['ModelProviderAvailabilityDto'];
+type CreatedModelIdentifierDto = components['schemas']['CreatedModelIdentifierDto'];
+type CreateModelIdentifierDto = components['schemas']['CreateModelIdentifierDto'];
+type UpdateModelIdentifierDto = components['schemas']['UpdateModelIdentifierDto'];
 
-export interface CatalogImportCounts {
-  authors: number;
-  series: number;
-  models: number;
-  costs: number;
-  identifiers: number;
-}
-
-export interface ProviderCatalogImportResult {
-  provider: string;
-  modelsDiscovered: number;
-  created: CatalogImportCounts;
-  skippedExistingIdentifiers: number;
-  conflicts: number;
-}
-
-export interface BundledModelCatalogImportResult {
-  providersProcessed: number;
-  modelsDiscovered: number;
-  created: CatalogImportCounts;
-  skippedExistingIdentifiers: number;
-  conflicts: string[];
-  providers: ProviderCatalogImportResult[];
-}
+export type CatalogImportCounts = components['schemas']['CatalogImportCounts'];
+export type ProviderCatalogImportResult = components['schemas']['ProviderCatalogImportResult'];
+export type BundledModelCatalogImportResult = components['schemas']['BundledModelCatalogImportResult'];
 
 /**
  * Type-safe Model service using native fetch
@@ -96,26 +79,20 @@ export class FetchModelService {
    * Get all models with their capabilities
    */
   async list(config?: RequestConfig): Promise<ModelDto[]> {
-    return this.client['get']<ModelDto[]>(
-      ENDPOINTS.MODELS.BASE,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      '/api/Model',
+      (contractClient, options) => contractClient.GET('/api/Model', options),
+      config,
     );
   }
 
   /** Merge every provider model catalog bundled with the running Admin release. */
   async importBundledCatalog(config?: RequestConfig): Promise<BundledModelCatalogImportResult> {
-    return this.client['post']<BundledModelCatalogImportResult, Record<string, never>>(
-      ENDPOINTS.MODELS.IMPORT_BUNDLED_CATALOG,
-      {},
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<BundledModelCatalogImportResult>(
+      '/api/Model/bundled-catalog/import',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/Model/bundled-catalog/import', options),
+      config,
     );
   }
 
@@ -123,13 +100,13 @@ export class FetchModelService {
    * Get a specific model by ID
    */
   async get(id: number, config?: RequestConfig): Promise<ModelDto> {
-    return this.client['get']<ModelDto>(
-      ENDPOINTS.MODELS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/Model/${id}`,
+      (contractClient, options) => contractClient.GET('/api/Model/{id}', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
@@ -144,13 +121,13 @@ export class FetchModelService {
    * Get model identifiers for a specific model with normalized provider types
    */
   async getIdentifiers(id: number, config?: RequestConfig): Promise<NormalizedProviderTypeAssociation[]> {
-    const identifiers = await this.client['get']<ProviderTypeAssociation[]>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    const identifiers: ModelIdentifierDto[] = await this.client['executeContractRead'](
+      `/api/Model/${id}/identifiers`,
+      (contractClient, options) => contractClient.GET('/api/Model/{id}/identifiers', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
 
     // Normalize provider types in the response
@@ -168,58 +145,14 @@ export class FetchModelService {
   /**
    * Get available providers for a model - returns associations with matching providers
    */
-  async getModelProviders(id: number, config?: RequestConfig): Promise<Array<{
-    associationId: number;
-    identifier: string;
-    provider: string | null;
-    providerVariation: string | null;
-    maxInputTokens: number | null;
-    maxOutputTokens: number | null;
-    speedScore: number | null;
-    qualityScore: number | null;
-    isPrimary: boolean;
-    availableProviders: Array<{
-      providerId: number;
-      providerName: string;
-      providerType: string;
-    }>;
-  }>> {
-    return this.client['get']<Array<{
-      associationId: number;
-      identifier: string;
-      provider: string | null;
-      providerVariation: string | null;
-      maxInputTokens: number | null;
-      maxOutputTokens: number | null;
-      speedScore: number | null;
-      qualityScore: number | null;
-      isPrimary: boolean;
-      availableProviders: Array<{
-        providerId: number;
-        providerName: string;
-        providerType: string;
-      }>;
-    }>>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/available-providers`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Get models by type
-   */
-  async getByType(type: string, config?: RequestConfig): Promise<ModelDto[]> {
-    return this.client['get']<ModelDto[]>(
-      ENDPOINTS.MODELS.BY_TYPE(type),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+  async getModelProviders(id: number, config?: RequestConfig): Promise<ModelProviderAvailabilityDto[]> {
+    return this.client['executeContractRead'](
+      `/api/Model/${id}/available-providers`,
+      (contractClient, options) => contractClient.GET('/api/Model/{id}/available-providers', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
@@ -227,13 +160,13 @@ export class FetchModelService {
    * Get models by provider
    */
   async getByProvider(provider: string, config?: RequestConfig): Promise<ModelDto[]> {
-    return this.client['get']<ModelDto[]>(
-      ENDPOINTS.MODELS.BY_PROVIDER(provider),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/Model/provider/${encodeURIComponent(provider)}`,
+      (contractClient, options) => contractClient.GET('/api/Model/provider/{provider}', {
+        ...options,
+        params: { path: { provider } },
+      }),
+      config,
     );
   }
 
@@ -242,13 +175,13 @@ export class FetchModelService {
    */
   async search(query: string, config?: RequestConfig): Promise<ModelDto[]> {
     const params = new URLSearchParams({ query });
-    return this.client['get']<ModelDto[]>(
-      `${ENDPOINTS.MODELS.SEARCH}?${params.toString()}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/Model/search?${params.toString()}`,
+      (contractClient, options) => contractClient.GET('/api/Model/search', {
+        ...options,
+        params: { query: { query } },
+      }),
+      config,
     );
   }
 
@@ -259,14 +192,15 @@ export class FetchModelService {
     data: CreateModelDto,
     config?: RequestConfig
   ): Promise<ModelDto> {
-    return this.client['post']<ModelDto, CreateModelDto>(
-      ENDPOINTS.MODELS.BASE,
+    return this.client['executeContractOperation']<ModelDto, CreateModelDto>(
+      '/api/Model',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/Model', {
+        ...options,
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -278,14 +212,16 @@ export class FetchModelService {
     data: UpdateModelDto,
     config?: RequestConfig
   ): Promise<ModelDto> {
-    return this.client['put']<ModelDto, UpdateModelDto>(
-      ENDPOINTS.MODELS.BY_ID(id),
+    return this.client['executeContractOperation']<ModelDto, UpdateModelDto>(
+      `/api/Model/${id}`,
+      HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/Model/{id}', {
+        ...options,
+        params: { path: { id } },
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -293,13 +229,14 @@ export class FetchModelService {
    * Delete a model
    */
   async delete(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.MODELS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      `/api/Model/${id}`,
+      HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/Model/{id}', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
@@ -381,22 +318,19 @@ export class FetchModelService {
     if (options.hasProviders !== undefined) params.set('hasProviders', String(options.hasProviders));
 
     const queryString = params.toString();
-    const url = queryString ? `${ENDPOINTS.MODELS.BASE}?${queryString}` : ENDPOINTS.MODELS.BASE;
+    const resolvedPath = queryString ? `/api/Model/paged?${queryString}` : '/api/Model/paged';
 
-    const response = await this.client['get']<{
-      items: ModelDto[];
-      totalCount: number;
-      currentPage: number;
-      pageSize: number;
-      totalPages: number;
-    }>(url, {
-      signal: config?.signal,
-      timeout: config?.timeout,
-      headers: config?.headers,
-    });
+    const response = await this.client['executeContractRead'](
+      resolvedPath,
+      (contractClient, requestOptions) => contractClient.GET('/api/Model/paged', {
+        ...requestOptions,
+        params: { query: options },
+      }),
+      config,
+    );
 
     // Enrich items with provider mapping status from included identifiers
-    const items = response.items.map(model => {
+    const items = (response.items ?? []).map(model => {
       const identifiers = model.identifiers ?? [];
 
       const providers = identifiers.map(i => {
@@ -421,10 +355,10 @@ export class FetchModelService {
 
     return {
       items,
-      totalCount: response.totalCount,
-      currentPage: response.currentPage,
-      pageSize: response.pageSize,
-      totalPages: response.totalPages
+      totalCount: response.totalCount ?? 0,
+      currentPage: response.currentPage ?? 0,
+      pageSize: response.pageSize ?? 0,
+      totalPages: response.totalPages ?? 0
     };
   }
 
@@ -432,13 +366,13 @@ export class FetchModelService {
    * Get all provider mappings for a specific model
    */
   async getProviderMappings(id: number, config?: RequestConfig): Promise<ModelProviderMappingDto[]> {
-    return this.client['get']<ModelProviderMappingDto[]>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/provider-mappings`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/Model/${id}/provider-mappings`,
+      (contractClient, options) => contractClient.GET('/api/Model/{id}/provider-mappings', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
@@ -450,14 +384,16 @@ export class FetchModelService {
     mapping: ModelProviderMappingDto,
     config?: RequestConfig
   ): Promise<ModelProviderMappingDto> {
-    return this.client['post']<ModelProviderMappingDto, ModelProviderMappingDto>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/provider-mappings`,
+    return this.client['executeContractOperation']<ModelProviderMappingDto, ModelProviderMappingDto>(
+      `/api/Model/${id}/provider-mappings`,
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/Model/{id}/provider-mappings', {
+        ...options,
+        params: { path: { id } },
+        body: mapping,
+      }),
+      config,
       mapping,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -470,14 +406,16 @@ export class FetchModelService {
     mapping: ModelProviderMappingDto,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['put']<void, ModelProviderMappingDto>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/provider-mappings/${mappingId}`,
+    return this.client['executeContractOperation']<void, ModelProviderMappingDto>(
+      `/api/Model/${id}/provider-mappings/${mappingId}`,
+      HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/Model/{id}/provider-mappings/{mappingId}', {
+        ...options,
+        params: { path: { id, mappingId } },
+        body: mapping,
+      }),
+      config,
       mapping,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -489,13 +427,14 @@ export class FetchModelService {
     mappingId: number,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['delete']<void>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/provider-mappings/${mappingId}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      `/api/Model/${id}/provider-mappings/${mappingId}`,
+      HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/Model/{id}/provider-mappings/{mappingId}', {
+        ...options,
+        params: { path: { id, mappingId } },
+      }),
+      config,
     );
   }
 
@@ -525,15 +464,21 @@ export class FetchModelService {
 
     // Apply provider defaults
     const dataWithDefaults = applyProviderDefaults(data);
+    const requestBody: CreateModelIdentifierDto = {
+      ...dataWithDefaults,
+      provider: typeof dataWithDefaults.provider === 'number' ? dataWithDefaults.provider : undefined,
+    };
 
-    const result = await this.client['post']<ProviderTypeAssociation, typeof dataWithDefaults>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers`,
-      dataWithDefaults,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    const result = await this.client['executeContractOperation']<CreatedModelIdentifierDto, CreateModelIdentifierDto>(
+      `/api/Model/${id}/identifiers`,
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/Model/{id}/identifiers', {
+        ...options,
+        params: { path: { id } },
+        body: requestBody,
+      }),
+      config,
+      requestBody,
     );
 
     // Return normalized result (provider is now a number from API)
@@ -572,15 +517,21 @@ export class FetchModelService {
 
     // Apply provider defaults
     const dataWithDefaults = applyProviderDefaults(data);
+    const requestBody: UpdateModelIdentifierDto = {
+      ...dataWithDefaults,
+      provider: typeof dataWithDefaults.provider === 'number' ? dataWithDefaults.provider : undefined,
+    };
 
-    return this.client['put']<void, typeof dataWithDefaults>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers/${identifierId}`,
-      dataWithDefaults,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void, UpdateModelIdentifierDto>(
+      `/api/Model/${id}/identifiers/${identifierId}`,
+      HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/Model/{id}/identifiers/{identifierId}', {
+        ...options,
+        params: { path: { id, identifierId } },
+        body: requestBody,
+      }),
+      config,
+      requestBody,
     );
   }
 
@@ -592,13 +543,14 @@ export class FetchModelService {
     identifierId: number,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['delete']<void>(
-      `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers/${identifierId}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      `/api/Model/${id}/identifiers/${identifierId}`,
+      HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/Model/{id}/identifiers/{identifierId}', {
+        ...options,
+        params: { path: { id, identifierId } },
+      }),
+      config,
     );
   }
 }

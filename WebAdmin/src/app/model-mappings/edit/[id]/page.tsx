@@ -27,43 +27,15 @@ import { withAdminClient } from '@/lib/client/adminClient';
 import type { 
   ModelProviderMappingDto, 
   UpdateModelProviderMappingDto,
-  ConduitAdminClient 
+  ConduitAdminClient,
+  ModelProviderAvailabilityDto,
 } from '@/lib/admin-api';
 
-interface AvailableProvider {
-  associationId: number;
-  identifier: string;
-  provider: string | null;
-  providerVariation: string | null;
-  maxInputTokens: number | null;
-  maxOutputTokens: number | null;
-  speedScore: number | null;
-  qualityScore: number | null;
-  isPrimary: boolean;
-  availableProviders: Array<{
-    providerId: number;
-    providerName: string;
-    providerType: string;
-  }>;
-}
+type AvailableProvider = ModelProviderAvailabilityDto;
 
-interface AssociationDetails {
-  associationId: number;
-  identifier: string;
-  provider: string | null;
-  providerVariation: string | null;
-  maxInputTokens: number | null;
-  maxOutputTokens: number | null;
-  speedScore: number | null;
-  qualityScore: number | null;
-  isPrimary: boolean;
+interface AssociationDetails extends ModelProviderAvailabilityDto {
   modelId: number;
   modelName: string;
-  availableProviders: Array<{
-    providerId: number;
-    providerName: string;
-    providerType: string;
-  }>;
 }
 
 export default function EditModelMappingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -196,6 +168,11 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       notify.error('Please select a provider');
       return;
     }
+
+    if (!currentMapping) {
+      notify.error('The current model mapping is unavailable');
+      return;
+    }
     
     // Validate that the selected provider is valid for this association
     if (associationDetails) {
@@ -215,8 +192,8 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       const updateData: UpdateModelProviderMappingDto = {
         modelAlias,
         providerId: parseInt(providerId, 10),
-        providerModelId: associationDetails?.identifier ?? currentMapping?.providerModelId ?? '',
-        modelProviderTypeAssociationId: currentMapping?.modelProviderTypeAssociationId,
+        providerModelId: associationDetails?.identifier ?? currentMapping.providerModelId,
+        modelProviderTypeAssociationId: currentMapping.modelProviderTypeAssociationId,
         priority,
         weight,
         isEnabled,

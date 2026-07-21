@@ -35,6 +35,7 @@ export type {
   ModelDto,
   CreateModelDto,
   UpdateModelDto,
+  ModelProviderAvailabilityDto,
   ModelSeriesDto,
   CreateModelSeriesDto,
   UpdateModelSeriesDto,
@@ -143,7 +144,7 @@ export { FetchProvidersService as ProvidersService } from './services/FetchProvi
 export { FetchSystemService } from './services/FetchSystemService';
 export { FetchModelMappingsService } from './services/FetchModelMappingsService';
 export { FetchSettingsService } from './services/FetchSettingsService';
-export type { SettingUpdate, SettingsDto, SettingsListResponseDto } from './services/FetchSettingsService';
+export type { SettingUpdate, SettingsDto } from './services/FetchSettingsService';
 export { FetchAnalyticsService } from './services/FetchAnalyticsService';
 export { FetchConfigurationService } from './services/FetchConfigurationService';
 export { FetchMonitoringService } from './services/FetchMonitoringService';

@@ -31,27 +31,6 @@ import {
 import type { ModelProviderMappingDto } from '@/lib/admin-api';
 import { BulkActionsBar } from './BulkActionsBar';
 
-// Extend the DTO type to ensure provider and capabilities properties are available
-interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
-  provider?: {
-    id: number;
-    providerType: number;
-    displayName: string;
-    isEnabled: boolean;
-  };
-  capabilities?: {
-    supportsVision: boolean;
-    supportsImageGeneration: boolean;
-    supportsVideoGeneration: boolean;
-    supportsEmbeddings: boolean;
-    supportsChat: boolean;
-    supportsFunctionCalling: boolean;
-    supportsStreaming: boolean;
-    maxInputTokens?: number | null;
-    maxOutputTokens?: number | null;
-  };
-}
-
 interface ModelMappingsTableProps {
   onRefresh?: () => void;
 }
@@ -131,12 +110,12 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     }
   }, [onRefresh, refetch]);
 
-  const handleEdit = (mapping: ExtendedModelProviderMappingDto) => {
+  const handleEdit = (mapping: ModelProviderMappingDto) => {
     router.push(`/model-mappings/edit/${mapping.id}`);
   };
 
 
-  const handleDelete = (mapping: ExtendedModelProviderMappingDto) => {
+  const handleDelete = (mapping: ModelProviderMappingDto) => {
     modals.openConfirmModal({
       title: 'Delete Model Mapping',
       children: (
@@ -151,7 +130,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     });
   };
 
-  const getCapabilityBadges = (mapping: ExtendedModelProviderMappingDto) => {
+  const getCapabilityBadges = (mapping: ModelProviderMappingDto) => {
     const badges = [];
     const capabilities = mapping.capabilities;
     
@@ -208,7 +187,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     );
   }
 
-  const rows = (mappings as ExtendedModelProviderMappingDto[]).map((mapping) => (
+  const rows = mappings.map((mapping) => (
     <Table.Tr key={mapping.id} bg={selectedIds.has(mapping.id) ? 'blue.0' : undefined}>
       <Table.Td style={{ width: 60 }}>
         <Checkbox

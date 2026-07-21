@@ -52,7 +52,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(createdMapping);
 
             // Act
-            var actionResult = await _controller.CreateMapping(mapping.ToDto());
+            var actionResult = await _controller.CreateMapping(ToCreateRequest(mapping));
 
             // Assert
             var createdResult = actionResult.Should().BeOfType<CreatedAtActionResult>().Subject;
@@ -86,7 +86,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(new List<ModelProviderMapping> { existingMapping });
 
             // Act
-            var actionResult = await _controller.CreateMapping(mapping.ToDto());
+            var actionResult = await _controller.CreateMapping(ToCreateRequest(mapping));
 
             // Assert
             var conflictResult = actionResult.Should().BeOfType<ConflictObjectResult>().Subject;
@@ -115,7 +115,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(false);
 
             // Act
-            var actionResult = await _controller.CreateMapping(mapping.ToDto());
+            var actionResult = await _controller.CreateMapping(ToCreateRequest(mapping));
 
             // Assert
             var badRequestResult = actionResult.Should().BeOfType<BadRequestObjectResult>().Subject;
@@ -123,6 +123,43 @@ namespace ConduitLLM.Tests.Admin.Controllers
             errorResponse.error.ToString().Should().Contain("Failed to create");
         }
 
+        [Fact]
+        public async Task AddMapping_WithRequiredFieldsOnly_ShouldApplyCreateDefaults()
+        {
+            ModelProviderMapping? captured = null;
+            _mockService.Setup(x => x.GetAllMappingsAsync()).ReturnsAsync([]);
+            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))
+                .Callback<ModelProviderMapping>(mapping => { captured = mapping; mapping.Id = 42; })
+                .ReturnsAsync(true);
+            _mockService.Setup(x => x.GetMappingByIdAsync(42)).ReturnsAsync(() => captured);
+
+            var result = await _controller.CreateMapping(new CreateModelProviderMappingDto
+            {
+                ModelAlias = "defaulted",
+                ProviderId = 3,
+                ProviderModelId = "provider/defaulted",
+                ModelProviderTypeAssociationId = 9
+            });
+
+            result.Should().BeOfType<CreatedAtActionResult>();
+            captured.Should().NotBeNull();
+            captured!.IsEnabled.Should().BeTrue();
+            captured.RoutingPriority.Should().Be(0);
+            captured.RoutingWeight.Should().Be(1.0m);
+        }
+
         #endregion
+
+        private static CreateModelProviderMappingDto ToCreateRequest(ModelProviderMapping mapping) => new()
+        {
+            ModelAlias = mapping.ModelAlias,
+            ProviderId = mapping.ProviderId,
+            ProviderModelId = mapping.ProviderModelId,
+            ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
+            IsEnabled = mapping.IsEnabled,
+            Priority = mapping.RoutingPriority,
+            Weight = mapping.RoutingWeight,
+            ProviderOptions = mapping.ProviderOptions
+        };
     }
 }

@@ -106,8 +106,7 @@ namespace ConduitLLM.Tests.Admin.Services
             var update = JsonSerializer.Deserialize<UpdateModelCostDto>(payload, options);
 
             update.Should().NotBeNull();
-            update!.ModelProviderTypeAssociationIds.Should().BeNull(
-                "associatedModelAliases is read-only response data and must not be mapped as association IDs");
+            update!.ModelProviderTypeAssociationIds.Should().Equal(dto.ModelProviderTypeAssociationIds);
             return update;
         }
 
@@ -133,10 +132,10 @@ namespace ConduitLLM.Tests.Admin.Services
                 var getDto = await _service.GetModelCostByIdAsync(seeded.CostId);
                 getDto.Should().NotBeNull();
 
-                var result = await _service.UpdateModelCostAsync(ToRoundTripUpdateDto(getDto!));
+                var result = await _service.UpdateModelCostAsync(seeded.CostId, ToRoundTripUpdateDto(getDto!));
 
                 // Assert
-                result.Should().BeTrue();
+                result.Should().NotBeNull();
             }
         }
 
@@ -148,10 +147,10 @@ namespace ConduitLLM.Tests.Admin.Services
             var getDto = await _service.GetModelCostByIdAsync(seeded.CostId);
 
             // Act
-            var result = await _service.UpdateModelCostAsync(ToRoundTripUpdateDto(getDto!));
+            var result = await _service.UpdateModelCostAsync(seeded.CostId, ToRoundTripUpdateDto(getDto!));
 
             // Assert
-            result.Should().BeTrue();
+            result.Should().NotBeNull();
             using var context = CreateContext();
             context.ModelAuthors.Count().Should().Be(1, "the update must not insert phantom ModelAuthor rows");
             context.ModelSeries.Count().Should().Be(1, "the update must not insert phantom ModelSeries rows");
@@ -168,7 +167,7 @@ namespace ConduitLLM.Tests.Admin.Services
             getDto!.AssociatedModelAliases.Should().BeEquivalentTo(new[] { "mock-image" });
 
             // Act
-            await _service.UpdateModelCostAsync(ToRoundTripUpdateDto(getDto));
+            await _service.UpdateModelCostAsync(seeded.CostId, ToRoundTripUpdateDto(getDto));
 
             // Assert — an unmodified round-trip must not silently drop the cost→model links
             var afterDto = await _service.GetModelCostByIdAsync(seeded.CostId);
@@ -190,10 +189,10 @@ namespace ConduitLLM.Tests.Admin.Services
             updateDto.InputCostPerMillionTokens = 9.75m;
 
             // Act
-            var result = await _service.UpdateModelCostAsync(updateDto);
+            var result = await _service.UpdateModelCostAsync(seeded.CostId, updateDto);
 
             // Assert
-            result.Should().BeTrue();
+            result.Should().NotBeNull();
             var afterDto = await _service.GetModelCostByIdAsync(seeded.CostId);
             afterDto!.PricingConfiguration.Should().Be("{\"baseRate\":0.25}");
             afterDto.ModelType.Should().Be("video");
@@ -213,7 +212,7 @@ namespace ConduitLLM.Tests.Admin.Services
             updateDto.PricingConfiguration = "{\"baseRate\":0.5}";
 
             // Act
-            await _service.UpdateModelCostAsync(updateDto);
+            await _service.UpdateModelCostAsync(seeded.CostId, updateDto);
 
             // Assert — cache invalidation depends on this event
             _mockEventBus.Verify(
@@ -236,10 +235,10 @@ namespace ConduitLLM.Tests.Admin.Services
             updateDto.ModelProviderTypeAssociationIds = new List<int>();
 
             // Act
-            var result = await _service.UpdateModelCostAsync(updateDto);
+            var result = await _service.UpdateModelCostAsync(seeded.CostId, updateDto);
 
             // Assert — explicit empty list still means "clear all associations"
-            result.Should().BeTrue();
+            result.Should().NotBeNull();
             using (var context = CreateContext())
             {
                 var association = await context.ModelProviderTypeAssociations

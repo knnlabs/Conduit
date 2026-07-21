@@ -200,7 +200,7 @@ namespace ConduitLLM.Admin.Services
                     var cost = mpta?.ModelCost
                         ?? throw new InvalidOperationException("Mapping has no ModelCost to update.");
                     var dto = BuildUpdateDto(cost, proposed);
-                    await _modelCostService.UpdateModelCostAsync(dto); // fires ModelCostChanged -> cache invalidation
+                    await _modelCostService.UpdateModelCostAsync(cost.Id, dto); // fires ModelCostChanged -> cache invalidation
                     break;
                 }
                 case DriftType.MissingCost:
@@ -287,7 +287,6 @@ namespace ConduitLLM.Admin.Services
 
         private static UpdateModelCostDto BuildUpdateDto(ModelCost cost, PricingDriftPayload proposed) => new()
         {
-            Id = cost.Id,
             CostName = cost.CostName,
             PricingModel = cost.PricingModel,
             PricingConfiguration = cost.PricingConfiguration,

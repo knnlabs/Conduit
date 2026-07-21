@@ -2,6 +2,7 @@ using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Events;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -54,8 +55,7 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] int? keyId = null,
             [FromQuery] int limit = 100)
         {
-            if (limit > 1000)
-                limit = 1000; // Cap at 1000 for performance
+            limit = Math.Clamp(limit, 1, 1000);
 
             var errors = await _errorService.GetRecentErrorsAsync(providerId, keyId, limit);
 
@@ -119,6 +119,7 @@ namespace ConduitLLM.Admin.Controllers
                     FatalErrors = r.summary.FatalErrors,
                     Warnings = r.summary.Warnings,
                     DisabledKeyIds = r.summary.DisabledKeyIds,
+                    DisabledKeyCount = r.summary.DisabledKeyIds.Count,
                     LastError = r.summary.LastError
                 })
                 .ToList();
@@ -133,7 +134,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Detailed error information for the key</returns>
         [HttpGet("keys/{keyId}")]
         [ProducesResponseType(typeof(KeyErrorDetailsDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetKeyErrors(int keyId)
         {
             var details = await _errorService.GetKeyErrorDetailsAsync(keyId);
@@ -181,14 +182,14 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Operation result</returns>
         [HttpPost("keys/{keyId}/clear")]
         [ProducesResponseType(typeof(ClearKeyErrorsResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ClearKeyErrors(
             int keyId,
             [FromBody] ClearErrorsRequest request)
         {
             if (!request.ConfirmReenable && request.ReenableKey)
             {
-                return BadRequest(new { error = "Must confirm re-enabling the key" });
+                return BadRequest(new ErrorResponseDto("Must confirm re-enabling the key"));
             }
 
             // Look up the key to get its providerId for proper cleanup
@@ -242,8 +243,7 @@ namespace ConduitLLM.Admin.Controllers
         public async Task<IActionResult> GetErrorStatistics(
             [FromQuery] int hours = 24)
         {
-            if (hours > 168) // Cap at 1 week
-                hours = 168;
+            hours = Math.Clamp(hours, 1, 168);
 
             var window = TimeSpan.FromHours(hours);
             var stats = await _errorService.GetErrorStatisticsAsync(window);
@@ -281,8 +281,7 @@ namespace ConduitLLM.Admin.Controllers
             int providerId,
             [FromQuery] int hours = 1)
         {
-            if (hours > 24)
-                hours = 24; // Cap at 24 hours
+            hours = Math.Clamp(hours, 1, 24);
 
             var window = TimeSpan.FromHours(hours);
             var counts = await _errorService.GetErrorCountsByKeyAsync(providerId, window);
@@ -298,14 +297,14 @@ namespace ConduitLLM.Admin.Controllers
         /// <returns>Operation result</returns>
         [HttpPost("keys/{keyId}/disable")]
         [ProducesResponseType(typeof(DisableKeyResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> DisableKey(
             int keyId,
             [FromBody] string reason)
         {
             if (string.IsNullOrWhiteSpace(reason))
             {
-                return BadRequest(new { error = "Reason is required for disabling a key" });
+                return BadRequest(new ErrorResponseDto("Reason is required for disabling a key"));
             }
 
             await _errorService.DisableKeyAsync(keyId, $"Manual disable: {reason}");

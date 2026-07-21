@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
@@ -9,26 +11,31 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// List of items for the current page
         /// </summary>
-        public List<T> Items { get; set; } = new List<T>();
+        [Required]
+        public List<T> Items { get; set; } = new();
 
         /// <summary>
         /// Total number of items across all pages
         /// </summary>
+        [Required]
         public int TotalCount { get; set; }
 
         /// <summary>
         /// Current page number (1-based)
         /// </summary>
+        [Required]
         public int CurrentPage { get; set; }
 
         /// <summary>
         /// Number of items per page
         /// </summary>
+        [Required]
         public int PageSize { get; set; }
 
         /// <summary>
         /// Total number of pages
         /// </summary>
+        [Required]
         public int TotalPages { get; set; }
 
         /// <summary>

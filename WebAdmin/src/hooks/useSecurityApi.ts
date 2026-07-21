@@ -21,7 +21,7 @@ export interface IpRule {
   matchCount?: number;
 }
 
-// Legacy interface for backward compatibility - maps to IpFilterStatistics
+// Legacy statistics shape retained by the active security hook.
 export interface IpStats {
   totalRules: number;
   allowRules: number;
@@ -177,7 +177,7 @@ export function useSecurityApi() {
     setError(null);
 
     try {
-      // The Admin SDK doesn't have a direct stats endpoint, so we'll compute stats from the filters
+      // The Admin API has no direct stats endpoint, so compute stats from the filters.
       const filters = await withAdminClient(client =>
         client.ipFilters.list()
       );

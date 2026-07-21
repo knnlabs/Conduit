@@ -300,43 +300,8 @@ Provide functions that can recover from errors:
 
 ### Streaming with Real-time Feedback
 
-Enable enhanced streaming for agent progress:
-
-```typescript
-import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
-
-const client = new ConduitCoreClient({
-  apiKey: 'condt_your_agent_key',
-  baseURL: 'http://localhost:5000'
-});
-
-const stream = await client.chat.create({
-  model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Analyze customer churn risk' }],
-  stream: true,
-  agentic_mode: true,
-  function_configuration_ids: ['customer-analysis-functions'],
-  onToolExecuting: (event) => {
-    console.log(`Executing ${event.function_name}...`);
-    // Update UI with progress
-  },
-  onToolResult: (event) => {
-    console.log(`Function ${event.tool_call_id} completed`);
-    // Update UI with results
-  }
-});
-
-for await (const event of stream) {
-  if (event.type === 'content') {
-    // Display LLM reasoning
-    console.log(event.choices[0]?.delta?.content);
-  } else if (event.type === 'final_metrics') {
-    // Show final agent metrics
-    console.log(`Total cost: $${event.total_cost}`);
-    console.log(`Functions called: ${event.total_function_calls}`);
-  }
-}
-```
+Use the Gateway OpenAPI contract and documented SSE event shapes for enhanced streaming progress.
+WebAdmin's repository-local Gateway client is the reference implementation.
 
 ### Best Practices
 

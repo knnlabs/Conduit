@@ -238,7 +238,7 @@ Default behavior:
   - Checks for port conflicts (offers to stop conflicting containers)
   - Build local Docker containers
   - Start from docker-compose.dev.yml
-  - Watch and synchronize WebAdmin and Node SDK source files
+  - Watch and synchronize WebAdmin source files
 
 Services available after startup:
   - WebAdmin:         http://localhost:3000
@@ -306,9 +306,7 @@ function Clear-Volumes {
         # Clean local build artifacts (host only - container has isolated .next)
         $pathsToClean = @(
             (Join-Path $projectRoot 'WebAdmin' '.next'),
-            (Join-Path $projectRoot 'WebAdmin' 'node_modules'),
-            (Join-Path $projectRoot 'SDKs' 'Node' '*' 'node_modules'),
-            (Join-Path $projectRoot 'SDKs' 'Node' '*' 'dist')
+            (Join-Path $projectRoot 'WebAdmin' 'node_modules')
         )
 
         foreach ($path in $pathsToClean) {
@@ -391,7 +389,7 @@ function Invoke-RebuildWebAdmin {
 
 function Start-WebAdminWatch {
     Write-Host ""
-    Write-Info "Watching WebAdmin and Node SDK sources for changes..."
+    Write-Info "Watching WebAdmin sources for changes..."
     Write-Info "Press Ctrl+C to stop watching; containers will remain running."
 
     docker compose -f docker-compose.yml -f docker-compose.dev.yml watch --no-up webadmin

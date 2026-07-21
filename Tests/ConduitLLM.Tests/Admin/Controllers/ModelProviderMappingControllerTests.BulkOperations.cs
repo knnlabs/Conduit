@@ -79,7 +79,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync((created, errors));
 
             // Act
-            var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
+            var result = await _controller.CreateBulkMappings(mappings.Select(ToCreateRequest).ToList());
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -114,7 +114,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync((created, errors));
 
             // Act
-            var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
+            var result = await _controller.CreateBulkMappings(mappings.Select(ToCreateRequest).ToList());
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -130,7 +130,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var mappings = new List<ModelProviderMapping>();
 
             // Act
-            var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
+            var result = await _controller.CreateBulkMappings(mappings.Select(ToCreateRequest).ToList());
 
             // Assert
             var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
@@ -154,7 +154,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync((created, errors));
 
             // Act
-            var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
+            var result = await _controller.CreateBulkMappings(mappings.Select(ToCreateRequest).ToList());
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;

@@ -282,7 +282,7 @@ export default function ProviderKeysPage() {
               <TextInput
                 label="Organization (optional)"
                 placeholder="e.g., OpenAI Org ID"
-                value={newKeyForm.organization}
+                value={newKeyForm.organization ?? ''}
                 onChange={(e) => setNewKeyForm({ ...newKeyForm, organization: e.target.value })}
               />
             </Group>

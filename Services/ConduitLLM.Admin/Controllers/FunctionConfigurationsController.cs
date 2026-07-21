@@ -2,6 +2,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Filters;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Functions.Entities;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
@@ -39,7 +40,7 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// </summary>
     /// <returns>List of all function configurations</returns>
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionConfiguration>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllConfigurations()
     {
         var configurations = await _configurationRepository.GetAllUnboundedAsync();
@@ -52,7 +53,7 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// <param name="id">The ID of the function configuration</param>
     /// <returns>The function configuration</returns>
     [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionConfiguration), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetConfigurationById(int id)
     {
@@ -70,7 +71,7 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// <param name="providerType">The provider type (e.g., "Exa")</param>
     /// <returns>List of function configurations for the specified provider</returns>
     [HttpGet("provider/{providerType}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionConfiguration>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetConfigurationsByProvider(string providerType)
     {
         if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionProviderType>(providerType, true, out var providerEnum))
@@ -88,7 +89,7 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// <param name="purpose">The purpose (e.g., "Search", "Answer", "Enrich")</param>
     /// <returns>List of function configurations for the specified purpose</returns>
     [HttpGet("purpose/{purpose}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionConfiguration>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetConfigurationsByPurpose(string purpose)
     {
         if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionPurpose>(purpose, true, out var purposeEnum))
@@ -106,7 +107,7 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// <param name="configuration">The function configuration to create</param>
     /// <returns>The created function configuration</returns>
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(FunctionConfiguration), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateConfiguration(
         [FromBody] ConduitLLM.Functions.Entities.FunctionConfiguration configuration)
@@ -154,7 +155,7 @@ public class FunctionConfigurationsController : AdminControllerBase
     /// <param name="configuration">The updated function configuration data</param>
     /// <returns>The updated function configuration</returns>
     [HttpPut("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionConfiguration), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateConfiguration(

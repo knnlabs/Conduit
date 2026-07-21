@@ -48,7 +48,7 @@
 
 3. Check for trailing spaces or quotes in env file
 
-### SDK Hook Issues
+### Client Hook Issues
 
 #### Problem: Hooks return undefined
 **Symptoms:**
@@ -83,7 +83,7 @@
 - Parameter type mismatches
 
 **Solutions:**
-1. Regenerate the contract types with `npm run generate:offline` from `SDKs/Node/scripts`.
+1. Regenerate the contract types with `npm run generate:offline` from `tools/openapi`.
 
 2. Use the local boundary imports:
    ```typescript

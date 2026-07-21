@@ -1,7 +1,7 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
+import { HttpMethod } from '../client/HttpMethod';
 
 // Type aliases for better readability
 type ModelAuthorDto = components['schemas']['ModelAuthorDto'];
@@ -65,14 +65,15 @@ export class FetchModelAuthorService {
     data: CreateModelAuthorDto,
     config?: RequestConfig
   ): Promise<ModelAuthorDto> {
-    return this.client['post']<ModelAuthorDto, CreateModelAuthorDto>(
-      ENDPOINTS.MODEL_AUTHORS.BASE,
+    return this.client['executeContractOperation']<ModelAuthorDto, CreateModelAuthorDto>(
+      '/api/ModelAuthor',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelAuthor', {
+        ...options,
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -84,14 +85,16 @@ export class FetchModelAuthorService {
     data: UpdateModelAuthorDto,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['put']<void, UpdateModelAuthorDto>(
-      ENDPOINTS.MODEL_AUTHORS.BY_ID(id),
+    return this.client['executeContractOperation']<void, UpdateModelAuthorDto>(
+      `/api/ModelAuthor/${id}`,
+      HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/ModelAuthor/{id}', {
+        ...options,
+        params: { path: { id } },
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -99,13 +102,14 @@ export class FetchModelAuthorService {
    * Delete a model author
    */
   async delete(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.MODEL_AUTHORS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      `/api/ModelAuthor/${id}`,
+      HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/ModelAuthor/{id}', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 }

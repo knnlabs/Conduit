@@ -1,6 +1,8 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
+import { usesGenericModelTransport } from './api-boundary-rules.mjs';
+
 const root = process.cwd();
 const forbidden = [
   '@knn_labs/conduit-admin-client',
@@ -15,10 +17,27 @@ const forbidden = [
 ];
 const violations = [];
 const directFetchViolations = [];
-const genericModelReadViolations = [];
-const contractNativeModelReadServices = new Set([
+const genericModelTransportViolations = [];
+const contractNativeModelFamilyServices = new Set([
   'src/lib/admin-api/services/FetchModelAuthorService.ts',
   'src/lib/admin-api/services/FetchModelSeriesService.ts',
+  'src/lib/admin-api/services/FetchModelService.ts',
+  'src/lib/admin-api/services/FetchModelMappingsService.ts',
+  'src/lib/admin-api/services/FetchModelCostService.ts',
+  'src/lib/admin-api/services/FetchProvidersService.ts',
+  'src/lib/admin-api/services/FetchProvidersServiceKeys.ts',
+  'src/lib/admin-api/services/FetchPricingService.ts',
+  'src/lib/admin-api/services/FetchProviderSyncService.ts',
+  'src/lib/admin-api/services/FetchProviderErrorsService.ts',
+  'src/lib/admin-api/services/FetchVirtualKeyService.ts',
+  'src/lib/admin-api/services/FetchVirtualKeyGroupService.ts',
+  'src/lib/admin-api/services/FetchAnalyticsService.ts',
+  'src/lib/admin-api/services/FetchSettingsService.ts',
+  'src/lib/admin-api/services/FetchIpFilterService.ts',
+  'src/lib/admin-api/services/FetchFunctionsService.ts',
+  'src/lib/admin-api/services/ProviderToolsService.ts',
+  'src/lib/admin-api/services/FetchConfigurationService.ts',
+  'src/lib/admin-api/services/FetchMediaService.ts',
 ]);
 const retiredLocalNames = [
   'sdk-config',
@@ -48,10 +67,10 @@ async function scan(directory) {
       directFetchViolations.push(relative);
     }
     if (
-      contractNativeModelReadServices.has(relative) &&
-      /\bclient\s*\[\s*['"]get['"]\s*\]/.test(contents)
+      contractNativeModelFamilyServices.has(relative) &&
+      usesGenericModelTransport(contents)
     ) {
-      genericModelReadViolations.push(relative);
+      genericModelTransportViolations.push(relative);
     }
     if (retiredLocalNames.some((value) => contents.includes(value))) {
       violations.push(relative);
@@ -77,9 +96,9 @@ if (directFetchViolations.length > 0) {
   process.exit(1);
 }
 
-if (genericModelReadViolations.length > 0) {
+if (genericModelTransportViolations.length > 0) {
   console.error(
-    `Contract-native model-author and model-series reads must not use the generic GET transport:\n${genericModelReadViolations.join('\n')}`,
+    `Contract-native model-family services must not use generic HTTP transport calls:\n${genericModelTransportViolations.join('\n')}`,
   );
   process.exit(1);
 }

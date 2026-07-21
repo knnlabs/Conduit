@@ -1,8 +1,10 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Filters;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -41,7 +43,7 @@ public class FunctionCredentialsController : AdminControllerBase
     /// </summary>
     /// <returns>List of all credentials</returns>
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionCredential>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllCredentials()
     {
         var credentials = await _credentialRepository.GetAllUnboundedAsync();
@@ -54,7 +56,7 @@ public class FunctionCredentialsController : AdminControllerBase
     /// <param name="functionConfigurationId">The function configuration ID</param>
     /// <returns>List of credentials for the configuration's provider type</returns>
     [HttpGet("configuration/{functionConfigurationId}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionCredential>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCredentialsByConfiguration(int functionConfigurationId)
     {
@@ -77,7 +79,7 @@ public class FunctionCredentialsController : AdminControllerBase
     /// <param name="id">The ID of the credential</param>
     /// <returns>The credential</returns>
     [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionCredential), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCredentialById(int id)
     {
@@ -95,7 +97,7 @@ public class FunctionCredentialsController : AdminControllerBase
     /// <param name="credential">The credential to create</param>
     /// <returns>The created credential</returns>
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(FunctionCredential), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateCredential(
         [FromBody] ConduitLLM.Functions.Entities.FunctionCredential credential)
@@ -124,7 +126,7 @@ public class FunctionCredentialsController : AdminControllerBase
     /// <param name="credential">The updated credential data</param>
     /// <returns>The updated credential</returns>
     [HttpPut("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionCredential), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateCredential(
@@ -177,7 +179,7 @@ public class FunctionCredentialsController : AdminControllerBase
     /// <param name="testRequest">Test request containing configuration ID and optional API key override</param>
     /// <returns>Test result indicating whether authentication succeeded</returns>
     [HttpPost("test")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionCredentialTestResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> TestCredential([FromBody] TestCredentialRequest testRequest)
     {

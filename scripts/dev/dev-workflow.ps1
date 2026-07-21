@@ -5,7 +5,7 @@
     Conduit Development Workflow Script.
 
 .DESCRIPTION
-    Provides convenient development commands for working with the WebAdmin and SDKs
+    Provides convenient development commands for working with the WebAdmin
     without stopping Docker containers. Handles permissions correctly.
 
 .PARAMETER Command
@@ -16,9 +16,6 @@
 
 .EXAMPLE
     ./scripts/dev/dev-workflow.ps1 build-webadmin
-
-.EXAMPLE
-    ./scripts/dev/dev-workflow.ps1 build-sdk gateway
 
 .EXAMPLE
     ./scripts/dev/dev-workflow.ps1 lint-fix-webadmin
@@ -51,14 +48,11 @@ Usage: $scriptName <command> [options]
 
 Development Commands (Container):
   build-webadmin          - Build the WebAdmin application
-  build-sdks              - Build all public SDK packages (Common, Gateway)
-  build-sdk <name>        - Build specific SDK (common|gateway)
   lint-webadmin           - Run ESLint on WebAdmin
   lint-fix-webadmin       - Run ESLint with --fix on WebAdmin
   type-check-webadmin     - Run TypeScript type checking on WebAdmin
   test-webadmin           - Run WebAdmin tests
   npm-install-webadmin    - Install WebAdmin dependencies
-  npm-install-sdks        - Install all SDK dependencies
   shell                   - Open bash shell in WebAdmin container
   logs                    - Show WebAdmin container logs
   restart-webadmin        - Restart WebAdmin container
@@ -66,7 +60,7 @@ Development Commands (Container):
   exec <cmd>              - Execute any command in WebAdmin container
 
 Local Build Commands (No Container Required):
-  install-local           - Install all dependencies locally (SDKs + WebAdmin)
+  install-local           - Install WebAdmin dependencies locally
   build-local             - Build all TypeScript projects locally
   install-and-build-local - Install and build everything locally (fresh clone)
 
@@ -77,7 +71,6 @@ Utility Commands:
 
 Examples:
   $scriptName build-webadmin               # Build WebAdmin
-  $scriptName build-sdk gateway            # Build Gateway SDK only
   $scriptName lint-fix-webadmin            # Fix ESLint errors in WebAdmin
   $scriptName shell                        # Open shell in WebAdmin container
   $scriptName npm-install-webadmin         # Install WebAdmin dependencies
@@ -137,35 +130,6 @@ function Build-WebAdmin {
     Write-Info "WebAdmin build completed (in container)"
 }
 
-function Build-Sdks {
-    $projectRoot = Get-ProjectRoot -FromPath $scriptDir
-    Push-Location (Join-Path $projectRoot 'SDKs/Node')
-    try { npm run build } finally { Pop-Location }
-}
-
-function Build-Sdk {
-    param(
-        [Parameter(Mandatory)]
-        [string]$SdkName
-    )
-
-    $sdkPath = switch ($SdkName.ToLower()) {
-        'common' { 'Common' }
-        'gateway' { 'Gateway' }
-        default {
-            Write-Err "Invalid SDK name: $SdkName"
-            Write-Info "Valid options: common, gateway"
-            exit 1
-        }
-    }
-
-    Write-Info "Building $SdkName SDK..."
-    $projectRoot = Get-ProjectRoot -FromPath $scriptDir
-    Push-Location (Join-Path $projectRoot "SDKs/Node/$sdkPath")
-    try { npm run build } finally { Pop-Location }
-    Write-Info "$SdkName SDK build completed"
-}
-
 function Invoke-LintWebAdmin {
     Write-Info "Running ESLint on WebAdmin..."
     Invoke-InWebAdmin @('sh', '-c', 'cd /app/WebAdmin && npm run lint')
@@ -189,12 +153,6 @@ function Invoke-TestWebAdmin {
 function Install-WebAdminDeps {
     Write-Info "Installing WebAdmin dependencies..."
     Invoke-InWebAdmin @('sh', '-c', 'cd /app/WebAdmin && npm install')
-}
-
-function Install-SdksDeps {
-    $projectRoot = Get-ProjectRoot -FromPath $scriptDir
-    Push-Location (Join-Path $projectRoot 'SDKs/Node')
-    try { npm install } finally { Pop-Location }
 }
 
 function Open-Shell {
@@ -258,9 +216,7 @@ function Repair-Permissions {
 
         $paths = @(
             (Join-Path $projectRoot 'WebAdmin' 'node_modules'),
-            (Join-Path $projectRoot 'WebAdmin' '.next'),
-            (Join-Path $projectRoot 'SDKs' 'Node' '*' 'node_modules'),
-            (Join-Path $projectRoot 'SDKs' 'Node' '*' 'dist')
+            (Join-Path $projectRoot 'WebAdmin' '.next')
         )
 
         foreach ($path in $paths) {
@@ -283,13 +239,7 @@ function Clear-BuildArtifacts {
 
     $pathsToRemove = @(
         (Join-Path $projectRoot 'WebAdmin' 'node_modules'),
-        (Join-Path $projectRoot 'WebAdmin' '.next'),
-        (Join-Path $projectRoot 'SDKs' 'Node' 'Common' 'node_modules'),
-        (Join-Path $projectRoot 'SDKs' 'Node' 'Common' 'dist'),
-        (Join-Path $projectRoot 'SDKs' 'Node' 'Admin' 'node_modules'),
-        (Join-Path $projectRoot 'SDKs' 'Node' 'Admin' 'dist'),
-        (Join-Path $projectRoot 'SDKs' 'Node' 'Gateway' 'node_modules'),
-        (Join-Path $projectRoot 'SDKs' 'Node' 'Gateway' 'dist')
+        (Join-Path $projectRoot 'WebAdmin' '.next')
     )
 
     foreach ($path in $pathsToRemove) {
@@ -307,17 +257,7 @@ function Install-LocalDeps {
 
     $projectRoot = Get-ProjectRoot -FromPath $scriptDir
 
-    # Install Common SDK dependencies (no dependencies on other SDKs)
-    Write-Task "Installing Common SDK dependencies..."
-    Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Common')
-    try { npm install } finally { Pop-Location }
-
-    # Install Gateway SDK dependencies (depends on Common)
-    Write-Task "Installing Gateway SDK dependencies..."
-    Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Gateway')
-    try { npm install } finally { Pop-Location }
-
-    # WebAdmin owns its API clients and installs independently of the SDK workspace.
+    # WebAdmin owns its API clients and installs independently.
     Write-Task "Installing WebAdmin dependencies..."
     Push-Location (Join-Path $projectRoot 'WebAdmin')
     try { npm install } finally { Pop-Location }
@@ -330,17 +270,7 @@ function Build-LocalProjects {
 
     $projectRoot = Get-ProjectRoot -FromPath $scriptDir
 
-    # Build Common SDK first (base dependency)
-    Write-Task "Building Common SDK..."
-    Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Common')
-    try { npm run build } finally { Pop-Location }
-
-    # Build Gateway SDK (depends on Common)
-    Write-Task "Building Gateway SDK..."
-    Push-Location (Join-Path $projectRoot 'SDKs' 'Node' 'Gateway')
-    try { npm run build } finally { Pop-Location }
-
-    # Build WebAdmin independently.
+    # Build WebAdmin.
     Write-Task "Building WebAdmin..."
     Push-Location (Join-Path $projectRoot 'WebAdmin')
     try { npm run build } finally { Pop-Location }
@@ -374,19 +304,6 @@ switch ($Command.ToLower()) {
         Test-Containers
         Build-WebAdmin
     }
-    'build-sdks' {
-        Test-Containers
-        Build-Sdks
-    }
-    'build-sdk' {
-        if (-not $Arguments -or $Arguments.Count -eq 0) {
-            Write-Err "SDK name required"
-            Write-Info "Usage: dev-workflow.ps1 build-sdk <common|gateway>"
-            exit 1
-        }
-        Test-Containers
-        Build-Sdk -SdkName $Arguments[0]
-    }
     'lint-webadmin' {
         Test-Containers
         Invoke-LintWebAdmin
@@ -406,10 +323,6 @@ switch ($Command.ToLower()) {
     'npm-install-webadmin' {
         Test-Containers
         Install-WebAdminDeps
-    }
-    'npm-install-sdks' {
-        Test-Containers
-        Install-SdksDeps
     }
     'shell' {
         Test-Containers

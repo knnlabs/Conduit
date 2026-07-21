@@ -1,5 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
+import { HttpMethod } from '../client/HttpMethod';
 import {
   type ProviderKeyCredentialDto,
   type CreateProviderKeyCredentialDto,
@@ -8,7 +9,6 @@ import {
   type ProviderDto,
   ApiKeyTestResult
 } from '../models/provider';
-import { ENDPOINTS } from '../constants';
 import { classifyApiKeyTestError } from '../utils/error-classification';
 
 // Type for raw API response (handles both PascalCase and camelCase)
@@ -17,20 +17,20 @@ interface RawApiKeyTestResponse {
   Result?: string;
   message?: string;
   Message?: string;
-  details?: RawApiKeyTestDetails;
-  Details?: RawApiKeyTestDetails;
+  details?: RawApiKeyTestDetails | null;
+  Details?: RawApiKeyTestDetails | null;
 }
 
 interface RawApiKeyTestDetails {
-  responseTimeMs?: number;
+  responseTimeMs?: number | null;
   ResponseTimeMs?: number;
-  modelsAvailable?: string[];
+  modelsAvailable?: string[] | null;
   ModelsAvailable?: string[];
-  providerMessage?: string;
+  providerMessage?: string | null;
   ProviderMessage?: string;
-  errorCode?: string;
+  errorCode?: string | null;
   ErrorCode?: string;
-  statusCode?: number;
+  statusCode?: number | null;
   StatusCode?: number;
 }
 
@@ -38,7 +38,7 @@ interface RawApiKeyTestDetails {
  * Normalizes the API response to handle case mismatches between C# PascalCase and TypeScript camelCase
  */
 function normalizeApiKeyTestResponse(response: RawApiKeyTestResponse): StandardApiKeyTestResponse {
-  // Handle both PascalCase (from C#) and camelCase (expected by SDK)
+  // Handle both PascalCase wire data and the camelCase local model.
   const result = response.result ?? response.Result ?? '';
   const message = response.message ?? response.Message ?? '';
   const details = response.details ?? response.Details;
@@ -50,11 +50,11 @@ function normalizeApiKeyTestResponse(response: RawApiKeyTestResponse): StandardA
     result: normalizedResult,
     message: message,
     details: details ? {
-      responseTimeMs: details.responseTimeMs ?? details.ResponseTimeMs,
-      modelsAvailable: details.modelsAvailable ?? details.ModelsAvailable,
-      providerMessage: details.providerMessage ?? details.ProviderMessage,
-      errorCode: details.errorCode ?? details.ErrorCode,
-      statusCode: details.statusCode ?? details.StatusCode,
+      responseTimeMs: details.responseTimeMs ?? details.ResponseTimeMs ?? undefined,
+      modelsAvailable: details.modelsAvailable ?? details.ModelsAvailable ?? undefined,
+      providerMessage: details.providerMessage ?? details.ProviderMessage ?? undefined,
+      errorCode: details.errorCode ?? details.ErrorCode ?? undefined,
+      statusCode: details.statusCode ?? details.StatusCode ?? undefined,
     } : undefined,
   };
 }
@@ -98,14 +98,8 @@ export class FetchProvidersServiceKeys {
     providerId: number,
     config?: RequestConfig
   ): Promise<ProviderKeyCredentialDto[]> {
-    return this.client['get']<ProviderKeyCredentialDto[]>(
-      ENDPOINTS.PROVIDER_KEYS.BASE(providerId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](`/api/ProviderCredentials/${providerId}/keys`,
+      (contractClient, options) => contractClient.GET('/api/ProviderCredentials/{providerId}/keys', { ...options, params: { path: { providerId } } }), config);
   }
 
   /**
@@ -116,14 +110,8 @@ export class FetchProvidersServiceKeys {
     keyId: number,
     config?: RequestConfig
   ): Promise<ProviderKeyCredentialDto> {
-    return this.client['get']<ProviderKeyCredentialDto>(
-      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](`/api/ProviderCredentials/${providerId}/keys/${keyId}`,
+      (contractClient, options) => contractClient.GET('/api/ProviderCredentials/{providerId}/keys/{keyId}', { ...options, params: { path: { providerId, keyId } } }), config);
   }
 
   /**
@@ -134,15 +122,8 @@ export class FetchProvidersServiceKeys {
     data: CreateProviderKeyCredentialDto,
     config?: RequestConfig
   ): Promise<ProviderKeyCredentialDto> {
-    return this.client['post']<ProviderKeyCredentialDto, CreateProviderKeyCredentialDto>(
-      ENDPOINTS.PROVIDER_KEYS.BASE(providerId),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation'](`/api/ProviderCredentials/${providerId}/keys`, HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ProviderCredentials/{providerId}/keys', { ...options, params: { path: { providerId } }, body: data }), config, data);
   }
 
   /**
@@ -154,15 +135,8 @@ export class FetchProvidersServiceKeys {
     data: UpdateProviderKeyCredentialDto,
     config?: RequestConfig
   ): Promise<ProviderKeyCredentialDto> {
-    return this.client['put']<ProviderKeyCredentialDto, UpdateProviderKeyCredentialDto>(
-      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation'](`/api/ProviderCredentials/${providerId}/keys/${keyId}`, HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/ProviderCredentials/{providerId}/keys/{keyId}', { ...options, params: { path: { providerId, keyId } }, body: data }), config, data);
   }
 
   /**
@@ -173,14 +147,8 @@ export class FetchProvidersServiceKeys {
     keyId: number,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation'](`/api/ProviderCredentials/${providerId}/keys/${keyId}`, HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/ProviderCredentials/{providerId}/keys/{keyId}', { ...options, params: { path: { providerId, keyId } } }), config);
   }
 
   /**
@@ -191,15 +159,8 @@ export class FetchProvidersServiceKeys {
     keyId: number,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['post']<void>(
-      ENDPOINTS.PROVIDER_KEYS.SET_PRIMARY(providerId, keyId),
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation'](`/api/ProviderCredentials/${providerId}/keys/${keyId}/set-primary`, HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ProviderCredentials/{providerId}/keys/{keyId}/set-primary', { ...options, params: { path: { providerId, keyId } } }), config);
   }
 
   /**
@@ -227,15 +188,8 @@ export class FetchProvidersServiceKeys {
     config?: RequestConfig
   ): Promise<StandardApiKeyTestResponse> {
     try {
-      const result = await this.client['post']<RawApiKeyTestResponse>(
-        ENDPOINTS.PROVIDER_KEYS.TEST(providerId, keyId),
-        undefined,
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
+      const result = await this.client['executeContractOperation']<RawApiKeyTestResponse>(`/api/ProviderCredentials/${providerId}/keys/${keyId}/test`, HttpMethod.POST,
+        (contractClient, options) => contractClient.POST('/api/ProviderCredentials/{providerId}/keys/{keyId}/test', { ...options, params: { path: { providerId, keyId } } }), config);
 
       // Normalize the response to handle C# PascalCase and enum mismatches
       return normalizeApiKeyTestResponse(result);
@@ -256,14 +210,8 @@ export class FetchProvidersServiceKeys {
    */
   private async getProviderById(id: number, config?: RequestConfig): Promise<ProviderDto | null> {
     try {
-      return await this.client['get']<ProviderDto>(
-        ENDPOINTS.PROVIDERS.BY_ID(id),
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
+      return await this.client['executeContractRead'](`/api/ProviderCredentials/${id}`,
+        (contractClient, options) => contractClient.GET('/api/ProviderCredentials/{id}', { ...options, params: { path: { id } } }), config);
     } catch {
       return null;
     }

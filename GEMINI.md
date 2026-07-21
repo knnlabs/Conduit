@@ -108,7 +108,6 @@ This script simplifies interaction with the development containers.
 ./scripts/dev/dev-workflow.ps1 logs                 # View WebAdmin logs in real-time
 ./scripts/dev/dev-workflow.ps1 shell                # Open a shell inside the WebAdmin container
 ./scripts/dev/dev-workflow.ps1 lint-fix-webadmin    # Run ESLint with --fix
-./scripts/dev/dev-workflow.ps1 build-sdks           # Build all SDKs
 ./scripts/dev/dev-workflow.ps1 exec [command]       # Execute a custom command in the container
 ```
 
@@ -139,9 +138,6 @@ dotnet test
 dotnet build ConduitLLM.Gateway    # Gateway API
 dotnet build ConduitLLM.Admin   # Admin API
 
-# Build SDKs
-cd SDKs/Node/Gateway && npm run build
-cd SDKs/Node/Common && npm run build
 ```
 
 ## Incremental Development Rules

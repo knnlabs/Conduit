@@ -38,7 +38,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync(true);
 
             // Act
-            var actionResult = await _controller.UpdateMapping(1, mapping.ToDto());
+            var actionResult = await _controller.UpdateMapping(1, ToUpdateRequest(mapping));
 
             // Assert
             actionResult.Should().BeOfType<NoContentResult>();
@@ -62,10 +62,22 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 .ReturnsAsync((ModelProviderMapping?)null);
 
             // Act & Assert — not-found now throws KeyNotFoundException, mapped in AdminExceptionMiddleware
-            var act = async () => await _controller.UpdateMapping(999, mapping.ToDto());
+            var act = async () => await _controller.UpdateMapping(999, ToUpdateRequest(mapping));
             await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         #endregion
+
+        private static UpdateModelProviderMappingDto ToUpdateRequest(ModelProviderMapping mapping) => new()
+        {
+            ModelAlias = mapping.ModelAlias,
+            ProviderId = mapping.ProviderId,
+            ProviderModelId = mapping.ProviderModelId,
+            ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
+            IsEnabled = mapping.IsEnabled,
+            Priority = mapping.RoutingPriority,
+            Weight = mapping.RoutingWeight,
+            ProviderOptions = mapping.ProviderOptions
+        };
     }
 }

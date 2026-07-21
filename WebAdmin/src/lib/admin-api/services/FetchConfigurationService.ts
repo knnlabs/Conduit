@@ -1,214 +1,124 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
-import type { PromptCachingAnalyticsDto, PromptCachingCapabilityDto, PromptCachingConfigDto, UpdatePromptCachingConfigDto } from '../models/promptCaching';
-import { ENDPOINTS } from '../constants';
+import { HttpMethod } from '../client/HttpMethod';
+import type {
+  PromptCachingAnalyticsDto,
+  PromptCachingCapabilityDto,
+  PromptCachingConfigDto,
+  UpdatePromptCachingConfigDto,
+} from '../models/promptCaching';
 
-/**
- * Type-safe Configuration service using native fetch
- */
+type RoutingConfigurationDto = components['schemas']['RoutingConfigurationDto'];
+type RoutingDefaultsDto = components['schemas']['RoutingDefaultsDto'];
+type RoutePolicyDto = components['schemas']['RoutePolicyDto'];
+
+/** Contract-native Configuration and prompt-caching operations. */
 export class FetchConfigurationService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
-  // Working endpoints
-
-  async getRoutingConfiguration(config?: RequestConfig): Promise<unknown> {
-    return this.client['get']<unknown>(
-      ENDPOINTS.CONFIG.ROUTING,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+  async getRoutingConfiguration(config?: RequestConfig): Promise<RoutingConfigurationDto> {
+    return this.client['executeContractRead'](
+      '/api/config/routing',
+      (client, options) => client.GET('/api/config/routing', options),
+      config,
     );
   }
 
-  async updateRoutingConfiguration(
-    data: unknown,
-    config?: RequestConfig
-  ): Promise<unknown> {
-    return this.client['put']<unknown>(
-      ENDPOINTS.CONFIG.ROUTING,
+  async getRoutingDefaults(config?: RequestConfig): Promise<RoutingDefaultsDto> {
+    return this.client['executeContractRead'](
+      '/api/config/routing/defaults',
+      (client, options) => client.GET('/api/config/routing/defaults', options),
+      config,
+    );
+  }
+
+  async updateRoutingDefaults(
+    data: RoutingDefaultsDto,
+    config?: RequestConfig,
+  ): Promise<RoutingDefaultsDto> {
+    return this.client['executeContractOperation'](
+      '/api/config/routing/defaults',
+      HttpMethod.PUT,
+      (client, options) => client.PUT('/api/config/routing/defaults', { ...options, body: data }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
-  async getCachingConfiguration(config?: RequestConfig): Promise<unknown> {
-    return this.client['get']<unknown>(
-      ENDPOINTS.CONFIG.CACHING.BASE,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+  async getAliasRouting(alias: string, config?: RequestConfig): Promise<RoutePolicyDto> {
+    return this.client['executeContractRead'](
+      `/api/config/routing/aliases/${encodeURIComponent(alias)}`,
+      (client, options) => client.GET('/api/config/routing/aliases/{alias}', {
+        ...options,
+        params: { path: { alias } },
+      }),
+      config,
     );
   }
 
-  async updateCachingConfiguration(
-    data: unknown,
-    config?: RequestConfig
-  ): Promise<unknown> {
-    return this.client['put']<unknown>(
-      ENDPOINTS.CONFIG.CACHING.BASE,
+  async updateAliasRouting(
+    alias: string,
+    data: RoutePolicyDto,
+    config?: RequestConfig,
+  ): Promise<RoutePolicyDto> {
+    return this.client['executeContractOperation'](
+      `/api/config/routing/aliases/${encodeURIComponent(alias)}`,
+      HttpMethod.PUT,
+      (client, options) => client.PUT('/api/config/routing/aliases/{alias}', {
+        ...options,
+        params: { path: { alias } },
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
-  }
-
-  async getCacheStatistics(config?: RequestConfig): Promise<unknown> {
-    return this.client['get']<unknown>(
-      ENDPOINTS.CONFIG.CACHING.STATISTICS,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getCacheRegions(config?: RequestConfig): Promise<string[]> {
-    return this.client['get']<string[]>(
-      ENDPOINTS.CONFIG.CACHING.REGIONS,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getCacheEntries(regionId: string, config?: RequestConfig): Promise<unknown> {
-    return this.client['get'](
-      ENDPOINTS.CONFIG.CACHING.ENTRIES(regionId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async refreshCacheRegion(regionId: string, config?: RequestConfig): Promise<void> {
-    return this.client['post']<void>(
-      ENDPOINTS.CONFIG.CACHING.REFRESH(regionId),
-      {},
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async updateCachePolicy(regionId: string, policy: unknown, config?: RequestConfig): Promise<void> {
-    return this.client['put']<void>(
-      ENDPOINTS.CONFIG.CACHING.POLICY(regionId),
-      policy,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  // This is what the WebAdmin expects
-  async clearCacheByRegion(cacheId: string, config?: RequestConfig): Promise<unknown> {
-    return this.client['post']<unknown>(
-      ENDPOINTS.CONFIG.CACHING.CLEAR(cacheId),
-      {},
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  // Also provide the original name
-  async clearCacheRegion(cacheId: string, config?: RequestConfig): Promise<unknown> {
-    return this.clearCacheByRegion(cacheId, config);
   }
 
   async getPromptCachingConfig(config?: RequestConfig): Promise<PromptCachingConfigDto> {
-    return this.client['get']<PromptCachingConfigDto>(
-      ENDPOINTS.PROMPT_CACHING.CONFIG,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](
+      '/api/prompt-caching/config',
+      (client, options) => client.GET('/api/prompt-caching/config', options),
+      config,
+    ) as Promise<PromptCachingConfigDto>;
   }
 
   async updatePromptCachingConfig(
     data: UpdatePromptCachingConfigDto,
-    config?: RequestConfig
+    config?: RequestConfig,
   ): Promise<PromptCachingConfigDto> {
-    return this.client['put']<PromptCachingConfigDto>(
-      ENDPOINTS.PROMPT_CACHING.CONFIG,
+    return this.client['executeContractOperation'](
+      '/api/prompt-caching/config',
+      HttpMethod.PUT,
+      (client, options) => client.PUT('/api/prompt-caching/config', { ...options, body: data }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getRoutingDefaults(config?: RequestConfig): Promise<unknown> {
-    return this.client['get']<unknown>(ENDPOINTS.CONFIG.ROUTING_DEFAULTS, {
-      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
-    });
-  }
-
-  async updateRoutingDefaults(data: unknown, config?: RequestConfig): Promise<unknown> {
-    return this.client['put']<unknown>(ENDPOINTS.CONFIG.ROUTING_DEFAULTS, data, {
-      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
-    });
-  }
-
-  async getAliasRouting(alias: string, config?: RequestConfig): Promise<unknown> {
-    return this.client['get']<unknown>(ENDPOINTS.CONFIG.ROUTING_ALIAS(alias), {
-      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
-    });
-  }
-
-  async updateAliasRouting(alias: string, data: unknown, config?: RequestConfig): Promise<unknown> {
-    return this.client['put']<unknown>(ENDPOINTS.CONFIG.ROUTING_ALIAS(alias), data, {
-      signal: config?.signal, timeout: config?.timeout, headers: config?.headers,
-    });
+    ) as Promise<PromptCachingConfigDto>;
   }
 
   async getPromptCachingCapabilities(config?: RequestConfig): Promise<PromptCachingCapabilityDto[]> {
-    return this.client['get']<PromptCachingCapabilityDto[]>(
-      ENDPOINTS.PROMPT_CACHING.CAPABILITIES,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](
+      '/api/prompt-caching/capabilities',
+      (client, options) => client.GET('/api/prompt-caching/capabilities', options),
+      config,
+    ) as Promise<PromptCachingCapabilityDto[]>;
   }
 
   async getPromptCachingAnalytics(
     filters: { from?: string; to?: string; alias?: string; provider?: string; mappingId?: number } = {},
-    config?: RequestConfig
+    config?: RequestConfig,
   ): Promise<PromptCachingAnalyticsDto> {
-    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined && value !== '')
-      .map(([key, value]) => [key, String(value)]));
-    return this.client['get']<PromptCachingAnalyticsDto>(
-      `${ENDPOINTS.PROMPT_CACHING.ANALYTICS}${query.size ? `?${query}` : ''}`,
-      { signal: config?.signal, timeout: config?.timeout, headers: config?.headers }
+    const query = Object.fromEntries(
+      Object.entries(filters).filter(([, value]) => value !== undefined && value !== ''),
     );
+    const search = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
+    return this.client['executeContractRead'](
+      `/api/prompt-caching/analytics${search.size ? `?${search}` : ''}`,
+      (client, options) => client.GET('/api/prompt-caching/analytics', {
+        ...options,
+        params: { query },
+      }),
+      config,
+    ) as Promise<PromptCachingAnalyticsDto>;
   }
-
 }

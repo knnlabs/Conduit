@@ -3,6 +3,38 @@ using System.ComponentModel.DataAnnotations;
 namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
+    /// Request used to fully update a model-provider mapping. The route ID is authoritative.
+    /// </summary>
+    public class UpdateModelProviderMappingDto
+    {
+        [Required(ErrorMessage = "Model Alias is required")]
+        public string ModelAlias { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Provider Model ID is required")]
+        public string ProviderModelId { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Provider ID is required")]
+        public int ProviderId { get; set; }
+
+        [Required(ErrorMessage = "Model Provider Type Association is required")]
+        public int ModelProviderTypeAssociationId { get; set; }
+
+        [Required]
+        public int Priority { get; set; }
+
+        [Range(0.1, 2.0)]
+        [Required]
+        public decimal Weight { get; set; }
+
+        [Required]
+        public bool IsEnabled { get; set; }
+
+        public string? Notes { get; set; }
+
+        public string? ProviderOptions { get; set; }
+    }
+
+    /// <summary>
     /// Data transfer object for model-provider mappings
     /// </summary>
     public class ModelProviderMappingDto
@@ -10,6 +42,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Unique identifier for the mapping
         /// </summary>
+        [Required]
         public int Id { get; set; }
 
         /// <summary>
@@ -46,25 +79,30 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// The priority of this mapping (lower values have higher priority)
         /// </summary>
+        [Required]
         public int Priority { get; set; }
 
         /// <summary>Balanced-score multiplier in the range 0.1 through 2.0.</summary>
         [Range(0.1, 2.0)]
+        [Required]
         public decimal Weight { get; set; } = 1.0m;
 
         /// <summary>
         /// Whether this mapping is currently enabled
         /// </summary>
+        [Required]
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
         /// Date when the mapping was created
         /// </summary>
+        [Required]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         /// <summary>
         /// Date when the mapping was last updated
         /// </summary>
+        [Required]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         /// <summary>
@@ -92,61 +130,73 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Indicates whether this model supports vision/image inputs
         /// </summary>
+        [Required]
         public bool SupportsVision { get; set; }
 
         /// <summary>
         /// Indicates whether this model supports image generation
         /// </summary>
+        [Required]
         public bool SupportsImageGeneration { get; set; }
 
         /// <summary>
         /// Indicates whether this model supports video generation
         /// </summary>
+        [Required]
         public bool SupportsVideoGeneration { get; set; }
 
         /// <summary>
         /// Indicates whether this model supports embedding generation
         /// </summary>
+        [Required]
         public bool SupportsEmbeddings { get; set; }
 
         /// <summary>
         /// Indicates whether the model supports speech-to-text transcription.
         /// </summary>
+        [Required]
         public bool SupportsSpeechToText { get; set; }
 
         /// <summary>
         /// Indicates whether the model supports text-to-speech synthesis.
         /// </summary>
+        [Required]
         public bool SupportsTextToSpeech { get; set; }
 
         /// <summary>
         /// Indicates whether the model supports document reranking.
         /// </summary>
+        [Required]
         public bool SupportsRerank { get; set; }
 
         /// <summary>
         /// Indicates whether this model supports chat completions
         /// </summary>
+        [Required]
         public bool SupportsChat { get; set; }
 
         /// <summary>
         /// Indicates whether this model supports function calling
         /// </summary>
+        [Required]
         public bool SupportsFunctionCalling { get; set; }
 
         /// <summary>
         /// Indicates whether this model supports streaming responses
         /// </summary>
+        [Required]
         public bool SupportsStreaming { get; set; }
 
         /// <summary>
         /// Maximum input tokens of the model
         /// </summary>
+        [Required]
         public int? MaxInputTokens { get; set; }
 
         /// <summary>
         /// Maximum output tokens of the model
         /// </summary>
+        [Required]
         public int? MaxOutputTokens { get; set; }
     }
 }

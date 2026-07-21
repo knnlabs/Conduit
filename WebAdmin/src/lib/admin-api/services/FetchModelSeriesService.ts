@@ -1,7 +1,7 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
+import { HttpMethod } from '../client/HttpMethod';
 
 // Type aliases for better readability
 type ModelSeriesDto = components['schemas']['ModelSeriesDto'];
@@ -61,14 +61,15 @@ export class FetchModelSeriesService {
     data: CreateModelSeriesDto,
     config?: RequestConfig
   ): Promise<ModelSeriesDto> {
-    return this.client['post']<ModelSeriesDto, CreateModelSeriesDto>(
-      ENDPOINTS.MODEL_SERIES.BASE,
+    return this.client['executeContractOperation']<ModelSeriesDto, CreateModelSeriesDto>(
+      '/api/ModelSeries',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelSeries', {
+        ...options,
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -80,14 +81,16 @@ export class FetchModelSeriesService {
     data: UpdateModelSeriesDto,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['put']<void, UpdateModelSeriesDto>(
-      ENDPOINTS.MODEL_SERIES.BY_ID(id),
+    return this.client['executeContractOperation']<void, UpdateModelSeriesDto>(
+      `/api/ModelSeries/${id}`,
+      HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/ModelSeries/{id}', {
+        ...options,
+        params: { path: { id } },
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -95,13 +98,14 @@ export class FetchModelSeriesService {
    * Delete a model series
    */
   async delete(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.MODEL_SERIES.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      `/api/ModelSeries/${id}`,
+      HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/ModelSeries/{id}', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 }

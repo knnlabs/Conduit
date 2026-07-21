@@ -1,106 +1,42 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import type { components } from '../generated/admin-api';
+import { HttpMethod } from '../client/HttpMethod';
+import type { components, paths } from '../generated/admin-api';
 
 type ProviderErrorDto = components['schemas']['ProviderErrorDto'];
 type ProviderErrorSummaryDto = components['schemas']['ProviderErrorSummaryDto'];
 type ErrorStatisticsDto = components['schemas']['ErrorStatisticsDto'];
 type KeyErrorDetailsDto = components['schemas']['KeyErrorDetailsDto'];
+type ClearErrorsRequest = components['schemas']['ClearErrorsRequest'];
+type ClearKeyErrorsResponseDto = components['schemas']['ClearKeyErrorsResponseDto'];
+type RecentQuery = paths['/api/provider-errors/recent']['get']['parameters']['query'];
 
 export class FetchProviderErrorsService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
-  /**
-   * Get recent provider errors
-   */
-  async getRecentErrors(
-    params?: {
-      providerId?: number;
-      keyId?: number;
-      limit?: number;
-    },
-    config?: RequestConfig
-  ): Promise<ProviderErrorDto[]> {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          queryParams.append(key, String(value));
-        }
-      });
-    }
-
-    const url = queryParams.toString()
-      ? `/api/provider-errors/recent?${queryParams.toString()}`
-      : '/api/provider-errors/recent';
-
-    return this.client['get']<ProviderErrorDto[]>(url, {
-      signal: config?.signal,
-      timeout: config?.timeout,
-      headers: config?.headers,
-    });
+  async getRecentErrors(params?: RecentQuery, config?: RequestConfig): Promise<ProviderErrorDto[]> {
+    const queryString = new URLSearchParams(Object.entries(params ?? {}).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)])).toString();
+    return this.client['executeContractRead'](`/api/provider-errors/recent${queryString ? `?${queryString}` : ''}`,
+      (contractClient, options) => contractClient.GET('/api/provider-errors/recent', { ...options, params: { query: params } }), config);
   }
 
-  /**
-   * Get error summary for all providers
-   */
   async getSummary(config?: RequestConfig): Promise<ProviderErrorSummaryDto[]> {
-    return this.client['get']<ProviderErrorSummaryDto[]>(
-      '/api/provider-errors/summary',
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead']('/api/provider-errors/summary',
+      (contractClient, options) => contractClient.GET('/api/provider-errors/summary', options), config);
   }
 
-  /**
-   * Get error statistics
-   */
-  async getStatistics(hours: number = 24, config?: RequestConfig): Promise<ErrorStatisticsDto> {
-    const url = `/api/provider-errors/stats?hours=${hours}`;
-    return this.client['get']<ErrorStatisticsDto>(url, {
-      signal: config?.signal,
-      timeout: config?.timeout,
-      headers: config?.headers,
-    });
+  async getStatistics(hours = 24, config?: RequestConfig): Promise<ErrorStatisticsDto> {
+    return this.client['executeContractRead'](`/api/provider-errors/stats?hours=${hours}`,
+      (contractClient, options) => contractClient.GET('/api/provider-errors/stats', { ...options, params: { query: { hours } } }), config);
   }
 
-  /**
-   * Get detailed error information for a specific key
-   */
   async getKeyErrors(keyId: number, config?: RequestConfig): Promise<KeyErrorDetailsDto> {
-    return this.client['get']<KeyErrorDetailsDto>(
-      `/api/provider-errors/keys/${keyId}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](`/api/provider-errors/keys/${keyId}`,
+      (contractClient, options) => contractClient.GET('/api/provider-errors/keys/{keyId}', { ...options, params: { path: { keyId } } }), config);
   }
 
-  /**
-   * Clear errors and optionally re-enable a key
-   */
-  async clearKeyErrors(
-    keyId: number,
-    options: {
-      reEnableKey?: boolean;
-      confirmReenable?: boolean;
-      reason?: string;
-    },
-    config?: RequestConfig
-  ): Promise<void> {
-    await this.client['post'](
-      `/api/provider-errors/keys/${keyId}/clear`,
-      options,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async clearKeyErrors(keyId: number, request: ClearErrorsRequest, config?: RequestConfig): Promise<ClearKeyErrorsResponseDto> {
+    return this.client['executeContractOperation'](`/api/provider-errors/keys/${keyId}/clear`, HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/provider-errors/keys/{keyId}/clear', { ...options, params: { path: { keyId } }, body: request }), config, request);
   }
 }

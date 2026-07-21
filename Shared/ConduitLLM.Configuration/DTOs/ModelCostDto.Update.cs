@@ -8,11 +8,6 @@ namespace ConduitLLM.Configuration.DTOs
     public class UpdateModelCostDto
     {
         /// <summary>
-        /// Unique identifier for the model cost entry
-        /// </summary>
-        public int Id { get; set; }
-
-        /// <summary>
         /// User-friendly name for this cost configuration
         /// </summary>
         /// <remarks>

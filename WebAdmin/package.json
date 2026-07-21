@@ -15,7 +15,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "check:api-boundary": "node scripts/check-api-boundary.mjs",
+    "check:api-boundary": "node --test scripts/api-boundary-rules.test.mjs && node scripts/check-api-boundary.mjs",
     "check:admin-boundary": "npm run check:api-boundary",
     "prepare": "cd .. && husky install WebAdmin/.husky",
     "pre-commit": "lint-staged"
@@ -35,7 +35,7 @@
     "@mantine/spotlight": "^8.3.14",
     "@microsoft/signalr": "^10.0.0",
     "@microsoft/signalr-protocol-msgpack": "^10.0.0",
-    "@tabler/icons-react": "^3.36.1",
+    "@tabler/icons-react": "3.34.1",
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-virtual": "^3.13.18",
     "date-fns": "^4.1.0",

@@ -26,7 +26,6 @@ import { ModelCostDto, UpdateModelCostDto, PricingModel, ModelType, ModelTypeUti
 const getModelTypeSelectOptions = ModelTypeUtils.getSelectOptions;
 import { ModelMappingSelector } from './ModelMappingSelector';
 import { PricingModelSelector } from './PricingModelSelector';
-import { useModelMappings } from '@/hooks/useModelMappingsApi';
 
 // ExtendedModelProviderMappingDto type removed - not needed
 
@@ -75,23 +74,11 @@ interface FormValues {
 export function EditModelCostModalV2({ isOpen, modelCost, onClose, onSuccess }: EditModelCostModalV2Props) {
   const queryClient = useQueryClient();
   const { updateModelCost } = useModelCostsApi();
-  const { mappings } = useModelMappings();
-
-  // Find mapping IDs from associated model aliases
-  const getMappingIds = (): number[] => {
-    if (!modelCost.associatedModelAliases || modelCost.associatedModelAliases.length === 0) {
-      return [];
-    }
-    const extendedMappings = mappings;
-    return extendedMappings
-      .filter(m => m?.modelAlias && modelCost.associatedModelAliases.includes(m.modelAlias))
-      .map(m => m.id);
-  };
 
   // Convert backend data to form values
   const initialValues: FormValues = {
     costName: modelCost.costName,
-    modelProviderMappingIds: getMappingIds(),
+    modelProviderMappingIds: modelCost.modelProviderTypeAssociationIds,
     pricingModel: modelCost.pricingModel ?? PricingModel.Standard,
     pricingConfiguration: modelCost.pricingConfiguration ?? '',
     modelType: modelCost.modelType,
@@ -160,7 +147,6 @@ export function EditModelCostModalV2({ isOpen, modelCost, onClose, onSuccess }: 
     // fields — those were removed from UpdateModelCostDto in #1038. Only token/search/batch and the
     // top-level audio (per-minute, per-1K-chars) fields remain flat.
     const updates: UpdateModelCostDto = {
-      id: modelCost.id,
       costName: values.costName,
       modelProviderTypeAssociationIds: values.modelProviderMappingIds,
       pricingModel: values.pricingModel,

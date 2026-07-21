@@ -1,6 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
+import { HttpMethod } from '../client/HttpMethod';
 import type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
@@ -25,14 +25,10 @@ export class FetchModelMappingsService {
   async list(
     config?: RequestConfig
   ): Promise<ModelProviderMappingDto[]> {
-    // Backend doesn't support pagination yet
-    return this.client['get']<ModelProviderMappingDto[]>(
-      ENDPOINTS.MODEL_MAPPINGS.BASE,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      '/api/ModelProviderMapping',
+      (contractClient, options) => contractClient.GET('/api/ModelProviderMapping', options),
+      config,
     );
   }
 
@@ -40,13 +36,13 @@ export class FetchModelMappingsService {
    * Get a specific model mapping by ID
    */
   async getById(id: number, config?: RequestConfig): Promise<ModelProviderMappingDto> {
-    return this.client['get']<ModelProviderMappingDto>(
-      ENDPOINTS.MODEL_MAPPINGS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/ModelProviderMapping/${id}`,
+      (contractClient, options) => contractClient.GET('/api/ModelProviderMapping/{id}', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
@@ -57,14 +53,15 @@ export class FetchModelMappingsService {
     data: CreateModelProviderMappingDto,
     config?: RequestConfig
   ): Promise<ModelProviderMappingDto> {
-    return this.client['post']<ModelProviderMappingDto, CreateModelProviderMappingDto>(
-      ENDPOINTS.MODEL_MAPPINGS.BASE,
+    return this.client['executeContractOperation']<ModelProviderMappingDto, CreateModelProviderMappingDto>(
+      '/api/ModelProviderMapping',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping', {
+        ...options,
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -76,14 +73,16 @@ export class FetchModelMappingsService {
     data: UpdateModelProviderMappingDto,
     config?: RequestConfig
   ): Promise<void> {
-    await this.client['put']<void, UpdateModelProviderMappingDto>(
-      ENDPOINTS.MODEL_MAPPINGS.BY_ID(id),
+    await this.client['executeContractOperation']<void, UpdateModelProviderMappingDto>(
+      `/api/ModelProviderMapping/${id}`,
+      HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/ModelProviderMapping/{id}', {
+        ...options,
+        params: { path: { id } },
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -91,13 +90,14 @@ export class FetchModelMappingsService {
    * Delete a model mapping
    */
   async deleteById(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.MODEL_MAPPINGS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      `/api/ModelProviderMapping/${id}`,
+      HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/ModelProviderMapping/{id}', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
@@ -114,14 +114,15 @@ export class FetchModelMappingsService {
     // Backend expects a direct array of mappings, not a request object
     const mappings = request.mappings;
 
-    return this.client['post']<BulkMappingResponse, CreateModelProviderMappingDto[]>(
-      ENDPOINTS.MODEL_MAPPINGS.BULK,
+    return this.client['executeContractOperation']<BulkMappingResponse, CreateModelProviderMappingDto[]>(
+      '/api/ModelProviderMapping/bulk',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk', {
+        ...options,
+        body: mappings,
+      }),
+      config,
       mappings,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -132,14 +133,15 @@ export class FetchModelMappingsService {
     ids: number[],
     config?: RequestConfig
   ): Promise<BulkDeleteResult> {
-    return this.client['post']<BulkDeleteResult, number[]>(
-      ENDPOINTS.MODEL_MAPPINGS.BULK_DELETE,
+    return this.client['executeContractOperation']<BulkDeleteResult, number[]>(
+      '/api/ModelProviderMapping/bulk/delete',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk/delete', {
+        ...options,
+        body: ids,
+      }),
+      config,
       ids,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -150,14 +152,15 @@ export class FetchModelMappingsService {
     ids: number[],
     config?: RequestConfig
   ): Promise<BulkUpdateResult> {
-    return this.client['post']<BulkUpdateResult, number[]>(
-      ENDPOINTS.MODEL_MAPPINGS.BULK_ENABLE,
+    return this.client['executeContractOperation']<BulkUpdateResult, number[]>(
+      '/api/ModelProviderMapping/bulk/enable',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk/enable', {
+        ...options,
+        body: ids,
+      }),
+      config,
       ids,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -168,14 +171,15 @@ export class FetchModelMappingsService {
     ids: number[],
     config?: RequestConfig
   ): Promise<BulkUpdateResult> {
-    return this.client['post']<BulkUpdateResult, number[]>(
-      ENDPOINTS.MODEL_MAPPINGS.BULK_DISABLE,
+    return this.client['executeContractOperation']<BulkUpdateResult, number[]>(
+      '/api/ModelProviderMapping/bulk/disable',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk/disable', {
+        ...options,
+        body: ids,
+      }),
+      config,
       ids,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 

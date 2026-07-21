@@ -150,8 +150,7 @@ function Test-EsLintDirectory {
     }
 }
 
-# Validate all TypeScript projects
-Test-EsLintDirectory -Directory 'SDKs/Node/Gateway' -Name 'Gateway Client'
+# Validate the WebAdmin TypeScript project.
 Test-EsLintDirectory -Directory 'WebAdmin' -Name 'WebAdmin'
 
 # Print summary

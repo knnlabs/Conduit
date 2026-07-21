@@ -84,6 +84,9 @@ public partial class Program
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.DefaultErrorResponsesOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ResponseContractOperationTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.NumericSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.ModelCostResponseSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.GlobalSettingsResponseSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.IpFilterResponseSchemaTransformer>();
             options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.OperationIdValidationDocumentTransformer>();
         });
 

@@ -51,7 +51,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Paginated list of providers</returns>
         [HttpGet]
-        [ProducesResponseType(typeof(Configuration.DTOs.PagedResult<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Configuration.DTOs.PagedResult<ProviderDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllProviders(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50,
@@ -63,23 +63,11 @@ namespace ConduitLLM.Admin.Controllers
             if (pageSize > 100) pageSize = 100;
 
             var (providers, totalCount) = await _providerRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
-            var items = providers.Select(p => new
-            {
-                p.Id,
-                p.ProviderType,
-                p.ProviderName,
-                p.BaseUrl,
-                p.IsEnabled,
-                p.TrustProviderReportedCosts,
-                p.ProviderCostMarkupMultiplier,
-                p.CreatedAt,
-                p.UpdatedAt,
-                KeyCount = p.ProviderKeyCredentials?.Count ?? 0
-            }).ToList();
+            var items = providers.Select(ToProviderDto).ToList();
 
-            var result = new Configuration.DTOs.PagedResult<object>
+            var result = new Configuration.DTOs.PagedResult<ProviderDto>
             {
-                Items = items.Cast<object>().ToList(),
+                Items = items,
                 TotalCount = totalCount,
                 CurrentPage = page,
                 PageSize = pageSize,
@@ -95,7 +83,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">The ID of the provider</param>
         /// <returns>The provider</returns>
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProviderDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetProviderById(int id)
         {
@@ -105,19 +93,7 @@ namespace ConduitLLM.Admin.Controllers
                 return this.NotFoundEntity("Provider", id);
             }
 
-            return Ok(new
-            {
-                provider.Id,
-                provider.ProviderType,
-                provider.ProviderName,
-                provider.BaseUrl,
-                provider.IsEnabled,
-                provider.TrustProviderReportedCosts,
-                provider.ProviderCostMarkupMultiplier,
-                provider.CreatedAt,
-                provider.UpdatedAt,
-                KeyCount = provider.ProviderKeyCredentials?.Count ?? 0
-            });
+            return Ok(ToProviderDto(provider));
         }
 
         /// <summary>
@@ -125,7 +101,7 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>The created provider</returns>
         [HttpPost]
-        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ProviderDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateProvider([FromBody] CreateProviderRequest request)
         {
@@ -160,19 +136,7 @@ namespace ConduitLLM.Admin.Controllers
             AdminOperationsMetricsService.RecordProviderOperation("create", provider.ProviderType.ToString(), "success");
             AdminOperationsMetricsService.RecordConfigurationChange("provider", "create");
 
-            return CreatedAtAction(nameof(GetProviderById), new { id = provider.Id }, new
-            {
-                provider.Id,
-                provider.ProviderType,
-                provider.ProviderName,
-                provider.BaseUrl,
-                provider.IsEnabled,
-                provider.TrustProviderReportedCosts,
-                provider.ProviderCostMarkupMultiplier,
-                provider.CreatedAt,
-                provider.UpdatedAt,
-                KeyCount = 0
-            });
+            return CreatedAtAction(nameof(GetProviderById), new { id = provider.Id }, ToProviderDto(provider));
         }
 
         /// <summary>
@@ -182,7 +146,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="request">The update request containing new provider values</param>
         /// <returns>No content if successful</returns>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ProviderDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateProvider(int id, [FromBody] UpdateProviderRequest request)
@@ -247,8 +211,22 @@ namespace ConduitLLM.Admin.Controllers
             AdminOperationsMetricsService.RecordProviderOperation("update", provider.ProviderType.ToString(), "success");
             AdminOperationsMetricsService.RecordConfigurationChange("provider", "update");
 
-            return NoContent();
+            return Ok(ToProviderDto(provider));
         }
+
+        private static ProviderDto ToProviderDto(Provider provider) => new()
+        {
+            Id = provider.Id,
+            ProviderType = provider.ProviderType,
+            ProviderName = provider.ProviderName,
+            BaseUrl = provider.BaseUrl,
+            IsEnabled = provider.IsEnabled,
+            TrustProviderReportedCosts = provider.TrustProviderReportedCosts,
+            ProviderCostMarkupMultiplier = provider.ProviderCostMarkupMultiplier,
+            CreatedAt = provider.CreatedAt,
+            UpdatedAt = provider.UpdatedAt,
+            KeyCount = provider.ProviderKeyCredentials?.Count ?? 0
+        };
 
         /// <summary>
         /// Deletes a provider

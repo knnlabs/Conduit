@@ -1,7 +1,7 @@
 # Admin API boundary
 
 WebAdmin owns its Admin HTTP integration under `src/lib/admin-api`. Application code must not import
-`@knn_labs/conduit-admin-client` or reach into `SDKs/Node/Admin`.
+external Admin client packages or source trees.
 
 `src/generated/admin-api.ts` is regenerated from
 `Services/ConduitLLM.Admin/openapi-admin.json` by the repository's offline OpenAPI generator. The
@@ -10,11 +10,13 @@ but ordinary HTTP requests flow through an `openapi-fetch` client parameterized 
 `paths` type. Contract route constants use `satisfies keyof paths`, so renamed or removed routes fail
 WebAdmin type-checking.
 
-The contract-native read pilot is complete for model authors and model series. Their six read methods
-invoke literal generated `GET` paths directly, including generated numeric path parameters, through a
-shared executor that retains the existing Admin request lifecycle. Their mutations and all unmigrated
-services continue to use the compatibility URL transport. The boundary check prevents these two
-services from returning to generic `client['get']` calls.
+Contract-native operations are complete for model authors, model series, models, model identifiers, model costs,
+model provider availability, per-model provider mappings, and bundled-catalog import. Their fourteen
+reads and sixteen mutations invoke literal generated paths directly, including generated path and
+query parameters, through a shared executor that retains the existing Admin request lifecycle. The
+boundary check prevents the three migrated model-family services from returning to generic `get`,
+`post`, `put`, or `delete` compatibility calls. Other services still use the compatibility URL
+transport while their contracts are migrated in bounded slices.
 
 Browser operations still obtain a fresh ephemeral master key from
 `/api/auth/ephemeral-master-key`, create a zero-retry Admin client, and call the externally reachable
@@ -26,10 +28,14 @@ Credential issuance, virtual-key issuance and validation, and virtual-key-group 
 validated with Zod before reaching application code. Routine read DTOs rely on generated compile-time
 types.
 
+All 28 Functions operations and all nine Provider Tools operations are contract-native. Their local
+adapters retain enum conversion, encoded paths, partial update bodies, request options, nullable cost
+normalization, and existing success-status handling. The boundary guard covers both services.
+
 The retired Admin Node package is no longer built or published by this repository; existing npm
 versions remain available. Run `npm run check:api-boundary` to enforce the dependency boundary.
 Contract generation and CI also fail when the WebAdmin-local generated types drift from the
 authoritative Admin document.
 
-See [Admin contract-read migration](./ADMIN_CONTRACT_READ_MIGRATION.md) for completed and candidate
+See [Admin contract migration](./ADMIN_CONTRACT_READ_MIGRATION.md) for completed and candidate
 slices.

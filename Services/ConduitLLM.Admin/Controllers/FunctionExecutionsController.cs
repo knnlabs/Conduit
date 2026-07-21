@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Filters;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.DTOs;
@@ -39,7 +40,7 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <param name="id">The execution ID</param>
     /// <returns>The execution</returns>
     [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionExecutionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetExecutionById(Guid id)
     {
@@ -58,7 +59,7 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <param name="virtualKeyId">The virtual key ID</param>
     /// <returns>List of executions</returns>
     [HttpGet("virtualkey/{virtualKeyId}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionExecutionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetExecutionsByVirtualKey(int virtualKeyId)
     {
         var executions = await _executionRepository.GetByVirtualKeyIdAsync(virtualKeyId);
@@ -71,7 +72,7 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <param name="functionConfigurationId">The function configuration ID</param>
     /// <returns>List of executions</returns>
     [HttpGet("configuration/{functionConfigurationId}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionExecutionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetExecutionsByConfiguration(int functionConfigurationId)
     {
         var executions = await _executionRepository.GetByFunctionConfigurationIdAsync(
@@ -85,7 +86,7 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <param name="state">The execution state (e.g., "Pending", "Running", "Completed", "Failed")</param>
     /// <returns>List of executions in the specified state</returns>
     [HttpGet("state/{state}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionExecutionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetExecutionsByState(string state)
     {
@@ -103,7 +104,7 @@ public class FunctionExecutionsController : AdminControllerBase
     /// </summary>
     /// <returns>List of executions with expired leases</returns>
     [HttpGet("expired-leases")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionExecutionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetExpiredLeases()
     {
         var executions = await _executionRepository.GetExpiredLeasesAsync();
@@ -115,7 +116,7 @@ public class FunctionExecutionsController : AdminControllerBase
     /// </summary>
     /// <returns>List of executions ready for retry</returns>
     [HttpGet("ready-for-retry")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionExecutionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetReadyForRetry()
     {
         var executions = await _executionRepository.GetReadyForRetryAsync();
@@ -128,7 +129,7 @@ public class FunctionExecutionsController : AdminControllerBase
     /// <param name="olderThanDays">Delete executions older than this many days</param>
     /// <returns>Number of executions deleted</returns>
     [HttpDelete("cleanup")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionExecutionCleanupResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CleanupOldExecutions([FromQuery] int olderThanDays = 30)
     {

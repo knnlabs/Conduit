@@ -1,77 +1,11 @@
 import { FilterOptions } from './common';
-import { ProviderReferenceDto } from './provider';
+import type { components } from '../generated/admin-api';
 
-export interface ModelProviderMappingDto {
-  id: number;
-  modelAlias: string;  // The alias used by clients
-  providerId: number;
-  provider?: ProviderReferenceDto;
-  providerModelId: string;
-  modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
-  isEnabled: boolean;
-  priority: number;
-  weight: number;
-  createdAt: string;
-  updatedAt: string;
-  notes?: string;
-  /** Optional provider-specific request options (JSON object) merged into outgoing requests (OpenRouter). */
-  providerOptions?: string;
-  capabilities?: ModelCapabilitiesDto;
-}
-
-export interface ModelCapabilitiesDto {
-  supportsVision: boolean;
-  supportsImageGeneration: boolean;
-  supportsVideoGeneration: boolean;
-  supportsEmbeddings: boolean;
-  // Audio + rerank capabilities added to the backend after the gate landed (issue #1038).
-  supportsSpeechToText?: boolean;
-  supportsTextToSpeech?: boolean;
-  supportsRerank?: boolean;
-  supportsChat: boolean;
-  supportsFunctionCalling: boolean;
-  supportsStreaming: boolean;
-  maxInputTokens?: number | null;
-  maxOutputTokens?: number | null;
-}
-
-export interface CreateModelProviderMappingDto {
-  modelAlias: string;   // The alias used by clients
-  providerId: number;
-  providerModelId: string;
-  modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
-  isEnabled?: boolean;
-  priority?: number;
-  weight?: number;
-  notes?: string;
-  providerOptions?: string;
-}
-
-export interface UpdateModelProviderMappingDto {
-  /**
-   * The ID of the model mapping.
-   * Required by backend for validation - must match the ID in the route.
-   */
-  id?: number;
-  modelAlias?: string;
-  providerId?: number;
-  providerModelId?: string;
-  modelProviderTypeAssociationId?: number;  // Links to provider-specific model metadata
-  isEnabled?: boolean;
-  priority?: number;
-  weight?: number;
-  notes?: string;
-  providerOptions?: string;
-}
-
-// For bulk operations
-export interface BulkMappingResult {
-  created: ModelProviderMappingDto[];
-  errors: string[];
-  totalProcessed: number;
-  successCount: number;
-  failureCount: number;
-}
+export type ModelProviderMappingDto = components['schemas']['ModelProviderMappingDto'];
+export type ModelCapabilitiesDto = components['schemas']['ModelCapabilitiesDto'];
+export type CreateModelProviderMappingDto = components['schemas']['CreateModelProviderMappingDto'];
+export type UpdateModelProviderMappingDto = components['schemas']['UpdateModelProviderMappingDto'];
+export type BulkMappingResult = components['schemas']['BulkMappingResult'];
 
 // For bulk mapping requests
 export interface BulkMappingRequest {
@@ -82,22 +16,10 @@ export interface BulkMappingRequest {
 export type BulkMappingResponse = BulkMappingResult;
 
 // For bulk delete operations
-export interface BulkDeleteResult {
-  deletedIds: number[];
-  errors: string[];
-  totalProcessed: number;
-  successCount: number;
-  failureCount: number;
-}
+export type BulkDeleteResult = components['schemas']['BulkDeleteResult'];
 
 // For bulk update operations
-export interface BulkUpdateResult {
-  updated: ModelProviderMappingDto[];
-  errors: string[];
-  totalProcessed: number;
-  successCount: number;
-  failureCount: number;
-}
+export type BulkUpdateResult = components['schemas']['BulkUpdateResult'];
 
 // For discovered models
 export interface DiscoveredModel {

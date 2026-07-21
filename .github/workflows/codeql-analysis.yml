@@ -127,9 +127,7 @@ jobs:
         node-version: '22'
         cache: 'npm'
         cache-dependency-path: |
-          SDKs/Node/package-lock.json
-          SDKs/Node/Gateway/package-lock.json
-          SDKs/Node/Common/package-lock.json
+          tools/openapi/package-lock.json
           WebAdmin/package-lock.json
 
     - name: Perform CodeQL Analysis

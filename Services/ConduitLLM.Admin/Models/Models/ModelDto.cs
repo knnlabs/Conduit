@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using ConduitLLM.Admin.Models.ModelSeries;
 
 namespace ConduitLLM.Admin.Models.Models
@@ -9,15 +10,19 @@ namespace ConduitLLM.Admin.Models.Models
     public class ModelIdentifierDto
     {
         /// <summary>Gets or sets the unique identifier for this model-provider association.</summary>
+        [Required]
         public int Id { get; set; }
 
         /// <summary>Gets or sets the provider-specific model identifier string (e.g., "gpt-4-turbo" for OpenAI).</summary>
+        [Required]
         public string Identifier { get; set; } = string.Empty;
 
         /// <summary>Gets or sets the provider ID that offers this model, or null if unassigned.</summary>
+        [Required]
         public int? Provider { get; set; }
 
         /// <summary>Gets or sets whether this is the primary (preferred) provider for the model.</summary>
+        [Required]
         public bool IsPrimary { get; set; }
 
         /// <summary>Gets or sets the maximum input token limit for this provider's offering, or null if unknown.</summary>
@@ -37,6 +42,70 @@ namespace ConduitLLM.Admin.Models.Models
 
         /// <summary>Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.</summary>
         public int? ModelCostId { get; set; }
+    }
+
+    /// <summary>
+    /// A configured provider instance that can serve a model identifier.
+    /// </summary>
+    public class AvailableProviderDto
+    {
+        /// <summary>Gets or sets the provider instance ID.</summary>
+        [Required]
+        public int ProviderId { get; set; }
+
+        /// <summary>Gets or sets the provider instance display name.</summary>
+        [Required]
+        public string ProviderName { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the provider type name.</summary>
+        [Required]
+        public string ProviderType { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// A model-provider association together with the configured provider instances that can serve it.
+    /// </summary>
+    public class ModelProviderAvailabilityDto
+    {
+        /// <summary>Gets or sets the model-provider association ID.</summary>
+        [Required]
+        public int AssociationId { get; set; }
+
+        /// <summary>Gets or sets the provider-specific model identifier.</summary>
+        [Required]
+        public string Identifier { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the numeric provider type, or null when unassigned.</summary>
+        [Required]
+        public int? Provider { get; set; }
+
+        /// <summary>Gets or sets the provider-specific variation label.</summary>
+        [Required]
+        public string? ProviderVariation { get; set; }
+
+        /// <summary>Gets or sets the provider-specific maximum input token count.</summary>
+        [Required]
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>Gets or sets the provider-specific maximum output token count.</summary>
+        [Required]
+        public int? MaxOutputTokens { get; set; }
+
+        /// <summary>Gets or sets the relative speed score.</summary>
+        [Required]
+        public decimal? SpeedScore { get; set; }
+
+        /// <summary>Gets or sets the relative quality score.</summary>
+        [Required]
+        public decimal? QualityScore { get; set; }
+
+        /// <summary>Gets or sets whether this association is primary.</summary>
+        [Required]
+        public bool IsPrimary { get; set; }
+
+        /// <summary>Gets or sets configured provider instances matching this association.</summary>
+        [Required]
+        public List<AvailableProviderDto> AvailableProviders { get; set; } = new();
     }
 
     /// <summary>

@@ -1,15 +1,12 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
+import type { components } from '../generated/admin-api';
+import { HttpMethod } from '../client/HttpMethod';
 import {
   ModelCostDto,
   CreateModelCostDto,
   UpdateModelCostDto,
-  ModelCostOverview,
   ImportResult,
-  CreateModelCostMappingDto,
-  UpdateModelCostMappingDto,
-  ModelCostMappingDto,
 } from '../models/modelCost';
 import { PagedResult } from '../models/common-types';
 import { ValidationError } from '../utils/errors';
@@ -26,10 +23,16 @@ interface ModelCostListParams {
 }
 
 interface ModelCostOverviewParams {
-  startDate?: string;
-  endDate?: string;
-  groupBy?: 'provider' | 'model';
+  startDate: string;
+  endDate: string;
 }
+
+type ContractPagedModelCosts = components['schemas']['PagedResultOfModelCostDto'];
+type ContractBulkImportResult = components['schemas']['BulkImportResult'];
+type ContractModelCostOverview = components['schemas']['ModelCostOverviewDto'];
+type ContractModelCost = components['schemas']['ModelCostDto'];
+type ContractCreateModelCost = components['schemas']['CreateModelCostDto'];
+type ContractUpdateModelCost = components['schemas']['UpdateModelCostDto'];
 
 /**
  * Validates create model cost request
@@ -84,38 +87,26 @@ export class FetchModelCostService {
     params?: ModelCostListParams,
     config?: RequestConfig
   ): Promise<PagedResult<ModelCostDto>> {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          queryParams.append(key, String(value));
-        }
-      });
-    }
-
-    const url = queryParams.toString()
-      ? `${ENDPOINTS.MODEL_COSTS.BASE}?${queryParams.toString()}`
-      : ENDPOINTS.MODEL_COSTS.BASE;
-
-    return this.client['get']<PagedResult<ModelCostDto>>(url, {
-      signal: config?.signal,
-      timeout: config?.timeout,
-      headers: config?.headers,
-    });
+    const providerId = params?.provider === undefined ? undefined : Number(params.provider);
+    if (providerId !== undefined && (!Number.isInteger(providerId) || providerId < 1))
+      throw new ValidationError('provider must be a positive numeric provider ID');
+    const query = { page: params?.page, pageSize: params?.pageSize, providerId,
+      isActive: params?.isActive, modelType: params?.modelType };
+    const queryString = new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)])).toString();
+    const result: ContractPagedModelCosts = await this.client['executeContractRead'](
+      `/api/ModelCosts${queryString ? `?${queryString}` : ''}`,
+      (contractClient, options) => contractClient.GET('/api/ModelCosts', { ...options, params: { query } }), config);
+    return { items: result.items ?? [], totalCount: result.totalCount ?? 0,
+      page: result.page ?? result.currentPage ?? 1, pageSize: result.pageSize ?? 50,
+      totalPages: result.totalPages ?? 0 } as PagedResult<ModelCostDto>;
   }
 
   /**
    * Get a specific model cost by ID
    */
   async getById(id: number, config?: RequestConfig): Promise<ModelCostDto> {
-    return this.client['get']<ModelCostDto>(
-      ENDPOINTS.MODEL_COSTS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](`/api/ModelCosts/${id}`,
+      (contractClient, options) => contractClient.GET('/api/ModelCosts/{id}', { ...options, params: { path: { id } } }), config) as Promise<ModelCostDto>;
   }
 
 
@@ -128,15 +119,9 @@ export class FetchModelCostService {
   ): Promise<ModelCostDto> {
     validateCreateModelCostRequest(data);
 
-    return this.client['post']<ModelCostDto, CreateModelCostDto>(
-      ENDPOINTS.MODEL_COSTS.BASE,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const body = data as ContractCreateModelCost;
+    return this.client['executeContractOperation']<ContractModelCost, ContractCreateModelCost>('/api/ModelCosts', HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelCosts', { ...options, body }), config, body) as Promise<ModelCostDto>;
   }
 
   /**
@@ -147,29 +132,17 @@ export class FetchModelCostService {
     data: UpdateModelCostDto,
     config?: RequestConfig
   ): Promise<ModelCostDto> {
-    return this.client['put']<ModelCostDto, UpdateModelCostDto>(
-      ENDPOINTS.MODEL_COSTS.BY_ID(id),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const body = data as ContractUpdateModelCost;
+    return this.client['executeContractOperation']<ContractModelCost, ContractUpdateModelCost>(`/api/ModelCosts/${id}`, HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/ModelCosts/{id}', { ...options, params: { path: { id } }, body }), config, body) as Promise<ModelCostDto>;
   }
 
   /**
    * Delete a model cost configuration
    */
   async deleteById(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.MODEL_COSTS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation']<void>(`/api/ModelCosts/${id}`, HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/ModelCosts/{id}', { ...options, params: { path: { id } } }), config);
   }
 
   /**
@@ -179,15 +152,10 @@ export class FetchModelCostService {
     modelCosts: CreateModelCostDto[],
     config?: RequestConfig
   ): Promise<ImportResult> {
-    return this.client['post']<ImportResult, CreateModelCostDto[]>(
-      ENDPOINTS.MODEL_COSTS.IMPORT,
-      modelCosts,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const result: ContractBulkImportResult = await this.client['executeContractOperation']('/api/ModelCosts/import', HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelCosts/import', { ...options, body: modelCosts as ContractCreateModelCost[] }), config, modelCosts);
+    return { success: result.successCount ?? 0, failed: result.failureCount ?? 0,
+      errors: (result.errors ?? []).map((error, index) => ({ row: index + 1, error })) };
   }
 
   /**
@@ -201,27 +169,13 @@ export class FetchModelCostService {
    * Get model cost overview with aggregation
    */
   async getOverview(
-    params?: ModelCostOverviewParams,
+    params: ModelCostOverviewParams,
     config?: RequestConfig
-  ): Promise<ModelCostOverview[]> {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          queryParams.append(key, String(value));
-        }
-      });
-    }
-
-    const url = queryParams.toString()
-      ? `${ENDPOINTS.MODEL_COSTS.OVERVIEW}?${queryParams.toString()}`
-      : ENDPOINTS.MODEL_COSTS.OVERVIEW;
-
-    return this.client['get']<ModelCostOverview[]>(url, {
-      signal: config?.signal,
-      timeout: config?.timeout,
-      headers: config?.headers,
-    });
+  ): Promise<ContractModelCostOverview[]> {
+    const query = { startDate: params.startDate, endDate: params.endDate };
+    const queryString = new URLSearchParams(query).toString();
+    return this.client['executeContractRead'](`/api/ModelCosts/overview?${queryString}`,
+      (contractClient, options) => contractClient.GET('/api/ModelCosts/overview', { ...options, params: { query } }), config);
   }
 
 
@@ -246,75 +200,4 @@ export class FetchModelCostService {
   }
 
 
-  // Model Cost Mapping Methods
-
-  /**
-   * Create model cost mappings - link a cost to specific models
-   */
-  async createMappings(
-    data: CreateModelCostMappingDto,
-    config?: RequestConfig
-  ): Promise<ModelCostMappingDto[]> {
-    return this.client['post']<ModelCostMappingDto[], CreateModelCostMappingDto>(
-      `/api/ModelCostMappings`,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Update model cost mappings - replaces all mappings for a cost
-   */
-  async updateMappings(
-    data: UpdateModelCostMappingDto,
-    config?: RequestConfig
-  ): Promise<ModelCostMappingDto[]> {
-    return this.client['put']<ModelCostMappingDto[], UpdateModelCostMappingDto>(
-      `/api/ModelCostMappings`,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Get all mappings for a specific model cost
-   */
-  async getMappingsByCostId(
-    modelCostId: number,
-    config?: RequestConfig
-  ): Promise<ModelCostMappingDto[]> {
-    return this.client['get']<ModelCostMappingDto[]>(
-      `/api/ModelCostMappings/by-cost/${modelCostId}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Delete a specific model cost mapping
-   */
-  async deleteMapping(
-    mappingId: number,
-    config?: RequestConfig
-  ): Promise<void> {
-    return this.client['delete']<void>(
-      `/api/ModelCostMappings/${mappingId}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 }

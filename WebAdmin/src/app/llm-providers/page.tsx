@@ -38,13 +38,12 @@ import { ApiKeyTestResult, type ProviderDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
-// Use SDK types directly with health extensions
+// Use local Admin API types with health extensions
 interface ProviderWithHealth extends ProviderDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
   endpoint?: string;
-  keyCount?: number;
 }
 
 export default function ProvidersPage() {

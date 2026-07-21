@@ -1,14 +1,14 @@
 /**
  * Abstract base API client providing common HTTP functionality
  *
- * SDK-specific clients extend this class and implement:
+ * API-specific clients extend this class and implement:
  * - getAuthHeaders(): Returns authentication headers
  * - getDefaultRetryStrategy(): Returns default retry strategy
  *
  * Template methods that can be overridden:
- * - handleErrorResponse(): SDK-specific error parsing
- * - shouldRetry(): SDK-specific retry logic
- * - getRetryDelay(): SDK-specific delay calculation
+ * - handleErrorResponse(): API-specific error parsing
+ * - shouldRetry(): API-specific retry logic
+ * - getRetryDelay(): API-specific delay calculation
  */
 
 import type { BaseApiClientConfig } from "./base-client-config";
@@ -45,7 +45,7 @@ export interface BaseRequestOptions {
 /**
  * Abstract base API client providing common HTTP functionality
  *
- * Both Gateway SDK and Admin SDK extend this class.
+ * Both repository-local Gateway and Admin clients extend this class.
  */
 export abstract class BaseApiClient {
   /** Base URL for all requests (without trailing slash) */
@@ -68,7 +68,7 @@ export abstract class BaseApiClient {
     response: ResponseInfo,
   ) => void | Promise<void>;
 
-  // Optional providers (Admin SDK uses these, Gateway SDK may not)
+  // Optional providers used by composed API clients.
   protected readonly logger?: Logger;
   protected readonly cache?: CacheProvider;
 
@@ -87,32 +87,32 @@ export abstract class BaseApiClient {
   }
 
   // ============================================================================
-  // Abstract Methods - Must be implemented by SDK-specific clients
+  // Abstract Methods - Must be implemented by API-specific clients
   // ============================================================================
 
   /**
-   * Returns authentication headers for this SDK
+   * Returns authentication headers for this client
    *
-   * Gateway SDK returns: { Authorization: 'Bearer ...' }
-   * Admin SDK returns: { 'X-Master-Key': '...' }
+   * Gateway clients return: { Authorization: 'Bearer ...' }
+   * The Admin client returns: { 'X-Master-Key': '...' }
    */
   protected abstract getAuthHeaders(): Record<string, string>;
 
   /**
-   * Returns default retry strategy for this SDK
+   * Returns the default retry strategy for this client
    *
-   * Gateway SDK uses exponential backoff with jitter
-   * Admin SDK uses fixed delay
+   * Gateway requests use exponential backoff with jitter.
+   * The Admin client uses a fixed delay
    */
   protected abstract getDefaultRetryStrategy(): RetryStrategy;
 
   // ============================================================================
-  // Template Methods - Can be overridden by SDK-specific clients
+  // Template Methods - Can be overridden by API-specific clients
   // ============================================================================
 
   /**
    * Transform error response into appropriate error type
-   * Subclasses can override for SDK-specific error handling
+   * Subclasses can override for API-specific error handling
    *
    * @param response - The failed Response object
    * @returns An Error to throw
@@ -139,7 +139,7 @@ export abstract class BaseApiClient {
 
   /**
    * Determine if an error should be retried
-   * Subclasses can override for SDK-specific retry logic
+   * Subclasses can override for API-specific retry logic
    *
    * @param error - The error that occurred
    * @param attempt - Current attempt number (1-based)

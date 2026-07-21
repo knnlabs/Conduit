@@ -8,38 +8,47 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Unique identifier for the provider
         /// </summary>
-        public int Id { get; set; }
+        public required int Id { get; set; }
 
         /// <summary>
         /// Provider type enum value
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public required ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// User-friendly name for this provider instance
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public required string ProviderName { get; set; }
 
         /// <summary>
         /// Base URL for the provider API
         /// </summary>
-        public string BaseUrl { get; set; } = string.Empty;
+        public string? BaseUrl { get; set; }
+
+        /// <summary>Number of configured credentials for this provider.</summary>
+        public required int KeyCount { get; set; }
+
+        /// <summary>Whether provider-reported costs are authoritative.</summary>
+        public required bool TrustProviderReportedCosts { get; set; }
+
+        /// <summary>Markup applied to provider-reported costs.</summary>
+        public required decimal ProviderCostMarkupMultiplier { get; set; }
 
 
         /// <summary>
         /// Whether this provider is enabled
         /// </summary>
-        public bool IsEnabled { get; set; } = true;
+        public required bool IsEnabled { get; set; }
 
 
         /// <summary>
         /// Date when the provider was created
         /// </summary>
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public required DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// Date when the provider was last updated
         /// </summary>
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public required DateTime UpdatedAt { get; set; }
     }
 }

@@ -1,418 +1,116 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
+import { HttpMethod } from '../client/HttpMethod';
 import {
-  FunctionConfigurationDto,
-  CreateFunctionConfigurationDto,
-  UpdateFunctionConfigurationDto,
-  FunctionCredentialDto,
-  CreateFunctionCredentialDto,
-  UpdateFunctionCredentialDto,
-  TestCredentialRequestDto,
-  TestCredentialResponseDto,
-  FunctionCostDto,
-  CreateFunctionCostDto,
-  UpdateFunctionCostDto,
-  FunctionExecutionDto,
-  FunctionProviderType,
-  FunctionPurpose,
-  ExecutionState,
+  type FunctionConfigurationDto, type CreateFunctionConfigurationDto, type UpdateFunctionConfigurationDto,
+  type FunctionCredentialDto, type CreateFunctionCredentialDto, type UpdateFunctionCredentialDto,
+  type TestCredentialRequestDto, type TestCredentialResponseDto, type FunctionCostDto,
+  type CreateFunctionCostDto, type UpdateFunctionCostDto, type FunctionExecutionDto,
+  FunctionProviderType, FunctionPurpose, ExecutionState,
 } from '../models/functions';
 import { ValidationError } from '../utils/errors';
 import { validateRequired, validateStringLength } from '../utils/validation';
 
-// ============================================================================
-// Validation Functions
-// ============================================================================
+type ConfigurationWire = components['schemas']['FunctionConfiguration'];
+type CredentialWire = components['schemas']['FunctionCredential'];
+type CostWire = components['schemas']['FunctionCostDto'];
+type CreateCostWire = components['schemas']['CreateFunctionCostDto'];
+type UpdateCostWire = components['schemas']['UpdateFunctionCostDto'];
+type ExecutionWire = components['schemas']['FunctionExecutionDto'];
+
+const configurationFromWire = (value: ConfigurationWire): FunctionConfigurationDto => value as FunctionConfigurationDto;
+const credentialFromWire = (value: CredentialWire): FunctionCredentialDto => value as FunctionCredentialDto;
+const executionFromWire = (value: ExecutionWire): FunctionExecutionDto => value as FunctionExecutionDto;
+const costFromWire = (value: CostWire): FunctionCostDto => ({
+  ...value,
+  baseCost: value.baseCost ?? undefined,
+  pricingConfiguration: value.pricingConfiguration ?? '',
+  expiryDate: value.expiryDate ?? undefined,
+  description: value.description ?? undefined,
+}) as FunctionCostDto;
 
 function validateCreateConfiguration(data: CreateFunctionConfigurationDto): void {
   validateRequired(data, ['configurationName', 'providerType', 'purpose']);
   validateStringLength(data.configurationName, 1, 255, 'configurationName');
-
-  if (data.timeoutSeconds !== undefined && data.timeoutSeconds < 1) {
-    throw new ValidationError('timeoutSeconds must be at least 1');
-  }
+  if (data.timeoutSeconds !== undefined && data.timeoutSeconds < 1) throw new ValidationError('timeoutSeconds must be at least 1');
 }
-
 function validateCreateCredential(data: CreateFunctionCredentialDto): void {
   validateRequired(data, ['providerType', 'keyName', 'apiKey']);
   validateStringLength(data.keyName, 1, 255, 'keyName');
   validateStringLength(data.apiKey, 1, 1000, 'apiKey');
 }
-
 function validateCreateCost(data: CreateFunctionCostDto): void {
   validateRequired(data, ['costName', 'providerType', 'pricingModel', 'pricingConfiguration']);
   validateStringLength(data.costName, 1, 255, 'costName');
-
-  // Validate pricing configuration is valid JSON
-  try {
-    JSON.parse(data.pricingConfiguration);
-  } catch {
-    throw new ValidationError('pricingConfiguration must be valid JSON');
-  }
+  try { JSON.parse(data.pricingConfiguration); } catch { throw new ValidationError('pricingConfiguration must be valid JSON'); }
 }
-
-// ============================================================================
-// Function Configurations Service
-// ============================================================================
 
 export class FetchFunctionConfigurationsService {
   constructor(private readonly client: FetchBaseApiClient) {}
-
   async list(config?: RequestConfig): Promise<FunctionConfigurationDto[]> {
-    return this.client['get']<FunctionConfigurationDto[]>(
-      ENDPOINTS.FUNCTION_CONFIGURATIONS.BASE,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const data = await this.client['executeContractRead']('/api/FunctionConfigurations', (c, o) => c.GET('/api/FunctionConfigurations', o), config);
+    return data.map(configurationFromWire);
   }
-
   async getById(id: number, config?: RequestConfig): Promise<FunctionConfigurationDto> {
-    return this.client['get']<FunctionConfigurationDto>(
-      ENDPOINTS.FUNCTION_CONFIGURATIONS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const data = await this.client['executeContractRead'](`/api/FunctionConfigurations/${id}`, (c, o) => c.GET('/api/FunctionConfigurations/{id}', { ...o, params: { path: { id } } }), config);
+    return configurationFromWire(data);
   }
-
   async getByProvider(providerType: FunctionProviderType | string, config?: RequestConfig): Promise<FunctionConfigurationDto[]> {
     const provider = typeof providerType === 'number' ? FunctionProviderType[providerType] : providerType;
-    return this.client['get']<FunctionConfigurationDto[]>(
-      ENDPOINTS.FUNCTION_CONFIGURATIONS.BY_PROVIDER(provider),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const data = await this.client['executeContractRead'](`/api/FunctionConfigurations/provider/${encodeURIComponent(provider)}`, (c, o) => c.GET('/api/FunctionConfigurations/provider/{providerType}', { ...o, params: { path: { providerType: provider } } }), config);
+    return data.map(configurationFromWire);
   }
-
   async getByPurpose(purpose: FunctionPurpose | string, config?: RequestConfig): Promise<FunctionConfigurationDto[]> {
-    const purposeStr = typeof purpose === 'number' ? FunctionPurpose[purpose] : purpose;
-    return this.client['get']<FunctionConfigurationDto[]>(
-      ENDPOINTS.FUNCTION_CONFIGURATIONS.BY_PURPOSE(purposeStr),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const value = typeof purpose === 'number' ? FunctionPurpose[purpose] : purpose;
+    const data = await this.client['executeContractRead'](`/api/FunctionConfigurations/purpose/${encodeURIComponent(value)}`, (c, o) => c.GET('/api/FunctionConfigurations/purpose/{purpose}', { ...o, params: { path: { purpose: value } } }), config);
+    return data.map(configurationFromWire);
   }
-
   async create(data: CreateFunctionConfigurationDto, config?: RequestConfig): Promise<FunctionConfigurationDto> {
     validateCreateConfiguration(data);
-    return this.client['post']<FunctionConfigurationDto, CreateFunctionConfigurationDto>(
-      ENDPOINTS.FUNCTION_CONFIGURATIONS.BASE,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const body = data as ConfigurationWire;
+    const result = await this.client['executeContractOperation']<ConfigurationWire, ConfigurationWire>('/api/FunctionConfigurations', HttpMethod.POST, (c, o) => c.POST('/api/FunctionConfigurations', { ...o, body }), config, body);
+    return configurationFromWire(result);
   }
-
   async update(id: number, data: UpdateFunctionConfigurationDto, config?: RequestConfig): Promise<FunctionConfigurationDto> {
-    return this.client['put']<FunctionConfigurationDto, UpdateFunctionConfigurationDto>(
-      ENDPOINTS.FUNCTION_CONFIGURATIONS.BY_ID(id),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const body = data as ConfigurationWire;
+    const result = await this.client['executeContractOperation']<ConfigurationWire, UpdateFunctionConfigurationDto>(`/api/FunctionConfigurations/${id}`, HttpMethod.PUT, (c, o) => c.PUT('/api/FunctionConfigurations/{id}', { ...o, params: { path: { id } }, body }), config, data);
+    return configurationFromWire(result);
   }
-
   async deleteById(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.FUNCTION_CONFIGURATIONS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractOperation'](`/api/FunctionConfigurations/${id}`, HttpMethod.DELETE, (c, o) => c.DELETE('/api/FunctionConfigurations/{id}', { ...o, params: { path: { id } } }), config);
   }
 }
-
-// ============================================================================
-// Function Credentials Service
-// ============================================================================
 
 export class FetchFunctionCredentialsService {
   constructor(private readonly client: FetchBaseApiClient) {}
-
-  async list(config?: RequestConfig): Promise<FunctionCredentialDto[]> {
-    return this.client['get']<FunctionCredentialDto[]>(
-      ENDPOINTS.FUNCTION_CREDENTIALS.BASE,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getById(id: number, config?: RequestConfig): Promise<FunctionCredentialDto> {
-    return this.client['get']<FunctionCredentialDto>(
-      ENDPOINTS.FUNCTION_CREDENTIALS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getByConfiguration(configId: number, config?: RequestConfig): Promise<FunctionCredentialDto[]> {
-    return this.client['get']<FunctionCredentialDto[]>(
-      ENDPOINTS.FUNCTION_CREDENTIALS.BY_CONFIGURATION(configId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async create(data: CreateFunctionCredentialDto, config?: RequestConfig): Promise<FunctionCredentialDto> {
-    validateCreateCredential(data);
-    return this.client['post']<FunctionCredentialDto, CreateFunctionCredentialDto>(
-      ENDPOINTS.FUNCTION_CREDENTIALS.BASE,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async update(id: number, data: UpdateFunctionCredentialDto, config?: RequestConfig): Promise<FunctionCredentialDto> {
-    return this.client['put']<FunctionCredentialDto, UpdateFunctionCredentialDto>(
-      ENDPOINTS.FUNCTION_CREDENTIALS.BY_ID(id),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async deleteById(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.FUNCTION_CREDENTIALS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async testCredential(data: TestCredentialRequestDto, config?: RequestConfig): Promise<TestCredentialResponseDto> {
-    return this.client['post']<TestCredentialResponseDto, TestCredentialRequestDto>(
-      ENDPOINTS.FUNCTION_CREDENTIALS.TEST,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
+  async list(config?: RequestConfig): Promise<FunctionCredentialDto[]> { const data = await this.client['executeContractRead']('/api/FunctionCredentials', (c, o) => c.GET('/api/FunctionCredentials', o), config); return data.map(credentialFromWire); }
+  async getById(id: number, config?: RequestConfig): Promise<FunctionCredentialDto> { const data = await this.client['executeContractRead'](`/api/FunctionCredentials/${id}`, (c, o) => c.GET('/api/FunctionCredentials/{id}', { ...o, params: { path: { id } } }), config); return credentialFromWire(data); }
+  async getByConfiguration(functionConfigurationId: number, config?: RequestConfig): Promise<FunctionCredentialDto[]> { const data = await this.client['executeContractRead'](`/api/FunctionCredentials/configuration/${functionConfigurationId}`, (c, o) => c.GET('/api/FunctionCredentials/configuration/{functionConfigurationId}', { ...o, params: { path: { functionConfigurationId } } }), config); return data.map(credentialFromWire); }
+  async create(data: CreateFunctionCredentialDto, config?: RequestConfig): Promise<FunctionCredentialDto> { validateCreateCredential(data); const body = data as CredentialWire; const result = await this.client['executeContractOperation']<CredentialWire, CreateFunctionCredentialDto>('/api/FunctionCredentials', HttpMethod.POST, (c, o) => c.POST('/api/FunctionCredentials', { ...o, body }), config, data); return credentialFromWire(result); }
+  async update(id: number, data: UpdateFunctionCredentialDto, config?: RequestConfig): Promise<FunctionCredentialDto> { const body = data as CredentialWire; const result = await this.client['executeContractOperation']<CredentialWire, UpdateFunctionCredentialDto>(`/api/FunctionCredentials/${id}`, HttpMethod.PUT, (c, o) => c.PUT('/api/FunctionCredentials/{id}', { ...o, params: { path: { id } }, body }), config, data); return credentialFromWire(result); }
+  async deleteById(id: number, config?: RequestConfig): Promise<void> { return this.client['executeContractOperation'](`/api/FunctionCredentials/${id}`, HttpMethod.DELETE, (c, o) => c.DELETE('/api/FunctionCredentials/{id}', { ...o, params: { path: { id } } }), config); }
+  async testCredential(data: TestCredentialRequestDto, config?: RequestConfig): Promise<TestCredentialResponseDto> { return this.client['executeContractOperation']('/api/FunctionCredentials/test', HttpMethod.POST, (c, o) => c.POST('/api/FunctionCredentials/test', { ...o, body: data }), config, data) as Promise<TestCredentialResponseDto>; }
 }
-
-// ============================================================================
-// Function Costs Service
-// ============================================================================
 
 export class FetchFunctionCostsService {
   constructor(private readonly client: FetchBaseApiClient) {}
-
-  async list(config?: RequestConfig): Promise<FunctionCostDto[]> {
-    return this.client['get']<FunctionCostDto[]>(
-      ENDPOINTS.FUNCTION_COSTS.BASE,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getById(id: number, config?: RequestConfig): Promise<FunctionCostDto> {
-    return this.client['get']<FunctionCostDto>(
-      ENDPOINTS.FUNCTION_COSTS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getByConfiguration(configId: number, config?: RequestConfig): Promise<FunctionCostDto> {
-    return this.client['get']<FunctionCostDto>(
-      ENDPOINTS.FUNCTION_COSTS.BY_CONFIGURATION(configId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async create(data: CreateFunctionCostDto, config?: RequestConfig): Promise<FunctionCostDto> {
-    validateCreateCost(data);
-    return this.client['post']<FunctionCostDto, CreateFunctionCostDto>(
-      ENDPOINTS.FUNCTION_COSTS.BASE,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async update(id: number, data: UpdateFunctionCostDto, config?: RequestConfig): Promise<FunctionCostDto> {
-    return this.client['put']<FunctionCostDto, UpdateFunctionCostDto>(
-      ENDPOINTS.FUNCTION_COSTS.BY_ID(id),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async deleteById(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.FUNCTION_COSTS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async clearCache(config?: RequestConfig): Promise<{ message: string }> {
-    return this.client['post']<{ message: string }, undefined>(
-      ENDPOINTS.FUNCTION_COSTS.CLEAR_CACHE,
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
+  async list(config?: RequestConfig): Promise<FunctionCostDto[]> { const data = await this.client['executeContractRead']('/api/FunctionCosts', (c, o) => c.GET('/api/FunctionCosts', o), config); return data.map(costFromWire); }
+  async getById(id: number, config?: RequestConfig): Promise<FunctionCostDto> { const data = await this.client['executeContractRead'](`/api/FunctionCosts/${id}`, (c, o) => c.GET('/api/FunctionCosts/{id}', { ...o, params: { path: { id } } }), config); return costFromWire(data); }
+  async getByConfiguration(functionConfigurationId: number, config?: RequestConfig): Promise<FunctionCostDto> { const data = await this.client['executeContractRead'](`/api/FunctionCosts/configuration/${functionConfigurationId}`, (c, o) => c.GET('/api/FunctionCosts/configuration/{functionConfigurationId}', { ...o, params: { path: { functionConfigurationId } } }), config); return costFromWire(data); }
+  async create(data: CreateFunctionCostDto, config?: RequestConfig): Promise<FunctionCostDto> { validateCreateCost(data); const body = data as CreateCostWire; const result = await this.client['executeContractOperation']<CostWire, CreateFunctionCostDto>('/api/FunctionCosts', HttpMethod.POST, (c, o) => c.POST('/api/FunctionCosts', { ...o, body }), config, data); return costFromWire(result); }
+  async update(id: number, data: UpdateFunctionCostDto, config?: RequestConfig): Promise<FunctionCostDto> { const body = data as UpdateCostWire; const result = await this.client['executeContractOperation']<CostWire, UpdateFunctionCostDto>(`/api/FunctionCosts/${id}`, HttpMethod.PUT, (c, o) => c.PUT('/api/FunctionCosts/{id}', { ...o, params: { path: { id } }, body }), config, data); return costFromWire(result); }
+  async deleteById(id: number, config?: RequestConfig): Promise<void> { return this.client['executeContractOperation'](`/api/FunctionCosts/${id}`, HttpMethod.DELETE, (c, o) => c.DELETE('/api/FunctionCosts/{id}', { ...o, params: { path: { id } } }), config); }
+  async clearCache(config?: RequestConfig): Promise<{ message: string }> { return this.client['executeContractOperation']('/api/FunctionCosts/cache/clear', HttpMethod.POST, (c, o) => c.POST('/api/FunctionCosts/cache/clear', o), config); }
 }
-
-// ============================================================================
-// Function Executions Service
-// ============================================================================
 
 export class FetchFunctionExecutionsService {
   constructor(private readonly client: FetchBaseApiClient) {}
-
-  async getById(id: string, config?: RequestConfig): Promise<FunctionExecutionDto> {
-    return this.client['get']<FunctionExecutionDto>(
-      ENDPOINTS.FUNCTION_EXECUTIONS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getByVirtualKey(
-    virtualKeyId: number,
-    config?: RequestConfig
-  ): Promise<FunctionExecutionDto[]> {
-    return this.client['get']<FunctionExecutionDto[]>(
-      ENDPOINTS.FUNCTION_EXECUTIONS.BY_VIRTUAL_KEY(virtualKeyId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getByConfiguration(
-    configId: number,
-    config?: RequestConfig
-  ): Promise<FunctionExecutionDto[]> {
-    return this.client['get']<FunctionExecutionDto[]>(
-      ENDPOINTS.FUNCTION_EXECUTIONS.BY_CONFIGURATION(configId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getByState(
-    state: ExecutionState | string,
-    config?: RequestConfig
-  ): Promise<FunctionExecutionDto[]> {
-    const stateStr = typeof state === 'number' ? ExecutionState[state] : state;
-
-    return this.client['get']<FunctionExecutionDto[]>(
-      ENDPOINTS.FUNCTION_EXECUTIONS.BY_STATE(stateStr),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getExpiredLeases(config?: RequestConfig): Promise<FunctionExecutionDto[]> {
-    return this.client['get']<FunctionExecutionDto[]>(
-      ENDPOINTS.FUNCTION_EXECUTIONS.EXPIRED_LEASES,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async getReadyForRetry(config?: RequestConfig): Promise<FunctionExecutionDto[]> {
-    return this.client['get']<FunctionExecutionDto[]>(
-      ENDPOINTS.FUNCTION_EXECUTIONS.READY_FOR_RETRY,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  async cleanup(olderThanDays: number = 30, config?: RequestConfig): Promise<{ deletedCount: number; message: string }> {
-    const queryParams = new URLSearchParams({ olderThanDays: String(olderThanDays) });
-    return this.client['delete']<{ deletedCount: number; message: string }>(
-      `${ENDPOINTS.FUNCTION_EXECUTIONS.CLEANUP}?${queryParams}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
+  async getById(id: string, config?: RequestConfig): Promise<FunctionExecutionDto> { const data = await this.client['executeContractRead'](`/api/FunctionExecutions/${encodeURIComponent(id)}`, (c, o) => c.GET('/api/FunctionExecutions/{id}', { ...o, params: { path: { id } } }), config); return executionFromWire(data); }
+  async getByVirtualKey(virtualKeyId: number, config?: RequestConfig): Promise<FunctionExecutionDto[]> { const data = await this.client['executeContractRead'](`/api/FunctionExecutions/virtualkey/${virtualKeyId}`, (c, o) => c.GET('/api/FunctionExecutions/virtualkey/{virtualKeyId}', { ...o, params: { path: { virtualKeyId } } }), config); return data.map(executionFromWire); }
+  async getByConfiguration(functionConfigurationId: number, config?: RequestConfig): Promise<FunctionExecutionDto[]> { const data = await this.client['executeContractRead'](`/api/FunctionExecutions/configuration/${functionConfigurationId}`, (c, o) => c.GET('/api/FunctionExecutions/configuration/{functionConfigurationId}', { ...o, params: { path: { functionConfigurationId } } }), config); return data.map(executionFromWire); }
+  async getByState(state: ExecutionState | string, config?: RequestConfig): Promise<FunctionExecutionDto[]> { const value = typeof state === 'number' ? ExecutionState[state] : state; const data = await this.client['executeContractRead'](`/api/FunctionExecutions/state/${encodeURIComponent(value)}`, (c, o) => c.GET('/api/FunctionExecutions/state/{state}', { ...o, params: { path: { state: value } } }), config); return data.map(executionFromWire); }
+  async getExpiredLeases(config?: RequestConfig): Promise<FunctionExecutionDto[]> { const data = await this.client['executeContractRead']('/api/FunctionExecutions/expired-leases', (c, o) => c.GET('/api/FunctionExecutions/expired-leases', o), config); return data.map(executionFromWire); }
+  async getReadyForRetry(config?: RequestConfig): Promise<FunctionExecutionDto[]> { const data = await this.client['executeContractRead']('/api/FunctionExecutions/ready-for-retry', (c, o) => c.GET('/api/FunctionExecutions/ready-for-retry', o), config); return data.map(executionFromWire); }
+  async cleanup(olderThanDays = 30, config?: RequestConfig): Promise<{ deletedCount: number; message: string }> { return this.client['executeContractOperation'](`/api/FunctionExecutions/cleanup?olderThanDays=${olderThanDays}`, HttpMethod.DELETE, (c, o) => c.DELETE('/api/FunctionExecutions/cleanup', { ...o, params: { query: { olderThanDays } } }), config) as Promise<{ deletedCount: number; message: string }>; }
 }

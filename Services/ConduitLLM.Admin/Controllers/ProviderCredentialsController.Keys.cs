@@ -16,26 +16,13 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="providerId">The ID of the provider</param>
         /// <returns>List of key credentials for the provider</returns>
         [HttpGet("{providerId}/keys")]
-        [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<ProviderKeyCredentialDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetProviderKeyCredentials(int providerId)
         {
             var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                 _keyRepository.GetByProviderIdPaginatedAsync, providerId);
-            var result = keys.Select(k => new
-            {
-                k.Id,
-                k.ProviderId,
-                k.KeyName,
-                k.IsPrimary,
-                k.IsEnabled,
-                k.ProviderAccountGroup,
-                ApiKey = k.ApiKey != null ? "***" + k.ApiKey.Substring(Math.Max(0, k.ApiKey.Length - 4)) : "***", // Mask API key
-                k.Organization,
-                k.BaseUrl,
-                k.CreatedAt,
-                k.UpdatedAt
-            });
+            var result = keys.Select(ToKeyDto);
 
             return Ok(result);
         }
@@ -47,7 +34,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="keyId">The ID of the key</param>
         /// <returns>The key credential</returns>
         [HttpGet("{providerId}/keys/{keyId}")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProviderKeyCredentialDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetProviderKeyCredential(int providerId, int keyId)
         {
@@ -59,20 +46,7 @@ namespace ConduitLLM.Admin.Controllers
                 return this.NotFoundEntity("Key credential", keyId);
             }
 
-            return Ok(new
-            {
-                key.Id,
-                key.ProviderId,
-                key.KeyName,
-                key.IsPrimary,
-                key.IsEnabled,
-                key.ProviderAccountGroup,
-                ApiKey = key.ApiKey != null ? "***" + key.ApiKey.Substring(Math.Max(0, key.ApiKey.Length - 4)) : "***", // Mask API key
-                key.Organization,
-                key.BaseUrl,
-                key.CreatedAt,
-                key.UpdatedAt
-            });
+            return Ok(ToKeyDto(key));
         }
 
         /// <summary>
@@ -82,7 +56,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="request">The request containing key credential details</param>
         /// <returns>The created key credential</returns>
         [HttpPost("{providerId}/keys")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ProviderKeyCredentialDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CreateProviderKeyCredential(int providerId, [FromBody] CreateKeyRequest request)
@@ -127,20 +101,7 @@ namespace ConduitLLM.Admin.Controllers
             return CreatedAtAction(
                 nameof(GetProviderKeyCredential),
                 new { providerId = providerId, keyId = createdKeyId },
-                new
-                {
-                    Id = createdKeyId,
-                    keyCredential.ProviderId,
-                    keyCredential.KeyName,
-                    keyCredential.IsPrimary,
-                    keyCredential.IsEnabled,
-                    keyCredential.ProviderAccountGroup,
-                    ApiKey = keyCredential.ApiKey != null ? "***" + keyCredential.ApiKey.Substring(Math.Max(0, keyCredential.ApiKey.Length - 4)) : "***",
-                    keyCredential.Organization,
-                    keyCredential.BaseUrl,
-                    keyCredential.CreatedAt,
-                    keyCredential.UpdatedAt
-                });
+                ToKeyDto(keyCredential));
         }
 
         /// <summary>
@@ -151,7 +112,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="request">The update request containing new key credential values</param>
         /// <returns>No content if successful</returns>
         [HttpPut("{providerId}/keys/{keyId}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ProviderKeyCredentialDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateProviderKeyCredential(int providerId, int keyId, [FromBody] UpdateKeyRequest request)
@@ -229,8 +190,23 @@ namespace ConduitLLM.Admin.Controllers
                 CorrelationId = Guid.NewGuid()
             }, "update provider key", new { ProviderId = providerId, KeyId = keyId });
 
-            return NoContent();
+            return Ok(ToKeyDto(key));
         }
+
+        private static ProviderKeyCredentialDto ToKeyDto(ProviderKeyCredential key) => new()
+        {
+            Id = key.Id,
+            ProviderId = key.ProviderId,
+            KeyName = key.KeyName,
+            IsPrimary = key.IsPrimary,
+            IsEnabled = key.IsEnabled,
+            ProviderAccountGroup = key.ProviderAccountGroup,
+            ApiKey = key.ApiKey is null ? "***" : "***" + key.ApiKey[^Math.Min(4, key.ApiKey.Length)..],
+            Organization = key.Organization,
+            BaseUrl = key.BaseUrl,
+            CreatedAt = key.CreatedAt,
+            UpdatedAt = key.UpdatedAt
+        };
 
         /// <summary>
         /// Deletes a key credential

@@ -1,5 +1,6 @@
 import { FilterOptions } from './common';
 import { VirtualKeyMetadata } from './metadata';
+import type { components } from '../generated/admin-api';
 
 export enum TransactionType {
   Credit = 1,
@@ -15,108 +16,23 @@ export enum ReferenceType {
   Initial = 4
 }
 
-export interface VirtualKeyGroupDto {
-  id: number;
-  externalGroupId?: string;
-  groupName: string;
-  balance: number;
-  lifetimeCreditsAdded: number;
-  lifetimeSpent: number;
-  createdAt: string;
-  updatedAt: string;
-  virtualKeyCount: number;
-}
-
-export interface CreateVirtualKeyGroupRequestDto {
-  groupName: string;
-  externalGroupId?: string;
-  initialBalance?: number;
-}
-
-export interface UpdateVirtualKeyGroupRequestDto {
-  groupName?: string;
-  externalGroupId?: string;
-}
-
-export interface AdjustBalanceDto {
-  amount: number;
-  description?: string;
-}
-
-export interface VirtualKeyGroupTransactionDto {
-  id: number;
-  virtualKeyGroupId: number;
-  transactionType: TransactionType;
-  amount: number;
-  balanceAfter: number;
-  description?: string;
-  referenceId?: string;
-  referenceType: ReferenceType;
-  initiatedBy: string;
-  initiatedByUserId?: string;
-  createdAt: string;
-}
+export type VirtualKeyGroupDto = components['schemas']['VirtualKeyGroupDto'];
+export type CreateVirtualKeyGroupRequestDto = components['schemas']['CreateVirtualKeyGroupRequestDto'];
+export type UpdateVirtualKeyGroupRequestDto = components['schemas']['UpdateVirtualKeyGroupRequestDto'];
+export type AdjustBalanceDto = components['schemas']['AdjustBalanceDto'];
+export type VirtualKeyGroupTransactionDto = components['schemas']['VirtualKeyGroupTransactionDto'];
 
 export interface TransactionHistoryParams {
   page?: number;
   pageSize?: number;
 }
 
-export interface VirtualKeyDto {
-  id: number;
-  keyName: string;
-  keyPrefix?: string;
-  allowedModels?: string;
-  virtualKeyGroupId: number;
-  isEnabled: boolean;
-  expiresAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  metadata?: string;
-  rateLimitRpm?: number;
-  rateLimitRpd?: number;
-  description?: string;
-}
-
-export interface CreateVirtualKeyRequest {
-  keyName: string;
-  virtualKeyGroupId: number;
-  allowedModels?: string;
-  expiresAt?: string;
-  metadata?: string;
-  rateLimitRpm?: number;
-  rateLimitRpd?: number;
-  description?: string;
-}
-
-export interface CreateVirtualKeyResponse {
-  virtualKey: string;
-  keyInfo: VirtualKeyDto;
-}
-
-export interface UpdateVirtualKeyRequest {
-  keyName?: string;
-  allowedModels?: string;
-  isEnabled?: boolean;
-  expiresAt?: string;
-  metadata?: string;
-  rateLimitRpm?: number;
-  rateLimitRpd?: number;
-  description?: string;
-}
-
-export interface VirtualKeyValidationRequest {
-  key: string;
-}
-
-// Reconciled to wire shape — issue #1038 (reason -> errorMessage; allowedModels is a string; dropped client-only fields)
-export interface VirtualKeyValidationResult {
-  isValid?: boolean;
-  virtualKeyId?: number;
-  keyName?: string;
-  allowedModels?: string;
-  errorMessage?: string;
-}
+export type VirtualKeyDto = components['schemas']['VirtualKeyDto'];
+export type CreateVirtualKeyRequest = components['schemas']['CreateVirtualKeyRequestDto'];
+export type CreateVirtualKeyResponse = components['schemas']['CreateVirtualKeyResponseDto'];
+export type UpdateVirtualKeyRequest = components['schemas']['UpdateVirtualKeyRequestDto'];
+export type VirtualKeyValidationRequest = components['schemas']['ValidateVirtualKeyRequest'];
+export type VirtualKeyValidationResult = components['schemas']['VirtualKeyValidationResult'];
 
 // Note: Spend tracking is now handled at the VirtualKeyGroup level
 

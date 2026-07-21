@@ -7,7 +7,7 @@ export interface GlobalSettingDto {
   id: number;
   key: string;
   value: string;
-  description?: string;
+  description?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,13 +25,13 @@ export interface GlobalSettingCacheStats {
 export interface CreateGlobalSettingDto {
   key: string;
   value: string;
-  description?: string;
+  description?: string | null;
 }
 
 export interface UpdateGlobalSettingDto {
   id: number;
   value: string;
-  description?: string;
+  description?: string | null;
 }
 
 export interface UpdateGlobalSettingByKeyDto {

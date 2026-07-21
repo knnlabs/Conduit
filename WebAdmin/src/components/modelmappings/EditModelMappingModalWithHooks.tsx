@@ -99,8 +99,8 @@ export function EditModelMappingModal({
         modelProviderTypeAssociationId: mapping.modelProviderTypeAssociationId,
         priority: mapping.priority ?? 100,
         isEnabled: mapping.isEnabled,
-        notes: mapping.notes,
-        providerOptions: mapping.providerOptions,
+        notes: mapping.notes ?? undefined,
+        providerOptions: mapping.providerOptions ?? undefined,
       };
       
       updateForm(newFormValues);
@@ -119,8 +119,9 @@ export function EditModelMappingModal({
       modelAlias: values.modelAlias,
       providerId: parseInt(values.providerId, 10), // Send numeric ID directly
       providerModelId: values.providerModelId,
-      modelProviderTypeAssociationId: values.modelProviderTypeAssociationId,
+      modelProviderTypeAssociationId: values.modelProviderTypeAssociationId ?? mapping.modelProviderTypeAssociationId,
       priority: values.priority,
+      weight: mapping.weight,
       isEnabled: values.isEnabled,
       notes: values.notes,
       providerOptions: values.providerOptions?.trim() ? values.providerOptions : undefined,

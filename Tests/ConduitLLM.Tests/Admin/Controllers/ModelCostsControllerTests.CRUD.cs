@@ -105,39 +105,38 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Arrange
             var updateDto = new UpdateModelCostDto
             {
-                Id = 1,
                 CostName = "GPT-4 Updated Pricing",
                 InputCostPerMillionTokens = 20.00m,
                 OutputCostPerMillionTokens = 40.00m
             };
 
-            _mockService.Setup(x => x.UpdateModelCostAsync(It.IsAny<UpdateModelCostDto>()))
-                .ReturnsAsync(true);
+            _mockService.Setup(x => x.UpdateModelCostAsync(1, It.IsAny<UpdateModelCostDto>()))
+                .ReturnsAsync(new ModelCostDto { Id = 1, CostName = "GPT-4 Updated Pricing" });
 
             // Act
             var result = await _controller.UpdateModelCost(1, updateDto);
 
             // Assert
-            result.Should().BeOfType<NoContentResult>();
+            result.Should().BeOfType<OkObjectResult>();
         }
 
         [Fact]
-        public async Task UpdateModelCost_WithMismatchedIds_ShouldReturnBadRequest()
+        public async Task UpdateModelCost_UsesRouteId()
         {
             // Arrange
             var updateDto = new UpdateModelCostDto
             {
-                Id = 2,
                 CostName = "Model Pricing",
                 InputCostPerMillionTokens = 20.00m
             };
 
-            // Act
+            _mockService.Setup(x => x.UpdateModelCostAsync(1, updateDto))
+                .ReturnsAsync(new ModelCostDto { Id = 1, CostName = updateDto.CostName });
+
             var result = await _controller.UpdateModelCost(1, updateDto);
 
             // Assert
-            var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            badRequestResult.Value.Should().Be("ID in route must match ID in body");
+            result.Should().BeOfType<OkObjectResult>();
         }
 
         [Fact]
@@ -146,13 +145,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Arrange
             var updateDto = new UpdateModelCostDto
             {
-                Id = 999,
                 CostName = "Non-existent Model",
                 InputCostPerMillionTokens = 20.00m
             };
 
-            _mockService.Setup(x => x.UpdateModelCostAsync(It.IsAny<UpdateModelCostDto>()))
-                .ReturnsAsync(false);
+            _mockService.Setup(x => x.UpdateModelCostAsync(999, It.IsAny<UpdateModelCostDto>()))
+                .ReturnsAsync((ModelCostDto?)null);
 
             // Act
             var act = async () => await _controller.UpdateModelCost(999, updateDto);

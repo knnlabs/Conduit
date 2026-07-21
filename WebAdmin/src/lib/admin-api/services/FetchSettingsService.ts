@@ -1,6 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
+import { HttpMethod } from '../client/HttpMethod';
 import type {
   GlobalSettingDto,
   CreateGlobalSettingDto,
@@ -15,14 +15,6 @@ export interface SettingUpdate {
   value: unknown;
 }
 
-export interface SettingsListResponseDto {
-  items: GlobalSettingDto[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
 export interface SettingsDto {
   settings: GlobalSettingDto[];
   categories: string[];
@@ -30,7 +22,7 @@ export interface SettingsDto {
 }
 
 /**
- * Type-safe Settings service using native fetch
+ * Type-safe Settings service using the generated Admin contract.
  */
 export class FetchSettingsService {
   constructor(private readonly client: FetchBaseApiClient) {}
@@ -40,13 +32,10 @@ export class FetchSettingsService {
    */
   async getGlobalSettings(config?: RequestConfig): Promise<SettingsDto> {
     // Get all settings
-    const settings = await this.client['get']<GlobalSettingDto[]>(
-      ENDPOINTS.SETTINGS.GLOBAL,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    const settings = await this.client['executeContractRead'](
+      '/api/GlobalSettings',
+      (contractClient, options) => contractClient.GET('/api/GlobalSettings', options),
+      config,
     );
 
     // The API does not return category metadata, so no categories can be derived.
@@ -65,39 +54,16 @@ export class FetchSettingsService {
   }
 
   /**
-   * Get all global settings with pagination
-   */
-  async listGlobalSettings(
-    page: number = 1,
-    pageSize: number = 100,
-    config?: RequestConfig
-  ): Promise<SettingsListResponseDto> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-    });
-
-    return this.client['get']<SettingsListResponseDto>(
-      `${ENDPOINTS.SETTINGS.GLOBAL}?${params.toString()}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
    * Get a specific setting by key
    */
   async getGlobalSetting(key: string, config?: RequestConfig): Promise<GlobalSettingDto> {
-    return this.client['get']<GlobalSettingDto>(
-      ENDPOINTS.SETTINGS.GLOBAL_BY_KEY(key),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/GlobalSettings/by-key/${encodeURIComponent(key)}`,
+      (contractClient, options) => contractClient.GET('/api/GlobalSettings/by-key/{key}', {
+        ...options,
+        params: { path: { key } },
+      }),
+      config,
     );
   }
 
@@ -108,14 +74,15 @@ export class FetchSettingsService {
     data: CreateGlobalSettingDto,
     config?: RequestConfig
   ): Promise<GlobalSettingDto> {
-    return this.client['post']<GlobalSettingDto, CreateGlobalSettingDto>(
-      ENDPOINTS.SETTINGS.GLOBAL,
+    return this.client['executeContractOperation']<GlobalSettingDto, CreateGlobalSettingDto>(
+      '/api/GlobalSettings',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/GlobalSettings', {
+        ...options,
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -134,14 +101,15 @@ export class FetchSettingsService {
       description,
     };
 
-    return this.client['put']<void, UpdateGlobalSettingByKeyDto>(
-      ENDPOINTS.SETTINGS.GLOBAL_BY_KEY_SIMPLE,
+    return this.client['executeContractOperation']<void, UpdateGlobalSettingByKeyDto>(
+      '/api/GlobalSettings/by-key',
+      HttpMethod.PUT,
+      (contractClient, options) => contractClient.PUT('/api/GlobalSettings/by-key', {
+        ...options,
+        body: data,
+      }),
+      config,
       data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
     );
   }
 
@@ -149,13 +117,14 @@ export class FetchSettingsService {
    * Delete a global setting
    */
   async deleteGlobalSetting(key: string, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.SETTINGS.GLOBAL_BY_KEY(key),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      `/api/GlobalSettings/by-key/${encodeURIComponent(key)}`,
+      HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/api/GlobalSettings/by-key/{key}', {
+        ...options,
+        params: { path: { key } },
+      }),
+      config,
     );
   }
 
@@ -295,13 +264,10 @@ export class FetchSettingsService {
    * Get global settings cache statistics
    */
   async getCacheStats(config?: RequestConfig): Promise<GlobalSettingCacheStats> {
-    return this.client['get']<GlobalSettingCacheStats>(
-      ENDPOINTS.SETTINGS.CACHE_STATS,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      '/api/GlobalSettings/cache/stats',
+      (contractClient, options) => contractClient.GET('/api/GlobalSettings/cache/stats', options),
+      config,
     );
   }
 
@@ -309,14 +275,11 @@ export class FetchSettingsService {
    * Reload all global settings from database into cache
    */
   async reloadCache(config?: RequestConfig): Promise<void> {
-    return this.client['post']<void, void>(
-      ENDPOINTS.SETTINGS.CACHE_RELOAD,
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      '/api/GlobalSettings/cache/reload',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/GlobalSettings/cache/reload', options),
+      config,
     );
   }
 
@@ -324,14 +287,14 @@ export class FetchSettingsService {
    * Invalidate a specific cached setting
    */
   async invalidateSetting(key: string, config?: RequestConfig): Promise<void> {
-    return this.client['post']<void, void>(
-      ENDPOINTS.SETTINGS.CACHE_INVALIDATE(key),
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractOperation']<void>(
+      `/api/GlobalSettings/cache/invalidate/${encodeURIComponent(key)}`,
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/GlobalSettings/cache/invalidate/{key}', {
+        ...options,
+        params: { path: { key } },
+      }),
+      config,
     );
   }
 }

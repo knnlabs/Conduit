@@ -240,7 +240,7 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
                             fw={500}
                             c={transaction.amount >= 0 ? 'green' : 'red'}
                           >
-                            {(transaction.transactionType as number) === 1 || (transaction.transactionType as number) === 3 ? '+' : '-'}{formatters.currency(transaction.amount)}
+                            {transaction.transactionType === 1 || transaction.transactionType === 3 ? '+' : '-'}{formatters.currency(transaction.amount)}
                           </Text>
                         </Table.Td>
                         <Table.Td>

@@ -54,7 +54,6 @@ namespace ConduitLLM.Tests.Admin.Integration
             // Update with different mappings
             var updateDto = new UpdateModelCostDto
             {
-                Id = createdCost.Id,
                 CostName = "Updated Pricing",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
@@ -65,7 +64,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             var updateResult = await _controller.UpdateModelCost(createdCost.Id, updateDto);
 
             // Assert
-            updateResult.Should().BeOfType<NoContentResult>();
+            updateResult.Should().BeOfType<OkObjectResult>();
 
             // Verify updated mappings
             var updatedCost = await _modelCostRepository.GetByIdAsync(createdCost.Id);
@@ -102,7 +101,6 @@ namespace ConduitLLM.Tests.Admin.Integration
             // Update to remove all mappings
             var updateDto = new UpdateModelCostDto
             {
-                Id = createdCost.Id,
                 CostName = createdCost.CostName,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
@@ -113,7 +111,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             var updateResult = await _controller.UpdateModelCost(createdCost.Id, updateDto);
 
             // Assert
-            updateResult.Should().BeOfType<NoContentResult>();
+            updateResult.Should().BeOfType<OkObjectResult>();
 
             // Verify mappings removed
             using (var verifyContext = new ConduitDbContext(_dbContextOptions))

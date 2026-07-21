@@ -89,4 +89,3 @@ When adding new documentation:
 
 - [WebAdmin README](../README.md) - Main project documentation
 - [Conduit Documentation](https://github.com/nickna/Conduit/docs) - Platform documentation
-- [Gateway SDK Documentation](https://www.npmjs.com/package/@knn_labs/conduit-gateway-client) - External consumer SDK reference

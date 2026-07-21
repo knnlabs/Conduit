@@ -1,185 +1,70 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
-import type {
-  VirtualKeyGroupDto,
-  CreateVirtualKeyGroupRequestDto,
-  UpdateVirtualKeyGroupRequestDto,
-  AdjustBalanceDto,
-  VirtualKeyDto,
-  VirtualKeyGroupTransactionDto,
-  TransactionHistoryParams
-} from '../models/virtualKey';
-import type { PagedResult } from '../models/common-types';
-import {
-  balanceAdjustmentSchema,
-  parseCriticalResponse,
-} from '@/lib/api-transport/critical-response-validation';
+import { HttpMethod } from '../client/HttpMethod';
+import type { components, paths } from '../generated/admin-api';
+import type { TransactionHistoryParams } from '../models/virtualKey';
+import { balanceAdjustmentSchema, parseCriticalResponse } from '@/lib/api-transport/critical-response-validation';
 
-/**
- * Parameters for listing virtual key groups
- */
-export interface ListGroupsParams {
-  /** Page number (1-based, default: 1) */
-  page?: number;
-  /** Number of items per page (default: 50, max: 100) */
-  pageSize?: number;
-}
+type VirtualKeyGroupDto = components['schemas']['VirtualKeyGroupDto'];
+type CreateVirtualKeyGroupRequestDto = components['schemas']['CreateVirtualKeyGroupRequestDto'];
+type UpdateVirtualKeyGroupRequestDto = components['schemas']['UpdateVirtualKeyGroupRequestDto'];
+type AdjustBalanceDto = components['schemas']['AdjustBalanceDto'];
+type VirtualKeyDto = components['schemas']['VirtualKeyDto'];
+type PagedGroups = components['schemas']['PagedResultOfVirtualKeyGroupDto'];
+type PagedTransactions = components['schemas']['PagedResultOfVirtualKeyGroupTransactionDto'];
+type ListQuery = paths['/api/VirtualKeyGroups']['get']['parameters']['query'];
 
-/**
- * Type-safe Virtual Key Group service using the Admin contract transport.
- */
+export interface ListGroupsParams { page?: number; pageSize?: number }
+
 export class FetchVirtualKeyGroupService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
-  /**
-   * Get all virtual key groups with pagination
-   */
-  async list(params?: ListGroupsParams, config?: RequestConfig): Promise<PagedResult<VirtualKeyGroupDto>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) {
-      queryParams.append('page', params.page.toString());
-    }
-    if (params?.pageSize !== undefined) {
-      queryParams.append('pageSize', params.pageSize.toString());
-    }
-
-    const queryString = queryParams.toString();
-    const url = `${ENDPOINTS.VIRTUAL_KEY_GROUPS}${queryString ? `?${queryString}` : ''}`;
-
-    return this.client['get']<PagedResult<VirtualKeyGroupDto>>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async list(params?: ListGroupsParams, config?: RequestConfig): Promise<PagedGroups> {
+    const query: ListQuery = params;
+    const qs = new URLSearchParams(Object.entries(params ?? {}).map(([k, v]) => [k, String(v)])).toString();
+    return this.client['executeContractRead'](`/api/VirtualKeyGroups${qs ? `?${qs}` : ''}`,
+      (client, options) => client.GET('/api/VirtualKeyGroups', { ...options, params: { query } }), config);
   }
 
-  /**
-   * Get a specific virtual key group by ID
-   */
   async get(id: number, config?: RequestConfig): Promise<VirtualKeyGroupDto> {
-    return this.client['get']<VirtualKeyGroupDto>(
-      `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](`/api/VirtualKeyGroups/${id}`,
+      (client, options) => client.GET('/api/VirtualKeyGroups/{id}', { ...options, params: { path: { id } } }), config);
   }
 
-  /**
-   * Create a new virtual key group
-   */
   async create(data: CreateVirtualKeyGroupRequestDto, config?: RequestConfig): Promise<VirtualKeyGroupDto> {
-    const response = await this.client['post']<VirtualKeyGroupDto>(
-      ENDPOINTS.VIRTUAL_KEY_GROUPS,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-    return parseCriticalResponse(
-      balanceAdjustmentSchema,
-      response,
-      'Admin virtual-key-group creation',
-    ) as unknown as VirtualKeyGroupDto;
+    return this.client['executeContractOperation']('/api/VirtualKeyGroups', HttpMethod.POST,
+      (client, options) => client.POST('/api/VirtualKeyGroups', { ...options, body: data }), config, data);
   }
 
-  /**
-   * Update a virtual key group
-   */
   async update(id: number, data: UpdateVirtualKeyGroupRequestDto, config?: RequestConfig): Promise<void> {
-    await this.client['put'](
-      `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}`,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    await this.client['executeContractOperation'](`/api/VirtualKeyGroups/${id}`, HttpMethod.PUT,
+      (client, options) => client.PUT('/api/VirtualKeyGroups/{id}', { ...options, params: { path: { id } }, body: data }), config, data);
   }
 
-  /**
-   * Adjust the balance of a virtual key group
-   */
   async adjustBalance(id: number, data: AdjustBalanceDto, config?: RequestConfig): Promise<VirtualKeyGroupDto> {
-    const response = await this.client['post']<VirtualKeyGroupDto>(
-      `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}/adjust-balance`,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-    return parseCriticalResponse(
-      balanceAdjustmentSchema,
-      response,
-      'Admin virtual-key-group balance adjustment',
-    ) as unknown as VirtualKeyGroupDto;
+    const response = await this.client['executeContractOperation'](`/api/VirtualKeyGroups/${id}/adjust-balance`, HttpMethod.POST,
+      (client, options) => client.POST('/api/VirtualKeyGroups/{id}/adjust-balance', {
+        ...options, params: { path: { id } }, body: data,
+      }), config, data);
+    return parseCriticalResponse(balanceAdjustmentSchema, response, 'Admin virtual-key-group balance adjustment') as VirtualKeyGroupDto;
   }
 
-  /**
-   * Delete a virtual key group
-   */
   async delete(id: number, config?: RequestConfig): Promise<void> {
-    await this.client['delete'](
-      `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    await this.client['executeContractOperation'](`/api/VirtualKeyGroups/${id}`, HttpMethod.DELETE,
+      (client, options) => client.DELETE('/api/VirtualKeyGroups/{id}', { ...options, params: { path: { id } } }), config);
   }
 
-  /**
-   * Get virtual keys in a group
-   */
   async getKeys(id: number, config?: RequestConfig): Promise<VirtualKeyDto[]> {
-    return this.client['get']<VirtualKeyDto[]>(
-      `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}/keys`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](`/api/VirtualKeyGroups/${id}/keys`,
+      (client, options) => client.GET('/api/VirtualKeyGroups/{id}/keys', { ...options, params: { path: { id } } }), config);
   }
 
-  /**
-   * Get transaction history for a virtual key group (paginated)
-   */
-  async getTransactionHistory(
-    id: number,
-    params?: TransactionHistoryParams,
-    config?: RequestConfig
-  ): Promise<PagedResult<VirtualKeyGroupTransactionDto>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) {
-      queryParams.append('page', params.page.toString());
-    }
-    if (params?.pageSize !== undefined) {
-      queryParams.append('pageSize', params.pageSize.toString());
-    }
-
-    const queryString = queryParams.toString();
-    const url = `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}/transactions${queryString ? `?${queryString}` : ''}`;
-
-    return this.client['get']<PagedResult<VirtualKeyGroupTransactionDto>>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async getTransactionHistory(id: number, params?: TransactionHistoryParams, config?: RequestConfig): Promise<PagedTransactions> {
+    const query = params;
+    const qs = new URLSearchParams(Object.entries(params ?? {}).map(([k, v]) => [k, String(v)])).toString();
+    return this.client['executeContractRead'](`/api/VirtualKeyGroups/${id}/transactions${qs ? `?${qs}` : ''}`,
+      (client, options) => client.GET('/api/VirtualKeyGroups/{id}/transactions', {
+        ...options, params: { path: { id }, query },
+      }), config);
   }
 }

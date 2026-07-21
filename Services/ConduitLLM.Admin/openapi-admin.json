@@ -2951,9 +2951,28 @@
           "200": {
             "description": "List of all function configurations",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
                 }
               }
             }
@@ -3021,9 +3040,19 @@
           "201": {
             "description": "Created",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionConfiguration"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionConfiguration"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionConfiguration"
                 }
               }
             }
@@ -3104,9 +3133,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionConfiguration"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionConfiguration"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionConfiguration"
                 }
               }
             }
@@ -3206,9 +3245,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionConfiguration"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionConfiguration"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionConfiguration"
                 }
               }
             }
@@ -3382,9 +3431,28 @@
           "200": {
             "description": "List of function configurations for the specified provider",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
                 }
               }
             }
@@ -3444,9 +3512,28 @@
           "200": {
             "description": "List of function configurations for the specified purpose",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionConfiguration"
+                  }
                 }
               }
             }
@@ -3495,9 +3582,28 @@
           "200": {
             "description": "List of all function costs",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCostDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCostDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCostDto"
+                  }
                 }
               }
             }
@@ -3565,9 +3671,19 @@
           "201": {
             "description": "Created",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCostDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostDto"
                 }
               }
             }
@@ -3648,9 +3764,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCostDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostDto"
                 }
               }
             }
@@ -3750,9 +3876,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCostDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostDto"
                 }
               }
             }
@@ -3927,9 +4063,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCostDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostDto"
                 }
               }
             }
@@ -3998,9 +4144,19 @@
           "200": {
             "description": "Success message",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostCacheClearResultDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCostCacheClearResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCostCacheClearResultDto"
                 }
               }
             }
@@ -4049,9 +4205,28 @@
           "200": {
             "description": "List of all credentials",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCredential"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCredential"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCredential"
+                  }
                 }
               }
             }
@@ -4119,9 +4294,19 @@
           "201": {
             "description": "Created",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCredential"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCredential"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCredential"
                 }
               }
             }
@@ -4202,9 +4387,28 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCredential"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCredential"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionCredential"
+                  }
                 }
               }
             }
@@ -4285,9 +4489,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCredential"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCredential"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCredential"
                 }
               }
             }
@@ -4387,9 +4601,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCredential"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCredential"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCredential"
                 }
               }
             }
@@ -4573,9 +4797,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCredentialTestResultDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionCredentialTestResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCredentialTestResultDto"
                 }
               }
             }
@@ -4656,9 +4890,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionExecutionDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionExecutionDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionExecutionDto"
                 }
               }
             }
@@ -4739,9 +4983,28 @@
           "200": {
             "description": "List of executions",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
                 }
               }
             }
@@ -4802,9 +5065,28 @@
           "200": {
             "description": "List of executions",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
                 }
               }
             }
@@ -4864,9 +5146,28 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
                 }
               }
             }
@@ -4935,9 +5236,28 @@
           "200": {
             "description": "List of executions with expired leases",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
                 }
               }
             }
@@ -4986,9 +5306,28 @@
           "200": {
             "description": "List of executions ready for retry",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                  }
                 }
               }
             }
@@ -5049,9 +5388,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionExecutionCleanupResultDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionExecutionCleanupResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionExecutionCleanupResultDto"
                 }
               }
             }
@@ -9187,27 +9536,9 @@
         "tags": [
           "Model"
         ],
-        "summary": "Gets all models with their capabilities.\r\nSupports optional server-side pagination, search, and filtering.\r\nWhen page/pageSize are omitted, returns all models (backward compatible).",
+        "summary": "Gets all models with their capabilities.\r\nSupports optional search and filtering.",
         "operationId": "Model_GetAllModels",
         "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number (1-based). Required together with pageSize for pagination.",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "description": "Items per page (max 100). Required together with page for pagination.",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
           {
             "name": "search",
             "in": "query",
@@ -9235,7 +9566,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of all models, or paginated result when page/pageSize are provided",
+            "description": "List of all matching models",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9379,6 +9710,113 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Model/paged": {
+      "get": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Gets a paginated page of models with optional search and filtering.",
+        "operationId": "Model_GetPagedModels",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Items per page (max 100).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Optional search term for model name (case-insensitive partial match)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "capability",
+            "in": "query",
+            "description": "Optional capability filter: chat, vision, image, video, embeddings",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasProviders",
+            "in": "query",
+            "description": "Optional filter: true = only models with identifiers, false = without",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A paginated result of matching models",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfModelDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfModelDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfModelDto"
                 }
               }
             }
@@ -9961,17 +10399,26 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelIdentifierDto"
+                  }
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelIdentifierDto"
+                  }
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelIdentifierDto"
+                  }
                 }
               }
             }
@@ -10072,13 +10519,19 @@
             "description": "Created",
             "content": {
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedModelIdentifierDto"
+                }
               },
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedModelIdentifierDto"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedModelIdentifierDto"
+                }
               }
             }
           },
@@ -10200,17 +10653,26 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelProviderAvailabilityDto"
+                  }
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelProviderAvailabilityDto"
+                  }
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelProviderAvailabilityDto"
+                  }
                 }
               }
             }
@@ -10997,6 +11459,21 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "providerId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -11005,26 +11482,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelCostDto"
-                  }
+                  "$ref": "#/components/schemas/PagedResultOfModelCostDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelCostDto"
-                  }
+                  "$ref": "#/components/schemas/PagedResultOfModelCostDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelCostDto"
-                  }
+                  "$ref": "#/components/schemas/PagedResultOfModelCostDto"
                 }
               }
             }
@@ -11294,8 +11762,25 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCostDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCostDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCostDto"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",
@@ -11771,20 +12256,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int32"
+                  "$ref": "#/components/schemas/BulkImportResult"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int32"
+                  "$ref": "#/components/schemas/BulkImportResult"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int32"
+                  "$ref": "#/components/schemas/BulkImportResult"
                 }
               }
             }
@@ -12478,17 +12960,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ModelProviderMappingDto"
+                "$ref": "#/components/schemas/CreateModelProviderMappingDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ModelProviderMappingDto"
+                "$ref": "#/components/schemas/CreateModelProviderMappingDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ModelProviderMappingDto"
+                "$ref": "#/components/schemas/CreateModelProviderMappingDto"
               }
             }
           },
@@ -12703,17 +13185,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ModelProviderMappingDto"
+                "$ref": "#/components/schemas/UpdateModelProviderMappingDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ModelProviderMappingDto"
+                "$ref": "#/components/schemas/UpdateModelProviderMappingDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ModelProviderMappingDto"
+                "$ref": "#/components/schemas/UpdateModelProviderMappingDto"
               }
             }
           },
@@ -12954,7 +13436,7 @@
               "schema": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/CreateModelProviderMappingDto"
                 }
               }
             },
@@ -12962,7 +13444,7 @@
               "schema": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/CreateModelProviderMappingDto"
                 }
               }
             },
@@ -12970,7 +13452,7 @@
               "schema": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/CreateModelProviderMappingDto"
                 }
               }
             }
@@ -15762,17 +16244,26 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                  }
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                  }
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                  }
                 }
               }
             }
@@ -15873,13 +16364,19 @@
             "description": "Created",
             "content": {
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
               },
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
               }
             }
           },
@@ -15990,13 +16487,19 @@
             "description": "OK",
             "content": {
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
               },
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
               }
             }
           },
@@ -16102,8 +16605,25 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyCredentialDto"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",
@@ -16403,17 +16923,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResultOfObject"
+                  "$ref": "#/components/schemas/PagedResultOfProviderDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResultOfObject"
+                  "$ref": "#/components/schemas/PagedResultOfProviderDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResultOfObject"
+                  "$ref": "#/components/schemas/PagedResultOfProviderDto"
                 }
               }
             }
@@ -16481,13 +17001,19 @@
             "description": "Created",
             "content": {
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
               },
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
               }
             }
           },
@@ -16568,13 +17094,19 @@
             "description": "OK",
             "content": {
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
               },
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
               }
             }
           },
@@ -16670,8 +17202,25 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDto"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",
@@ -17332,17 +17881,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -17446,17 +17995,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -17728,17 +18277,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -17829,9 +18378,28 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DriftItemDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DriftItemDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DriftItemDto"
+                  }
                 }
               }
             }
@@ -17891,9 +18459,39 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriftItemDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DriftItemDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriftItemDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -17953,9 +18551,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriftActionResultDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DriftActionResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriftActionResultDto"
                 }
               }
             }
@@ -18015,9 +18623,19 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriftActionResultDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DriftActionResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriftActionResultDto"
                 }
               }
             }
@@ -18086,9 +18704,39 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDriftActionResponse"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/BulkDriftActionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDriftActionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -18157,9 +18805,39 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDriftActionResponse"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/BulkDriftActionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDriftActionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -18208,9 +18886,39 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSyncRunDto"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProviderSyncRunDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSyncRunDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -18279,9 +18987,28 @@
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderSyncRunDto"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderSyncRunDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderSyncRunDto"
+                  }
                 }
               }
             }
@@ -21927,6 +22654,9 @@
         "description": "Access control compliance details."
       },
       "AdjustBalanceDto": {
+        "required": [
+          "amount"
+        ],
         "type": "object",
         "properties": {
           "amount": {
@@ -22108,6 +22838,30 @@
           }
         },
         "description": "Application identity information."
+      },
+      "AvailableProviderDto": {
+        "required": [
+          "providerId",
+          "providerName",
+          "providerType"
+        ],
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "integer",
+            "description": "Gets or sets the provider instance ID.",
+            "format": "int32"
+          },
+          "providerName": {
+            "type": "string",
+            "description": "Gets or sets the provider instance display name."
+          },
+          "providerType": {
+            "type": "string",
+            "description": "Gets or sets the provider type name."
+          }
+        },
+        "description": "A configured provider instance that can serve a model identifier."
       },
       "BillingAnomaly": {
         "type": "object",
@@ -22449,6 +23203,13 @@
         }
       },
       "BulkDeleteResult": {
+        "required": [
+          "deletedIds",
+          "errors",
+          "totalProcessed",
+          "successCount",
+          "failureCount"
+        ],
         "type": "object",
         "properties": {
           "deletedIds": {
@@ -22485,6 +23246,9 @@
         "description": "Result of a bulk delete operation"
       },
       "BulkDriftActionRequest": {
+        "required": [
+          "ids"
+        ],
         "type": "object",
         "properties": {
           "ids": {
@@ -22497,7 +23261,37 @@
         },
         "description": "Request body for bulk apply/dismiss."
       },
+      "BulkDriftActionResponse": {
+        "required": [
+          "succeededCount",
+          "failedCount",
+          "results"
+        ],
+        "type": "object",
+        "properties": {
+          "succeededCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DriftActionResultDto"
+            }
+          }
+        },
+        "description": "Partial-success response for bulk apply/dismiss."
+      },
       "BulkImportResult": {
+        "required": [
+          "successCount",
+          "failureCount",
+          "errors"
+        ],
         "type": "object",
         "properties": {
           "successCount": {
@@ -22517,6 +23311,13 @@
         }
       },
       "BulkMappingResult": {
+        "required": [
+          "created",
+          "errors",
+          "totalProcessed",
+          "successCount",
+          "failureCount"
+        ],
         "type": "object",
         "properties": {
           "created": {
@@ -22552,6 +23353,13 @@
         "description": "Result of a bulk mapping operation"
       },
       "BulkUpdateResult": {
+        "required": [
+          "updated",
+          "errors",
+          "totalProcessed",
+          "successCount",
+          "failureCount"
+        ],
         "type": "object",
         "properties": {
           "updated": {
@@ -22587,6 +23395,14 @@
         "description": "Result of a bulk update operation"
       },
       "BundledModelCatalogImportResult": {
+        "required": [
+          "providersProcessed",
+          "modelsDiscovered",
+          "created",
+          "skippedExistingIdentifiers",
+          "conflicts",
+          "providers"
+        ],
         "type": "object",
         "properties": {
           "providersProcessed": {
@@ -22640,6 +23456,13 @@
         }
       },
       "CatalogImportCounts": {
+        "required": [
+          "authors",
+          "series",
+          "models",
+          "costs",
+          "identifiers"
+        ],
         "type": "object",
         "properties": {
           "authors": {
@@ -22697,6 +23520,10 @@
         "description": "Represents the result of a media cleanup operation."
       },
       "ClearErrorsRequest": {
+        "required": [
+          "reenableKey",
+          "confirmReenable"
+        ],
         "type": "object",
         "properties": {
           "reenableKey": {
@@ -22718,6 +23545,11 @@
         "description": "Request DTO for clearing errors and re-enabling a key"
       },
       "ClearKeyErrorsResponseDto": {
+        "required": [
+          "message",
+          "keyId",
+          "reenabled"
+        ],
         "type": "object",
         "properties": {
           "message": {
@@ -22900,6 +23732,74 @@
             }
           }
         }
+      },
+      "CreatedModelIdentifierDto": {
+        "required": [
+          "id",
+          "identifier",
+          "provider",
+          "isPrimary",
+          "maxInputTokens",
+          "maxOutputTokens",
+          "speedScore",
+          "qualityScore",
+          "providerVariation"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "maxInputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxOutputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "speedScore": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "qualityScore": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "providerVariation": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "DTO returned after creating a model identifier."
       },
       "CreateFunctionCostDto": {
         "required": [
@@ -23422,6 +24322,56 @@
         },
         "description": "DTO for creating a model identifier"
       },
+      "CreateModelProviderMappingDto": {
+        "required": [
+          "modelAlias",
+          "providerModelId",
+          "providerId",
+          "modelProviderTypeAssociationId"
+        ],
+        "type": "object",
+        "properties": {
+          "modelAlias": {
+            "type": "string"
+          },
+          "providerModelId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelProviderTypeAssociationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weight": {
+            "maximum": 2,
+            "minimum": 0.1,
+            "type": "number",
+            "format": "double"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerOptions": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "CreateModelSeriesDto": {
         "type": "object",
         "properties": {
@@ -23639,6 +24589,10 @@
         }
       },
       "CreateVirtualKeyResponseDto": {
+        "required": [
+          "virtualKey",
+          "keyInfo"
+        ],
         "type": "object",
         "properties": {
           "virtualKey": {
@@ -23868,6 +24822,10 @@
         }
       },
       "DisableKeyResponseDto": {
+        "required": [
+          "message",
+          "keyId"
+        ],
         "type": "object",
         "properties": {
           "message": {
@@ -23905,6 +24863,113 @@
             "type": "object"
           }
         }
+      },
+      "DriftActionResultDto": {
+        "required": [
+          "id",
+          "success",
+          "stale",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "True when the item was rejected because Conduit's current values changed since detection."
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "Result of applying or dismissing a single drift item."
+      },
+      "DriftItemDto": {
+        "required": [
+          "id",
+          "modelProviderMappingId",
+          "modelAlias",
+          "providerId",
+          "providerName",
+          "openRouterModelId",
+          "driftType",
+          "status",
+          "currentValuesJson",
+          "proposedValuesJson",
+          "firstDetectedAt",
+          "lastDetectedAt",
+          "resolvedAt",
+          "resolvedBy"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelProviderMappingId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelAlias": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "openRouterModelId": {
+            "type": "string"
+          },
+          "driftType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "currentValuesJson": {
+            "type": "string",
+            "description": "Conduit's current values at detection time (JSON; shape depends on DriftType)."
+          },
+          "proposedValuesJson": {
+            "type": "string",
+            "description": "The provider's proposed values (JSON; shape depends on DriftType)."
+          },
+          "firstDetectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastDetectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "resolvedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "A drift item surfaced to the admin review UI."
       },
       "EntityTagHeaderValue": {
         "type": "object",
@@ -23956,6 +25021,16 @@
         }
       },
       "ErrorStatisticsDto": {
+        "required": [
+          "totalErrors",
+          "fatalErrors",
+          "warnings",
+          "disabledKeys",
+          "errorsByType",
+          "errorsByProvider",
+          "timeWindow",
+          "generatedAt"
+        ],
         "type": "object",
         "properties": {
           "totalErrors": {
@@ -24010,11 +25085,22 @@
       "ExecutionMode": {
         "type": "integer"
       },
+      "ExecutionState": {
+        "type": "integer"
+      },
       "ExportFormat": {
         "type": "integer",
         "description": "Export format options"
       },
       "FatalErrorDto": {
+        "required": [
+          "errorType",
+          "count",
+          "firstSeen",
+          "lastSeen",
+          "lastErrorMessage",
+          "lastStatusCode"
+        ],
         "type": "object",
         "properties": {
           "errorType": {
@@ -24221,6 +25307,128 @@
           }
         }
       },
+      "FunctionCostCacheClearResultDto": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "description": "Result returned after clearing the function-cost cache."
+      },
+      "FunctionCostDto": {
+        "required": [
+          "costName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "costName": {
+            "type": "string"
+          },
+          "providerType": {
+            "$ref": "#/components/schemas/FunctionProviderType"
+          },
+          "purpose": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FunctionPurpose"
+              }
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "baseCost": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "pricingModel": {
+            "$ref": "#/components/schemas/FunctionPricingModel"
+          },
+          "costPerExecution": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "costPerResult": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "costPerToken": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "costPerMinute": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "tieredPricing": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pricingConfiguration": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "FunctionCredential": {
         "required": [
           "providerType",
@@ -24287,6 +25495,178 @@
           }
         }
       },
+      "FunctionCredentialTestResultDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "details": { },
+          "durationMs": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "description": "Result returned after testing a function credential."
+      },
+      "FunctionExecutionCleanupResultDto": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "deletedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "description": "Result returned after cleaning up old function executions."
+      },
+      "FunctionExecutionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "functionConfigurationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "virtualKeyId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ExecutionState"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "duration": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "requestJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "responseJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estimatedCost": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "actualCost": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "costCalculationDetails": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "retryCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextRetryAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "leasedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "leaseExpiryTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "webhookUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "webhookDelivered": {
+            "type": "boolean"
+          },
+          "progressPercentage": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "statusMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "FunctionPricingModel": {
         "type": "integer"
       },
@@ -24297,6 +25677,15 @@
         "type": "integer"
       },
       "GlobalSettingCacheStatsDto": {
+        "required": [
+          "cacheSize",
+          "cacheHits",
+          "cacheMisses",
+          "invalidations",
+          "hitRate",
+          "lastLoadTime",
+          "cachedKeys"
+        ],
         "type": "object",
         "properties": {
           "cacheSize": {
@@ -24334,7 +25723,11 @@
       "GlobalSettingDto": {
         "required": [
           "key",
-          "value"
+          "value",
+          "id",
+          "description",
+          "createdAt",
+          "updatedAt"
         ],
         "type": "object",
         "properties": {
@@ -24600,6 +25993,9 @@
         "description": "Number of incidents of a given type."
       },
       "IpCheckResult": {
+        "required": [
+          "isAllowed"
+        ],
         "type": "object",
         "properties": {
           "isAllowed": {
@@ -24616,7 +26012,12 @@
       "IpFilterDto": {
         "required": [
           "filterType",
-          "ipAddressOrCidr"
+          "ipAddressOrCidr",
+          "id",
+          "name",
+          "isEnabled",
+          "createdAt",
+          "updatedAt"
         ],
         "type": "object",
         "properties": {
@@ -24754,6 +26155,15 @@
         }
       },
       "IpFilterSettingsDto": {
+        "required": [
+          "isEnabled",
+          "defaultAllow",
+          "bypassForAdminUi",
+          "excludedEndpoints",
+          "filterMode",
+          "whitelistFilters",
+          "blacklistFilters"
+        ],
         "type": "object",
         "properties": {
           "isEnabled": {
@@ -24789,6 +26199,14 @@
         }
       },
       "KeyErrorDetailsDto": {
+        "required": [
+          "keyId",
+          "keyName",
+          "isDisabled",
+          "disabledAt",
+          "fatalError",
+          "recentWarnings"
+        ],
         "type": "object",
         "properties": {
           "keyId": {
@@ -24797,7 +26215,10 @@
             "format": "int32"
           },
           "keyName": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "description": "Key name for display"
           },
           "isDisabled": {
@@ -25677,6 +27098,20 @@
         "description": "Data transfer object representing an AI model author or organization."
       },
       "ModelCapabilitiesDto": {
+        "required": [
+          "supportsVision",
+          "supportsImageGeneration",
+          "supportsVideoGeneration",
+          "supportsEmbeddings",
+          "supportsSpeechToText",
+          "supportsTextToSpeech",
+          "supportsRerank",
+          "supportsChat",
+          "supportsFunctionCalling",
+          "supportsStreaming",
+          "maxInputTokens",
+          "maxOutputTokens"
+        ],
         "type": "object",
         "properties": {
           "supportsVision": {
@@ -25788,7 +27223,28 @@
         "required": [
           "costName",
           "pricingModel",
-          "modelType"
+          "modelType",
+          "id",
+          "pricingConfiguration",
+          "associatedModelAliases",
+          "modelProviderTypeAssociationIds",
+          "inputCostPerMillionTokens",
+          "outputCostPerMillionTokens",
+          "embeddingCostPerMillionTokens",
+          "createdAt",
+          "updatedAt",
+          "isActive",
+          "effectiveDate",
+          "expiryDate",
+          "description",
+          "priority",
+          "batchProcessingMultiplier",
+          "supportsBatchProcessing",
+          "cachedInputCostPerMillionTokens",
+          "cachedInputWriteCostPerMillionTokens",
+          "costPerSearchUnit",
+          "audioCostPerMinute",
+          "audioCostPerThousandCharacters"
         ],
         "type": "object",
         "properties": {
@@ -25813,6 +27269,13 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "modelProviderTypeAssociationIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
             }
           },
           "inputCostPerMillionTokens": {
@@ -25917,6 +27380,13 @@
         }
       },
       "ModelCostOverviewDto": {
+        "required": [
+          "model",
+          "requestCount",
+          "totalCost",
+          "inputTokens",
+          "outputTokens"
+        ],
         "type": "object",
         "properties": {
           "model": {
@@ -26063,6 +27533,12 @@
         "description": "Data transfer object representing a canonical AI model in the system."
       },
       "ModelIdentifierDto": {
+        "required": [
+          "id",
+          "identifier",
+          "provider",
+          "isPrimary"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -26136,12 +27612,103 @@
         },
         "description": "Lightweight DTO for a model's provider type association (identifier)."
       },
+      "ModelProviderAvailabilityDto": {
+        "required": [
+          "associationId",
+          "identifier",
+          "provider",
+          "providerVariation",
+          "maxInputTokens",
+          "maxOutputTokens",
+          "speedScore",
+          "qualityScore",
+          "isPrimary",
+          "availableProviders"
+        ],
+        "type": "object",
+        "properties": {
+          "associationId": {
+            "type": "integer",
+            "description": "Gets or sets the model-provider association ID.",
+            "format": "int32"
+          },
+          "identifier": {
+            "type": "string",
+            "description": "Gets or sets the provider-specific model identifier."
+          },
+          "provider": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Gets or sets the numeric provider type, or null when unassigned.",
+            "format": "int32"
+          },
+          "providerVariation": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Gets or sets the provider-specific variation label."
+          },
+          "maxInputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Gets or sets the provider-specific maximum input token count.",
+            "format": "int32"
+          },
+          "maxOutputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Gets or sets the provider-specific maximum output token count.",
+            "format": "int32"
+          },
+          "speedScore": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Gets or sets the relative speed score.",
+            "format": "double"
+          },
+          "qualityScore": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Gets or sets the relative quality score.",
+            "format": "double"
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "description": "Gets or sets whether this association is primary."
+          },
+          "availableProviders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailableProviderDto"
+            },
+            "description": "Gets or sets configured provider instances matching this association."
+          }
+        },
+        "description": "A model-provider association together with the configured provider instances that can serve it."
+      },
       "ModelProviderMappingDto": {
         "required": [
+          "id",
           "modelAlias",
           "providerModelId",
           "providerId",
-          "modelProviderTypeAssociationId"
+          "modelProviderTypeAssociationId",
+          "priority",
+          "weight",
+          "isEnabled",
+          "createdAt",
+          "updatedAt"
         ],
         "type": "object",
         "properties": {
@@ -26605,6 +28172,13 @@
         }
       },
       "PagedResultOfLogRequestDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "currentPage",
+          "pageSize",
+          "totalPages"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -26645,11 +28219,121 @@
           }
         }
       },
-      "PagedResultOfObject": {
+      "PagedResultOfModelCostDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "currentPage",
+          "pageSize",
+          "totalPages",
+          "hasPreviousPage",
+          "hasNextPage",
+          "page",
+          "totalItems"
+        ],
         "type": "object",
         "properties": {
           "items": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelCostDto"
+            }
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "currentPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfModelDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "currentPage",
+          "pageSize",
+          "totalPages"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelDto"
+            }
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "currentPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfProviderDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "currentPage",
+          "pageSize",
+          "totalPages"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderDto"
+            }
           },
           "totalCount": {
             "type": "integer",
@@ -26684,6 +28368,13 @@
         }
       },
       "PagedResultOfVirtualKeyGroupDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "currentPage",
+          "pageSize",
+          "totalPages"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -26725,6 +28416,13 @@
         }
       },
       "PagedResultOfVirtualKeyGroupTransactionDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "currentPage",
+          "pageSize",
+          "totalPages"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -27555,6 +29253,13 @@
         }
       },
       "ProviderCatalogImportResult": {
+        "required": [
+          "provider",
+          "modelsDiscovered",
+          "created",
+          "skippedExistingIdentifiers",
+          "conflicts"
+        ],
         "type": "object",
         "properties": {
           "provider": {
@@ -27602,7 +29307,73 @@
         },
         "description": "Request distribution statistics for a single model."
       },
+      "ProviderDto": {
+        "required": [
+          "id",
+          "providerType",
+          "providerName",
+          "keyCount",
+          "trustProviderReportedCosts",
+          "providerCostMarkupMultiplier",
+          "isEnabled",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerType": {
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "keyCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trustProviderReportedCosts": {
+            "type": "boolean"
+          },
+          "providerCostMarkupMultiplier": {
+            "type": "number",
+            "format": "double"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ProviderErrorDto": {
+        "required": [
+          "keyCredentialId",
+          "keyName",
+          "providerId",
+          "providerName",
+          "errorType",
+          "errorMessage",
+          "httpStatusCode",
+          "occurredAt",
+          "isFatal",
+          "modelName"
+        ],
         "type": "object",
         "properties": {
           "keyCredentialId": {
@@ -27665,6 +29436,16 @@
         "description": "DTO for individual provider error occurrence"
       },
       "ProviderErrorSummaryDto": {
+        "required": [
+          "providerId",
+          "providerName",
+          "totalErrors",
+          "fatalErrors",
+          "warnings",
+          "disabledKeyIds",
+          "lastError",
+          "disabledKeyCount"
+        ],
         "type": "object",
         "properties": {
           "providerId": {
@@ -27778,7 +29559,75 @@
           }
         }
       },
+      "ProviderKeyCredentialDto": {
+        "required": [
+          "id",
+          "providerId",
+          "providerAccountGroup",
+          "apiKey",
+          "isPrimary",
+          "isEnabled",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerAccountGroup": {
+            "type": "integer",
+            "format": "int16"
+          },
+          "apiKey": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "organization": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "keyName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ProviderReferenceDto": {
+        "required": [
+          "id",
+          "providerType",
+          "displayName",
+          "isEnabled"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -27795,6 +29644,76 @@
             "type": "boolean"
           }
         }
+      },
+      "ProviderSyncRunDto": {
+        "required": [
+          "id",
+          "providerType",
+          "startedAt",
+          "completedAt",
+          "status",
+          "triggeredBy",
+          "modelsFetched",
+          "mappingsChecked",
+          "itemsCreated",
+          "itemsUpdated",
+          "itemsAutoResolved",
+          "errorMessage"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerType": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "triggeredBy": {
+            "type": "string"
+          },
+          "modelsFetched": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mappingsChecked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "itemsCreated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "itemsUpdated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "itemsAutoResolved": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "A summary of a sync run for the run-history panel."
       },
       "ProviderToolDto": {
         "required": [
@@ -29504,10 +31423,6 @@
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
           "costName": {
             "maxLength": 255,
             "type": "string"
@@ -29809,6 +31724,59 @@
           }
         },
         "description": "DTO for updating a model identifier"
+      },
+      "UpdateModelProviderMappingDto": {
+        "required": [
+          "modelAlias",
+          "providerModelId",
+          "providerId",
+          "modelProviderTypeAssociationId",
+          "priority",
+          "weight",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "modelAlias": {
+            "type": "string"
+          },
+          "providerModelId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelProviderTypeAssociationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weight": {
+            "maximum": 2,
+            "minimum": 0.1,
+            "type": "number",
+            "format": "double"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerOptions": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "UpdateModelSeriesDto": {
         "type": "object",
@@ -30426,7 +32394,12 @@
       },
       "VirtualKeyDto": {
         "required": [
-          "keyName"
+          "id",
+          "keyName",
+          "virtualKeyGroupId",
+          "isEnabled",
+          "createdAt",
+          "updatedAt"
         ],
         "type": "object",
         "properties": {
@@ -30579,6 +32552,16 @@
         }
       },
       "VirtualKeyGroupDto": {
+        "required": [
+          "id",
+          "groupName",
+          "balance",
+          "lifetimeCreditsAdded",
+          "lifetimeSpent",
+          "createdAt",
+          "updatedAt",
+          "virtualKeyCount"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -30722,6 +32705,16 @@
         }
       },
       "VirtualKeyGroupTransactionDto": {
+        "required": [
+          "id",
+          "virtualKeyGroupId",
+          "transactionType",
+          "amount",
+          "balanceAfter",
+          "referenceType",
+          "initiatedBy",
+          "createdAt"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -31008,6 +33001,11 @@
         }
       },
       "WarningErrorDto": {
+        "required": [
+          "type",
+          "message",
+          "timestamp"
+        ],
         "type": "object",
         "properties": {
           "type": {

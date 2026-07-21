@@ -49,6 +49,9 @@ namespace ConduitLLM.Configuration.DTOs
         /// </remarks>
         public List<string> AssociatedModelAliases { get; set; } = new List<string>();
 
+        /// <summary>IDs of the model/provider associations that use this cost.</summary>
+        public List<int> ModelProviderTypeAssociationIds { get; set; } = new List<int>();
+
         /// <summary>
         /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>

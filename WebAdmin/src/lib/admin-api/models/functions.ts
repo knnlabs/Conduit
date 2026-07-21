@@ -1,5 +1,3 @@
-import { FilterOptions } from './common';
-
 /** Function provider type (e.g., Exa, Tavily) */
 export enum FunctionProviderType {
   Exa = 1,
@@ -54,10 +52,13 @@ export interface FunctionConfigurationDto {
   purpose: FunctionPurpose;
   description?: string;
   defaultExecutionMode: FunctionExecutionMode;
-  timeoutSeconds: number;
+  timeoutSeconds?: number | null;
+  cacheTtlMinutes?: number | null;
+  maxRetries?: number | null;
+  baseUrl?: string | null;
   isEnabled: boolean;
-  metadata?: string; // JSON
-  parameterSchema?: string; // JSON Schema
+  providerSettings?: string | null; // JSON
+  parameterSchema?: string | null; // JSON Schema
   createdAt: string;
   updatedAt: string;
 }
@@ -70,7 +71,7 @@ export interface CreateFunctionConfigurationDto {
   defaultExecutionMode?: FunctionExecutionMode; // Default: Synchronous
   timeoutSeconds?: number; // Default: 30
   isEnabled?: boolean; // Default: true
-  metadata?: string; // JSON
+  providerSettings?: string; // JSON
   parameterSchema?: string; // JSON Schema
 }
 
@@ -82,7 +83,7 @@ export interface UpdateFunctionConfigurationDto {
   defaultExecutionMode?: FunctionExecutionMode;
   timeoutSeconds?: number;
   isEnabled?: boolean;
-  metadata?: string; // JSON
+  providerSettings?: string; // JSON
   parameterSchema?: string; // JSON Schema
 }
 
@@ -93,8 +94,10 @@ export interface UpdateFunctionConfigurationDto {
 export interface FunctionCredentialDto {
   id: number;
   providerType: FunctionProviderType;
-  keyName: string;
-  apiKey: string;
+  keyName?: string | null;
+  apiKey?: string | null;
+  baseUrl?: string | null;
+  organization?: string | null;
   functionAccountGroup: number;
   isPrimary: boolean;
   isEnabled: boolean;
@@ -142,7 +145,7 @@ export interface FunctionCostDto {
   providerType: FunctionProviderType;
   purpose?: FunctionPurpose;
   pricingModel: FunctionPricingModel;
-  pricingConfiguration: string; // JSON
+  pricingConfiguration: string; // JSON, normalized from nullable wire value
   baseCost?: number;
   isActive: boolean;
   priority: number;
@@ -184,36 +187,6 @@ export interface UpdateFunctionCostDto {
 }
 
 // ============================================================================
-// Function Cost Mapping
-// ============================================================================
-
-export interface FunctionCostMappingDto {
-  id: number;
-  functionConfigurationId: number;
-  functionCostId: number;
-  effectiveDate: string;
-  expiryDate?: string;
-  createdAt: string;
-  updatedAt: string;
-  functionConfiguration?: FunctionConfigurationDto;
-  functionCost?: FunctionCostDto;
-}
-
-export interface CreateFunctionCostMappingDto {
-  functionConfigurationId: number;
-  functionCostId: number;
-  effectiveDate?: string; // Default: now
-  expiryDate?: string;
-}
-
-export interface UpdateFunctionCostMappingDto {
-  id: number;
-  functionCostId?: number;
-  effectiveDate?: string;
-  expiryDate?: string;
-}
-
-// ============================================================================
 // Function Execution
 // ============================================================================
 
@@ -223,7 +196,8 @@ export interface FunctionExecutionDto {
   virtualKeyId: number;
   state: ExecutionState;
   executionMode: FunctionExecutionMode;
-  requestJson: string; // JSON
+  requestedAt: string;
+  requestJson?: string | null; // JSON
   responseJson?: string; // JSON
   errorMessage?: string;
   estimatedCost?: number;
@@ -232,9 +206,15 @@ export interface FunctionExecutionDto {
   startedAt?: string;
   completedAt?: string;
   duration?: number; // TimeSpan in milliseconds
-  createdAt: string;
-  updatedAt: string;
-  functionConfiguration?: FunctionConfigurationDto;
+  retryCount: number;
+  nextRetryAt?: string | null;
+  leasedBy?: string | null;
+  leaseExpiryTime?: string | null;
+  version: number;
+  webhookUrl?: string | null;
+  webhookDelivered: boolean;
+  progressPercentage?: number | null;
+  statusMessage?: string | null;
 }
 
 // ============================================================================
@@ -338,64 +318,3 @@ export type FunctionPricingConfig =
   | ExaHybridPricingConfig
   | TavilySearchPricingConfig
   | PerplexityHybridPricingConfig;
-
-// ============================================================================
-// List Responses with Pagination
-// ============================================================================
-
-export interface FunctionConfigurationListResponse {
-  items: FunctionConfigurationDto[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface FunctionCredentialListResponse {
-  items: FunctionCredentialDto[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface FunctionCostListResponse {
-  items: FunctionCostDto[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface FunctionExecutionListResponse {
-  items: FunctionExecutionDto[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-// ============================================================================
-// Filter Options
-// ============================================================================
-
-export interface FunctionConfigurationFilters extends FilterOptions {
-  providerType?: FunctionProviderType;
-  purpose?: FunctionPurpose;
-  isEnabled?: boolean;
-}
-
-export interface FunctionCostFilters extends FilterOptions {
-  providerType?: FunctionProviderType;
-  purpose?: FunctionPurpose;
-  pricingModel?: FunctionPricingModel;
-  isActive?: boolean;
-}
-
-export interface FunctionExecutionFilters extends FilterOptions {
-  virtualKeyId?: number;
-  functionConfigurationId?: number;
-  state?: ExecutionState;
-  startDate?: string;
-  endDate?: string;
-}

@@ -46,7 +46,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// </summary>
         /// <param name="modelCost">The model cost to update</param>
         /// <returns>True if update was successful, false if the model cost was not found</returns>
-        Task<bool> UpdateModelCostAsync(UpdateModelCostDto modelCost);
+        Task<ModelCostDto?> UpdateModelCostAsync(int id, UpdateModelCostDto modelCost);
 
         /// <summary>
         /// Deletes a model cost
@@ -68,7 +68,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// </summary>
         /// <param name="modelCosts">The list of model costs to import</param>
         /// <returns>The number of model costs imported</returns>
-        Task<int> ImportModelCostsAsync(IEnumerable<CreateModelCostDto> modelCosts);
+        Task<BulkImportResult> ImportModelCostsAsync(IEnumerable<CreateModelCostDto> modelCosts);
 
         /// <summary>
         /// Exports model costs in the specified format

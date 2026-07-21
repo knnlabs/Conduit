@@ -26,6 +26,7 @@ export interface ModelCostDto {
   pricingModel: PricingModel; // The pricing model type
   pricingConfiguration?: string; // JSON configuration for polymorphic pricing
   associatedModelAliases: string[]; // Model aliases using this cost
+  modelProviderTypeAssociationIds: number[];
   inputCostPerMillionTokens: number; // Cost per million tokens in USD
   outputCostPerMillionTokens: number; // Cost per million tokens in USD
   embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
@@ -70,7 +71,6 @@ export interface CreateModelCostDto {
 
 // Matches the wire `UpdateModelCostDto` (SameKeys — modelType narrows wire string). See issue #1038.
 export interface UpdateModelCostDto {
-  id: number; // Required for update
   costName: string; // Required: User-friendly name
   pricingModel?: PricingModel;
   pricingConfiguration?: string; // JSON configuration for polymorphic pricing
@@ -139,29 +139,6 @@ export interface ModelCostHistory {
     expiryDate?: string;
     changeReason?: string;
   }[];
-}
-
-// Model Cost Mapping - Links costs to specific models
-export interface ModelCostMappingDto {
-  id: number;
-  modelCostId: number;
-  modelProviderMappingId: number;
-  isActive: boolean;
-  createdAt: string;
-  modelAlias?: string; // From ModelProviderMapping
-  providerModelId?: string; // From ModelProviderMapping
-  costName?: string; // Cost name for display
-}
-
-export interface CreateModelCostMappingDto {
-  modelCostId: number;
-  modelProviderMappingIds: number[]; // Can map multiple models at once
-  isActive?: boolean; // Default: true
-}
-
-export interface UpdateModelCostMappingDto {
-  modelCostId: number;
-  modelProviderMappingIds: number[]; // Replaces all existing mappings
 }
 
 export interface CostEstimate {

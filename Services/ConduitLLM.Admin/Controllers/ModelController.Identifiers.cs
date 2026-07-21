@@ -16,7 +16,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">The model ID</param>
         /// <returns>List of model identifiers showing which providers offer this model</returns>
         [HttpGet("{id}/identifiers")]
-        [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<ModelIdentifierDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetModelIdentifiers(int id)
         {
@@ -26,19 +26,19 @@ namespace ConduitLLM.Admin.Controllers
                 return this.NotFoundEntity("Model", id);
             }
 
-            var identifiers = model.Identifiers.Select(i => new
+            var identifiers = model.Identifiers.Select(i => new ModelIdentifierDto
             {
-                id = i.Id,
-                identifier = i.Identifier,
-                provider = (int?)i.Provider,
-                isPrimary = i.IsPrimary,
-                maxInputTokens = i.MaxInputTokens,
-                maxOutputTokens = i.MaxOutputTokens,
-                speedScore = i.SpeedScore,
-                qualityScore = i.QualityScore,
-                providerVariation = i.ProviderVariation,
-                modelCostId = i.ModelCostId
-            });
+                Id = i.Id,
+                Identifier = i.Identifier,
+                Provider = (int?)i.Provider,
+                IsPrimary = i.IsPrimary,
+                MaxInputTokens = i.MaxInputTokens,
+                MaxOutputTokens = i.MaxOutputTokens,
+                SpeedScore = i.SpeedScore,
+                QualityScore = i.QualityScore,
+                ProviderVariation = i.ProviderVariation,
+                ModelCostId = i.ModelCostId
+            }).ToList();
 
             return Ok(identifiers);
         }
@@ -50,7 +50,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">The model ID</param>
         /// <returns>List of associations with their available providers</returns>
         [HttpGet("{id}/available-providers")]
-        [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<ModelProviderAvailabilityDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetAvailableProviders(int id)
         {
@@ -64,7 +64,7 @@ namespace ConduitLLM.Admin.Controllers
                 _providerRepository.GetPaginatedAsync);
             var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
 
-            var result = new List<object>();
+            var result = new List<ModelProviderAvailabilityDto>();
 
             foreach (var association in model.Identifiers)
             {
@@ -84,23 +84,23 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (matchingProviders.Any())
                 {
-                    result.Add(new
+                    result.Add(new ModelProviderAvailabilityDto
                     {
-                        associationId = association.Id,
-                        identifier = association.Identifier,
-                        provider = (int?)association.Provider,
-                        providerVariation = association.ProviderVariation,
-                        maxInputTokens = association.MaxInputTokens,
-                        maxOutputTokens = association.MaxOutputTokens,
-                        speedScore = association.SpeedScore,
-                        qualityScore = association.QualityScore,
-                        isPrimary = association.IsPrimary,
-                        availableProviders = matchingProviders.Select(p => new
+                        AssociationId = association.Id,
+                        Identifier = association.Identifier,
+                        Provider = (int?)association.Provider,
+                        ProviderVariation = association.ProviderVariation,
+                        MaxInputTokens = association.MaxInputTokens,
+                        MaxOutputTokens = association.MaxOutputTokens,
+                        SpeedScore = association.SpeedScore,
+                        QualityScore = association.QualityScore,
+                        IsPrimary = association.IsPrimary,
+                        AvailableProviders = matchingProviders.Select(p => new AvailableProviderDto
                         {
-                            providerId = p.Id,
-                            providerName = p.ProviderName,
-                            providerType = p.ProviderType.ToString()
-                        })
+                            ProviderId = p.Id,
+                            ProviderName = p.ProviderName,
+                            ProviderType = p.ProviderType.ToString()
+                        }).ToList()
                     });
                 }
             }
@@ -115,7 +115,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dto">The identifier data</param>
         /// <returns>The created identifier</returns>
         [HttpPost("{id}/identifiers")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(CreatedModelIdentifierDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -160,17 +160,17 @@ namespace ConduitLLM.Admin.Controllers
             LogAdminAudit("Created", "ModelIdentifier", identifier.Id,
                 $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
 
-            return CreatedAtAction(nameof(GetModelIdentifiers), new { id }, new
+            return CreatedAtAction(nameof(GetModelIdentifiers), new { id }, new CreatedModelIdentifierDto
             {
-                id = identifier.Id,
-                identifier = identifier.Identifier,
-                provider = (int?)identifier.Provider,
-                isPrimary = identifier.IsPrimary,
-                maxInputTokens = identifier.MaxInputTokens,
-                maxOutputTokens = identifier.MaxOutputTokens,
-                speedScore = identifier.SpeedScore,
-                qualityScore = identifier.QualityScore,
-                providerVariation = identifier.ProviderVariation
+                Id = identifier.Id,
+                Identifier = identifier.Identifier,
+                Provider = (int?)identifier.Provider,
+                IsPrimary = identifier.IsPrimary,
+                MaxInputTokens = identifier.MaxInputTokens,
+                MaxOutputTokens = identifier.MaxOutputTokens,
+                SpeedScore = identifier.SpeedScore,
+                QualityScore = identifier.QualityScore,
+                ProviderVariation = identifier.ProviderVariation
             });
         }
 

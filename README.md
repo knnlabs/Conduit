@@ -31,17 +31,16 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **Text Generation**: Fully tested with OpenAI, Anthropic, and MiniMax providers
 - **Image Generation**: Complete implementation with manual testing across multiple providers  
 - **Video Generation**: Feature complete with provider integration
-- **SDKs**: Stable APIs for Node.js and other platforms
+- **Contracts**: Authoritative OpenAPI documents for Admin and Gateway integrations
 
 ### ⚠️ **In Development**
-- **Gateway API**: May evolve without backward compatibility - use its SDK or OpenAI-compatible clients
+- **Gateway API**: May evolve without backward compatibility - use OpenAI-compatible clients or its OpenAPI contract
 - **Admin API**: Integrate against the authoritative OpenAPI contract
 
 ### 💡 **Recommended Integration**
-```bash
-# Use the public Gateway SDK for enhanced Gateway features
-npm install @knn_labs/conduit-gateway-client
-```
+
+Use an OpenAI-compatible client against the Gateway, or generate a client from
+`Services/ConduitLLM.Gateway/openapi-gateway.json`.
 
 ## Key Features
 
@@ -49,7 +48,7 @@ npm install @knn_labs/conduit-gateway-client
   - ✅ **100% OpenAI compatible** - drop-in replacement for OpenAI API clients
   - ✅ **Extended with Conduit features** - optional enhanced events for reasoning, tool execution, and metrics
   - ✅ **Works with standard clients** - OpenAI SDKs and tools work without any modifications
-  - 📚 For enhanced features, use Conduit SDKs to access real-time tool execution, reasoning events, and performance metrics
+  - 📚 Conduit-specific streaming events are documented in the OpenAPI contract and streaming guides
 - **Multi-Provider Support**: Interact with various LLM providers through a single interface
 - **Model Routing & Mapping**: Define custom model aliases (e.g., `my-gpt4`) and map them to specific provider models (e.g., `openai/gpt-4`)
 - **Virtual API Key Management**: Create and manage Conduit-specific API keys (`condt_...`) with built-in spend tracking
@@ -444,52 +443,10 @@ response = client.chat.completions.create(
 )
 ```
 
-#### Enhanced Features with Conduit SDKs
+#### Enhanced Features
 
-For access to Conduit-specific features like real-time tool execution progress, reasoning events, and performance metrics, use the official Conduit SDKs:
-
-```typescript
-// Node.js/TypeScript example with Conduit SDK
-import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
-import {
-  isChatCompletionChunk,
-  isToolExecutingEvent,
-  isFinalMetrics
-} from '@knn_labs/conduit-gateway-client';
-
-const client = new ConduitCoreClient({
-  apiKey: 'condt_yourvirtualkey',
-  baseURL: 'http://localhost:5000'
-});
-
-const stream = await client.chat.create({
-  model: 'gpt-4',
-  messages: [{ role: 'user', content: 'What is the weather?' }],
-  stream: true,
-  function_configuration_ids: ['weather-functions']
-});
-
-for await (const event of stream) {
-  if (isChatCompletionChunk(event)) {
-    // Standard OpenAI content
-    const content = event.choices[0]?.delta?.content;
-  }
-  else if (isToolExecutingEvent(event)) {
-    // Conduit extension: real-time tool execution
-    console.log(`Executing ${event.function_name}...`);
-  }
-  else if (isFinalMetrics(event)) {
-    // Conduit extension: performance metrics
-    console.log(`Tokens: ${event.total_tokens}, Speed: ${event.tokens_per_second}`);
-  }
-}
-```
-
-**Key Differences:**
-- **OpenAI SDKs**: ✅ Full compatibility, ignores Conduit extensions
-- **Conduit SDKs**: ✅ Full compatibility + enhanced events (reasoning, tool execution, metrics)
-
-See [Streaming with Tools Guide](docs/api-guides/streaming-with-tools.md) for complete documentation.
+Conduit-specific streaming events such as tool execution progress, reasoning events, and performance
+metrics are documented in the [Streaming with Tools Guide](docs/api-guides/streaming-with-tools.md).
 
 
 ## Documentation
@@ -498,7 +455,7 @@ See the **[Documentation Hub](docs/README.md)** for the complete, organized docu
 
 | Area | Description |
 |------|-------------|
-| **[API Guides](docs/api-guides/)** | Gateway API, Admin API, SDK integration, function calling |
+| **[API Guides](docs/api-guides/)** | Gateway API, Admin API, contract integration, function calling |
 | **[Architecture](docs/architecture/)** | System design, provider system, real-time features |
 | **[Development](docs/development/)** | Contributing, API patterns, LLM client factory |
 | **[Operations](docs/operations/)** | Monitoring, scaling, runbooks, security |

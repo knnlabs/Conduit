@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ConduitLLM.Configuration.DTOs.VirtualKey
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// <summary>
         /// Unique identifier for the virtual key group
         /// </summary>
-        public int Id { get; set; }
+        [Required] public int Id { get; set; }
 
         /// <summary>
         /// External identifier for integration with external systems
@@ -18,36 +20,36 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// <summary>
         /// Human-readable name for the group
         /// </summary>
-        public string GroupName { get; set; } = string.Empty;
+        [Required] public string GroupName { get; set; } = string.Empty;
 
         /// <summary>
         /// Current balance available in the group (in USD)
         /// </summary>
-        public decimal Balance { get; set; }
+        [Required] public decimal Balance { get; set; }
 
         /// <summary>
         /// Total credits ever added to this group
         /// </summary>
-        public decimal LifetimeCreditsAdded { get; set; }
+        [Required] public decimal LifetimeCreditsAdded { get; set; }
 
         /// <summary>
         /// Total amount spent from this group
         /// </summary>
-        public decimal LifetimeSpent { get; set; }
+        [Required] public decimal LifetimeSpent { get; set; }
 
         /// <summary>
         /// Date and time when the group was created
         /// </summary>
-        public DateTime CreatedAt { get; set; }
+        [Required] public DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// Date and time when the group was last updated
         /// </summary>
-        public DateTime UpdatedAt { get; set; }
+        [Required] public DateTime UpdatedAt { get; set; }
 
         /// <summary>
         /// Number of virtual keys in this group
         /// </summary>
-        public int VirtualKeyCount { get; set; }
+        [Required] public int VirtualKeyCount { get; set; }
     }
 }

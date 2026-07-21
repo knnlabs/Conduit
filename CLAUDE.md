@@ -127,8 +127,6 @@ export DOCKER_GROUP_ID=$(id -g)
 ```powershell
 # Build Commands
 ./scripts/dev/dev-workflow.ps1 build-webadmin       # Build WebAdmin application
-./scripts/dev/dev-workflow.ps1 build-sdks           # Build all SDK packages
-./scripts/dev/dev-workflow.ps1 build-sdk <name>     # Build specific SDK (common|admin|gateway)
 
 # Lint/Type Commands
 ./scripts/dev/dev-workflow.ps1 lint-webadmin        # Run ESLint on WebAdmin
@@ -137,7 +135,6 @@ export DOCKER_GROUP_ID=$(id -g)
 
 # NPM Commands
 ./scripts/dev/dev-workflow.ps1 npm-install-webadmin # Install WebAdmin dependencies
-./scripts/dev/dev-workflow.ps1 npm-install-sdks     # Install all SDK dependencies
 
 # Container Commands
 ./scripts/dev/dev-workflow.ps1 shell                # Open bash shell in container
@@ -240,9 +237,6 @@ dotnet test --filter "FullyQualifiedName=ConduitLLM.Tests.TestClassName.TestMeth
 dotnet build ConduitLLM.Gateway    # Gateway API
 dotnet build ConduitLLM.Admin   # Admin API
 
-# SDKs
-cd SDKs/Node/Gateway && npm run build
-cd SDKs/Node/Common && npm run build
 ```
 
 ## Incremental Development Rules

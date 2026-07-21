@@ -27,12 +27,11 @@ import type { ProviderDto } from '@/lib/admin-api';
 import { useRouter } from 'next/navigation';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
-// Use SDK types directly with health extensions  
+// Use local Admin API types with health extensions
 interface Provider extends ProviderDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
-  keyCount?: number;
 }
 
 interface ProvidersTableProps {

@@ -1,15 +1,15 @@
 /**
- * Retry strategy types and utilities for SDK HTTP clients
- * Supports both fixed delay (Admin SDK) and exponential backoff (Gateway SDK) patterns
+ * Retry strategy types and utilities for local HTTP clients
+ * Supports both fixed delay and exponential backoff patterns.
  */
 
 /**
  * Type of retry strategy to use
  */
 export enum RetryStrategyType {
-  /** Fixed delay between retries (Admin SDK pattern) */
+  /** Fixed delay between retries (Admin client pattern) */
   FIXED_DELAY = "fixed_delay",
-  /** Exponential backoff with optional jitter (Gateway SDK pattern) */
+  /** Exponential backoff with optional jitter. */
   EXPONENTIAL_BACKOFF = "exponential_backoff",
   /** Custom array of delays */
   CUSTOM_DELAYS = "custom_delays",
@@ -17,7 +17,7 @@ export enum RetryStrategyType {
 
 /**
  * Fixed delay retry configuration
- * Used by Admin SDK for simple retry patterns
+ * Used by the Admin client for simple retry patterns
  */
 export interface FixedDelayConfig {
   type: RetryStrategyType.FIXED_DELAY;
@@ -31,7 +31,7 @@ export interface FixedDelayConfig {
 
 /**
  * Exponential backoff retry configuration
- * Used by Gateway SDK for sophisticated retry patterns
+ * Used by Gateway requests that need jittered exponential backoff.
  */
 export interface ExponentialBackoffConfig {
   type: RetryStrategyType.EXPONENTIAL_BACKOFF;
@@ -136,10 +136,10 @@ export function shouldRetryWithStrategy(
 }
 
 /**
- * Default retry strategies for each SDK type
+ * Default retry strategies for each client type
  */
 export const DEFAULT_RETRY_STRATEGIES = {
-  /** Gateway SDK default: exponential backoff with jitter */
+  /** Gateway default: exponential backoff with jitter. */
   gateway: {
     type: RetryStrategyType.EXPONENTIAL_BACKOFF,
     maxRetries: 3,
@@ -149,7 +149,7 @@ export const DEFAULT_RETRY_STRATEGIES = {
     jitter: true,
   } as ExponentialBackoffConfig,
 
-  /** Admin SDK default: fixed delay */
+  /** Admin client default: fixed delay */
   admin: {
     type: RetryStrategyType.FIXED_DELAY,
     maxRetries: 3,

@@ -67,7 +67,7 @@ export default function FunctionConfigurationsPage() {
     defaultExecutionMode: FunctionExecutionMode.Synchronous,
     timeoutSeconds: 30,
     isEnabled: true,
-    metadata: '',
+    providerSettings: '',
     parameterSchema: '',
   });
 
@@ -122,7 +122,7 @@ export default function FunctionConfigurationsPage() {
         defaultExecutionMode: formData.defaultExecutionMode,
         timeoutSeconds: formData.timeoutSeconds,
         isEnabled: formData.isEnabled,
-        metadata: formData.metadata,
+        providerSettings: formData.providerSettings,
         parameterSchema: formData.parameterSchema,
       };
       await executeWithAdmin(client =>
@@ -182,9 +182,9 @@ export default function FunctionConfigurationsPage() {
       purpose: config.purpose,
       description: config.description ?? '',
       defaultExecutionMode: config.defaultExecutionMode,
-      timeoutSeconds: config.timeoutSeconds,
+      timeoutSeconds: config.timeoutSeconds ?? undefined,
       isEnabled: config.isEnabled,
-      metadata: config.metadata ?? '',
+      providerSettings: config.providerSettings ?? '',
       parameterSchema: config.parameterSchema ?? '',
     });
     setShowModal(true);
@@ -204,7 +204,7 @@ export default function FunctionConfigurationsPage() {
       defaultExecutionMode: FunctionExecutionMode.Synchronous,
       timeoutSeconds: 30,
       isEnabled: true,
-      metadata: '',
+      providerSettings: '',
       parameterSchema: '',
     });
   };
@@ -459,8 +459,8 @@ export default function FunctionConfigurationsPage() {
           <Textarea
             label="Metadata (JSON)"
             placeholder="{}"
-            value={formData.metadata}
-            onChange={(e) => setFormData({ ...formData, metadata: e.target.value })}
+            value={formData.providerSettings}
+            onChange={(e) => setFormData({ ...formData, providerSettings: e.target.value })}
             rows={4}
             styles={{ input: { fontFamily: 'monospace' } }}
           />

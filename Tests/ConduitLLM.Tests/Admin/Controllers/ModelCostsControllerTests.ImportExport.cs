@@ -27,14 +27,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             };
 
             _mockService.Setup(x => x.ImportModelCostsAsync(It.IsAny<IEnumerable<CreateModelCostDto>>()))
-                .ReturnsAsync(2);
+                .ReturnsAsync(new BulkImportResult { SuccessCount = 2 });
 
             // Act
             var result = await _controller.ImportModelCosts(modelCosts);
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            okResult.Value.Should().Be(2);
+            okResult.Value.Should().BeEquivalentTo(new BulkImportResult { SuccessCount = 2 });
         }
 
         [Fact]

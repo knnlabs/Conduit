@@ -49,13 +49,19 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="modelType">Optional filter by model type (chat, image, video, embedding, audio)</param>
         /// <returns>List of all model costs or paginated response</returns>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<ModelCostDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<ModelCostDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllModelCosts(
             [FromQuery] int? page = null,
             [FromQuery] int? pageSize = null,
-            [FromQuery] string? modelType = null)
+            [FromQuery] string? modelType = null,
+            [FromQuery] int? providerId = null,
+            [FromQuery] bool? isActive = null)
         {
-            var modelCosts = await _modelCostService.GetAllModelCostsAsync();
+            var effectivePage = Math.Max(1, page ?? 1);
+            var effectivePageSize = Math.Clamp(pageSize ?? 50, 1, 100);
+            var modelCosts = providerId.HasValue
+                ? await _modelCostService.GetModelCostsByProviderAsync(providerId.Value)
+                : await _modelCostService.GetAllModelCostsAsync();
 
             // Apply modelType filter if provided
             if (!string.IsNullOrWhiteSpace(modelType))
@@ -64,27 +70,18 @@ namespace ConduitLLM.Admin.Controllers
                     string.Equals(c.ModelType, modelType, StringComparison.OrdinalIgnoreCase));
             }
 
-            // If pagination parameters are provided, return paginated response
-            if (page.HasValue && pageSize.HasValue)
+            if (isActive.HasValue)
+                modelCosts = modelCosts.Where(c => c.IsActive == isActive.Value);
+
+            var totalCount = modelCosts.Count();
+            return Ok(new PagedResult<ModelCostDto>
             {
-                var totalCount = modelCosts.Count();
-                var items = modelCosts
-                    .Skip((page.Value - 1) * pageSize.Value)
-                    .Take(pageSize.Value)
-                    .ToList();
-
-                return Ok(new
-                {
-                    items = items,
-                    totalCount = totalCount,
-                    page = page.Value,
-                    pageSize = pageSize.Value,
-                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize.Value)
-                });
-            }
-
-            // Otherwise return all items (backward compatibility)
-            return Ok(modelCosts);
+                Items = modelCosts.Skip((effectivePage - 1) * effectivePageSize).Take(effectivePageSize).ToList(),
+                TotalCount = totalCount,
+                Page = effectivePage,
+                PageSize = effectivePageSize,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)effectivePageSize)
+            });
         }
 
         /// <summary>
@@ -158,27 +155,21 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="modelCost">The updated model cost data</param>
         /// <returns>No content if successful</returns>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ModelCostDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateModelCost(int id, [FromBody] UpdateModelCostDto modelCost)
         {
-            // Ensure ID in route matches ID in body
-            if (id != modelCost.Id)
-            {
-                return BadRequest("ID in route must match ID in body");
-            }
+            var updated = await _modelCostService.UpdateModelCostAsync(id, modelCost);
 
-            var success = await _modelCostService.UpdateModelCostAsync(modelCost);
-
-            if (!success)
+            if (updated == null)
             {
                 throw new KeyNotFoundException($"Model cost with ID '{id}' not found");
             }
 
             LogAdminAudit("Updated", "ModelCost", id, $"CostName: {LoggingSanitizer.S(modelCost.CostName)}");
 
-            return NoContent();
+            return Ok(updated);
         }
 
         /// <summary>
@@ -232,7 +223,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="modelCosts">The list of model costs to import</param>
         /// <returns>The number of model costs imported</returns>
         [HttpPost("import")]
-        [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ImportModelCosts([FromBody] IEnumerable<CreateModelCostDto> modelCosts)
         {
@@ -242,7 +233,7 @@ namespace ConduitLLM.Admin.Controllers
             }
 
             var result = await _modelCostService.ImportModelCostsAsync(modelCosts);
-            LogAdminAudit("Imported", "ModelCost", detail: $"Count: {result}");
+            LogAdminAuditBulk("Imported", "ModelCost", result.SuccessCount, result.FailureCount);
             return Ok(result);
         }
 

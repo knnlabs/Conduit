@@ -8,8 +8,7 @@
     <!-- 1591: missing XML doc; NU1510: redundant pin (kept for SBOM clarity). -->
     <NoWarn>$(NoWarn);1591;NU1510</NoWarn>
     <!-- Build-time OpenAPI document export (opt-in): the committed openapi-admin.json is the
-         source of truth for SDK type generation. Regenerate with
-         `dotnet build -p:OpenApiGenerateDocumentsOnBuild=true` or via SDKs/Node/scripts. -->
+         authoritative contract. Regenerate through tools/openapi. -->
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOnBuild>false</OpenApiGenerateDocumentsOnBuild>
     <OpenApiGenerateDocumentsOptions>--file-name openapi-admin</OpenApiGenerateDocumentsOptions>

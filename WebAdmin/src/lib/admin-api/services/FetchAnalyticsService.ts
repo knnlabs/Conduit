@@ -1,7 +1,5 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { ADMIN_CONTRACT_ROUTES } from '@/lib/api-transport/contract-routes';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
 import type {
   RequestLogParams,
   RequestLogPage,
@@ -52,48 +50,39 @@ export class FetchAnalyticsService {
    * Get paginated request logs
    */
   async getRequestLogs(params?: RequestLogParams, config?: RequestConfig): Promise<RequestLogPage> {
-    const queryParams = new URLSearchParams();
+    const query = {
+      page: params?.page,
+      pageSize: params?.pageSize,
+      startDate: params?.startDate,
+      endDate: params?.endDate,
+      model: params?.model,
+      virtualKeyId: params?.virtualKeyId ? Number(params.virtualKeyId) : undefined,
+      status: params?.statusCode,
+    };
 
-    if (params) {
-      if (params.page) queryParams.append('page', params.page.toString());
-      if (params.pageSize) queryParams.append('pageSize', params.pageSize.toString());
-      if (params.startDate) queryParams.append('startDate', params.startDate);
-      if (params.endDate) queryParams.append('endDate', params.endDate);
-      if (params.virtualKeyId) queryParams.append('virtualKeyId', params.virtualKeyId);
-      if (params.provider) queryParams.append('provider', params.provider);
-      if (params.model) queryParams.append('model', params.model);
-      if (params.statusCode) queryParams.append('statusCode', params.statusCode.toString());
-      if (params.minLatency) queryParams.append('minLatency', params.minLatency.toString());
-      if (params.maxLatency) queryParams.append('maxLatency', params.maxLatency.toString());
-      if (params.sortBy) queryParams.append('sortBy', params.sortBy);
-      if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
-    }
-
-    const queryString = queryParams.toString();
-    const url = queryString ? `${ENDPOINTS.ANALYTICS.REQUEST_LOGS}?${queryString}` : ENDPOINTS.ANALYTICS.REQUEST_LOGS;
-
-    return this.client['get']<RequestLogPage>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](
+      '/api/Analytics/logs',
+      (contractClient, options) => contractClient.GET('/api/Analytics/logs', {
+        ...options,
+        params: { query },
+      }),
+      config,
+    ) as unknown as Promise<RequestLogPage>;
   }
 
   /**
    * Get a specific request log by ID
    */
   async getRequestLogById(id: string, config?: RequestConfig): Promise<RequestLogDto> {
-    return this.client['get']<RequestLogDto>(
-      ENDPOINTS.ANALYTICS.REQUEST_LOG_BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const numericId = Number(id);
+    return this.client['executeContractRead'](
+      `/api/Analytics/logs/${numericId}`,
+      (contractClient, options) => contractClient.GET('/api/Analytics/logs/{id}', {
+        ...options,
+        params: { path: { id: numericId } },
+      }),
+      config,
+    ) as unknown as Promise<RequestLogDto>;
   }
 
 
@@ -186,22 +175,14 @@ export class FetchAnalyticsService {
     endDate?: string,
     config?: RequestConfig
   ): Promise<CostDashboardDto> {
-    const queryParams = new URLSearchParams();
-    queryParams.append('timeframe', timeframe);
-    if (startDate) queryParams.append('startDate', startDate);
-    if (endDate) queryParams.append('endDate', endDate);
-
-    const queryString = queryParams.toString();
-    const url = `${ENDPOINTS.ANALYTICS.COST_SUMMARY}?${queryString}`;
-
-    return this.client['get']<CostDashboardDto>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](
+      '/api/Analytics/costs/summary',
+      (contractClient, options) => contractClient.GET('/api/Analytics/costs/summary', {
+        ...options,
+        params: { query: { timeframe, startDate, endDate } },
+      }),
+      config,
+    ) as Promise<CostDashboardDto>;
   }
 
   /**
@@ -213,22 +194,14 @@ export class FetchAnalyticsService {
     endDate?: string,
     config?: RequestConfig
   ): Promise<CostTrendDto> {
-    const queryParams = new URLSearchParams();
-    queryParams.append('period', period);
-    if (startDate) queryParams.append('startDate', startDate);
-    if (endDate) queryParams.append('endDate', endDate);
-
-    const queryString = queryParams.toString();
-    const url = `${ENDPOINTS.ANALYTICS.COST_TRENDS}?${queryString}`;
-
-    return this.client['get']<CostTrendDto>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    return this.client['executeContractRead'](
+      '/api/Analytics/costs/trends',
+      (contractClient, options) => contractClient.GET('/api/Analytics/costs/trends', {
+        ...options,
+        params: { query: { period, startDate, endDate } },
+      }),
+      config,
+    ) as Promise<CostTrendDto>;
   }
 
   /**
@@ -243,25 +216,19 @@ export class FetchAnalyticsService {
     virtualKeyId?: number,
     config?: RequestConfig
   ): Promise<Uint8Array> {
-    const queryParams = new URLSearchParams();
-    queryParams.append('format', format);
-    if (startDate) queryParams.append('startDate', startDate);
-    if (endDate) queryParams.append('endDate', endDate);
-    if (model) queryParams.append('model', model);
-    if (virtualKeyId) queryParams.append('virtualKeyId', virtualKeyId.toString());
-
-    const queryString = queryParams.toString();
-    const url = `${ADMIN_CONTRACT_ROUTES.analyticsExport}?${queryString}`;
-
-    const buffer = await this.client['get']<ArrayBuffer>(url, {
-      headers: {
-        'Accept': format === 'csv' ? 'text/csv' : 'application/json',
-        ...config?.headers,
-      },
-      signal: config?.signal,
-      timeout: config?.timeout,
-      responseType: 'arraybuffer',
-    });
+    const buffer = await this.client['executeContractRead']<ArrayBuffer>(
+      '/api/Analytics/export',
+      (contractClient, options) => contractClient.GET('/api/Analytics/export', {
+        ...options,
+        headers: {
+          Accept: format === 'csv' ? 'text/csv' : 'application/json',
+          ...options.headers,
+        },
+        params: { query: { format, startDate, endDate, model, virtualKeyId } },
+        parseAs: 'arrayBuffer',
+      }),
+      config,
+    );
     return new Uint8Array(buffer);
   }
 }

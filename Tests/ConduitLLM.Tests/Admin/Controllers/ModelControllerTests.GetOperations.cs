@@ -126,6 +126,71 @@ namespace ConduitLLM.Tests.Admin.Controllers
             await act.Should().ThrowAsync<Exception>();
         }
 
+        [Fact]
+        public async Task GetAllModels_WithFilters_ShouldReturnFlatFilteredList()
+        {
+            var models = new List<Model>
+            {
+                new() { Id = 7, Name = "vision-model", ModelSeriesId = 1 }
+            };
+            _mockRepository
+                .Setup(r => r.GetPaginatedWithFilterAsync(null, null, "vision", "vision", true))
+                .ReturnsAsync((models, 1));
+
+            var result = await _controller.GetAllModels("vision", "vision", true);
+
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var dtos = okResult.Value.Should().BeOfType<List<ModelDto>>().Subject;
+            dtos.Should().ContainSingle().Which.Name.Should().Be("vision-model");
+            _mockRepository.Verify(
+                r => r.GetPaginatedWithFilterAsync(null, null, "vision", "vision", true),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GetPagedModels_WithFilters_ShouldReturnTypedPagedResult()
+        {
+            var models = new List<Model>
+            {
+                new() { Id = 7, Name = "vision-model", ModelSeriesId = 1 }
+            };
+            _mockRepository
+                .Setup(r => r.GetPaginatedWithFilterAsync(2, 25, "vision", "vision", true))
+                .ReturnsAsync((models, 51));
+
+            var result = await _controller.GetPagedModels(2, 25, "vision", "vision", true);
+
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var page = okResult.Value.Should().BeOfType<PagedResult<ModelDto>>().Subject;
+            page.Items.Should().ContainSingle().Which.Name.Should().Be("vision-model");
+            page.TotalCount.Should().Be(51);
+            page.CurrentPage.Should().Be(2);
+            page.PageSize.Should().Be(25);
+            page.TotalPages.Should().Be(3);
+        }
+
+        [Theory]
+        [InlineData(0, 500, 1, 100)]
+        [InlineData(-10, 0, 1, 50)]
+        public async Task GetPagedModels_ShouldClampPagination(
+            int requestedPage,
+            int requestedPageSize,
+            int expectedPage,
+            int expectedPageSize)
+        {
+            _mockRepository
+                .Setup(r => r.GetPaginatedWithFilterAsync(expectedPage, expectedPageSize, null, null, null))
+                .ReturnsAsync((new List<Model>(), 0));
+
+            var result = await _controller.GetPagedModels(requestedPage, requestedPageSize);
+
+            var page = result.Should().BeOfType<OkObjectResult>().Subject.Value
+                .Should().BeOfType<PagedResult<ModelDto>>().Subject;
+            page.CurrentPage.Should().Be(expectedPage);
+            page.PageSize.Should().Be(expectedPageSize);
+            page.TotalPages.Should().Be(0);
+        }
+
         #endregion
 
         #region GetModelById Tests
@@ -256,23 +321,17 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            var identifiers = okResult.Value.Should().BeAssignableTo<IEnumerable<object>>().Subject;
+            var identifiers = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelIdentifierDto>>().Subject;
             identifiers.Should().HaveCount(3);
 
-            // Verify the structure by serializing to JSON and deserializing
-            var json = System.Text.Json.JsonSerializer.Serialize(identifiers);
-            var deserializedIdentifiers = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement[]>(json);
-            
-            deserializedIdentifiers.Should().HaveCount(3);
-            
-            deserializedIdentifiers[0].GetProperty("id").GetInt32().Should().Be(1);
-            deserializedIdentifiers[0].GetProperty("identifier").GetString().Should().Be("openai/gpt-oss-120b");
-            deserializedIdentifiers[0].GetProperty("provider").GetInt32().Should().Be((int)ProviderType.Groq);
-            deserializedIdentifiers[0].GetProperty("isPrimary").GetBoolean().Should().Be(true);
-
-            deserializedIdentifiers[1].GetProperty("provider").GetInt32().Should().Be((int)ProviderType.Fireworks);
-            deserializedIdentifiers[2].GetProperty("provider").GetInt32().Should().Be((int)ProviderType.Cerebras);
-            deserializedIdentifiers[2].GetProperty("isPrimary").GetBoolean().Should().Be(false);
+            var identifierDtos = identifiers.ToList();
+            identifierDtos[0].Id.Should().Be(1);
+            identifierDtos[0].Identifier.Should().Be("openai/gpt-oss-120b");
+            identifierDtos[0].Provider.Should().Be((int)ProviderType.Groq);
+            identifierDtos[0].IsPrimary.Should().BeTrue();
+            identifierDtos[1].Provider.Should().Be((int)ProviderType.Fireworks);
+            identifierDtos[2].Provider.Should().Be((int)ProviderType.Cerebras);
+            identifierDtos[2].IsPrimary.Should().BeFalse();
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
         }
@@ -303,7 +362,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            var identifiers = okResult.Value.Should().BeAssignableTo<IEnumerable<object>>().Subject;
+            var identifiers = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelIdentifierDto>>().Subject;
             identifiers.Should().BeEmpty();
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
@@ -340,6 +399,62 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Act & Assert — error→HTTP mapping now happens in AdminExceptionMiddleware
             var act = async () => await _controller.GetModelIdentifiers(modelId);
             await act.Should().ThrowAsync<Exception>();
+        }
+
+        [Fact]
+        public async Task GetAvailableProviders_ShouldReturnTypedAssociationsWithNumericProvider()
+        {
+            var modelId = 7;
+            var model = new Model
+            {
+                Id = modelId,
+                Name = "typed-model",
+                ModelSeriesId = 1,
+                Identifiers = new List<ModelProviderTypeAssociation>
+                {
+                    new()
+                    {
+                        Id = 11,
+                        ModelId = modelId,
+                        Identifier = "typed-model/provider",
+                        Provider = ProviderType.Groq,
+                        ProviderVariation = "fast",
+                        IsPrimary = true
+                    },
+                    new()
+                    {
+                        Id = 12,
+                        ModelId = modelId,
+                        Identifier = "unassigned",
+                        Provider = null
+                    }
+                }
+            };
+            var providers = new List<Provider>
+            {
+                new() { Id = 21, ProviderName = "Groq Production", ProviderType = ProviderType.Groq, IsEnabled = true },
+                new() { Id = 22, ProviderName = "Groq Disabled", ProviderType = ProviderType.Groq, IsEnabled = false }
+            };
+            _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId)).ReturnsAsync(model);
+            _mockProviderRepository
+                .Setup(r => r.GetPaginatedAsync(1, 100, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((providers, providers.Count));
+
+            var result = await _controller.GetAvailableProviders(modelId);
+
+            var associations = result.Should().BeOfType<OkObjectResult>().Subject.Value
+                .Should().BeOfType<List<ModelProviderAvailabilityDto>>().Subject;
+            var association = associations.Should().ContainSingle().Subject;
+            association.AssociationId.Should().Be(11);
+            association.Provider.Should().Be((int)ProviderType.Groq);
+            association.ProviderVariation.Should().Be("fast");
+            association.AvailableProviders.Should().ContainSingle().Which.Should().BeEquivalentTo(
+                new AvailableProviderDto
+                {
+                    ProviderId = 21,
+                    ProviderName = "Groq Production",
+                    ProviderType = nameof(ProviderType.Groq)
+                });
         }
 
         #endregion

@@ -28,38 +28,6 @@ export const DATE_FORMATS = {
 } as const;
 
 export const ENDPOINTS = {
-  // Virtual Keys
-  VIRTUAL_KEYS: {
-    BASE: '/api/VirtualKeys',
-    BY_ID: (id: number) => `/api/VirtualKeys/${id}`,
-    RESET_SPEND: (id: number) => `/api/VirtualKeys/${id}/reset-spend`,
-    VALIDATE: '/api/VirtualKeys/validate',
-    SPEND: (id: number) => `/api/VirtualKeys/${id}/spend`,
-    CHECK_BUDGET: (id: number) => `/api/VirtualKeys/${id}/check-budget`,
-    VALIDATION_INFO: (id: number) => `/api/VirtualKeys/${id}/validation-info`,
-    MAINTENANCE: '/api/VirtualKeys/maintenance',
-    DISCOVERY_PREVIEW: (id: number) => `/api/VirtualKeys/${id}/discovery-preview`,
-  },
-
-  // Virtual Key Groups
-  VIRTUAL_KEY_GROUPS: '/api/VirtualKeyGroups',
-
-  // Providers - Provider ID is the canonical identifier
-  PROVIDERS: {
-    BASE: '/api/ProviderCredentials',
-    BY_ID: (id: number) => `/api/ProviderCredentials/${id}`,
-    TEST_BY_ID: (id: number) => `/api/ProviderCredentials/test/${id}`,
-    TEST: '/api/ProviderCredentials/test',
-  },
-
-  // Provider Key Credentials - Manage multiple API keys per provider
-  PROVIDER_KEYS: {
-    BASE: (providerId: number) => `/api/ProviderCredentials/${providerId}/keys`,
-    BY_ID: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}`,
-    SET_PRIMARY: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/set-primary`,
-    TEST: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/test`,
-  },
-
   // Model Provider Mappings
   MODEL_MAPPINGS: {
     BASE: '/api/ModelProviderMapping',
@@ -69,16 +37,6 @@ export const ENDPOINTS = {
     BULK_DELETE: '/api/ModelProviderMapping/bulk/delete',
     BULK_ENABLE: '/api/ModelProviderMapping/bulk/enable',
     BULK_DISABLE: '/api/ModelProviderMapping/bulk/disable',
-  },
-
-  // IP Filters
-  IP_FILTERS: {
-    BASE: '/api/IpFilter',
-    BY_ID: (id: number) => `/api/IpFilter/${id}`,
-    ENABLED: '/api/IpFilter/enabled',
-    BY_VIRTUAL_KEY: (virtualKeyId: number) => `/api/IpFilter/by-virtual-key/${virtualKeyId}`,
-    SETTINGS: '/api/IpFilter/settings',
-    CHECK: (ipAddress: string) => `/api/IpFilter/check/${ipAddress}`,
   },
 
   // Model Costs
@@ -100,7 +58,6 @@ export const ENDPOINTS = {
     BASE: '/api/Model',
     IMPORT_BUNDLED_CATALOG: '/api/Model/bundled-catalog/import',
     BY_ID: (id: number) => `/api/Model/${id}`,
-    BY_TYPE: (type: string) => `/api/Model/type/${type}`,
     BY_PROVIDER: (provider: string) => `/api/Model/provider/${provider}`,
     SEARCH: '/api/Model/search',
   },
@@ -174,65 +131,12 @@ export const ENDPOINTS = {
     },
   },
 
-  // Media Management
-  MEDIA: {
-    STATS: {
-      BASE: '/api/admin/Media/stats',
-      BY_VIRTUAL_KEY: (virtualKeyId: string) => `/api/admin/Media/stats/virtual-key/${virtualKeyId}`,
-      BY_PROVIDER: '/api/admin/Media/stats/by-provider',
-      BY_TYPE: '/api/admin/Media/stats/by-type',
-    },
-    BY_VIRTUAL_KEY: (virtualKeyId: string) => `/api/admin/Media/virtual-key/${virtualKeyId}`,
-    SEARCH: '/api/admin/Media/search',
-    BY_ID: (mediaId: string) => `/api/admin/Media/${mediaId}`,
-    CLEANUP: {
-      EXPIRED: '/api/admin/Media/cleanup/expired',
-      ORPHANED: '/api/admin/Media/cleanup/orphaned',
-      PRUNE: '/api/admin/Media/cleanup/prune',
-    },
-    // Media Cleanup Service Status endpoints
-    CLEANUP_SERVICE: {
-      STATUS: '/api/admin/media-cleanup/status',
-      ENABLED: '/api/admin/media-cleanup/enabled',
-      SIMPLE_RETENTION: '/api/admin/media-cleanup/simple-retention',
-    },
-    // Media Retention Policy endpoints
-    RETENTION_POLICIES: {
-      BASE: '/api/admin/media-retention/policies',
-      BY_ID: (id: number) => `/api/admin/media-retention/policies/${id}`,
-      SET_DEFAULT: (id: number) => `/api/admin/media-retention/policies/${id}/set-default`,
-    },
-  },
-
   // Database Management
   DATABASE: {
     BACKUP: '/api/database/backup',
     BACKUPS: '/api/database/backups',
     RESTORE: (backupId: string) => `/api/database/restore/${backupId}`,
     DOWNLOAD: (backupId: string) => `/api/database/download/${backupId}`,
-  },
-
-  // Prompt Caching
-  PROMPT_CACHING: {
-    CONFIG: '/api/prompt-caching/config',
-    CAPABILITIES: '/api/prompt-caching/capabilities',
-    ANALYTICS: '/api/prompt-caching/analytics',
-  },
-
-  // Configuration endpoints
-  CONFIG: {
-    ROUTING: '/api/config/routing',
-    ROUTING_DEFAULTS: '/api/config/routing/defaults',
-    ROUTING_ALIAS: (alias: string) => `/api/config/routing/aliases/${encodeURIComponent(alias)}`,
-    CACHING: {
-      BASE: '/api/config/caching',
-      CLEAR: (cacheId: string) => `/api/config/caching/${cacheId}/clear`,
-      STATISTICS: '/api/config/caching/statistics',
-      REGIONS: '/api/config/caching/regions',
-      ENTRIES: (regionId: string) => `/api/config/caching/${regionId}/entries`,
-      REFRESH: (regionId: string) => `/api/config/caching/${regionId}/refresh`,
-      POLICY: (regionId: string) => `/api/config/caching/${regionId}/policy`,
-    },
   },
 
 
@@ -281,73 +185,11 @@ export const ENDPOINTS = {
     REPLAY: (queueName: string) => `/api/admin/error-queues/${queueName}/replay`,
   },
 
-  // Functions
-  FUNCTION_CONFIGURATIONS: {
-    BASE: '/api/FunctionConfigurations',
-    BY_ID: (id: number) => `/api/FunctionConfigurations/${id}`,
-    BY_PROVIDER: (providerType: string) => `/api/FunctionConfigurations/provider/${providerType}`,
-    BY_PURPOSE: (purpose: string) => `/api/FunctionConfigurations/purpose/${purpose}`,
-  },
-
-  FUNCTION_CREDENTIALS: {
-    BASE: '/api/FunctionCredentials',
-    BY_ID: (id: number) => `/api/FunctionCredentials/${id}`,
-    BY_CONFIGURATION: (configId: number) => `/api/FunctionCredentials/configuration/${configId}`,
-    TEST: '/api/FunctionCredentials/test',
-  },
-
-  FUNCTION_COSTS: {
-    BASE: '/api/FunctionCosts',
-    BY_ID: (id: number) => `/api/FunctionCosts/${id}`,
-    BY_CONFIGURATION: (configId: number) => `/api/FunctionCosts/configuration/${configId}`,
-    CLEAR_CACHE: '/api/FunctionCosts/cache/clear',
-  },
-
-  FUNCTION_COST_MAPPINGS: {
-    BASE: '/api/FunctionCostMappings',
-    BY_ID: (id: number) => `/api/FunctionCostMappings/${id}`,
-    BY_CONFIGURATION: (configId: number) => `/api/FunctionCostMappings/configuration/${configId}`,
-  },
-
-  FUNCTION_EXECUTIONS: {
-    BASE: '/api/FunctionExecutions',
-    BY_ID: (id: string) => `/api/FunctionExecutions/${id}`,
-    BY_VIRTUAL_KEY: (virtualKeyId: number) => `/api/FunctionExecutions/virtualkey/${virtualKeyId}`,
-    BY_CONFIGURATION: (configId: number) => `/api/FunctionExecutions/configuration/${configId}`,
-    BY_STATE: (state: string) => `/api/FunctionExecutions/state/${state}`,
-    EXPIRED_LEASES: '/api/FunctionExecutions/expired-leases',
-    READY_FOR_RETRY: '/api/FunctionExecutions/ready-for-retry',
-    CLEANUP: '/api/FunctionExecutions/cleanup',
-  },
-
-  // Settings
-  SETTINGS: {
-    GLOBAL: '/api/GlobalSettings',
-    GLOBAL_BY_ID: (id: number) => `/api/GlobalSettings/${id}`,
-    GLOBAL_BY_KEY: (key: string) => `/api/GlobalSettings/by-key/${key}`,
-    GLOBAL_BY_KEY_SIMPLE: '/api/GlobalSettings/by-key',
-    CACHE_STATS: '/api/GlobalSettings/cache/stats',
-    CACHE_RELOAD: '/api/GlobalSettings/cache/reload',
-    CACHE_INVALIDATE: (key: string) => `/api/GlobalSettings/cache/invalidate/${encodeURIComponent(key)}`,
-    ROUTER: '/api/Router/config',
-  },
-
   // Admin tasks
   ADMIN_TASKS: {
     CLEANUP: '/v1/admin/tasks/cleanup',
   },
 
-  // Provider metadata sync (OpenRouter drift review)
-  PROVIDER_SYNC: {
-    DRIFT: '/api/providersync/drift',
-    DRIFT_BY_ID: (id: number) => `/api/providersync/drift/${id}`,
-    DRIFT_APPLY: (id: number) => `/api/providersync/drift/${id}/apply`,
-    DRIFT_DISMISS: (id: number) => `/api/providersync/drift/${id}/dismiss`,
-    DRIFT_BULK_APPLY: '/api/providersync/drift/bulk/apply',
-    DRIFT_BULK_DISMISS: '/api/providersync/drift/bulk/dismiss',
-    RUN: '/api/providersync/run',
-    RUNS: '/api/providersync/runs',
-  },
 } as const;
 
 export const DEFAULT_PAGE_SIZE = 20;

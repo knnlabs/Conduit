@@ -79,7 +79,7 @@ public class ModelProviderMappingController : AdminControllerBase
     [ProducesResponseType(typeof(ModelProviderMappingDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> CreateMapping([FromBody] ModelProviderMappingDto mappingDto)
+    public async Task<IActionResult> CreateMapping([FromBody] CreateModelProviderMappingDto mappingDto)
     {
         // An alias may have multiple providers, but never duplicate an alias/provider pair.
         var existingMappings = await _mappingService.GetAllMappingsAsync();
@@ -125,13 +125,8 @@ public class ModelProviderMappingController : AdminControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
+    public async Task<IActionResult> UpdateMapping(int id, [FromBody] UpdateModelProviderMappingDto mappingDto)
     {
-        if (id != mappingDto.Id)
-        {
-            return BadRequest(new ErrorResponseDto("ID mismatch"));
-        }
-
         var existingMapping = await _mappingService.GetMappingByIdAsync(id);
         if (existingMapping == null)
         {
@@ -252,7 +247,7 @@ public class ModelProviderMappingController : AdminControllerBase
     [HttpPost("bulk")]
     [ProducesResponseType(typeof(BulkMappingResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateBulkMappings([FromBody] List<ModelProviderMappingDto> mappingDtos)
+    public async Task<IActionResult> CreateBulkMappings([FromBody] List<CreateModelProviderMappingDto> mappingDtos)
     {
         if (mappingDtos == null || !mappingDtos.Any())
         {
@@ -429,26 +424,31 @@ public class BulkMappingResult
     /// <summary>
     /// Successfully created mappings
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public List<ModelProviderMappingDto> Created { get; set; } = new();
 
     /// <summary>
     /// Error messages for failed mappings
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public List<string> Errors { get; set; } = new();
 
     /// <summary>
     /// Total number of mappings processed
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int TotalProcessed { get; set; }
 
     /// <summary>
     /// Number of successful mappings
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int SuccessCount { get; set; }
 
     /// <summary>
     /// Number of failed mappings
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int FailureCount { get; set; }
 }
 
@@ -460,26 +460,31 @@ public class BulkDeleteResult
     /// <summary>
     /// IDs of successfully deleted mappings
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public List<int> DeletedIds { get; set; } = new();
 
     /// <summary>
     /// Error messages for failed deletions
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public List<string> Errors { get; set; } = new();
 
     /// <summary>
     /// Total number of mappings processed
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int TotalProcessed { get; set; }
 
     /// <summary>
     /// Number of successful deletions
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int SuccessCount { get; set; }
 
     /// <summary>
     /// Number of failed deletions
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int FailureCount { get; set; }
 }
 
@@ -491,25 +496,30 @@ public class BulkUpdateResult
     /// <summary>
     /// Successfully updated mappings
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public List<ModelProviderMappingDto> Updated { get; set; } = new();
 
     /// <summary>
     /// Error messages for failed updates
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public List<string> Errors { get; set; } = new();
 
     /// <summary>
     /// Total number of mappings processed
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int TotalProcessed { get; set; }
 
     /// <summary>
     /// Number of successful updates
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int SuccessCount { get; set; }
 
     /// <summary>
     /// Number of failed updates
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
     public int FailureCount { get; set; }
 }

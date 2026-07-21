@@ -11,6 +11,7 @@ export { ModelType } from './modelType';
 export type ModelDto = components['schemas']['ModelDto'];
 export type CreateModelDto = components['schemas']['CreateModelDto'];
 export type UpdateModelDto = components['schemas']['UpdateModelDto'];
+export type ModelProviderAvailabilityDto = components['schemas']['ModelProviderAvailabilityDto'];
 
 // Model Series DTOs
 export type ModelSeriesDto = components['schemas']['ModelSeriesDto'];

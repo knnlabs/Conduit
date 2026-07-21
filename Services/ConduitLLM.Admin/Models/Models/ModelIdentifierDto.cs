@@ -1,5 +1,40 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ConduitLLM.Admin.Models.Models
 {
+    /// <summary>
+    /// DTO returned after creating a model identifier.
+    /// </summary>
+    public class CreatedModelIdentifierDto
+    {
+        [Required]
+        public int Id { get; set; }
+
+        [Required]
+        public string Identifier { get; set; } = string.Empty;
+
+        [Required]
+        public int? Provider { get; set; }
+
+        [Required]
+        public bool IsPrimary { get; set; }
+
+        [Required]
+        public int? MaxInputTokens { get; set; }
+
+        [Required]
+        public int? MaxOutputTokens { get; set; }
+
+        [Required]
+        public decimal? SpeedScore { get; set; }
+
+        [Required]
+        public decimal? QualityScore { get; set; }
+
+        [Required]
+        public string? ProviderVariation { get; set; }
+    }
+
     /// <summary>
     /// DTO for creating a model identifier
     /// </summary>

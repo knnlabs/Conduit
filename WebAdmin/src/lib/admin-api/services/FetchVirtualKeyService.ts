@@ -1,21 +1,21 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
-import { ENDPOINTS } from '../constants';
+import { HttpMethod } from '../client/HttpMethod';
+import type { components, paths } from '../generated/admin-api';
 import {
   parseCriticalResponse,
   virtualKeyIssueSchema,
   virtualKeyValidationSchema,
 } from '@/lib/api-transport/critical-response-validation';
 
-// Type aliases for better readability
 type VirtualKeyDto = components['schemas']['VirtualKeyDto'];
 type CreateVirtualKeyRequestDto = components['schemas']['CreateVirtualKeyRequestDto'];
 type CreateVirtualKeyResponseDto = components['schemas']['CreateVirtualKeyResponseDto'];
 type UpdateVirtualKeyRequestDto = components['schemas']['UpdateVirtualKeyRequestDto'];
 type VirtualKeyValidationResponseDto = components['schemas']['VirtualKeyValidationResult'];
+type VirtualKeyDiscoveryPreviewDto = components['schemas']['VirtualKeyDiscoveryPreviewDto'];
+type ListQuery = paths['/api/VirtualKeys']['get']['parameters']['query'];
 
-// Define inline types for responses that aren't in the generated schemas
 export interface VirtualKeyListResponseDto {
   items: VirtualKeyDto[];
   totalCount: number;
@@ -24,350 +24,70 @@ export interface VirtualKeyListResponseDto {
   totalPages: number;
 }
 
-interface VirtualKeySpendDto {
-  id: number;
-  virtualKeyId: number;
-  timestamp: string;
-  modelUsed: string;
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  cost: number;
-  requestId?: string;
-  metadata?: string;
-}
-
-interface VirtualKeyDiscoveryPreviewDto {
-  data: DiscoveredModelDto[];
-  count: number;
-}
-
-interface DiscoveredModelDto {
-  id: string;
-  provider?: string;
-  displayName: string;
-  capabilities: Record<string, unknown>;
-}
-
-/**
- * Type-safe Virtual Key service using the Admin contract transport.
- */
 export class FetchVirtualKeyService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
-  /**
-   * Get all virtual keys with optional pagination
-   */
-  async list(
-    page: number = 1,
-    pageSize: number = 10,
-    virtualKeyGroupId?: number,
-    config?: RequestConfig
-  ): Promise<VirtualKeyListResponseDto> {
-    // Build query params
-    const params = virtualKeyGroupId ? `?virtualKeyGroupId=${virtualKeyGroupId}` : '';
-
-    // The Admin API returns VirtualKeyDto[] directly, not a paginated response
-    // So we need to fetch all items and simulate pagination
-    const allItems = await this.client['get']<VirtualKeyDto[]>(
-      `${ENDPOINTS.VIRTUAL_KEYS.BASE}${params}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-
-    // Simulate pagination on the client side
+  async list(page = 1, pageSize = 10, virtualKeyGroupId?: number, config?: RequestConfig): Promise<VirtualKeyListResponseDto> {
+    const query: ListQuery = { virtualKeyGroupId };
+    const suffix = virtualKeyGroupId === undefined ? '' : `?virtualKeyGroupId=${virtualKeyGroupId}`;
+    const allItems = await this.client['executeContractRead'](`/api/VirtualKeys${suffix}`,
+      (client, options) => client.GET('/api/VirtualKeys', { ...options, params: { query } }), config);
     const totalCount = allItems.length;
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalCount);
-    const items = allItems.slice(startIndex, endIndex);
-    const totalPages = Math.ceil(totalCount / pageSize);
-
     return {
-      items,
+      items: allItems.slice((page - 1) * pageSize, page * pageSize),
       totalCount,
       page,
       pageSize,
-      totalPages,
+      totalPages: Math.ceil(totalCount / pageSize),
     };
   }
 
-  /**
-   * Get a virtual key by ID
-   */
   async get(id: string, config?: RequestConfig): Promise<VirtualKeyDto> {
-    return this.client['get']<VirtualKeyDto>(
-      ENDPOINTS.VIRTUAL_KEYS.BY_ID(parseInt(id)),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const numericId = Number(id);
+    return this.client['executeContractRead'](`/api/VirtualKeys/${numericId}`,
+      (client, options) => client.GET('/api/VirtualKeys/{id}', { ...options, params: { path: { id: numericId } } }), config);
   }
 
-  /**
-   * Get a virtual key by the key value
-   */
-  async getByKey(key: string, config?: RequestConfig): Promise<VirtualKeyDto> {
-    return this.client['get']<VirtualKeyDto>(
-      `/virtualkeys/by-key/${encodeURIComponent(key)}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async create(data: CreateVirtualKeyRequestDto, config?: RequestConfig): Promise<CreateVirtualKeyResponseDto> {
+    const response = await this.client['executeContractOperation']('/api/VirtualKeys', HttpMethod.POST,
+      (client, options) => client.POST('/api/VirtualKeys', { ...options, body: data }), config, data);
+    return parseCriticalResponse(virtualKeyIssueSchema, response, 'Admin virtual-key issuance') as CreateVirtualKeyResponseDto;
   }
 
-  /**
-   * Create a new virtual key
-   */
-  async create(
-    data: CreateVirtualKeyRequestDto,
-    config?: RequestConfig
-  ): Promise<CreateVirtualKeyResponseDto> {
-    const response = await this.client['post']<CreateVirtualKeyResponseDto, CreateVirtualKeyRequestDto>(
-      ENDPOINTS.VIRTUAL_KEYS.BASE,
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-    return parseCriticalResponse(
-      virtualKeyIssueSchema,
-      response,
-      'Admin virtual-key issuance',
-    ) as CreateVirtualKeyResponseDto;
+  async update(id: string, data: UpdateVirtualKeyRequestDto, config?: RequestConfig): Promise<void> {
+    const numericId = Number(id);
+    await this.client['executeContractOperation'](`/api/VirtualKeys/${numericId}`, HttpMethod.PUT,
+      (client, options) => client.PUT('/api/VirtualKeys/{id}', { ...options, params: { path: { id: numericId } }, body: data }), config, data);
   }
 
-  /**
-   * Update an existing virtual key
-   */
-  async update(
-    id: string,
-    data: UpdateVirtualKeyRequestDto,
-    config?: RequestConfig
-  ): Promise<VirtualKeyDto> {
-    return this.client['put']<VirtualKeyDto, UpdateVirtualKeyRequestDto>(
-      ENDPOINTS.VIRTUAL_KEYS.BY_ID(parseInt(id)),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Delete a virtual key
-   */
   async delete(id: string, config?: RequestConfig): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.VIRTUAL_KEYS.BY_ID(parseInt(id)),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    const numericId = Number(id);
+    await this.client['executeContractOperation'](`/api/VirtualKeys/${numericId}`, HttpMethod.DELETE,
+      (client, options) => client.DELETE('/api/VirtualKeys/{id}', { ...options, params: { path: { id: numericId } } }), config);
   }
 
-  /**
-   * Regenerate a virtual key's key value
-   */
-  async regenerateKey(id: string, config?: RequestConfig): Promise<VirtualKeyDto> {
-    return this.client['post']<VirtualKeyDto>(
-      `/virtualkeys/${id}/regenerate-key`,
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async validate(key: string, config?: RequestConfig): Promise<VirtualKeyValidationResponseDto> {
+    const body: components['schemas']['ValidateVirtualKeyRequest'] = { key };
+    const response = await this.client['executeContractOperation']('/api/VirtualKeys/validate', HttpMethod.POST,
+      (client, options) => client.POST('/api/VirtualKeys/validate', { ...options, body }), config, body);
+    return parseCriticalResponse(virtualKeyValidationSchema, response, 'Admin virtual-key validation');
   }
 
-  /**
-   * Validate a virtual key
-   */
-  async validate(
-    key: string,
-    config?: RequestConfig
-  ): Promise<VirtualKeyValidationResponseDto> {
-    const response = await this.client['post']<VirtualKeyValidationResponseDto>(
-      ENDPOINTS.VIRTUAL_KEYS.VALIDATE,
-      { key },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-    return parseCriticalResponse(
-      virtualKeyValidationSchema,
-      response,
-      'Admin virtual-key validation',
-    );
+  async maintenance(config?: RequestConfig): Promise<void> {
+    await this.client['executeContractOperation']('/api/VirtualKeys/maintenance', HttpMethod.POST,
+      (client, options) => client.POST('/api/VirtualKeys/maintenance', options), config);
   }
 
-  /**
-   * Get spend history for a virtual key
-   */
-  async getSpend(
-    id: string,
-    page: number = 1,
-    pageSize: number = 10,
-    startDate?: string,
-    endDate?: string,
-    config?: RequestConfig
-  ): Promise<VirtualKeySpendDto[]> {
-    const params = new URLSearchParams();
-    params.append('page', page.toString());
-    params.append('pageSize', pageSize.toString());
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-
-    return this.client['get']<VirtualKeySpendDto[]>(
-      `${ENDPOINTS.VIRTUAL_KEYS.SPEND(parseInt(id))}?${params.toString()}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async previewDiscovery(id: string, capability?: string, config?: RequestConfig): Promise<VirtualKeyDiscoveryPreviewDto> {
+    const numericId = Number(id);
+    const suffix = capability ? `?capability=${encodeURIComponent(capability)}` : '';
+    return this.client['executeContractRead'](`/api/VirtualKeys/${numericId}/discovery-preview${suffix}`,
+      (client, options) => client.GET('/api/VirtualKeys/{id}/discovery-preview', {
+        ...options, params: { path: { id: numericId }, query: { capability } },
+      }), config);
   }
 
-  /**
-   * Reset spend for a virtual key
-   */
-  async resetSpend(id: string, config?: RequestConfig): Promise<void> {
-    return this.client['post']<void>(
-      ENDPOINTS.VIRTUAL_KEYS.RESET_SPEND(parseInt(id)),
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Run maintenance tasks for virtual keys
-   */
-  async maintenance(config?: RequestConfig): Promise<{ message: string }> {
-    return this.client['post']<{ message: string }>(
-      ENDPOINTS.VIRTUAL_KEYS.MAINTENANCE,
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Preview what models and capabilities a virtual key would see when calling the discovery endpoint
-   */
-  async previewDiscovery(
-    id: string,
-    capability?: string,
-    config?: RequestConfig
-  ): Promise<VirtualKeyDiscoveryPreviewDto> {
-    const params = capability ? `?capability=${encodeURIComponent(capability)}` : '';
-
-    return this.client['get']<VirtualKeyDiscoveryPreviewDto>(
-      `${ENDPOINTS.VIRTUAL_KEYS.DISCOVERY_PREVIEW(parseInt(id))}${params}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Helper method to check if a key is active and not expired
-   */
   isKeyValid(key: VirtualKeyDto): boolean {
-    // Check if key is enabled
-    if (!key.isEnabled) return false;
-
-    const now = new Date();
-    const expiresAt = key.expiresAt ? new Date(key.expiresAt) : null;
-
-    if (expiresAt && expiresAt < now) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Get all virtual keys that have generated media assets
-   * @param page - Page number (default: 1)
-   * @param pageSize - Items per page (default: 10)
-   * @param virtualKeyGroupId - Optional filter by virtual key group ID
-   * @param config - Optional request configuration
-   * @returns Virtual keys that have media with their media counts
-   */
-  async listWithMedia(
-    page: number = 1,
-    pageSize: number = 10,
-    virtualKeyGroupId?: number,
-    config?: RequestConfig
-  ): Promise<VirtualKeyListResponseDto & { itemsWithMediaCount: Array<VirtualKeyDto & { mediaCount: number }> }> {
-    // Fetch all virtual keys (optionally filtered by group)
-    const allKeysResponse = await this.list(1, 1000, virtualKeyGroupId, config);
-
-    // Fetch overall media stats to get which keys have media (optionally filtered by group)
-    const params = virtualKeyGroupId ? `?virtualKeyGroupId=${virtualKeyGroupId}` : '';
-    const mediaStatsEndpoint = `/api/admin/Media/stats${params}`;
-    const overallStats = await this.client['get']<{
-      totalSizeBytes: number;
-      totalFiles: number;
-      orphanedFiles: number;
-      byProvider: Record<string, number>;
-      byMediaType: Record<string, { fileCount: number; sizeBytes: number }>;
-      storageByVirtualKey: Record<string, number>;
-    }>(mediaStatsEndpoint, {
-      signal: config?.signal,
-      timeout: config?.timeout,
-      headers: config?.headers,
-    });
-
-    // Filter keys that have media
-    const keysWithMedia = allKeysResponse.items.filter(key =>
-      key.id && overallStats.storageByVirtualKey[key.id.toString()]
-    );
-
-    // Add media count to each key
-    const itemsWithMediaCount = keysWithMedia.map(key => ({
-      ...key,
-      mediaCount: overallStats.storageByVirtualKey[key.id?.toString() ?? ''] || 0
-    }));
-
-    // Apply pagination
-    const totalCount = itemsWithMediaCount.length;
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalCount);
-    const paginatedItems = itemsWithMediaCount.slice(startIndex, endIndex);
-    const totalPages = Math.ceil(totalCount / pageSize);
-
-    return {
-      items: paginatedItems,
-      itemsWithMediaCount: paginatedItems,
-      totalCount,
-      page,
-      pageSize,
-      totalPages,
-    };
+    return key.isEnabled === true && (!key.expiresAt || new Date(key.expiresAt) >= new Date());
   }
 }

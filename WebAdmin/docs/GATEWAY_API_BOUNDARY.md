@@ -1,8 +1,7 @@
 # Gateway API boundary
 
 WebAdmin owns its Gateway integration under `src/lib/gateway-api`. Application code must not import
-the published Gateway or Common packages or reach into the SDK workspace. The public Gateway SDK is
-maintained independently for external consumers.
+external client packages. The repository-local client is the supported WebAdmin boundary.
 
 `src/generated/gateway-api.ts` is regenerated from the authoritative Gateway OpenAPI document.
 Ordinary JSON operations flow through an `openapi-fetch` client parameterized by its generated

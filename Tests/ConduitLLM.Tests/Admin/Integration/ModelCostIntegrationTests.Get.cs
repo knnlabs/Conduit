@@ -107,8 +107,8 @@ namespace ConduitLLM.Tests.Admin.Integration
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            var costs = okResult.Value.Should().BeAssignableTo<IEnumerable<ModelCostDto>>().Subject;
-            var costList = costs.ToList();
+            var costs = okResult.Value.Should().BeOfType<PagedResult<ModelCostDto>>().Subject;
+            var costList = costs.Items;
 
             costList.Should().HaveCount(2);
             

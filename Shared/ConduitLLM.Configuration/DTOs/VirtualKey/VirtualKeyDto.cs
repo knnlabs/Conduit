@@ -10,7 +10,7 @@ public class VirtualKeyDto
     /// <summary>
     /// Unique identifier for the virtual key.
     /// </summary>
-    public int Id { get; set; }
+    [Required] public int Id { get; set; }
 
     /// <summary>
     /// Human-readable name for the virtual key.
@@ -35,12 +35,12 @@ public class VirtualKeyDto
     /// <summary>
     /// ID of the virtual key group this key belongs to.
     /// </summary>
-    public int VirtualKeyGroupId { get; set; }
+    [Required] public int VirtualKeyGroupId { get; set; }
 
     /// <summary>
     /// Indicates whether the key is currently active and can be used for API calls.
     /// </summary>
-    public bool IsEnabled { get; set; }
+    [Required] public bool IsEnabled { get; set; }
 
     /// <summary>
     /// Optional expiration date for the key.
@@ -51,12 +51,12 @@ public class VirtualKeyDto
     /// <summary>
     /// Date and time when the key was created.
     /// </summary>
-    public DateTime CreatedAt { get; set; }
+    [Required] public DateTime CreatedAt { get; set; }
 
     /// <summary>
     /// Date and time when the key was last updated.
     /// </summary>
-    public DateTime UpdatedAt { get; set; }
+    [Required] public DateTime UpdatedAt { get; set; }
 
     /// <summary>
     /// Optional JSON-formatted metadata associated with this key.

@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Filters;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.DTOs;
@@ -37,7 +38,7 @@ public class FunctionCostsController : AdminControllerBase
     /// </summary>
     /// <returns>List of all function costs</returns>
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FunctionCostDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllFunctionCosts()
     {
         var functionCosts = await _functionCostService.ListCostsAsync();
@@ -50,7 +51,7 @@ public class FunctionCostsController : AdminControllerBase
     /// <param name="id">The ID of the function cost</param>
     /// <returns>The function cost</returns>
     [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionCostDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetFunctionCostById(int id)
     {
@@ -69,7 +70,7 @@ public class FunctionCostsController : AdminControllerBase
     /// <param name="functionConfigurationId">The function configuration ID</param>
     /// <returns>The active function cost</returns>
     [HttpGet("configuration/{functionConfigurationId}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionCostDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCostForConfiguration(int functionConfigurationId)
     {
@@ -89,7 +90,7 @@ public class FunctionCostsController : AdminControllerBase
     /// <param name="createDto">The function cost to create</param>
     /// <returns>The created function cost</returns>
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(FunctionCostDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateFunctionCost(
         [FromBody] CreateFunctionCostDto createDto)
@@ -120,7 +121,7 @@ public class FunctionCostsController : AdminControllerBase
     /// <param name="updateDto">The updated function cost data</param>
     /// <returns>The updated function cost</returns>
     [HttpPut("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionCostDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateFunctionCost(
@@ -175,7 +176,7 @@ public class FunctionCostsController : AdminControllerBase
     /// </summary>
     /// <returns>Success message</returns>
     [HttpPost("cache/clear")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FunctionCostCacheClearResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ClearCache()
     {
         await _functionCostService.ClearCacheAsync();

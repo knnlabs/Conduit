@@ -211,6 +211,9 @@ namespace ConduitLLM.Admin.Extensions
                     .Select(mpta => mpta.Identifier)
                     .Where(identifier => !string.IsNullOrEmpty(identifier))
                     .ToList() ?? new List<string>(),
+                ModelProviderTypeAssociationIds = modelCost.ModelProviderTypeAssociations?
+                    .Select(mpta => mpta.Id)
+                    .ToList() ?? new List<int>(),
                 PricingModel = modelCost.PricingModel,
                 PricingConfiguration = modelCost.PricingConfiguration,
                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
