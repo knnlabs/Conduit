@@ -15,7 +15,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconCash, IconAlertCircle } from '@tabler/icons-react';
 import { formatters } from '@/lib/utils/formatters';
-import type { VirtualKeyGroupDto, AdjustBalanceDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyGroupDto, AdjustBalanceDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
 

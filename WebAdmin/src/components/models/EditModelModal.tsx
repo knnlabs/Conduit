@@ -17,7 +17,7 @@ import type {
   UpdateModelDto, 
   ModelSeriesDto,
   NormalizedProviderTypeAssociation 
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 // The SDK's generated ModelDto now includes capability fields, modelParameters,
 // and tokenizerType directly

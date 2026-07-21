@@ -14,7 +14,7 @@ import {
   IconKey,
   IconAlertCircle,
 } from '@tabler/icons-react';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto } from '@/lib/admin-api';
 import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 interface ViewVirtualKeyModalProps {

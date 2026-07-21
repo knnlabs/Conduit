@@ -8,7 +8,7 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
 import { notify } from '@/lib/notifications';
-import type { CreateModelSeriesDto, ModelAuthorDto } from '@knn_labs/conduit-admin-client';
+import type { CreateModelSeriesDto, ModelAuthorDto } from '@/lib/admin-api';
 
 
 interface CreateModelSeriesModalProps {

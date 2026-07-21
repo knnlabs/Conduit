@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
-import type { ModelCostDto, ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import type { ModelCostDto, ModelProviderMappingDto } from '@/lib/admin-api';
 
 interface ProviderInfo {
   providerId: number;

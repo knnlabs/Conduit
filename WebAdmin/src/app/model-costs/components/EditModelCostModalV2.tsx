@@ -22,7 +22,7 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { ModelCostDto, UpdateModelCostDto, PricingModel, ModelType, ModelTypeUtils } from '@knn_labs/conduit-admin-client';
+import { ModelCostDto, UpdateModelCostDto, PricingModel, ModelType, ModelTypeUtils } from '@/lib/admin-api';
 const getModelTypeSelectOptions = ModelTypeUtils.getSelectOptions;
 import { ModelMappingSelector } from './ModelMappingSelector';
 import { PricingModelSelector } from './PricingModelSelector';

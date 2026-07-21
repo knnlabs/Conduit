@@ -24,7 +24,7 @@ import { IconAlertCircle, IconInfoCircle, IconCircleCheck, IconArrowLeft, IconSe
 import { 
   ProviderType, 
   PROVIDER_CONFIG_REQUIREMENTS,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 import { useProviderFormLogic } from './ProviderFormLogic';
 import { useProviderFormHandlers } from './ProviderFormHandlers';
 

@@ -28,7 +28,7 @@ import {
   useBulkEnableModelMappings,
   useBulkDisableModelMappings,
 } from '@/hooks/useModelMappingsApi';
-import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import type { ModelProviderMappingDto } from '@/lib/admin-api';
 import { BulkActionsBar } from './BulkActionsBar';
 
 // Extend the DTO type to ensure provider and capabilities properties are available

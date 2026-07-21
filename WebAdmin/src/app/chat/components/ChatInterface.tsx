@@ -39,7 +39,7 @@ import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import Link from 'next/link';
 import { useAdminClient } from '@/lib/client/adminClient';
-import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
+import type { FunctionConfigurationDto } from '@/lib/admin-api';
 import { useChatLayout } from '../hooks/useChatLayout';
 
 export function ChatInterface() {

@@ -1,4 +1,4 @@
-import { ModelType } from '@knn_labs/conduit-admin-client';
+import { ModelType } from '@/lib/admin-api';
 
 export interface FormValues {
   costName: string;

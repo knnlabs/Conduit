@@ -132,7 +132,7 @@ jobs:
 
       - name: OpenAPI contract validation and drift check
         # Export both contracts without infrastructure, prove generation is byte-stable,
-        # regenerate both SDK type files, validate the contracts, and fail on drift.
+        # regenerate SDK and WebAdmin contract types, validate the contracts, and fail on drift.
         run: |
           cd SDKs/Node/scripts
           npm ci
@@ -143,7 +143,8 @@ jobs:
             Services/ConduitLLM.Admin/openapi-admin.json \
             Services/ConduitLLM.Gateway/openapi-gateway.json \
             SDKs/Node/Admin/src/generated/admin-api.ts \
-            SDKs/Node/Gateway/src/generated/gateway-api.ts; then
+            SDKs/Node/Gateway/src/generated/gateway-api.ts \
+            WebAdmin/src/generated/admin-api.ts; then
             echo "::error::OpenAPI contracts or generated SDK types are out of date. Run 'npm run generate:offline' in SDKs/Node/scripts and commit the changes."
             exit 1
           fi
@@ -158,6 +159,7 @@ jobs:
           rm -rf .next
           npm run lint
           npm run type-check
+          npm run check:admin-boundary
 
   # Two-host Wolverine listener assertion (#961): boots the REAL Gateway + Admin hosts
   # against real Postgres with ConduitLLM:Messaging:Backend=Wolverine and asserts that

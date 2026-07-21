@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+import type { ConduitAdminClient } from '@/lib/admin-api';
 
 export interface AssociationWithProvider {
   associationId: number;

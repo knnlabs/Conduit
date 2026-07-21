@@ -1,4 +1,8 @@
-# SDK Migration Validation Checklist
+# Legacy SDK Migration Validation Checklist
+
+> Historical document: WebAdmin no longer treats the Admin SDK package as its integration boundary.
+> See `ADMIN_API_BOUNDARY.md` for the current contract-derived architecture. Gateway SDK references
+> in this document remain relevant where they describe streaming or SignalR behavior.
 
 This checklist ensures the SDK migration has been completed successfully and the system is ready for production.
 

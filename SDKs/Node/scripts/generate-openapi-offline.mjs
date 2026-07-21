@@ -16,12 +16,15 @@ const targets = {
   admin: {
     project: path.join(repoRoot, 'Services', 'ConduitLLM.Admin', 'ConduitLLM.Admin.csproj'),
     spec: path.join(repoRoot, 'Services', 'ConduitLLM.Admin', 'openapi-admin.json'),
-    types: path.join(scriptsDir, '..', 'Admin', 'src', 'generated', 'admin-api.ts'),
+    types: [
+      path.join(scriptsDir, '..', 'Admin', 'src', 'generated', 'admin-api.ts'),
+      path.join(repoRoot, 'WebAdmin', 'src', 'generated', 'admin-api.ts'),
+    ],
   },
   gateway: {
     project: path.join(repoRoot, 'Services', 'ConduitLLM.Gateway', 'ConduitLLM.Gateway.csproj'),
     spec: path.join(repoRoot, 'Services', 'ConduitLLM.Gateway', 'openapi-gateway.json'),
-    types: path.join(scriptsDir, '..', 'Gateway', 'src', 'generated', 'gateway-api.ts'),
+    types: [path.join(scriptsDir, '..', 'Gateway', 'src', 'generated', 'gateway-api.ts')],
   },
 };
 
@@ -77,19 +80,21 @@ export function generate(selection) {
       '-v',
       'q',
     ]);
-    run(process.execPath, [openApiTypescriptCli, target.spec, '-o', target.types], {
-      cwd: scriptsDir,
-    });
-    if (process.platform === 'win32') {
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+    for (const types of target.types) {
+      run(process.execPath, [openApiTypescriptCli, target.spec, '-o', types], {
+        cwd: scriptsDir,
+      });
+      if (process.platform === 'win32') {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+      }
+      run(process.execPath, [prettierCli, '--write', types], {
+        cwd: scriptsDir,
+        attempts: 3,
+      });
+      console.log(`Regenerated ${path.relative(repoRoot, types)}`);
     }
-    run(process.execPath, [prettierCli, '--write', target.types], {
-      cwd: scriptsDir,
-      attempts: 3,
-    });
 
     console.log(`Regenerated ${path.relative(repoRoot, target.spec)}`);
-    console.log(`Regenerated ${path.relative(repoRoot, target.types)}`);
   }
 }
 

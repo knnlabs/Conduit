@@ -1,4 +1,4 @@
-import type { DriftItemDto } from '@knn_labs/conduit-admin-client';
+import type { DriftItemDto } from '@/lib/admin-api';
 
 /** Mantine color for each drift type badge. */
 export function driftTypeColor(driftType: string): string {

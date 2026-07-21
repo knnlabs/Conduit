@@ -13,7 +13,7 @@ import {
 import { DatePickerInput } from '@mantine/dates';
 import { IconCalendar, IconRefresh, IconX } from '@tabler/icons-react';
 import type { RequestLogFilters } from '@/hooks/useRequestLogs';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto } from '@/lib/admin-api';
 
 interface RequestLogsFiltersProps {
   filters: RequestLogFilters;

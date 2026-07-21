@@ -32,7 +32,7 @@ import {
 import Link from 'next/link';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { MediaCleanupStatus } from '@knn_labs/conduit-admin-client';
+import type { MediaCleanupStatus } from '@/lib/admin-api';
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';

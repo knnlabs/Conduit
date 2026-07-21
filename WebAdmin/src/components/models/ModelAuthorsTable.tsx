@@ -8,7 +8,7 @@ import { notify } from '@/lib/notifications';
 import { EditModelAuthorModal } from './EditModelAuthorModal';
 import { ViewModelAuthorModal } from './ViewModelAuthorModal';
 import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
-import type { ModelAuthorDto } from '@knn_labs/conduit-admin-client';
+import type { ModelAuthorDto } from '@/lib/admin-api';
 
 
 interface ModelAuthorsTableProps {

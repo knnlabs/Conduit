@@ -21,7 +21,7 @@ import {
   IconChevronUp,
   IconPlus,
 } from '@tabler/icons-react';
-import type { PricingRule, PricingValidationError } from '@knn_labs/conduit-admin-client';
+import type { PricingRule, PricingValidationError } from '@/lib/admin-api';
 import { ConditionBuilder } from './ConditionBuilder';
 
 interface ParameterOption {

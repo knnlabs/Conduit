@@ -23,7 +23,7 @@ import {
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
-import type { ProviderDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto } from '@/lib/admin-api';
 import { useRouter } from 'next/navigation';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 

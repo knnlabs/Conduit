@@ -7,7 +7,7 @@ import { notify } from '@/lib/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
-import type { ModelSeriesDto, UpdateModelSeriesDto } from '@knn_labs/conduit-admin-client';
+import type { ModelSeriesDto, UpdateModelSeriesDto } from '@/lib/admin-api';
 
 
 interface EditModelSeriesModalProps {

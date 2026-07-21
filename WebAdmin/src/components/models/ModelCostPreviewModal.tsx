@@ -28,7 +28,7 @@ import {
   IconInfoCircle,
   IconShieldCheck,
 } from '@tabler/icons-react';
-import { PricingModel, type ModelDto, type ModelCostDto } from '@knn_labs/conduit-admin-client';
+import { PricingModel, type ModelDto, type ModelCostDto } from '@/lib/admin-api';
 import { formatters } from '@/lib/utils/formatters';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { extractCapabilities } from '@/utils/typeGuards';

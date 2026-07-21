@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
 
-import type { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+import type { ConduitAdminClient } from '@/lib/admin-api';
 
 /**
  * Factory hook that wraps React Query's `useMutation` with standardized

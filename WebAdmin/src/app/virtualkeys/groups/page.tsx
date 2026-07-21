@@ -33,7 +33,7 @@ import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useSearchParams } from 'next/navigation';
 import { formatters } from '@/lib/utils/formatters';
-import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyGroupDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 // Import modals lazily

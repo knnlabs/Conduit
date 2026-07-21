@@ -9,7 +9,7 @@ import {
   PROVIDER_REGISTRY,
   getProviderTypeName,
   getAvailableProviders,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 // Re-export the SDK's ProviderType enum and registry utilities
 export { ProviderType, PROVIDER_REGISTRY };

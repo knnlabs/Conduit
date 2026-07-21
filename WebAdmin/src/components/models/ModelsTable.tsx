@@ -22,7 +22,7 @@ import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationM
 import { ModelCostPreviewModal } from './ModelCostPreviewModal';
 import { ModelCostEditorModal } from './ModelCostEditorModal';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
-import type { ModelCostDto, ModelDto } from '@knn_labs/conduit-admin-client';
+import type { ModelCostDto, ModelDto } from '@/lib/admin-api';
 import { extractCapabilities, getErrorMessage } from '@/utils/typeGuards';
 import { CapabilityIcons } from '@/components/common/CapabilityIcons';
 import { getTokenizerDisplayName } from '@/lib/utils/tokenizerTypes';

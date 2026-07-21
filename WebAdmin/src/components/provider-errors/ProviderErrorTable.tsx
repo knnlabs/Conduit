@@ -1,7 +1,7 @@
 import { Table, Badge, Group, Text, Button, ActionIcon, Tooltip } from '@mantine/core';
 import { IconRefresh, IconKey } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import type { components } from '@knn_labs/conduit-admin-client';
+import type { components } from '@/lib/admin-api';
 
 type ProviderErrorSummaryDto = components['schemas']['ProviderErrorSummaryDto'];
 

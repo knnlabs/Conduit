@@ -19,7 +19,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { formatters } from '@/lib/utils/formatters';
-import type { VirtualKeyGroupDto, VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyGroupDto, VirtualKeyDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 interface ViewVirtualKeyGroupModalProps {

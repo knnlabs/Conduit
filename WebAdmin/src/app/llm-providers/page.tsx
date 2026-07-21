@@ -34,7 +34,7 @@ import { useRouter } from 'next/navigation';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import { ApiKeyTestResult, type ProviderDto } from '@knn_labs/conduit-admin-client';
+import { ApiKeyTestResult, type ProviderDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 

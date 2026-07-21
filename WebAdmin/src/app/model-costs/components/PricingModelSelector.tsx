@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Select, JsonInput, Stack, Text, Alert, Tabs, Badge, Group } from '@mantine/core';
 import { IconInfoCircle, IconCode, IconSettings } from '@tabler/icons-react';
-import { PricingModel } from '@knn_labs/conduit-admin-client';
+import { PricingModel } from '@/lib/admin-api';
 import { PricingRulesEditor } from './pricing-rules';
 
 interface PricingModelSelectorProps {

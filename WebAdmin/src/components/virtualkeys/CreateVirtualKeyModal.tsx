@@ -22,7 +22,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 import { notify } from '@/lib/notifications';
-import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyGroupDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 interface CreateVirtualKeyModalProps {

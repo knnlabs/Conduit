@@ -23,7 +23,7 @@ import {
   ProviderType, 
   PROVIDER_CONFIG_REQUIREMENTS,
   type ProviderDto
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 

@@ -13,7 +13,7 @@ import {
   IconCircleCheck,
   IconAlertTriangle,
 } from '@tabler/icons-react';
-import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto } from '@/lib/admin-api';
 import { generateServiceInfo, getStatusColor } from './helpers';
 
 interface SystemServicesTabProps {

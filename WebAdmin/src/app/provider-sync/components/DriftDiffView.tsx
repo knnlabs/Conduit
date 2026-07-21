@@ -2,7 +2,7 @@
 
 import { Table, Text, Alert, Stack, Badge, Group } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import type { DriftItemDto } from '@knn_labs/conduit-admin-client';
+import type { DriftItemDto } from '@/lib/admin-api';
 import {
   parseDriftPayload,
   fieldLabel,

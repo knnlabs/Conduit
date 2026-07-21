@@ -10,7 +10,7 @@ import {
   ScrollArea,
 } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
-import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto } from '@/lib/admin-api';
 
 interface SystemEnvironmentTabProps {
   systemInfo: SystemInfoDto | null;

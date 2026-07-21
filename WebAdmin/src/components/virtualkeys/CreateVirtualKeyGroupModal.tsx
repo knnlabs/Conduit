@@ -12,7 +12,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconLayersLinked } from '@tabler/icons-react';
-import type { CreateVirtualKeyGroupRequestDto } from '@knn_labs/conduit-admin-client';
+import type { CreateVirtualKeyGroupRequestDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
 

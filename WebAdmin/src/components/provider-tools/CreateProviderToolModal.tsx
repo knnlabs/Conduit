@@ -6,7 +6,7 @@ import { useForm } from '@mantine/form';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
-import type { CreateProviderTool, ToolProviderOption } from '@knn_labs/conduit-admin-client';
+import type { CreateProviderTool, ToolProviderOption } from '@/lib/admin-api';
 
 interface CreateProviderToolModalProps {
   isOpen: boolean;

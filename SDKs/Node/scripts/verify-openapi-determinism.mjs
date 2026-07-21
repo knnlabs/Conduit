@@ -12,6 +12,7 @@ const generatedFiles = [
   'Services/ConduitLLM.Gateway/openapi-gateway.json',
   'SDKs/Node/Admin/src/generated/admin-api.ts',
   'SDKs/Node/Gateway/src/generated/gateway-api.ts',
+  'WebAdmin/src/generated/admin-api.ts',
 ];
 
 generate('all');

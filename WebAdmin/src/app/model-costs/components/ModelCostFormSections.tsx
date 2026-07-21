@@ -15,7 +15,7 @@ import {
   IconInfoCircle,
 } from '@tabler/icons-react';
 import { UseFormReturnType } from '@mantine/form';
-import { ModelType } from '@knn_labs/conduit-admin-client';
+import { ModelType } from '@/lib/admin-api';
 import { formatters } from '@/lib/utils/formatters';
 import type { FormValues } from './ModelCostFormTypes';
 

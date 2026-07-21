@@ -1,5 +1,5 @@
 /**
- * Re-export cost formatting utilities from @knn_labs/conduit-admin-client.
+ * Re-export cost formatting utilities from @/lib/admin-api.
  * All business logic now lives in the SDK for cross-project reuse.
  */
 export {
@@ -15,4 +15,4 @@ export {
   formatModelPattern,
   getCostDisplayForModelType,
   getCostTypeLabel
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';

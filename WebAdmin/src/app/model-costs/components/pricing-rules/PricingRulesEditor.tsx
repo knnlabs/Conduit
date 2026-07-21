@@ -11,7 +11,7 @@ import {
   Text,
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconPlus } from '@tabler/icons-react';
-import type { PricingRulesConfig } from '@knn_labs/conduit-admin-client';
+import type { PricingRulesConfig } from '@/lib/admin-api';
 import { usePricingRules } from '../../hooks/usePricingRules';
 import { RuleConfigHeader } from './RuleConfigHeader';
 import { RuleRow } from './RuleRow';

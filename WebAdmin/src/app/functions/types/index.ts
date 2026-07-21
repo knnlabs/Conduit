@@ -46,7 +46,7 @@ export type {
   TieredPricingConfig,
   ExaHybridPricingConfig,
   FunctionPricingConfig,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 // Re-export enum values for runtime usage
 import {
@@ -55,7 +55,7 @@ import {
   FunctionExecutionMode,
   ExecutionState,
   FunctionPricingModel,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 export {
   FunctionProviderType,
@@ -73,13 +73,13 @@ export {
   normalizeFunctionProviderType,
   isValidFunctionProviderType,
   FUNCTION_PROVIDER_REGISTRY,
-} from '@knn_labs/conduit-admin-client';
-export type { FunctionProviderMetadata } from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
+export type { FunctionProviderMetadata } from '@/lib/admin-api';
 
 // Helper functions for enum display
 // Note: getProviderTypeName is now provided by SDK (getFunctionProviderTypeName)
 // Re-export with original name for backwards compatibility
-export { getFunctionProviderTypeName as getProviderTypeName } from '@knn_labs/conduit-admin-client';
+export { getFunctionProviderTypeName as getProviderTypeName } from '@/lib/admin-api';
 
 export function getPurposeName(purpose: FunctionPurpose): string {
   switch (purpose) {

@@ -6,7 +6,7 @@ import { CodeHighlight } from '@mantine/code-highlight';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
-import type { ModelSeriesDto, SeriesSimpleModelDto } from '@knn_labs/conduit-admin-client';
+import type { ModelSeriesDto, SeriesSimpleModelDto } from '@/lib/admin-api';
 
 
 interface ViewModelSeriesModalProps {

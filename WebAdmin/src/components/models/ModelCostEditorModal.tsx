@@ -34,7 +34,7 @@ import {
   type ModelCostDto,
   type CreateModelCostDto,
   type UpdateModelCostDto,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { extractCapabilities } from '@/utils/typeGuards';
 import { PricingModelSelector } from '@/app/model-costs/components/PricingModelSelector';

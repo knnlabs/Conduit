@@ -8,7 +8,7 @@ import type {
   VirtualKeyDto as BaseVirtualKeyDto, 
   UsageMetricsDto as BaseUsageMetricsDto,
   DateRange
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 // Re-export DateRange for convenience
 export type { DateRange };

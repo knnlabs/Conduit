@@ -6,7 +6,7 @@ import { useForm } from '@mantine/form';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
-import type { CreateModelDto, ModelSeriesDto } from '@knn_labs/conduit-admin-client';
+import type { CreateModelDto, ModelSeriesDto } from '@/lib/admin-api';
 
 interface CreateModelModalProps {
   isOpen: boolean;

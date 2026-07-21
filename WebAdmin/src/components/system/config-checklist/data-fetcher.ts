@@ -1,5 +1,5 @@
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { ProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderKeyCredentialDto } from '@/lib/admin-api';
 import type { ConfigData } from './types';
 
 // Standalone data fetch function

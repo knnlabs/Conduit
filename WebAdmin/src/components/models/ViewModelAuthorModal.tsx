@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Stack, Group, Text, Badge, Title, Divider, Anchor, ScrollArea } from '@mantine/core';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
-import type { ModelAuthorDto, SimpleModelSeriesDto } from '@knn_labs/conduit-admin-client';
+import type { ModelAuthorDto, SimpleModelSeriesDto } from '@/lib/admin-api';
 
 
 interface ViewModelAuthorModalProps {

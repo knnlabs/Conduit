@@ -3,7 +3,7 @@
 import { Table, Badge, ActionIcon, Group, Button, Text, Loader, Stack, Anchor } from '@mantine/core';
 import { IconEdit, IconTrash, IconPlus, IconCoin } from '@tabler/icons-react';
 import Link from 'next/link';
-import type { NormalizedProviderTypeAssociation } from '@knn_labs/conduit-admin-client';
+import type { NormalizedProviderTypeAssociation } from '@/lib/admin-api';
 
 interface ProviderTypeListProps {
   associations: NormalizedProviderTypeAssociation[];

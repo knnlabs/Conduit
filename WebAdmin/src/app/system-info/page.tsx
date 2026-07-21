@@ -28,7 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { notify } from '@/lib/notifications';
-import { SystemInfoDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto, GlobalSettingDto, GlobalSettingCacheStats } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { SystemOverviewTab } from './SystemOverviewTab';
 import { SystemServicesTab } from './SystemServicesTab';

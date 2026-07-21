@@ -7,7 +7,7 @@ import {
   type StreamMessageOptions,
   type RetryInfo
 } from '@knn_labs/conduit-gateway-client';
-import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
+import type { FunctionConfigurationDto } from '@/lib/admin-api';
 import { SDKChatStreamingAdapter } from '@/lib/client/sdkChatStreamingAdapter';
 import {
   ChatParameters,

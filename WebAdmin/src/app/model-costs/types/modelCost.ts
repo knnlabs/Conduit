@@ -4,9 +4,9 @@ export type {
   CreateModelCostDto,
   UpdateModelCostDto,
   ModelCostFilters,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
-import type { ModelCostDto } from '@knn_labs/conduit-admin-client';
+import type { ModelCostDto } from '@/lib/admin-api';
 
 // Legacy interface mapping for backward compatibility
 // The new SDK uses different field names

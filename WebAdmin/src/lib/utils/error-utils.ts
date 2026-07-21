@@ -3,7 +3,7 @@
  * These utilities help extract properties from error objects while satisfying ESLint rules
  */
 
-import { HttpError } from '@knn_labs/conduit-admin-client';
+import { HttpError } from '@/lib/admin-api';
 
 /**
  * Safely extracts statusCode from an HttpError

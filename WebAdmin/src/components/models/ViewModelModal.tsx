@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Stack, Group, Text, Badge, Divider, Loader, ScrollArea } from '@mantine/core';
 import { CodeHighlight } from '@mantine/code-highlight';
 import { notify } from '@/lib/notifications';
-import type { ModelDto } from '@knn_labs/conduit-admin-client';
+import type { ModelDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getModelPrimaryType, getModelTypeBadgeColor } from '@/utils/modelHelpers';
 import { useModelSeriesById } from '@/hooks/useModelSeries';

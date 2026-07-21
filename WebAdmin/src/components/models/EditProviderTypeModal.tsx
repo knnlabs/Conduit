@@ -6,7 +6,7 @@ import { useForm } from '@mantine/form';
 import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { getProviderSelectOptions } from '@/lib/utils/providerTypeUtils';
-import type { ProviderTypeAssociationInput } from '@knn_labs/conduit-admin-client';
+import type { ProviderTypeAssociationInput } from '@/lib/admin-api';
 
 interface EditProviderTypeModalProps {
   isOpen: boolean;

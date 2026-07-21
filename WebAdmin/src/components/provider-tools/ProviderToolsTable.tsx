@@ -7,7 +7,7 @@ import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { EditProviderToolModal } from './EditProviderToolModal';
 import { modals } from '@mantine/modals';
-import type { ProviderTool } from '@knn_labs/conduit-admin-client';
+import type { ProviderTool } from '@/lib/admin-api';
 
 interface ProviderToolsTableProps {
   onRefresh: () => void;

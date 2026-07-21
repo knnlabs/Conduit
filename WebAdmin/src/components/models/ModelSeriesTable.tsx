@@ -8,7 +8,7 @@ import { notify } from '@/lib/notifications';
 import { EditModelSeriesModal } from './EditModelSeriesModal';
 import { ViewModelSeriesModal } from './ViewModelSeriesModal';
 import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
-import type { ModelSeriesDto } from '@knn_labs/conduit-admin-client';
+import type { ModelSeriesDto } from '@/lib/admin-api';
 
 
 interface ModelSeriesTableProps {

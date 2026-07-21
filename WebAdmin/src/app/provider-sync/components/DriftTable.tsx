@@ -22,7 +22,7 @@ import {
 } from '@mantine/core';
 import { IconDots, IconEye, IconCheck, IconX } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import type { DriftItemDto, DriftItemFilter } from '@knn_labs/conduit-admin-client';
+import type { DriftItemDto, DriftItemFilter } from '@/lib/admin-api';
 import { formatters } from '@/lib/utils/formatters';
 import {
   fetchDrift,

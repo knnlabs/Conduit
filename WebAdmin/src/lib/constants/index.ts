@@ -13,4 +13,4 @@ export * from './modelCapabilities';
 export {
   BUDGET_DURATION,
   HTTP_STATUS,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';

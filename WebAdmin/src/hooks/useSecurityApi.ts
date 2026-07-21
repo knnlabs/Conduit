@@ -7,7 +7,7 @@ import type {
   IpFilterDto,
   CreateIpFilterDto,
   UpdateIpFilterDto,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 // Legacy interface for backward compatibility - maps to IpFilterDto
 export interface IpRule {

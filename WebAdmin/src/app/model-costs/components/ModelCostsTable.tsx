@@ -36,7 +36,7 @@ import {
 import { modals } from '@mantine/modals';
 import { fetchModelCosts, useDeleteModelCost } from '../hooks/useModelCostsApi';
 import { ModelCost } from '../types/modelCost';
-import { PricingModel, ModelType } from '@knn_labs/conduit-admin-client';
+import { PricingModel, ModelType } from '@/lib/admin-api';
 import { EditModelCostModalV2 } from './EditModelCostModalV2';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';

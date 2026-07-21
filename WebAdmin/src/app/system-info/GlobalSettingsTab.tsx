@@ -28,7 +28,7 @@ import {
   IconChartBar,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import type { GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
+import type { GlobalSettingDto, GlobalSettingCacheStats } from '@/lib/admin-api';
 
 /**
  * Function discovery cache statistics - local type definition

@@ -33,7 +33,7 @@ import { RequestLogsFilters } from '@/components/analytics/RequestLogsFilters';
 import { useRequestLogs, useDistinctModels, type RequestLogFilters } from '@/hooks/useRequestLogs';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto } from '@/lib/admin-api';
 
 export default function RequestLogsPage() {
   // Pagination state

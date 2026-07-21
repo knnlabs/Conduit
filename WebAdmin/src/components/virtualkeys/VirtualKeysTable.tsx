@@ -23,7 +23,7 @@ import {
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
 import { useRouter } from 'next/navigation';
-import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
 
 interface VirtualKeysTableProps {
   onEdit?: (key: VirtualKeyDto) => void;

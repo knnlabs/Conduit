@@ -17,13 +17,13 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "check:admin-boundary": "node scripts/check-admin-boundary.mjs",
     "prepare": "cd .. && husky install WebAdmin/.husky",
     "pre-commit": "lint-staged"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.1",
     "@hello-pangea/dnd": "^18.0.1",
-    "@knn_labs/conduit-admin-client": "file:../SDKs/Node/Admin",
     "@knn_labs/conduit-common": "file:../SDKs/Node/Common",
     "@knn_labs/conduit-gateway-client": "file:../SDKs/Node/Gateway",
     "@mantine/carousel": "^8.3.14",

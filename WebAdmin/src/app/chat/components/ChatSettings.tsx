@@ -17,7 +17,7 @@ import { useChatStore } from '../hooks/useChatStore';
 import { CHAT_PRESETS, findMatchingPreset } from '@knn_labs/conduit-gateway-client';
 import { getPresetIcon } from '../utils/presets';
 import { ChatParameters } from '../types';
-import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
+import type { FunctionConfigurationDto } from '@/lib/admin-api';
 
 interface ChatSettingsProps {
   reasoningExpanded?: boolean;

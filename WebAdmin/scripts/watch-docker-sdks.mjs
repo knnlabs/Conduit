@@ -8,9 +8,6 @@ const watchedPaths = [
   'Common/src',
   'Common/tsconfig.json',
   'Common/tsup.config.ts',
-  'Admin/src',
-  'Admin/tsconfig.json',
-  'Admin/tsup.config.ts',
   'Gateway/src',
   'Gateway/tsconfig.json',
   'Gateway/tsup.config.ts',
@@ -68,7 +65,7 @@ const watcher = chokidar.watch(watchedPaths, {
 
 watcher.on('all', scheduleBuild);
 watcher.on('ready', () => {
-  console.log('[sdk-watch] Watching Common, Admin, and Gateway SDK sources.');
+  console.log('[sdk-watch] Watching Common and Gateway SDK sources.');
 });
 watcher.on('error', (error) => {
   console.error('[sdk-watch] File watcher error:', error);

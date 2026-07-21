@@ -2,7 +2,7 @@
  * Enhanced error handling utilities for OpenAI-compatible error responses
  */
 
-import { HttpError } from '@knn_labs/conduit-admin-client';
+import { HttpError } from '@/lib/admin-api';
 import { 
   OpenAIError, 
   OpenAIErrorResponse, 

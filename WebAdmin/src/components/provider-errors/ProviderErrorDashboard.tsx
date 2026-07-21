@@ -5,7 +5,7 @@ import {
   IconCircleX,
   IconKey,
 } from '@tabler/icons-react';
-import type { components } from '@knn_labs/conduit-admin-client';
+import type { components } from '@/lib/admin-api';
 
 type ErrorStatisticsDto = components['schemas']['ErrorStatisticsDto'];
 

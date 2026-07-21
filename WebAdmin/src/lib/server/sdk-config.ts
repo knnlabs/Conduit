@@ -1,4 +1,4 @@
-import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+import { ConduitAdminClient } from '@/lib/admin-api';
 import { ConduitGatewayClient } from '@knn_labs/conduit-gateway-client';
 
 // Validate required environment variables at runtime

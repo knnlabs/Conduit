@@ -28,7 +28,7 @@ import type {
   ModelProviderMappingDto, 
   UpdateModelProviderMappingDto,
   ConduitAdminClient 
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 interface AvailableProvider {
   associationId: number;

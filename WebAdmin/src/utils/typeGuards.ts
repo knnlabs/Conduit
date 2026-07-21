@@ -2,7 +2,7 @@
  * Type guards for runtime type checking and type narrowing
  */
 
-import type { ModelDto } from '@knn_labs/conduit-admin-client';
+import type { ModelDto } from '@/lib/admin-api';
 
 // Removed capabilities-related type guards as capabilities are now embedded directly in ModelDto
 

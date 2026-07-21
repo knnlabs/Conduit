@@ -8,7 +8,7 @@ import {
   ConflictError,
   RateLimitError,
   ServerError
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 import { 
   getErrorStatusCode, 
   getErrorMessage, 

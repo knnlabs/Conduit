@@ -33,7 +33,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { notify } from '@/lib/notifications';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useClipboard } from '@mantine/hooks';
 

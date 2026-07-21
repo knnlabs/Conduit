@@ -28,7 +28,7 @@ import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
 import { getProviderTypeFromDto, providerTypeToName } from '@/lib/utils/providerTypeUtils';
 import { CapabilityIcons } from '@/components/common/CapabilityIcons';
-import type { ProviderDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto } from '@/lib/admin-api';
 
 interface BulkMappingModalProps {
   isOpen: boolean;

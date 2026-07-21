@@ -35,7 +35,7 @@ import {
 } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
-import type { ProviderDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatters } from '@/lib/utils/formatters';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';

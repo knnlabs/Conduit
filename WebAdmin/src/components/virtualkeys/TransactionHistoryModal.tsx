@@ -29,7 +29,7 @@ import type {
   VirtualKeyGroupTransactionDto,
   TransactionType,
   ReferenceType 
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 interface TransactionHistoryModalProps {
   opened: boolean;

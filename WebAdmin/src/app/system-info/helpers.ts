@@ -1,4 +1,4 @@
-import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto } from '@/lib/admin-api';
 
 export interface SystemMetric {
   name: string;

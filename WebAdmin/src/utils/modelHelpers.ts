@@ -1,4 +1,4 @@
-import type { ModelDto } from '@knn_labs/conduit-admin-client';
+import type { ModelDto } from '@/lib/admin-api';
 
 /**
  * Determines the primary type of a model based on its capabilities

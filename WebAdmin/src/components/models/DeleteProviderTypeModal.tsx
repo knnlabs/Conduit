@@ -1,7 +1,7 @@
 'use client';
 
 import { Modal, Text, Button, Group, Stack } from '@mantine/core';
-import type { NormalizedProviderTypeAssociation } from '@knn_labs/conduit-admin-client';
+import type { NormalizedProviderTypeAssociation } from '@/lib/admin-api';
 
 interface DeleteProviderTypeModalProps {
   isOpen: boolean;

@@ -1,7 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { ApiKeyTestResult } from '@knn_labs/conduit-admin-client';
+import { ApiKeyTestResult } from '@/lib/admin-api';
 import type { ProviderFormData, ProviderFormLogicResult } from './ProviderFormLogic';
 
 interface UseProviderFormHandlersParams {

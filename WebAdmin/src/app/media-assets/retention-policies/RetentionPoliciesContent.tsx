@@ -34,7 +34,7 @@ import {
 } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { MediaRetentionPolicy, CreateMediaRetentionPolicyRequest, UpdateMediaRetentionPolicyRequest } from '@knn_labs/conduit-admin-client';
+import type { MediaRetentionPolicy, CreateMediaRetentionPolicyRequest, UpdateMediaRetentionPolicyRequest } from '@/lib/admin-api';
 
 interface PolicyFormData {
   name: string;

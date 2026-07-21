@@ -8,7 +8,7 @@ import type {
   DriftActionResultDto,
   BulkDriftActionResponse,
   ProviderSyncRunDto,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 export const DRIFT_QUERY_KEY = 'provider-sync-drift';
 export const RUNS_QUERY_KEY = 'provider-sync-runs';

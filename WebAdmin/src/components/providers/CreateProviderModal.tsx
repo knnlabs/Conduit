@@ -19,7 +19,7 @@ import { useState, useEffect } from 'react';
 import { 
   ProviderType, 
   PROVIDER_CONFIG_REQUIREMENTS
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 

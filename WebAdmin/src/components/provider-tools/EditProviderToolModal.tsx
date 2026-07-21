@@ -5,7 +5,7 @@ import { Modal, TextInput, NumberInput, Select, Switch, Button, Stack, Group, Te
 import { useForm } from '@mantine/form';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
-import type { ProviderTool, UpdateProviderTool } from '@knn_labs/conduit-admin-client';
+import type { ProviderTool, UpdateProviderTool } from '@/lib/admin-api';
 
 interface EditProviderToolModalProps {
   isOpen: boolean;

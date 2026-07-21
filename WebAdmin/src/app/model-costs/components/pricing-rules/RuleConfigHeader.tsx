@@ -2,7 +2,7 @@
 
 import { Select, NumberInput, Group, Stack, Text, Tooltip, ActionIcon } from '@mantine/core';
 import { IconInfoCircle, IconCurrencyDollar } from '@tabler/icons-react';
-import type { PricingType } from '@knn_labs/conduit-admin-client';
+import type { PricingType } from '@/lib/admin-api';
 
 interface RuleConfigHeaderProps {
   pricingType: PricingType;

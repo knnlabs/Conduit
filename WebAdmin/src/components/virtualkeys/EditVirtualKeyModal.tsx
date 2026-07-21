@@ -17,7 +17,7 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import { validators } from '@/lib/utils/form-validators';
 import { useState, useEffect, useRef } from 'react';
 
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
 

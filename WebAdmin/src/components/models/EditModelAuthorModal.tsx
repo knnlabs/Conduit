@@ -5,7 +5,7 @@ import { Modal, TextInput, Button, Stack, Group } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
-import type { ModelAuthorDto, UpdateModelAuthorDto } from '@knn_labs/conduit-admin-client';
+import type { ModelAuthorDto, UpdateModelAuthorDto } from '@/lib/admin-api';
 
 
 interface EditModelAuthorModalProps {

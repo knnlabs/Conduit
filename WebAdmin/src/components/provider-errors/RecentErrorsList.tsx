@@ -13,7 +13,7 @@ import {
   Code,
 } from '@mantine/core';
 import { IconSearch, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
-import type { components } from '@knn_labs/conduit-admin-client';
+import type { components } from '@/lib/admin-api';
 
 type ProviderErrorDto = components['schemas']['ProviderErrorDto'];
 

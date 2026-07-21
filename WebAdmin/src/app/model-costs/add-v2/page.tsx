@@ -27,7 +27,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { CreateModelCostDto, PricingModel, ModelType, ModelTypeUtils } from '@knn_labs/conduit-admin-client';
+import { CreateModelCostDto, PricingModel, ModelType, ModelTypeUtils } from '@/lib/admin-api';
 const getModelTypeSelectOptions = ModelTypeUtils.getSelectOptions;
 import { ModelMappingSelector } from '../components/ModelMappingSelector';
 import { PricingModelSelector } from '../components/PricingModelSelector';

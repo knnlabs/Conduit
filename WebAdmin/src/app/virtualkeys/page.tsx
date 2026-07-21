@@ -38,7 +38,7 @@ import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/expo
 import { notify } from '@/lib/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 export default function VirtualKeysPage() {

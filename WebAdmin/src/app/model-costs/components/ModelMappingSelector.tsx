@@ -12,7 +12,7 @@ import {
 } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
-import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import type { ModelProviderMappingDto } from '@/lib/admin-api';
 
 // Extended type to include additional fields from API response
 interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {

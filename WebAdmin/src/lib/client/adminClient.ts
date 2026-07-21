@@ -1,4 +1,4 @@
-import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+import { ConduitAdminClient } from '@/lib/admin-api';
 import { useCallback } from 'react';
 
 /**

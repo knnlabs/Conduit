@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { 
   type ProviderDto
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 import { validators } from '@/lib/utils/form-validators';

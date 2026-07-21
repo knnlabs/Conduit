@@ -2,9 +2,9 @@
 // This file adds type information for methods that exist in the SDK
 // but may not have proper TypeScript declarations exported
 
-import '@knn_labs/conduit-admin-client';
+import '@/lib/admin-api';
 
-declare module '@knn_labs/conduit-admin-client' {
+declare module '@/lib/admin-api' {
   // The SDK should already have all these services properly typed
   // This file can be removed once we verify the SDK exports are working correctly
 }

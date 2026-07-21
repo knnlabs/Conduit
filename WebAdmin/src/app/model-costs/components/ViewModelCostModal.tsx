@@ -22,7 +22,7 @@ import {
   IconDatabase,
 } from '@tabler/icons-react';
 import { ModelCost } from '../types/modelCost';
-import { ModelType } from '@knn_labs/conduit-admin-client';
+import { ModelType } from '@/lib/admin-api';
 import { formatters } from '@/lib/utils/formatters';
 import { useEnrichedModelCosts } from '../hooks/useEnrichedModelCosts';
 
