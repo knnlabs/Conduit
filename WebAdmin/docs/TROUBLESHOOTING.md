@@ -91,7 +91,7 @@
    import { GatewayClient } from '@/lib/gateway-api';
    ```
 
-3. Run `npm run check:admin-boundary` to find forbidden SDK package or workspace imports.
+3. Run `npm run check:api-boundary` to find forbidden SDK package or workspace imports.
 
 ### Rate Limiting Issues
 

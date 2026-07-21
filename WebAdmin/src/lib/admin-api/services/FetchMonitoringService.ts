@@ -16,7 +16,6 @@ import type {
   TraceQueryParams,
   LogEntry,
   LogQueryParams,
-  LogStreamOptions,
   MonitoringHealthStatus,
   MetricExportParams,
   MetricExportResult,
@@ -55,16 +54,6 @@ export class FetchMonitoringService {
    */
   async queryMetrics(params: MetricsQueryParams, config?: RequestConfig): Promise<MetricsResponse> {
     return this.metricsService.queryMetrics(params, config);
-  }
-
-  /**
-   * Stream real-time metrics
-   */
-  async *streamMetrics(
-    params: MetricsQueryParams,
-    config?: RequestConfig
-  ): AsyncGenerator<MetricsResponse, void, unknown> {
-    yield* this.metricsService.streamMetrics(params, config);
   }
 
   /**
@@ -211,15 +200,6 @@ export class FetchMonitoringService {
     return this.metricsService.getSystemMetrics(config);
   }
 
-  /**
-   * Stream system resource metrics
-   */
-  async *streamSystemMetrics(
-    config?: RequestConfig
-  ): AsyncGenerator<SystemResourceMetrics, void, unknown> {
-    yield* this.metricsService.streamSystemMetrics(config);
-  }
-
   // Distributed Tracing
 
   /**
@@ -243,16 +223,6 @@ export class FetchMonitoringService {
    */
   async searchLogs(params: LogQueryParams, config?: RequestConfig): Promise<PagedResponse<LogEntry>> {
     return this.tracingService.searchLogs(params, config);
-  }
-
-  /**
-   * Stream logs
-   */
-  async *streamLogs(
-    options: LogStreamOptions,
-    config?: RequestConfig
-  ): AsyncGenerator<LogEntry, void, unknown> {
-    yield* this.tracingService.streamLogs(options, config);
   }
 
   // Health Status

@@ -36,9 +36,10 @@ describe('browser Admin API boundary', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     const secondCall = mockFetch.mock.calls[1];
-    expect(secondCall?.[0]).toBe('http://admin.example/api/VirtualKeys');
-    expect(secondCall?.[1]?.method).toBe('GET');
-    expect(new Headers(secondCall?.[1]?.headers).get('X-Master-Key')).toBe('ephemeral-key');
+    const request = secondCall?.[0] as Request;
+    expect(request.url).toBe('http://admin.example/api/VirtualKeys');
+    expect(request.method).toBe('GET');
+    expect(request.headers.get('X-Master-Key')).toBe('ephemeral-key');
   });
 
   it('does not retry a failed Admin request with a single-use credential', async () => {

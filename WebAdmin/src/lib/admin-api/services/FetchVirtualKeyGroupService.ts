@@ -11,6 +11,10 @@ import type {
   TransactionHistoryParams
 } from '../models/virtualKey';
 import type { PagedResult } from '../models/common-types';
+import {
+  balanceAdjustmentSchema,
+  parseCriticalResponse,
+} from '@/lib/api-transport/critical-response-validation';
 
 /**
  * Parameters for listing virtual key groups
@@ -23,7 +27,7 @@ export interface ListGroupsParams {
 }
 
 /**
- * Type-safe Virtual Key Group service using native fetch
+ * Type-safe Virtual Key Group service using the Admin contract transport.
  */
 export class FetchVirtualKeyGroupService {
   constructor(private readonly client: FetchBaseApiClient) {}
@@ -71,7 +75,7 @@ export class FetchVirtualKeyGroupService {
    * Create a new virtual key group
    */
   async create(data: CreateVirtualKeyGroupRequestDto, config?: RequestConfig): Promise<VirtualKeyGroupDto> {
-    return this.client['post']<VirtualKeyGroupDto>(
+    const response = await this.client['post']<VirtualKeyGroupDto>(
       ENDPOINTS.VIRTUAL_KEY_GROUPS,
       data,
       {
@@ -80,6 +84,11 @@ export class FetchVirtualKeyGroupService {
         headers: config?.headers,
       }
     );
+    return parseCriticalResponse(
+      balanceAdjustmentSchema,
+      response,
+      'Admin virtual-key-group creation',
+    ) as unknown as VirtualKeyGroupDto;
   }
 
   /**
@@ -101,7 +110,7 @@ export class FetchVirtualKeyGroupService {
    * Adjust the balance of a virtual key group
    */
   async adjustBalance(id: number, data: AdjustBalanceDto, config?: RequestConfig): Promise<VirtualKeyGroupDto> {
-    return this.client['post']<VirtualKeyGroupDto>(
+    const response = await this.client['post']<VirtualKeyGroupDto>(
       `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}/adjust-balance`,
       data,
       {
@@ -110,6 +119,11 @@ export class FetchVirtualKeyGroupService {
         headers: config?.headers,
       }
     );
+    return parseCriticalResponse(
+      balanceAdjustmentSchema,
+      response,
+      'Admin virtual-key-group balance adjustment',
+    ) as unknown as VirtualKeyGroupDto;
   }
 
   /**

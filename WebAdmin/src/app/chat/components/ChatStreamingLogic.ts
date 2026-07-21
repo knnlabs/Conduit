@@ -8,13 +8,13 @@ import {
   type RetryInfo
 } from '@/lib/gateway-api';
 import type { FunctionConfigurationDto } from '@/lib/admin-api';
-import { SDKChatStreamingAdapter } from '@/lib/client/sdkChatStreamingAdapter';
+import { GatewayChatStreamingAdapter } from '@/lib/client/gatewayChatStreamingAdapter';
 import {
   ChatParameters,
   ChatMessage,
   ChatErrorType
 } from '../types';
-// Needs raw notifications API: .show is passed as callback to SDK's createToastErrorHandler,
+// Needs raw notifications API: .show is passed to the transport error handler,
 // .hide is used for dismissing retry notifications, and custom options (id, loading, autoClose,
 // withCloseButton) are used for retry notifications that notify doesn't support.
 import { notifications } from '@mantine/notifications';
@@ -58,14 +58,14 @@ export function useChatStreamingLogic({
   functionConfigurationIds,
   availableFunctions = [],
 }: ChatStreamingLogicParams) {
-  const streamingAdapterRef = useRef<SDKChatStreamingAdapter | null>(null);
+  const streamingAdapterRef = useRef<GatewayChatStreamingAdapter | null>(null);
   
   // Create error handler with toast notifications
   const handleError = createToastErrorHandler(notifications.show);
 
-  // Create streaming adapter that uses SDK directly
+  // Create the Gateway streaming adapter.
   const streamingAdapter = useMemo(() => {
-    return new SDKChatStreamingAdapter({
+    return new GatewayChatStreamingAdapter({
       timeoutMs: 300000, // 5 minutes
       trackPerformanceMetrics: performanceSettings.trackPerformanceMetrics,
       showTokensPerSecond: performanceSettings.showTokensPerSecond,

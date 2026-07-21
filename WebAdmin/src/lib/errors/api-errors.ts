@@ -16,8 +16,8 @@ import {
   isHttpError 
 } from '@/lib/utils/error-utils';
 
-// Map SDK errors to appropriate HTTP responses
-export function handleSDKError(error: unknown): NextResponse {
+// Map local API errors to appropriate HTTP responses.
+export function handleApiError(error: unknown): NextResponse {
   const errorMessage = getErrorMessage(error);
   const statusCode = getErrorStatusCode(error);
   const errorType = statusCode ? String(statusCode) : 'unknown';
@@ -28,9 +28,9 @@ export function handleSDKError(error: unknown): NextResponse {
     type: errorType,
     stack: errorStack,
   };
-  logger.error('SDK operation failed', errorInfo);
+  logger.error('API operation failed', errorInfo);
 
-  // Handle specific SDK error types
+  // Handle specific API error types.
   if (error instanceof ValidationError) {
     return NextResponse.json(
       { error: errorMessage },
@@ -73,7 +73,7 @@ export function handleSDKError(error: unknown): NextResponse {
     );
   }
 
-  // Handle HttpError from the SDK
+  // Handle structured HTTP errors.
   if (isHttpError(error)) {
     const errorDetails = getCombinedErrorDetails(error);
     const responseStatusCode = getErrorStatusCode(error) ?? 500;
@@ -90,7 +90,7 @@ export function handleSDKError(error: unknown): NextResponse {
     );
   }
 
-  // Handle non-SDK errors (e.g., network errors from fetch)
+  // Handle network errors from fetch.
   const errorCode = error && typeof error === 'object' && 'code' in error 
     ? (error as { code: string }).code 
     : null;
@@ -117,7 +117,7 @@ export function handleSDKError(error: unknown): NextResponse {
 }
 
 // Legacy alias for backward compatibility
-export const mapSDKErrorToResponse = handleSDKError;
+export const mapApiErrorToResponse = handleApiError;
 
 // Re-export HttpError for convenience
 export { HttpError };

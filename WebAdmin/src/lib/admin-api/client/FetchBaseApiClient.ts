@@ -1,5 +1,5 @@
 /**
- * Admin SDK HTTP client extending the common BaseApiClient
+ * Contract-backed Admin API transport extending the common BaseApiClient.
  *
  * Features:
  * - X-Master-Key authentication
@@ -15,6 +15,9 @@ import {
   RetryStrategyType,
   handleApiError,
 } from '@/lib/conduit-common';
+import createClient, { type Client } from 'openapi-fetch';
+import { getRequestConstructor } from '@/lib/api-transport/request-constructor';
+import type { paths } from '../generated/admin-api';
 import type {
   ApiClientConfig,
   RetryConfig,
@@ -22,14 +25,20 @@ import type {
   ResponseInfo
 } from './types';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO } from '../constants';
-import { ExtendedRequestInit, ResponseParser } from './FetchOptions';
 import { HttpMethod, RequestOptions } from './HttpMethod';
 
+interface ContractResult {
+  data?: unknown;
+  error?: unknown;
+  response: Response;
+}
+
 /**
- * Admin SDK client extending the common BaseApiClient
+ * Admin contract transport extending the shared client lifecycle utilities.
  * Uses X-Master-Key authentication and fixed delay retry with caching support
  */
 export abstract class FetchBaseApiClient extends BaseApiClient {
+  private readonly contractClient: Client<paths>;
   /**
    * Master key for authentication
    */
@@ -78,6 +87,10 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
     });
 
     this.masterKey = config.masterKey;
+    this.contractClient = createClient<paths>({
+      baseUrl: config.baseUrl,
+      Request: getRequestConstructor(),
+    });
     this.retryDelays = config.retryDelay;
 
     // Store callbacks for backward compatibility
@@ -180,7 +193,7 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
   }
 
   /**
-   * Override to use Admin SDK error handling pattern
+   * Preserve the Admin API error mapping.
    */
   protected override async handleErrorResponse(response: Response): Promise<Error> {
     const headers: Record<string, string> = {};
@@ -229,11 +242,11 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
   }
 
   // ============================================================================
-  // Override HTTP methods to maintain Admin SDK's RequestOptions interface
+  // Preserve the local service interface while routing through openapi-fetch.
   // ============================================================================
 
   /**
-   * Type-safe request method with Admin SDK options
+   * Execute a request through the Admin OpenAPI transport.
    */
   protected override async request<TResponse = unknown, TRequest = unknown>(
     url: string,
@@ -262,19 +275,18 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
 
       this.log('debug', `API Request: ${requestInfo.method} ${requestInfo.url}`);
 
-      const response = await this.executeRequestWithRetry<TResponse, TRequest>(
-        fullUrl,
-        {
-          method: requestInfo.method,
+      const externalAbort = () => controller.abort(options.signal?.reason);
+      options.signal?.addEventListener('abort', externalAbort, { once: true });
+      try {
+        return await this.executeContractRequest<TResponse, TRequest>(url, {
+          ...options,
+          method: options.method ?? HttpMethod.GET,
           headers: requestInfo.headers,
-          body: options.body ? JSON.stringify(options.body) : undefined,
-          signal: options.signal ?? controller.signal,
-          responseType: options.responseType,
-          timeout: options.timeout ?? (this as unknown as { timeout: number }).timeout,
-        }
-      );
-
-      return response;
+          signal: controller.signal,
+        });
+      } finally {
+        options.signal?.removeEventListener('abort', externalAbort);
+      }
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -285,13 +297,27 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
   /**
    * Execute request with retry logic
    */
-  private async executeRequestWithRetry<TResponse, TRequest = unknown>(
+  private async executeContractRequest<TResponse, TRequest = unknown>(
     url: string,
-    init: ExtendedRequestInit,
+    options: RequestOptions<TRequest> & { method: HttpMethod },
     attempt: number = 1
   ): Promise<TResponse> {
     try {
-      const response = await fetch(url, ResponseParser.cleanRequestInit(init));
+      const parseAs = options.responseType === 'arraybuffer'
+        ? 'arrayBuffer'
+        : options.responseType ?? 'json';
+      const request = this.contractClient.request as unknown as (
+        method: string,
+        path: string,
+        init: Record<string, unknown>,
+      ) => Promise<ContractResult>;
+      const result = await request(options.method.toLowerCase(), url, {
+        body: options.body,
+        headers: options.headers,
+        signal: options.signal,
+        parseAs,
+      });
+      const response = result.response;
 
       this.log('debug', `API Response: ${response.status} ${response.statusText}`);
 
@@ -307,14 +333,26 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
           status: response.status,
           statusText: response.statusText,
           headers,
-          data: undefined, // Will be populated after parsing
-          config: { url, method: init?.method ?? HttpMethod.GET } as RequestConfigInfo,
+          data: result.data,
+          config: { url: this.adminBuildUrl(url), method: options.method } as RequestConfigInfo,
         };
         await this.onResponse(responseInfo);
       }
 
-      if (!response.ok) {
-        const apiError = await this.handleErrorResponse(response);
+      if (result.error !== undefined || !response.ok) {
+        // openapi-fetch has already consumed the error response. Recreate it so
+        // the existing structured Admin error mapper keeps its observable shape.
+        const errorResponse = {
+          ...response,
+          ok: false,
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+          url: response.url,
+          text: async () => result.error === undefined ? '' : JSON.stringify(result.error),
+          json: async () => result.error,
+        } as Response;
+        const apiError = await this.handleErrorResponse(errorResponse);
         throw apiError;
       }
 
@@ -325,8 +363,7 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
         return undefined as TResponse;
       }
 
-      // Parse response using ResponseParser
-      return await ResponseParser.parse<TResponse>(response, init.responseType);
+      return result.data as TResponse;
     } catch (error) {
       if (attempt > this.retryConfig.maxRetries) {
         if (this.onError && error instanceof Error) {
@@ -345,7 +382,7 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
         this.log('debug', `Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
 
         await this.adminSleep(delay);
-        return this.executeRequestWithRetry<TResponse, TRequest>(url, init, attempt + 1);
+        return this.executeContractRequest<TResponse, TRequest>(url, options, attempt + 1);
       }
 
       if (this.onError && error instanceof Error) {
@@ -563,7 +600,7 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
 
   /**
    * Generate a cache key from resource and identifiers
-   * @override Extended signature for Admin SDK compatibility
+   * @override Extended signature retained for local service compatibility.
    */
   protected override getCacheKey(
     methodOrResource: string,

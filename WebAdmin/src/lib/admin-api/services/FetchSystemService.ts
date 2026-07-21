@@ -220,7 +220,7 @@ export class FetchSystemService implements ISystemService {
       const setting = await settingsService.getGlobalSetting('WebAdmin_VirtualKey', config);
       if (setting?.value) {
         existingKey = setting.value;
-        console.warn('[SDK] Found WebAdmin virtual key in GlobalSettings, validating...');
+        console.warn('[API] Found WebAdmin virtual key in GlobalSettings, validating...');
 
         // Validate that the key exists in VirtualKeys table
         try {
@@ -228,24 +228,24 @@ export class FetchSystemService implements ISystemService {
           const validationResult = await virtualKeyService.validate(existingKey, config);
 
           if (!validationResult?.isValid) {
-            console.warn('[SDK] WebAdmin virtual key from GlobalSettings is not valid');
+            console.warn('[API] WebAdmin virtual key from GlobalSettings is not valid');
             existingKey = null;
           } else {
-            console.warn('[SDK] WebAdmin virtual key validated successfully');
+            console.warn('[API] WebAdmin virtual key validated successfully');
             return existingKey;
           }
         } catch (validationError) {
-          console.error('[SDK] Failed to validate WebAdmin virtual key', validationError);
+          console.error('[API] Failed to validate WebAdmin virtual key', validationError);
           existingKey = null;
         }
       }
     } catch {
       // Key doesn't exist in GlobalSettings
-      console.warn('[SDK] WebAdmin virtual key not found in GlobalSettings');
+      console.warn('[API] WebAdmin virtual key not found in GlobalSettings');
     }
 
     // If we don't have a valid key, create a new one
-    console.warn('[SDK] Creating new WebAdmin virtual key with group and $1000 balance');
+    console.warn('[API] Creating new WebAdmin virtual key with group and $1000 balance');
 
     // First, create a virtual key group with $1000 initial balance
     const virtualKeyGroupService = new FetchVirtualKeyGroupService(this.client);
@@ -255,13 +255,13 @@ export class FetchSystemService implements ISystemService {
       initialBalance: 1000.00
     }, config);
 
-    console.warn(`[SDK] Created WebAdmin virtual key group with ID ${group.id} and $1000 balance`);
+    console.warn(`[API] Created WebAdmin virtual key group with ID ${group.id} and $1000 balance`);
 
     // Create metadata
     const metadata = {
       visibility: 'hidden',
       created: new Date().toISOString(),
-      originator: 'Admin SDK',
+      originator: 'WebAdmin API client',
       groupId: group.id
     };
 
@@ -285,7 +285,7 @@ export class FetchSystemService implements ISystemService {
       description: 'Virtual key for WebAdmin Gateway API access'
     }, config);
 
-    console.warn('[SDK] Created new WebAdmin virtual key and stored in GlobalSettings');
+    console.warn('[API] Created new WebAdmin virtual key and stored in GlobalSettings');
     return response.virtualKey;
   }
 }

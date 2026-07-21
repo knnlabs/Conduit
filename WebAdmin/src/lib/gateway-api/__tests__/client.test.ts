@@ -4,12 +4,20 @@ describe("GatewayClient", () => {
   beforeEach(() => jest.clearAllMocks());
   afterEach(() => jest.restoreAllMocks());
 
+  function jsonResponse(body: unknown, status = 200): Response {
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: status === 200 ? "OK" : "Error",
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () => JSON.stringify(body),
+    } as Response;
+  }
+
   it("sends the virtual key as an opaque Bearer token", async () => {
-    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ data: [], count: 0 }),
-    } as Response);
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
+      jsonResponse({ data: [], count: 0 }),
+    );
     const client = new GatewayClient({
       apiKey: "vk_test",
       baseURL: "https://gateway.test/",
@@ -17,25 +25,21 @@ describe("GatewayClient", () => {
 
     await client.discovery.getModelsByCapability(ModelCapability.Chat);
 
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(
+    const [request] = fetchMock.mock.calls[0];
+    expect((request as Request).url).toBe(
       "https://gateway.test/v1/discovery/models?capability=chat",
     );
-    expect(init?.headers).toEqual(
-      expect.objectContaining({ Authorization: "Bearer vk_test" }),
-    );
+    expect((request as Request).headers.get("Authorization")).toBe("Bearer vk_test");
   });
 
   it("uses the supplied virtual key when minting an ephemeral key", async () => {
-    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
+      jsonResponse({
         ephemeralKey: "ephemeral",
-        expiresAt: "date",
+        expiresAt: "2026-07-20T00:00:00Z",
         expiresInSeconds: 60,
       }),
-    } as Response);
+    );
     const client = new GatewayClient({
       apiKey: "server-key",
       baseURL: "https://gateway.test",
@@ -45,12 +49,10 @@ describe("GatewayClient", () => {
       metadata: { purpose: "test" },
     });
 
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://gateway.test/v1/auth/ephemeral-key");
-    expect(init).toEqual(expect.objectContaining({ method: "POST" }));
-    expect(init?.headers).toEqual(
-      expect.objectContaining({ Authorization: "Bearer webadmin-key" }),
-    );
+    const [request] = fetchMock.mock.calls[0];
+    expect((request as Request).url).toBe("https://gateway.test/v1/auth/ephemeral-key");
+    expect((request as Request).method).toBe("POST");
+    expect((request as Request).headers.get("Authorization")).toBe("Bearer webadmin-key");
   });
 
   it("validates media limits without issuing a request", () => {

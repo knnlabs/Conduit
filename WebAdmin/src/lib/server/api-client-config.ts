@@ -15,7 +15,7 @@ function validateEnvironment() {
 }
 
 // Centralized configuration - lazy evaluation
-export const SDK_CONFIG = {
+export const API_CLIENT_CONFIG = {
   // Master key for backend communication
   get masterKey() { 
     return process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY ?? '';
@@ -51,10 +51,10 @@ export function getServerAdminClient(): ConduitAdminClient {
     validateEnvironment();
     
     adminClient = new ConduitAdminClient({
-      baseUrl: SDK_CONFIG.adminBaseURL,
-      masterKey: SDK_CONFIG.masterKey,
-      timeout: SDK_CONFIG.timeout,
-      retries: SDK_CONFIG.maxRetries,
+      baseUrl: API_CLIENT_CONFIG.adminBaseURL,
+      masterKey: API_CLIENT_CONFIG.masterKey,
+      timeout: API_CLIENT_CONFIG.timeout,
+      retries: API_CLIENT_CONFIG.maxRetries,
     });
   }
   return adminClient;
@@ -68,21 +68,21 @@ export async function getServerGatewayClient(): Promise<InstanceType<typeof Cond
     // Get the WebAdmin's virtual key - this will auto-create it with $1000 if it doesn't exist
     if (!webAdminVirtualKey) {
       try {
-        console.warn('[SDK] Getting or creating WebAdmin virtual key...');
+        console.warn('[API] Getting or creating WebAdmin virtual key...');
         const adminClient = getServerAdminClient();
         // Use the SystemService's getWebAdminVirtualKey method which auto-creates with $1000
         webAdminVirtualKey = await adminClient.system.getWebAdminVirtualKey();
-        console.warn('[SDK] WebAdmin virtual key obtained successfully');
+        console.warn('[API] WebAdmin virtual key obtained successfully');
       } catch (error) {
-        console.error('[SDK] Failed to get or create WebAdmin virtual key:', error);
+        console.error('[API] Failed to get or create WebAdmin virtual key:', error);
         throw new Error('Failed to retrieve or create WebAdmin virtual key. Ensure the database is accessible and the Admin API is running.');
       }
     }
 
     gatewayClient = new ConduitGatewayClient({
       apiKey: webAdminVirtualKey,
-      baseURL: SDK_CONFIG.coreBaseURL,
-      signalR: SDK_CONFIG.signalR,
+      baseURL: API_CLIENT_CONFIG.coreBaseURL,
+      signalR: API_CLIENT_CONFIG.signalR,
     });
   }
   return gatewayClient;
@@ -92,27 +92,27 @@ export async function getServerGatewayClient(): Promise<InstanceType<typeof Cond
 export const getServerCoreClient = getServerGatewayClient;
 
 /**
- * Initialize SDK clients
+ * Initialize API clients.
  * Should be called on server startup
  */
-export async function initializeSDKClients(): Promise<void> {
+export async function initializeApiClients(): Promise<void> {
   try {
     getServerAdminClient();
     await getServerGatewayClient();
-    console.error('[SDK] Clients initialized successfully');
+    console.error('[API] Clients initialized successfully');
   } catch (error) {
-    console.error('[SDK] Failed to initialize clients:', error);
+    console.error('[API] Failed to initialize clients:', error);
     throw error;
   }
 }
 
 /**
- * Cleanup SDK clients
+ * Cleanup API clients.
  * Should be called on server shutdown
  */
-export async function cleanupSDKClients(): Promise<void> {
+export async function cleanupApiClients(): Promise<void> {
   adminClient = null;
   gatewayClient = null;
   webAdminVirtualKey = null;
-  console.error('[SDK] Clients cleaned up successfully');
+  console.error('[API] Clients cleaned up successfully');
 }

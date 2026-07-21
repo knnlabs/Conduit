@@ -54,7 +54,7 @@ Run `npm run generate:offline` from `SDKs/Node/scripts` to export both service c
 regenerate the Admin/Gateway WebAdmin wire types plus the retained Gateway SDK wire type. CI repeats
 generation, validates both contracts, and fails on drift.
 
-The boundary invariant is available as `npm run check:admin-boundary` from `WebAdmin`.
+The boundary invariant is available as `npm run check:api-boundary` from `WebAdmin`.
 
 ## Docker development
 

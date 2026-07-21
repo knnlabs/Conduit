@@ -1,5 +1,19 @@
 import { NetworkError } from "@/lib/conduit-common";
 import { videoSignalRClient } from "@/lib/client/videoSignalRClient";
+import createClient, { type Client } from "openapi-fetch";
+import type { paths } from "@/generated/gateway-api";
+import { getRequestConstructor } from "@/lib/api-transport/request-constructor";
+import {
+  gatewayEphemeralKeySchema,
+  gatewayFunctionExecutionSchema,
+  gatewayMediaUploadSchema,
+  gatewayVideoTaskSchema,
+  parseCriticalResponse,
+} from "@/lib/api-transport/critical-response-validation";
+import {
+  GATEWAY_CONTRACT_ROUTES,
+  materializeContractPath,
+} from "@/lib/api-transport/contract-routes";
 import { createGatewayError } from "./errors";
 import { parseGatewaySse } from "./streaming";
 import type {
@@ -63,11 +77,17 @@ export class GatewayClient {
   private readonly baseURL: string;
   private readonly apiKey: string;
   private readonly timeout: number;
+  private readonly contractClient: Client<paths>;
 
   constructor(config: GatewayClientConfig) {
     this.baseURL = config.baseURL.replace(/\/$/, "");
     this.apiKey = config.apiKey;
     this.timeout = config.timeout ?? 60_000;
+    this.contractClient = createClient<paths>({
+      baseUrl: this.baseURL,
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+      Request: getRequestConstructor(),
+    });
   }
 
   private async request<T>(
@@ -80,24 +100,38 @@ export class GatewayClient {
       () => controller.abort(),
       options.timeout ?? this.timeout,
     );
-    const abort = () => controller.abort();
+    const abort = () => controller.abort(options.signal?.reason);
     options.signal?.addEventListener("abort", abort, { once: true });
     try {
-      const response = await fetch(`${this.baseURL}${path}`, {
-        ...init,
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          ...(init.body instanceof FormData
-            ? {}
-            : { "Content-Type": "application/json" }),
-          ...options.headers,
-          ...init.headers,
-        },
+      const request = this.contractClient.request as unknown as (
+        method: string,
+        schemaPath: string,
+        requestOptions: Record<string, unknown>,
+      ) => Promise<{ data?: unknown; error?: unknown; response: Response }>;
+      const isForm = init.body instanceof FormData;
+      let body: unknown;
+      if (isForm) body = init.body;
+      else if (typeof init.body === "string") body = JSON.parse(init.body) as unknown;
+      const result = await request((init.method ?? "GET").toLowerCase(), path, {
+        body,
+        bodySerializer: isForm ? ((body: unknown) => body) : undefined,
+        headers: { ...options.headers, ...init.headers },
         signal: controller.signal,
       });
-      if (!response.ok) throw await createGatewayError(response);
-      if (response.status === 204) return undefined as T;
-      return (await response.json()) as T;
+      if (result.error !== undefined || !result.response.ok) {
+        const errorResponse = {
+          ...result.response,
+          ok: false,
+          status: result.response.status,
+          statusText: result.response.statusText,
+          headers: result.response.headers,
+          text: async () => result.error === undefined ? '' : JSON.stringify(result.error),
+          json: async () => result.error,
+        } as Response;
+        throw await createGatewayError(errorResponse);
+      }
+      if (result.response.status === 204) return undefined as T;
+      return result.data as T;
     } catch (error) {
       if (
         error instanceof Error &&
@@ -116,29 +150,35 @@ export class GatewayClient {
   }
 
   readonly auth = {
-    generateEphemeralKey: (
+    generateEphemeralKey: async (
       virtualKey: string,
       options?: { metadata?: JsonRecord },
-    ) =>
-      this.request<{
+    ) => {
+      const response = await this.request<{
         ephemeralKey: string;
         expiresAt: string;
         expiresInSeconds: number;
-      }>("/v1/auth/ephemeral-key", {
+      }>(GATEWAY_CONTRACT_ROUTES.ephemeralKey, {
         method: "POST",
         headers: { Authorization: `Bearer ${virtualKey}` },
         body: JSON.stringify({
           metadata: { requestId: randomRequestId(), ...options?.metadata },
         }),
-      }),
+      });
+      return parseCriticalResponse(
+        gatewayEphemeralKeySchema,
+        response,
+        "Gateway ephemeral-key issuance",
+      );
+    },
   };
 
   readonly discovery = {
-    getModels: () => this.request<DiscoveryResponse>("/v1/discovery/models"),
+    getModels: () => this.request<DiscoveryResponse>(GATEWAY_CONTRACT_ROUTES.discoveryModels),
     getModelsByCapability: (capability: ModelCapability | string) => {
       if (!capability.trim()) throw new Error("Capability is required");
       return this.request<DiscoveryResponse>(
-        `/v1/discovery/models?capability=${encodeURIComponent(capability)}`,
+        `${GATEWAY_CONTRACT_ROUTES.discoveryModels}?capability=${encodeURIComponent(capability)}`,
       );
     },
     getFunctionParameters: (id: number) => {
@@ -146,22 +186,30 @@ export class GatewayClient {
       return this.request<{
         exampleRequest?: JsonRecord;
         parameterSchema?: JsonRecord;
-      }>(`/v1/discovery/functions/${id}/parameters`);
+      }>(materializeContractPath(GATEWAY_CONTRACT_ROUTES.functionParameters, {
+        functionConfigurationId: id,
+      }));
     },
   };
 
   readonly functions = {
-    execute: (body: JsonRecord) =>
-      this.request<FunctionExecutionResponse>("/v1/functions/execute", {
+    execute: async (body: JsonRecord) => {
+      const response = await this.request<FunctionExecutionResponse>(GATEWAY_CONTRACT_ROUTES.executeFunction, {
         method: "POST",
         body: JSON.stringify(body),
-      }),
+      });
+      return parseCriticalResponse(
+        gatewayFunctionExecutionSchema,
+        response,
+        "Gateway function execution",
+      ) as FunctionExecutionResponse;
+    },
   };
 
   readonly images = {
     generate: (body: JsonRecord) =>
       this.request<{ data: Array<{ url?: string; b64_json?: string }> }>(
-        "/v1/images/generations",
+        GATEWAY_CONTRACT_ROUTES.imageGenerations,
         { method: "POST", body: JSON.stringify(body) },
         { timeout: 300_000 },
       ),
@@ -180,7 +228,7 @@ export class GatewayClient {
       const abort = () => controller.abort();
       options.signal?.addEventListener("abort", abort, { once: true });
       try {
-        const response = await fetch(`${this.baseURL}/v1/chat/completions`, {
+        const response = await fetch(`${this.baseURL}${GATEWAY_CONTRACT_ROUTES.chatCompletions}`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
@@ -211,15 +259,19 @@ export class GatewayClient {
   readonly videos = {
     getTaskStatus: async (taskId: string, options: RequestOptions = {}) => {
       const raw = await this.request<JsonRecord>(
-        `/v1/videos/generations/tasks/${encodeURIComponent(taskId)}`,
+        materializeContractPath(GATEWAY_CONTRACT_ROUTES.videoTaskStatus, { taskId }),
         {},
         options,
       );
-      return normalizeVideoTask(raw);
+      return normalizeVideoTask(parseCriticalResponse(
+        gatewayVideoTaskSchema,
+        raw,
+        "Gateway video task status",
+      ));
     },
     cancelTask: (taskId: string, options: RequestOptions = {}) =>
       this.request<void>(
-        `/v1/videos/generations/${encodeURIComponent(taskId)}`,
+        materializeContractPath(GATEWAY_CONTRACT_ROUTES.cancelVideoTask, { taskId }),
         { method: "DELETE" },
         options,
       ),
@@ -232,14 +284,18 @@ export class GatewayClient {
       result: Promise<VideoGenerationResponse>;
     }> => {
       const raw = await this.request<JsonRecord>(
-        "/v1/videos/generations/async",
+        GATEWAY_CONTRACT_ROUTES.createVideoTask,
         {
           method: "POST",
           body: JSON.stringify({ response_format: "url", n: 1, ...body }),
         },
         options,
       );
-      const initial = normalizeVideoTask(raw);
+      const initial = normalizeVideoTask(parseCriticalResponse(
+        gatewayVideoTaskSchema,
+        raw,
+        "Gateway video task creation",
+      ));
       const taskId = initial.task_id;
       callbacks.onStarted?.(taskId, initial.estimated_time_to_completion);
 
@@ -374,17 +430,21 @@ export class GatewayClient {
 
     if (typeof XMLHttpRequest === "undefined" || !options.onProgress) {
       const result = await this.request<MediaUploadResponse>(
-        "/v1/media/upload",
+        GATEWAY_CONTRACT_ROUTES.mediaUpload,
         { method: "POST", body: form },
         options,
       );
       options.onProgress?.(file.size, file.size);
-      return result;
+      return parseCriticalResponse(
+        gatewayMediaUploadSchema,
+        result,
+        "Gateway media upload",
+      );
     }
 
     return new Promise<MediaUploadResponse>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${this.baseURL}/v1/media/upload`);
+      xhr.open("POST", `${this.baseURL}${GATEWAY_CONTRACT_ROUTES.mediaUpload}`);
       xhr.setRequestHeader("Authorization", `Bearer ${this.apiKey}`);
       Object.entries(options.headers ?? {}).forEach(([key, value]) =>
         xhr.setRequestHeader(key, value),
@@ -395,11 +455,18 @@ export class GatewayClient {
       xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
+          let response: unknown;
           try {
-            resolve(JSON.parse(xhr.responseText) as MediaUploadResponse);
+            response = JSON.parse(xhr.responseText) as unknown;
           } catch {
             reject(new Error("Invalid media upload response"));
+            return;
           }
+          resolve(parseCriticalResponse(
+            gatewayMediaUploadSchema,
+            response,
+            "Gateway media upload",
+          ));
         } else reject(new Error(`Media upload failed (${xhr.status})`));
       };
       options.signal?.addEventListener("abort", () => xhr.abort(), {

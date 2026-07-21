@@ -4,7 +4,9 @@ Next.js-based web interface for the Conduit LLM Platform, built with React, Type
 
 ## Architecture Overview
 
-WebAdmin owns focused, contract-derived clients for its API operations:
+WebAdmin owns focused, contract-backed clients for its API operations. Ordinary HTTP requests use
+`openapi-fetch` with generated Admin and Gateway `paths` types; application-owned hooks and façades
+remain stable.
 
 ### Local API boundaries
 - **Gateway boundary**: LLM operations use ephemeral virtual-key authentication

@@ -85,6 +85,7 @@ export function generate(selection) {
     for (const types of target.types) {
       run(process.execPath, [openApiTypescriptCli, target.spec, '-o', types], {
         cwd: scriptsDir,
+        attempts: process.platform === 'win32' ? 3 : 1,
       });
       if (process.platform === 'win32') {
         Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);

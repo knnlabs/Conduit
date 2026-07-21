@@ -1,5 +1,4 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { HttpMethod } from '../client/HttpMethod';
 import type { RequestConfig } from '../client/types';
 import type {
   MetricsQueryParams,
@@ -28,61 +27,6 @@ export class FetchMonitoringMetricsService {
         headers: config?.headers,
       }
     );
-  }
-
-  /**
-   * Stream real-time metrics
-   */
-  async *streamMetrics(
-    params: MetricsQueryParams,
-    config?: RequestConfig
-  ): AsyncGenerator<MetricsResponse, void, unknown> {
-    const response = await this.client['request']<ReadableStream<Uint8Array>>(
-      '/api/monitoring/metrics/stream',
-      {
-        method: HttpMethod.POST,
-        headers: {
-          ...config?.headers,
-          'Accept': 'text/event-stream',
-        },
-        body: JSON.stringify(params),
-        signal: config?.signal,
-        timeout: config?.timeout,
-      }
-    );
-
-    if (!(response instanceof ReadableStream)) {
-      throw new Error('Expected ReadableStream response');
-    }
-
-    const reader = response.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-              yield JSON.parse(data) as MetricsResponse;
-            } catch {
-              // Skip invalid JSON
-            }
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
   }
 
   /**
@@ -128,56 +72,4 @@ export class FetchMonitoringMetricsService {
     );
   }
 
-  /**
-   * Stream system resource metrics
-   */
-  async *streamSystemMetrics(
-    config?: RequestConfig
-  ): AsyncGenerator<SystemResourceMetrics, void, unknown> {
-    const response = await this.client['request']<ReadableStream<Uint8Array>>(
-      '/api/monitoring/system/stream',
-      {
-        method: HttpMethod.GET,
-        headers: {
-          ...config?.headers,
-          'Accept': 'text/event-stream',
-        },
-        signal: config?.signal,
-        timeout: config?.timeout,
-      }
-    );
-
-    if (!(response instanceof ReadableStream)) {
-      throw new Error('Expected ReadableStream response');
-    }
-
-    const reader = response.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-              yield JSON.parse(data) as SystemResourceMetrics;
-            } catch {
-              // Skip invalid JSON
-            }
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
 }

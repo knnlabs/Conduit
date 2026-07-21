@@ -1,4 +1,5 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import { ADMIN_CONTRACT_ROUTES } from '@/lib/api-transport/contract-routes';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 import type {
@@ -42,7 +43,7 @@ export interface CostTrendDataDto {
 }
 
 /**
- * Type-safe Analytics service using native fetch
+ * Type-safe Analytics service using the Admin contract transport.
  */
 export class FetchAnalyticsService {
   constructor(private readonly client: FetchBaseApiClient) {}
@@ -250,29 +251,17 @@ export class FetchAnalyticsService {
     if (virtualKeyId) queryParams.append('virtualKeyId', virtualKeyId.toString());
 
     const queryString = queryParams.toString();
-    const url = `${ENDPOINTS.ANALYTICS.EXPORT}?${queryString}`;
+    const url = `${ADMIN_CONTRACT_ROUTES.analyticsExport}?${queryString}`;
 
-    // Make a direct fetch request for binary data
-    // Access the protected properties through type assertion
-    const clientWithProps = this.client as unknown as { baseUrl: string; masterKey: string };
-    const baseUrl = clientWithProps.baseUrl ?? '';
-    const masterKey = clientWithProps.masterKey ?? '';
-
-    const response = await fetch(`${baseUrl}${url}`, {
-      method: 'GET',
+    const buffer = await this.client['get']<ArrayBuffer>(url, {
       headers: {
-        'X-Master-Key': masterKey,
         'Accept': format === 'csv' ? 'text/csv' : 'application/json',
         ...config?.headers,
       },
       signal: config?.signal,
+      timeout: config?.timeout,
+      responseType: 'arraybuffer',
     });
-
-    if (!response.ok) {
-      throw new Error(`Export failed: ${response.statusText}`);
-    }
-
-    const buffer = await response.arrayBuffer();
     return new Uint8Array(buffer);
   }
 }

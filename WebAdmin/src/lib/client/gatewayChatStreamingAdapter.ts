@@ -15,10 +15,9 @@ import {
 
 
 /**
- * Adapter class that uses the SDK client directly for chat streaming
- * instead of making raw fetch calls to API endpoints.
+ * Adapter for the Gateway's custom SSE chat transport.
  */
-export class SDKChatStreamingAdapter {
+export class GatewayChatStreamingAdapter {
   private abortController: AbortController | null = null;
 
   constructor(
@@ -32,7 +31,7 @@ export class SDKChatStreamingAdapter {
   ) {}
 
   /**
-   * Stream a chat message using the SDK client
+   * Stream a chat message using the local Gateway client.
    */
   async streamMessage(
     message: string,
@@ -56,7 +55,7 @@ export class SDKChatStreamingAdapter {
     let lastFinishReason: string | null = null;
 
     try {
-      // Get the SDK client with ephemeral key
+      // Get the Gateway client with an ephemeral key.
       const client = await getBrowserCoreClient();
       
       // Create abort controller for cancellation
@@ -92,7 +91,7 @@ export class SDKChatStreamingAdapter {
         callbacks.onStart();
       }
 
-      // Use SDK to create streaming chat
+      // Start the custom SSE request.
       const stream = await client.chat.create(chatRequest, {
         signal: this.abortController.signal
       });
@@ -103,8 +102,7 @@ export class SDKChatStreamingAdapter {
         if (isChatCompletionChunk(data)) {
           // Handle chunk callback
           if (callbacks.onChunk) {
-            // Transform SDK chunk to match expected callback type
-            // The main difference is finish_reason can be null in SDK but callback expects string | undefined
+            // Normalize the wire chunk to the callback type.
             const transformedChunk = {
               ...data,
               choices: data.choices?.map(choice => ({
@@ -340,7 +338,7 @@ export class SDKChatStreamingAdapter {
           let streamingError: StreamingError;
 
           if (error && typeof error === 'object' && 'status' in error && 'code' in error) {
-            // Already a StreamingError from SDK
+            // Already a normalized streaming error.
             streamingError = error as StreamingError;
           } else {
             // Create StreamingError from generic error

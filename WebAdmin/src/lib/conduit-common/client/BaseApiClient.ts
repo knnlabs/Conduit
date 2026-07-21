@@ -415,7 +415,7 @@ export abstract class BaseApiClient {
     if (this.logger?.[level]) {
       this.logger[level](message, ...args);
     } else if (this.debug && level === "debug") {
-      console.warn(`[SDK] ${message}`, ...args);
+      console.warn(`[API] ${message}`, ...args);
     }
   }
 

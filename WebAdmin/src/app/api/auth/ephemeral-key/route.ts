@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient, getServerCoreClient } from '@/lib/server/sdk-config';
+import { handleApiError } from '@/lib/errors/api-errors';
+import { getServerAdminClient, getServerCoreClient } from '@/lib/server/api-client-config';
 
 interface EphemeralKeyRequest {
   purpose?: string; // Optional purpose for logging/tracking
@@ -58,6 +58,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error generating ephemeral key:', error);
-    return handleSDKError(error);
+    return handleApiError(error);
   }
 }

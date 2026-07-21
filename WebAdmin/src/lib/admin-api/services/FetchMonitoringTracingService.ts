@@ -1,12 +1,10 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { HttpMethod } from '../client/HttpMethod';
 import type { RequestConfig } from '../client/types';
 import type {
   TraceDto,
   TraceQueryParams,
   LogEntry,
   LogQueryParams,
-  LogStreamOptions,
   MonitoringHealthStatus,
 } from '../models/monitoring';
 import type { PagedResponse } from '../models/common';
@@ -63,61 +61,6 @@ export class FetchMonitoringTracingService {
         headers: config?.headers,
       }
     );
-  }
-
-  /**
-   * Stream logs
-   */
-  async *streamLogs(
-    options: LogStreamOptions,
-    config?: RequestConfig
-  ): AsyncGenerator<LogEntry, void, unknown> {
-    const response = await this.client['request']<ReadableStream<Uint8Array>>(
-      '/api/monitoring/logs/stream',
-      {
-        method: HttpMethod.POST,
-        headers: {
-          ...config?.headers,
-          'Accept': 'text/event-stream',
-        },
-        body: JSON.stringify(options),
-        signal: config?.signal,
-        timeout: config?.timeout,
-      }
-    );
-
-    if (!(response instanceof ReadableStream)) {
-      throw new Error('Expected ReadableStream response');
-    }
-
-    const reader = response.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-              yield JSON.parse(data) as LogEntry;
-            } catch {
-              // Skip invalid JSON
-            }
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
   }
 
   // Health Status

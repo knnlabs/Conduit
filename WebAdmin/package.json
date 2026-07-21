@@ -15,7 +15,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "check:admin-boundary": "node scripts/check-admin-boundary.mjs",
+    "check:api-boundary": "node scripts/check-api-boundary.mjs",
+    "check:admin-boundary": "npm run check:api-boundary",
     "prepare": "cd .. && husky install WebAdmin/.husky",
     "pre-commit": "lint-staged"
   },
@@ -39,6 +40,7 @@
     "@tanstack/react-virtual": "^3.13.18",
     "date-fns": "^4.1.0",
     "next": "^16.1.6",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",

@@ -1,4 +1,9 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import {
+  adminEphemeralKeySchema,
+  parseCriticalResponse,
+} from '@/lib/api-transport/critical-response-validation';
+import { ADMIN_CONTRACT_ROUTES } from '@/lib/api-transport/contract-routes';
 
 export interface MasterEphemeralKeyMetadata {
   sourceIP?: string;
@@ -70,14 +75,19 @@ export class FetchAuthService {
     };
 
     // Make the request with the master key in header
-    return this.client['post']<MasterEphemeralKeyResponse, GenerateMasterEphemeralKeyRequest>(
-      '/api/admin/auth/ephemeral-master-key',
+    const response = await this.client['post']<MasterEphemeralKeyResponse, GenerateMasterEphemeralKeyRequest>(
+      ADMIN_CONTRACT_ROUTES.ephemeralMasterKey,
       body,
       {
         headers: {
           'X-Master-Key': masterKey
         }
       }
+    );
+    return parseCriticalResponse(
+      adminEphemeralKeySchema,
+      response,
+      'Admin ephemeral master-key issuance',
     );
   }
 }

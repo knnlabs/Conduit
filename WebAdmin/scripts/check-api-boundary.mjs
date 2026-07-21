@@ -14,6 +14,14 @@ const forbidden = [
   'SDKs\\Node\\Common',
 ];
 const violations = [];
+const directFetchViolations = [];
+const retiredLocalNames = [
+  'sdk-config',
+  'sdkChatStreamingAdapter',
+  'errors/sdk-errors',
+  'handleSDKError',
+  'SDKChatStreamingAdapter',
+];
 
 async function scan(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -26,6 +34,16 @@ async function scan(directory) {
     const contents = await readFile(fullPath, 'utf8');
     if (forbidden.some((value) => contents.includes(value))) {
       violations.push(path.relative(root, fullPath));
+    }
+    const relative = path.relative(root, fullPath).replaceAll('\\', '/');
+    if (
+      relative.startsWith('src/lib/admin-api/services/') &&
+      /\bfetch\s*\(/.test(contents)
+    ) {
+      directFetchViolations.push(relative);
+    }
+    if (retiredLocalNames.some((value) => contents.includes(value))) {
+      violations.push(relative);
     }
   }
 }
@@ -41,4 +59,11 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log('WebAdmin Admin and Gateway API boundaries are local and contract-derived.');
+if (directFetchViolations.length > 0) {
+  console.error(
+    `Admin services must use the contract transport; direct fetch found in:\n${directFetchViolations.join('\n')}`,
+  );
+  process.exit(1);
+}
+
+console.log('WebAdmin Admin and Gateway API boundaries are local and contract-backed.');

@@ -2,6 +2,11 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
+import {
+  parseCriticalResponse,
+  virtualKeyIssueSchema,
+  virtualKeyValidationSchema,
+} from '@/lib/api-transport/critical-response-validation';
 
 // Type aliases for better readability
 type VirtualKeyDto = components['schemas']['VirtualKeyDto'];
@@ -45,7 +50,7 @@ interface DiscoveredModelDto {
 }
 
 /**
- * Type-safe Virtual Key service using native fetch
+ * Type-safe Virtual Key service using the Admin contract transport.
  */
 export class FetchVirtualKeyService {
   constructor(private readonly client: FetchBaseApiClient) {}
@@ -124,7 +129,7 @@ export class FetchVirtualKeyService {
     data: CreateVirtualKeyRequestDto,
     config?: RequestConfig
   ): Promise<CreateVirtualKeyResponseDto> {
-    return this.client['post']<CreateVirtualKeyResponseDto, CreateVirtualKeyRequestDto>(
+    const response = await this.client['post']<CreateVirtualKeyResponseDto, CreateVirtualKeyRequestDto>(
       ENDPOINTS.VIRTUAL_KEYS.BASE,
       data,
       {
@@ -133,6 +138,11 @@ export class FetchVirtualKeyService {
         headers: config?.headers,
       }
     );
+    return parseCriticalResponse(
+      virtualKeyIssueSchema,
+      response,
+      'Admin virtual-key issuance',
+    ) as CreateVirtualKeyResponseDto;
   }
 
   /**
@@ -190,7 +200,7 @@ export class FetchVirtualKeyService {
     key: string,
     config?: RequestConfig
   ): Promise<VirtualKeyValidationResponseDto> {
-    return this.client['post']<VirtualKeyValidationResponseDto>(
+    const response = await this.client['post']<VirtualKeyValidationResponseDto>(
       ENDPOINTS.VIRTUAL_KEYS.VALIDATE,
       { key },
       {
@@ -198,6 +208,11 @@ export class FetchVirtualKeyService {
         timeout: config?.timeout,
         headers: config?.headers,
       }
+    );
+    return parseCriticalResponse(
+      virtualKeyValidationSchema,
+      response,
+      'Admin virtual-key validation',
     );
   }
 

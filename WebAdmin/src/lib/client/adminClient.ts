@@ -1,5 +1,9 @@
 import { ConduitAdminClient } from '@/lib/admin-api';
 import { useCallback } from 'react';
+import {
+  parseCriticalResponse,
+  webAdminEphemeralKeySchema,
+} from '@/lib/api-transport/critical-response-validation';
 
 /**
  * Ephemeral master key response from WebAdmin backend
@@ -23,7 +27,7 @@ export async function createAdminClient(): Promise<ConduitAdminClient> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      purpose: 'frontend-admin-sdk-call'
+      purpose: 'frontend-admin-api-call'
     }),
   });
 
@@ -32,7 +36,11 @@ export async function createAdminClient(): Promise<ConduitAdminClient> {
     throw new Error(`Failed to generate ephemeral master key: ${response.status} ${errorText}`);
   }
 
-  const keyData = await response.json() as EphemeralMasterKeyResponse;
+  const keyData = parseCriticalResponse(
+    webAdminEphemeralKeySchema,
+    await response.json(),
+    'WebAdmin ephemeral master-key issuance',
+  ) satisfies EphemeralMasterKeyResponse;
 
   // Create the local Admin client with an ephemeral key.
   // IMPORTANT: No retries because ephemeral master keys are single-use!

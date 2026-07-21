@@ -5,7 +5,7 @@ let browserClient: InstanceType<typeof ConduitGatewayClient> | null = null;
 let cachedKey: string | null = null;
 
 /**
- * Get or create a browser-compatible Gateway SDK client.
+ * Get or create a browser-compatible Gateway API client.
  * Uses ephemeralKeyClient for key management to avoid duplicating
  * the fetch/cache/expiry/retry logic.
  */
