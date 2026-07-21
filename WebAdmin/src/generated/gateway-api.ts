@@ -36,40 +36,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/audio/transcriptions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Transcribes uploaded audio to text (OpenAI `/audio/transcriptions` compatible). */
-    post: operations["Audio_CreateTranscription"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/audio/speech": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Synthesizes speech from text (OpenAI `/audio/speech` compatible). Returns raw audio bytes. */
-    post: operations["Audio_CreateSpeech"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/auth/ephemeral-key": {
     parameters: {
       query?: never;
@@ -79,115 +45,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Generate an ephemeral key for the authenticated virtual key */
     post: operations["Auth_GenerateEphemeralKey"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/batch/spend-updates": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Start a batch spend update operation.
-     *     Supports idempotency via X-Idempotency-Token header to prevent duplicate processing.
-     * @description Include X-Idempotency-Token header to enable duplicate detection.
-     *     Duplicate requests with the same token will return the cached result.
-     */
-    post: operations["BatchOperations_StartBatchSpendUpdate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/batch/virtual-key-updates": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Start a batch virtual key update operation */
-    post: operations["BatchOperations_StartBatchVirtualKeyUpdate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/batch/webhook-sends": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Start a batch webhook send operation */
-    post: operations["BatchOperations_StartBatchWebhookSend"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/batch/operations/{operationId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get the status of a batch operation */
-    get: operations["BatchOperations_GetOperationStatus"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/batch/operations/{operationId}/cancel": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Cancel an active batch operation */
-    post: operations["BatchOperations_CancelOperation"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/chat/completions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Creates a chat completion. */
-    post: operations["Chat_CreateChatCompletion"];
     delete?: never;
     options?: never;
     head?: never;
@@ -203,317 +61,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Legacy completions endpoint - not implemented. */
-    post: operations["Completions_CreateCompletion"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/discovery/models": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all discovered models and their capabilities for authenticated virtual keys. */
-    get: operations["Discovery_GetModels"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/discovery/capabilities": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all available capabilities in the system. */
-    get: operations["Discovery_GetCapabilities"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/discovery/models/{model}/parameters": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets UI parameters for a specific model to enable dynamic UI generation. */
-    get: operations["Discovery_GetModelParameters"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/discovery/functions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all available function configurations for authenticated virtual keys. */
-    get: operations["Discovery_GetFunctions"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/discovery/functions/{functionConfigurationId}/parameters": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets parameter schema for a specific function configuration.
-     *     Enables dynamic UI generation for function execution. */
-    get: operations["Discovery_GetFunctionParameters"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/downloads/{fileId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Downloads a file by its identifier with support for range requests. */
-    get: operations["Downloads_DownloadFile"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    /** Checks if a file exists. */
-    head: operations["Downloads_CheckFileExists"];
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/downloads/metadata/{fileId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets metadata information about a file. */
-    get: operations["Downloads_GetFileMetadata"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/downloads/generate-url": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Generates a temporary download URL for a file. */
-    post: operations["Downloads_GenerateDownloadUrl"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/embeddings": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Creates embeddings for the given input. */
-    post: operations["Embeddings_CreateEmbedding"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/functions/execute": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Executes a function with the provided parameters. */
-    post: operations["Functions_ExecuteFunction"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/functions/executions/{executionId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the status and result of a function execution. */
-    get: operations["Functions_GetExecution"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/images/generations/async": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Creates an async image generation task. */
-    post: operations["Images_CreateImageAsync"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/images/generations/{taskId}/status": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the status of an async image generation task. */
-    get: operations["Images_GetGenerationStatus"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/images/generations/{taskId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Cancels an async image generation task. */
-    delete: operations["Images_CancelGeneration"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/images/generations": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Creates one or more images given a prompt. */
-    post: operations["Images_CreateImage"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/media/upload": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Uploads a media file and returns the storage URL. */
-    post: operations["Media_UploadMedia"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/media/{storageKey}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Retrieves a media file by its storage key. */
-    get: operations["Media_GetMedia"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    /** Checks if a media file exists. */
-    head: operations["Media_CheckMediaExists"];
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/media/info/{storageKey}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets metadata information about a media file. */
-    get: operations["Media_GetMediaInfo"];
-    put?: never;
-    post?: never;
+    post: operations["Completions_Create"];
     delete?: never;
     options?: never;
     head?: never;
@@ -527,8 +75,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets models that are compatible with a specified provider based on provider type */
-    get: operations["ProviderModels_GetProviderModels"];
+    get: operations["ProviderModels_List"];
     put?: never;
     post?: never;
     delete?: never;
@@ -546,8 +93,247 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Scores and orders documents by relevance to a query. */
-    post: operations["Rerank_CreateRerank"];
+    post: operations["Rerank_Create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/embeddings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Embeddings_Create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chat/completions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Chat_CreateCompletion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/discovery/models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Discovery_GetModels"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/discovery/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Discovery_GetCapabilities"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/discovery/models/{model}/parameters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Discovery_GetModelParameters"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/discovery/functions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Discovery_GetFunctions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/discovery/functions/{functionConfigurationId}/parameters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Discovery_GetFunctionParameters"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tasks/{taskId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Tasks_GetStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tasks/{taskId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Tasks_Cancel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tasks/{taskId}/poll": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Tasks_Poll"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/spend-updates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchOperations_StartSpendUpdates"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/virtual-key-updates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchOperations_StartVirtualKeyUpdates"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/webhook-sends": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchOperations_StartWebhookSends"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/operations/{operationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchOperations_GetStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/operations/{operationId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchOperations_Cancel"];
     delete?: never;
     options?: never;
     head?: never;
@@ -561,7 +347,6 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets current batching statistics */
     get: operations["SignalRBatching_GetStatistics"];
     put?: never;
     post?: never;
@@ -580,8 +365,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Pauses message batching (messages sent immediately) */
-    post: operations["SignalRBatching_PauseBatching"];
+    post: operations["SignalRBatching_Pause"];
     delete?: never;
     options?: never;
     head?: never;
@@ -597,8 +381,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Resumes message batching */
-    post: operations["SignalRBatching_ResumeBatching"];
+    post: operations["SignalRBatching_Resume"];
     delete?: never;
     options?: never;
     head?: never;
@@ -614,8 +397,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Forces immediate sending of all pending batches */
-    post: operations["SignalRBatching_FlushBatches"];
+    post: operations["SignalRBatching_Flush"];
     delete?: never;
     options?: never;
     head?: never;
@@ -629,8 +411,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets batching efficiency metrics */
-    get: operations["SignalRBatching_GetEfficiencyMetrics"];
+    get: operations["SignalRBatching_GetEfficiency"];
     put?: never;
     post?: never;
     delete?: never;
@@ -646,9 +427,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets SignalR connection statistics.
-     *     Access controlled by health endpoint middleware (private network or valid health key). */
-    get: operations["SignalRHealth_GetConnectionStatistics"];
+    get: operations["SignalRHealth_GetConnections"];
     put?: never;
     post?: never;
     delete?: never;
@@ -664,9 +443,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets SignalR message queue statistics.
-     *     Access controlled by health endpoint middleware (private network or valid health key). */
-    get: operations["SignalRHealth_GetQueueStatistics"];
+    get: operations["SignalRHealth_GetQueue"];
     put?: never;
     post?: never;
     delete?: never;
@@ -682,7 +459,6 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets detailed connection information (requires admin auth) */
     get: operations["SignalRHealth_GetConnectionDetails"];
     put?: never;
     post?: never;
@@ -699,8 +475,6 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets connections for a specific hub.
-     *     Access controlled by health endpoint middleware (private network or valid health key). */
     get: operations["SignalRHealth_GetHubConnections"];
     put?: never;
     post?: never;
@@ -717,7 +491,6 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets connections for a specific virtual key */
     get: operations["SignalRHealth_GetVirtualKeyConnections"];
     put?: never;
     post?: never;
@@ -734,8 +507,6 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets connections in a specific group.
-     *     Access controlled by health endpoint middleware (private network or valid health key). */
     get: operations["SignalRHealth_GetGroupConnections"];
     put?: never;
     post?: never;
@@ -752,8 +523,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets dead letter queue messages */
-    get: operations["SignalRHealth_GetDeadLetterMessages"];
+    get: operations["SignalRHealth_GetDeadLetters"];
     put?: never;
     post?: never;
     delete?: never;
@@ -771,7 +541,6 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Requeues a dead letter message */
     post: operations["SignalRHealth_RequeueDeadLetter"];
     delete?: never;
     options?: never;
@@ -786,9 +555,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets overall SignalR health status.
-     *     Access controlled by health endpoint middleware (private network or valid health key). */
-    get: operations["SignalRHealth_GetHealthStatus"];
+    get: operations["SignalRHealth_GetHealth"];
     put?: never;
     post?: never;
     delete?: never;
@@ -797,24 +564,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/tasks/{taskId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the status of a specific task. */
-    get: operations["Tasks_GetTaskStatus"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tasks/{taskId}/cancel": {
+  "/v1/functions/execute": {
     parameters: {
       query?: never;
       header?: never;
@@ -823,26 +573,216 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Cancels a running task. */
-    post: operations["Tasks_CancelTask"];
+    post: operations["Functions_Execute"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/v1/tasks/{taskId}/poll": {
+  "/v1/functions/executions/{executionId}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Polls a task until it completes or times out. */
-    get: operations["Tasks_PollTask"];
+    get: operations["Functions_GetExecution"];
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/audio/transcriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Audio_CreateTranscription"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/audio/speech": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Audio_CreateSpeech"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/media/upload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Media_Upload"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/media/info/{storageKey}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Media_GetInfo"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/media/{storageKey}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Media_Get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head: operations["Media_Head"];
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/downloads/metadata/{fileId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Downloads_GetMetadata"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/downloads/generate-url": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Downloads_GenerateUrl"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/downloads/{fileId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Downloads_Get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head: operations["Downloads_Head"];
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/images/generations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Images_Create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/images/generations/async": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["Images_CreateImageAsync"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/images/generations/{taskId}/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Images_GetStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/images/generations/{taskId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["Images_Cancel"];
     options?: never;
     head?: never;
     patch?: never;
@@ -857,8 +797,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Starts an asynchronous video generation task. */
-    post: operations["Videos_GenerateVideo"];
+    post: operations["Videos_GenerateAsync"];
     delete?: never;
     options?: never;
     head?: never;
@@ -872,7 +811,6 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets the status of a video generation task. */
     get: operations["Videos_GetTaskStatus"];
     put?: never;
     post?: never;
@@ -891,7 +829,6 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Manually retries a failed video generation task. */
     post: operations["Videos_RetryTask"];
     delete?: never;
     options?: never;
@@ -909,7 +846,6 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** Cancels a video generation task. */
     delete: operations["Videos_CancelTask"];
     options?: never;
     head?: never;
@@ -1307,6 +1243,8 @@ export interface components {
       providerType: components["schemas"]["ProviderType"];
       metadata?: null | Record<string, never>;
     };
+    /** Format: binary */
+    Stream: string;
     StreamOptions: {
       include_usage?: boolean;
     };
@@ -1547,77 +1485,6 @@ export interface operations {
       };
     };
   };
-  Audio_CreateTranscription: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/x-www-form-urlencoded": {
-          ContentType?: string;
-          ContentDisposition?: string;
-          Headers?: {
-            [key: string]: string[];
-          };
-          /** Format: int64 */
-          Length?: number | string;
-          Name?: string;
-          FileName?: string;
-        } & {
-          model?: string;
-        } & {
-          language?: string;
-        } & {
-          prompt?: string;
-        } & {
-          response_format?: string;
-        } & {
-          /** Format: double */
-          temperature?: number | string;
-        };
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Audio_CreateSpeech: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["TextToSpeechRequest"];
-        "text/json": components["schemas"]["TextToSpeechRequest"];
-        "application/*+json": components["schemas"]["TextToSpeechRequest"];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "audio/mpeg": string;
-        };
-      };
-    };
-  };
   Auth_GenerateEphemeralKey: {
     parameters: {
       query?: never;
@@ -1625,7 +1492,6 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    /** @description Optional metadata for the ephemeral key */
     requestBody?: {
       content: {
         "application/json":
@@ -1640,77 +1506,15 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Ephemeral key generated successfully */
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["EphemeralKeyResponse"];
           "application/json": components["schemas"]["EphemeralKeyResponse"];
           "text/json": components["schemas"]["EphemeralKeyResponse"];
-        };
-      };
-      /** @description Authentication failed */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
-          "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-        };
-      };
-      /** @description Internal server error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
-          "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-        };
-      };
-    };
-  };
-  BatchOperations_StartBatchSpendUpdate: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Batch spend update request */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["BatchSpendUpdateRequest"];
-        "text/json": components["schemas"]["BatchSpendUpdateRequest"];
-        "application/*+json": components["schemas"]["BatchSpendUpdateRequest"];
-      };
-    };
-    responses: {
-      /** @description Accepted */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["BatchOperationStartResponse"];
-          "application/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/json": components["schemas"]["BatchOperationStartResponse"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["EphemeralKeyResponse"];
         };
       };
       /** @description Unauthorized */
@@ -1719,230 +1523,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-    };
-  };
-  BatchOperations_StartBatchVirtualKeyUpdate: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Batch virtual key update request */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
-        "text/json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
-        "application/*+json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
-      };
-    };
-    responses: {
-      /** @description Accepted */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["BatchOperationStartResponse"];
-          "application/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/json": components["schemas"]["BatchOperationStartResponse"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-    };
-  };
-  BatchOperations_StartBatchWebhookSend: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Batch webhook send request */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["BatchWebhookSendRequest"];
-        "text/json": components["schemas"]["BatchWebhookSendRequest"];
-        "application/*+json": components["schemas"]["BatchWebhookSendRequest"];
-      };
-    };
-    responses: {
-      /** @description Accepted */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["BatchOperationStartResponse"];
-          "application/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/json": components["schemas"]["BatchOperationStartResponse"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-    };
-  };
-  BatchOperations_GetOperationStatus: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Operation ID */
-        operationId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["BatchOperationStatusResponse"];
-          "application/json": components["schemas"]["BatchOperationStatusResponse"];
-          "text/json": components["schemas"]["BatchOperationStatusResponse"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-    };
-  };
-  BatchOperations_CancelOperation: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Operation ID to cancel */
-        operationId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-    };
-  };
-  Chat_CreateChatCompletion: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ChatCompletionRequest"];
-        "text/json": components["schemas"]["ChatCompletionRequest"];
-        "application/*+json": components["schemas"]["ChatCompletionRequest"];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ChatCompletionResponse"];
-          "application/json": components["schemas"]["ChatCompletionResponse"];
-          "text/json": components["schemas"]["ChatCompletionResponse"];
-          "text/event-stream": string;
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
@@ -1951,14 +1534,14 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
   };
-  Completions_CreateCompletion: {
+  Completions_Create: {
     parameters: {
       query?: never;
       header?: never;
@@ -1967,580 +1550,24 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description A 501 Not Implemented response directing users to use /chat/completions. */
+      /** @description Not Implemented */
       501: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
-        };
-      };
-    };
-  };
-  Discovery_GetModels: {
-    parameters: {
-      query?: {
-        /** @description Optional capability filter (e.g., "video_generation", "vision") */
-        capability?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description List of models with their capabilities. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Discovery_GetCapabilities: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description List of all available capabilities. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Discovery_GetModelParameters: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The model alias or identifier to get parameters for */
-        model: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description JSON object containing UI parameter definitions for the model. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Discovery_GetFunctions: {
-    parameters: {
-      query?: {
-        /** @description Optional purpose filter (e.g., "Search", "Answer", "RAG_Search") */
-        purpose?: string;
-        /** @description Optional provider type filter (e.g., "Exa", "Perplexity") */
-        providerType?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description List of available function configurations */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Discovery_GetFunctionParameters: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The function configuration ID */
-        functionConfigurationId: number | string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description JSON schema defining required and optional parameters */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Downloads_DownloadFile: {
-    parameters: {
-      query?: {
-        /** @description Whether to display inline (true) or force download (false). */
-        inline?: boolean;
-      };
-      header?: never;
-      path: {
-        /** @description The file identifier (storage key or URL). */
-        fileId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The file content. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/octet-stream": string;
-        };
-      };
-    };
-  };
-  Downloads_CheckFileExists: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The file identifier. */
-        fileId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description 200 OK if exists, 404 if not. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  Downloads_GetFileMetadata: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The file identifier. */
-        fileId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description File metadata. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Downloads_GenerateDownloadUrl: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description The URL generation request. */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["GenerateUrlRequest"];
-        "text/json": components["schemas"]["GenerateUrlRequest"];
-        "application/*+json": components["schemas"]["GenerateUrlRequest"];
-      };
-    };
-    responses: {
-      /** @description A temporary download URL. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Embeddings_CreateEmbedding: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Cancellation token. */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["EmbeddingRequest"];
-        "text/json": components["schemas"]["EmbeddingRequest"];
-        "application/*+json": components["schemas"]["EmbeddingRequest"];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["EmbeddingResponse"];
-          "application/json": components["schemas"]["EmbeddingResponse"];
-          "text/json": components["schemas"]["EmbeddingResponse"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
           "text/plain": components["schemas"]["OpenAIErrorResponse"];
-          "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
-          "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
   };
-  Functions_ExecuteFunction: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Cancellation token */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["FunctionExecutionRequest"];
-        "text/json": components["schemas"]["FunctionExecutionRequest"];
-        "application/*+json": components["schemas"]["FunctionExecutionRequest"];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  Functions_GetExecution: {
+  ProviderModels_List: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        /** @description The execution ID */
-        executionId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  Images_CreateImageAsync: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description The image generation request. */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ImageGenerationRequest"];
-        "text/json": components["schemas"]["ImageGenerationRequest"];
-        "application/*+json": components["schemas"]["ImageGenerationRequest"];
-      };
-    };
-    responses: {
-      /** @description Task information with status URL. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Images_GetGenerationStatus: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The task ID. */
-        taskId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Current task status and results if completed. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Images_CancelGeneration: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The task ID to cancel. */
-        taskId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Cancellation result. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Images_CreateImage: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Cancellation token from the HTTP request. */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ImageGenerationRequest"];
-        "text/json": components["schemas"]["ImageGenerationRequest"];
-        "application/*+json": components["schemas"]["ImageGenerationRequest"];
-      };
-    };
-    responses: {
-      /** @description Generated images. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Media_UploadMedia: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Optional media type (image/video/audio). */
-    requestBody: {
-      content: {
-        "multipart/form-data": {
-          file?: components["schemas"]["IFormFile"];
-        } & {
-          mediaType?: string;
-        };
-      };
-    };
-    responses: {
-      /** @description The storage result with URL. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Media_GetMedia: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The unique storage key. */
-        storageKey: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The media file. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/octet-stream": string;
-        };
-      };
-    };
-  };
-  Media_CheckMediaExists: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The unique storage key. */
-        storageKey: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description True if the media exists. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  Media_GetMediaInfo: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The unique storage key. */
-        storageKey: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Media metadata. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  ProviderModels_GetProviderModels: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description ID of the provider */
         providerId: number;
       };
       cookie?: never;
@@ -2553,9 +1580,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": string[];
           "application/json": string[];
           "text/json": string[];
+          "text/plain": string[];
         };
       };
       /** @description Not Found */
@@ -2564,14 +1591,14 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
   };
-  Rerank_CreateRerank: {
+  Rerank_Create: {
     parameters: {
       query?: never;
       header?: never;
@@ -2597,6 +1624,512 @@ export interface operations {
       };
     };
   };
+  Embeddings_Create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EmbeddingRequest"];
+        "text/json": components["schemas"]["EmbeddingRequest"];
+        "application/*+json": components["schemas"]["EmbeddingRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EmbeddingResponse"];
+          "text/json": components["schemas"]["EmbeddingResponse"];
+          "text/plain": components["schemas"]["EmbeddingResponse"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+    };
+  };
+  Chat_CreateCompletion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChatCompletionRequest"];
+        "text/json": components["schemas"]["ChatCompletionRequest"];
+        "application/*+json": components["schemas"]["ChatCompletionRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChatCompletionResponse"];
+          "text/json": components["schemas"]["ChatCompletionResponse"];
+          "text/plain": components["schemas"]["ChatCompletionResponse"];
+          "text/event-stream": string;
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+    };
+  };
+  Discovery_GetModels: {
+    parameters: {
+      query?: {
+        capability?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Discovery_GetCapabilities: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Discovery_GetModelParameters: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        model: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Discovery_GetFunctions: {
+    parameters: {
+      query?: {
+        purpose?: string;
+        providerType?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Discovery_GetFunctionParameters: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        functionConfigurationId: number | string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Tasks_GetStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taskId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Tasks_Cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taskId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Tasks_Poll: {
+    parameters: {
+      query?: {
+        timeout?: number | string;
+        interval?: number | string;
+      };
+      header?: never;
+      path: {
+        taskId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  BatchOperations_StartSpendUpdates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BatchSpendUpdateRequest"];
+        "text/json": components["schemas"]["BatchSpendUpdateRequest"];
+        "application/*+json": components["schemas"]["BatchSpendUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BatchOperationStartResponse"];
+          "text/json": components["schemas"]["BatchOperationStartResponse"];
+          "text/plain": components["schemas"]["BatchOperationStartResponse"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+    };
+  };
+  BatchOperations_StartVirtualKeyUpdates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
+        "text/json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
+        "application/*+json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BatchOperationStartResponse"];
+          "text/json": components["schemas"]["BatchOperationStartResponse"];
+          "text/plain": components["schemas"]["BatchOperationStartResponse"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+    };
+  };
+  BatchOperations_StartWebhookSends: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BatchWebhookSendRequest"];
+        "text/json": components["schemas"]["BatchWebhookSendRequest"];
+        "application/*+json": components["schemas"]["BatchWebhookSendRequest"];
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BatchOperationStartResponse"];
+          "text/json": components["schemas"]["BatchOperationStartResponse"];
+          "text/plain": components["schemas"]["BatchOperationStartResponse"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+    };
+  };
+  BatchOperations_GetStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        operationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BatchOperationStatusResponse"];
+          "text/json": components["schemas"]["BatchOperationStatusResponse"];
+          "text/plain": components["schemas"]["BatchOperationStatusResponse"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+    };
+  };
+  BatchOperations_Cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        operationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+    };
+  };
   SignalRBatching_GetStatistics: {
     parameters: {
       query?: never;
@@ -2612,14 +2145,14 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["BatchingStatistics"];
           "application/json": components["schemas"]["BatchingStatistics"];
           "text/json": components["schemas"]["BatchingStatistics"];
+          "text/plain": components["schemas"]["BatchingStatistics"];
         };
       };
     };
   };
-  SignalRBatching_PauseBatching: {
+  SignalRBatching_Pause: {
     parameters: {
       query?: never;
       header?: never;
@@ -2639,7 +2172,7 @@ export interface operations {
       };
     };
   };
-  SignalRBatching_ResumeBatching: {
+  SignalRBatching_Resume: {
     parameters: {
       query?: never;
       header?: never;
@@ -2659,7 +2192,7 @@ export interface operations {
       };
     };
   };
-  SignalRBatching_FlushBatches: {
+  SignalRBatching_Flush: {
     parameters: {
       query?: never;
       header?: never;
@@ -2679,7 +2212,7 @@ export interface operations {
       };
     };
   };
-  SignalRBatching_GetEfficiencyMetrics: {
+  SignalRBatching_GetEfficiency: {
     parameters: {
       query?: never;
       header?: never;
@@ -2699,7 +2232,7 @@ export interface operations {
       };
     };
   };
-  SignalRHealth_GetConnectionStatistics: {
+  SignalRHealth_GetConnections: {
     parameters: {
       query?: never;
       header?: never;
@@ -2714,14 +2247,14 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["ConnectionStatistics"];
           "application/json": components["schemas"]["ConnectionStatistics"];
           "text/json": components["schemas"]["ConnectionStatistics"];
+          "text/plain": components["schemas"]["ConnectionStatistics"];
         };
       };
     };
   };
-  SignalRHealth_GetQueueStatistics: {
+  SignalRHealth_GetQueue: {
     parameters: {
       query?: never;
       header?: never;
@@ -2736,9 +2269,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["QueueStatistics"];
           "application/json": components["schemas"]["QueueStatistics"];
           "text/json": components["schemas"]["QueueStatistics"];
+          "text/plain": components["schemas"]["QueueStatistics"];
         };
       };
     };
@@ -2829,7 +2362,7 @@ export interface operations {
       };
     };
   };
-  SignalRHealth_GetDeadLetterMessages: {
+  SignalRHealth_GetDeadLetters: {
     parameters: {
       query?: never;
       header?: never;
@@ -2871,7 +2404,7 @@ export interface operations {
       };
     };
   };
-  SignalRHealth_GetHealthStatus: {
+  SignalRHealth_GetHealth: {
     parameters: {
       query?: never;
       header?: never;
@@ -2891,19 +2424,128 @@ export interface operations {
       };
     };
   };
-  Tasks_GetTaskStatus: {
+  Functions_Execute: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FunctionExecutionRequest"];
+        "text/json": components["schemas"]["FunctionExecutionRequest"];
+        "application/*+json": components["schemas"]["FunctionExecutionRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  Functions_GetExecution: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        /** @description The ID of the task to retrieve. */
-        taskId: string;
+        executionId: string;
       };
       cookie?: never;
     };
     requestBody?: never;
     responses: {
-      /** @description The task status. */
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  Audio_CreateTranscription: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          file?: components["schemas"]["IFormFile"];
+        } & {
+          model?: string;
+        } & {
+          language?: string;
+        } & {
+          prompt?: string;
+        } & {
+          response_format?: string;
+        } & {
+          /** Format: double */
+          temperature?: number | string;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown;
@@ -2914,19 +2556,51 @@ export interface operations {
       };
     };
   };
-  Tasks_CancelTask: {
+  Audio_CreateSpeech: {
     parameters: {
       query?: never;
       header?: never;
-      path: {
-        /** @description The ID of the task to cancel. */
-        taskId: string;
-      };
+      path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TextToSpeechRequest"];
+        "text/json": components["schemas"]["TextToSpeechRequest"];
+        "application/*+json": components["schemas"]["TextToSpeechRequest"];
+      };
+    };
     responses: {
-      /** @description No content on success. */
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "audio/mpeg": string;
+        };
+      };
+    };
+  };
+  Media_Upload: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Optional media type (image/video/audio). */
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          file?: components["schemas"]["IFormFile"];
+        } & {
+          mediaType?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown;
@@ -2937,24 +2611,178 @@ export interface operations {
       };
     };
   };
-  Tasks_PollTask: {
+  Media_GetInfo: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        storageKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Media_Get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        storageKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+        };
+      };
+    };
+  };
+  Media_Head: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        storageKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  Downloads_GetMetadata: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        fileId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Downloads_GenerateUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["GenerateUrlRequest"];
+        "text/json": components["schemas"]["GenerateUrlRequest"];
+        "application/*+json": components["schemas"]["GenerateUrlRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Downloads_Get: {
     parameters: {
       query?: {
-        /** @description Maximum time to wait in seconds (default: 300, max: 600). */
-        timeout?: number | string;
-        /** @description Polling interval in seconds (default: 2, min: 1). */
-        interval?: number | string;
+        inline?: boolean;
       };
       header?: never;
       path: {
-        /** @description The ID of the task to poll. */
-        taskId: string;
+        fileId: string;
       };
       cookie?: never;
     };
     requestBody?: never;
     responses: {
-      /** @description The final task status. */
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+        };
+      };
+    };
+  };
+  Downloads_Head: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        fileId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  Images_Create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ImageGenerationRequest"];
+        "text/json": components["schemas"]["ImageGenerationRequest"];
+        "application/*+json": components["schemas"]["ImageGenerationRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown;
@@ -2965,7 +2793,77 @@ export interface operations {
       };
     };
   };
-  Videos_GenerateVideo: {
+  Images_CreateImageAsync: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ImageGenerationRequest"];
+        "text/json": components["schemas"]["ImageGenerationRequest"];
+        "application/*+json": components["schemas"]["ImageGenerationRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Images_GetStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taskId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Images_Cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taskId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+    };
+  };
+  Videos_GenerateAsync: {
     parameters: {
       query?: never;
       header?: never;
@@ -2986,9 +2884,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["VideoGenerationTaskResponse"];
           "application/json": components["schemas"]["VideoGenerationTaskResponse"];
           "text/json": components["schemas"]["VideoGenerationTaskResponse"];
+          "text/plain": components["schemas"]["VideoGenerationTaskResponse"];
         };
       };
       /** @description Bad Request */
@@ -2997,9 +2895,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Unauthorized */
@@ -3008,9 +2906,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Forbidden */
@@ -3019,9 +2917,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Too Many Requests */
@@ -3030,9 +2928,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
@@ -3041,9 +2939,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -3065,9 +2963,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["VideoGenerationTaskStatus"];
           "application/json": components["schemas"]["VideoGenerationTaskStatus"];
           "text/json": components["schemas"]["VideoGenerationTaskStatus"];
+          "text/plain": components["schemas"]["VideoGenerationTaskStatus"];
         };
       };
       /** @description Unauthorized */
@@ -3076,9 +2974,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Not Found */
@@ -3087,9 +2985,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
@@ -3098,9 +2996,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -3122,9 +3020,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["VideoGenerationTaskStatus"];
           "application/json": components["schemas"]["VideoGenerationTaskStatus"];
           "text/json": components["schemas"]["VideoGenerationTaskStatus"];
+          "text/plain": components["schemas"]["VideoGenerationTaskStatus"];
         };
       };
       /** @description Bad Request */
@@ -3133,9 +3031,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Unauthorized */
@@ -3144,9 +3042,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Not Found */
@@ -3155,9 +3053,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
@@ -3166,9 +3064,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -3197,9 +3095,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Not Found */
@@ -3208,9 +3106,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Conflict */
@@ -3219,9 +3117,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
@@ -3230,9 +3128,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
           "application/json": components["schemas"]["OpenAIErrorResponse"];
           "text/json": components["schemas"]["OpenAIErrorResponse"];
+          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };

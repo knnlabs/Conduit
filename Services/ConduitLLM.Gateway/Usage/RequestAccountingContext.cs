@@ -1,5 +1,5 @@
 using ConduitLLM.Core.Models;
-using ConduitLLM.Gateway.Controllers;
+using ConduitLLM.Gateway.Models;
 
 namespace ConduitLLM.Gateway.UsageTracking;
 

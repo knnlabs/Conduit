@@ -1,7 +1,7 @@
 namespace ConduitLLM.Admin.Models.ModelCapabilities
 {
     /// <summary>
-    /// Alias for CapabilitiesDto to maintain backward compatibility with ModelController.
+    /// Alias for CapabilitiesDto to maintain API compatibility.
     /// </summary>
     /// <remarks>
     /// This class exists for backward compatibility. Use CapabilitiesDto for new code.

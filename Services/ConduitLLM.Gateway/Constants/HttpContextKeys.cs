@@ -21,17 +21,17 @@ public static class HttpContextKeys
     public const string VirtualKeyId = "VirtualKeyId";
 
     /// <summary>
-    /// Key for storing function configuration ID (used by FunctionsController).
+    /// Key for storing function configuration ID (used by the Functions endpoints).
     /// </summary>
     public const string FunctionConfigurationId = "FunctionConfigurationId";
 
     /// <summary>
-    /// Key for storing function configuration name (used by FunctionsController).
+    /// Key for storing function configuration name (used by the Functions endpoints).
     /// </summary>
     public const string FunctionConfigurationName = "FunctionConfigurationName";
 
     /// <summary>
-    /// Key for storing function execution ID (used by FunctionsController).
+    /// Key for storing function execution ID (used by the Functions endpoints).
     /// </summary>
     public const string FunctionExecutionId = "FunctionExecutionId";
 
@@ -65,6 +65,6 @@ public static class HttpContextKeys
 
     // NOTE: Image and video request-shape data (model, size, quality, duration, fps, style,
     // N, pricing parameters) is no longer carried via string keys. It now flows through the
-    // typed ConduitLLM.Gateway.Usage.IUsageContext set by ImagesController/VideosController
+    // typed ConduitLLM.Gateway.Usage.IUsageContext set by the Images/Videos endpoints
     // and consumed by UsageTrackingMiddleware.
 }

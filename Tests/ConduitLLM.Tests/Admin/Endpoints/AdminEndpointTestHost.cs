@@ -72,6 +72,11 @@ internal sealed class AdminEndpointTestHost : IDisposable
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            if (Request.Headers.ContainsKey("X-Test-Anonymous"))
+            {
+                return Task.FromResult(AuthenticateResult.NoResult());
+            }
+
             var principal = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.Name, "test-admin")], Scheme.Name));
             return Task.FromResult(AuthenticateResult.Success(

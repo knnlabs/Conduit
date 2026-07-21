@@ -14,7 +14,7 @@ namespace ConduitLLM.Admin.Middleware;
 /// and returns standardized <see cref="ErrorResponseDto"/> responses.
 /// </summary>
 /// <remarks>
-/// This is a safety net — most exceptions are handled by <see cref="Controllers.AdminControllerBase"/>.
+/// This is the common safety net for exceptions raised by Admin endpoints.
 /// This middleware catches anything that slips through, ensuring the Admin API never returns
 /// raw exception details to clients.
 /// </remarks>

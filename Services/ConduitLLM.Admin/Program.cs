@@ -1,7 +1,5 @@
 using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Extensions;
-using ConduitLLM.Admin.Filters;
-using ConduitLLM.Admin.Validation;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
@@ -10,6 +8,8 @@ using ConduitLLM.Security.Middleware;
 using System.Text.Json;
 
 using JasperFx;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 
 using Scalar.AspNetCore;
 
@@ -41,29 +41,25 @@ public partial class Program
         var startupLogger = startupLoggerFactory.CreateLogger("ConduitLLM.Admin.Startup");
 
         // Add services to the container
-        builder.Services.AddControllers()
-            .AddJsonOptions(options => ConfigureAdminJson(options.JsonSerializerOptions))
-            .ConfigureApiBehaviorOptions(options =>
-            {
-                // Tier 2a (#904): return the Admin API's standard ErrorResponseDto for automatic
-                // [ApiController] model-validation failures instead of the default
-                // ValidationProblemDetails — unifying the validation error shape with the rest of
-                // the Admin API (AdminExceptionMiddleware also emits ErrorResponseDto).
-                options.InvalidModelStateResponseFactory = InvalidModelStateResponse.Create;
-            });
-
-        // Minimal APIs use Microsoft.AspNetCore.Http.Json.JsonOptions rather than MVC's
-        // JsonOptions. Keep both paths on the same configuration while controllers and endpoint
-        // groups coexist. This registration is before the codegen branch, so the metadata-only
-        // host and the production host use the same contract.
+        // Keep Minimal API JSON aligned with the established Admin contract.
         builder.Services.ConfigureHttpJsonOptions(options =>
             ConfigureAdminJson(options.SerializerOptions));
 
-        // Operation-logging action filter — replaces the per-action success logging that used to
-        // live in AdminControllerBase.ExecuteAsync. Applied per controller via [ServiceFilter]
-        // during the incremental Tier 1a migration (#902); promote to a global filter once all
-        // controllers are converted.
-        builder.Services.AddScoped<OperationLoggingFilter>();
+        builder.Services.AddScoped<BillingAuditEndpoints>();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<AnalyticsEndpoints>();
+        builder.Services.AddScoped<FunctionConfigurationsEndpoints>();
+        builder.Services.AddScoped<ProviderErrorsEndpoints>();
+        builder.Services.AddScoped<MediaRetentionEndpoints>();
+        builder.Services.AddScoped<ProviderToolsEndpoints>();
+        builder.Services.AddScoped<PricingEndpoints>();
+        builder.Services.AddScoped<ModelProviderMappingEndpoints>();
+        builder.Services.AddScoped<ModelCostsEndpoints>();
+        builder.Services.AddScoped<ProviderCredentialsEndpoints>();
+        builder.Services.AddScoped<ModelEndpoints>();
+        builder.Services.AddScoped<VirtualKeyGroupsEndpoints>();
+        builder.Services.AddScoped<VirtualKeysEndpoints>();
+        builder.Services.AddScoped<IpFilterEndpoints>();
 
         builder.Services.AddEndpointsApiExplorer();
 
@@ -77,7 +73,7 @@ public partial class Program
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ApiKeySecurityOperationTransformer>();
             // Tier 2b (#905): document the universal 500 once, so controllers can drop the per-action
-            // [ProducesResponseType(Status500InternalServerError)] boilerplate.
+            // per-endpoint 500-response boilerplate.
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.DefaultErrorResponsesOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ResponseContractOperationTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.NumericSchemaTransformer>();
@@ -97,7 +93,6 @@ public partial class Program
             builder.Services.AddAuthorization(options =>
                 options.AddPolicy("MasterKeyPolicy", policy => policy.RequireAssertion(_ => true)));
             var openApiApp = builder.Build();
-            openApiApp.MapControllers();
             openApiApp.MapModelAuthorEndpoints();
             openApiApp.MapModelSeriesEndpoints();
             openApiApp.MapNotificationsEndpoints();
@@ -114,6 +109,43 @@ public partial class Program
             openApiApp.MapPromptCachingEndpoints();
             openApiApp.MapProviderSyncEndpoints();
             openApiApp.MapGlobalSettingsEndpoints();
+            openApiApp.MapMediaEndpoints();
+            ProviderCredentialsEndpoints.MapProviderCredentialsEndpoints(openApiApp);
+            ModelEndpoints.MapModelEndpoints(openApiApp);
+            VirtualKeyGroupsEndpoints.MapVirtualKeyGroupsEndpoints(openApiApp);
+            VirtualKeysEndpoints.MapVirtualKeysEndpoints(openApiApp);
+            IpFilterEndpoints.MapIpFilterEndpoints(openApiApp);
+            openApiApp.MapHealthMonitoringEndpoints();
+            openApiApp.MapSecurityMonitoringEndpoints();
+            BillingAuditEndpoints.MapBillingAuditEndpoints(openApiApp);
+            AnalyticsEndpoints.MapAnalyticsEndpoints(openApiApp);
+            FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(openApiApp);
+            ProviderErrorsEndpoints.MapProviderErrorsEndpoints(openApiApp);
+            MediaRetentionEndpoints.MapMediaRetentionEndpoints(openApiApp);
+            ProviderToolsEndpoints.MapProviderToolsEndpoints(openApiApp);
+            PricingEndpoints.MapPricingEndpoints(openApiApp);
+            ModelProviderMappingEndpoints.MapModelProviderMappingEndpoints(openApiApp);
+            ModelCostsEndpoints.MapModelCostsEndpoints(openApiApp);
+
+            var outputPath = Environment.GetEnvironmentVariable("CONDUIT_OPENAPI_OUTPUT");
+            if (!string.IsNullOrWhiteSpace(outputPath))
+            {
+                openApiApp.Urls.Add("http://127.0.0.1:0");
+                await openApiApp.StartAsync();
+                try
+                {
+                    await using var output = File.Create(outputPath);
+                    var provider = openApiApp.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
+                    var document = await provider.GetOpenApiDocumentAsync(default);
+                    await document.SerializeAsJsonAsync(output, OpenApiSpecVersion.OpenApi3_1, default);
+                }
+                finally
+                {
+                    await openApiApp.StopAsync();
+                }
+                return 0;
+            }
+
             await openApiApp.RunAsync();
             return 0;
         }
@@ -176,9 +208,8 @@ public partial class Program
         app.UseAuthentication();
         app.UseAuthorization();
 
-        app.MapControllers();
 
-        // Tier 3 pilot (#906): ModelAuthor served as Minimal-API endpoints (replaces ModelAuthorController).
+        // ModelAuthor is served by Minimal API endpoints.
         app.MapModelAuthorEndpoints();
         app.MapModelSeriesEndpoints();
         app.MapNotificationsEndpoints();
@@ -195,6 +226,23 @@ public partial class Program
         app.MapPromptCachingEndpoints();
         app.MapProviderSyncEndpoints();
         app.MapGlobalSettingsEndpoints();
+        app.MapMediaEndpoints();
+        ProviderCredentialsEndpoints.MapProviderCredentialsEndpoints(app);
+        ModelEndpoints.MapModelEndpoints(app);
+        VirtualKeyGroupsEndpoints.MapVirtualKeyGroupsEndpoints(app);
+        VirtualKeysEndpoints.MapVirtualKeysEndpoints(app);
+        IpFilterEndpoints.MapIpFilterEndpoints(app);
+        app.MapHealthMonitoringEndpoints();
+        app.MapSecurityMonitoringEndpoints();
+        BillingAuditEndpoints.MapBillingAuditEndpoints(app);
+        AnalyticsEndpoints.MapAnalyticsEndpoints(app);
+        FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(app);
+        ProviderErrorsEndpoints.MapProviderErrorsEndpoints(app);
+        MediaRetentionEndpoints.MapMediaRetentionEndpoints(app);
+        ProviderToolsEndpoints.MapProviderToolsEndpoints(app);
+        PricingEndpoints.MapPricingEndpoints(app);
+        ModelProviderMappingEndpoints.MapModelProviderMappingEndpoints(app);
+        ModelCostsEndpoints.MapModelCostsEndpoints(app);
 
         // Map SignalR hub with master key authentication
         app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");

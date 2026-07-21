@@ -10,9 +10,8 @@ namespace ConduitLLM.Admin.OpenApi;
 /// maps unhandled exceptions to a standardized <c>ErrorResponseDto</c>).
 /// </summary>
 /// <remarks>
-/// This lets controllers drop the per-action
-/// <c>[ProducesResponseType(StatusCodes.Status500InternalServerError)]</c> boilerplate — every
-/// endpoint can return 500, so it's documented once here instead of ~150 times (Tier 2b, #905).
+/// This lets endpoint mappings omit repeated 500-response metadata — every endpoint can return
+/// 500, so it is documented once here.
 /// </remarks>
 public sealed class DefaultErrorResponsesOperationTransformer : IOpenApiOperationTransformer
 {

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using ConduitLLM.Gateway.Controllers;
+using ConduitLLM.Gateway.Models;
 
 namespace ConduitLLM.Gateway.Utilities;
 

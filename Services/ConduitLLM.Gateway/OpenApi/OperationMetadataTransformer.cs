@@ -3,7 +3,7 @@ using Microsoft.OpenApi;
 
 namespace ConduitLLM.Gateway.OpenApi;
 
-/// <summary>Assigns stable operation IDs and fallback tags to controller operations.</summary>
+/// <summary>Assigns stable operation IDs and fallback tags to API operations.</summary>
 public sealed class OperationMetadataTransformer : IOpenApiOperationTransformer
 {
     public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)

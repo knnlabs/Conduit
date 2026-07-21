@@ -88,7 +88,7 @@ namespace ConduitLLM.Admin.Extensions
             services.AddConduitContextManagement(configuration);
 
             // Note: AddDiscoveryCache is not registered in Admin API as it's optional
-            // SystemInfoController has IDiscoveryCacheService? as nullable dependency
+            // The SystemInfo endpoint handler has IDiscoveryCacheService? as a nullable dependency.
             // If needed in the future, must first register AddCacheManager(configuration)
 
             // Add Function Discovery Cache for function tool definition caching

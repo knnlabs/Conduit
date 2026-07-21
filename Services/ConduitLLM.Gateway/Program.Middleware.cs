@@ -96,6 +96,5 @@ public partial class Program
         });
 
         // Add controllers to the app
-        app.MapControllers();
     }
 }

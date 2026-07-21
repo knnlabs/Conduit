@@ -10,6 +10,7 @@ public partial class Program
         var jsonSerializerOptions = app.Services.GetRequiredService<JsonSerializerOptions>();
 
         app.MapModelsEndpoints();
+        app.MapGatewayApiEndpoints();
 
         // Map SignalR hubs for real-time updates
 

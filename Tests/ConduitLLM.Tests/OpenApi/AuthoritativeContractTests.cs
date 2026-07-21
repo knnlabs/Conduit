@@ -20,7 +20,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     public void Contracts_PublishStableGeneratedAndExplicitOperationIds()
     {
         Operation(_admin, "/api/VirtualKeys", "get").GetProperty("operationId").GetString()
-            .Should().Be("VirtualKeys_ListKeys");
+            .Should().Be("VirtualKeys_GetAll");
         Operation(_admin, "/api/ModelAuthor", "get").GetProperty("operationId").GetString()
             .Should().Be("ModelAuthors_List");
         Operation(_admin, "/api/ModelAuthor/{id}", "get").GetProperty("operationId").GetString()

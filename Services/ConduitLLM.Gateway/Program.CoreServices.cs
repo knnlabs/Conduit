@@ -6,6 +6,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Extensions;
+using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Providers.Extensions;
 using Microsoft.Extensions.Caching.Distributed;
@@ -16,6 +17,7 @@ public partial class Program
     {
         builder.Services.AddScoped<ConduitLLM.Core.Services.IEventPublisher,
             ConduitLLM.Core.Services.EventPublisher>();
+        builder.Services.AddGatewayEndpointHandlers();
         // ========== Core Infrastructure ==========
 
         // Add leader election service for distributed background service coordination

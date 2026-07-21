@@ -1,4 +1,4 @@
-namespace ConduitLLM.Admin.Controllers
+namespace ConduitLLM.Admin.DTOs
 {
     /// <summary>
     /// Data transfer object for media retention policy information.

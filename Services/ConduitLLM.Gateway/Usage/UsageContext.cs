@@ -14,7 +14,7 @@ public interface IUsageContext
 }
 
 /// <summary>
-/// Image generation request context captured by <c>ImagesController</c>.
+/// Image generation request context captured by the Images endpoints.
 /// </summary>
 public sealed class ImageUsageContext : IUsageContext
 {
@@ -26,7 +26,7 @@ public sealed class ImageUsageContext : IUsageContext
 }
 
 /// <summary>
-/// Video generation request context captured by <c>VideosController</c>.
+/// Video generation request context captured by the Videos endpoints.
 /// </summary>
 public sealed class VideoUsageContext : IUsageContext
 {
@@ -44,7 +44,7 @@ public sealed class VideoUsageContext : IUsageContext
 }
 
 /// <summary>
-/// Audio (speech-to-text / text-to-speech) request context captured by <c>AudioController</c>.
+/// Audio (speech-to-text / text-to-speech) request context captured by the Audio endpoints.
 /// Carries the billable units (audio duration for STT, character count for TTS) so the middleware
 /// can bill without parsing the response — which for TTS is raw binary audio.
 /// </summary>

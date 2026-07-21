@@ -1,5 +1,7 @@
 using JasperFx;
 using ConduitLLM.Gateway.Endpoints;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 
 // "migrate" verb: run the standalone migrator (release-hook entry point) instead of
 // the web host — e.g. `dotnet ConduitLLM.Gateway.dll migrate`.
@@ -25,8 +27,28 @@ if (Environment.GetEnvironmentVariable("CONDUIT_OPENAPI_GENERATION") == "true")
     Program.ConfigureOpenApiServices(builder);
     builder.Services.AddAuthorization();
     var openApiApp = builder.Build();
-    openApiApp.MapControllers();
     openApiApp.MapModelsEndpoints();
+    openApiApp.MapGatewayApiEndpoints();
+
+    var outputPath = Environment.GetEnvironmentVariable("CONDUIT_OPENAPI_OUTPUT");
+    if (!string.IsNullOrWhiteSpace(outputPath))
+    {
+        openApiApp.Urls.Add("http://127.0.0.1:0");
+        await openApiApp.StartAsync();
+        try
+        {
+            await using var output = File.Create(outputPath);
+            var provider = openApiApp.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
+            var document = await provider.GetOpenApiDocumentAsync(default);
+            await document.SerializeAsJsonAsync(output, OpenApiSpecVersion.OpenApi3_1, default);
+        }
+        finally
+        {
+            await openApiApp.StopAsync();
+        }
+        return 0;
+    }
+
     await openApiApp.RunAsync();
     return 0;
 }

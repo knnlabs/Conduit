@@ -5,7 +5,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Gateway.Constants;
-using ConduitLLM.Gateway.Controllers;
+using ConduitLLM.Gateway.Models;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.UsageTracking;

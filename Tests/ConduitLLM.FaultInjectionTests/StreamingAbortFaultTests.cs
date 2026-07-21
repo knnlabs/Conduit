@@ -5,12 +5,11 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Gateway.Controllers;
+using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -60,27 +59,27 @@ public sealed class StreamingAbortFaultTests(BillingFaultFixture fixture)
                 "fault-model", It.IsAny<List<Message>>(), "partial completion",
                 It.Is<CancellationToken>(ct => ct.CanBeCanceled)))
             .ReturnsAsync(new Usage { PromptTokens = 20, CompletionTokens = 30, TotalTokens = 50 });
-        var controller = new ChatController(
+        var endpoints = new ChatEndpoints(
             new Conduit(clientFactory.Object, NullLogger<Conduit>.Instance),
-            NullLogger<ChatController>.Instance,
+            NullLogger<ChatEndpoints>.Instance,
             Mock.Of<IModelProviderMappingService>(),
             new JsonSerializerOptions(),
             Mock.Of<IEventBus>(),
             Mock.Of<IGlobalSettingsCacheService>(),
-            estimator.Object);
+            estimator.Object,
+            httpContextAccessor: new HttpContextAccessor { HttpContext = context });
 
         var middleware = new UsageTrackingMiddleware(
             async httpContext =>
             {
-                controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
-                await controller.CreateChatCompletion(new ChatCompletionRequest
+                await endpoints.CreateChatCompletion(new ChatCompletionRequest
                 {
                     Model = "fault-model",
                     Stream = true,
                     MaxAgenticIterations = 1,
                     EnableAgenticMode = false,
                     Messages = [new Message { Role = "user", Content = "hello" }]
-                });
+                }, httpContext.RequestAborted);
             },
             NullLogger<UsageTrackingMiddleware>.Instance);
 

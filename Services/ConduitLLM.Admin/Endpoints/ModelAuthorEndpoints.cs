@@ -11,7 +11,7 @@ namespace ConduitLLM.Admin.Endpoints
 {
     /// <summary>
     /// Minimal-API endpoints for managing <c>ModelAuthor</c> entities — the Tier 3 pilot (#906),
-    /// replacing the MVC <c>ModelAuthorController</c>.
+    /// for model-author operations.
     /// </summary>
     /// <remarks>
     /// Behavior is identical to the controller: thrown exceptions propagate to the global

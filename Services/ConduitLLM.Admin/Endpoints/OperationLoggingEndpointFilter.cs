@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Admin.Endpoints
 {
     /// <summary>
-    /// Minimal-API equivalent of the MVC <c>OperationLoggingFilter</c>: logs successful endpoint
+    /// Logs successful endpoint
     /// completion (Information for mutations, Debug for reads). Exceptions are not caught here —
     /// they propagate to the global <c>AdminExceptionMiddleware</c>.
     /// </summary>

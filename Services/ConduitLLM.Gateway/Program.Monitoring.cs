@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Extensions;
-using ConduitLLM.Gateway.Filters;
+using ConduitLLM.Gateway.Endpoints;
 
 public partial class Program
 {
@@ -113,8 +113,7 @@ public partial class Program
     /// <summary>Registers only the services required to describe HTTP endpoints.</summary>
     public static void ConfigureOpenApiServices(WebApplicationBuilder builder)
     {
-        builder.Services.AddControllers();
-        builder.Services.AddScoped<OperationLoggingFilter>();
+        builder.Services.AddGatewayEndpointHandlers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddOpenApi("v1", options =>
         {

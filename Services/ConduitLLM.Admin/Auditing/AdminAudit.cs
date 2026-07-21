@@ -7,7 +7,7 @@ namespace ConduitLLM.Admin.Auditing
 {
     /// <summary>
     /// Structured admin audit logging usable from Minimal-API handlers (which have no
-    /// <c>AdminControllerBase</c> to inherit <c>LogAdminAudit</c> from). Mirrors the controller
+    /// a shared MVC base to inherit audit helpers from). Mirrors the former behavior
     /// base's audit format: operation, entity context, admin user identity, client IP, and trace id.
     /// </summary>
     /// <remarks>Introduced for the Tier 3 Minimal-API pilot (#906).</remarks>

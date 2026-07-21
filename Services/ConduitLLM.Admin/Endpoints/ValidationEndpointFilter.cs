@@ -7,7 +7,7 @@ namespace ConduitLLM.Admin.Endpoints;
 
 /// <summary>
 /// Applies DataAnnotations validation to Minimal-API handler arguments and returns the Admin
-/// validation envelope that MVC's <c>[ApiController]</c> behavior uses.
+/// validation envelope used by the Admin API contract.
 /// </summary>
 public sealed class ValidationEndpointFilter : IEndpointFilter
 {

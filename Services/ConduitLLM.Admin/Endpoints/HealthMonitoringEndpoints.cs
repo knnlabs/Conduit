@@ -1,0 +1,302 @@
+using System.Diagnostics;
+
+using ConduitLLM.Admin.DTOs;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+
+namespace ConduitLLM.Admin.Endpoints
+{
+    /// <summary>
+    /// Controller providing health monitoring data for dashboards.
+    /// </summary>
+    public static class HealthMonitoringEndpoints
+    {
+        public static IEndpointRouteBuilder MapHealthMonitoringEndpoints(this IEndpointRouteBuilder app)
+        {
+            var group = app.MapGroup("/api/health")
+                .AddEndpointFilter<OperationLoggingEndpointFilter>()
+                .WithTags("Health Monitoring");
+            group.MapGet("/services", GetServiceHealth)
+                .WithName("HealthMonitoring_GetServiceHealth")
+                .Produces<ServiceHealthResponse>();
+            group.MapGet("/incidents", GetIncidents)
+                .WithName("HealthMonitoring_GetIncidents")
+                .Produces<IncidentsResponse>();
+            group.MapGet("/history", GetHealthHistory)
+                .WithName("HealthMonitoring_GetHealthHistory")
+                .Produces<HealthHistoryResponse>();
+            return app;
+        }
+
+        /// <summary>
+        /// Gets current service health status.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Service health information.</returns>
+        private static async Task<IResult> GetServiceHealth(
+            [FromServices] IDbContextFactory<ConduitDbContext> dbContextFactory,
+            [FromServices] IAdminSystemInfoService systemInfoService,
+            CancellationToken cancellationToken)
+        {
+            using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var services = new List<ServiceStatusDto>();
+
+            // Gateway API Service
+            services.Add(new ServiceStatusDto
+            {
+                Id = "core-api",
+                Name = "Gateway API",
+                Status = "healthy",
+                Uptime = GetProcessUptime(),
+                LastCheck = DateTime.UtcNow,
+                ResponseTime = 15,
+                Details = new
+                {
+                    Version = typeof(HealthMonitoringEndpoints).Assembly.GetName().Version?.ToString() ?? "unknown",
+                    Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production",
+                    RequestsHandled = await dbContext.RequestLogs
+                        .CountAsync(r => r.Timestamp >= DateTime.UtcNow.AddHours(-1), cancellationToken)
+                }
+            });
+
+            // Admin API Service
+            services.Add(new ServiceStatusDto
+            {
+                Id = "admin-api",
+                Name = "Admin API",
+                Status = "healthy",
+                Uptime = GetProcessUptime(),
+                LastCheck = DateTime.UtcNow,
+                ResponseTime = 10,
+                Details = new
+                {
+                    ActiveSessions = 1, // Current session
+                    ConfiguredKeys = await dbContext.VirtualKeys.CountAsync(cancellationToken)
+                }
+            });
+
+            // Database Service
+            var dbHealthCheck = await CheckDatabaseHealth(dbContext, cancellationToken);
+            services.Add(new ServiceStatusDto
+            {
+                Id = "database",
+                Name = "PostgreSQL Database",
+                Status = dbHealthCheck.IsHealthy ? "healthy" : "unhealthy",
+                Uptime = TimeSpan.FromDays(30), // Would need actual DB uptime
+                LastCheck = DateTime.UtcNow,
+                ResponseTime = dbHealthCheck.ResponseTime,
+                Details = new
+                {
+                    ConnectionPooling = true,
+                    ActiveConnections = 5, // Would need actual connection count
+                    DatabaseSize = await GetDatabaseSize(systemInfoService)
+                }
+            });
+
+
+            // Calculate overall health
+            var healthyCount = services.Count(s => s.Status == "healthy");
+            var degradedCount = services.Count(s => s.Status == "degraded");
+            var unhealthyCount = services.Count(s => s.Status == "unhealthy");
+
+            return Results.Ok(new ServiceHealthResponse
+            {
+                Timestamp = DateTime.UtcNow,
+                OverallStatus = unhealthyCount > 0 ? "unhealthy" : (degradedCount > 0 ? "degraded" : "healthy"),
+                Summary = new ServiceHealthSummary
+                {
+                    Healthy = healthyCount,
+                    Degraded = degradedCount,
+                    Unhealthy = unhealthyCount,
+                    Total = services.Count
+                },
+                Services = services
+            });
+        }
+
+        /// <summary>
+        /// Gets incident history.
+        /// </summary>
+        /// <param name="days">Number of days to look back (default: 7).</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Incident history data.</returns>
+        private static async Task<IResult> GetIncidents(
+            [FromServices] IDbContextFactory<ConduitDbContext> dbContextFactory,
+            [FromQuery] int days = 7,
+            CancellationToken cancellationToken = default)
+        {
+            using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var startDate = DateTime.UtcNow.AddDays(-days);
+
+            // Analyze request logs for incidents
+            var errorSpikes = await dbContext.RequestLogs
+                .Where(r => r.Timestamp >= startDate && r.StatusCode >= 400)
+                .GroupBy(r => new
+                {
+                    Date = r.Timestamp.Date,
+                    Hour = r.Timestamp.Hour,
+                    Model = r.ModelName
+                })
+                .Select(g => new
+                {
+                    Date = g.Key.Date,
+                    Hour = g.Key.Hour,
+                    Service = g.Key.Model, // Using ModelName as service identifier
+                    ErrorCount = g.Count(),
+                    ErrorTypes = g.Select(r => r.StatusCode).Distinct().Count()
+                })
+                .Where(g => g.ErrorCount >= 10) // Threshold for incident
+                .ToListAsync(cancellationToken);
+
+            // Convert to incidents
+            var incidents = errorSpikes.Select(spike => new IncidentDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                Title = $"{spike.Service} Service Degradation",
+                Type = "service_degradation",
+                Severity = spike.ErrorCount >= 50 ? "critical" : (spike.ErrorCount >= 25 ? "major" : "minor"),
+                Status = spike.Date.Date == DateTime.UtcNow.Date ? "active" : "resolved",
+                StartTime = new DateTime(spike.Date.Year, spike.Date.Month, spike.Date.Day, spike.Hour, 0, 0),
+                EndTime = spike.Date.Date == DateTime.UtcNow.Date ? (DateTime?)null :
+                         new DateTime(spike.Date.Year, spike.Date.Month, spike.Date.Day, spike.Hour, 59, 59),
+                AffectedService = spike.Service,
+                Impact = $"{spike.ErrorCount} errors in 1 hour period",
+                Details = new IncidentDetailsDto
+                {
+                    ErrorCount = spike.ErrorCount,
+                    UniqueErrorTypes = spike.ErrorTypes
+                }
+            }).ToList();
+
+            // Health failures removed - no longer tracking provider health
+
+            var allIncidents = incidents
+                .OrderByDescending(i => i.StartTime)
+                .ToList();
+
+            return Results.Ok(new IncidentsResponse
+            {
+                Timestamp = DateTime.UtcNow,
+                TimeRange = new TimeRangeDto { Start = startDate, End = DateTime.UtcNow },
+                TotalIncidents = allIncidents.Count,
+                ActiveIncidents = allIncidents.Count(i => i.Status == "active"),
+                IncidentsByType = allIncidents.GroupBy(i => i.Type).Select(g => new IncidentTypeCountDto
+                {
+                    Type = g.Key,
+                    Count = g.Count()
+                }).ToList(),
+                IncidentsBySeverity = allIncidents.GroupBy(i => i.Severity).Select(g => new IncidentSeverityCountDto
+                {
+                    Severity = g.Key,
+                    Count = g.Count()
+                }).ToList(),
+                Incidents = allIncidents
+            });
+        }
+
+        /// <summary>
+        /// Gets health history data.
+        /// </summary>
+        /// <param name="hours">Number of hours to look back (default: 24).</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Health history time series.</returns>
+        private static async Task<IResult> GetHealthHistory(
+            [FromServices] IDbContextFactory<ConduitDbContext> dbContextFactory,
+            [FromQuery] int hours = 24,
+            CancellationToken cancellationToken = default)
+        {
+            using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var startTime = DateTime.UtcNow.AddHours(-hours);
+            var intervalMinutes = hours <= 24 ? 15 : 60; // 15 min intervals for 24h, 1h for longer
+
+            var healthHistory = new List<HealthHistoryPointDto>();
+            var currentTime = startTime;
+
+            while (currentTime < DateTime.UtcNow)
+            {
+                var intervalEnd = currentTime.AddMinutes(intervalMinutes);
+
+                // Provider health tracking has been removed
+
+                // Get error rates for this interval
+                var errorStats = await dbContext.RequestLogs
+                    .Where(r => r.Timestamp >= currentTime && r.Timestamp < intervalEnd)
+                    .GroupBy(r => 1)
+                    .Select(g => new
+                    {
+                        TotalRequests = g.Count(),
+                        ErrorCount = g.Count(r => r.StatusCode >= 400),
+                        AvgLatency = g.Average(r => (double?)r.ResponseTimeMs) ?? 0
+                    })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                healthHistory.Add(new HealthHistoryPointDto
+                {
+                    Timestamp = currentTime,
+                    SystemHealth = errorStats?.TotalRequests > 0
+                        ? 100 - (errorStats.ErrorCount * 100.0 / errorStats.TotalRequests)
+                        : 100,
+                    ProviderHealth = 100, // Provider health tracking removed
+                    ResponseTime = errorStats?.AvgLatency ?? 0,
+                    RequestVolume = errorStats?.TotalRequests ?? 0,
+                    ErrorRate = errorStats?.TotalRequests > 0
+                        ? errorStats.ErrorCount * 100.0 / errorStats.TotalRequests
+                        : 0
+                });
+
+                currentTime = intervalEnd;
+            }
+
+            return Results.Ok(new HealthHistoryResponse
+            {
+                Timestamp = DateTime.UtcNow,
+                TimeRange = new TimeRangeDto { Start = startTime, End = DateTime.UtcNow },
+                IntervalMinutes = intervalMinutes,
+                History = healthHistory
+            });
+        }
+
+        private static async Task<(bool IsHealthy, int ResponseTime)> CheckDatabaseHealth(
+            ConduitDbContext dbContext,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var stopwatch = Stopwatch.StartNew();
+                await dbContext.Database.ExecuteSqlRawAsync("SELECT 1", cancellationToken);
+                stopwatch.Stop();
+                return (true, (int)stopwatch.ElapsedMilliseconds);
+            }
+            catch
+            {
+                return (false, -1);
+            }
+        }
+
+        private static async Task<string> GetDatabaseSize(IAdminSystemInfoService systemInfoService)
+        {
+            try
+            {
+                var systemInfo = await systemInfoService.GetSystemInfoAsync();
+                var size = systemInfo.Database.Size;
+                return !string.IsNullOrEmpty(size) ? size : "Unknown";
+            }
+            catch
+            {
+                return "Unknown";
+            }
+        }
+
+        private static TimeSpan GetProcessUptime()
+        {
+            return DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime();
+        }
+    }
+}
