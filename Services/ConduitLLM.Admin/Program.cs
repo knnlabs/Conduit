@@ -77,12 +77,30 @@ public partial class Program
         builder.Services.AddOpenApi("v1", options =>
         {
             options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.AdminApiDocumentTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ApiKeySecurityOperationTransformer>();
             // Tier 2b (#905): document the universal 500 once, so controllers can drop the per-action
             // [ProducesResponseType(Status500InternalServerError)] boilerplate.
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.DefaultErrorResponsesOperationTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ResponseContractOperationTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.NumericSchemaTransformer>();
+            options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.OperationIdValidationDocumentTransformer>();
         });
+
+        // The build-time exporter needs endpoint metadata, not infrastructure. Avoid Postgres,
+        // Redis, messaging, migrations, and hosted services on this codegen-only path.
+        if (Environment.GetEnvironmentVariable("CONDUIT_OPENAPI_GENERATION") == "true")
+        {
+            builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IModelAuthorRepository,
+                ConduitLLM.Configuration.Repositories.ModelAuthorRepository>();
+            builder.Services.AddAuthorization(options =>
+                options.AddPolicy("MasterKeyPolicy", policy => policy.RequireAssertion(_ => true)));
+            var openApiApp = builder.Build();
+            openApiApp.MapControllers();
+            openApiApp.MapModelAuthorEndpoints();
+            await openApiApp.RunAsync();
+            return 0;
+        }
 
         // Configure services (partial class methods)
         ConfigureCoreServices(builder, startupLogger);

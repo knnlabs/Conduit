@@ -9,6 +9,10 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- 1591: missing XML doc; NU1510: redundant pin (kept for SBOM clarity). -->
     <NoWarn>$(NoWarn);1591;NU1510</NoWarn>
+    <!-- Build-time OpenAPI export is opt-in so ordinary local builds stay fast. -->
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOnBuild>false</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiGenerateDocumentsOptions>--file-name openapi-gateway</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -42,6 +46,10 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
     <!-- Override vulnerable transitive from AspNetCore.OpenApi (GHSA-v5pm-xwqc-g5wc, high); fixed in 2.7.5 -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.9">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.2" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />

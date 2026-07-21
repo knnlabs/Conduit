@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.OpenApi;
-using System.Reflection;
+using Microsoft.OpenApi;
 
 namespace ConduitLLM.Gateway.OpenApi;
 
@@ -18,9 +18,16 @@ public class CoreApiDocumentTransformer : IOpenApiDocumentTransformer
         document.Info.Version = "v1";
         document.Info.Description = "OpenAI-compatible API for multi-provider LLM access - Requires Bearer token authentication";
 
-        // Note: With Microsoft.AspNetCore.OpenApi in .NET 10, security schemes are handled differently
-        // The authentication is enforced by middleware (VirtualKeyAuthenticationHandler)
-        // Scalar will detect the authentication requirements from the OpenAPI document
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes[VirtualKeySecurityOperationTransformer.SecuritySchemeName] =
+            new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "opaque virtual key",
+                Description = "ConduitLLM virtual key supplied as an opaque Bearer token."
+            };
 
         return Task.CompletedTask;
     }

@@ -17,6 +17,18 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 // Configure basic settings and environment
 Program.ConfigureBasicSettings(builder);
 
+// The build-time exporter creates a host to inspect endpoint metadata. Keep that host
+// infrastructure-free: no database, Redis, messaging, migrations, or hosted services.
+if (Environment.GetEnvironmentVariable("CONDUIT_OPENAPI_GENERATION") == "true")
+{
+    Program.ConfigureOpenApiServices(builder);
+    builder.Services.AddAuthorization();
+    var openApiApp = builder.Build();
+    openApiApp.MapControllers();
+    await openApiApp.RunAsync();
+    return 0;
+}
+
 // Configure all service registrations
 Program.ConfigureCoreServices(builder);
 Program.ConfigureSecurityServices(builder);

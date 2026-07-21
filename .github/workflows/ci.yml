@@ -83,6 +83,7 @@ jobs:
           # Workspaces monorepo: a single root SDK lockfile (no per-package locks exist).
           cache-dependency-path: |
             SDKs/Node/package-lock.json
+            SDKs/Node/scripts/package-lock.json
             WebAdmin/package-lock.json
       
       - name: .NET Build & Test
@@ -129,17 +130,21 @@ jobs:
           npm run type-check
           npm run test:ci
 
-      - name: Admin OpenAPI drift check
-        # Regenerates the Admin OpenAPI spec (at build time, no running service needed)
-        # and the Admin SDK generated types, then fails if they differ from what is
-        # committed. This keeps backend DTOs and SDK types from silently drifting apart.
+      - name: OpenAPI contract validation and drift check
+        # Export both contracts without infrastructure, prove generation is byte-stable,
+        # regenerate both SDK type files, validate the contracts, and fail on drift.
         run: |
           cd SDKs/Node/scripts
           npm ci
-          npm run generate:admin:offline
+          npm run verify:offline
+          npm run validate:openapi
           cd "$GITHUB_WORKSPACE"
-          if ! git diff --exit-code -- Services/ConduitLLM.Admin/openapi-admin.json SDKs/Node/Admin/src/generated/admin-api.ts; then
-            echo "::error::Admin OpenAPI spec or generated SDK types are out of date. Run 'npm run generate:admin:offline' in SDKs/Node/scripts and commit the changes."
+          if ! git diff --exit-code -- \
+            Services/ConduitLLM.Admin/openapi-admin.json \
+            Services/ConduitLLM.Gateway/openapi-gateway.json \
+            SDKs/Node/Admin/src/generated/admin-api.ts \
+            SDKs/Node/Gateway/src/generated/gateway-api.ts; then
+            echo "::error::OpenAPI contracts or generated SDK types are out of date. Run 'npm run generate:offline' in SDKs/Node/scripts and commit the changes."
             exit 1
           fi
         env:

@@ -11,72 +11,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.OpenApi;
-
 using Xunit;
 
 namespace ConduitLLM.Tests.Admin.OpenApi
 {
-    /// <summary>
-    /// Unit tests for the Tier 2b (#905) <see cref="DefaultErrorResponsesOperationTransformer"/>, which
-    /// documents the universal 500 once so controllers can drop ~150
-    /// <c>[ProducesResponseType(Status500InternalServerError)]</c> attributes.
-    /// </summary>
-    [Trait("Category", "Unit")]
-    [Trait("Component", "OpenApi")]
-    public class DefaultErrorResponsesOperationTransformerTests
-    {
-        // The transformer ignores the context, so passing null is safe and keeps the test focused.
-        private static async Task TransformAsync(OpenApiOperation operation)
-            => await new DefaultErrorResponsesOperationTransformer()
-                .TransformAsync(operation, null!, CancellationToken.None);
-
-        [Fact]
-        public async Task TransformAsync_AddsA500_WhenAbsent()
-        {
-            var operation = new OpenApiOperation
-            {
-                Responses = new OpenApiResponses
-                {
-                    ["200"] = new OpenApiResponse { Description = "OK" }
-                }
-            };
-
-            await TransformAsync(operation);
-
-            operation.Responses.Should().ContainKey("500");
-            operation.Responses["500"].Description.Should().Contain("ErrorResponseDto");
-        }
-
-        [Fact]
-        public async Task TransformAsync_InitializesResponses_WhenNull()
-        {
-            var operation = new OpenApiOperation { Responses = null };
-
-            await TransformAsync(operation);
-
-            operation.Responses.Should().NotBeNull();
-            operation.Responses.Should().ContainKey("500");
-        }
-
-        [Fact]
-        public async Task TransformAsync_DoesNotOverwrite_ExistingTyped500()
-        {
-            var operation = new OpenApiOperation
-            {
-                Responses = new OpenApiResponses
-                {
-                    ["500"] = new OpenApiResponse { Description = "custom-existing" }
-                }
-            };
-
-            await TransformAsync(operation);
-
-            // A controller that declares its own 500 keeps it — the transformer only fills the gap.
-            operation.Responses["500"].Description.Should().Be("custom-existing");
-        }
-    }
-
     /// <summary>
     /// Runtime verification (the "spot-check <c>/openapi/v1.json</c>" gap) that the same transformer
     /// registered in <c>Program.cs</c> actually injects a documented 500 into every operation of a
@@ -149,8 +87,15 @@ namespace ConduitLLM.Tests.Admin.OpenApi
                     operationCount++;
                     member.Value.TryGetProperty("responses", out var responses).Should().BeTrue(
                         $"operation {member.Name.ToUpperInvariant()} {path.Name} should have responses");
-                    responses.TryGetProperty("500", out _).Should().BeTrue(
+                    responses.TryGetProperty("500", out var errorResponse).Should().BeTrue(
                         $"operation {member.Name.ToUpperInvariant()} {path.Name} should document a 500");
+                    var schema = errorResponse.GetProperty("content")
+                        .GetProperty("application/json")
+                        .GetProperty("schema");
+                    var properties = schema.GetProperty("properties");
+                    properties.TryGetProperty("error", out _).Should().BeTrue();
+                    properties.TryGetProperty("details", out _).Should().BeTrue();
+                    properties.TryGetProperty("code", out _).Should().BeTrue();
                 }
             }
 

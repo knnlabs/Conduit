@@ -7,22 +7,7 @@ public partial class Program
 {
     public static void ConfigureMonitoringServices(WebApplicationBuilder builder)
     {
-        // Add Controller support
-        builder.Services.AddControllers();
-
-        // Operation-logging action filter — replaces the per-action success logging that used to
-        // live in GatewayControllerBase.ExecuteAsync. Applied per controller via [ServiceFilter]
-        // during the incremental Tier 1a migration (#902); promote to a global filter once all
-        // Gateway controllers are converted.
-        builder.Services.AddScoped<OperationLoggingFilter>();
-
-        // Add OpenAPI support with Scalar
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddOpenApi("v1", options =>
-        {
-            options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.CoreApiDocumentTransformer>();
-            options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.VirtualKeySecurityOperationTransformer>();
-        });
+        ConfigureOpenApiServices(builder);
 
         // Get Redis configuration for health checks
         var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
@@ -123,5 +108,21 @@ public partial class Program
                 return new ConduitLLM.Gateway.Services.GatewayOperationsMetricsService(serviceProvider, logger);
             },
             "GatewayOperationsMetricsService");
+    }
+
+    /// <summary>Registers only the services required to describe HTTP endpoints.</summary>
+    public static void ConfigureOpenApiServices(WebApplicationBuilder builder)
+    {
+        builder.Services.AddControllers();
+        builder.Services.AddScoped<OperationLoggingFilter>();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddOpenApi("v1", options =>
+        {
+            options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.CoreApiDocumentTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.OperationMetadataTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.VirtualKeySecurityOperationTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.ResponseContractOperationTransformer>();
+            options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.OperationIdValidationDocumentTransformer>();
+        });
     }
 }

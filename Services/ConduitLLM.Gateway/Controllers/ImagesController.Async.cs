@@ -22,7 +22,7 @@ namespace ConduitLLM.Gateway.Controllers
         /// </summary>
         /// <param name="request">The image generation request.</param>
         /// <returns>Task information with status URL.</returns>
-        [HttpPost("generations/async")]
+        [HttpPost("generations/async", Name = "Images_CreateImageAsync")]
         public async Task<IActionResult> CreateImageAsync([FromBody] ConduitLLM.Core.Models.ImageGenerationRequest request)
         {
             using var activity = GatewayRequestMetrics.StartImageGenerationActivity(

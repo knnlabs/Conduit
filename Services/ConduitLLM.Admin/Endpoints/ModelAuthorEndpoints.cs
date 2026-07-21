@@ -29,21 +29,26 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithTags("ModelAuthor");
 
             group.MapGet("/", GetAll)
+                .WithName("ModelAuthors_List")
                 .Produces<IEnumerable<ModelAuthorDto>>(StatusCodes.Status200OK);
             group.MapGet("/{id:int}", GetById).WithName("GetModelAuthorById")
                 .Produces<ModelAuthorDto>(StatusCodes.Status200OK)
                 .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
             group.MapGet("/{id:int}/series", GetSeriesByAuthor)
+                .WithName("ModelAuthors_ListSeries")
                 .Produces<IEnumerable<SimpleModelSeriesDto>>(StatusCodes.Status200OK)
                 .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
             group.MapPost("/", Create)
+                .WithName("ModelAuthors_Create")
                 .Produces<ModelAuthorDto>(StatusCodes.Status201Created)
                 .Produces(StatusCodes.Status400BadRequest);
             group.MapPut("/{id:int}", Update)
+                .WithName("ModelAuthors_Update")
                 .Produces(StatusCodes.Status204NoContent)
                 .Produces(StatusCodes.Status400BadRequest)
                 .Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id:int}", Delete)
+                .WithName("ModelAuthors_Delete")
                 .Produces(StatusCodes.Status204NoContent)
                 .Produces(StatusCodes.Status400BadRequest)
                 .Produces(StatusCodes.Status404NotFound);

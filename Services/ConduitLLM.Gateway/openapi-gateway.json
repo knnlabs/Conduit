@@ -1,33 +1,219 @@
 {
-  "openapi": "3.0.4",
+  "openapi": "3.1.1",
   "info": {
-    "title": "Conduit Core API",
-    "description": "OpenAI-compatible API for multi-provider LLM access",
+    "title": "Conduit Gateway API",
+    "description": "OpenAI-compatible API for multi-provider LLM access - Requires Bearer token authentication",
     "version": "v1"
   },
   "paths": {
+    "/v1/audio/transcriptions": {
+      "post": {
+        "tags": [
+          "Audio"
+        ],
+        "summary": "Transcribes uploaded audio to text (OpenAI `/audio/transcriptions` compatible).",
+        "operationId": "Audio_CreateTranscription",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "ContentType": {
+                        "type": "string"
+                      },
+                      "ContentDisposition": {
+                        "type": "string"
+                      },
+                      "Headers": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "Length": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "type": [
+                          "integer",
+                          "string"
+                        ],
+                        "format": "int64"
+                      },
+                      "Name": {
+                        "type": "string"
+                      },
+                      "FileName": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "model": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "language": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "prompt": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "response_format": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "temperature": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                        "type": [
+                          "number",
+                          "string"
+                        ],
+                        "format": "double"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/audio/speech": {
+      "post": {
+        "tags": [
+          "Audio"
+        ],
+        "summary": "Synthesizes speech from text (OpenAI `/audio/speech` compatible). Returns raw audio bytes.",
+        "operationId": "Audio_CreateSpeech",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextToSpeechRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextToSpeechRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextToSpeechRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
+      }
+    },
     "/v1/auth/ephemeral-key": {
       "post": {
         "tags": [
           "Authentication"
         ],
         "summary": "Generate an ephemeral key for the authenticated virtual key",
+        "operationId": "Auth_GenerateEphemeralKey",
         "requestBody": {
           "description": "Optional metadata for the ephemeral key",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+                  }
+                ]
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+                  }
+                ]
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+                  }
+                ]
               }
             }
           }
@@ -58,17 +244,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
@@ -78,22 +264,27 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/batch/spend-updates": {
@@ -101,7 +292,9 @@
         "tags": [
           "BatchOperations"
         ],
-        "summary": "Start a batch spend update operation",
+        "summary": "Start a batch spend update operation.\r\nSupports idempotency via X-Idempotency-Token header to prevent duplicate processing.",
+        "description": "Include X-Idempotency-Token header to enable duplicate detection.\r\nDuplicate requests with the same token will return the cached result.",
+        "operationId": "BatchOperations_StartBatchSpendUpdate",
         "requestBody": {
           "description": "Batch spend update request",
           "content": {
@@ -120,7 +313,8 @@
                 "$ref": "#/components/schemas/BatchSpendUpdateRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "202": {
@@ -183,7 +377,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/batch/virtual-key-updates": {
@@ -192,6 +391,7 @@
           "BatchOperations"
         ],
         "summary": "Start a batch virtual key update operation",
+        "operationId": "BatchOperations_StartBatchVirtualKeyUpdate",
         "requestBody": {
           "description": "Batch virtual key update request",
           "content": {
@@ -210,7 +410,8 @@
                 "$ref": "#/components/schemas/BatchVirtualKeyUpdateRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "202": {
@@ -273,7 +474,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/batch/webhook-sends": {
@@ -282,6 +488,7 @@
           "BatchOperations"
         ],
         "summary": "Start a batch webhook send operation",
+        "operationId": "BatchOperations_StartBatchWebhookSend",
         "requestBody": {
           "description": "Batch webhook send request",
           "content": {
@@ -300,7 +507,8 @@
                 "$ref": "#/components/schemas/BatchWebhookSendRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "202": {
@@ -363,7 +571,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/batch/operations/{operationId}": {
@@ -372,6 +585,7 @@
           "BatchOperations"
         ],
         "summary": "Get the status of a batch operation",
+        "operationId": "BatchOperations_GetOperationStatus",
         "parameters": [
           {
             "name": "operationId",
@@ -424,7 +638,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/batch/operations/{operationId}/cancel": {
@@ -433,6 +652,7 @@
           "BatchOperations"
         ],
         "summary": "Cancel an active batch operation",
+        "operationId": "BatchOperations_CancelOperation",
         "parameters": [
           {
             "name": "operationId",
@@ -488,7 +708,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/chat/completions": {
@@ -497,8 +722,8 @@
           "Chat"
         ],
         "summary": "Creates a chat completion.",
+        "operationId": "Chat_CreateChatCompletion",
         "requestBody": {
-          "description": "The chat completion request.",
           "content": {
             "application/json": {
               "schema": {
@@ -515,7 +740,8 @@
                 "$ref": "#/components/schemas/ChatCompletionRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -534,6 +760,11 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ChatCompletionResponse"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -578,7 +809,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/completions": {
@@ -587,22 +823,34 @@
           "Completions"
         ],
         "summary": "Legacy completions endpoint - not implemented.",
+        "operationId": "Completions_CreateCompletion",
         "responses": {
           "501": {
-            "description": "Not Implemented",
+            "description": "A 501 Not Implemented response directing users to use /chat/completions.",
             "content": {
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
               },
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/discovery/models": {
@@ -611,6 +859,7 @@
           "Discovery"
         ],
         "summary": "Gets all discovered models and their capabilities for authenticated virtual keys.",
+        "operationId": "Discovery_GetModels",
         "parameters": [
           {
             "name": "capability",
@@ -623,9 +872,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of models with their capabilities.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/discovery/capabilities": {
@@ -634,11 +895,24 @@
           "Discovery"
         ],
         "summary": "Gets all available capabilities in the system.",
+        "operationId": "Discovery_GetCapabilities",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "List of all available capabilities.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/discovery/models/{model}/parameters": {
@@ -647,7 +921,7 @@
           "Discovery"
         ],
         "summary": "Gets UI parameters for a specific model to enable dynamic UI generation.",
-        "description": "This endpoint returns the UI-focused parameter definitions from the ModelSeries.Parameters field,\nwhich contains JSON objects defining sliders, selects, textareas, and other UI controls.\nThis allows clients to dynamically generate appropriate UI controls without Admin API access.",
+        "operationId": "Discovery_GetModelParameters",
         "parameters": [
           {
             "name": "model",
@@ -661,9 +935,107 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "JSON object containing UI parameter definitions for the model.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/discovery/functions": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Gets all available function configurations for authenticated virtual keys.",
+        "operationId": "Discovery_GetFunctions",
+        "parameters": [
+          {
+            "name": "purpose",
+            "in": "query",
+            "description": "Optional purpose filter (e.g., \"Search\", \"Answer\", \"RAG_Search\")",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "providerType",
+            "in": "query",
+            "description": "Optional provider type filter (e.g., \"Exa\", \"Perplexity\")",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of available function configurations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/discovery/functions/{functionConfigurationId}/parameters": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Gets parameter schema for a specific function configuration.\r\nEnables dynamic UI generation for function execution.",
+        "operationId": "Discovery_GetFunctionParameters",
+        "parameters": [
+          {
+            "name": "functionConfigurationId",
+            "in": "path",
+            "description": "The function configuration ID",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON schema defining required and optional parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/downloads/{fileId}": {
@@ -672,6 +1044,7 @@
           "Downloads"
         ],
         "summary": "Downloads a file by its identifier with support for range requests.",
+        "operationId": "Downloads_DownloadFile",
         "parameters": [
           {
             "name": "fileId",
@@ -694,15 +1067,29 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "The file content.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       },
       "head": {
         "tags": [
           "Downloads"
         ],
         "summary": "Checks if a file exists.",
+        "operationId": "Downloads_CheckFileExists",
         "parameters": [
           {
             "name": "fileId",
@@ -716,9 +1103,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "200 OK if exists, 404 if not."
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/downloads/metadata/{fileId}": {
@@ -727,6 +1119,7 @@
           "Downloads"
         ],
         "summary": "Gets metadata information about a file.",
+        "operationId": "Downloads_GetFileMetadata",
         "parameters": [
           {
             "name": "fileId",
@@ -740,9 +1133,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "File metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/downloads/generate-url": {
@@ -751,6 +1156,7 @@
           "Downloads"
         ],
         "summary": "Generates a temporary download URL for a file.",
+        "operationId": "Downloads_GenerateDownloadUrl",
         "requestBody": {
           "description": "The URL generation request.",
           "content": {
@@ -769,13 +1175,26 @@
                 "$ref": "#/components/schemas/GenerateUrlRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "A temporary download URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/embeddings": {
@@ -784,8 +1203,9 @@
           "Embeddings"
         ],
         "summary": "Creates embeddings for the given input.",
+        "operationId": "Embeddings_CreateEmbedding",
         "requestBody": {
-          "description": "The embedding request.",
+          "description": "Cancellation token.",
           "content": {
             "application/json": {
               "schema": {
@@ -802,7 +1222,8 @@
                 "$ref": "#/components/schemas/EmbeddingRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -865,120 +1286,163 @@
               }
             }
           }
-        }
-      }
-    },
-    "/api/test/health-monitoring/scenarios": {
-      "get": {
-        "tags": [
-          "HealthMonitoringTest"
-        ],
-        "summary": "Get available test scenarios",
-        "responses": {
-          "200": {
-            "description": "OK"
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
           }
-        }
+        ]
       }
     },
-    "/api/test/health-monitoring/start/{scenario}": {
+    "/v1/functions/execute": {
       "post": {
         "tags": [
-          "HealthMonitoringTest"
+          "Functions"
         ],
-        "summary": "Start a test scenario",
-        "parameters": [
-          {
-            "name": "scenario",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "durationSeconds",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 60
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/test/health-monitoring/stop/{scenario}": {
-      "post": {
-        "tags": [
-          "HealthMonitoringTest"
-        ],
-        "summary": "Stop a running test scenario",
-        "parameters": [
-          {
-            "name": "scenario",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/test/health-monitoring/active": {
-      "get": {
-        "tags": [
-          "HealthMonitoringTest"
-        ],
-        "summary": "Get currently running scenarios",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/test/health-monitoring/alert": {
-      "post": {
-        "tags": [
-          "HealthMonitoringTest"
-        ],
-        "summary": "Trigger a custom alert",
+        "summary": "Executes a function with the provided parameters.",
+        "operationId": "Functions_ExecuteFunction",
         "requestBody": {
+          "description": "Cancellation token",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CustomAlertRequest"
+                "$ref": "#/components/schemas/FunctionExecutionRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/CustomAlertRequest"
+                "$ref": "#/components/schemas/FunctionExecutionRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/CustomAlertRequest"
+                "$ref": "#/components/schemas/FunctionExecutionRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/functions/executions/{executionId}": {
+      "get": {
+        "tags": [
+          "Functions"
+        ],
+        "summary": "Gets the status and result of a function execution.",
+        "operationId": "Functions_GetExecution",
+        "parameters": [
+          {
+            "name": "executionId",
+            "in": "path",
+            "description": "The execution ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/images/generations/async": {
@@ -987,6 +1451,7 @@
           "Images"
         ],
         "summary": "Creates an async image generation task.",
+        "operationId": "Images_CreateImageAsync",
         "requestBody": {
           "description": "The image generation request.",
           "content": {
@@ -1005,13 +1470,26 @@
                 "$ref": "#/components/schemas/ImageGenerationRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Task information with status URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/images/generations/{taskId}/status": {
@@ -1020,6 +1498,7 @@
           "Images"
         ],
         "summary": "Gets the status of an async image generation task.",
+        "operationId": "Images_GetGenerationStatus",
         "parameters": [
           {
             "name": "taskId",
@@ -1033,9 +1512,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Current task status and results if completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/images/generations/{taskId}": {
@@ -1044,6 +1535,7 @@
           "Images"
         ],
         "summary": "Cancels an async image generation task.",
+        "operationId": "Images_CancelGeneration",
         "parameters": [
           {
             "name": "taskId",
@@ -1057,9 +1549,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Cancellation result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/images/generations": {
@@ -1068,8 +1572,9 @@
           "Images"
         ],
         "summary": "Creates one or more images given a prompt.",
+        "operationId": "Images_CreateImage",
         "requestBody": {
-          "description": "The image generation request.",
+          "description": "Cancellation token from the HTTP request.",
           "content": {
             "application/json": {
               "schema": {
@@ -1086,13 +1591,81 @@
                 "$ref": "#/components/schemas/ImageGenerationRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Generated images.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/media/upload": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Uploads a media file and returns the storage URL.",
+        "operationId": "Media_UploadMedia",
+        "requestBody": {
+          "description": "Optional media type (image/video/audio).",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mediaType": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The storage result with URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/media/{storageKey}": {
@@ -1101,6 +1674,7 @@
           "Media"
         ],
         "summary": "Retrieves a media file by its storage key.",
+        "operationId": "Media_GetMedia",
         "parameters": [
           {
             "name": "storageKey",
@@ -1114,15 +1688,25 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "The media file.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [ ]
       },
       "head": {
         "tags": [
           "Media"
         ],
         "summary": "Checks if a media file exists.",
+        "operationId": "Media_CheckMediaExists",
         "parameters": [
           {
             "name": "storageKey",
@@ -1136,9 +1720,10 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "True if the media exists."
           }
-        }
+        },
+        "security": [ ]
       }
     },
     "/v1/media/info/{storageKey}": {
@@ -1147,6 +1732,7 @@
           "Media"
         ],
         "summary": "Gets metadata information about a media file.",
+        "operationId": "Media_GetMediaInfo",
         "parameters": [
           {
             "name": "storageKey",
@@ -1160,9 +1746,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Media metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/models": {
@@ -1171,6 +1769,8 @@
           "Models"
         ],
         "summary": "Lists available models.",
+        "description": "This endpoint maintains OpenAI API compatibility and returns all models without pagination.\r\nFor large deployments with many models, use the Admin API's paginated endpoints.",
+        "operationId": "Models_ListModels",
         "responses": {
           "200": {
             "description": "OK",
@@ -1206,7 +1806,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/models/{modelId}/metadata": {
@@ -1215,6 +1820,7 @@
           "Models"
         ],
         "summary": "Gets metadata for a specific model.",
+        "operationId": "Models_GetModelMetadata",
         "parameters": [
           {
             "name": "modelId",
@@ -1281,7 +1887,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/api/provider-models/{providerId}": {
@@ -1290,6 +1901,7 @@
           "ProviderModels"
         ],
         "summary": "Gets models that are compatible with a specified provider based on provider type",
+        "operationId": "ProviderModels_GetProviderModels",
         "parameters": [
           {
             "name": "providerId",
@@ -1297,6 +1909,7 @@
             "description": "ID of the provider",
             "required": true,
             "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": "integer",
               "format": "int32"
             }
@@ -1336,17 +1949,70 @@
             "description": "Not Found",
             "content": {
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
               },
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
               }
             }
           }
-        }
+        },
+        "security": [ ]
+      }
+    },
+    "/v1/rerank": {
+      "post": {
+        "tags": [
+          "Rerank"
+        ],
+        "summary": "Scores and orders documents by relevance to a query.",
+        "operationId": "Rerank_CreateRerank",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RerankRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RerankRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RerankRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/api/signalr/batching/statistics": {
@@ -1355,6 +2021,7 @@
           "SignalRBatching"
         ],
         "summary": "Gets current batching statistics",
+        "operationId": "SignalRBatching_GetStatistics",
         "responses": {
           "200": {
             "description": "OK",
@@ -1376,7 +2043,8 @@
               }
             }
           }
-        }
+        },
+        "security": [ ]
       }
     },
     "/api/signalr/batching/pause": {
@@ -1385,11 +2053,24 @@
           "SignalRBatching"
         ],
         "summary": "Pauses message batching (messages sent immediately)",
+        "operationId": "SignalRBatching_PauseBatching",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/api/signalr/batching/resume": {
@@ -1398,11 +2079,24 @@
           "SignalRBatching"
         ],
         "summary": "Resumes message batching",
+        "operationId": "SignalRBatching_ResumeBatching",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/api/signalr/batching/flush": {
@@ -1411,11 +2105,24 @@
           "SignalRBatching"
         ],
         "summary": "Forces immediate sending of all pending batches",
+        "operationId": "SignalRBatching_FlushBatches",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/api/signalr/batching/efficiency": {
@@ -1424,11 +2131,20 @@
           "SignalRBatching"
         ],
         "summary": "Gets batching efficiency metrics",
+        "operationId": "SignalRBatching_GetEfficiencyMetrics",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [ ]
       }
     },
     "/health/signalr/connections": {
@@ -1436,7 +2152,8 @@
         "tags": [
           "SignalRHealth"
         ],
-        "summary": "Gets SignalR connection statistics",
+        "summary": "Gets SignalR connection statistics.\r\nAccess controlled by health endpoint middleware (private network or valid health key).",
+        "operationId": "SignalRHealth_GetConnectionStatistics",
         "responses": {
           "200": {
             "description": "OK",
@@ -1458,7 +2175,8 @@
               }
             }
           }
-        }
+        },
+        "security": [ ]
       }
     },
     "/health/signalr/queue": {
@@ -1466,7 +2184,8 @@
         "tags": [
           "SignalRHealth"
         ],
-        "summary": "Gets SignalR message queue statistics",
+        "summary": "Gets SignalR message queue statistics.\r\nAccess controlled by health endpoint middleware (private network or valid health key).",
+        "operationId": "SignalRHealth_GetQueueStatistics",
         "responses": {
           "200": {
             "description": "OK",
@@ -1488,7 +2207,8 @@
               }
             }
           }
-        }
+        },
+        "security": [ ]
       }
     },
     "/health/signalr/connections/details": {
@@ -1497,11 +2217,24 @@
           "SignalRHealth"
         ],
         "summary": "Gets detailed connection information (requires admin auth)",
+        "operationId": "SignalRHealth_GetConnectionDetails",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/health/signalr/connections/hub/{hubName}": {
@@ -1509,7 +2242,8 @@
         "tags": [
           "SignalRHealth"
         ],
-        "summary": "Gets connections for a specific hub",
+        "summary": "Gets connections for a specific hub.\r\nAccess controlled by health endpoint middleware (private network or valid health key).",
+        "operationId": "SignalRHealth_GetHubConnections",
         "parameters": [
           {
             "name": "hubName",
@@ -1522,9 +2256,17 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [ ]
       }
     },
     "/health/signalr/connections/key/{virtualKeyId}": {
@@ -1533,22 +2275,39 @@
           "SignalRHealth"
         ],
         "summary": "Gets connections for a specific virtual key",
+        "operationId": "SignalRHealth_GetVirtualKeyConnections",
         "parameters": [
           {
             "name": "virtualKeyId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
               "format": "int32"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/health/signalr/connections/group/{groupName}": {
@@ -1556,7 +2315,8 @@
         "tags": [
           "SignalRHealth"
         ],
-        "summary": "Gets connections in a specific group",
+        "summary": "Gets connections in a specific group.\r\nAccess controlled by health endpoint middleware (private network or valid health key).",
+        "operationId": "SignalRHealth_GetGroupConnections",
         "parameters": [
           {
             "name": "groupName",
@@ -1569,9 +2329,17 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [ ]
       }
     },
     "/health/signalr/queue/deadletter": {
@@ -1580,11 +2348,24 @@
           "SignalRHealth"
         ],
         "summary": "Gets dead letter queue messages",
+        "operationId": "SignalRHealth_GetDeadLetterMessages",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/health/signalr/queue/deadletter/{messageId}/requeue": {
@@ -1593,6 +2374,7 @@
           "SignalRHealth"
         ],
         "summary": "Requeues a dead letter message",
+        "operationId": "SignalRHealth_RequeueDeadLetter",
         "parameters": [
           {
             "name": "messageId",
@@ -1605,9 +2387,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/health/signalr": {
@@ -1615,12 +2409,21 @@
         "tags": [
           "SignalRHealth"
         ],
-        "summary": "Gets overall SignalR health status",
+        "summary": "Gets overall SignalR health status.\r\nAccess controlled by health endpoint middleware (private network or valid health key).",
+        "operationId": "SignalRHealth_GetHealthStatus",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [ ]
       }
     },
     "/v1/tasks/{taskId}": {
@@ -1629,6 +2432,7 @@
           "Tasks"
         ],
         "summary": "Gets the status of a specific task.",
+        "operationId": "Tasks_GetTaskStatus",
         "parameters": [
           {
             "name": "taskId",
@@ -1642,9 +2446,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "The task status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/tasks/{taskId}/cancel": {
@@ -1653,6 +2469,7 @@
           "Tasks"
         ],
         "summary": "Cancels a running task.",
+        "operationId": "Tasks_CancelTask",
         "parameters": [
           {
             "name": "taskId",
@@ -1666,9 +2483,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "No content on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/tasks/{taskId}/poll": {
@@ -1677,6 +2506,7 @@
           "Tasks"
         ],
         "summary": "Polls a task until it completes or times out.",
+        "operationId": "Tasks_PollTask",
         "parameters": [
           {
             "name": "taskId",
@@ -1692,7 +2522,11 @@
             "in": "query",
             "description": "Maximum time to wait in seconds (default: 300, max: 600).",
             "schema": {
-              "type": "integer",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
               "format": "int32",
               "default": 300
             }
@@ -1702,7 +2536,11 @@
             "in": "query",
             "description": "Polling interval in seconds (default: 2, min: 1).",
             "schema": {
-              "type": "integer",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
               "format": "int32",
               "default": 2
             }
@@ -1710,9 +2548,21 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "The final task status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/videos/generations/async": {
@@ -1721,8 +2571,8 @@
           "Videos"
         ],
         "summary": "Starts an asynchronous video generation task.",
+        "operationId": "Videos_GenerateVideo",
         "requestBody": {
-          "description": "The video generation request.",
           "content": {
             "application/json": {
               "schema": {
@@ -1744,7 +2594,7 @@
         },
         "responses": {
           "202": {
-            "description": "Video generation task started.",
+            "description": "Accepted",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1764,106 +2614,111 @@
             }
           },
           "400": {
-            "description": "Invalid request parameters.",
+            "description": "Bad Request",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Authentication failed.",
+            "description": "Unauthorized",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "403": {
-            "description": "Virtual key does not have permission.",
+            "description": "Forbidden",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "429": {
-            "description": "Rate limit exceeded.",
+            "description": "Too Many Requests",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error.",
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/videos/generations/tasks/{taskId}": {
@@ -1872,11 +2727,11 @@
           "Videos"
         ],
         "summary": "Gets the status of a video generation task.",
+        "operationId": "Videos_GetTaskStatus",
         "parameters": [
           {
             "name": "taskId",
             "in": "path",
-            "description": "The task ID returned from the async generation endpoint.",
             "required": true,
             "schema": {
               "type": "string"
@@ -1885,7 +2740,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Task status retrieved successfully.",
+            "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1905,66 +2760,71 @@
             }
           },
           "401": {
-            "description": "Authentication failed.",
+            "description": "Unauthorized",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "Task not found or access denied.",
+            "description": "Not Found",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error.",
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/videos/generations/tasks/{taskId}/retry": {
@@ -1973,11 +2833,11 @@
           "Videos"
         ],
         "summary": "Manually retries a failed video generation task.",
+        "operationId": "Videos_RetryTask",
         "parameters": [
           {
             "name": "taskId",
             "in": "path",
-            "description": "The task ID to retry.",
             "required": true,
             "schema": {
               "type": "string"
@@ -1986,7 +2846,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Task queued for retry.",
+            "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2006,86 +2866,91 @@
             }
           },
           "400": {
-            "description": "Task cannot be retried (not failed or exceeded max retries).",
+            "description": "Bad Request",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Authentication failed.",
+            "description": "Unauthorized",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "Task not found or access denied.",
+            "description": "Not Found",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error.",
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     },
     "/v1/videos/generations/{taskId}": {
@@ -2094,11 +2959,11 @@
           "Videos"
         ],
         "summary": "Cancels a video generation task.",
+        "operationId": "Videos_CancelTask",
         "parameters": [
           {
             "name": "taskId",
             "in": "path",
-            "description": "The task ID to cancel.",
             "required": true,
             "schema": {
               "type": "string"
@@ -2107,197 +2972,338 @@
         ],
         "responses": {
           "204": {
-            "description": "Task cancelled successfully."
+            "description": "No Content"
           },
           "401": {
-            "description": "Authentication failed.",
+            "description": "Unauthorized",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "Task not found or access denied.",
+            "description": "Not Found",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "409": {
-            "description": "Task cannot be cancelled (already completed or failed).",
+            "description": "Conflict",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error.",
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
       }
     }
   },
   "components": {
     "schemas": {
-      "AlertSeverity": {
-        "enum": [
-          0,
-          1,
-          2,
-          3
-        ],
-        "type": "integer",
-        "format": "int32"
+      "AgenticExecutionMetrics": {
+        "type": "object",
+        "properties": {
+          "total_iterations": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "total_function_calls": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "total_function_cost": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "total_llm_cost": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "total_cost": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "function_calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FunctionCallSummary"
+            }
+          }
+        }
+      },
+      "BatchingStatistics": {
+        "type": "object",
+        "properties": {
+          "totalMessagesBatched": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalBatchesSent": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "averageMessagesPerBatch": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currentPendingMessages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "lastBatchSentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "averageBatchLatency": {
+            "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": "string"
+          },
+          "networkCallsSaved": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "isBatchingEnabled": {
+            "type": "boolean"
+          },
+          "messagesByMethod": {
+            "type": "object",
+            "additionalProperties": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int64"
+            }
+          },
+          "batchEfficiencyPercentage": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        },
+        "description": "Statistics about message batching"
       },
       "BatchOperationStartResponse": {
         "type": "object",
         "properties": {
           "operationId": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "operationType": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "totalItems": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "statusUrl": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "taskId": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "signalREvents": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "nullable": true
+            }
           },
           "message": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "BatchOperationStatusResponse": {
         "type": "object",
         "properties": {
           "operationId": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "operationType": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "status": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "totalItems": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "processedCount": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "successCount": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "failedCount": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "progressPercentage": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "elapsedTime": {
-            "type": "string",
-            "format": "date-span"
+            "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": "string"
           },
           "estimatedTimeRemaining": {
-            "type": "string",
-            "format": "date-span"
+            "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": "string"
           },
           "itemsPerSecond": {
-            "type": "number",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
             "format": "double"
           },
           "currentItem": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "canCancel": {
             "type": "boolean"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "BatchSpendUpdateRequest": {
         "required": [
@@ -2311,8 +3317,7 @@
               "$ref": "#/components/schemas/SpendUpdateDto"
             }
           }
-        },
-        "additionalProperties": false
+        }
       },
       "BatchVirtualKeyUpdateRequest": {
         "required": [
@@ -2326,8 +3331,7 @@
               "$ref": "#/components/schemas/VirtualKeyUpdateDto"
             }
           }
-        },
-        "additionalProperties": false
+        }
       },
       "BatchWebhookSendRequest": {
         "required": [
@@ -2341,216 +3345,304 @@
               "$ref": "#/components/schemas/WebhookSendDto"
             }
           }
-        },
-        "additionalProperties": false
-      },
-      "BatchingStatistics": {
-        "type": "object",
-        "properties": {
-          "totalMessagesBatched": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalBatchesSent": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "averageMessagesPerBatch": {
-            "type": "number",
-            "format": "double"
-          },
-          "currentPendingMessages": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "lastBatchSentAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "averageBatchLatency": {
-            "type": "string",
-            "format": "date-span"
-          },
-          "networkCallsSaved": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "isBatchingEnabled": {
-            "type": "boolean"
-          },
-          "messagesByMethod": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "nullable": true
-          },
-          "batchEfficiencyPercentage": {
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "additionalProperties": false,
-        "description": "Statistics about message batching"
+        }
       },
       "ChatCompletionRequest": {
         "required": [
-          "messages",
-          "model"
+          "model",
+          "messages"
         ],
         "type": "object",
         "properties": {
           "model": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "messages": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Message"
-            },
-            "nullable": true
+            }
           },
           "temperature": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "max_tokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "top_p": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "top_k": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "n": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "stream": {
-            "type": "boolean",
-            "nullable": true
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "stream_options": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StreamOptions"
+              }
+            ]
           },
           "stop": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string"
-            },
-            "nullable": true
+            }
           },
           "user": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "session_id": {
             "maxLength": 256,
-            "type": "string",
-            "nullable": true,
-            "description": "Stable conversation affinity identifier. The request body takes precedence over X-Conduit-Session-Id."
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "tools": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/Tool"
-            },
-            "nullable": true
+            }
           },
           "tool_choice": {
-            "$ref": "#/components/schemas/ToolChoice"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ToolChoice"
+              }
+            ]
           },
           "response_format": {
-            "$ref": "#/components/schemas/ResponseFormat"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ResponseFormat"
+              }
+            ]
+          },
+          "reasoning": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReasoningConfig"
+              }
+            ]
           },
           "seed": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "presence_penalty": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "frequency_penalty": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "logit_bias": {
-            "type": "object",
+            "type": [
+              "null",
+              "object"
+            ],
             "additionalProperties": {
-              "type": "integer",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
               "format": "int32"
-            },
-            "nullable": true
+            }
           },
           "system_fingerprint": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "function_configuration_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          "enable_agentic_mode": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "max_agentic_iterations": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
-        },
-        "additionalProperties": { }
+        }
       },
       "ChatCompletionResponse": {
         "required": [
+          "id",
           "choices",
           "created",
-          "id",
           "model",
           "object"
         ],
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "choices": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Choice"
-            },
-            "nullable": true
+            }
           },
           "created": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int64"
           },
           "model": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "system_fingerprint": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "object": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "usage": {
-            "$ref": "#/components/schemas/Usage"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Usage"
+              }
+            ]
           },
           "seed": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "performance_metrics": {
-            "$ref": "#/components/schemas/PerformanceMetrics"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PerformanceMetrics"
+              }
+            ]
+          },
+          "agentic_metrics": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AgenticExecutionMetrics"
+              }
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "Choice": {
         "required": [
@@ -2561,69 +3653,88 @@
         "type": "object",
         "properties": {
           "finish_reason": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "index": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "message": {
             "$ref": "#/components/schemas/Message"
           },
-          "logprobs": {
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
+          "logprobs": { }
+        }
       },
       "CircuitState": {
-        "enum": [
-          0,
-          1,
-          2,
-          3
-        ],
-        "type": "integer",
-        "format": "int32"
+        "type": "integer"
       },
       "ConnectionStatistics": {
         "type": "object",
         "properties": {
           "totalActiveConnections": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "connectionsByHub": {
             "type": "object",
             "additionalProperties": {
-              "type": "integer",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
               "format": "int32"
-            },
-            "nullable": true
+            }
           },
           "connectionsByTransport": {
             "type": "object",
             "additionalProperties": {
-              "type": "integer",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
               "format": "int32"
-            },
-            "nullable": true
+            }
           },
           "totalGroups": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "staleConnections": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "averageConnectionDurationMinutes": {
-            "type": "number",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
             "format": "double"
           },
           "averageIdleTimeMinutes": {
-            "type": "number",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
             "format": "double"
           },
           "oldestConnectionTime": {
@@ -2635,161 +3746,153 @@
             "format": "date-time"
           },
           "totalMessagesSent": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int64"
           },
           "totalMessagesAcknowledged": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int64"
           },
           "acknowledgmentRate": {
-            "type": "number",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
             "format": "double"
           }
         },
-        "additionalProperties": false,
         "description": "Statistics about SignalR connections"
-      },
-      "CustomAlertRequest": {
-        "type": "object",
-        "properties": {
-          "severity": {
-            "$ref": "#/components/schemas/AlertSeverity"
-          },
-          "title": {
-            "type": "string",
-            "nullable": true
-          },
-          "message": {
-            "type": "string",
-            "nullable": true
-          },
-          "component": {
-            "type": "string",
-            "nullable": true
-          },
-          "suggestedActions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
       },
       "EmbeddingData": {
         "required": [
-          "embedding",
-          "object"
+          "object",
+          "embedding"
         ],
         "type": "object",
         "properties": {
           "object": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "embedding": {
             "type": "array",
             "items": {
-              "type": "number",
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+              "type": [
+                "number",
+                "string"
+              ],
               "format": "float"
-            },
-            "nullable": true
+            }
           },
           "index": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "EmbeddingRequest": {
         "required": [
-          "encoding_format",
           "input",
-          "model"
+          "model",
+          "encoding_format"
         ],
         "type": "object",
         "properties": {
-          "input": {
-            "nullable": true
-          },
+          "input": { },
           "model": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "encoding_format": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "dimensions": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "user": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "EmbeddingResponse": {
         "required": [
+          "object",
           "data",
           "model",
-          "object",
           "usage"
         ],
         "type": "object",
         "properties": {
           "object": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "data": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EmbeddingData"
-            },
-            "nullable": true
+            }
           },
           "model": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "usage": {
             "$ref": "#/components/schemas/Usage"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "EphemeralKeyMetadata": {
         "type": "object",
         "properties": {
           "sourceIP": {
-            "type": "string",
-            "description": "IP address that requested the ephemeral key",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "IP address that requested the ephemeral key"
           },
           "userAgent": {
-            "type": "string",
-            "description": "User agent that requested the ephemeral key",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "User agent that requested the ephemeral key"
           },
           "purpose": {
-            "type": "string",
-            "description": "Purpose or intended use of the ephemeral key",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Purpose or intended use of the ephemeral key"
           },
           "requestId": {
-            "type": "string",
-            "description": "Request ID for correlation",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Request ID for correlation"
           }
         },
-        "additionalProperties": false,
         "description": "Optional metadata for tracking ephemeral key usage"
       },
       "EphemeralKeyResponse": {
@@ -2797,8 +3900,7 @@
         "properties": {
           "ephemeralKey": {
             "type": "string",
-            "description": "The ephemeral key token to use for authentication",
-            "nullable": true
+            "description": "The ephemeral key token to use for authentication"
           },
           "expiresAt": {
             "type": "string",
@@ -2806,31 +3908,98 @@
             "format": "date-time"
           },
           "expiresInSeconds": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "description": "The TTL in seconds",
             "format": "int32"
           }
         },
-        "additionalProperties": false,
         "description": "Response when creating an ephemeral key"
       },
       "FunctionCall": {
         "required": [
-          "arguments",
-          "name"
+          "name",
+          "arguments"
         ],
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "arguments": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           }
-        },
-        "additionalProperties": false
+        }
+      },
+      "FunctionCallSummary": {
+        "type": "object",
+        "properties": {
+          "iteration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tool_call_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "function_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "function_configuration_id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "function_execution_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "cost": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "error_message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "duration_ms": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
       },
       "FunctionDefinition": {
         "required": [
@@ -2839,31 +4008,77 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "description": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "parameters": {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "#/components/schemas/JsonNode"
-            },
-            "nullable": true
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              }
+            ]
+          }
+        }
+      },
+      "FunctionExecutionRequest": {
+        "type": "object",
+        "properties": {
+          "functionConfigurationId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The function configuration ID to execute.",
+            "format": "int32"
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Parameters to pass to the function."
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Optional metadata to associate with the execution."
+          },
+          "idempotencyKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional idempotency key to prevent duplicate executions."
           }
         },
-        "additionalProperties": false
+        "description": "Request model for function execution."
       },
       "GenerateEphemeralKeyRequest": {
         "type": "object",
         "properties": {
           "metadata": {
-            "$ref": "#/components/schemas/EphemeralKeyMetadata"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Optional metadata about the ephemeral key request",
+                "$ref": "#/components/schemas/EphemeralKeyMetadata"
+              }
+            ]
           }
         },
-        "additionalProperties": false,
         "description": "Request for generating an ephemeral key"
       },
       "GenerateUrlRequest": {
@@ -2874,96 +4089,113 @@
         "properties": {
           "fileId": {
             "type": "string",
-            "description": "The file identifier.",
-            "nullable": true
+            "description": "The file identifier."
           },
           "expirationMinutes": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
             "description": "How many minutes the URL should be valid (1-10080).",
-            "format": "int32",
-            "nullable": true
+            "format": "int32"
           }
         },
-        "additionalProperties": false,
         "description": "Request to generate a temporary download URL."
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
       },
       "ImageGenerationRequest": {
         "required": [
-          "model",
-          "prompt"
+          "prompt",
+          "model"
         ],
         "type": "object",
         "properties": {
           "prompt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "model": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "n": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "quality": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "response_format": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "size": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "style": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "user": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "image": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "mask": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "operation": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           }
-        },
-        "additionalProperties": { }
+        }
       },
-      "JsonNode": {
+      "JsonElement": { },
+      "JsonObject": {
+        "type": "object"
+      },
+      "JsonSchemaFormat": {
         "type": "object",
         "properties": {
-          "options": {
-            "$ref": "#/components/schemas/JsonNodeOptions"
+          "name": {
+            "type": "string"
           },
-          "parent": {
-            "$ref": "#/components/schemas/JsonNode"
+          "strict": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
-          "root": {
-            "$ref": "#/components/schemas/JsonNode"
+          "schema": {
+            "$ref": "#/components/schemas/JsonElement"
           }
-        },
-        "additionalProperties": false
-      },
-      "JsonNodeOptions": {
-        "type": "object",
-        "properties": {
-          "propertyNameCaseInsensitive": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
+        }
       },
       "Message": {
         "required": [
@@ -2972,29 +4204,31 @@
         "type": "object",
         "properties": {
           "role": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
-          "content": {
-            "nullable": true
-          },
+          "content": { },
           "name": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "tool_calls": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/ToolCall"
-            },
-            "nullable": true
+            }
           },
           "tool_call_id": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "OpenAIError": {
         "required": [
@@ -3004,23 +4238,24 @@
         "type": "object",
         "properties": {
           "message": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "type": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "param": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "code": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "OpenAIErrorResponse": {
         "required": [
@@ -3031,120 +4266,184 @@
           "error": {
             "$ref": "#/components/schemas/OpenAIError"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "PerformanceMetrics": {
         "type": "object",
         "properties": {
           "total_latency_ms": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int64"
           },
           "time_to_first_token_ms": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           },
           "tokens_per_second": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "prompt_tokens_per_second": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "completion_tokens_per_second": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "provider": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "model": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "streaming": {
             "type": "boolean"
           },
           "retry_attempts": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "avg_inter_token_latency_ms": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "prompt_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "completion_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "total_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "ProblemDetails": {
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "title": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "status": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "detail": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "instance": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
-        },
-        "additionalProperties": { }
+        }
       },
       "ProviderType": {
-        "enum": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9,
-          10,
-          11
-        ],
-        "type": "integer",
-        "format": "int32"
+        "type": "integer"
       },
       "QueueStatistics": {
         "type": "object",
         "properties": {
           "pendingMessages": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "deadLetterMessages": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "processedMessages": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "failedMessages": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "lastProcessedAt": {
@@ -3155,74 +4454,223 @@
             "$ref": "#/components/schemas/CircuitState"
           },
           "consecutiveFailures": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           }
         },
-        "additionalProperties": false,
         "description": "Statistics about the message queue"
+      },
+      "ReasoningConfig": {
+        "type": "object",
+        "properties": {
+          "effort": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "max_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "exclude": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "RerankRequest": {
+        "required": [
+          "model",
+          "query",
+          "documents"
+        ],
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "top_n": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "return_documents": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
       },
       "ResponseFormat": {
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "json_schema": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonSchemaFormat"
+              }
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "SearchUsageMetadata": {
         "type": "object",
         "properties": {
           "query_count": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "document_count": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "chunked_document_count": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "SpendUpdateDto": {
         "required": [
+          "virtualKeyId",
           "amount",
           "model",
-          "providerType",
-          "virtualKeyId"
+          "providerType"
         ],
         "type": "object",
         "properties": {
           "virtualKeyId": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "amount": {
             "maximum": 1000000,
             "minimum": 0.0001,
-            "type": "number",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
             "format": "double"
           },
           "model": {
-            "minLength": 1,
             "type": "string"
           },
           "providerType": {
             "$ref": "#/components/schemas/ProviderType"
           },
           "metadata": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
+            "type": [
+              "null",
+              "object"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
+      },
+      "StreamOptions": {
+        "type": "object",
+        "properties": {
+          "include_usage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TextToSpeechRequest": {
+        "required": [
+          "model",
+          "input",
+          "voice"
+        ],
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          },
+          "voice": {
+            "type": "string"
+          },
+          "responseFormat": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "speed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "extensionData": {
+            "type": [
+              "null",
+              "object"
+            ]
+          }
+        }
       },
       "Tool": {
         "required": [
@@ -3231,374 +4679,539 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "function": {
             "$ref": "#/components/schemas/FunctionDefinition"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "ToolCall": {
         "required": [
-          "function",
-          "id"
+          "id",
+          "function"
         ],
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "type": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "function": {
             "$ref": "#/components/schemas/FunctionCall"
           }
-        },
-        "additionalProperties": false
+        }
       },
-      "ToolChoice": {
-        "type": "object",
-        "additionalProperties": false
-      },
+      "ToolChoice": { },
       "Usage": {
         "type": "object",
         "properties": {
           "prompt_tokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "completion_tokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "total_tokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "image_count": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "video_duration_seconds": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "video_resolution": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "is_batch": {
-            "type": "boolean",
-            "nullable": true
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "image_quality": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "image_resolution": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "cached_input_tokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "cached_write_tokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "search_units": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "search_metadata": {
-            "$ref": "#/components/schemas/SearchUsageMetadata"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SearchUsageMetadata"
+              }
+            ]
           },
           "inference_steps": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "reasoning_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "audio_duration_seconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "tts_characters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "metadata": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
+            "type": [
+              "null",
+              "object"
+            ]
+          },
+          "pricing_parameters": {
+            "type": [
+              "null",
+              "object"
+            ]
           }
-        },
-        "additionalProperties": { }
+        }
       },
       "VideoData": {
         "type": "object",
         "properties": {
           "url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "b64_json": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "metadata": {
-            "$ref": "#/components/schemas/VideoMetadata"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VideoMetadata"
+              }
+            ]
           },
           "revised_prompt": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "VideoGenerationRequest": {
         "required": [
-          "model",
-          "prompt"
+          "prompt",
+          "model"
         ],
         "type": "object",
         "properties": {
           "prompt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "model": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "duration": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "size": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "fps": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "style": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "response_format": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "user": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "seed": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "n": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "webhook_url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "webhook_headers": {
-            "type": "object",
+            "type": [
+              "null",
+              "object"
+            ],
             "additionalProperties": {
               "type": "string"
-            },
-            "nullable": true
+            }
           }
-        },
-        "additionalProperties": { }
+        }
       },
       "VideoGenerationResponse": {
         "type": "object",
         "properties": {
           "created": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int64"
           },
           "data": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/VideoData"
-            },
-            "nullable": true
+            }
           },
           "model": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "usage": {
-            "$ref": "#/components/schemas/VideoGenerationUsage"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VideoGenerationUsage"
+              }
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "VideoGenerationTaskResponse": {
         "type": "object",
         "properties": {
           "taskId": {
-            "type": "string",
-            "description": "Unique identifier for the video generation task.",
-            "nullable": true
+            "type": "string"
           },
           "status": {
-            "type": "string",
-            "description": "Current status of the task (pending, processing, completed, failed).",
-            "nullable": true
+            "type": "string"
           },
           "createdAt": {
             "type": "string",
-            "description": "When the task was created.",
             "format": "date-time"
           },
           "estimatedCompletionTime": {
-            "type": "string",
-            "description": "Estimated time when the video will be ready.",
-            "format": "date-time",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "checkStatusUrl": {
-            "type": "string",
-            "description": "URL to check the status of this task.",
-            "nullable": true
+            "type": "string"
           }
         },
-        "additionalProperties": false,
         "description": "Response for async video generation task creation."
       },
       "VideoGenerationTaskStatus": {
         "type": "object",
         "properties": {
           "taskId": {
-            "type": "string",
-            "description": "Unique identifier for the task.",
-            "nullable": true
+            "type": "string"
           },
           "status": {
-            "type": "string",
-            "description": "Current status (pending, running, completed, failed, cancelled).",
-            "nullable": true
+            "type": "string"
           },
           "progress": {
-            "type": "integer",
-            "description": "Progress percentage (0-100).",
-            "format": "int32",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "createdAt": {
             "type": "string",
-            "description": "When the task was created.",
             "format": "date-time"
           },
           "updatedAt": {
             "type": "string",
-            "description": "When the task was last updated.",
             "format": "date-time"
           },
           "completedAt": {
-            "type": "string",
-            "description": "When the task completed (if applicable).",
-            "format": "date-time",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "error": {
-            "type": "string",
-            "description": "Error message if the task failed.",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resultRaw": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "result": {
-            "type": "string",
-            "description": "Result data (internal use).",
-            "nullable": true
-          },
-          "videoResponse": {
-            "$ref": "#/components/schemas/VideoGenerationResponse"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VideoGenerationResponse"
+              }
+            ]
           }
         },
-        "additionalProperties": false,
         "description": "Status information for a video generation task."
       },
       "VideoGenerationUsage": {
         "type": "object",
         "properties": {
           "videos_generated": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "total_duration_seconds": {
-            "type": "number",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
             "format": "double"
           },
           "estimated_cost": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "VideoMetadata": {
         "type": "object",
         "properties": {
           "width": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "height": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "duration": {
-            "type": "number",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
             "format": "double"
           },
           "fps": {
-            "type": "number",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
             "format": "double"
           },
           "codec": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audio_codec": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "file_size_bytes": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int64"
           },
           "bitrate": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           },
           "mime_type": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "format": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "VirtualKeyUpdateDto": {
         "required": [
@@ -3607,89 +5220,157 @@
         "type": "object",
         "properties": {
           "virtualKeyId": {
-            "type": "integer",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           },
           "maxBudget": {
             "maximum": 1000000,
             "minimum": 0,
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "allowedModels": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string"
-            },
-            "nullable": true
+            }
           },
           "rateLimits": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
+            "type": [
+              "null",
+              "object"
+            ]
           },
           "isEnabled": {
-            "type": "boolean",
-            "nullable": true
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "WebhookSendDto": {
         "required": [
+          "url",
           "eventType",
-          "payload",
-          "url"
+          "payload"
         ],
         "type": "object",
         "properties": {
           "url": {
-            "minLength": 1,
             "type": "string",
             "format": "uri"
           },
           "eventType": {
-            "minLength": 1,
             "type": "string"
           },
           "payload": { },
           "headers": {
-            "type": "object",
+            "type": [
+              "null",
+              "object"
+            ],
             "additionalProperties": {
               "type": "string"
-            },
-            "nullable": true
+            }
           },
           "secret": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       }
     },
     "securitySchemes": {
-      "ApiKey": {
-        "type": "apiKey",
-        "description": "Virtual Key authentication using Authorization header",
-        "name": "Authorization",
-        "in": "header"
+      "VirtualKey": {
+        "type": "http",
+        "description": "ConduitLLM virtual key supplied as an opaque Bearer token.",
+        "scheme": "bearer",
+        "bearerFormat": "opaque virtual key"
       }
     }
   },
-  "security": [
+  "tags": [
     {
-      "ApiKey": [ ]
+      "name": "Audio"
+    },
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "BatchOperations"
+    },
+    {
+      "name": "Chat"
+    },
+    {
+      "name": "Completions"
+    },
+    {
+      "name": "Discovery"
+    },
+    {
+      "name": "Downloads"
+    },
+    {
+      "name": "Embeddings"
+    },
+    {
+      "name": "Functions"
+    },
+    {
+      "name": "Images"
+    },
+    {
+      "name": "Media"
+    },
+    {
+      "name": "Models"
+    },
+    {
+      "name": "ProviderModels"
+    },
+    {
+      "name": "Rerank"
+    },
+    {
+      "name": "SignalRBatching"
+    },
+    {
+      "name": "SignalRHealth"
+    },
+    {
+      "name": "Tasks"
+    },
+    {
+      "name": "Videos"
     }
   ]
 }

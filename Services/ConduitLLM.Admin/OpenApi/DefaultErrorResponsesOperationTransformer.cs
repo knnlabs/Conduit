@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Admin.OpenApi;
 
@@ -16,7 +17,7 @@ namespace ConduitLLM.Admin.OpenApi;
 public sealed class DefaultErrorResponsesOperationTransformer : IOpenApiOperationTransformer
 {
     /// <inheritdoc/>
-    public Task TransformAsync(
+    public async Task TransformAsync(
         OpenApiOperation operation,
         OpenApiOperationTransformerContext context,
         CancellationToken cancellationToken)
@@ -25,12 +26,18 @@ public sealed class DefaultErrorResponsesOperationTransformer : IOpenApiOperatio
 
         if (!operation.Responses.ContainsKey("500"))
         {
+            var schema = await context.GetOrCreateSchemaAsync(
+                typeof(ErrorResponseDto),
+                parameterDescription: null,
+                cancellationToken);
             operation.Responses["500"] = new OpenApiResponse
             {
-                Description = "Internal server error. Returns a standardized ErrorResponseDto."
+                Description = "Internal server error. Returns a standardized ErrorResponseDto.",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new() { Schema = schema }
+                }
             };
         }
-
-        return Task.CompletedTask;
     }
 }

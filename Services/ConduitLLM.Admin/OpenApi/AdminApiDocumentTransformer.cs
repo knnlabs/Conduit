@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.OpenApi;
-using System.Reflection;
+using Microsoft.OpenApi;
 
 namespace ConduitLLM.Admin.OpenApi;
 
@@ -18,9 +18,16 @@ public class AdminApiDocumentTransformer : IOpenApiDocumentTransformer
         document.Info.Version = "v1";
         document.Info.Description = "Administrative API for ConduitLLM - Requires X-Master-Key header for authentication";
 
-        // Note: With Microsoft.AspNetCore.OpenApi in .NET 10, security schemes are handled differently
-        // The authentication is enforced by middleware (MasterKeyAuthenticationHandler)
-        // Scalar will detect the authentication requirements from the OpenAPI document
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes[ApiKeySecurityOperationTransformer.SecuritySchemeName] =
+            new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.ApiKey,
+                Name = "X-Master-Key",
+                In = ParameterLocation.Header,
+                Description = "ConduitLLM Admin API master key."
+            };
 
         return Task.CompletedTask;
     }
