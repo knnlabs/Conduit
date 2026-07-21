@@ -428,6 +428,8 @@ secrets.json
 *.pem
 *.p12
 *credentials*
+!Services/ConduitLLM.Admin/Endpoints/*CredentialsEndpoints*.cs
+!Tests/ConduitLLM.Tests/Admin/**/*CredentialsEndpointsTests.cs
 *secret*
 *token*.txt
 *token*.json

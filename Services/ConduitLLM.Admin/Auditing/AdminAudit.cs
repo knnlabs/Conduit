@@ -42,6 +42,47 @@ namespace ConduitLLM.Admin.Auditing
             }
         }
 
+        /// <summary>Logs a bulk operation with success and failure counts.</summary>
+        public static void LogBulk(
+            HttpContext httpContext,
+            ILogger logger,
+            string operation,
+            string entityType,
+            int successCount,
+            int failureCount) =>
+            Log(httpContext, logger, operation, entityType,
+                detail: $"Success: {successCount}, Failures: {failureCount}");
+
+        /// <summary>Logs an update with sanitized before/after values.</summary>
+        public static void LogWithChanges(
+            HttpContext httpContext,
+            ILogger logger,
+            string entityType,
+            object? entityId,
+            IReadOnlyList<(string Property, string? OldValue, string? NewValue)> changes,
+            string? detail = null)
+        {
+            if (changes.Count == 0)
+            {
+                return;
+            }
+            var summary = string.Join(", ", changes.Select(change =>
+                $"{change.Property}: '{LoggingSanitizer.S(change.OldValue ?? "null")}' -> " +
+                $"'{LoggingSanitizer.S(change.NewValue ?? "null")}'"));
+            Log(httpContext, logger, "Updated", entityType, entityId,
+                detail is null ? $"Changes: [{summary}]" : $"{detail}; Changes: [{summary}]");
+        }
+
+        /// <summary>Logs a single state transition.</summary>
+        public static void LogStateChange(
+            HttpContext httpContext,
+            ILogger logger,
+            string entityType,
+            object? entityId,
+            string property,
+            object newValue) =>
+            Log(httpContext, logger, "Updated", entityType, entityId, $"{property}: {newValue}");
+
         private static string GetAdminUserIdentity(HttpContext httpContext)
         {
             var identityName = httpContext.User?.Identity?.Name ?? "Unknown";

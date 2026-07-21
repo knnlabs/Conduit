@@ -105,6 +105,15 @@ public partial class Program
             openApiApp.MapAdminAuthEndpoints();
             openApiApp.MapSystemInfoEndpoints();
             openApiApp.MapAdminMetricsEndpoints();
+            openApiApp.MapConfigurationEndpoints();
+            openApiApp.MapBundledModelCatalogEndpoints();
+            openApiApp.MapFunctionExecutionsEndpoints();
+            openApiApp.MapFunctionCostsEndpoints();
+            openApiApp.MapFunctionCredentialsEndpoints();
+            openApiApp.MapBatchSpendingEndpoints();
+            openApiApp.MapPromptCachingEndpoints();
+            openApiApp.MapProviderSyncEndpoints();
+            openApiApp.MapGlobalSettingsEndpoints();
             await openApiApp.RunAsync();
             return 0;
         }
@@ -177,6 +186,15 @@ public partial class Program
         app.MapAdminAuthEndpoints();
         app.MapSystemInfoEndpoints();
         app.MapAdminMetricsEndpoints();
+        app.MapConfigurationEndpoints();
+        app.MapBundledModelCatalogEndpoints();
+        app.MapFunctionExecutionsEndpoints();
+        app.MapFunctionCostsEndpoints();
+        app.MapFunctionCredentialsEndpoints();
+        app.MapBatchSpendingEndpoints();
+        app.MapPromptCachingEndpoints();
+        app.MapProviderSyncEndpoints();
+        app.MapGlobalSettingsEndpoints();
 
         // Map SignalR hub with master key authentication
         app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
